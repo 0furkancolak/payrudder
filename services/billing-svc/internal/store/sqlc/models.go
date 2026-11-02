@@ -29,6 +29,9 @@ type AuditEvent struct {
 	SourceIp   string
 	RequestID  string
 	CreatedAt  time.Time
+	Seq        int64
+	PrevHash   string
+	RowHash    string
 }
 
 type BillingRun struct {
@@ -138,9 +141,10 @@ type CreditSetting struct {
 }
 
 type DunningSetting struct {
-	TenantID   uuid.UUID
-	RetryHours []int32
-	UpdatedAt  time.Time
+	TenantID          uuid.UUID
+	RetryHours        []int32
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
 }
 
 type EinvoiceDocument struct {

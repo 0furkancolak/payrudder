@@ -113,6 +113,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The cards the payment provider holds for the customer
+         * @description The cards of the provider's card storage (iyzico) under the user key the customer's payment method names, never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+         */
+        get: operations["listCustomerCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/cards/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete one of the customer's stored cards at the provider
+         * @description The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and nothing is sent to the provider). The customer's payment method is not changed: when the card was `in_use` the answer says so, and the next charge fails until a new payment method is set.
+         */
+        delete: operations["deleteCustomerCard"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/address": {
         parameters: {
             query?: never;
@@ -419,7 +459,7 @@ export interface paths {
         put?: never;
         /**
          * Record that the customer withdrew from a contract
-         * @description The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund.
+         * @description The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund. Needs customers:write.
          */
         post: operations["createContractWithdrawal"];
         delete?: never;
@@ -455,7 +495,7 @@ export interface paths {
         get?: never;
         /**
          * Decide a withdrawal request, or mark an accepted one refunded
-         * @description received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
+         * @description received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded. Needs customers:write. A key that does not also hold invoices:write cannot accept a withdrawal while the settings say `withdrawal_refund: full` (403 gateway.auth.permission_denied, nothing is decided): the refund is a credit note, and creating one needs invoices:write everywhere. Rejecting, or accepting while the setting is `none`, needs customers:write only.
          */
         put: operations["setContractWithdrawalStatus"];
         post?: never;
@@ -476,7 +516,7 @@ export interface paths {
         put?: never;
         /**
          * Ask for the refund of an accepted withdrawal
-         * @description For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+         * @description For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`. Needs invoices:write, not only customers:write: it returns money to a card.
          */
         post: operations["requestContractWithdrawalRefund"];
         delete?: never;
@@ -1424,7 +1464,7 @@ export interface paths {
         put?: never;
         /**
          * A forwarded mail from the mail provider. Public; protected by a shared secret
-         * @description The webhook of the mail provider's inbound address (Resend, Nafru or alike) posts each received mail here. The body is the mail, or `{"type": "email.received", "data": {...}}` around it: `from`, `to` (a string, a list of strings or of `{email}`), `subject` and `attachments` (`filename`, `content_type`, `content` base64). The tenant is the token in the recipient `invoices+<token>@<domain>`. PDF, PNG and JPEG attachments (judged by their bytes) up to 3 MiB in all become items to review; the rest are skipped. Authenticate with `Authorization: Bearer <secret>`, `X-Inbound-Secret` or `?secret=`. Answers 200 for an unknown address too. 404 until PAYRUDDER_INBOUND_SECRET is set.
+         * @description The webhook of the mail provider's inbound address (Resend, Nafru or alike) posts each received mail here. The body is the mail, or `{"type": "email.received", "data": {...}}` around it: `from`, `to` (a string, a list of strings or of `{email}`), `subject` and `attachments` (`filename`, `content_type`, `content` base64). The tenant is the token in the recipient `invoices+<token>@<domain>`. PDF, PNG and JPEG attachments (judged by their bytes) up to 3 MiB in all become items to review; the rest are skipped. Authenticate with the header `X-Payrudder-Inbound-Secret: <secret>` (preferred), `Authorization: Bearer <secret>` or `X-Inbound-Secret`. `?secret=` in the URL still works but is deprecated: a URL is kept by proxies, access logs and traces, so use it only for a provider that cannot send a header (the gateway takes the query off the request before anything can log it). Answers 200 for an unknown address too. 404 until PAYRUDDER_INBOUND_SECRET is set.
          */
         post: operations["inboundInvoices"];
         delete?: never;
@@ -2391,7 +2431,7 @@ export interface paths {
         };
         /**
          * A partner's public link (public)
-         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
+         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The redirect is made only when the program's tenant is live and active and an owner of its account has verified their e-mail address; for any other tenant (a sandbox, say) a page names the destination host and offers a link, so the link is not an open redirect. An address with a user name, an IP address, localhost or another scheme is never redirected to. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
          */
         get: operations["affiliateLink"];
         put?: never;
@@ -2507,7 +2547,7 @@ export interface paths {
         put?: never;
         /**
          * Pay the invoice by one of the methods the page offers
-         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. Form field `installments` (only with `stored_card`, 2 to 12): the saved card is paid in that many instalments. The page offers the choice only when the seller's iyzico account enables instalments (`enabled_installments`) and iyzico quotes them for the saved card and the amount; the count is checked against a fresh quote before anything starts (`409` when it is not offered), and the total of the quote, which can be more than the invoice when the bank charges for instalments, is what the payer is charged. The invoice is paid in full at its own price either way. Left out, or 1, is one payment. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
          */
         post: operations["hostedInvoicePay"];
         delete?: never;
@@ -3018,6 +3058,26 @@ export interface paths {
          * @description Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. Provider references and decline details are not part of the answer. `503` when the payment service does not answer.
          */
         get: operations["listPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The cases customers opened with their banks about a payment, newest first
+         * @description A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it: `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won. Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live account. `503` when the payment service does not answer.
+         */
+        get: operations["listDisputes"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5095,7 +5155,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark */
+        /** A ticket with its thread and history (the operator's internal notes, tags and assignee are not in it). Reading it as the person who opened it clears its unread mark */
         get: operations["appSupportTicket"];
         put?: never;
         post?: never;
@@ -5116,6 +5176,43 @@ export interface paths {
         put?: never;
         /** Write to a ticket. A ticket waiting for the person or solved goes back to the operator; a closed one takes no reply */
         post: operations["appReplySupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}/messages/{message_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach one file to a message the person wrote (multipart, field `file`)
+         * @description png, jpeg, pdf or plain text, at most 5 MiB; a ticket holds at most 10 files and an organisation keeps at most 50 MiB of them. The file is stored under the first tenant of the organisation's oldest app (`409 support.attachment.no_app` before one exists) with the purpose `support_attachment`, which the tenant API never lists. Refusals: `400 support.attachment.bad_type`, `400 support.attachment.too_large`, `429 support.attachment.too_many`, `429 support.attachment.account_full`, `429 support.attachment.storage_full`, `409 support.ticket.closed`.
+         */
+        post: operations["appAttachToSupportMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link that downloads a file of a ticket (never one of the operator's internal notes) */
+        get: operations["appSupportAttachmentLink"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5279,6 +5376,40 @@ export interface paths {
         post?: never;
         /** Delete a canned reply (operator) */
         delete: operations["deleteSupportCannedReply"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/messages/{message_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach one file to an operator message or note (multipart, field `file`; same types and limits as the person's) */
+        post: operations["attachToSupportMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link that downloads a file of a ticket, internal notes included (operator) */
+        get: operations["getSupportAttachmentLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6887,6 +7018,7 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "pending" | "solved" | "closed";
+            /** @description The operator the ticket is assigned to. Always empty in what the person's calls return */
             assignee: string;
             /** Format: date-time */
             create_time: string;
@@ -6910,7 +7042,7 @@ export interface components {
             /** @description The operator's own labels, at most five. Always empty in what the person's calls return */
             tags: string[];
         };
-        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. */
+        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority. */
         SupportEvent: {
             /** Format: uuid */
             id: string;
@@ -6941,12 +7073,27 @@ export interface components {
             internal: boolean;
             /** Format: date-time */
             create_time: string;
+            /** @description Files on the message; the person sees those of public messages only */
+            attachments?: components["schemas"]["SupportAttachment"][];
+        };
+        SupportAttachment: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            /** @enum {string} */
+            content_type: "image/png" | "image/jpeg" | "application/pdf" | "text/plain";
+            /** Format: int64 */
+            size_bytes: number;
+            /** Format: date-time */
+            create_time: string;
         };
         SupportTicketList: {
             tickets: components["schemas"]["SupportTicket"][];
         };
         SupportTicketResult: {
             ticket: components["schemas"]["SupportTicket"];
+            /** @description The message that was written (when a message was): files are attached to it */
+            message?: components["schemas"]["SupportMessage"];
         };
         SupportTicketThread: {
             ticket: components["schemas"]["SupportTicket"];
@@ -8119,6 +8266,35 @@ export interface components {
             customers: components["schemas"]["Customer"][];
             next_page_token: string;
         };
+        StoredCard: {
+            /** @description The provider's card token (cardToken): what the delete names */
+            token: string;
+            alias: string;
+            /** @description The first digits of the number (the BIN) */
+            bin: string;
+            last4: string;
+            /** @description CREDIT_CARD, DEBIT_CARD or PREPAID_CARD */
+            type: string;
+            /** @description VISA, MASTER_CARD, ... */
+            association: string;
+            family: string;
+            bank: string;
+            expire_month: string;
+            expire_year: string;
+            /** @description The customer's payment method names this card */
+            in_use: boolean;
+        };
+        CustomerCards: {
+            /** @description The provider that holds the cards; empty when the customer has none */
+            provider: string;
+            cards: components["schemas"]["StoredCard"][];
+        };
+        DeletedCustomerCard: {
+            provider: string;
+            deleted: boolean;
+            /** @description The deleted card was the one the customer's payment method names: set a new payment method */
+            was_in_use: boolean;
+        };
         SetPaymentMethodRequest: {
             payment_method: string;
         };
@@ -8451,7 +8627,7 @@ export interface components {
             /** Format: int64 */
             total_minor: string;
             /** @enum {string} */
-            state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "PAYMENT_ACTION_REQUIRED" | "UNCOLLECTIBLE";
+            state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "PAYMENT_ACTION_REQUIRED" | "PAYMENT_HELD" | "UNCOLLECTIBLE";
             dunning_attempt: number;
             /** Format: date-time */
             next_attempt_time: string | null;
@@ -8561,6 +8737,50 @@ export interface components {
         ListPaymentsResponse: {
             payments: components["schemas"]["Payment"][];
             truncated: boolean;
+        };
+        Dispute: {
+            /** @description Payrudder's id of the case */
+            id: string;
+            /** @example stripe */
+            provider: string;
+            /** @description The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction) */
+            dispute_id: string;
+            /** @description The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id) */
+            payment_ref: string;
+            /**
+             * Format: uuid
+             * @description The invoice of that payment; absent for a payment Payrudder did not make
+             */
+            invoice_id?: string;
+            /**
+             * Format: int64
+             * @description The disputed amount
+             */
+            amount_minor: string;
+            currency: string;
+            /** @enum {string} */
+            outcome: "open" | "won" | "lost";
+            /** @description A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one */
+            formal: boolean;
+            /** @description The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...) */
+            provider_status: string;
+            /** @description The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when the provider does not say */
+            reason?: string;
+            /**
+             * Format: date-time
+             * @description When your evidence is due; absent when the provider does not say
+             */
+            evidence_due_time?: string;
+            /** Format: date-time */
+            opened_time: string;
+            /**
+             * Format: date-time
+             * @description Absent while the case is open
+             */
+            closed_time?: string;
+        };
+        ListDisputesResponse: {
+            disputes: components["schemas"]["Dispute"][];
         };
         CreateUploadSessionRequest: {
             files: components["schemas"]["CreateUploadSessionFile"][];
@@ -9440,7 +9660,7 @@ export interface components {
             period: string;
             paid_invoices: number;
             successful_charges: number;
-            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch */
+            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed (a dispute of a payment is undecided), and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch */
             discrepancy_counts: {
                 [key: string]: number;
             };
@@ -9492,7 +9712,7 @@ export interface components {
             /** @enum {string} */
             environment: "sandbox" | "live";
             period: string;
-            /** @description paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, settlement_missing, settlement_mismatch or fee_mismatch */
+            /** @description paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed, settlement_missing, settlement_mismatch or fee_mismatch */
             kind: string;
             invoice_id?: string;
             number?: string;
@@ -10565,6 +10785,52 @@ export interface components {
              */
             expires_at?: string;
         };
+        /** @description The data of an event of type payment.disputed: a customer questioned a payment with their bank, or the case moved on or ended (one event per step; outcome says where it stands) */
+        PaymentDisputedEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            invoice_number: string;
+            /** @description may be empty */
+            customer_external_id: string;
+            provider: string;
+            /** @description The provider's reference of the case; the same in every event about it */
+            dispute_id: string;
+            payment_ref: string;
+            /**
+             * Format: int64
+             * @description string
+             */
+            amount_minor: string;
+            currency: string;
+            /** @enum {string} */
+            outcome: "open" | "won" | "lost";
+            /** @description A chargeback proper (money taken back); false is an inquiry or a warning */
+            formal: boolean;
+            /** @description may be empty */
+            reason: string;
+            /** @description The provider's own word for the state of the case */
+            provider_status: string;
+            /**
+             * Format: date-time
+             * @description Only when the provider gives a date
+             */
+            evidence_due_time?: string;
+        };
+        /** @description The body of a delivery of type payment.disputed */
+        PaymentDisputedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "payment.disputed";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PaymentDisputedEventData"];
+        };
         /** @description The body of a delivery of type credits.purchased */
         CreditsPurchasedEvent: {
             /** Format: uuid */
@@ -10930,7 +11196,7 @@ export interface components {
             referred_coupon_code: string;
             /** @default 1000 */
             daily_click_cap: number;
-            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
             landing_url: string;
             /** @description A partner who applies is active at once */
             auto_approve: boolean;
@@ -10966,7 +11232,7 @@ export interface components {
             referred_coupon_code?: string;
             /** @default 1000 */
             daily_click_cap: number;
-            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
             landing_url?: string;
             /** @description A partner who applies is active at once */
             auto_approve?: boolean;
@@ -11869,9 +12135,13 @@ export interface components {
             readonly defaults_in_use: boolean;
             /** Format: date-time */
             readonly update_time: string | null;
+            /** @description A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless you turn it on; it blocks only when the dispute opens and never lifts the block by itself. */
+            block_on_chargeback?: boolean;
         };
         DunningSettingsInput: {
             retry_hours?: number[];
+            /** @description Absent: kept as it is. retry_hours is replaced as before (absent is none). */
+            block_on_chargeback?: boolean;
         };
         CreditPackInput: {
             name: string;
@@ -12283,7 +12553,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "payment.disputed" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -12482,7 +12752,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["ContractWithdrawalDecidedEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["PaymentDisputedEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["ContractWithdrawalDecidedEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -13575,6 +13845,55 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    listCustomerCards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCards"];
+                };
+            };
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    deleteCustomerCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedCustomerCard"];
+                };
+            };
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
         };
     };
     setCustomerAddress: {
@@ -17210,7 +17529,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A thank-you page, when the program has no landing page */
+            /** @description A thank-you page, when the program has no landing page; or, when the tenant is not vouched for, a page that names the landing page's host with a link */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -17219,7 +17538,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description Redirect to the program's landing page, with the cookie set */
+            /** @description Redirect to the program's landing page, with the cookie set (live, active tenant with a verified owner only) */
             302: {
                 headers: {
                     [name: string]: unknown;
@@ -17464,6 +17783,7 @@ export interface operations {
             content: {
                 "application/x-www-form-urlencoded": {
                     method: string;
+                    installments?: number;
                     v_distance_sales?: string;
                     accept_distance_sales?: string;
                     v_pre_info?: string;
@@ -18714,6 +19034,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListPaymentsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listDisputes: {
+        parameters: {
+            query?: {
+                /** @description Only the disputes of this invoice */
+                invoice_id?: string;
+                outcome?: "open" | "won" | "lost";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDisputesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -22202,6 +22549,66 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    appAttachToSupportMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attached */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachment"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appSupportAttachmentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrl"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appSetSupportTicketStatus: {
         parameters: {
             query?: never;
@@ -22492,6 +22899,64 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    attachToSupportMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attached */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachment"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    getSupportAttachmentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrl"];
+                };
             };
             404: components["responses"]["Error"];
         };

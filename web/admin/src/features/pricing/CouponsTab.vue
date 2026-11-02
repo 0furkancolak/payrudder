@@ -4,6 +4,7 @@ import { Ban, ArrowUpRight, Ticket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
+import { askConfirm } from "@/shared/lib/confirm";
 import { useBulk } from "@/shared/lib/bulk";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
@@ -14,6 +15,7 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -61,17 +63,22 @@ const bulkDeactivate = () =>
     confirm: (rows) => ({ title: t("billing.pricing.coupons.bulk.title", { n: rows.length }, rows.length), body: t("billing.pricing.coupons.bulk.confirm", { n: rows.length }, rows.length), confirmLabel: t("billing.pricing.coupons.deactivate") }),
   });
 
+/** A coupon cannot be switched on again, so a single one asks as the bulk action does. */
+async function deactivate(code: string | undefined) {
+  if (code && (await askConfirm({ title: t("billing.pricing.coupons.confirmTitle", { code }), body: t("billing.pricing.coupons.bulk.confirm"), confirmLabel: t("billing.pricing.coupons.deactivate") }))) actions.deactivate.mutate(code);
+}
+
 const current = table.row;
 const actionsOf = (c: Coupon, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
   ...(c.active ? [{ key: "code", label: t("billing.pricing.promotions.codes.create"), icon: Ticket, disabled: !canWrite.value, onSelect: () => emit("newCode", c.code ?? "") }] : []),
-  ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => actions.deactivate.mutate(c.code ?? "") }] : []),
+  ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => deactivate(c.code) }] : []),
 ];
 </script>
 
 <template>
   <Card class="p-3" data-testid="coupons-list">
-    <ErrorText :error="coupons.error.value" class="px-3 pb-2" />
+    <ErrorState :error="coupons.error.value" :retrying="coupons.isFetching.value" compact @retry="coupons.refetch()" />
     <ErrorText :error="actions.deactivate.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.coupons.searchCoupons')" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
@@ -123,7 +130,7 @@ const actionsOf = (c: Coupon, i: number) => [
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.code ?? ''" :description="current ? [current.name, describeCoupon(current, t, locale)].filter(Boolean).join(' · ') : undefined" wide>
     <CouponDetail v-if="current" :key="current.code" :tenant-id="tenantId" :coupon="current" @new-code="(c) => emit('newCode', c)" />
     <template v-if="current?.active && canWrite" #footer>
-      <Button type="button" variant="outline" :disabled="actions.deactivate.isPending.value" @click="actions.deactivate.mutate(current?.code ?? '')"><Ban class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.deactivate") }}</Button>
+      <Button type="button" variant="outline" :disabled="actions.deactivate.isPending.value" @click="deactivate(current?.code)"><Ban class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.deactivate") }}</Button>
     </template>
   </DetailSheet>
 

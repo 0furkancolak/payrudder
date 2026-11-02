@@ -5,12 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
@@ -290,7 +292,7 @@ type Change struct {
 func (d Discrepancies) Apply(ctx context.Context, tenant uuid.UUID, id int64, c Change) (Discrepancy, bool, error) {
 	var out Discrepancy
 	changed := false
-	err := tx(ctx, d.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+	err := tx(ctx, d.DB, tenant, func(pt pgx.Tx, q *sqlc.Queries) error {
 		changed = false
 		r, err := q.GetDiscrepancyForUpdate(ctx, sqlc.GetDiscrepancyForUpdateParams{TenantID: tenant, ID: id})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -337,6 +339,13 @@ func (d Discrepancies) Apply(ctx context.Context, tenant uuid.UUID, id int64, c 
 		}
 		if err := q.InsertReconciliationEvent(ctx, sqlc.InsertReconciliationEventParams{TenantID: tenant, Environment: r.Environment, DiscrepancyID: id, Action: action, Actor: c.Actor,
 			FromStatus: r.Status, ToStatus: to, Resolution: c.Resolution, Note: note}); err != nil {
+			return err
+		}
+		// What an operator does with a difference between the ledger and the invoices is a money decision: the operator (the actor of the request), the kind, what became of
+		// it and who owns it are in the log; the note is free text and stays in reconciliation_events.
+		if err := audit.Record(ctx, pt, audit.Event{TenantID: tenant, Action: "reconciliation.discrepancy_" + action, TargetType: "discrepancy", TargetID: strconv.FormatInt(id, 10),
+			Summary: action + " a " + strings.ReplaceAll(r.Kind, "_", " ") + " discrepancy",
+			Detail:  map[string]any{"kind": r.Kind, "environment": r.Environment, "invoice_number": r.InvoiceNumber, "from": r.Status, "to": to, "resolution": c.Resolution, "owner": owner}}); err != nil {
 			return err
 		}
 		changed = true

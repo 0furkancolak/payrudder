@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import { ErrorState } from "@/shared/ui/error-state";
 
 /**
  * One group of the records related to the one a sheet shows: a title and its rows, or a word saying there are none. The `action` slot sits at the end of
- * the title (a "view all" link); `emptyText` replaces the default "none yet".
+ * the title (a "view all" link); `emptyText` replaces the default "none yet". A query that failed is `error`: the group says so, with a way to try again,
+ * instead of reading as "none yet".
  */
-defineProps<{ title: string; empty?: boolean; emptyText?: string; hideTitle?: boolean }>();
+defineProps<{ title: string; empty?: boolean; emptyText?: string; hideTitle?: boolean; error?: unknown; retrying?: boolean }>();
+defineEmits<{ retry: [] }>();
 const { t } = useI18n();
 </script>
 
@@ -15,7 +18,8 @@ const { t } = useI18n();
       <h3 :class="hideTitle ? 'sr-only' : 'text-sm font-semibold'">{{ title }}</h3>
       <slot name="action" />
     </div>
-    <p v-if="empty" class="text-muted-foreground border-border/80 m-0 rounded-xl border border-dashed px-3 py-4 text-center text-sm" data-testid="related-empty">{{ emptyText ?? t("related.none") }}</p>
+    <ErrorState v-if="error" compact class="mx-0 mb-0" :error="error" :retrying="retrying" @retry="$emit('retry')" />
+    <p v-else-if="empty" class="text-muted-foreground border-border/80 m-0 rounded-xl border border-dashed px-3 py-4 text-center text-sm" data-testid="related-empty">{{ emptyText ?? t("related.none") }}</p>
     <ul v-else class="m-0 flex list-none flex-col gap-1.5 p-0"><slot /></ul>
   </section>
 </template>

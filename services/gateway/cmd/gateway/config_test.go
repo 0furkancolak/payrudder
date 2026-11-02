@@ -62,3 +62,30 @@ func TestRegionSettings(t *testing.T) {
 		}
 	}
 }
+
+// Operators must use two-factor sign-in wherever the deployment is not a development stack: PAYRUDDER_OPERATOR_REQUIRE_2FA decides, and unset it follows PAYRUDDER_ENV
+// (off for local, ci and kind, which are the dev, test and kind installs; on for anything else).
+func TestOperatorTwoFactorSetting(t *testing.T) {
+	load := func(kv ...string) (Config, error) {
+		env := map[string]string{"PAYRUDDER_SERVICE_NAME": "gateway", "PAYRUDDER_OPERATOR_TOKEN": strings.Repeat("t", 32)}
+		for i := 0; i < len(kv); i += 2 {
+			env[kv[i]] = kv[i+1]
+		}
+		return config.LoadFrom[Config](env, defaults)
+	}
+	for _, tc := range []struct {
+		env, setting string
+		want         bool
+	}{
+		{"local", "", false}, {"ci", "", false}, {"kind", "", false}, {"railway", "", true},
+		{"local", "true", true}, {"railway", "false", false}, {"railway", "off", false}, {"kind", "on", true},
+	} {
+		c, err := load("PAYRUDDER_ENV", tc.env, "PAYRUDDER_OPERATOR_REQUIRE_2FA", tc.setting)
+		if err != nil || c.operatorRequireTwoFactor() != tc.want {
+			t.Errorf("env %q setting %q: %v %v, want %v", tc.env, tc.setting, c.operatorRequireTwoFactor(), err, tc.want)
+		}
+	}
+	if _, err := load("PAYRUDDER_OPERATOR_REQUIRE_2FA", "sometimes"); err == nil {
+		t.Error("a typo must not leave the requirement on or off by accident")
+	}
+}

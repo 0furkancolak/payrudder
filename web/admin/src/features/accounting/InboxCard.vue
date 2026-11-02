@@ -4,6 +4,7 @@ import { Copy, Inbox, RefreshCw } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { useCanWrite } from "@/shared/lib/access";
 import { copyText } from "@/shared/lib/clipboard";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
@@ -17,6 +18,7 @@ import { useExpenseInbox, useInboxItems, useRotateInbox } from "./api";
 const props = defineProps<{ tenantId: string }>();
 const emit = defineEmits<{ review: []; rules: [] }>();
 const { t } = useI18n();
+const canWrite = useCanWrite();
 const errorText = useErrorText();
 const inbox = useExpenseInbox(() => props.tenantId);
 const rotate = useRotateInbox(() => props.tenantId);
@@ -43,8 +45,8 @@ async function renew() {
         <p class="text-muted-foreground text-sm">{{ t("billing.accounting.inbox.hint") }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" data-testid="inbox-rules" @click="emit('rules')">{{ t("billing.accounting.rules.open") }}</Button>
-        <Button type="button" size="sm" :variant="count ? 'default' : 'outline'" data-testid="inbox-review" @click="emit('review')">
+        <Button v-if="canWrite" type="button" variant="outline" size="sm" data-testid="inbox-rules" @click="emit('rules')">{{ t("billing.accounting.rules.open") }}</Button>
+        <Button v-if="canWrite" type="button" size="sm" :variant="count ? 'default' : 'outline'" data-testid="inbox-review" @click="emit('review')">
           {{ count ? t("billing.accounting.inbox.review", { count }) : t("billing.accounting.inbox.nothing") }}
         </Button>
       </div>
@@ -52,7 +54,7 @@ async function renew() {
     <div v-if="address" class="flex flex-wrap items-center gap-2">
       <code class="bg-muted min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-xs" data-testid="inbox-address" dir="ltr">{{ address }}</code>
       <Button type="button" variant="outline" size="sm" :aria-label="t('billing.paymentLinks.copy')" @click="copy"><Copy class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.copy") }}</Button>
-      <Button type="button" variant="ghost" size="sm" :disabled="rotate.isPending.value" @click="renew"><RefreshCw class="size-4" aria-hidden="true" />{{ t("billing.accounting.inbox.rotate") }}</Button>
+      <Button v-if="canWrite" type="button" variant="ghost" size="sm" :disabled="rotate.isPending.value" @click="renew"><RefreshCw class="size-4" aria-hidden="true" />{{ t("billing.accounting.inbox.rotate") }}</Button>
     </div>
     <p v-if="inbox.data.value && !inbox.data.value.address" class="text-muted-foreground text-xs">{{ t("billing.accounting.inbox.noDomain") }}</p>
   </Card>

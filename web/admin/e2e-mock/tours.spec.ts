@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { MockGateway } from "./gateway";
+import { baseTenant, MockGateway, signInAsOperator, TENANT } from "./gateway";
 import { LIVE, APP, billingGateway, productGateway, signInAsAda } from "./product";
 import { pickLanguage } from "./ui";
 
@@ -165,6 +165,7 @@ test.describe("the tour icon of a page header", () => {
       [`/app/apps/${APP}/keys`, "API keys", /API keys let your server talk to Payrudder/],
       ["/app/members", "Members", /Who belongs to this organisation/],
       ["/app/settings", "Organisation settings", /Your organisation's name/],
+      ["/app/support", "Help", /Ask Payrudder for help/],
     ];
     for (const [path, name, words] of pages) {
       await page.goto(path);
@@ -185,6 +186,29 @@ test.describe("the tour icon of a page header", () => {
       // Seen: the dot is gone, the icon still works.
       await expect(page.getByTestId("tour-unseen"), path).toHaveCount(0);
       await expect(button, path).toBeVisible();
+    }
+  });
+
+  test("the operator's pages have their own tours too: organisations, the support inbox, and a tenant's apps, address and e-invoice", async ({ page }) => {
+    await baseTenant(new MockGateway()).install(page);
+    await signInAsOperator(page);
+    const pages: [string, string, RegExp][] = [
+      ["/organisations", "Organisations", /Every organisation on this deployment/],
+      ["/support", "Support inbox", /Every ticket of every organisation/],
+      [`/tenants/${TENANT}/apps`, "Apps and API keys", /The apps of this tenant's account/],
+      [`/tenants/${TENANT}/address`, "Business address", /The address printed as the seller/],
+      [`/tenants/${TENANT}/e-invoice`, "E-invoice", /Connect the integrator/],
+    ];
+    for (const [path, name, words] of pages) {
+      await page.goto(path);
+      await expect(page.getByTestId("tour-button"), path).toBeVisible();
+      await page.getByTestId("tour-button").click();
+      await expect(title(page), path).toHaveText(name);
+      await expect(tour(page), path).toContainText(words);
+      await page.getByTestId("tour-next").click();
+      await expect(progress(page), path).toContainText("Step 2");
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("tour"), path).toHaveCount(0);
     }
   });
 

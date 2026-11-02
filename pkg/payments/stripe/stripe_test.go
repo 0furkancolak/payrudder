@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -506,7 +507,7 @@ func TestEventsThatAreDeliberatelyIgnored(t *testing.T) {
 	c, _ := New(Settings{APIKey: key, WebhookSecret: secret}, 0)
 	now := time.Now()
 	c.now = func() time.Time { return now }
-	for _, typ := range []string{"payment_intent.requires_action", "payment_intent.processing", "setup_intent.succeeded", "checkout.session.expired", "charge.dispute.created", "payment_method.attached", "charge.refund.updated"} {
+	for _, typ := range []string{"payment_intent.requires_action", "payment_intent.processing", "setup_intent.succeeded", "checkout.session.expired", "payment_method.attached", "charge.refund.updated"} {
 		body := `{"id":"evt_x","type":"` + typ + `","data":{"object":{"id":"x","status":"succeeded","metadata":{"payrudder_key":"k"}}}}`
 		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
 		if err != nil || n.Kind != payments.KindIgnored {
@@ -578,7 +579,7 @@ func TestRegisterWebhookCreatesTheEndpointAndReturnsTheSecret(t *testing.T) {
 	}
 	var sent []string
 	for i := range WebhookEvents {
-		sent = append(sent, f.form.Get("enabled_events["+string(rune('0'+i))+"]"))
+		sent = append(sent, f.form.Get("enabled_events["+strconv.Itoa(i)+"]"))
 	}
 	if strings.Join(sent, ",") != strings.Join(WebhookEvents, ",") || f.form.Get("connect") != "" {
 		t.Errorf("events sent %v, want exactly %v and no connect endpoint", sent, WebhookEvents)
@@ -740,5 +741,63 @@ func TestASavedCardIsLearnedFromTheSetupSession(t *testing.T) {
 	if _, err := chargeAPI.client(t).Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 500, Currency: "EUR", PaymentMethod: "cus_1:pm_9"}); err != nil ||
 		chargeAPI.form.Get("customer") != "cus_1" || chargeAPI.form.Get("payment_method") != "pm_9" {
 		t.Errorf("charge with the saved token: %v %v", err, chargeAPI.form)
+	}
+}
+
+// The five dispute events become one notification about the case as the object says it now: the payment is the PaymentIntent (retrieved from the Charge when the dispute
+// has none), inquiries are not chargebacks, and a status nobody knows is ignored rather than guessed at.
+func TestDisputesAreNotifiedAsOneCase(t *testing.T) {
+	f := newFake(t, 200, `{"id":"ch_1","payment_intent":"pi_from_charge"}`)
+	c := f.client(t)
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	confirm := func(typ, object string) payments.Notification {
+		t.Helper()
+		body := `{"id":"evt_d","type":"` + typ + `","created":1782000000,"data":{"object":` + object + `}}`
+		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
+		if err != nil {
+			t.Fatalf("%s: %v", typ, err)
+		}
+		return n
+	}
+	for _, typ := range WebhookEvents[len(WebhookEvents)-5:] {
+		if !strings.HasPrefix(typ, "charge.dispute.") {
+			t.Fatalf("the events the endpoint is created for do not end with the five dispute events: %v", WebhookEvents)
+		}
+	}
+	opened := confirm("charge.dispute.created", `{"id":"du_1","object":"dispute","amount":1250,"currency":"eur","charge":"ch_1","payment_intent":"pi_1","reason":"fraudulent","status":"needs_response","evidence_details":{"due_by":1782864000}}`)
+	d := opened.Dispute
+	if opened.Kind != payments.KindDispute || opened.ProviderRef != "pi_1" || opened.AmountMinor != 1250 || opened.Currency != "EUR" || d == nil || d.ID != "du_1" ||
+		d.Outcome != payments.DisputeOpen || !d.Formal || d.Reason != "fraudulent" || d.EvidenceDue.Unix() != 1782864000 || d.Status != "needs_response" {
+		t.Fatalf("created = %+v %+v", opened, d)
+	}
+	if f.last != nil && strings.HasPrefix(f.last.URL.Path, "/v1/charges") {
+		t.Error("the charge was retrieved though the dispute named the PaymentIntent")
+	}
+	// payment_intent is null: the Charge says which payment it is.
+	viaCharge := confirm("charge.dispute.updated", `{"id":"du_2","amount":500,"currency":"usd","charge":"ch_1","payment_intent":null,"reason":"general","status":"under_review"}`)
+	if viaCharge.ProviderRef != "pi_from_charge" || f.last.URL.Path != "/v1/charges/ch_1" || viaCharge.Dispute.Outcome != payments.DisputeOpen {
+		t.Errorf("via the charge = %+v (asked %s)", viaCharge, f.last.URL.Path)
+	}
+	for status, want := range map[string]struct {
+		outcome payments.DisputeOutcome
+		formal  bool
+	}{
+		"needs_response": {payments.DisputeOpen, true}, "under_review": {payments.DisputeOpen, true}, "appeal_needs_response": {payments.DisputeOpen, true}, "appeal_under_review": {payments.DisputeOpen, true},
+		"warning_needs_response": {payments.DisputeOpen, false}, "warning_under_review": {payments.DisputeOpen, false},
+		"won": {payments.DisputeWon, true}, "lost": {payments.DisputeLost, true}, "warning_closed": {payments.DisputeWon, false}, "prevented": {payments.DisputeWon, false},
+	} {
+		n := confirm("charge.dispute.closed", `{"id":"du_3","amount":1,"currency":"usd","payment_intent":"pi_3","status":"`+status+`"}`)
+		if n.Dispute == nil || n.Dispute.Outcome != want.outcome || n.Dispute.Formal != want.formal {
+			t.Errorf("%s: %+v, want %s (formal %v)", status, n.Dispute, want.outcome, want.formal)
+		}
+	}
+	for _, typ := range []string{"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated"} {
+		if n := confirm(typ, `{"id":"du_4","amount":1,"currency":"usd","payment_intent":"pi_4","status":"won"}`); n.Kind != payments.KindDispute || n.Dispute.Outcome != payments.DisputeWon {
+			t.Errorf("%s: %+v", typ, n)
+		}
+	}
+	if n := confirm("charge.dispute.updated", `{"id":"du_5","amount":1,"currency":"usd","payment_intent":"pi_5","status":"something_new"}`); n.Kind != payments.KindIgnored {
+		t.Errorf("an unknown status: %+v", n)
 	}
 }

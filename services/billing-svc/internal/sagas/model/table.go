@@ -26,20 +26,24 @@ const (
 	// PaymentActionRequired: the provider needs the customer to act (3-D Secure) before it charges; the customer has been mailed a link to the invoice page. No command is
 	// outstanding. The invoice is payable on its page; the status is asked on a schedule, and past the window of the pending payments the charge counts as declined.
 	PaymentActionRequired State = "PAYMENT_ACTION_REQUIRED"
-	Uncollectible         State = "UNCOLLECTIBLE"
-	NotifyRequested       State = "NOTIFY_REQUESTED"
-	NotifyFailed          State = "NOTIFY_FAILED"
-	Completed             State = "COMPLETED"
-	RefundRequested       State = "REFUND_REQUESTED"
-	RefundFailed          State = "REFUND_FAILED"
-	Refunded              State = "REFUNDED"
-	Voided                State = "VOIDED"
+	// PaymentHeld: the invoice is ready to be charged for the first time but the payment gate says no (the operator has taken the tenant out of service, or the seller has
+	// blocked the customer for fraud or a chargeback). Nothing was sent to a provider and no command is outstanding; the invoice stays open for the seller to release
+	// (Retry) or void, and the dunning sweep charges it, as the first charge, when the gate lets it through. It is not a decline and counts as no dunning attempt.
+	PaymentHeld     State = "PAYMENT_HELD"
+	Uncollectible   State = "UNCOLLECTIBLE"
+	NotifyRequested State = "NOTIFY_REQUESTED"
+	NotifyFailed    State = "NOTIFY_FAILED"
+	Completed       State = "COMPLETED"
+	RefundRequested State = "REFUND_REQUESTED"
+	RefundFailed    State = "REFUND_FAILED"
+	Refunded        State = "REFUNDED"
+	Voided          State = "VOIDED"
 	// AwaitingPayment: a link-collected invoice (phase 34) waits for its customer to pay; nothing is outstanding, so there is no deadline.
 	AwaitingPayment State = "AWAITING_PAYMENT"
 )
 
 // States lists every state.
-var States = []State{Draft, Finalized, PdfRequested, PdfRendered, PdfFailed, PaymentRequested, Paid, PaymentDeclined, PaymentUnknown, PaymentPending, PaymentActionRequired,
+var States = []State{Draft, Finalized, PdfRequested, PdfRendered, PdfFailed, PaymentRequested, Paid, PaymentDeclined, PaymentUnknown, PaymentPending, PaymentActionRequired, PaymentHeld,
 	Uncollectible, NotifyRequested, NotifyFailed, Completed, RefundRequested, RefundFailed, Refunded, Voided, AwaitingPayment}
 
 // Terminal states end the saga (COMPLETED can still be voided, which refunds a paid invoice).
@@ -106,6 +110,7 @@ const (
 	EffSchedulePoll    Effect = "schedule-poll"    // set next_attempt_at to the next status poll
 	EffAwaitTransfer   Effect = "await-transfer"   // SendNotification with the payment instructions, then schedule-poll
 	EffAwaitAction     Effect = "await-action"     // SendNotification with the link to the invoice page, then schedule-poll
+	EffHold            Effect = "hold"             // no command: next_attempt_at is when the dunning sweep looks again at whether the payment gate lets the first charge through
 	EffRecheck         Effect = "recheck"          // no command now: the sweeper asks the status again when the not-found grace period of the charge's key is over
 )
 
@@ -113,9 +118,14 @@ const (
 type Guard string
 
 const (
-	Always          Guard = ""
-	TotalZero       Guard = "total = 0"
-	TotalPositive   Guard = "total > 0"
+	Always        Guard = ""
+	TotalZero     Guard = "total = 0"
+	TotalPositive Guard = "total > 0"
+	// ChargeHeld: the invoice is charged by the saga and the payment gate says not now (Ctx.Held).
+	ChargeHeld Guard = "total > 0, we charge, held"
+	// StillHeld and Released split a held first charge that is asked about again (Ctx.Held).
+	StillHeld       Guard = "still held"
+	Released        Guard = "gate lets it through"
 	DunningLeft     Guard = "dunning attempts left"
 	DunningSpent    Guard = "dunning exhausted"
 	PaidWithMoney   Guard = "paid, total > 0"
@@ -147,6 +157,9 @@ type Ctx struct {
 	ProviderMails bool
 	// Link: the invoice is collected through a payment link (the customer pays), not charged by the saga.
 	Link bool
+	// Held: the payment gate (pkg/paymentgate, op pay an invoice) refuses the charge now. The engine asks it only where a charge would go out for the first time (PDF_RENDERED
+	// and PAYMENT_HELD), so it is false everywhere else.
+	Held bool
 	// ChargeAge is how long ago the charge under the current idempotency key was first sent. A "not found" answer is read by it: a provider may not show a charge
 	// it has only just taken (eventual consistency, a response that was lost and committed late), and one that no longer remembers the key (Stripe keeps it for 24
 	// hours) would charge again. NotFoundGrace and KeyHorizon are the two limits; a zero KeyHorizon turns the second check off.
@@ -185,7 +198,13 @@ func (g Guard) holds(c Ctx) bool {
 	case TotalZero:
 		return c.TotalMinor == 0
 	case TotalPositive:
-		return c.TotalMinor > 0 && !c.Link
+		return c.TotalMinor > 0 && !c.Link && !c.Held
+	case ChargeHeld:
+		return c.TotalMinor > 0 && !c.Link && c.Held
+	case StillHeld:
+		return c.Held
+	case Released:
+		return !c.Held
 	case AwaitCustomer:
 		return c.TotalMinor > 0 && c.Link
 	case LinkDeclined:
@@ -226,6 +245,7 @@ var Table = []Row{
 	{PdfRequested, EvExhausted, Always, PdfFailed, EffNone},
 	{PdfFailed, EvRetry, Always, PdfRequested, EffRender},
 	{PdfRendered, EvContinue, TotalPositive, PaymentRequested, EffCharge},
+	{PdfRendered, EvContinue, ChargeHeld, PaymentHeld, EffHold},
 	{PdfRendered, EvContinue, AwaitCustomer, AwaitingPayment, EffNone},
 	{PdfRendered, EvContinue, TotalZero, NotifyRequested, EffNotify},
 
@@ -291,6 +311,13 @@ var Table = []Row{
 	{PaymentActionRequired, EvStatusDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentActionRequired, EvExhausted, Always, PaymentActionRequired, EffSchedulePoll}, // a poll nobody answered: wait for the next one, do not park
 
+	// The first charge, held by the payment gate: asked again by the dunning sweep and by the seller's Retry (the release); both ask the gate again, and what is still held
+	// stays held. The charge that follows is the first one (same key as it would have had), not a dunning attempt.
+	{PaymentHeld, EvDunningDue, Released, PaymentRequested, EffCharge},
+	{PaymentHeld, EvDunningDue, StillHeld, PaymentHeld, EffHold},
+	{PaymentHeld, EvRetry, Released, PaymentRequested, EffCharge},
+	{PaymentHeld, EvRetry, StillHeld, PaymentHeld, EffHold},
+
 	{PaymentDeclined, EvDunningDue, Always, PaymentRequested, EffChargeDunning},
 	{PaymentDeclined, EvRetry, Always, PaymentUnknown, EffQueryStatus}, // a transfer that arrived after the window: ask the ledger again
 
@@ -298,6 +325,7 @@ var Table = []Row{
 	{PaymentUnknown, EvSettled, Always, Paid, EffNone},
 	{PaymentPending, EvSettled, Always, Paid, EffNone},
 	{PaymentActionRequired, EvSettled, Always, Paid, EffNone},
+	{PaymentHeld, EvSettled, Always, Paid, EffNone},
 	{PaymentDeclined, EvSettled, Always, Paid, EffNone},
 	{NotifyRequested, EvSettled, Always, Paid, EffNone},
 	{NotifyFailed, EvSettled, Always, Paid, EffNone},
@@ -328,6 +356,7 @@ var Table = []Row{
 	{AwaitingPayment, EvVoid, Always, Voided, EffNone},
 	{PaymentPending, EvVoid, Always, Voided, EffNone},
 	{PaymentActionRequired, EvVoid, Always, Voided, EffNone},
+	{PaymentHeld, EvVoid, Always, Voided, EffNone},
 	{NotifyRequested, EvVoid, PaidWithMoney, RefundRequested, EffRefund},
 	{NotifyRequested, EvVoid, NothingToRefund, Voided, EffNone},
 	{NotifyFailed, EvVoid, PaidWithMoney, RefundRequested, EffRefund},

@@ -12,7 +12,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import FilterBar from "./FilterBar.vue";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -108,7 +108,7 @@ const canReverse = (c: Commission) => !isReversal(c) && c.status !== "reversed" 
       <FilterSelect v-model="kind" :label="t('affiliates.commissions.kind')" :options="kindOptions" />
       <DateRangePicker v-model="range" />
     </FilterBar>
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground px-3 py-4 text-sm">{{ t("affiliates.commissions.empty") }}</p>
     <Table v-else-if="list.data.value">

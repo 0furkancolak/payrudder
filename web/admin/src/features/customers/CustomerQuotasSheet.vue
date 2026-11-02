@@ -3,12 +3,14 @@ import { Pencil, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
+import { askConfirm } from "@/shared/lib/confirm";
 import { useDeleteOverride, useMeters, useOverrides, useSetOverride } from "@/features/meters/api";
 import QuotaFields from "@/features/meters/QuotaFields.vue";
 import { modeWord, newQuota, quotaDraftOf, quotaTerms, scaleOf, windowWord, type QuotaDraft } from "@/features/meters/quota";
 import EntitlementsTable from "@/features/subscriptions/EntitlementsTable.vue";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -36,6 +38,11 @@ const remove = useDeleteOverride(
   () => props.tenantId,
   () => props.customer,
 );
+
+/** Removing an override puts the package's own limit back for this customer: ask first. */
+async function removeOverride(code: string | undefined) {
+  if (code && (await askConfirm({ body: t("billing.quotas.confirmRemove", { meter: code }) }))) remove.mutate(code);
+}
 
 const meter = ref("");
 const draft = ref<QuotaDraft>(newQuota());
@@ -82,7 +89,7 @@ function submit() {
       <SheetBody class="flex flex-col gap-5">
         <section :aria-label="t('billing.quotas.overrides')">
           <h3 class="mb-2 text-sm font-semibold">{{ t("billing.quotas.overrides") }}</h3>
-          <ErrorText :error="overrides.error.value" />
+          <ErrorState :error="overrides.error.value" :retrying="overrides.isFetching.value" compact class="mx-0" @retry="overrides.refetch()" />
           <Table v-if="(overrides.data.value ?? []).length > 0">
             <TableHeader>
               <TableRow class="hover:bg-transparent">
@@ -104,7 +111,7 @@ function submit() {
                 <TableCell class="text-end whitespace-nowrap">
                   <template v-if="canWrite">
                     <Button variant="ghost" size="icon" :aria-label="t('billing.quotas.edit', { meter: o.meter_code ?? '' })" @click="meter = o.meter_code ?? ''"><Pencil class="size-4" /></Button>
-                    <Button variant="ghost" size="icon" :disabled="remove.isPending.value" :aria-label="t('billing.quotas.remove', { meter: o.meter_code ?? '' })" @click="remove.mutate(o.meter_code ?? '')"><Trash2 class="size-4" /></Button>
+                    <Button variant="ghost" size="icon" :disabled="remove.isPending.value" :aria-label="t('billing.quotas.remove', { meter: o.meter_code ?? '' })" @click="removeOverride(o.meter_code)"><Trash2 class="size-4" /></Button>
                   </template>
                 </TableCell>
               </TableRow>

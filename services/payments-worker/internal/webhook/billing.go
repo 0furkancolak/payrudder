@@ -34,3 +34,12 @@ func (b BillingClient) GetInvoice(ctx context.Context, id uuid.UUID, invoice str
 func (b BillingClient) SettleInvoicePayment(ctx context.Context, id uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error) {
 	return b.Client.SettleInvoicePayment(tenant.OutgoingFor(ctx, id), req)
 }
+
+// DisputesAPI is what payments-worker asks of billing-svc about a dispute: to announce a step of the case (the webhook, the audit entry, the block of the customer).
+type DisputesAPI interface {
+	RecordPaymentDispute(ctx context.Context, tenant uuid.UUID, req *billingv1.RecordPaymentDisputeRequest) (*billingv1.RecordPaymentDisputeResponse, error)
+}
+
+func (b BillingClient) RecordPaymentDispute(ctx context.Context, id uuid.UUID, req *billingv1.RecordPaymentDisputeRequest) (*billingv1.RecordPaymentDisputeResponse, error) {
+	return b.Client.RecordPaymentDispute(tenant.OutgoingFor(ctx, id), req)
+}

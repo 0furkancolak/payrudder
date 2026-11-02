@@ -8,6 +8,7 @@ import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -65,7 +66,7 @@ function submit() {
 </script>
 
 <template>
-  <ErrorText :error="program.error.value" />
+  <ErrorState :error="program.error.value" :retrying="program.isFetching.value" compact class="mx-0" @retry="program.refetch()" />
   <Skeleton v-if="program.isPending.value" class="h-64" />
   <Card v-else>
     <div>

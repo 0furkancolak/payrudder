@@ -257,7 +257,8 @@ type AffiliateProgram struct {
 	// Coupon a referred customer gets on their next checkout
 	ReferredCouponCode string `json:"referred_coupon_code"`
 	DailyClickCap      int    `json:"daily_click_cap"`
-	// Where /r/<code> sends the visitor; empty shows a plain page
+	// Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP
+	// address, localhost or a name without a dot), no user name or password
 	LandingURL string `json:"landing_url"`
 	// A partner who applies is active at once
 	AutoApprove bool       `json:"auto_approve"`
@@ -286,7 +287,8 @@ type AffiliateProgramInput struct {
 	// Coupon a referred customer gets on their next checkout
 	ReferredCouponCode string `json:"referred_coupon_code,omitempty"`
 	DailyClickCap      *int   `json:"daily_click_cap,omitempty"`
-	// Where /r/<code> sends the visitor; empty shows a plain page
+	// Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP
+	// address, localhost or a name without a dot), no user name or password
 	LandingURL string `json:"landing_url,omitempty"`
 	// A partner who applies is active at once
 	AutoApprove *bool      `json:"auto_approve,omitempty"`
@@ -1225,6 +1227,13 @@ type CustomerBlockEvent struct {
 	CreateTime time.Time `json:"create_time"`
 }
 
+// CustomerCards is an object of the API; see components.schemas.CustomerCards in api/openapi/v1.yaml.
+type CustomerCards struct {
+	// The provider that holds the cards; empty when the customer has none
+	Provider string       `json:"provider"`
+	Cards    []StoredCard `json:"cards"`
+}
+
 // CustomerContact is an object of the API; see components.schemas.CustomerContact in api/openapi/v1.yaml.
 type CustomerContact struct {
 	Name  string `json:"name"`
@@ -1265,18 +1274,62 @@ type CustomerTax struct {
 	EInvoiceRegistered *bool `json:"e_invoice_registered,omitempty"`
 }
 
+// DeletedCustomerCard is an object of the API; see components.schemas.DeletedCustomerCard in
+// api/openapi/v1.yaml.
+type DeletedCustomerCard struct {
+	Provider string `json:"provider"`
+	Deleted  bool   `json:"deleted"`
+	// The deleted card was the one the customer's payment method names: set a new payment method
+	WasInUse bool `json:"was_in_use"`
+}
+
+// Dispute is an object of the API; see components.schemas.Dispute in api/openapi/v1.yaml.
+type Dispute struct {
+	// Payrudder's id of the case
+	ID       string `json:"id"`
+	Provider string `json:"provider"`
+	// The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction)
+	DisputeID string `json:"dispute_id"`
+	// The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id)
+	PaymentRef string `json:"payment_ref"`
+	// The invoice of that payment; absent for a payment Payrudder did not make
+	InvoiceID string `json:"invoice_id,omitempty"`
+	// The disputed amount
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	// One of: open, won, lost.
+	Outcome string `json:"outcome"`
+	// A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one
+	Formal bool `json:"formal"`
+	// The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...)
+	ProviderStatus string `json:"provider_status"`
+	// The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when
+	// the provider does not say
+	Reason string `json:"reason,omitempty"`
+	// When your evidence is due; absent when the provider does not say
+	EvidenceDueTime time.Time `json:"evidence_due_time,omitempty"`
+	OpenedTime      time.Time `json:"opened_time"`
+	// Absent while the case is open
+	ClosedTime time.Time `json:"closed_time,omitempty"`
+}
+
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
 type DunningSettings struct {
 	RetryHours []int `json:"retry_hours"`
 	// True when nothing was set and the service-wide delays apply
 	DefaultsInUse bool       `json:"defaults_in_use"`
 	UpdateTime    *time.Time `json:"update_time"`
+	// A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless
+	// you turn it on; it blocks only when the dispute opens and never lifts the block by itself.
+	BlockOnChargeback bool `json:"block_on_chargeback,omitempty"`
 }
 
 // DunningSettingsInput is an object of the API; see components.schemas.DunningSettingsInput in
 // api/openapi/v1.yaml.
 type DunningSettingsInput struct {
 	RetryHours []int `json:"retry_hours,omitempty"`
+	// Absent: kept as it is. retry_hours is replaced as before (absent is none).
+	BlockOnChargeback *bool `json:"block_on_chargeback,omitempty"`
 }
 
 // EInvoiceDocument is an object of the API; see components.schemas.EInvoiceDocument in api/openapi/v1.yaml.
@@ -1593,7 +1646,8 @@ type GetDunningReportInvoice struct {
 	Provider           string `json:"provider"`
 	Currency           string `json:"currency"`
 	TotalMinor         Int64  `json:"total_minor"`
-	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, UNCOLLECTIBLE.
+	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, PAYMENT_HELD,
+	// UNCOLLECTIBLE.
 	State           string     `json:"state"`
 	DunningAttempt  int        `json:"dunning_attempt"`
 	NextAttemptTime *time.Time `json:"next_attempt_time"`
@@ -1924,6 +1978,11 @@ type ListCustomerPaymentsResponse struct {
 type ListCustomersResponse struct {
 	Customers     []Customer `json:"customers"`
 	NextPageToken string     `json:"next_page_token"`
+}
+
+// ListDisputesResponse is the response of ListDisputes.
+type ListDisputesResponse struct {
+	Disputes []Dispute `json:"disputes"`
 }
 
 // ListEntitlementOverridesResponse is the response of ListEntitlementOverrides.
@@ -2706,6 +2765,26 @@ type SignedUrl struct {
 	URL string `json:"url"`
 	// RFC 3339, UTC
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// StoredCard is an object of the API; see components.schemas.StoredCard in api/openapi/v1.yaml.
+type StoredCard struct {
+	// The provider's card token (cardToken): what the delete names
+	Token string `json:"token"`
+	Alias string `json:"alias"`
+	// The first digits of the number (the BIN)
+	Bin   string `json:"bin"`
+	Last4 string `json:"last4"`
+	// CREDIT_CARD, DEBIT_CARD or PREPAID_CARD
+	Type string `json:"type"`
+	// VISA, MASTER_CARD, ...
+	Association string `json:"association"`
+	Family      string `json:"family"`
+	Bank        string `json:"bank"`
+	ExpireMonth string `json:"expire_month"`
+	ExpireYear  string `json:"expire_year"`
+	// The customer's payment method names this card
+	InUse bool `json:"in_use"`
 }
 
 // Subscription is an object of the API; see components.schemas.Subscription in api/openapi/v1.yaml.
@@ -3783,6 +3862,32 @@ func (p *GetCustomerUsageParams) values() url.Values {
 	}
 	if p.Period != "" {
 		v.Set("period", p.Period)
+	}
+	return v
+}
+
+// ListDisputesParams are the query parameters of ListDisputes.
+type ListDisputesParams struct {
+	// Only the disputes of this invoice
+	InvoiceID string
+	// One of: open, won, lost.
+	Outcome string
+	Limit   *int
+}
+
+func (p *ListDisputesParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.InvoiceID != "" {
+		v.Set("invoice_id", p.InvoiceID)
+	}
+	if p.Outcome != "" {
+		v.Set("outcome", p.Outcome)
+	}
+	if p.Limit != nil {
+		v.Set("limit", strconv.Itoa(*p.Limit))
 	}
 	return v
 }

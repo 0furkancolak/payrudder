@@ -17,14 +17,9 @@
     }
   },
   "nav": {
-    "tenants": "Tenants",
-    "playground": "Playground",
-    "deadLetters": "Dead letters",
     "signOut": "Sign out"
   },
   "common": {
-    "loading": "Loading…",
-    "unknown": "?",
     "cancel": "Cancel",
     "copied": "Copied",
     "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand.",
@@ -36,7 +31,6 @@
     "noMatches": "Nothing matches these filters.",
     "moreActions": "More actions",
     "view": "View",
-    "openFullPage": "Open full page",
     "all": "All",
     "confirm": {
       "title": "Are you sure?",
@@ -130,7 +124,8 @@
       "conflicting_outcomes": "Success and failure both recorded",
       "settlement_missing": "Paid, not in the provider's settlement",
       "settlement_mismatch": "Settled amount differs",
-      "fee_mismatch": "Provider fee differs"
+      "fee_mismatch": "Provider fee differs",
+      "payment_disputed": "Payment disputed, undecided"
     },
     "ledgerKind": {
       "charge": "charge",
@@ -154,7 +149,8 @@
       "PAYMENT_DECLINED": "declined, retrying",
       "PAYMENT_UNKNOWN": "outcome unknown",
       "UNCOLLECTIBLE": "given up",
-      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm"
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "sagaState": {
       "PAYMENT_PENDING": "waiting for transfer",
@@ -176,7 +172,8 @@
       "REFUNDED": "refunded",
       "VOIDED": "voided",
       "AWAITING_PAYMENT": "awaiting payment",
-      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm"
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "paymentMethod": {
       "bank_transfer": "Bank transfer",
@@ -223,6 +220,16 @@
       "not_reported": "Paid, not reported",
       "pending_payout": "Reported, awaiting payout",
       "settled": "Settled"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraud claimed",
+      "general": "General",
+      "product_not_received": "Product not received",
+      "product_unacceptable": "Product unacceptable",
+      "subscription_canceled": "Subscription canceled",
+      "duplicate": "Duplicate payment",
+      "unrecognized": "Not recognised",
+      "credit_not_processed": "Credit not processed"
     }
   },
   "tenants": {
@@ -241,7 +248,6 @@
     "allCurrencies": "All currencies",
     "suspend": "Suspend",
     "reinstate": "Reinstate",
-    "suspended": "Suspended",
     "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once.",
     "pricePause": {
       "title": "Price changes",
@@ -259,7 +265,6 @@
   },
   "tenant": {
     "fallbackTitle": "Tenant",
-    "grace": "grace {value}",
     "invoices": "Invoices",
     "noInvoices": "No invoices.",
     "draft": "(draft)",
@@ -347,19 +352,6 @@
     }
   },
   "invoice": {
-    "summary": "{kind} · period {period} · {customer} · {total} · {status} · saga {saga}",
-    "openPdf": "Open PDF",
-    "noPdfLink": "no link",
-    "lines": "Lines",
-    "lineColumns": {
-      "no": "#",
-      "kind": "Kind",
-      "description": "Description",
-      "meter": "Meter",
-      "quantity": "Quantity",
-      "amount": "Amount",
-      "period": "Service period"
-    },
     "saga": "Saga timeline",
     "sagaColumns": {
       "seq": "Seq",
@@ -494,9 +486,7 @@
       "formLabel": "new account",
       "name": "Account name",
       "currency": "Currency",
-      "currencyPlaceholder": "Currency (cannot change later)",
       "timezone": "Time zone",
-      "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
       "grace": "Grace period (hours)",
       "gracePlaceholder": "Grace period, hours (0 to 168)",
       "create": "Create account",
@@ -564,23 +554,7 @@
   },
   "billing": {
     "tabs": {
-      "label": "Tenant sections",
-      "overview": "Overview",
-      "customers": "Customers",
-      "packages": "Packages",
-      "subscriptions": "Subscriptions",
-      "payments": "Payments",
-      "providers": "Providers",
-      "reports": "Reports",
-      "pricing": "Coupons & tax",
-      "webhooks": "Webhooks",
-      "einvoice": "E-invoice",
-      "paymentLinks": "Payment links",
-      "mail": "Mail",
-      "apps": "Apps",
-      "address": "Seller address",
-      "credits": "Credits",
-      "accounting": "Accounting"
+      "subscriptions": "Subscriptions"
     },
     "common": {
       "remove": "Remove"
@@ -692,7 +666,6 @@
         "badge": "Blocked",
         "action": "Block",
         "lift": "Lift the block",
-        "confirm": "Block {name}? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
         "confirmMany": "Block {n} customers? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
         "title": "Block {name}",
         "description": "No new subscription, plan change or purchase can be started for them. What they have now runs on.",
@@ -734,7 +707,20 @@
         "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it.",
         "creditSurplus": "{amount} would be added to the customer's credit balance: the lines come to less than nothing."
       },
-      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again."
+      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again.",
+      "cards": {
+        "title": "Stored cards",
+        "card": "Card",
+        "none": "The payment provider holds no card for this customer.",
+        "inUse": "Charged for invoices",
+        "delete": "Delete card",
+        "deleteAria": "Delete the card ending {last4}",
+        "deleteTitle": "Delete the card ending {last4}?",
+        "deleteBody": "The card is deleted at the payment provider and cannot be charged any more. This cannot be undone: the customer would have to enter it again where the card is saved.",
+        "deleteInUse": "This is the card the customer's invoices are charged with. After it is deleted the next charge fails until a new payment method is set for the customer. It is deleted at the payment provider and this cannot be undone.",
+        "deletedInUse": "The card was deleted. It was the one the customer's invoices are charged with: set a new payment method for the customer.",
+        "hint": "Payrudder holds no card numbers: a card is saved where the payer types it, and the customer's payment method names it. Here you can see the cards and delete one."
+      }
     },
     "packages": {
       "new": "New package",
@@ -1026,20 +1012,14 @@
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
-      "reconcileHint": "Compares the invoices billing calls paid in a period with the successful charges the providers reported.",
       "period": "Period (YYYY-MM)",
       "run": "Reconcile",
-      "reconcileResult": "reconciliation result",
-      "summary": "{paid} paid invoice(s) and {charges} successful charge(s) in the ledger.",
-      "agree": "The invoices and the ledger agree.",
       "kind": "Kind",
       "invoice": "Invoice",
       "provider": "Provider",
       "billed": "Billed",
       "ledgerAmount": "Ledger",
-      "detail": "Detail",
       "truncated": "Only the first discrepancies are listed; the counts above are complete.",
-      "ledger": "Payment ledger",
       "when": "When",
       "status": "Status",
       "amount": "Amount",
@@ -1177,15 +1157,11 @@
     },
     "pricing": {
       "coupons": {
-        "title": "Coupons",
         "hint": "A coupon takes a percentage or an amount off the fixed fee Payrudder invoices in advance: once, for a number of periods, or for as long as the subscription lasts. A subscription run by a provider uses a discount at the provider instead.",
         "formLabel": "new coupon",
         "code": "Code",
         "name": "Name",
         "kind": "Kind",
-        "percent": "Percentage",
-        "amount": "Amount",
-        "value": "Value (10 or 12.5 / 4.99)",
         "currency": "Currency",
         "duration": "Duration",
         "once": "First fee only",
@@ -1199,14 +1175,13 @@
         "inactive": "Inactive",
         "redeemed": "Redeemed",
         "empty": "No coupons yet.",
-        "badPercent": "Not a percentage: 0.01 to 100 with at most two decimals.",
-        "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
         "repeatingFor": "First {n} fees",
         "bulk": {
           "deactivate": "Deactivate selected",
           "title": "Deactivate {n} coupon? | Deactivate {n} coupons?",
           "confirm": "They take no new redemptions, and a deactivated coupon cannot be switched on again. Subscriptions that already have one keep it."
-        }
+        },
+        "confirmTitle": "Deactivate coupon {code}?"
       },
       "tax": {
         "title": "Tax",
@@ -1224,16 +1199,18 @@
         "badRate": "Not a percentage: 0 to 100 with at most two decimals."
       },
       "dunning": {
-        "title": "Payment retries",
+        "title": "Payment retries and chargebacks",
         "hint": "When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
         "defaults": "You have not set any: the standard delays are shown.",
         "retry": "Retry {n}",
         "delay": "Hours before retry {n}",
         "add": "Add a retry",
-        "save": "Save retries",
-        "saved": "Retries saved.",
+        "save": "Save settings",
+        "saved": "Settings saved.",
         "none": "No retries: a declined charge is given up at once.",
-        "bad": "Each delay is a whole number from 1 to 720."
+        "bad": "Each delay is a whole number from 1 to 720.",
+        "blockOnChargeback": "Block the customer when a chargeback opens",
+        "blockOnChargebackHint": "Blocks them with the category chargeback: no new purchases, and an open invoice can no longer be paid. It never lifts by itself; you lift it on the customer. An inquiry does not block."
       },
       "promotions": {
         "title": "Promotions",
@@ -1243,10 +1220,8 @@
           "amount": "Amount off",
           "bonus": "Bonus credits"
         },
-        "valueBonus": "Extra credits, % (10 or 12.5)",
         "bonusValue": "{pct} more credits",
         "bonusNote": "Bonus credits are added to the same lot as the pack's credits and expire with them. Credit purchases only.",
-        "badBonus": "Not a percentage of extra credits: 0.01 to 1000 with at most two decimals.",
         "appliesTo": "Works on",
         "targets": {
           "subscription": "Subscription fee",
@@ -1254,11 +1229,7 @@
           "payment": "Payment link or invoice",
           "legacy": "Before the ledger"
         },
-        "noTarget": "Pick where the coupon works.",
-        "withoutDefaultCode": "No promotion under the coupon's own name",
         "codeCount": "Codes",
-        "manageCodes": "Codes",
-        "hideCodes": "Close",
         "codes": {
           "title": "Promotion codes of {coupon}",
           "hint": "Name the codes, or generate random ones. Every code gets the limit, expiry and rules below.",
@@ -1275,8 +1246,6 @@
           "minAmount": "Minimum amount (optional)",
           "minCurrency": "Currency of the minimum",
           "allowedCurrencies": "Only in these currencies (USD, EUR)",
-          "allowedPlans": "Only on these plans (plan codes)",
-          "allowedPacks": "Only on these credit packs (ids)",
           "firstPurchase": "First purchase only",
           "onePerCustomer": "Once per customer",
           "restore": "Give the use back when the purchase is voided or refunded",
@@ -1288,7 +1257,6 @@
           "download": "Download CSV",
           "search": "Search codes",
           "stateAll": "Any state",
-          "total": "{n} codes",
           "used": "Used",
           "expiresCol": "Expires",
           "rules": "Rules",
@@ -1308,14 +1276,13 @@
             "expires": "The expiry must be a day in the future.",
             "minAmount": "Not an amount in that currency: digits only, with at most as many decimals as the currency has.",
             "currencies": "Currencies are three-letter codes such as USD, separated by commas."
-          }
+          },
+          "confirmTitle": "Deactivate the code {code}?",
+          "confirmBody": "It takes no new redemptions. The coupon and its other codes keep working."
         },
         "redemptions": {
-          "title": "Redemptions",
-          "hint": "Every use of a coupon. A void or a full refund reverses the use; the count goes back only for codes that say so.",
           "coupon": "Coupon",
           "allCoupons": "All coupons",
-          "total": "{n} redemptions",
           "customer": "Customer",
           "usedOn": "Used on",
           "discount": "Discount",
@@ -1370,7 +1337,6 @@
       }
     },
     "webhooks": {
-      "title": "Webhooks",
       "hint": "Payrudder sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Payrudder-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
       "formLabel": "new webhook endpoint",
       "url": "Endpoint URL",
@@ -1413,9 +1379,6 @@
         "live": "This URL uses http: events with customer and invoice data would travel unencrypted. Use an https URL."
       },
       "bulk": {
-        "pause": "Pause selected",
-        "resume": "Resume selected",
-        "delete": "Delete selected",
         "deleteTitle": "Delete the selected endpoints?",
         "confirmDelete": "The selected endpoints are removed and stop receiving events. Their secrets cannot be recovered."
       }
@@ -1446,7 +1409,6 @@
       "url": "Payment link",
       "copy": "Copy",
       "replayed": "This request was already handled: the link exists, but its address is shown only once.",
-      "list": "Links",
       "anyKind": "Any kind",
       "anyStatus": "Any status",
       "status": "Status",
@@ -1463,9 +1425,6 @@
       "revoke": "Revoke",
       "confirmRevoke": "Revoke this link? Unpaid invoices made from it are voided.",
       "empty": "No payment links yet.",
-      "previous": "Previous",
-      "next": "Next",
-      "links": "Links",
       "paymentLink": "Payment link",
       "errors": {
         "invoice": "Enter the invoice id.",
@@ -1483,7 +1442,8 @@
         "regenerate": "Regenerate link",
         "copied": "Payment page link copied",
         "regenerated": "New link made and copied; the old ones stopped working",
-        "validFor": "Links are valid for {days} days"
+        "validFor": "Links are valid for {days} days",
+        "confirmRegenerate": "Make a new payment page link for this customer? The links already sent stop working."
       },
       "for": "For",
       "promotionCode": "Promotion code (optional)",
@@ -1650,7 +1610,6 @@
         "title": "Purchase link",
         "hint": "A link the customer opens to buy this pack. When the payment is confirmed the credits are added once. The price is always the pack's.",
         "formLabel": "Create purchase link",
-        "pack": "Pack",
         "customer": "Customer",
         "pickCustomer": "Choose a customer",
         "quantity": "Quantity",
@@ -1678,7 +1637,6 @@
       }
     },
     "accounting": {
-      "title": "Income and expenses",
       "intro": "What the tenant earned from paid invoices and what it spent, in each currency on its own.",
       "export": "Export CSV",
       "addExpense": "Add expense",
@@ -2161,7 +2119,8 @@
       "errors": {
         "limit": "The limit must be a quantity with at most {n} decimals.",
         "thresholds": "Alerts are up to 10 ascending percentages between 1 and 1000."
-      }
+      },
+      "confirmRemove": "Remove the override on {meter}? The package's limit applies to this customer again."
     },
     "reconcile": {
       "title": "Review queue",
@@ -2306,10 +2265,7 @@
       "close": "Close",
       "save": "Save",
       "yes": "Yes",
-      "no": "No",
-      "prev": "Previous",
-      "next": "Next",
-      "total": "{count} in total"
+      "no": "No"
     },
     "status": {
       "program": {
@@ -2482,7 +2438,6 @@
       }
     },
     "commissions": {
-      "title": "Commissions",
       "intro": "One commission per paid invoice of a customer a partner brought, on the net, pre-tax amount. It waits out the hold, is then approved, and is paid by a payout.",
       "allPartners": "All partners",
       "allStatuses": "All statuses",
@@ -2527,7 +2482,6 @@
       "nothing": "Nothing more to take back: this reversal was already done."
     },
     "payouts": {
-      "title": "Payouts",
       "intro": "A payout is the approved commissions of one partner in one currency. Payrudder moves no money: pay by hand or bank transfer, then mark the payout paid.",
       "create": "Create payouts",
       "result": "Payouts created",
@@ -2549,7 +2503,9 @@
       "commissions": "Commissions",
       "commissionsOf": "Commissions of the payout of {code}",
       "markPaid": "Mark paid",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "confirmTitle": "Cancel this payout?",
+      "confirmBody": "Its commissions go back to being payable in another payout."
     },
     "pay": {
       "title": "Mark payout as paid",
@@ -2562,7 +2518,6 @@
       "done": "Payout marked as paid."
     },
     "journal": {
-      "title": "Journal",
       "intro": "What paid payouts posted to your books: the commission expense against the payable, and the payable against cash.",
       "download": "Download CSV",
       "balanced": "Balanced",
@@ -2827,14 +2782,11 @@
     "slug": "Slug",
     "slugPlaceholder": "Slug (optional, e.g. web-shop)",
     "currency": "Currency",
-    "currencyPlaceholder": "Currency (cannot change later)",
     "timezone": "Time zone",
-    "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
     "grace": "Grace period (hours)",
     "gracePlaceholder": "Grace period, hours (0 to 168)",
     "create": "Create app",
     "badSlug": "The slug may only have lower-case letters, digits and single dashes, at most 60 characters.",
-    "title": "Apps of this account",
     "immutable": "Renaming and deleting an app is not available in the API yet; an app's currency, time zone and grace period cannot be changed.",
     "environments": "Environments",
     "created": "Created",
@@ -3297,7 +3249,8 @@
         "not_live": "Only live invoices are paid through a provider.",
         "payment_in_progress": "A payment for this invoice is being started. Try again in a moment.",
         "return_url_required": "A return address is required for a checkout payment.",
-        "unknown_method": "This payment method is not known."
+        "unknown_method": "This payment method is not known.",
+        "installment_unavailable": "That number of instalments is not offered for this card and amount. Pay once, or choose one of the options on the page."
       },
       "ledger": {
         "bad_limit": "The limit must be between 1 and 1000.",
@@ -3365,6 +3318,9 @@
       "failover": {
         "bad_target": "A failover needs two different accounts that exist in the environment; a bank transfer cannot take part.",
         "not_found": "No failover is set for that account."
+      },
+      "card": {
+        "not_found": "The customer has no such stored card."
       }
     },
     "einvoice": {
@@ -3783,6 +3739,16 @@
       },
       "canned_reply": {
         "not_found": "That canned reply is not there any more."
+      },
+      "attachment": {
+        "account_full": "Your organisation has reached the limit of 50 MB of support files.",
+        "bad_type": "Only png, jpeg, pdf and plain text files can be attached.",
+        "no_app": "Files are stored with an app: create an app first, then attach the file.",
+        "not_found": "That file is not there.",
+        "rejected": "The file cannot be attached.",
+        "storage_full": "The storage that holds support files is full. Free some space in your app's files, or write to us without the file.",
+        "too_large": "A file can be at most 5 MB.",
+        "too_many": "A ticket can hold at most 10 files."
       }
     },
     "audit": {
@@ -3808,7 +3774,6 @@
       "orgCreate": "Create organisation"
     },
     "nav": {
-      "home": "Home",
       "settings": "Settings",
       "security": "Security"
     },
@@ -3828,25 +3793,8 @@
       "unknown": "No data"
     },
     "unavailable": "Not available right now.",
-    "degraded": "Some parts did not answer ({sections}). The rest is up to date.",
-    "sections": {
-      "payments": "payments",
-      "invoices": "invoices",
-      "customers": "customers",
-      "subscriptions": "subscriptions",
-      "webhooks": "webhooks"
-    },
     "kpi": {
-      "revenue": "Revenue",
-      "revenueDays": "Revenue, last {days} days",
-      "payments": "Payments",
-      "failedCount": "Failed: {n}",
-      "openInvoices": "Open invoices",
-      "outstanding": "{amount} outstanding",
-      "paidInvoices": "Paid invoices: {n}",
-      "customers": "Customers",
-      "mrr": "{amount} per month",
-      "noMrr": "No recurring revenue yet"
+      "revenue": "Revenue"
     },
     "card": {
       "revenue": "Revenue, last {days} days",
@@ -3944,22 +3892,7 @@
       "sandboxNote": "Sandbox: test data and a pretend payment provider. Nothing here is real money.",
       "banner": "Sandbox: test data and a pretend payment provider. Nothing here is real money."
     },
-    "donut": {
-      "title": "Payments by status",
-      "label": "{n} payments by status",
-      "center": "payments"
-    },
-    "currency": {
-      "title": "Revenue by currency",
-      "empty": "No invoices yet.",
-      "billed": "Billed {amount}",
-      "collected": "Collected {amount}",
-      "outstanding": "Outstanding {amount}",
-      "collectedOf": "Collected {collected} of {billed}"
-    },
     "payments": {
-      "title": "Recent payments",
-      "empty": "No payments in the last 30 days.",
       "truncated": "Latest 1000 ledger entries",
       "when": "When",
       "status": "Status",
@@ -3967,11 +3900,6 @@
       "amount": "Amount",
       "allStatuses": "All statuses",
       "allKinds": "All kinds"
-    },
-    "invoices": {
-      "title": "Recent invoices",
-      "empty": "No invoices yet.",
-      "draft": "Draft"
     },
     "invoiceStatus": {
       "draft": "Draft",
@@ -4094,17 +4022,6 @@
       }
     },
     "links": {
-      "title": "Go deeper",
-      "intro": "The working pages of the {env} environment.",
-      "customers": "Customers",
-      "paymentLinks": "Payment links",
-      "credits": "Credits",
-      "webhooks": "Webhooks",
-      "invoices": "Invoices",
-      "payments": "Payments",
-      "packages": "Packages",
-      "pricing": "Tax and retries",
-      "reports": "Reports",
       "readOnly": "Your role is viewer: you can read everything here, but changes are not allowed."
     },
     "settings": {
@@ -4167,7 +4084,6 @@
       "roleOf": "Role of {name}",
       "leave": "Leave",
       "remove": "Remove",
-      "removeNamed": "Remove {name}",
       "inviteTitle": "Invite someone",
       "role": "Role",
       "invite": "Send invitation",
@@ -4177,16 +4093,18 @@
       "expiredOn": "Expired on {date}",
       "expired": "Expired",
       "resend": "Send again",
-      "resendNamed": "Send the invitation to {email} again",
       "cancel": "Cancel",
-      "cancelNamed": "Cancel the invitation to {email}",
       "leaveTitle": "Leave this account?",
       "leaveBody": "You lose access to its apps and data at once. An owner can invite you again.",
       "removeTitle": "Remove this member?",
       "removeBody": "{name} loses access to this account's apps and data at once.",
       "allRoles": "All roles",
       "expiresHead": "Valid until",
-      "soleOwner": "You are the only owner, so you cannot leave yet. Make someone else an owner first."
+      "soleOwner": "You are the only owner, so you cannot leave yet. Make someone else an owner first.",
+      "cancelInviteTitle": "Cancel this invitation?",
+      "cancelInviteBody": "{email} will no longer be able to join with the link they were sent.",
+      "lowerTitle": "Lower the role of {name}?",
+      "lowerBody": "From {from} to {to}: {name} loses at once what {from} may do."
     },
     "account": {
       "switch": "Account",
@@ -4216,7 +4134,6 @@
     "billing": {
       "invoices": {
         "title": "Invoices",
-        "intro": "What this environment billed. Open one to see its lines and download the PDF.",
         "status": "Status",
         "all": "All statuses",
         "number": "Number",
@@ -4225,8 +4142,7 @@
         "created": "Created",
         "total": "Total",
         "empty": "No invoices yet. They appear when a billing period closes.",
-        "draft": "Draft",
-        "loadMore": "Load more"
+        "draft": "Draft"
       },
       "invoice": {
         "issued": "Issued",
@@ -4241,14 +4157,12 @@
       },
       "payments": {
         "title": "Payments",
-        "intro": "Charges and refunds, newest first. Each payment shows the outcome it settled on.",
         "empty": "No payments yet.",
         "kind": "Type",
         "kinds": {
           "charge": "Charge",
           "refund": "Refund"
         },
-        "invoice": "Invoice",
         "viewInvoice": "View invoice"
       }
     },
@@ -4340,8 +4254,6 @@
         "connected": "Connected providers",
         "connectedNow": "{provider} is connected.",
         "connectTitle": "Connect a provider",
-        "provider": "Provider",
-        "choose": "Choose a provider",
         "secretsOnce": "Secret keys are not shown again after you save. Use live keys, not test keys.",
         "optional": "optional",
         "checkAndConnect": "Check and connect",
@@ -4374,7 +4286,8 @@
           "buyer_country": "Buyer country",
           "buyer_zip_code": "Buyer postal code",
           "buyer_ip": "Public IP address of your business",
-          "buyer_gsm_number": "Buyer phone number"
+          "buyer_gsm_number": "Buyer phone number",
+          "enabled_installments": "Instalments the payer may choose"
         },
         "problems": {
           "required": "Required.",
@@ -4484,13 +4397,7 @@
     "providers": {
       "connect": "Connect",
       "manage": "Manage",
-      "simulator": "Built-in simulator",
       "sandboxNote": "The sandbox runs on a built-in simulator and never charges a real card. To try a provider's own checkout, connect iyzico or Paddle in test mode; payment methods named pm_sandbox_ stay on the simulator.",
-      "state": {
-        "none": "Not connected",
-        "working": "Connected and working",
-        "problem": "Problem"
-      },
       "defaultAccount": "Connected and used for live payments.",
       "connectedLine": "Connected.",
       "notConnectedLine": "Not connected in live mode.",
@@ -4500,15 +4407,8 @@
       "doneAll": "{provider} connected on {count} app(s).",
       "donePartial": "{provider}: {ok} app(s) connected, {failed} failed.",
       "appsTitle": "Apps",
-      "appsIntro": "Click a status to connect, replace or remove a provider for that app alone.",
       "app": "App",
       "noLive": "No live environment",
-      "about": {
-        "iyzico": "Turkish cards and local methods",
-        "paddle": "Cards worldwide, with subscriptions run by the provider",
-        "banktransfer": "Pay by transfer to your own bank account",
-        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
-      },
       "scope": {
         "title": "Where to connect",
         "app": "This app only",
@@ -4562,7 +4462,8 @@
           "api_key": "In the iyzico merchant panel under Settings, Company Settings, API keys. Use the live pair.",
           "secret_key": "Shown next to the API key in the same place. It is shown once there; copy it now.",
           "buyer_identity_number": "The tax id (TCKN or VKN) of the person or company that appears as the buyer on charges. Your billing profile fills it in.",
-          "buyer_ip": "The fixed public IP address your business sends requests from; iyzico ties the keys to it."
+          "buyer_ip": "The fixed public IP address your business sends requests from; iyzico ties the keys to it.",
+          "enabled_installments": "Counts from 1, 2, 3, 6, 9 and 12, separated by commas, for example 1, 3, 6. They are offered on iyzico's payment form and, for a saved card, on the invoice page; the interest is the one set in your iyzico panel, so the payer can pay more than the invoice and the invoice is still paid in full. Leave it empty for single payments. Type it again when you replace the keys."
         },
         "paddle": {
           "api_key": "In Paddle under Developer tools, Authentication, create a live API key.",
@@ -4583,9 +4484,6 @@
       },
       "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator.",
       "account": {
-        "title": "Payment accounts",
-        "intro": "Connect more than one account at a provider (a Paddle account per region, an iyzico account per company), choose the default, and say which account takes the customers of which country.",
-        "add": "Add a {provider} account",
         "empty": "No payment account is connected yet. Connect one above.",
         "default": "Default",
         "makeDefault": "Make default",
@@ -5000,14 +4898,11 @@
       "audit": "Audit log",
       "auditLog": "Audit log"
     },
-    "noApps": "No apps yet",
     "newApp": "New app"
   },
   "privacy": {
     "hide": "Hide amounts",
-    "show": "Show amounts",
-    "hidden": "Hidden",
-    "banner": "Privacy mode is on: amounts are hidden."
+    "show": "Show amounts"
   },
   "picker": {
     "currency": "Currency",
@@ -5189,8 +5084,7 @@
     "next": "Next",
     "page": "Page {page} of {pages}",
     "pageOnly": "Page {page}",
-    "goTo": "Go to page",
-    "go": "Go"
+    "goTo": "Go to page"
   },
   "dateRange": {
     "any": "Any time",
@@ -5218,8 +5112,6 @@
     "subscriptions": "Subscriptions",
     "creditNotes": "Credit notes",
     "none": "None yet",
-    "notFound": "Not in the list",
-    "open": "Open",
     "openCustomerPage": "Open on the customers page to change something",
     "paymentNotLoaded": "This payment is not among the latest payments the console loads."
   },
@@ -5391,6 +5283,36 @@
       },
       "audit": {
         "intro": "Every change to keys, members, prices, webhooks, customers, refunds and provider accounts is recorded here. Entries cannot be changed or removed."
+      },
+      "support": {
+        "intro": "Ask Payrudder for help. Everyone in your organisation sees these tickets, and the answers come back here.",
+        "create": "Open a ticket: say what you did, what you expected and what happened. We answer within the time that belongs to the priority you pick."
+      },
+      "supportInbox": {
+        "intro": "Every ticket of every organisation, newest activity first. Answer in public, or leave an internal note the customer never sees.",
+        "list": "Open a ticket to read the thread and set its status, priority, assignee and tags. Tick several to change them together."
+      },
+      "plan": {
+        "intro": "Your organisation's plan: what it includes, how much of it you use and how to change it.",
+        "usageTitle": "Usage against the limits",
+        "usage": "How much of each limit the organisation has used. At a limit, creating more is refused until you move to a larger plan."
+      },
+      "organisations": {
+        "intro": "Every organisation on this deployment, with its plan. Find one by name or e-mail and move it to another plan.",
+        "list": "Manage opens an organisation's plan and its security settings."
+      },
+      "apps": {
+        "intro": "The apps of this tenant's account, each with its sandbox and its live environment. Create API keys here, per environment.",
+        "create": "Create an app: a name, a currency and a time zone. Its sandbox and live tenants are made with it."
+      },
+      "address": {
+        "intro": "The address printed as the seller on every invoice. Start with the country: the other fields follow what that country asks for.",
+        "previewTitle": "Preview",
+        "preview": "The seller block exactly as the invoice prints it."
+      },
+      "einvoice": {
+        "intro": "Connect the integrator that signs and sends your e-invoices, and set how the documents are made.",
+        "list": "The accounts connected for this tenant, one per environment. A live account sends real documents; the sandbox one only simulates."
       }
     }
   },
@@ -5692,10 +5614,20 @@
     "badge": {
       "unread": "Tickets with news: {n}",
       "waiting": "Waiting for us: {n}"
+    },
+    "confirmCloseTitle": "Close ticket #{number}?",
+    "confirmCloseMany": "Close {n} ticket? | Close {n} tickets?",
+    "confirmCloseBody": "Nobody can answer a closed ticket any more; the person has to open a new one.",
+    "attach": {
+      "add": "Attach files",
+      "hint": "png, jpeg, pdf or text; up to 5 MB each, 10 per ticket.",
+      "remove": "Remove {name}",
+      "failed": "These files were not attached:",
+      "openedButFailed": "Your ticket was opened, but some files were not attached. You can attach them to a reply.",
+      "download": "Download {name}"
     }
   },
   "connect": {
-    "nav": "Connect your app",
     "title": "Connect your app",
     "intro": "From an app to its first usage event: the code to paste, and a checklist that turns green as it works.",
     "checklist": "Where you are",
@@ -6153,7 +6085,10 @@
       "user": "Passwords and sign-in",
       "two_factor": "Two-factor sign-in",
       "sign_in": "Sign-in",
-      "account": "Organisation"
+      "account": "Organisation",
+      "subscription": "Subscriptions",
+      "reconciliation": "Reconciliation",
+      "audit": "Log retention"
     },
     "actions": {
       "api_key": {
@@ -6180,7 +6115,11 @@
       },
       "customer": {
         "blocked": "Customer blocked",
-        "unblocked": "Customer unblocked"
+        "unblocked": "Customer unblocked",
+        "contact_changed": "Customer contact details changed",
+        "address_changed": "Customer address changed",
+        "tax_changed": "Customer tax details changed",
+        "payment_method_changed": "Customer payment method changed"
       },
       "credit_note": {
         "issued": "Credit note issued",
@@ -6255,7 +6194,57 @@
         "recovery_codes_replaced": "Recovery codes regenerated",
         "recovery_code_used": "Recovery code used",
         "reset_by_operator": "Two-factor sign-in reset by support"
+      },
+      "subscription": {
+        "coupon_applied": "Coupon put on a subscription",
+        "coupon_removed": "Coupon taken off a subscription"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Reconciliation difference explained",
+        "discrepancy_resolved": "Reconciliation difference resolved",
+        "discrepancy_assigned": "Reconciliation difference assigned"
+      },
+      "audit": {
+        "pruned": "Oldest log entries deleted"
       }
     }
+  },
+  "disputes": {
+    "tab": "Disputes",
+    "tabsLabel": "Payments and disputes",
+    "tabs": {
+      "payments": "Payments",
+      "disputes": "Disputes"
+    },
+    "title": "Disputes",
+    "hint": "Cases the customer opened with their bank about this payment. Answer them at your payment provider; Payrudder shows where each one stands.",
+    "empty": "No disputes. A case appears here when a customer questions a payment with their bank.",
+    "outcomeLabel": "Outcome",
+    "allOutcomes": "All outcomes",
+    "kindLabel": "Type",
+    "allKinds": "All types",
+    "outcome": {
+      "open": "Open",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "kind": {
+      "chargeback": "Chargeback",
+      "inquiry": "Inquiry"
+    },
+    "means": {
+      "openChargeback": "The customer's bank has reversed this payment: the provider has taken the money back until it decides. Send your evidence before the date below.",
+      "openInquiry": "The customer's bank is asking about this payment. No money has been taken back; answer the provider's request so that it does not become a chargeback.",
+      "wonChargeback": "Decided in your favour: the money is back with you.",
+      "wonInquiry": "Closed without becoming a chargeback: nothing was lost.",
+      "lost": "The cardholder won: the money stays with them."
+    },
+    "provider": "Provider",
+    "reason": "Reason",
+    "evidenceDue": "Evidence due",
+    "opened": "Opened",
+    "closed": "Closed",
+    "reference": "Case",
+    "case": "Case"
   }
 }

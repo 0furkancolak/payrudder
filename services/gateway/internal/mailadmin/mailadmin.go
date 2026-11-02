@@ -1,5 +1,5 @@
 // Package mailadmin is the gateway's way to the notifier's signed HTTP routes (NOTIFIER_EVENTS_ADDR): the tenant's suppression list, its message log and the preview of
-// a notice. The notifier has no gRPC server; it answers requests signed with the shared secret (pkg/webhooksig) on the listener its operator switched on. The gateway
+// a notice. The notifier has no gRPC server; it answers requests signed with the shared secret (pkg/webhooksig, v2: the signature covers the method, path and query too) on the listener its operator switched on. The gateway
 // always names the tenant itself, from the credential, so nothing a client sends reaches another tenant's list.
 package mailadmin
 
@@ -104,7 +104,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	if err != nil {
 		return err
 	}
-	req.Header.Set(webhooksig.Header(), webhooksig.Sign(c.now(), body, c.secret))
+	req.Header.Set(webhooksig.Header(), webhooksig.SignRequest(c.now(), method, req.URL, body, c.secret))
 	if in != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

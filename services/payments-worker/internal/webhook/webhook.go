@@ -54,6 +54,7 @@ import (
 	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/returns"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/storedcards"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions"
 	subscriptionscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/command"
 	subscriptionsquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/query"
@@ -79,6 +80,11 @@ type Server struct {
 	AllowMockLive    bool
 	// Billing, when set, lets the reconciliation read the tenant's invoices.
 	Billing BillingAPI
+	// Disputes, when set, is told of each step of a dispute (billing-svc announces it to the seller and blocks the customer when the seller asked for that). Without it
+	// the steps are kept in the ledger and the table of cases only.
+	Disputes DisputesAPI
+	// DisputeCases keeps the cases a dispute notification opens, ends or reopens.
+	DisputeCases store.Disputes
 	// SettlementLag is how long a payment may go unreported by its provider before that is a finding (PAYMENTS_SETTLEMENT_LAG); zero is settlement.DefaultLag.
 	SettlementLag time.Duration
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
@@ -152,7 +158,7 @@ func (s *Server) modules() []RouteRegistrar {
 			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
 		&health.Handler{Store: store.ProviderHealth{DB: s.Ledger.DB}, Log: s.Log},
-		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
+		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger, Disputes: s.DisputeCases}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
 			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Customers: s.Plans, Log: s.Log}},
@@ -160,6 +166,7 @@ func (s *Server) modules() []RouteRegistrar {
 		&migrations.Handler{Log: s.Log, Deps: s.migrationDeps()},
 		&catalogue.Handler{Log: s.Log, Resolver: s.Resolver, Deps: cataloguecommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
 		&customers.Handler{Log: s.Log, Resolver: s.Resolver, Deps: customerscommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
+		&storedcards.Handler{Accounts: s.Accounts, Resolver: s.Resolver, Customers: s.Plans, Log: s.Log},
 		&subscriptions.Handler{Log: s.Log, Resolver: s.Resolver, Query: subscriptionQuery,
 			Command: subscriptionscommand.Deps{Query: subscriptionQuery, Syncer: s.Plans, Resolver: s.Resolver, Log: s.Log}},
 	}
@@ -170,7 +177,7 @@ func (s *Server) modules() []RouteRegistrar {
 // accounts whose settlement can be read.
 func (s *Server) Reconcile() reconciliationcommand.Deps {
 	settlements := store.Settlements{DB: s.Ledger.DB}
-	d := reconciliationcommand.Deps{Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing, Settlements: settlements, SettlementLag: s.SettlementLag},
+	d := reconciliationcommand.Deps{Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing, Disputes: s.DisputeCases, Settlements: settlements, SettlementLag: s.SettlementLag},
 		Discrepancies: store.Discrepancies{DB: s.Ledger.DB}, Ledger: s.Ledger, Settlements: settlements, Log: s.Log}
 	if s.Resolver != nil {
 		d.Resolver = s.Resolver
@@ -391,6 +398,11 @@ func (d *delivery) apply(conf payments.Notification) bool {
 			d.retry(d.tenant, err)
 			return false
 		}
+	case payments.KindDispute:
+		if err := d.recordDispute(d.r.Context(), conf); err != nil {
+			d.retry(d.tenant, err)
+			return false
+		}
 	default:
 		if err := d.recordCharge(conf); err != nil {
 			d.retry(d.tenant, err)
@@ -577,4 +589,45 @@ func (s *Server) followSubscription(ctx context.Context, e subscriptionEvent, li
 		req.PlanVersionId, req.Interval = pv, iv
 	}
 	return s.Plans.SyncProviderSubscription(ctx, e.tenant, req)
+}
+
+// recordDispute keeps a step of a dispute: it is announced to billing first (webhook, audit entry, the block of the customer), then written to the ledger and to the table of
+// cases, so that a notification that fails on the way is retried by the provider from the top. A step the ledger already holds was announced then, and only refreshes the
+// case (Stripe sends created and funds_withdrawn for the same step). A payment Payrudder did not make (no charge in the ledger under that reference) is kept in the ledger
+// and the table without an invoice, and nobody is told: there is nobody to tell.
+func (d *delivery) recordDispute(ctx context.Context, conf payments.Notification) error {
+	ev := conf.Dispute
+	invoice, _, _, found, err := d.s.Ledger.PaymentOf(ctx, d.tenant, d.name, conf.ProviderRef)
+	if err != nil {
+		return err
+	}
+	status := store.DisputeStatus(string(ev.Outcome))
+	known, err := d.s.Ledger.DisputeStepKnown(ctx, d.tenant, d.name, ev.ID, status)
+	if err != nil {
+		return err
+	}
+	at := conf.OccurredAt
+	if at.IsZero() {
+		at = time.Now().UTC()
+	}
+	if !known && found && d.s.Disputes != nil {
+		req := &billingv1.RecordPaymentDisputeRequest{InvoiceId: invoice.String(), Provider: d.name, DisputeRef: ev.ID, PaymentRef: conf.ProviderRef, AmountMinor: conf.AmountMinor,
+			Currency: conf.Currency, Outcome: string(ev.Outcome), Formal: ev.Formal, Reason: ev.Reason, ProviderStatus: ev.Status, OccurredTime: timestamppb.New(at)}
+		if !ev.EvidenceDue.IsZero() {
+			req.EvidenceDueTime = timestamppb.New(ev.EvidenceDue)
+		}
+		if _, err := d.s.Disputes.RecordPaymentDispute(ctx, d.tenant, req); err != nil {
+			return fmt.Errorf("announce the dispute %s: %w", ev.ID, err)
+		}
+	}
+	detail := fmt.Sprintf("%s; %s", ev.Status, map[bool]string{true: "chargeback", false: "inquiry"}[ev.Formal])
+	if ev.Reason != "" {
+		detail += "; " + ev.Reason
+	}
+	if _, err := d.s.Ledger.Append(ctx, store.LedgerEntry{TenantID: d.tenant, InvoiceID: invoice, Provider: d.name, Environment: d.env, Kind: store.KindDispute, Status: status,
+		AmountMinor: conf.AmountMinor, Currency: conf.Currency, ProviderRef: ev.ID, Source: store.SourceWebhook, Detail: detail, OccurredAt: at}); err != nil {
+		return err
+	}
+	return d.s.DisputeCases.Upsert(ctx, store.DisputeCase{TenantID: d.tenant, Environment: d.env, Provider: d.name, Ref: ev.ID, PaymentRef: conf.ProviderRef, InvoiceID: invoice,
+		AmountMinor: conf.AmountMinor, Currency: conf.Currency, Outcome: string(ev.Outcome), Formal: ev.Formal, Status: ev.Status, Reason: ev.Reason, EvidenceDue: ev.EvidenceDue, OpenedAt: at})
 }

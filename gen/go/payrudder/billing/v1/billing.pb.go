@@ -3302,7 +3302,7 @@ type DunningInvoice struct {
 	Provider           string                 `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
 	Currency           string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
 	TotalMinor         int64                  `protobuf:"varint,7,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
-	// The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), PAYMENT_ACTION_REQUIRED (waiting for the customer to confirm the payment, 3-D Secure), UNCOLLECTIBLE (given up).
+	// The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), PAYMENT_ACTION_REQUIRED (waiting for the customer to confirm the payment, 3-D Secure), PAYMENT_HELD (the first charge is held: the tenant is on hold or the customer is blocked for fraud or a chargeback), UNCOLLECTIBLE (given up).
 	State string `protobuf:"bytes,8,opt,name=state,proto3" json:"state,omitempty"`
 	// Retries done so far (0 = only the first charge).
 	DunningAttempt  int32                  `protobuf:"varint,9,opt,name=dunning_attempt,json=dunningAttempt,proto3" json:"dunning_attempt,omitempty"`
@@ -4261,8 +4261,10 @@ type DunningSettings struct {
 	// True when the tenant has set nothing and the service-wide defaults apply.
 	DefaultsInUse bool                   `protobuf:"varint,2,opt,name=defaults_in_use,json=defaultsInUse,proto3" json:"defaults_in_use,omitempty"`
 	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Block the customer (category chargeback) when a formal dispute of one of their payments opens. Off unless the seller turns it on.
+	BlockOnChargeback bool `protobuf:"varint,4,opt,name=block_on_chargeback,json=blockOnChargeback,proto3" json:"block_on_chargeback,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DunningSettings) Reset() {
@@ -4314,6 +4316,13 @@ func (x *DunningSettings) GetUpdateTime() *timestamppb.Timestamp {
 		return x.UpdateTime
 	}
 	return nil
+}
+
+func (x *DunningSettings) GetBlockOnChargeback() bool {
+	if x != nil {
+		return x.BlockOnChargeback
+	}
+	return false
 }
 
 type GetDunningSettingsRequest struct {
@@ -4397,10 +4406,12 @@ func (x *GetDunningSettingsResponse) GetSettings() *DunningSettings {
 }
 
 type SetDunningSettingsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RetryHours    []int32                `protobuf:"varint,1,rep,packed,name=retry_hours,json=retryHours,proto3" json:"retry_hours,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	RetryHours []int32                `protobuf:"varint,1,rep,packed,name=retry_hours,json=retryHours,proto3" json:"retry_hours,omitempty"`
+	// Absent: kept as it is.
+	BlockOnChargeback *bool `protobuf:"varint,2,opt,name=block_on_chargeback,json=blockOnChargeback,proto3,oneof" json:"block_on_chargeback,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SetDunningSettingsRequest) Reset() {
@@ -4438,6 +4449,13 @@ func (x *SetDunningSettingsRequest) GetRetryHours() []int32 {
 		return x.RetryHours
 	}
 	return nil
+}
+
+func (x *SetDunningSettingsRequest) GetBlockOnChargeback() bool {
+	if x != nil && x.BlockOnChargeback != nil {
+		return *x.BlockOnChargeback
+	}
+	return false
 }
 
 type SetDunningSettingsResponse struct {
@@ -8596,6 +8614,197 @@ func (x *SettleInvoicePaymentRequest) GetCurrency() string {
 	return ""
 }
 
+type RecordPaymentDisputeRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	InvoiceId string                 `protobuf:"bytes,1,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	Provider  string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	// The provider's reference of the case (Stripe's du_..., Paddle's cb_ and the transaction).
+	DisputeRef string `protobuf:"bytes,3,opt,name=dispute_ref,json=disputeRef,proto3" json:"dispute_ref,omitempty"`
+	// The payment that is disputed, as the ledger holds it.
+	PaymentRef  string `protobuf:"bytes,4,opt,name=payment_ref,json=paymentRef,proto3" json:"payment_ref,omitempty"`
+	AmountMinor int64  `protobuf:"varint,5,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	Currency    string `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	// open, won or lost.
+	Outcome string `protobuf:"bytes,7,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	// A chargeback proper (money taken back), not an inquiry or a warning.
+	Formal bool   `protobuf:"varint,8,opt,name=formal,proto3" json:"formal,omitempty"`
+	Reason string `protobuf:"bytes,9,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The provider's own word for the state of the case.
+	ProviderStatus  string                 `protobuf:"bytes,10,opt,name=provider_status,json=providerStatus,proto3" json:"provider_status,omitempty"`
+	EvidenceDueTime *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=evidence_due_time,json=evidenceDueTime,proto3" json:"evidence_due_time,omitempty"`
+	OccurredTime    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=occurred_time,json=occurredTime,proto3" json:"occurred_time,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RecordPaymentDisputeRequest) Reset() {
+	*x = RecordPaymentDisputeRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[118]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordPaymentDisputeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordPaymentDisputeRequest) ProtoMessage() {}
+
+func (x *RecordPaymentDisputeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[118]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordPaymentDisputeRequest.ProtoReflect.Descriptor instead.
+func (*RecordPaymentDisputeRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *RecordPaymentDisputeRequest) GetInvoiceId() string {
+	if x != nil {
+		return x.InvoiceId
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetDisputeRef() string {
+	if x != nil {
+		return x.DisputeRef
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetPaymentRef() string {
+	if x != nil {
+		return x.PaymentRef
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *RecordPaymentDisputeRequest) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetFormal() bool {
+	if x != nil {
+		return x.Formal
+	}
+	return false
+}
+
+func (x *RecordPaymentDisputeRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetProviderStatus() string {
+	if x != nil {
+		return x.ProviderStatus
+	}
+	return ""
+}
+
+func (x *RecordPaymentDisputeRequest) GetEvidenceDueTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EvidenceDueTime
+	}
+	return nil
+}
+
+func (x *RecordPaymentDisputeRequest) GetOccurredTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredTime
+	}
+	return nil
+}
+
+type RecordPaymentDisputeResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// False when this step of the case was announced before.
+	Announced bool `protobuf:"varint,1,opt,name=announced,proto3" json:"announced,omitempty"`
+	// This call blocked the customer (category chargeback).
+	CustomerBlocked bool `protobuf:"varint,2,opt,name=customer_blocked,json=customerBlocked,proto3" json:"customer_blocked,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RecordPaymentDisputeResponse) Reset() {
+	*x = RecordPaymentDisputeResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[119]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordPaymentDisputeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordPaymentDisputeResponse) ProtoMessage() {}
+
+func (x *RecordPaymentDisputeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[119]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordPaymentDisputeResponse.ProtoReflect.Descriptor instead.
+func (*RecordPaymentDisputeResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{119}
+}
+
+func (x *RecordPaymentDisputeResponse) GetAnnounced() bool {
+	if x != nil {
+		return x.Announced
+	}
+	return false
+}
+
+func (x *RecordPaymentDisputeResponse) GetCustomerBlocked() bool {
+	if x != nil {
+		return x.CustomerBlocked
+	}
+	return false
+}
+
 type SettleInvoicePaymentResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// False when the invoice was already paid or is not waiting for a payment.
@@ -8608,7 +8817,7 @@ type SettleInvoicePaymentResponse struct {
 
 func (x *SettleInvoicePaymentResponse) Reset() {
 	*x = SettleInvoicePaymentResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[118]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8620,7 +8829,7 @@ func (x *SettleInvoicePaymentResponse) String() string {
 func (*SettleInvoicePaymentResponse) ProtoMessage() {}
 
 func (x *SettleInvoicePaymentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[118]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8633,7 +8842,7 @@ func (x *SettleInvoicePaymentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettleInvoicePaymentResponse.ProtoReflect.Descriptor instead.
 func (*SettleInvoicePaymentResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{118}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *SettleInvoicePaymentResponse) GetSettled() bool {
@@ -8668,7 +8877,7 @@ type CreditPack struct {
 
 func (x *CreditPack) Reset() {
 	*x = CreditPack{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[119]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8680,7 +8889,7 @@ func (x *CreditPack) String() string {
 func (*CreditPack) ProtoMessage() {}
 
 func (x *CreditPack) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[119]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8693,7 +8902,7 @@ func (x *CreditPack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreditPack.ProtoReflect.Descriptor instead.
 func (*CreditPack) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{119}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *CreditPack) GetId() string {
@@ -8761,7 +8970,7 @@ type ListCreditPacksRequest struct {
 
 func (x *ListCreditPacksRequest) Reset() {
 	*x = ListCreditPacksRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[120]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8773,7 +8982,7 @@ func (x *ListCreditPacksRequest) String() string {
 func (*ListCreditPacksRequest) ProtoMessage() {}
 
 func (x *ListCreditPacksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[120]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8786,7 +8995,7 @@ func (x *ListCreditPacksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPacksRequest.ProtoReflect.Descriptor instead.
 func (*ListCreditPacksRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{120}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *ListCreditPacksRequest) GetActiveOnly() bool {
@@ -8805,7 +9014,7 @@ type ListCreditPacksResponse struct {
 
 func (x *ListCreditPacksResponse) Reset() {
 	*x = ListCreditPacksResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[121]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8817,7 +9026,7 @@ func (x *ListCreditPacksResponse) String() string {
 func (*ListCreditPacksResponse) ProtoMessage() {}
 
 func (x *ListCreditPacksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[121]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8830,7 +9039,7 @@ func (x *ListCreditPacksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditPacksResponse.ProtoReflect.Descriptor instead.
 func (*ListCreditPacksResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{121}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *ListCreditPacksResponse) GetPacks() []*CreditPack {
@@ -8854,7 +9063,7 @@ type CreateCreditPackRequest struct {
 
 func (x *CreateCreditPackRequest) Reset() {
 	*x = CreateCreditPackRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[122]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8866,7 +9075,7 @@ func (x *CreateCreditPackRequest) String() string {
 func (*CreateCreditPackRequest) ProtoMessage() {}
 
 func (x *CreateCreditPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[122]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8879,7 +9088,7 @@ func (x *CreateCreditPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCreditPackRequest.ProtoReflect.Descriptor instead.
 func (*CreateCreditPackRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{122}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *CreateCreditPackRequest) GetName() string {
@@ -8926,7 +9135,7 @@ type CreateCreditPackResponse struct {
 
 func (x *CreateCreditPackResponse) Reset() {
 	*x = CreateCreditPackResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[123]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8938,7 +9147,7 @@ func (x *CreateCreditPackResponse) String() string {
 func (*CreateCreditPackResponse) ProtoMessage() {}
 
 func (x *CreateCreditPackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[123]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8951,7 +9160,7 @@ func (x *CreateCreditPackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCreditPackResponse.ProtoReflect.Descriptor instead.
 func (*CreateCreditPackResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{123}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *CreateCreditPackResponse) GetPack() *CreditPack {
@@ -8971,7 +9180,7 @@ type SetCreditPackActiveRequest struct {
 
 func (x *SetCreditPackActiveRequest) Reset() {
 	*x = SetCreditPackActiveRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[124]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8983,7 +9192,7 @@ func (x *SetCreditPackActiveRequest) String() string {
 func (*SetCreditPackActiveRequest) ProtoMessage() {}
 
 func (x *SetCreditPackActiveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[124]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8996,7 +9205,7 @@ func (x *SetCreditPackActiveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCreditPackActiveRequest.ProtoReflect.Descriptor instead.
 func (*SetCreditPackActiveRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{124}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *SetCreditPackActiveRequest) GetId() string {
@@ -9021,7 +9230,7 @@ type SetCreditPackActiveResponse struct {
 
 func (x *SetCreditPackActiveResponse) Reset() {
 	*x = SetCreditPackActiveResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[125]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9033,7 +9242,7 @@ func (x *SetCreditPackActiveResponse) String() string {
 func (*SetCreditPackActiveResponse) ProtoMessage() {}
 
 func (x *SetCreditPackActiveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[125]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9046,7 +9255,7 @@ func (x *SetCreditPackActiveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCreditPackActiveResponse.ProtoReflect.Descriptor instead.
 func (*SetCreditPackActiveResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{125}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{127}
 }
 
 type CreditLot struct {
@@ -9065,7 +9274,7 @@ type CreditLot struct {
 
 func (x *CreditLot) Reset() {
 	*x = CreditLot{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[126]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9077,7 +9286,7 @@ func (x *CreditLot) String() string {
 func (*CreditLot) ProtoMessage() {}
 
 func (x *CreditLot) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[126]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9090,7 +9299,7 @@ func (x *CreditLot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreditLot.ProtoReflect.Descriptor instead.
 func (*CreditLot) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{126}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *CreditLot) GetId() string {
@@ -9144,7 +9353,7 @@ type GetCreditBalanceRequest struct {
 
 func (x *GetCreditBalanceRequest) Reset() {
 	*x = GetCreditBalanceRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[127]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9156,7 +9365,7 @@ func (x *GetCreditBalanceRequest) String() string {
 func (*GetCreditBalanceRequest) ProtoMessage() {}
 
 func (x *GetCreditBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[127]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9169,7 +9378,7 @@ func (x *GetCreditBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetCreditBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{127}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *GetCreditBalanceRequest) GetCustomerId() string {
@@ -9192,7 +9401,7 @@ type GetCreditBalanceResponse struct {
 
 func (x *GetCreditBalanceResponse) Reset() {
 	*x = GetCreditBalanceResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[128]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9204,7 +9413,7 @@ func (x *GetCreditBalanceResponse) String() string {
 func (*GetCreditBalanceResponse) ProtoMessage() {}
 
 func (x *GetCreditBalanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[128]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9217,7 +9426,7 @@ func (x *GetCreditBalanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditBalanceResponse.ProtoReflect.Descriptor instead.
 func (*GetCreditBalanceResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{128}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *GetCreditBalanceResponse) GetBalance() int64 {
@@ -9257,7 +9466,7 @@ type GrantCreditsRequest struct {
 
 func (x *GrantCreditsRequest) Reset() {
 	*x = GrantCreditsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[129]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9269,7 +9478,7 @@ func (x *GrantCreditsRequest) String() string {
 func (*GrantCreditsRequest) ProtoMessage() {}
 
 func (x *GrantCreditsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[129]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9282,7 +9491,7 @@ func (x *GrantCreditsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantCreditsRequest.ProtoReflect.Descriptor instead.
 func (*GrantCreditsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{129}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *GrantCreditsRequest) GetCustomerId() string {
@@ -9338,7 +9547,7 @@ type GrantCreditsResponse struct {
 
 func (x *GrantCreditsResponse) Reset() {
 	*x = GrantCreditsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[130]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9350,7 +9559,7 @@ func (x *GrantCreditsResponse) String() string {
 func (*GrantCreditsResponse) ProtoMessage() {}
 
 func (x *GrantCreditsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[130]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9363,7 +9572,7 @@ func (x *GrantCreditsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantCreditsResponse.ProtoReflect.Descriptor instead.
 func (*GrantCreditsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{130}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *GrantCreditsResponse) GetBalance() int64 {
@@ -9395,7 +9604,7 @@ type ConsumeCreditsRequest struct {
 
 func (x *ConsumeCreditsRequest) Reset() {
 	*x = ConsumeCreditsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[131]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9407,7 +9616,7 @@ func (x *ConsumeCreditsRequest) String() string {
 func (*ConsumeCreditsRequest) ProtoMessage() {}
 
 func (x *ConsumeCreditsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[131]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9420,7 +9629,7 @@ func (x *ConsumeCreditsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConsumeCreditsRequest.ProtoReflect.Descriptor instead.
 func (*ConsumeCreditsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{131}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ConsumeCreditsRequest) GetCustomerId() string {
@@ -9468,7 +9677,7 @@ type ConsumeCreditsResponse struct {
 
 func (x *ConsumeCreditsResponse) Reset() {
 	*x = ConsumeCreditsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[132]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9480,7 +9689,7 @@ func (x *ConsumeCreditsResponse) String() string {
 func (*ConsumeCreditsResponse) ProtoMessage() {}
 
 func (x *ConsumeCreditsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[132]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9493,7 +9702,7 @@ func (x *ConsumeCreditsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConsumeCreditsResponse.ProtoReflect.Descriptor instead.
 func (*ConsumeCreditsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{132}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *ConsumeCreditsResponse) GetBalance() int64 {
@@ -9529,7 +9738,7 @@ type CreditLedgerEntry struct {
 
 func (x *CreditLedgerEntry) Reset() {
 	*x = CreditLedgerEntry{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[133]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9541,7 +9750,7 @@ func (x *CreditLedgerEntry) String() string {
 func (*CreditLedgerEntry) ProtoMessage() {}
 
 func (x *CreditLedgerEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[133]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9554,7 +9763,7 @@ func (x *CreditLedgerEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreditLedgerEntry.ProtoReflect.Descriptor instead.
 func (*CreditLedgerEntry) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{133}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *CreditLedgerEntry) GetId() string {
@@ -9625,7 +9834,7 @@ type ListCreditLedgerRequest struct {
 
 func (x *ListCreditLedgerRequest) Reset() {
 	*x = ListCreditLedgerRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[134]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9637,7 +9846,7 @@ func (x *ListCreditLedgerRequest) String() string {
 func (*ListCreditLedgerRequest) ProtoMessage() {}
 
 func (x *ListCreditLedgerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[134]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9650,7 +9859,7 @@ func (x *ListCreditLedgerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditLedgerRequest.ProtoReflect.Descriptor instead.
 func (*ListCreditLedgerRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{134}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *ListCreditLedgerRequest) GetCustomerId() string {
@@ -9684,7 +9893,7 @@ type ListCreditLedgerResponse struct {
 
 func (x *ListCreditLedgerResponse) Reset() {
 	*x = ListCreditLedgerResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[135]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9696,7 +9905,7 @@ func (x *ListCreditLedgerResponse) String() string {
 func (*ListCreditLedgerResponse) ProtoMessage() {}
 
 func (x *ListCreditLedgerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[135]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9709,7 +9918,7 @@ func (x *ListCreditLedgerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCreditLedgerResponse.ProtoReflect.Descriptor instead.
 func (*ListCreditLedgerResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{135}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *ListCreditLedgerResponse) GetEntries() []*CreditLedgerEntry {
@@ -9760,7 +9969,7 @@ type Expense struct {
 
 func (x *Expense) Reset() {
 	*x = Expense{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[136]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9772,7 +9981,7 @@ func (x *Expense) String() string {
 func (*Expense) ProtoMessage() {}
 
 func (x *Expense) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[136]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9785,7 +9994,7 @@ func (x *Expense) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Expense.ProtoReflect.Descriptor instead.
 func (*Expense) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{136}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *Expense) GetId() string {
@@ -9919,7 +10128,7 @@ type CreateExpenseRequest struct {
 
 func (x *CreateExpenseRequest) Reset() {
 	*x = CreateExpenseRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[137]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9931,7 +10140,7 @@ func (x *CreateExpenseRequest) String() string {
 func (*CreateExpenseRequest) ProtoMessage() {}
 
 func (x *CreateExpenseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[137]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9944,7 +10153,7 @@ func (x *CreateExpenseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateExpenseRequest.ProtoReflect.Descriptor instead.
 func (*CreateExpenseRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{137}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *CreateExpenseRequest) GetAppId() string {
@@ -10033,7 +10242,7 @@ type CreateExpenseResponse struct {
 
 func (x *CreateExpenseResponse) Reset() {
 	*x = CreateExpenseResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[138]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10045,7 +10254,7 @@ func (x *CreateExpenseResponse) String() string {
 func (*CreateExpenseResponse) ProtoMessage() {}
 
 func (x *CreateExpenseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[138]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10058,7 +10267,7 @@ func (x *CreateExpenseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateExpenseResponse.ProtoReflect.Descriptor instead.
 func (*CreateExpenseResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{138}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *CreateExpenseResponse) GetExpense() *Expense {
@@ -10088,7 +10297,7 @@ type UpdateExpenseRequest struct {
 
 func (x *UpdateExpenseRequest) Reset() {
 	*x = UpdateExpenseRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[139]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10100,7 +10309,7 @@ func (x *UpdateExpenseRequest) String() string {
 func (*UpdateExpenseRequest) ProtoMessage() {}
 
 func (x *UpdateExpenseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[139]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10113,7 +10322,7 @@ func (x *UpdateExpenseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateExpenseRequest.ProtoReflect.Descriptor instead.
 func (*UpdateExpenseRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{139}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *UpdateExpenseRequest) GetId() string {
@@ -10209,7 +10418,7 @@ type UpdateExpenseResponse struct {
 
 func (x *UpdateExpenseResponse) Reset() {
 	*x = UpdateExpenseResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[140]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10221,7 +10430,7 @@ func (x *UpdateExpenseResponse) String() string {
 func (*UpdateExpenseResponse) ProtoMessage() {}
 
 func (x *UpdateExpenseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[140]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10234,7 +10443,7 @@ func (x *UpdateExpenseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateExpenseResponse.ProtoReflect.Descriptor instead.
 func (*UpdateExpenseResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{140}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *UpdateExpenseResponse) GetExpense() *Expense {
@@ -10255,7 +10464,7 @@ type VoidExpenseRequest struct {
 
 func (x *VoidExpenseRequest) Reset() {
 	*x = VoidExpenseRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[141]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10267,7 +10476,7 @@ func (x *VoidExpenseRequest) String() string {
 func (*VoidExpenseRequest) ProtoMessage() {}
 
 func (x *VoidExpenseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[141]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10280,7 +10489,7 @@ func (x *VoidExpenseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoidExpenseRequest.ProtoReflect.Descriptor instead.
 func (*VoidExpenseRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{141}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *VoidExpenseRequest) GetId() string {
@@ -10306,7 +10515,7 @@ type VoidExpenseResponse struct {
 
 func (x *VoidExpenseResponse) Reset() {
 	*x = VoidExpenseResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[142]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10318,7 +10527,7 @@ func (x *VoidExpenseResponse) String() string {
 func (*VoidExpenseResponse) ProtoMessage() {}
 
 func (x *VoidExpenseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[142]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10331,7 +10540,7 @@ func (x *VoidExpenseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VoidExpenseResponse.ProtoReflect.Descriptor instead.
 func (*VoidExpenseResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{142}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *VoidExpenseResponse) GetExpense() *Expense {
@@ -10359,7 +10568,7 @@ type ListExpensesRequest struct {
 
 func (x *ListExpensesRequest) Reset() {
 	*x = ListExpensesRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[143]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10371,7 +10580,7 @@ func (x *ListExpensesRequest) String() string {
 func (*ListExpensesRequest) ProtoMessage() {}
 
 func (x *ListExpensesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[143]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10384,7 +10593,7 @@ func (x *ListExpensesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExpensesRequest.ProtoReflect.Descriptor instead.
 func (*ListExpensesRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{143}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *ListExpensesRequest) GetCategory() string {
@@ -10453,7 +10662,7 @@ type ListExpensesResponse struct {
 
 func (x *ListExpensesResponse) Reset() {
 	*x = ListExpensesResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[144]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10465,7 +10674,7 @@ func (x *ListExpensesResponse) String() string {
 func (*ListExpensesResponse) ProtoMessage() {}
 
 func (x *ListExpensesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[144]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10478,7 +10687,7 @@ func (x *ListExpensesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExpensesResponse.ProtoReflect.Descriptor instead.
 func (*ListExpensesResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{144}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *ListExpensesResponse) GetExpenses() []*Expense {
@@ -10508,7 +10717,7 @@ type GetDashboardStatsRequest struct {
 
 func (x *GetDashboardStatsRequest) Reset() {
 	*x = GetDashboardStatsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[145]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10520,7 +10729,7 @@ func (x *GetDashboardStatsRequest) String() string {
 func (*GetDashboardStatsRequest) ProtoMessage() {}
 
 func (x *GetDashboardStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[145]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10533,7 +10742,7 @@ func (x *GetDashboardStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDashboardStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetDashboardStatsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{145}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *GetDashboardStatsRequest) GetFromDate() string {
@@ -10571,7 +10780,7 @@ type DashboardTopCustomer struct {
 
 func (x *DashboardTopCustomer) Reset() {
 	*x = DashboardTopCustomer{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[146]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10583,7 +10792,7 @@ func (x *DashboardTopCustomer) String() string {
 func (*DashboardTopCustomer) ProtoMessage() {}
 
 func (x *DashboardTopCustomer) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[146]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10596,7 +10805,7 @@ func (x *DashboardTopCustomer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardTopCustomer.ProtoReflect.Descriptor instead.
 func (*DashboardTopCustomer) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{146}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *DashboardTopCustomer) GetCustomerId() string {
@@ -10646,7 +10855,7 @@ type DashboardAgingBucket struct {
 
 func (x *DashboardAgingBucket) Reset() {
 	*x = DashboardAgingBucket{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[147]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10658,7 +10867,7 @@ func (x *DashboardAgingBucket) String() string {
 func (*DashboardAgingBucket) ProtoMessage() {}
 
 func (x *DashboardAgingBucket) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[147]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10671,7 +10880,7 @@ func (x *DashboardAgingBucket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardAgingBucket.ProtoReflect.Descriptor instead.
 func (*DashboardAgingBucket) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{147}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *DashboardAgingBucket) GetBucket() string {
@@ -10706,7 +10915,7 @@ type DashboardCurrency struct {
 
 func (x *DashboardCurrency) Reset() {
 	*x = DashboardCurrency{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[148]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10718,7 +10927,7 @@ func (x *DashboardCurrency) String() string {
 func (*DashboardCurrency) ProtoMessage() {}
 
 func (x *DashboardCurrency) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[148]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10731,7 +10940,7 @@ func (x *DashboardCurrency) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardCurrency.ProtoReflect.Descriptor instead.
 func (*DashboardCurrency) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{148}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *DashboardCurrency) GetCurrency() string {
@@ -10771,7 +10980,7 @@ type DashboardInvoice struct {
 
 func (x *DashboardInvoice) Reset() {
 	*x = DashboardInvoice{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[149]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10783,7 +10992,7 @@ func (x *DashboardInvoice) String() string {
 func (*DashboardInvoice) ProtoMessage() {}
 
 func (x *DashboardInvoice) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[149]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10796,7 +11005,7 @@ func (x *DashboardInvoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardInvoice.ProtoReflect.Descriptor instead.
 func (*DashboardInvoice) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{149}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *DashboardInvoice) GetId() string {
@@ -10859,7 +11068,7 @@ type GetDashboardStatsResponse struct {
 
 func (x *GetDashboardStatsResponse) Reset() {
 	*x = GetDashboardStatsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[150]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10871,7 +11080,7 @@ func (x *GetDashboardStatsResponse) String() string {
 func (*GetDashboardStatsResponse) ProtoMessage() {}
 
 func (x *GetDashboardStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[150]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10884,7 +11093,7 @@ func (x *GetDashboardStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDashboardStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetDashboardStatsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{150}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *GetDashboardStatsResponse) GetCurrencies() []*DashboardCurrency {
@@ -10916,7 +11125,7 @@ type GetAccountingSummaryRequest struct {
 
 func (x *GetAccountingSummaryRequest) Reset() {
 	*x = GetAccountingSummaryRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[151]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10928,7 +11137,7 @@ func (x *GetAccountingSummaryRequest) String() string {
 func (*GetAccountingSummaryRequest) ProtoMessage() {}
 
 func (x *GetAccountingSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[151]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10941,7 +11150,7 @@ func (x *GetAccountingSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountingSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountingSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{151}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *GetAccountingSummaryRequest) GetFromDate() string {
@@ -10982,7 +11191,7 @@ type AccountingCategoryTotal struct {
 
 func (x *AccountingCategoryTotal) Reset() {
 	*x = AccountingCategoryTotal{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[152]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10994,7 +11203,7 @@ func (x *AccountingCategoryTotal) String() string {
 func (*AccountingCategoryTotal) ProtoMessage() {}
 
 func (x *AccountingCategoryTotal) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[152]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11007,7 +11216,7 @@ func (x *AccountingCategoryTotal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountingCategoryTotal.ProtoReflect.Descriptor instead.
 func (*AccountingCategoryTotal) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{152}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *AccountingCategoryTotal) GetCategory() string {
@@ -11042,7 +11251,7 @@ type AccountingPoint struct {
 
 func (x *AccountingPoint) Reset() {
 	*x = AccountingPoint{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11054,7 +11263,7 @@ func (x *AccountingPoint) String() string {
 func (*AccountingPoint) ProtoMessage() {}
 
 func (x *AccountingPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11067,7 +11276,7 @@ func (x *AccountingPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountingPoint.ProtoReflect.Descriptor instead.
 func (*AccountingPoint) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{153}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *AccountingPoint) GetBucket() string {
@@ -11142,7 +11351,7 @@ type AccountingCoupon struct {
 
 func (x *AccountingCoupon) Reset() {
 	*x = AccountingCoupon{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11154,7 +11363,7 @@ func (x *AccountingCoupon) String() string {
 func (*AccountingCoupon) ProtoMessage() {}
 
 func (x *AccountingCoupon) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11167,7 +11376,7 @@ func (x *AccountingCoupon) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountingCoupon.ProtoReflect.Descriptor instead.
 func (*AccountingCoupon) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{154}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{156}
 }
 
 func (x *AccountingCoupon) GetCouponCode() string {
@@ -11240,7 +11449,7 @@ type AccountingCurrency struct {
 
 func (x *AccountingCurrency) Reset() {
 	*x = AccountingCurrency{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11252,7 +11461,7 @@ func (x *AccountingCurrency) String() string {
 func (*AccountingCurrency) ProtoMessage() {}
 
 func (x *AccountingCurrency) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11265,7 +11474,7 @@ func (x *AccountingCurrency) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountingCurrency.ProtoReflect.Descriptor instead.
 func (*AccountingCurrency) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{155}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *AccountingCurrency) GetCurrency() string {
@@ -11386,7 +11595,7 @@ type GetAccountingSummaryResponse struct {
 
 func (x *GetAccountingSummaryResponse) Reset() {
 	*x = GetAccountingSummaryResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11398,7 +11607,7 @@ func (x *GetAccountingSummaryResponse) String() string {
 func (*GetAccountingSummaryResponse) ProtoMessage() {}
 
 func (x *GetAccountingSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11411,7 +11620,7 @@ func (x *GetAccountingSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountingSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountingSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{156}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *GetAccountingSummaryResponse) GetFromDate() string {
@@ -11457,7 +11666,7 @@ type GetCreditSettingsRequest struct {
 
 func (x *GetCreditSettingsRequest) Reset() {
 	*x = GetCreditSettingsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11469,7 +11678,7 @@ func (x *GetCreditSettingsRequest) String() string {
 func (*GetCreditSettingsRequest) ProtoMessage() {}
 
 func (x *GetCreditSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11482,7 +11691,7 @@ func (x *GetCreditSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetCreditSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{157}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{159}
 }
 
 type GetCreditSettingsResponse struct {
@@ -11495,7 +11704,7 @@ type GetCreditSettingsResponse struct {
 
 func (x *GetCreditSettingsResponse) Reset() {
 	*x = GetCreditSettingsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11507,7 +11716,7 @@ func (x *GetCreditSettingsResponse) String() string {
 func (*GetCreditSettingsResponse) ProtoMessage() {}
 
 func (x *GetCreditSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11520,7 +11729,7 @@ func (x *GetCreditSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCreditSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetCreditSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{158}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *GetCreditSettingsResponse) GetLowThreshold() int64 {
@@ -11540,7 +11749,7 @@ type SetCreditSettingsRequest struct {
 
 func (x *SetCreditSettingsRequest) Reset() {
 	*x = SetCreditSettingsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11552,7 +11761,7 @@ func (x *SetCreditSettingsRequest) String() string {
 func (*SetCreditSettingsRequest) ProtoMessage() {}
 
 func (x *SetCreditSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11565,7 +11774,7 @@ func (x *SetCreditSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCreditSettingsRequest.ProtoReflect.Descriptor instead.
 func (*SetCreditSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{159}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *SetCreditSettingsRequest) GetLowThreshold() int64 {
@@ -11584,7 +11793,7 @@ type SetCreditSettingsResponse struct {
 
 func (x *SetCreditSettingsResponse) Reset() {
 	*x = SetCreditSettingsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11596,7 +11805,7 @@ func (x *SetCreditSettingsResponse) String() string {
 func (*SetCreditSettingsResponse) ProtoMessage() {}
 
 func (x *SetCreditSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11609,7 +11818,7 @@ func (x *SetCreditSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCreditSettingsResponse.ProtoReflect.Descriptor instead.
 func (*SetCreditSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{160}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{162}
 }
 
 func (x *SetCreditSettingsResponse) GetLowThreshold() int64 {
@@ -11629,7 +11838,7 @@ type GetExpenseInboxRequest struct {
 
 func (x *GetExpenseInboxRequest) Reset() {
 	*x = GetExpenseInboxRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11641,7 +11850,7 @@ func (x *GetExpenseInboxRequest) String() string {
 func (*GetExpenseInboxRequest) ProtoMessage() {}
 
 func (x *GetExpenseInboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11654,7 +11863,7 @@ func (x *GetExpenseInboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExpenseInboxRequest.ProtoReflect.Descriptor instead.
 func (*GetExpenseInboxRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{161}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *GetExpenseInboxRequest) GetAppId() string {
@@ -11675,7 +11884,7 @@ type ExpenseInbox struct {
 
 func (x *ExpenseInbox) Reset() {
 	*x = ExpenseInbox{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11687,7 +11896,7 @@ func (x *ExpenseInbox) String() string {
 func (*ExpenseInbox) ProtoMessage() {}
 
 func (x *ExpenseInbox) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11700,7 +11909,7 @@ func (x *ExpenseInbox) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseInbox.ProtoReflect.Descriptor instead.
 func (*ExpenseInbox) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{162}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{164}
 }
 
 func (x *ExpenseInbox) GetToken() string {
@@ -11737,7 +11946,7 @@ type InboxItem struct {
 
 func (x *InboxItem) Reset() {
 	*x = InboxItem{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11749,7 +11958,7 @@ func (x *InboxItem) String() string {
 func (*InboxItem) ProtoMessage() {}
 
 func (x *InboxItem) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11762,7 +11971,7 @@ func (x *InboxItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InboxItem.ProtoReflect.Descriptor instead.
 func (*InboxItem) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{163}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{165}
 }
 
 func (x *InboxItem) GetId() string {
@@ -11847,7 +12056,7 @@ type ListInboxItemsRequest struct {
 
 func (x *ListInboxItemsRequest) Reset() {
 	*x = ListInboxItemsRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11859,7 +12068,7 @@ func (x *ListInboxItemsRequest) String() string {
 func (*ListInboxItemsRequest) ProtoMessage() {}
 
 func (x *ListInboxItemsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11872,7 +12081,7 @@ func (x *ListInboxItemsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInboxItemsRequest.ProtoReflect.Descriptor instead.
 func (*ListInboxItemsRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{164}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{166}
 }
 
 func (x *ListInboxItemsRequest) GetStatus() string {
@@ -11898,7 +12107,7 @@ type ListInboxItemsResponse struct {
 
 func (x *ListInboxItemsResponse) Reset() {
 	*x = ListInboxItemsResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11910,7 +12119,7 @@ func (x *ListInboxItemsResponse) String() string {
 func (*ListInboxItemsResponse) ProtoMessage() {}
 
 func (x *ListInboxItemsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11923,7 +12132,7 @@ func (x *ListInboxItemsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInboxItemsResponse.ProtoReflect.Descriptor instead.
 func (*ListInboxItemsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{165}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{167}
 }
 
 func (x *ListInboxItemsResponse) GetItems() []*InboxItem {
@@ -11942,7 +12151,7 @@ type GetInboxItemFileRequest struct {
 
 func (x *GetInboxItemFileRequest) Reset() {
 	*x = GetInboxItemFileRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11954,7 +12163,7 @@ func (x *GetInboxItemFileRequest) String() string {
 func (*GetInboxItemFileRequest) ProtoMessage() {}
 
 func (x *GetInboxItemFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11967,7 +12176,7 @@ func (x *GetInboxItemFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInboxItemFileRequest.ProtoReflect.Descriptor instead.
 func (*GetInboxItemFileRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{166}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{168}
 }
 
 func (x *GetInboxItemFileRequest) GetId() string {
@@ -11988,7 +12197,7 @@ type GetInboxItemFileResponse struct {
 
 func (x *GetInboxItemFileResponse) Reset() {
 	*x = GetInboxItemFileResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12000,7 +12209,7 @@ func (x *GetInboxItemFileResponse) String() string {
 func (*GetInboxItemFileResponse) ProtoMessage() {}
 
 func (x *GetInboxItemFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12013,7 +12222,7 @@ func (x *GetInboxItemFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInboxItemFileResponse.ProtoReflect.Descriptor instead.
 func (*GetInboxItemFileResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{167}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{169}
 }
 
 func (x *GetInboxItemFileResponse) GetFilename() string {
@@ -12049,7 +12258,7 @@ type ResolveInboxItemRequest struct {
 
 func (x *ResolveInboxItemRequest) Reset() {
 	*x = ResolveInboxItemRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12061,7 +12270,7 @@ func (x *ResolveInboxItemRequest) String() string {
 func (*ResolveInboxItemRequest) ProtoMessage() {}
 
 func (x *ResolveInboxItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12074,7 +12283,7 @@ func (x *ResolveInboxItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveInboxItemRequest.ProtoReflect.Descriptor instead.
 func (*ResolveInboxItemRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{168}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{170}
 }
 
 func (x *ResolveInboxItemRequest) GetId() string {
@@ -12107,7 +12316,7 @@ type ResolveInboxItemResponse struct {
 
 func (x *ResolveInboxItemResponse) Reset() {
 	*x = ResolveInboxItemResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12119,7 +12328,7 @@ func (x *ResolveInboxItemResponse) String() string {
 func (*ResolveInboxItemResponse) ProtoMessage() {}
 
 func (x *ResolveInboxItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12132,7 +12341,7 @@ func (x *ResolveInboxItemResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveInboxItemResponse.ProtoReflect.Descriptor instead.
 func (*ResolveInboxItemResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{169}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{171}
 }
 
 func (x *ResolveInboxItemResponse) GetItem() *InboxItem {
@@ -12153,7 +12362,7 @@ type InboxAttachment struct {
 
 func (x *InboxAttachment) Reset() {
 	*x = InboxAttachment{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[172]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12165,7 +12374,7 @@ func (x *InboxAttachment) String() string {
 func (*InboxAttachment) ProtoMessage() {}
 
 func (x *InboxAttachment) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[172]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12178,7 +12387,7 @@ func (x *InboxAttachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InboxAttachment.ProtoReflect.Descriptor instead.
 func (*InboxAttachment) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{170}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{172}
 }
 
 func (x *InboxAttachment) GetFilename() string {
@@ -12214,7 +12423,7 @@ type ReceiveInboxMailRequest struct {
 
 func (x *ReceiveInboxMailRequest) Reset() {
 	*x = ReceiveInboxMailRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[173]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12226,7 +12435,7 @@ func (x *ReceiveInboxMailRequest) String() string {
 func (*ReceiveInboxMailRequest) ProtoMessage() {}
 
 func (x *ReceiveInboxMailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[173]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12239,7 +12448,7 @@ func (x *ReceiveInboxMailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReceiveInboxMailRequest.ProtoReflect.Descriptor instead.
 func (*ReceiveInboxMailRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{171}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{173}
 }
 
 func (x *ReceiveInboxMailRequest) GetToken() string {
@@ -12280,7 +12489,7 @@ type ReceiveInboxMailResponse struct {
 
 func (x *ReceiveInboxMailResponse) Reset() {
 	*x = ReceiveInboxMailResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[172]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[174]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12292,7 +12501,7 @@ func (x *ReceiveInboxMailResponse) String() string {
 func (*ReceiveInboxMailResponse) ProtoMessage() {}
 
 func (x *ReceiveInboxMailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[172]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[174]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12305,7 +12514,7 @@ func (x *ReceiveInboxMailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReceiveInboxMailResponse.ProtoReflect.Descriptor instead.
 func (*ReceiveInboxMailResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{172}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{174}
 }
 
 func (x *ReceiveInboxMailResponse) GetStored() int32 {
@@ -12343,7 +12552,7 @@ type ExpenseRule struct {
 
 func (x *ExpenseRule) Reset() {
 	*x = ExpenseRule{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[173]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[175]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12355,7 +12564,7 @@ func (x *ExpenseRule) String() string {
 func (*ExpenseRule) ProtoMessage() {}
 
 func (x *ExpenseRule) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[173]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[175]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12368,7 +12577,7 @@ func (x *ExpenseRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseRule.ProtoReflect.Descriptor instead.
 func (*ExpenseRule) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{173}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{175}
 }
 
 func (x *ExpenseRule) GetId() string {
@@ -12442,7 +12651,7 @@ type ListExpenseRulesRequest struct {
 
 func (x *ListExpenseRulesRequest) Reset() {
 	*x = ListExpenseRulesRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[174]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[176]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12454,7 +12663,7 @@ func (x *ListExpenseRulesRequest) String() string {
 func (*ListExpenseRulesRequest) ProtoMessage() {}
 
 func (x *ListExpenseRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[174]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[176]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12467,7 +12676,7 @@ func (x *ListExpenseRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExpenseRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListExpenseRulesRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{174}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{176}
 }
 
 type ListExpenseRulesResponse struct {
@@ -12479,7 +12688,7 @@ type ListExpenseRulesResponse struct {
 
 func (x *ListExpenseRulesResponse) Reset() {
 	*x = ListExpenseRulesResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[175]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[177]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12491,7 +12700,7 @@ func (x *ListExpenseRulesResponse) String() string {
 func (*ListExpenseRulesResponse) ProtoMessage() {}
 
 func (x *ListExpenseRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[175]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[177]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12504,7 +12713,7 @@ func (x *ListExpenseRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListExpenseRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListExpenseRulesResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{175}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{177}
 }
 
 func (x *ListExpenseRulesResponse) GetRules() []*ExpenseRule {
@@ -12524,7 +12733,7 @@ type SaveExpenseRuleRequest struct {
 
 func (x *SaveExpenseRuleRequest) Reset() {
 	*x = SaveExpenseRuleRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[176]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12536,7 +12745,7 @@ func (x *SaveExpenseRuleRequest) String() string {
 func (*SaveExpenseRuleRequest) ProtoMessage() {}
 
 func (x *SaveExpenseRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[176]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12549,7 +12758,7 @@ func (x *SaveExpenseRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveExpenseRuleRequest.ProtoReflect.Descriptor instead.
 func (*SaveExpenseRuleRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{176}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{178}
 }
 
 func (x *SaveExpenseRuleRequest) GetRule() *ExpenseRule {
@@ -12568,7 +12777,7 @@ type SaveExpenseRuleResponse struct {
 
 func (x *SaveExpenseRuleResponse) Reset() {
 	*x = SaveExpenseRuleResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[177]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12580,7 +12789,7 @@ func (x *SaveExpenseRuleResponse) String() string {
 func (*SaveExpenseRuleResponse) ProtoMessage() {}
 
 func (x *SaveExpenseRuleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[177]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12593,7 +12802,7 @@ func (x *SaveExpenseRuleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveExpenseRuleResponse.ProtoReflect.Descriptor instead.
 func (*SaveExpenseRuleResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{177}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{179}
 }
 
 func (x *SaveExpenseRuleResponse) GetRule() *ExpenseRule {
@@ -12612,7 +12821,7 @@ type DeleteExpenseRuleRequest struct {
 
 func (x *DeleteExpenseRuleRequest) Reset() {
 	*x = DeleteExpenseRuleRequest{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[178]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12624,7 +12833,7 @@ func (x *DeleteExpenseRuleRequest) String() string {
 func (*DeleteExpenseRuleRequest) ProtoMessage() {}
 
 func (x *DeleteExpenseRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[178]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12637,7 +12846,7 @@ func (x *DeleteExpenseRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteExpenseRuleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteExpenseRuleRequest) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{178}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{180}
 }
 
 func (x *DeleteExpenseRuleRequest) GetId() string {
@@ -12655,7 +12864,7 @@ type DeleteExpenseRuleResponse struct {
 
 func (x *DeleteExpenseRuleResponse) Reset() {
 	*x = DeleteExpenseRuleResponse{}
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[179]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12667,7 +12876,7 @@ func (x *DeleteExpenseRuleResponse) String() string {
 func (*DeleteExpenseRuleResponse) ProtoMessage() {}
 
 func (x *DeleteExpenseRuleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[179]
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12680,7 +12889,7 @@ func (x *DeleteExpenseRuleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteExpenseRuleResponse.ProtoReflect.Descriptor instead.
 func (*DeleteExpenseRuleResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{179}
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{181}
 }
 
 var File_payrudder_billing_v1_billing_proto protoreflect.FileDescriptor
@@ -13040,19 +13249,22 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"page_token\x18\x04 \x01(\tR\tpageToken\"\x86\x01\n" +
 	"\x17ListCreditNotesResponse\x12C\n" +
 	"\fcredit_notes\x18\x01 \x03(\v2 .payrudder.billing.v1.CreditNoteR\vcreditNotes\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x97\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc7\x01\n" +
 	"\x0fDunningSettings\x12\x1f\n" +
 	"\vretry_hours\x18\x01 \x03(\x05R\n" +
 	"retryHours\x12&\n" +
 	"\x0fdefaults_in_use\x18\x02 \x01(\bR\rdefaultsInUse\x12;\n" +
 	"\vupdate_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"updateTime\"\x1b\n" +
+	"updateTime\x12.\n" +
+	"\x13block_on_chargeback\x18\x04 \x01(\bR\x11blockOnChargeback\"\x1b\n" +
 	"\x19GetDunningSettingsRequest\"_\n" +
 	"\x1aGetDunningSettingsResponse\x12A\n" +
-	"\bsettings\x18\x01 \x01(\v2%.payrudder.billing.v1.DunningSettingsR\bsettings\"<\n" +
+	"\bsettings\x18\x01 \x01(\v2%.payrudder.billing.v1.DunningSettingsR\bsettings\"\x89\x01\n" +
 	"\x19SetDunningSettingsRequest\x12\x1f\n" +
 	"\vretry_hours\x18\x01 \x03(\x05R\n" +
-	"retryHours\"_\n" +
+	"retryHours\x123\n" +
+	"\x13block_on_chargeback\x18\x02 \x01(\bH\x00R\x11blockOnChargeback\x88\x01\x01B\x16\n" +
+	"\x14_block_on_chargeback\"_\n" +
 	"\x1aSetDunningSettingsResponse\x12A\n" +
 	"\bsettings\x18\x01 \x01(\v2%.payrudder.billing.v1.DunningSettingsR\bsettings\"a\n" +
 	"\x18CreateInvoiceLinkRequest\x12\x1d\n" +
@@ -13419,7 +13631,27 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12!\n" +
 	"\fprovider_ref\x18\x03 \x01(\tR\vproviderRef\x12!\n" +
 	"\famount_minor\x18\x04 \x01(\x03R\vamountMinor\x12\x1a\n" +
-	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"P\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\"\xd5\x03\n" +
+	"\x1bRecordPaymentDisputeRequest\x12\x1d\n" +
+	"\n" +
+	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x1a\n" +
+	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x1f\n" +
+	"\vdispute_ref\x18\x03 \x01(\tR\n" +
+	"disputeRef\x12\x1f\n" +
+	"\vpayment_ref\x18\x04 \x01(\tR\n" +
+	"paymentRef\x12!\n" +
+	"\famount_minor\x18\x05 \x01(\x03R\vamountMinor\x12\x1a\n" +
+	"\bcurrency\x18\x06 \x01(\tR\bcurrency\x12\x18\n" +
+	"\aoutcome\x18\a \x01(\tR\aoutcome\x12\x16\n" +
+	"\x06formal\x18\b \x01(\bR\x06formal\x12\x16\n" +
+	"\x06reason\x18\t \x01(\tR\x06reason\x12'\n" +
+	"\x0fprovider_status\x18\n" +
+	" \x01(\tR\x0eproviderStatus\x12F\n" +
+	"\x11evidence_due_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0fevidenceDueTime\x12?\n" +
+	"\roccurred_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\foccurredTime\"g\n" +
+	"\x1cRecordPaymentDisputeResponse\x12\x1c\n" +
+	"\tannounced\x18\x01 \x01(\bR\tannounced\x12)\n" +
+	"\x10customer_blocked\x18\x02 \x01(\bR\x0fcustomerBlocked\"P\n" +
 	"\x1cSettleInvoicePaymentResponse\x12\x18\n" +
 	"\asettled\x18\x01 \x01(\bR\asettled\x12\x16\n" +
 	"\x06repeat\x18\x02 \x01(\bR\x06repeat\"\x81\x02\n" +
@@ -13769,7 +14001,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x10RefundResolution\x12!\n" +
 	"\x1dREFUND_RESOLUTION_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aREFUND_RESOLUTION_REFUNDED\x10\x01\x12\"\n" +
-	"\x1eREFUND_RESOLUTION_NOT_REFUNDED\x10\x022\xe5(\n" +
+	"\x1eREFUND_RESOLUTION_NOT_REFUNDED\x10\x022\xe4)\n" +
 	"\x0eBillingService\x12_\n" +
 	"\n" +
 	"GetInvoice\x12'.payrudder.billing.v1.GetInvoiceRequest\x1a(.payrudder.billing.v1.GetInvoiceResponse\x12e\n" +
@@ -13791,7 +14023,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x11RevokePaymentLink\x12..payrudder.billing.v1.RevokePaymentLinkRequest\x1a/.payrudder.billing.v1.RevokePaymentLinkResponse\x12q\n" +
 	"\x10CreatePortalLink\x12-.payrudder.billing.v1.CreatePortalLinkRequest\x1a..payrudder.billing.v1.CreatePortalLinkResponse\x12t\n" +
 	"\x11RevokePortalLinks\x12..payrudder.billing.v1.RevokePortalLinksRequest\x1a/.payrudder.billing.v1.RevokePortalLinksResponse\x12}\n" +
-	"\x14SettleInvoicePayment\x121.payrudder.billing.v1.SettleInvoicePaymentRequest\x1a2.payrudder.billing.v1.SettleInvoicePaymentResponse\x12w\n" +
+	"\x14SettleInvoicePayment\x121.payrudder.billing.v1.SettleInvoicePaymentRequest\x1a2.payrudder.billing.v1.SettleInvoicePaymentResponse\x12}\n" +
+	"\x14RecordPaymentDispute\x121.payrudder.billing.v1.RecordPaymentDisputeRequest\x1a2.payrudder.billing.v1.RecordPaymentDisputeResponse\x12w\n" +
 	"\x12GetDunningSettings\x12/.payrudder.billing.v1.GetDunningSettingsRequest\x1a0.payrudder.billing.v1.GetDunningSettingsResponse\x12w\n" +
 	"\x12SetDunningSettings\x12/.payrudder.billing.v1.SetDunningSettingsRequest\x1a0.payrudder.billing.v1.SetDunningSettingsResponse\x12n\n" +
 	"\x0fListCreditPacks\x12,.payrudder.billing.v1.ListCreditPacksRequest\x1a-.payrudder.billing.v1.ListCreditPacksResponse\x12q\n" +
@@ -13861,7 +14094,7 @@ func file_payrudder_billing_v1_billing_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_billing_v1_billing_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_payrudder_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 180)
+var file_payrudder_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 182)
 var file_payrudder_billing_v1_billing_proto_goTypes = []any{
 	(RunStatus)(0),                          // 0: payrudder.billing.v1.RunStatus
 	(ReratingStatus)(0),                     // 1: payrudder.billing.v1.ReratingStatus
@@ -13986,113 +14219,115 @@ var file_payrudder_billing_v1_billing_proto_goTypes = []any{
 	(*RevokePortalLinksRequest)(nil),        // 120: payrudder.billing.v1.RevokePortalLinksRequest
 	(*RevokePortalLinksResponse)(nil),       // 121: payrudder.billing.v1.RevokePortalLinksResponse
 	(*SettleInvoicePaymentRequest)(nil),     // 122: payrudder.billing.v1.SettleInvoicePaymentRequest
-	(*SettleInvoicePaymentResponse)(nil),    // 123: payrudder.billing.v1.SettleInvoicePaymentResponse
-	(*CreditPack)(nil),                      // 124: payrudder.billing.v1.CreditPack
-	(*ListCreditPacksRequest)(nil),          // 125: payrudder.billing.v1.ListCreditPacksRequest
-	(*ListCreditPacksResponse)(nil),         // 126: payrudder.billing.v1.ListCreditPacksResponse
-	(*CreateCreditPackRequest)(nil),         // 127: payrudder.billing.v1.CreateCreditPackRequest
-	(*CreateCreditPackResponse)(nil),        // 128: payrudder.billing.v1.CreateCreditPackResponse
-	(*SetCreditPackActiveRequest)(nil),      // 129: payrudder.billing.v1.SetCreditPackActiveRequest
-	(*SetCreditPackActiveResponse)(nil),     // 130: payrudder.billing.v1.SetCreditPackActiveResponse
-	(*CreditLot)(nil),                       // 131: payrudder.billing.v1.CreditLot
-	(*GetCreditBalanceRequest)(nil),         // 132: payrudder.billing.v1.GetCreditBalanceRequest
-	(*GetCreditBalanceResponse)(nil),        // 133: payrudder.billing.v1.GetCreditBalanceResponse
-	(*GrantCreditsRequest)(nil),             // 134: payrudder.billing.v1.GrantCreditsRequest
-	(*GrantCreditsResponse)(nil),            // 135: payrudder.billing.v1.GrantCreditsResponse
-	(*ConsumeCreditsRequest)(nil),           // 136: payrudder.billing.v1.ConsumeCreditsRequest
-	(*ConsumeCreditsResponse)(nil),          // 137: payrudder.billing.v1.ConsumeCreditsResponse
-	(*CreditLedgerEntry)(nil),               // 138: payrudder.billing.v1.CreditLedgerEntry
-	(*ListCreditLedgerRequest)(nil),         // 139: payrudder.billing.v1.ListCreditLedgerRequest
-	(*ListCreditLedgerResponse)(nil),        // 140: payrudder.billing.v1.ListCreditLedgerResponse
-	(*Expense)(nil),                         // 141: payrudder.billing.v1.Expense
-	(*CreateExpenseRequest)(nil),            // 142: payrudder.billing.v1.CreateExpenseRequest
-	(*CreateExpenseResponse)(nil),           // 143: payrudder.billing.v1.CreateExpenseResponse
-	(*UpdateExpenseRequest)(nil),            // 144: payrudder.billing.v1.UpdateExpenseRequest
-	(*UpdateExpenseResponse)(nil),           // 145: payrudder.billing.v1.UpdateExpenseResponse
-	(*VoidExpenseRequest)(nil),              // 146: payrudder.billing.v1.VoidExpenseRequest
-	(*VoidExpenseResponse)(nil),             // 147: payrudder.billing.v1.VoidExpenseResponse
-	(*ListExpensesRequest)(nil),             // 148: payrudder.billing.v1.ListExpensesRequest
-	(*ListExpensesResponse)(nil),            // 149: payrudder.billing.v1.ListExpensesResponse
-	(*GetDashboardStatsRequest)(nil),        // 150: payrudder.billing.v1.GetDashboardStatsRequest
-	(*DashboardTopCustomer)(nil),            // 151: payrudder.billing.v1.DashboardTopCustomer
-	(*DashboardAgingBucket)(nil),            // 152: payrudder.billing.v1.DashboardAgingBucket
-	(*DashboardCurrency)(nil),               // 153: payrudder.billing.v1.DashboardCurrency
-	(*DashboardInvoice)(nil),                // 154: payrudder.billing.v1.DashboardInvoice
-	(*GetDashboardStatsResponse)(nil),       // 155: payrudder.billing.v1.GetDashboardStatsResponse
-	(*GetAccountingSummaryRequest)(nil),     // 156: payrudder.billing.v1.GetAccountingSummaryRequest
-	(*AccountingCategoryTotal)(nil),         // 157: payrudder.billing.v1.AccountingCategoryTotal
-	(*AccountingPoint)(nil),                 // 158: payrudder.billing.v1.AccountingPoint
-	(*AccountingCoupon)(nil),                // 159: payrudder.billing.v1.AccountingCoupon
-	(*AccountingCurrency)(nil),              // 160: payrudder.billing.v1.AccountingCurrency
-	(*GetAccountingSummaryResponse)(nil),    // 161: payrudder.billing.v1.GetAccountingSummaryResponse
-	(*GetCreditSettingsRequest)(nil),        // 162: payrudder.billing.v1.GetCreditSettingsRequest
-	(*GetCreditSettingsResponse)(nil),       // 163: payrudder.billing.v1.GetCreditSettingsResponse
-	(*SetCreditSettingsRequest)(nil),        // 164: payrudder.billing.v1.SetCreditSettingsRequest
-	(*SetCreditSettingsResponse)(nil),       // 165: payrudder.billing.v1.SetCreditSettingsResponse
-	(*GetExpenseInboxRequest)(nil),          // 166: payrudder.billing.v1.GetExpenseInboxRequest
-	(*ExpenseInbox)(nil),                    // 167: payrudder.billing.v1.ExpenseInbox
-	(*InboxItem)(nil),                       // 168: payrudder.billing.v1.InboxItem
-	(*ListInboxItemsRequest)(nil),           // 169: payrudder.billing.v1.ListInboxItemsRequest
-	(*ListInboxItemsResponse)(nil),          // 170: payrudder.billing.v1.ListInboxItemsResponse
-	(*GetInboxItemFileRequest)(nil),         // 171: payrudder.billing.v1.GetInboxItemFileRequest
-	(*GetInboxItemFileResponse)(nil),        // 172: payrudder.billing.v1.GetInboxItemFileResponse
-	(*ResolveInboxItemRequest)(nil),         // 173: payrudder.billing.v1.ResolveInboxItemRequest
-	(*ResolveInboxItemResponse)(nil),        // 174: payrudder.billing.v1.ResolveInboxItemResponse
-	(*InboxAttachment)(nil),                 // 175: payrudder.billing.v1.InboxAttachment
-	(*ReceiveInboxMailRequest)(nil),         // 176: payrudder.billing.v1.ReceiveInboxMailRequest
-	(*ReceiveInboxMailResponse)(nil),        // 177: payrudder.billing.v1.ReceiveInboxMailResponse
-	(*ExpenseRule)(nil),                     // 178: payrudder.billing.v1.ExpenseRule
-	(*ListExpenseRulesRequest)(nil),         // 179: payrudder.billing.v1.ListExpenseRulesRequest
-	(*ListExpenseRulesResponse)(nil),        // 180: payrudder.billing.v1.ListExpenseRulesResponse
-	(*SaveExpenseRuleRequest)(nil),          // 181: payrudder.billing.v1.SaveExpenseRuleRequest
-	(*SaveExpenseRuleResponse)(nil),         // 182: payrudder.billing.v1.SaveExpenseRuleResponse
-	(*DeleteExpenseRuleRequest)(nil),        // 183: payrudder.billing.v1.DeleteExpenseRuleRequest
-	(*DeleteExpenseRuleResponse)(nil),       // 184: payrudder.billing.v1.DeleteExpenseRuleResponse
-	(*timestamppb.Timestamp)(nil),           // 185: google.protobuf.Timestamp
+	(*RecordPaymentDisputeRequest)(nil),     // 123: payrudder.billing.v1.RecordPaymentDisputeRequest
+	(*RecordPaymentDisputeResponse)(nil),    // 124: payrudder.billing.v1.RecordPaymentDisputeResponse
+	(*SettleInvoicePaymentResponse)(nil),    // 125: payrudder.billing.v1.SettleInvoicePaymentResponse
+	(*CreditPack)(nil),                      // 126: payrudder.billing.v1.CreditPack
+	(*ListCreditPacksRequest)(nil),          // 127: payrudder.billing.v1.ListCreditPacksRequest
+	(*ListCreditPacksResponse)(nil),         // 128: payrudder.billing.v1.ListCreditPacksResponse
+	(*CreateCreditPackRequest)(nil),         // 129: payrudder.billing.v1.CreateCreditPackRequest
+	(*CreateCreditPackResponse)(nil),        // 130: payrudder.billing.v1.CreateCreditPackResponse
+	(*SetCreditPackActiveRequest)(nil),      // 131: payrudder.billing.v1.SetCreditPackActiveRequest
+	(*SetCreditPackActiveResponse)(nil),     // 132: payrudder.billing.v1.SetCreditPackActiveResponse
+	(*CreditLot)(nil),                       // 133: payrudder.billing.v1.CreditLot
+	(*GetCreditBalanceRequest)(nil),         // 134: payrudder.billing.v1.GetCreditBalanceRequest
+	(*GetCreditBalanceResponse)(nil),        // 135: payrudder.billing.v1.GetCreditBalanceResponse
+	(*GrantCreditsRequest)(nil),             // 136: payrudder.billing.v1.GrantCreditsRequest
+	(*GrantCreditsResponse)(nil),            // 137: payrudder.billing.v1.GrantCreditsResponse
+	(*ConsumeCreditsRequest)(nil),           // 138: payrudder.billing.v1.ConsumeCreditsRequest
+	(*ConsumeCreditsResponse)(nil),          // 139: payrudder.billing.v1.ConsumeCreditsResponse
+	(*CreditLedgerEntry)(nil),               // 140: payrudder.billing.v1.CreditLedgerEntry
+	(*ListCreditLedgerRequest)(nil),         // 141: payrudder.billing.v1.ListCreditLedgerRequest
+	(*ListCreditLedgerResponse)(nil),        // 142: payrudder.billing.v1.ListCreditLedgerResponse
+	(*Expense)(nil),                         // 143: payrudder.billing.v1.Expense
+	(*CreateExpenseRequest)(nil),            // 144: payrudder.billing.v1.CreateExpenseRequest
+	(*CreateExpenseResponse)(nil),           // 145: payrudder.billing.v1.CreateExpenseResponse
+	(*UpdateExpenseRequest)(nil),            // 146: payrudder.billing.v1.UpdateExpenseRequest
+	(*UpdateExpenseResponse)(nil),           // 147: payrudder.billing.v1.UpdateExpenseResponse
+	(*VoidExpenseRequest)(nil),              // 148: payrudder.billing.v1.VoidExpenseRequest
+	(*VoidExpenseResponse)(nil),             // 149: payrudder.billing.v1.VoidExpenseResponse
+	(*ListExpensesRequest)(nil),             // 150: payrudder.billing.v1.ListExpensesRequest
+	(*ListExpensesResponse)(nil),            // 151: payrudder.billing.v1.ListExpensesResponse
+	(*GetDashboardStatsRequest)(nil),        // 152: payrudder.billing.v1.GetDashboardStatsRequest
+	(*DashboardTopCustomer)(nil),            // 153: payrudder.billing.v1.DashboardTopCustomer
+	(*DashboardAgingBucket)(nil),            // 154: payrudder.billing.v1.DashboardAgingBucket
+	(*DashboardCurrency)(nil),               // 155: payrudder.billing.v1.DashboardCurrency
+	(*DashboardInvoice)(nil),                // 156: payrudder.billing.v1.DashboardInvoice
+	(*GetDashboardStatsResponse)(nil),       // 157: payrudder.billing.v1.GetDashboardStatsResponse
+	(*GetAccountingSummaryRequest)(nil),     // 158: payrudder.billing.v1.GetAccountingSummaryRequest
+	(*AccountingCategoryTotal)(nil),         // 159: payrudder.billing.v1.AccountingCategoryTotal
+	(*AccountingPoint)(nil),                 // 160: payrudder.billing.v1.AccountingPoint
+	(*AccountingCoupon)(nil),                // 161: payrudder.billing.v1.AccountingCoupon
+	(*AccountingCurrency)(nil),              // 162: payrudder.billing.v1.AccountingCurrency
+	(*GetAccountingSummaryResponse)(nil),    // 163: payrudder.billing.v1.GetAccountingSummaryResponse
+	(*GetCreditSettingsRequest)(nil),        // 164: payrudder.billing.v1.GetCreditSettingsRequest
+	(*GetCreditSettingsResponse)(nil),       // 165: payrudder.billing.v1.GetCreditSettingsResponse
+	(*SetCreditSettingsRequest)(nil),        // 166: payrudder.billing.v1.SetCreditSettingsRequest
+	(*SetCreditSettingsResponse)(nil),       // 167: payrudder.billing.v1.SetCreditSettingsResponse
+	(*GetExpenseInboxRequest)(nil),          // 168: payrudder.billing.v1.GetExpenseInboxRequest
+	(*ExpenseInbox)(nil),                    // 169: payrudder.billing.v1.ExpenseInbox
+	(*InboxItem)(nil),                       // 170: payrudder.billing.v1.InboxItem
+	(*ListInboxItemsRequest)(nil),           // 171: payrudder.billing.v1.ListInboxItemsRequest
+	(*ListInboxItemsResponse)(nil),          // 172: payrudder.billing.v1.ListInboxItemsResponse
+	(*GetInboxItemFileRequest)(nil),         // 173: payrudder.billing.v1.GetInboxItemFileRequest
+	(*GetInboxItemFileResponse)(nil),        // 174: payrudder.billing.v1.GetInboxItemFileResponse
+	(*ResolveInboxItemRequest)(nil),         // 175: payrudder.billing.v1.ResolveInboxItemRequest
+	(*ResolveInboxItemResponse)(nil),        // 176: payrudder.billing.v1.ResolveInboxItemResponse
+	(*InboxAttachment)(nil),                 // 177: payrudder.billing.v1.InboxAttachment
+	(*ReceiveInboxMailRequest)(nil),         // 178: payrudder.billing.v1.ReceiveInboxMailRequest
+	(*ReceiveInboxMailResponse)(nil),        // 179: payrudder.billing.v1.ReceiveInboxMailResponse
+	(*ExpenseRule)(nil),                     // 180: payrudder.billing.v1.ExpenseRule
+	(*ListExpenseRulesRequest)(nil),         // 181: payrudder.billing.v1.ListExpenseRulesRequest
+	(*ListExpenseRulesResponse)(nil),        // 182: payrudder.billing.v1.ListExpenseRulesResponse
+	(*SaveExpenseRuleRequest)(nil),          // 183: payrudder.billing.v1.SaveExpenseRuleRequest
+	(*SaveExpenseRuleResponse)(nil),         // 184: payrudder.billing.v1.SaveExpenseRuleResponse
+	(*DeleteExpenseRuleRequest)(nil),        // 185: payrudder.billing.v1.DeleteExpenseRuleRequest
+	(*DeleteExpenseRuleResponse)(nil),       // 186: payrudder.billing.v1.DeleteExpenseRuleResponse
+	(*timestamppb.Timestamp)(nil),           // 187: google.protobuf.Timestamp
 }
 var file_payrudder_billing_v1_billing_proto_depIdxs = []int32{
 	0,   // 0: payrudder.billing.v1.BillingRun.status:type_name -> payrudder.billing.v1.RunStatus
-	185, // 1: payrudder.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
-	185, // 2: payrudder.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
-	185, // 3: payrudder.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
-	185, // 4: payrudder.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
-	185, // 5: payrudder.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
-	185, // 6: payrudder.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
-	185, // 7: payrudder.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
+	187, // 1: payrudder.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
+	187, // 2: payrudder.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
+	187, // 3: payrudder.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
+	187, // 4: payrudder.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
+	187, // 5: payrudder.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
+	187, // 6: payrudder.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
+	187, // 7: payrudder.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
 	6,   // 8: payrudder.billing.v1.Invoice.lines:type_name -> payrudder.billing.v1.InvoiceLine
 	11,  // 9: payrudder.billing.v1.Invoice.payments:type_name -> payrudder.billing.v1.InvoicePayment
 	10,  // 10: payrudder.billing.v1.GetUpcomingInvoiceResponse.upcoming:type_name -> payrudder.billing.v1.UpcomingInvoice
-	185, // 11: payrudder.billing.v1.UpcomingInvoice.period_start:type_name -> google.protobuf.Timestamp
-	185, // 12: payrudder.billing.v1.UpcomingInvoice.period_end:type_name -> google.protobuf.Timestamp
+	187, // 11: payrudder.billing.v1.UpcomingInvoice.period_start:type_name -> google.protobuf.Timestamp
+	187, // 12: payrudder.billing.v1.UpcomingInvoice.period_end:type_name -> google.protobuf.Timestamp
 	6,   // 13: payrudder.billing.v1.UpcomingInvoice.lines:type_name -> payrudder.billing.v1.InvoiceLine
-	185, // 14: payrudder.billing.v1.UpcomingInvoice.as_of:type_name -> google.protobuf.Timestamp
-	185, // 15: payrudder.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
-	185, // 16: payrudder.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
-	185, // 17: payrudder.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
+	187, // 14: payrudder.billing.v1.UpcomingInvoice.as_of:type_name -> google.protobuf.Timestamp
+	187, // 15: payrudder.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
+	187, // 16: payrudder.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
+	187, // 17: payrudder.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
 	11,  // 18: payrudder.billing.v1.RecordInvoicePaymentResponse.payment:type_name -> payrudder.billing.v1.InvoicePayment
 	7,   // 19: payrudder.billing.v1.GetInvoiceResponse.invoice:type_name -> payrudder.billing.v1.Invoice
 	7,   // 20: payrudder.billing.v1.ListInvoicesResponse.invoices:type_name -> payrudder.billing.v1.Invoice
-	185, // 21: payrudder.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 21: payrudder.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
 	5,   // 22: payrudder.billing.v1.ClosePeriodNowResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	5,   // 23: payrudder.billing.v1.ClosePeriodResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	5,   // 24: payrudder.billing.v1.GetBillingRunResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	26,  // 25: payrudder.billing.v1.RetryInvoiceSagaResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	26,  // 26: payrudder.billing.v1.VoidInvoiceResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	1,   // 27: payrudder.billing.v1.ReratingJob.status:type_name -> payrudder.billing.v1.ReratingStatus
-	185, // 28: payrudder.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
-	185, // 29: payrudder.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
+	187, // 28: payrudder.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
+	187, // 29: payrudder.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
 	31,  // 30: payrudder.billing.v1.StartReratingResponse.job:type_name -> payrudder.billing.v1.ReratingJob
 	31,  // 31: payrudder.billing.v1.GetReratingJobResponse.job:type_name -> payrudder.billing.v1.ReratingJob
-	185, // 32: payrudder.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
+	187, // 32: payrudder.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
 	26,  // 33: payrudder.billing.v1.GetInvoiceSagaResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	36,  // 34: payrudder.billing.v1.GetInvoiceSagaResponse.events:type_name -> payrudder.billing.v1.SagaEvent
 	39,  // 35: payrudder.billing.v1.ListDeadLettersResponse.queues:type_name -> payrudder.billing.v1.DeadLetterQueue
 	40,  // 36: payrudder.billing.v1.ListDeadLettersResponse.messages:type_name -> payrudder.billing.v1.DeadLetter
 	46,  // 37: payrudder.billing.v1.GetRevenueReportResponse.rows:type_name -> payrudder.billing.v1.RevenueRow
-	185, // 38: payrudder.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
+	187, // 38: payrudder.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
 	49,  // 39: payrudder.billing.v1.GetDunningReportResponse.invoices:type_name -> payrudder.billing.v1.DunningInvoice
 	50,  // 40: payrudder.billing.v1.GetDunningReportResponse.summary:type_name -> payrudder.billing.v1.DunningSummary
-	185, // 41: payrudder.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
+	187, // 41: payrudder.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
 	2,   // 42: payrudder.billing.v1.CreditNote.disposition:type_name -> payrudder.billing.v1.CreditNoteDisposition
 	3,   // 43: payrudder.billing.v1.CreditNote.refund_state:type_name -> payrudder.billing.v1.RefundState
 	52,  // 44: payrudder.billing.v1.RetryCreditNoteRefundResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
@@ -14101,230 +14336,234 @@ var file_payrudder_billing_v1_billing_proto_depIdxs = []int32{
 	52,  // 47: payrudder.billing.v1.CreateCreditNoteResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
 	52,  // 48: payrudder.billing.v1.GetCreditNoteResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
 	52,  // 49: payrudder.billing.v1.ListCreditNotesResponse.credit_notes:type_name -> payrudder.billing.v1.CreditNote
-	185, // 50: payrudder.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
+	187, // 50: payrudder.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
 	63,  // 51: payrudder.billing.v1.GetDunningSettingsResponse.settings:type_name -> payrudder.billing.v1.DunningSettings
 	63,  // 52: payrudder.billing.v1.SetDunningSettingsResponse.settings:type_name -> payrudder.billing.v1.DunningSettings
-	185, // 53: payrudder.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 53: payrudder.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
 	7,   // 54: payrudder.billing.v1.GetHostedInvoiceResponse.invoice:type_name -> payrudder.billing.v1.Invoice
-	185, // 55: payrudder.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 55: payrudder.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
 	77,  // 56: payrudder.billing.v1.GetHostedInvoiceResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
 	75,  // 57: payrudder.billing.v1.GetHostedInvoiceResponse.adhoc:type_name -> payrudder.billing.v1.HostedAdhoc
 	74,  // 58: payrudder.billing.v1.GetHostedInvoiceResponse.payment_instructions:type_name -> payrudder.billing.v1.BankTransferInstructions
 	76,  // 59: payrudder.billing.v1.HostedAdhoc.pack:type_name -> payrudder.billing.v1.HostedCreditPack
-	185, // 60: payrudder.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 61: payrudder.billing.v1.EInvoiceDocument.next_attempt_at:type_name -> google.protobuf.Timestamp
-	185, // 62: payrudder.billing.v1.EInvoiceDocument.created_at:type_name -> google.protobuf.Timestamp
-	185, // 63: payrudder.billing.v1.EInvoiceDocument.issued_at:type_name -> google.protobuf.Timestamp
-	185, // 64: payrudder.billing.v1.EInvoiceDocument.updated_at:type_name -> google.protobuf.Timestamp
+	187, // 60: payrudder.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 61: payrudder.billing.v1.EInvoiceDocument.next_attempt_at:type_name -> google.protobuf.Timestamp
+	187, // 62: payrudder.billing.v1.EInvoiceDocument.created_at:type_name -> google.protobuf.Timestamp
+	187, // 63: payrudder.billing.v1.EInvoiceDocument.issued_at:type_name -> google.protobuf.Timestamp
+	187, // 64: payrudder.billing.v1.EInvoiceDocument.updated_at:type_name -> google.protobuf.Timestamp
 	80,  // 65: payrudder.billing.v1.GetEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
 	80,  // 66: payrudder.billing.v1.ListEInvoicesResponse.documents:type_name -> payrudder.billing.v1.EInvoiceDocument
-	185, // 67: payrudder.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	187, // 67: payrudder.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
 	80,  // 68: payrudder.billing.v1.RetryEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
 	80,  // 69: payrudder.billing.v1.CancelEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
-	185, // 70: payrudder.billing.v1.StartLinkPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
-	185, // 71: payrudder.billing.v1.RequestHostedPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	187, // 70: payrudder.billing.v1.StartLinkPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	187, // 71: payrudder.billing.v1.RequestHostedPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
 	77,  // 72: payrudder.billing.v1.RequestHostedPaymentResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
-	185, // 73: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
-	185, // 74: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 73: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
+	187, // 74: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
 	100, // 75: payrudder.billing.v1.GetPortalResponse.invoices:type_name -> payrudder.billing.v1.PortalInvoice
 	105, // 76: payrudder.billing.v1.GetPortalResponse.credit_lots:type_name -> payrudder.billing.v1.PortalCreditLot
 	106, // 77: payrudder.billing.v1.GetPortalResponse.credit_packs:type_name -> payrudder.billing.v1.PortalCreditPack
 	104, // 78: payrudder.billing.v1.GetPortalSubscriptionsResponse.subscriptions:type_name -> payrudder.billing.v1.PortalSubscription
-	185, // 79: payrudder.billing.v1.PortalSubscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	185, // 80: payrudder.billing.v1.PortalSubscription.next_renewal_time:type_name -> google.protobuf.Timestamp
-	185, // 81: payrudder.billing.v1.PortalSubscription.end_time:type_name -> google.protobuf.Timestamp
-	185, // 82: payrudder.billing.v1.PortalSubscription.scheduled_time:type_name -> google.protobuf.Timestamp
-	185, // 83: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 84: payrudder.billing.v1.StartPortalPurchaseRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
-	185, // 85: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
-	185, // 86: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 87: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
-	185, // 88: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
+	187, // 79: payrudder.billing.v1.PortalSubscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	187, // 80: payrudder.billing.v1.PortalSubscription.next_renewal_time:type_name -> google.protobuf.Timestamp
+	187, // 81: payrudder.billing.v1.PortalSubscription.end_time:type_name -> google.protobuf.Timestamp
+	187, // 82: payrudder.billing.v1.PortalSubscription.scheduled_time:type_name -> google.protobuf.Timestamp
+	187, // 83: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 84: payrudder.billing.v1.StartPortalPurchaseRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	187, // 85: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
+	187, // 86: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 87: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
+	187, // 88: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
 	109, // 89: payrudder.billing.v1.CreatePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
 	109, // 90: payrudder.billing.v1.GetPaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
 	109, // 91: payrudder.billing.v1.ListPaymentLinksResponse.links:type_name -> payrudder.billing.v1.PaymentLink
 	109, // 92: payrudder.billing.v1.RevokePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
-	185, // 93: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 94: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
-	124, // 95: payrudder.billing.v1.ListCreditPacksResponse.packs:type_name -> payrudder.billing.v1.CreditPack
-	124, // 96: payrudder.billing.v1.CreateCreditPackResponse.pack:type_name -> payrudder.billing.v1.CreditPack
-	185, // 97: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 98: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
-	185, // 99: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
-	131, // 100: payrudder.billing.v1.GetCreditBalanceResponse.lots:type_name -> payrudder.billing.v1.CreditLot
-	185, // 101: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
-	185, // 102: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
-	138, // 103: payrudder.billing.v1.ListCreditLedgerResponse.entries:type_name -> payrudder.billing.v1.CreditLedgerEntry
-	185, // 104: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
-	185, // 105: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
-	185, // 106: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
-	141, // 107: payrudder.billing.v1.CreateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	141, // 108: payrudder.billing.v1.UpdateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	141, // 109: payrudder.billing.v1.VoidExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
-	141, // 110: payrudder.billing.v1.ListExpensesResponse.expenses:type_name -> payrudder.billing.v1.Expense
-	151, // 111: payrudder.billing.v1.DashboardCurrency.top_customers:type_name -> payrudder.billing.v1.DashboardTopCustomer
-	152, // 112: payrudder.billing.v1.DashboardCurrency.aging:type_name -> payrudder.billing.v1.DashboardAgingBucket
-	185, // 113: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
-	153, // 114: payrudder.billing.v1.GetDashboardStatsResponse.currencies:type_name -> payrudder.billing.v1.DashboardCurrency
-	154, // 115: payrudder.billing.v1.GetDashboardStatsResponse.recent_invoices:type_name -> payrudder.billing.v1.DashboardInvoice
-	157, // 116: payrudder.billing.v1.AccountingCurrency.expense_by_category:type_name -> payrudder.billing.v1.AccountingCategoryTotal
-	158, // 117: payrudder.billing.v1.AccountingCurrency.series:type_name -> payrudder.billing.v1.AccountingPoint
-	159, // 118: payrudder.billing.v1.AccountingCurrency.coupons:type_name -> payrudder.billing.v1.AccountingCoupon
-	160, // 119: payrudder.billing.v1.GetAccountingSummaryResponse.currencies:type_name -> payrudder.billing.v1.AccountingCurrency
-	185, // 120: payrudder.billing.v1.InboxItem.receive_time:type_name -> google.protobuf.Timestamp
-	168, // 121: payrudder.billing.v1.ListInboxItemsResponse.items:type_name -> payrudder.billing.v1.InboxItem
-	168, // 122: payrudder.billing.v1.ResolveInboxItemResponse.item:type_name -> payrudder.billing.v1.InboxItem
-	175, // 123: payrudder.billing.v1.ReceiveInboxMailRequest.attachments:type_name -> payrudder.billing.v1.InboxAttachment
-	178, // 124: payrudder.billing.v1.ListExpenseRulesResponse.rules:type_name -> payrudder.billing.v1.ExpenseRule
-	178, // 125: payrudder.billing.v1.SaveExpenseRuleRequest.rule:type_name -> payrudder.billing.v1.ExpenseRule
-	178, // 126: payrudder.billing.v1.SaveExpenseRuleResponse.rule:type_name -> payrudder.billing.v1.ExpenseRule
-	14,  // 127: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
-	16,  // 128: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
-	8,   // 129: payrudder.billing.v1.BillingService.GetUpcomingInvoice:input_type -> payrudder.billing.v1.GetUpcomingInvoiceRequest
-	18,  // 130: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
-	45,  // 131: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
-	48,  // 132: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
-	59,  // 133: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
-	61,  // 134: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
-	81,  // 135: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
-	83,  // 136: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
-	85,  // 137: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
-	68,  // 138: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
-	70,  // 139: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
-	110, // 140: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
-	112, // 141: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
-	114, // 142: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
-	116, // 143: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
-	118, // 144: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
-	120, // 145: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
-	122, // 146: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
-	64,  // 147: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
-	66,  // 148: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
-	125, // 149: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
-	127, // 150: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
-	129, // 151: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
-	132, // 152: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
-	134, // 153: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
-	136, // 154: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
-	139, // 155: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
-	142, // 156: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
-	144, // 157: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
-	146, // 158: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
-	148, // 159: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
-	166, // 160: payrudder.billing.v1.BillingService.GetExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
-	166, // 161: payrudder.billing.v1.BillingService.RotateExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
-	169, // 162: payrudder.billing.v1.BillingService.ListInboxItems:input_type -> payrudder.billing.v1.ListInboxItemsRequest
-	171, // 163: payrudder.billing.v1.BillingService.GetInboxItemFile:input_type -> payrudder.billing.v1.GetInboxItemFileRequest
-	173, // 164: payrudder.billing.v1.BillingService.ResolveInboxItem:input_type -> payrudder.billing.v1.ResolveInboxItemRequest
-	176, // 165: payrudder.billing.v1.BillingService.ReceiveInboxMail:input_type -> payrudder.billing.v1.ReceiveInboxMailRequest
-	179, // 166: payrudder.billing.v1.BillingService.ListExpenseRules:input_type -> payrudder.billing.v1.ListExpenseRulesRequest
-	181, // 167: payrudder.billing.v1.BillingService.SaveExpenseRule:input_type -> payrudder.billing.v1.SaveExpenseRuleRequest
-	183, // 168: payrudder.billing.v1.BillingService.DeleteExpenseRule:input_type -> payrudder.billing.v1.DeleteExpenseRuleRequest
-	156, // 169: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
-	150, // 170: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
-	162, // 171: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
-	164, // 172: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
-	72,  // 173: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
-	78,  // 174: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
-	91,  // 175: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
-	93,  // 176: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
-	94,  // 177: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
-	97,  // 178: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
-	99,  // 179: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
-	102, // 180: payrudder.billing.v1.HostedInvoiceService.GetPortalSubscriptions:input_type -> payrudder.billing.v1.GetPortalSubscriptionsRequest
-	107, // 181: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
-	20,  // 182: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
-	22,  // 183: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
-	24,  // 184: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
-	27,  // 185: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
-	29,  // 186: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
-	12,  // 187: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
-	53,  // 188: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
-	54,  // 189: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
-	56,  // 190: payrudder.billing.v1.BillingAdminService.ResolveCreditNoteRefund:input_type -> payrudder.billing.v1.ResolveCreditNoteRefundRequest
-	87,  // 191: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
-	88,  // 192: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
-	32,  // 193: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
-	34,  // 194: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
-	37,  // 195: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
-	41,  // 196: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
-	43,  // 197: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
-	15,  // 198: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
-	17,  // 199: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
-	9,   // 200: payrudder.billing.v1.BillingService.GetUpcomingInvoice:output_type -> payrudder.billing.v1.GetUpcomingInvoiceResponse
-	19,  // 201: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
-	47,  // 202: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
-	51,  // 203: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
-	60,  // 204: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
-	62,  // 205: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
-	82,  // 206: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
-	84,  // 207: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
-	86,  // 208: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
-	69,  // 209: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
-	71,  // 210: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
-	111, // 211: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
-	113, // 212: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
-	115, // 213: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
-	117, // 214: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
-	119, // 215: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
-	121, // 216: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
-	123, // 217: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
-	65,  // 218: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
-	67,  // 219: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
-	126, // 220: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
-	128, // 221: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
-	130, // 222: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
-	133, // 223: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
-	135, // 224: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
-	137, // 225: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
-	140, // 226: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
-	143, // 227: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
-	145, // 228: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
-	147, // 229: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
-	149, // 230: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
-	167, // 231: payrudder.billing.v1.BillingService.GetExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
-	167, // 232: payrudder.billing.v1.BillingService.RotateExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
-	170, // 233: payrudder.billing.v1.BillingService.ListInboxItems:output_type -> payrudder.billing.v1.ListInboxItemsResponse
-	172, // 234: payrudder.billing.v1.BillingService.GetInboxItemFile:output_type -> payrudder.billing.v1.GetInboxItemFileResponse
-	174, // 235: payrudder.billing.v1.BillingService.ResolveInboxItem:output_type -> payrudder.billing.v1.ResolveInboxItemResponse
-	177, // 236: payrudder.billing.v1.BillingService.ReceiveInboxMail:output_type -> payrudder.billing.v1.ReceiveInboxMailResponse
-	180, // 237: payrudder.billing.v1.BillingService.ListExpenseRules:output_type -> payrudder.billing.v1.ListExpenseRulesResponse
-	182, // 238: payrudder.billing.v1.BillingService.SaveExpenseRule:output_type -> payrudder.billing.v1.SaveExpenseRuleResponse
-	184, // 239: payrudder.billing.v1.BillingService.DeleteExpenseRule:output_type -> payrudder.billing.v1.DeleteExpenseRuleResponse
-	161, // 240: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
-	155, // 241: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
-	163, // 242: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
-	165, // 243: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
-	73,  // 244: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
-	79,  // 245: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
-	92,  // 246: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
-	96,  // 247: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
-	95,  // 248: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
-	98,  // 249: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
-	101, // 250: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
-	103, // 251: payrudder.billing.v1.HostedInvoiceService.GetPortalSubscriptions:output_type -> payrudder.billing.v1.GetPortalSubscriptionsResponse
-	108, // 252: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
-	21,  // 253: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
-	23,  // 254: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
-	25,  // 255: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
-	28,  // 256: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
-	30,  // 257: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
-	13,  // 258: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
-	58,  // 259: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
-	55,  // 260: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
-	57,  // 261: payrudder.billing.v1.BillingAdminService.ResolveCreditNoteRefund:output_type -> payrudder.billing.v1.ResolveCreditNoteRefundResponse
-	89,  // 262: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
-	90,  // 263: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
-	33,  // 264: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
-	35,  // 265: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
-	38,  // 266: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
-	42,  // 267: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
-	44,  // 268: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
-	198, // [198:269] is the sub-list for method output_type
-	127, // [127:198] is the sub-list for method input_type
-	127, // [127:127] is the sub-list for extension type_name
-	127, // [127:127] is the sub-list for extension extendee
-	0,   // [0:127] is the sub-list for field type_name
+	187, // 93: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 94: payrudder.billing.v1.RecordPaymentDisputeRequest.evidence_due_time:type_name -> google.protobuf.Timestamp
+	187, // 95: payrudder.billing.v1.RecordPaymentDisputeRequest.occurred_time:type_name -> google.protobuf.Timestamp
+	187, // 96: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
+	126, // 97: payrudder.billing.v1.ListCreditPacksResponse.packs:type_name -> payrudder.billing.v1.CreditPack
+	126, // 98: payrudder.billing.v1.CreateCreditPackResponse.pack:type_name -> payrudder.billing.v1.CreditPack
+	187, // 99: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 100: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
+	187, // 101: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
+	133, // 102: payrudder.billing.v1.GetCreditBalanceResponse.lots:type_name -> payrudder.billing.v1.CreditLot
+	187, // 103: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
+	187, // 104: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
+	140, // 105: payrudder.billing.v1.ListCreditLedgerResponse.entries:type_name -> payrudder.billing.v1.CreditLedgerEntry
+	187, // 106: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
+	187, // 107: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
+	187, // 108: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
+	143, // 109: payrudder.billing.v1.CreateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	143, // 110: payrudder.billing.v1.UpdateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	143, // 111: payrudder.billing.v1.VoidExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
+	143, // 112: payrudder.billing.v1.ListExpensesResponse.expenses:type_name -> payrudder.billing.v1.Expense
+	153, // 113: payrudder.billing.v1.DashboardCurrency.top_customers:type_name -> payrudder.billing.v1.DashboardTopCustomer
+	154, // 114: payrudder.billing.v1.DashboardCurrency.aging:type_name -> payrudder.billing.v1.DashboardAgingBucket
+	187, // 115: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
+	155, // 116: payrudder.billing.v1.GetDashboardStatsResponse.currencies:type_name -> payrudder.billing.v1.DashboardCurrency
+	156, // 117: payrudder.billing.v1.GetDashboardStatsResponse.recent_invoices:type_name -> payrudder.billing.v1.DashboardInvoice
+	159, // 118: payrudder.billing.v1.AccountingCurrency.expense_by_category:type_name -> payrudder.billing.v1.AccountingCategoryTotal
+	160, // 119: payrudder.billing.v1.AccountingCurrency.series:type_name -> payrudder.billing.v1.AccountingPoint
+	161, // 120: payrudder.billing.v1.AccountingCurrency.coupons:type_name -> payrudder.billing.v1.AccountingCoupon
+	162, // 121: payrudder.billing.v1.GetAccountingSummaryResponse.currencies:type_name -> payrudder.billing.v1.AccountingCurrency
+	187, // 122: payrudder.billing.v1.InboxItem.receive_time:type_name -> google.protobuf.Timestamp
+	170, // 123: payrudder.billing.v1.ListInboxItemsResponse.items:type_name -> payrudder.billing.v1.InboxItem
+	170, // 124: payrudder.billing.v1.ResolveInboxItemResponse.item:type_name -> payrudder.billing.v1.InboxItem
+	177, // 125: payrudder.billing.v1.ReceiveInboxMailRequest.attachments:type_name -> payrudder.billing.v1.InboxAttachment
+	180, // 126: payrudder.billing.v1.ListExpenseRulesResponse.rules:type_name -> payrudder.billing.v1.ExpenseRule
+	180, // 127: payrudder.billing.v1.SaveExpenseRuleRequest.rule:type_name -> payrudder.billing.v1.ExpenseRule
+	180, // 128: payrudder.billing.v1.SaveExpenseRuleResponse.rule:type_name -> payrudder.billing.v1.ExpenseRule
+	14,  // 129: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
+	16,  // 130: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
+	8,   // 131: payrudder.billing.v1.BillingService.GetUpcomingInvoice:input_type -> payrudder.billing.v1.GetUpcomingInvoiceRequest
+	18,  // 132: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
+	45,  // 133: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
+	48,  // 134: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
+	59,  // 135: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
+	61,  // 136: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
+	81,  // 137: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
+	83,  // 138: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
+	85,  // 139: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
+	68,  // 140: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
+	70,  // 141: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
+	110, // 142: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
+	112, // 143: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
+	114, // 144: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
+	116, // 145: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
+	118, // 146: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
+	120, // 147: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
+	122, // 148: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
+	123, // 149: payrudder.billing.v1.BillingService.RecordPaymentDispute:input_type -> payrudder.billing.v1.RecordPaymentDisputeRequest
+	64,  // 150: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
+	66,  // 151: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
+	127, // 152: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
+	129, // 153: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
+	131, // 154: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
+	134, // 155: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
+	136, // 156: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
+	138, // 157: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
+	141, // 158: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
+	144, // 159: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
+	146, // 160: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
+	148, // 161: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
+	150, // 162: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
+	168, // 163: payrudder.billing.v1.BillingService.GetExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
+	168, // 164: payrudder.billing.v1.BillingService.RotateExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
+	171, // 165: payrudder.billing.v1.BillingService.ListInboxItems:input_type -> payrudder.billing.v1.ListInboxItemsRequest
+	173, // 166: payrudder.billing.v1.BillingService.GetInboxItemFile:input_type -> payrudder.billing.v1.GetInboxItemFileRequest
+	175, // 167: payrudder.billing.v1.BillingService.ResolveInboxItem:input_type -> payrudder.billing.v1.ResolveInboxItemRequest
+	178, // 168: payrudder.billing.v1.BillingService.ReceiveInboxMail:input_type -> payrudder.billing.v1.ReceiveInboxMailRequest
+	181, // 169: payrudder.billing.v1.BillingService.ListExpenseRules:input_type -> payrudder.billing.v1.ListExpenseRulesRequest
+	183, // 170: payrudder.billing.v1.BillingService.SaveExpenseRule:input_type -> payrudder.billing.v1.SaveExpenseRuleRequest
+	185, // 171: payrudder.billing.v1.BillingService.DeleteExpenseRule:input_type -> payrudder.billing.v1.DeleteExpenseRuleRequest
+	158, // 172: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
+	152, // 173: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
+	164, // 174: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
+	166, // 175: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
+	72,  // 176: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
+	78,  // 177: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
+	91,  // 178: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
+	93,  // 179: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
+	94,  // 180: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
+	97,  // 181: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
+	99,  // 182: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
+	102, // 183: payrudder.billing.v1.HostedInvoiceService.GetPortalSubscriptions:input_type -> payrudder.billing.v1.GetPortalSubscriptionsRequest
+	107, // 184: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
+	20,  // 185: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
+	22,  // 186: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
+	24,  // 187: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
+	27,  // 188: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
+	29,  // 189: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
+	12,  // 190: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
+	53,  // 191: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
+	54,  // 192: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
+	56,  // 193: payrudder.billing.v1.BillingAdminService.ResolveCreditNoteRefund:input_type -> payrudder.billing.v1.ResolveCreditNoteRefundRequest
+	87,  // 194: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
+	88,  // 195: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
+	32,  // 196: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
+	34,  // 197: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
+	37,  // 198: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
+	41,  // 199: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
+	43,  // 200: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
+	15,  // 201: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
+	17,  // 202: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
+	9,   // 203: payrudder.billing.v1.BillingService.GetUpcomingInvoice:output_type -> payrudder.billing.v1.GetUpcomingInvoiceResponse
+	19,  // 204: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
+	47,  // 205: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
+	51,  // 206: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
+	60,  // 207: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
+	62,  // 208: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
+	82,  // 209: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
+	84,  // 210: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
+	86,  // 211: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
+	69,  // 212: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
+	71,  // 213: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
+	111, // 214: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
+	113, // 215: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
+	115, // 216: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
+	117, // 217: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
+	119, // 218: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
+	121, // 219: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
+	125, // 220: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
+	124, // 221: payrudder.billing.v1.BillingService.RecordPaymentDispute:output_type -> payrudder.billing.v1.RecordPaymentDisputeResponse
+	65,  // 222: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
+	67,  // 223: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
+	128, // 224: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
+	130, // 225: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
+	132, // 226: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
+	135, // 227: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
+	137, // 228: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
+	139, // 229: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
+	142, // 230: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
+	145, // 231: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
+	147, // 232: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
+	149, // 233: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
+	151, // 234: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
+	169, // 235: payrudder.billing.v1.BillingService.GetExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
+	169, // 236: payrudder.billing.v1.BillingService.RotateExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
+	172, // 237: payrudder.billing.v1.BillingService.ListInboxItems:output_type -> payrudder.billing.v1.ListInboxItemsResponse
+	174, // 238: payrudder.billing.v1.BillingService.GetInboxItemFile:output_type -> payrudder.billing.v1.GetInboxItemFileResponse
+	176, // 239: payrudder.billing.v1.BillingService.ResolveInboxItem:output_type -> payrudder.billing.v1.ResolveInboxItemResponse
+	179, // 240: payrudder.billing.v1.BillingService.ReceiveInboxMail:output_type -> payrudder.billing.v1.ReceiveInboxMailResponse
+	182, // 241: payrudder.billing.v1.BillingService.ListExpenseRules:output_type -> payrudder.billing.v1.ListExpenseRulesResponse
+	184, // 242: payrudder.billing.v1.BillingService.SaveExpenseRule:output_type -> payrudder.billing.v1.SaveExpenseRuleResponse
+	186, // 243: payrudder.billing.v1.BillingService.DeleteExpenseRule:output_type -> payrudder.billing.v1.DeleteExpenseRuleResponse
+	163, // 244: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
+	157, // 245: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
+	165, // 246: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
+	167, // 247: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
+	73,  // 248: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
+	79,  // 249: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
+	92,  // 250: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
+	96,  // 251: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
+	95,  // 252: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
+	98,  // 253: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
+	101, // 254: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
+	103, // 255: payrudder.billing.v1.HostedInvoiceService.GetPortalSubscriptions:output_type -> payrudder.billing.v1.GetPortalSubscriptionsResponse
+	108, // 256: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
+	21,  // 257: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
+	23,  // 258: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
+	25,  // 259: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
+	28,  // 260: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
+	30,  // 261: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
+	13,  // 262: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
+	58,  // 263: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
+	55,  // 264: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
+	57,  // 265: payrudder.billing.v1.BillingAdminService.ResolveCreditNoteRefund:output_type -> payrudder.billing.v1.ResolveCreditNoteRefundResponse
+	89,  // 266: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
+	90,  // 267: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
+	33,  // 268: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
+	35,  // 269: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
+	38,  // 270: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
+	42,  // 271: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
+	44,  // 272: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
+	201, // [201:273] is the sub-list for method output_type
+	129, // [129:201] is the sub-list for method input_type
+	129, // [129:129] is the sub-list for extension type_name
+	129, // [129:129] is the sub-list for extension extendee
+	0,   // [0:129] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_billing_v1_billing_proto_init() }
@@ -14332,6 +14571,7 @@ func file_payrudder_billing_v1_billing_proto_init() {
 	if File_payrudder_billing_v1_billing_proto != nil {
 		return
 	}
+	file_payrudder_billing_v1_billing_proto_msgTypes[61].OneofWrappers = []any{}
 	file_payrudder_billing_v1_billing_proto_msgTypes[105].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -14339,7 +14579,7 @@ func file_payrudder_billing_v1_billing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_billing_v1_billing_proto_rawDesc), len(file_payrudder_billing_v1_billing_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   180,
+			NumMessages:   182,
 			NumExtensions: 0,
 			NumServices:   4,
 		},

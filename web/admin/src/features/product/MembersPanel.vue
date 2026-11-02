@@ -3,6 +3,7 @@ import { HeaderAction } from "@/shared/ui/page-header";
 import { LogOut, Mail, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { askConfirm } from "@/shared/lib/confirm";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
 import { FormField } from "@/shared/ui/form-field";
@@ -53,6 +54,25 @@ const remove = useRemoveMember();
 /** An administrator may not touch owners; an owner may touch anybody. */
 const mayHandle = (role: string | undefined) => canManage.value && (role !== "owner" || isOwner.value);
 const nameOf = (m: { display_name?: string; email?: string }) => m.display_name || m.email || "";
+
+/** A role change that takes rights away (owner to administrator or viewer, administrator to viewer) asks first; raising one does not. */
+const RANK: Record<string, number> = { viewer: 0, admin: 1, owner: 2 };
+/** Bumped when the question is refused, so the select that shows the refused choice is drawn again with the member's real role. */
+const roleDrawn = ref(0);
+async function setRole(m: { user_id?: string; role?: string; display_name?: string; email?: string }, to: Role) {
+  const from = m.role ?? "";
+  if ((RANK[to] ?? 0) < (RANK[from] ?? 0)) {
+    const name = nameOf(m);
+    if (!(await askConfirm({ title: t("product.members.lowerTitle", { name }), body: t("product.members.lowerBody", { name, from: t(`product.role.${from}`), to: t(`product.role.${to}`) }) }))) {
+      roleDrawn.value++;
+      return;
+    }
+  }
+  changeRole.mutate({ userId: m.user_id ?? "", role: to });
+}
+async function cancelInvitation(i: { id?: string; email?: string }) {
+  if (await askConfirm({ title: t("product.members.cancelInviteTitle"), body: t("product.members.cancelInviteBody", { email: i.email ?? "" }) })) revokeInvite.mutate(i.id ?? "");
+}
 const when = (v?: string | null) => fmt.date(v, "day");
 const expired = (v?: string | null) => (v ? new Date(v).getTime() < Date.now() : false);
 
@@ -130,11 +150,12 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
             <TableCell>
               <NativeSelect
                 v-if="mayHandle(m.role) && m.user_id !== myId"
+                :key="`${m.user_id}:${roleDrawn}`"
                 class="w-36"
                 :model-value="m.role"
                 :aria-label="t('product.members.roleOf', { name: nameOf(m) })"
                 :disabled="changeRole.isPending.value"
-                @update:model-value="(v) => changeRole.mutate({ userId: m.user_id ?? '', role: String(v) as Role })"
+                @update:model-value="(v) => setRole(m, String(v) as Role)"
               >
                 <option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option>
               </NativeSelect>
@@ -188,7 +209,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
               v-if="mayHandle(i.role)"
               :actions="[
                 { key: 'resend', label: t('product.members.resend'), icon: RefreshCw, disabled: resendInvite.isPending.value, onSelect: () => resendInvite.mutate(i.id ?? '') },
-                { key: 'cancel', label: t('product.members.cancel'), icon: X, destructive: true, separatorBefore: true, disabled: revokeInvite.isPending.value, onSelect: () => revokeInvite.mutate(i.id ?? '') },
+                { key: 'cancel', label: t('product.members.cancel'), icon: X, destructive: true, separatorBefore: true, disabled: revokeInvite.isPending.value, onSelect: () => cancelInvitation(i) },
               ]"
               :label="`${t('common.moreActions')} ${i.email}`"
             />

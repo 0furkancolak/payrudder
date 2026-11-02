@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
+import { ArrowUpRight } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import type { Redemption } from "./api";
 import { targetKey } from "./promotions";
@@ -27,6 +29,7 @@ const amount = (r: Redemption) => (r.discount_minor && r.discount_minor !== "0" 
         <TableHead class="max-md:hidden">{{ t("billing.coupons.redemptions.invoice") }}</TableHead>
         <TableHead class="text-end">{{ t("billing.pricing.promotions.redemptions.discount") }}</TableHead>
         <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
+        <TableHead class="w-px"><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
@@ -44,6 +47,7 @@ const amount = (r: Redemption) => (r.discount_minor && r.discount_minor !== "0" 
           <Badge v-if="r.reverse_time" variant="secondary" :title="fmt.date(r.reverse_time, 'short', '')">{{ t("billing.pricing.promotions.redemptions.reversed") }}</Badge>
           <Badge v-else variant="success">{{ t("billing.pricing.promotions.redemptions.counted") }}</Badge>
         </TableCell>
+        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => emit('select', i) }]" :label="`${t('common.view')} ${r.promotion_code || r.coupon_code}`" /></TableCell>
       </TableRow>
     </TableBody>
   </Table>

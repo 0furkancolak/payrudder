@@ -28,6 +28,9 @@ type AuditEvent struct {
 	SourceIp   string
 	RequestID  string
 	CreatedAt  time.Time
+	Seq        int64
+	PrevHash   string
+	RowHash    string
 }
 
 type EinvoiceAccount struct {
@@ -103,6 +106,26 @@ type PaymentAttempt struct {
 	CreatedAt      time.Time
 	FinishedAt     *time.Time
 	ProviderRef    *string
+}
+
+type PaymentDispute struct {
+	ID             int64
+	TenantID       uuid.UUID
+	Environment    string
+	Provider       string
+	DisputeRef     string
+	PaymentRef     string
+	InvoiceID      *uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	Outcome        string
+	Formal         bool
+	ProviderStatus string
+	Reason         string
+	EvidenceDueAt  *time.Time
+	OpenedAt       time.Time
+	ClosedAt       *time.Time
+	UpdatedAt      time.Time
 }
 
 type PaymentLedger struct {

@@ -2,7 +2,7 @@
 import { useI18n } from "vue-i18n";
 import { modeWord, windowWord } from "@/features/meters/quota";
 import { useFormat } from "@/shared/lib/format";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEntitlements } from "./api";
@@ -31,7 +31,7 @@ const status = (e: Item): { variant: "success" | "destructive" | "secondary"; te
 <template>
   <div role="region" :aria-label="t('billing.subscriptions.usage')" class="grid gap-2">
     <h3 class="text-base font-semibold">{{ t("billing.subscriptions.usage") }}</h3>
-    <ErrorText :error="entitlements.error.value" />
+    <ErrorState :error="entitlements.error.value" :retrying="entitlements.isFetching.value" compact class="mx-0" @retry="entitlements.refetch()" />
     <Table v-if="(entitlements.data.value?.items ?? []).length > 0">
       <TableHeader>
         <TableRow class="hover:bg-transparent">

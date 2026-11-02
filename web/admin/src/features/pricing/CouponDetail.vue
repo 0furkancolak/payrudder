@@ -7,6 +7,7 @@ import { useFormat } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { DetailList } from "@/shared/ui/detail-list";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useCodeActions, usePromotionCodes, useRedemptions, type Coupon } from "./api";
@@ -52,7 +53,7 @@ const rows = computed(() => {
         <h3 class="text-base font-semibold">{{ t("billing.coupons.tabs.codes") }}</h3>
         <Button v-if="coupon.active" type="button" size="sm" variant="outline" :disabled="!canWrite" data-testid="detail-new-code" @click="emit('newCode', code)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
       </div>
-      <ErrorText :error="codes.error.value" />
+      <ErrorState :error="codes.error.value" :retrying="codes.isFetching.value" compact class="mx-0" @retry="codes.refetch()" />
       <ErrorText :error="act.deactivate.error.value" />
       <Skeleton v-if="codes.isPending.value" class="h-16 w-full" />
       <p v-else-if="(codes.data.value?.codes ?? []).length === 0" class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.codes.none") }}</p>
@@ -62,7 +63,7 @@ const rows = computed(() => {
 
     <section class="flex flex-col gap-3" :aria-label="t('billing.coupons.tabs.redemptions')">
       <h3 class="text-base font-semibold">{{ t("billing.coupons.tabs.redemptions") }}</h3>
-      <ErrorText :error="redemptions.error.value" />
+      <ErrorState :error="redemptions.error.value" :retrying="redemptions.isFetching.value" compact class="mx-0" @retry="redemptions.refetch()" />
       <Skeleton v-if="redemptions.isPending.value" class="h-16 w-full" />
       <p v-else-if="(redemptions.data.value?.redemptions ?? []).length === 0" class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.redemptions.none") }}</p>
       <RedemptionsTable v-else :rows="redemptions.data.value?.redemptions ?? []" :tenant-id="tenantId" :show-coupon="false" />

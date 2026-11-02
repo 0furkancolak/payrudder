@@ -160,6 +160,15 @@ func testSupportDeskExtras(t *testing.T) {
 				t.Errorf("the person's list shows tags on %s: %v", x.GetId(), x.GetTags())
 			}
 		}
+		// Nor does the history: the line "tags: -> refund,vat" is the operator's, whoever asks for the ticket.
+		if len(mineOne.GetEvents()) == 0 {
+			t.Error("the person's history is empty, the check below proves nothing")
+		}
+		for _, ev := range mineOne.GetEvents() {
+			if ev.GetKind() == "tags" || strings.Contains(ev.GetFromValue()+ev.GetToValue(), "refund") {
+				t.Errorf("the person reads the operator's tags in the history: %+v", ev)
+			}
+		}
 		for name, tags := range map[string][]string{"a word that is no tag": {"Bad Tag!"}, "too many": {"a", "b", "c", "d", "e", "f"}, "too long": {strings.Repeat("x", 31)}} {
 			_, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: id, SetTags: true, Tags: tags})
 			wantCode(t, name, err, codes.InvalidArgument, "plans.request.invalid")

@@ -103,7 +103,9 @@ type Config struct {
 	// least time between two resets a person asks for.
 	SandboxRetention     time.Duration `env:"PAYRUDDER_SANDBOX_RETENTION"`
 	SandboxResetCooldown time.Duration `env:"PAYRUDDER_SANDBOX_RESET_COOLDOWN"`
-	// OTPPepper keys the hash of one-time sign-in codes (a secret, never in YAML). Without it the hash is salted but unkeyed: fine for development, set it in production.
+	// OTPPepper keys the hash of the one-time sign-in codes and of the recovery codes (a secret, never in YAML). Optional only in a development environment
+	// (PAYRUDDER_ENV local, ci or kind), where without it the hash is salted but unkeyed; anywhere else it is required, 32 characters or more, and not a value this
+	// repository publishes (Validate).
 	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
 	// AffiliateApproveEvery is how often the job that ends the hold of affiliate commissions looks (phase 47). The holds are days long; an hour is plenty.
 	AffiliateApproveEvery time.Duration `env:"PAYRUDDER_AFFILIATE_APPROVE_EVERY"`
@@ -130,8 +132,30 @@ func (c *Config) saasConfig() saascmd.Config {
 	return saascmd.Config{Enabled: on, Environment: env.Env(c.SaasEnvironment), Currency: c.SaasCurrency, TrialDays: c.SaasTrialDays, SweepEvery: c.SaasSweepEvery}
 }
 
+// publicPeppers are the values this repository ships as a pepper: the compose stack's default, the Helm chart's default until the security review, and the
+// placeholder of the secrets example. Anybody can read them, so outside a development environment they are no pepper at all.
+var publicPeppers = []string{"local-otp-pepper-change-me-0123456789", "CHANGE-ME-32-characters-or-more-xxxxxxxxx"}
+
+// checkPepper refuses a missing, short or published pepper unless this is a development environment. The codes it keys have a million (sign-in) and about 2^50
+// (recovery) values, so a hash of them under a key everybody knows is no protection once the table leaks.
+func (c *Config) checkPepper() error {
+	if c.Env.Development() {
+		return nil
+	}
+	const how = ": generate one with `openssl rand -hex 32` (it keys the hash of the sign-in and recovery codes; a development environment, PAYRUDDER_ENV local, ci or kind, may go without)"
+	switch {
+	case c.OTPPepper == "":
+		return errors.New("PAYRUDDER_OTP_PEPPER is required" + how)
+	case slices.Contains(publicPeppers, c.OTPPepper):
+		return errors.New("PAYRUDDER_OTP_PEPPER is a value this repository publishes, so it protects nothing" + how)
+	case len(c.OTPPepper) < 32:
+		return errors.New("PAYRUDDER_OTP_PEPPER must be at least 32 characters" + how)
+	}
+	return nil
+}
+
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate()}
+	errs := []error{c.Base.Validate(), c.checkPepper()}
 	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
 		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))

@@ -28,6 +28,7 @@ enum WebhookEventType: string
     case PaymentLinkCreated = 'payment_link.created';
     case PaymentLinkPaid = 'payment_link.paid';
     case PaymentLinkExpired = 'payment_link.expired';
+    case PaymentDisputed = 'payment.disputed';
     case CreditsPurchased = 'credits.purchased';
     case CreditsLow = 'credits.low';
     case CustomerBlocked = 'customer.blocked';

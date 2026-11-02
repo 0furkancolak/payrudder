@@ -7,8 +7,10 @@ import { ListTree, Pause, Play, RefreshCw, Send, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useShell } from "@/app/layout/useShell";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -34,6 +36,7 @@ import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
 const fmt = useFormat();
+const canWrite = useCanWrite();
 const tenantId = useRouteTenantId();
 const endpoints = useWebhookEndpoints(tenantId);
 const act = useWebhookActions(tenantId);
@@ -79,13 +82,14 @@ function clearDeliveries() {
 }
 type Endpoint = (typeof list.value)[number];
 function actionsOf(e: Endpoint, i: number): RowAction[] {
+  // A viewer may read the deliveries; the server refuses the rest.
   return [
     { key: "deliveries", label: t("billing.webhooks.deliveries"), icon: ListTree, onSelect: () => endpointsTable.open(i) },
     { key: "test", label: t("billing.webhooks.test"), icon: Send, disabled: act.test.isPending.value, onSelect: () => act.test.mutate(e.id ?? "") },
     { key: "toggle", label: e.active ? t("billing.webhooks.pause") : t("billing.webhooks.resume"), icon: e.active ? Pause : Play, onSelect: () => toggle(e) },
     { key: "rotate", label: t("billing.webhooks.rotate"), icon: RefreshCw, onSelect: () => rotate(e.id) },
     { key: "delete", label: t("billing.webhooks.delete"), icon: Trash2, destructive: true, separatorBefore: true, onSelect: () => remove(e.id) },
-  ];
+  ].filter((a) => canWrite.value || a.key === "deliveries");
 }
 const deliveryStates = computed(() => [...new Set(log.value.map((d) => d.state as string | undefined).filter((s): s is string => !!s))].sort());
 /** A secret is shown right after it is made and never again. */
@@ -169,15 +173,15 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
     <p class="mono break-all text-sm" data-testid="webhook-secret">{{ secret }}</p>
   </div>
   <ErrorText :error="failure" class="mb-3" />
-  <ErrorText :error="endpoints.error.value" class="mb-3" />
+  <ErrorState :error="endpoints.error.value" :retrying="endpoints.isFetching.value" class="mb-3" @retry="endpoints.refetch()" />
 
   <Card class="mb-6 p-3">
     <DataToolbar v-model:search="endpointsTable.search.value" :active="endpointsTable.active.value" @clear="endpointsTable.clear()">
       <SortSelect v-if="endpointsTable.sorts.value.length > 0" v-model="endpointsTable.sort.value" :options="endpointsTable.sorts.value" />
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
-      <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
+      <HeaderAction v-if="canWrite" test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>
-    <BulkBar v-bind="bulk.bar.value" @clear="endpointsTable.clearSelection()" @select-all="bulk.selectAll()">
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="endpointsTable.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-pause" @click="bulkPause">{{ t("billing.webhooks.pause") }}</Button>
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-resume" @click="bulkResume">{{ t("billing.webhooks.resume") }}</Button>
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-delete" @click="bulkDelete">{{ t("billing.webhooks.delete") }}</Button>
@@ -186,7 +190,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
-          <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="endpointsTable.allOnPage.value" :indeterminate="endpointsTable.someOnPage.value && !endpointsTable.allOnPage.value" @change="endpointsTable.togglePage()" /></TableHead>
+          <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="endpointsTable.allOnPage.value" :indeterminate="endpointsTable.someOnPage.value && !endpointsTable.allOnPage.value" @change="endpointsTable.togglePage()" /></TableHead>
           <TableHead>{{ t("billing.webhooks.url") }}</TableHead>
           <TableHead class="max-md:hidden">{{ t("billing.webhooks.events") }}</TableHead>
           <TableHead>{{ t("billing.webhooks.status") }}</TableHead>
@@ -195,7 +199,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       </TableHeader>
       <TableBody>
         <TableRow v-for="(e, i) in endpointsTable.items.value" :key="e.id" class="cursor-pointer" @click="endpointsTable.open(i)">
-          <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${e.url}`" :checked="endpointsTable.isTicked(e)" @change="(on) => endpointsTable.tick(e, on)" /></TableCell>
+          <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${e.url}`" :checked="endpointsTable.isTicked(e)" @change="(on) => endpointsTable.tick(e, on)" /></TableCell>
           <TableCell>
             <span class="mono text-sm break-all">{{ e.url }}</span>
             <span v-if="insecureNote(e.url)" class="text-warning block text-xs" data-testid="webhook-insecure-row">{{ insecureNote(e.url) }}</span>
@@ -219,7 +223,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         <Badge :variant="current.active ? 'success' : 'secondary'">{{ current.active ? t("billing.webhooks.active") : t("billing.webhooks.paused") }}</Badge>
         <span class="text-muted-foreground text-xs">{{ current.event_types?.length ? current.event_types.join(", ") : t("billing.webhooks.allEvents") }}</span>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div v-if="canWrite" class="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" :disabled="act.test.isPending.value" @click="act.test.mutate(current.id ?? '')"><Send class="size-4" aria-hidden="true" />{{ t("billing.webhooks.test") }}</Button>
         <Button size="sm" variant="outline" @click="toggle(current)"><component :is="current.active ? Pause : Play" class="size-4" aria-hidden="true" />{{ current.active ? t("billing.webhooks.pause") : t("billing.webhooks.resume") }}</Button>
         <Button size="sm" variant="outline" @click="rotate(current.id)"><RefreshCw class="size-4" aria-hidden="true" />{{ t("billing.webhooks.rotate") }}</Button>
@@ -258,7 +262,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
                 </div>
               </TableCell>
               <TableCell class="max-w-24 text-xs">{{ when(d.create_time) }}</TableCell>
-              <TableCell><RowActions :actions="[{ key: 'redeliver', label: t('billing.webhooks.redeliver'), disabled: act.redeliver.isPending.value, onSelect: () => act.redeliver.mutate(d.id ?? '') }]" /></TableCell>
+              <TableCell><RowActions v-if="canWrite" :actions="[{ key: 'redeliver', label: t('billing.webhooks.redeliver'), disabled: act.redeliver.isPending.value, onSelect: () => act.redeliver.mutate(d.id ?? '') }]" /></TableCell>
             </TableRow>
           </TableBody>
         </Table>

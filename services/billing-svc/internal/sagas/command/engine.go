@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 )
 
 // MaxStepAttempts is how often the sweeper issues the command of one step before giving up.
@@ -51,9 +52,11 @@ type Config struct {
 	Log        *slog.Logger
 	// Tenants, when set, is asked for the environment of the saga's tenant before a command goes out (see publishCommand).
 	Tenants *env.Directory
-	// Hold, when set, says whether the operator has taken the tenant out of service (suspended, frozen or banned). The dunning sweep makes no charge for a tenant on hold:
-	// it puts the retry off by DunningHold and looks again. An error is not an answer: the saga is left as it is and the next pass asks again.
-	Hold func(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// Gate, when set, is the payment gate for an invoice that is already out (pkg/paymentgate, op pay an invoice) for the customer with this external id: whether the
+	// operator has taken the tenant out of service (suspended, frozen or banned), or the seller has blocked the customer for fraud or a chargeback. The first charge of an
+	// invoice that is finalized while it says no is held (PAYMENT_HELD), and the dunning sweep makes no charge it says no to: it puts the retry off by DunningHold and looks
+	// again. An error is not an answer: the saga is left as it is and the next pass asks again.
+	Gate func(ctx context.Context, tenantID uuid.UUID, customerExternalID string) (paymentgate.Verdict, error)
 	// PayLink, when set, makes the link to the invoice's page that the customer is mailed when the provider needs them to act (3-D Secure): an absolute URL, or "" when
 	// there is none to give (no public address is set, or the link could not be made). It runs while the saga's transaction is open, in its own, as every link is made.
 	PayLink func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error)

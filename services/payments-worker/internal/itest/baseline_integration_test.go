@@ -13,3 +13,8 @@ import (
 func TestBaselineMigrationsDownUp(t *testing.T) {
 	testkit.MigrationCycle(t, "payments", migrations.FS)
 }
+
+// The audit log is a hash chain on this service's migrations (plan 22 G4): written in order by the trigger, whole for the verifier, and a changed entry is found.
+func TestAuditChain(t *testing.T) {
+	testkit.AuditChain(t, "payments", migrations.FS)
+}

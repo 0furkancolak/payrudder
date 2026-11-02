@@ -12,6 +12,7 @@ import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -115,7 +116,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
       <HeaderAction :disabled="!canWrite" :label="t('affiliates.partners.add')" @click="addOpen = true" />
     </DataToolbar>
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <ErrorText :error="update.error.value" class="px-3" />
     <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-approve" @click="bulkApprove">{{ t("affiliates.partners.bulk.approve") }}</Button>

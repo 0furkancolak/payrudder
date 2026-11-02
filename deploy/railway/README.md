@@ -86,7 +86,7 @@ each service its health check, restart policy and watch paths. Until then it sti
    | `MINIO_ROOT_PASSWORD` | `minio` | `openssl rand -hex 24` |
    | `CLICKHOUSE_PASSWORD` | `clickhouse` | `openssl rand -hex 24` |
    | `PAYRUDDER_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters; the API's machine credential) |
-   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in codes) |
+   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in and recovery codes; plans-svc refuses to start without it, and `PAYRUDDER_ENV=railway` is not a development environment) |
    | `PAYMENTS_INTERNAL_TOKEN` | `payments-worker` | `openssl rand -hex 32` |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | `notifier` | `openssl rand -hex 32` (signs the notifier's mail-events listener; the gateway refers to it) |
    | `PAYRUDDER_SECRETS_KEY` | `payments-worker` | `openssl rand -base64 32` (exactly 32 bytes; seals tenants' provider credentials and webhook secrets) |
@@ -128,6 +128,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PORT` | `8000` | the HTTP API; the public domain's port |
 | `PAYRUDDER_OPERATOR_TOKEN` | generated | at least 32 characters; the machine credential of the operator API (scripts, `payrudderctl`); never typed into the console |
 | `PAYRUDDER_OPERATOR_EMAILS` | e.g. `you@example.com` | comma separated; people who sign in with one of these and have verified it are platform operators (empty: nobody) |
+| `PAYRUDDER_OPERATOR_REQUIRE_2FA` | unset (on) | operators need two-factor sign-in: unset it is on here (`PAYRUDDER_ENV=railway`); an operator sets it up on the console's security page first ([how](../../docs/audit-log-and-two-factor.md#two-factor-sign-in)) |
 | `PAYRUDDER_TRUSTED_PROXY_SECRET` | generated, 32+ characters | only with the console on Cloudflare: the same value as the Worker secret `EDGE_AUTH_SECRET`; makes the gateway count sign-in limits per visitor ([runbook](../../docs/runbooks/console-first-deploy.md)) |
 | `PAYRUDDER_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |
 | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` | from Google | optional: both set shows "Continue with Google" ([how](../../docs/13-admin-ui.md#sign-in-methods)); register `<console domain>/gw/auth/google/callback` as the redirect URI |

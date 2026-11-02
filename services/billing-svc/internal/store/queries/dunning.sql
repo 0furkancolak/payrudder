@@ -1,17 +1,19 @@
 -- Dunning settings (tenant-scoped, billing_app) and the dunning report.
 
 -- name: GetDunningSettings :one
-SELECT retry_hours, updated_at FROM dunning_settings WHERE tenant_id = @tenant_id;
+SELECT retry_hours, updated_at, block_on_chargeback FROM dunning_settings WHERE tenant_id = @tenant_id;
 
 -- name: UpsertDunningSettings :one
-INSERT INTO dunning_settings (tenant_id, retry_hours) VALUES (@tenant_id, @retry_hours)
-ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now()
-RETURNING updated_at;
+-- block_on_chargeback is kept when the request does not name it.
+INSERT INTO dunning_settings (tenant_id, retry_hours, block_on_chargeback) VALUES (@tenant_id, @retry_hours, COALESCE(sqlc.narg('block_on_chargeback')::boolean, false))
+ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now(),
+  block_on_chargeback = COALESCE(sqlc.narg('block_on_chargeback')::boolean, dunning_settings.block_on_chargeback)
+RETURNING updated_at, block_on_chargeback;
 
 -- name: DunningSummary :many
 SELECT sg.state, i.provider, i.currency, count(*) AS invoices, COALESCE(sum(i.total_minor), 0)::bigint AS total_minor
 FROM invoice_sagas sg JOIN invoices i ON i.tenant_id = sg.tenant_id AND i.id = sg.invoice_id
-WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'UNCOLLECTIBLE')
+WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'PAYMENT_HELD', 'UNCOLLECTIBLE')
 GROUP BY 1, 2, 3
 ORDER BY 1, 2, 3;
 
@@ -19,6 +21,6 @@ ORDER BY 1, 2, 3;
 SELECT i.id::text AS invoice_id, COALESCE(i.number, '')::text AS number, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id,
        i.period_id, i.provider, i.currency, i.total_minor, sg.state, sg.dunning_attempt, sg.next_attempt_at, COALESCE(sg.last_error, '')::text AS last_error
 FROM invoice_sagas sg JOIN invoices i ON i.tenant_id = sg.tenant_id AND i.id = sg.invoice_id
-WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'UNCOLLECTIBLE')
+WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'PAYMENT_HELD', 'UNCOLLECTIBLE')
 ORDER BY i.created_at, i.id
 LIMIT @row_limit;

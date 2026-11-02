@@ -16,7 +16,7 @@ const dunningInvoices = `-- name: DunningInvoices :many
 SELECT i.id::text AS invoice_id, COALESCE(i.number, '')::text AS number, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id,
        i.period_id, i.provider, i.currency, i.total_minor, sg.state, sg.dunning_attempt, sg.next_attempt_at, COALESCE(sg.last_error, '')::text AS last_error
 FROM invoice_sagas sg JOIN invoices i ON i.tenant_id = sg.tenant_id AND i.id = sg.invoice_id
-WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'UNCOLLECTIBLE')
+WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'PAYMENT_HELD', 'UNCOLLECTIBLE')
 ORDER BY i.created_at, i.id
 LIMIT $1
 `
@@ -70,7 +70,7 @@ func (q *Queries) DunningInvoices(ctx context.Context, rowLimit int32) ([]Dunnin
 const dunningSummary = `-- name: DunningSummary :many
 SELECT sg.state, i.provider, i.currency, count(*) AS invoices, COALESCE(sum(i.total_minor), 0)::bigint AS total_minor
 FROM invoice_sagas sg JOIN invoices i ON i.tenant_id = sg.tenant_id AND i.id = sg.invoice_id
-WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'UNCOLLECTIBLE')
+WHERE sg.state IN ('PAYMENT_DECLINED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED', 'PAYMENT_HELD', 'UNCOLLECTIBLE')
 GROUP BY 1, 2, 3
 ORDER BY 1, 2, 3
 `
@@ -111,36 +111,45 @@ func (q *Queries) DunningSummary(ctx context.Context) ([]DunningSummaryRow, erro
 
 const getDunningSettings = `-- name: GetDunningSettings :one
 
-SELECT retry_hours, updated_at FROM dunning_settings WHERE tenant_id = $1
+SELECT retry_hours, updated_at, block_on_chargeback FROM dunning_settings WHERE tenant_id = $1
 `
 
 type GetDunningSettingsRow struct {
-	RetryHours []int32
-	UpdatedAt  time.Time
+	RetryHours        []int32
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
 }
 
 // Dunning settings (tenant-scoped, billing_app) and the dunning report.
 func (q *Queries) GetDunningSettings(ctx context.Context, tenantID uuid.UUID) (GetDunningSettingsRow, error) {
 	row := q.db.QueryRow(ctx, getDunningSettings, tenantID)
 	var i GetDunningSettingsRow
-	err := row.Scan(&i.RetryHours, &i.UpdatedAt)
+	err := row.Scan(&i.RetryHours, &i.UpdatedAt, &i.BlockOnChargeback)
 	return i, err
 }
 
 const upsertDunningSettings = `-- name: UpsertDunningSettings :one
-INSERT INTO dunning_settings (tenant_id, retry_hours) VALUES ($1, $2)
-ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now()
-RETURNING updated_at
+INSERT INTO dunning_settings (tenant_id, retry_hours, block_on_chargeback) VALUES ($1, $2, COALESCE($3::boolean, false))
+ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now(),
+  block_on_chargeback = COALESCE($3::boolean, dunning_settings.block_on_chargeback)
+RETURNING updated_at, block_on_chargeback
 `
 
 type UpsertDunningSettingsParams struct {
-	TenantID   uuid.UUID
-	RetryHours []int32
+	TenantID          uuid.UUID
+	RetryHours        []int32
+	BlockOnChargeback *bool
 }
 
-func (q *Queries) UpsertDunningSettings(ctx context.Context, arg UpsertDunningSettingsParams) (time.Time, error) {
-	row := q.db.QueryRow(ctx, upsertDunningSettings, arg.TenantID, arg.RetryHours)
-	var updated_at time.Time
-	err := row.Scan(&updated_at)
-	return updated_at, err
+type UpsertDunningSettingsRow struct {
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
+}
+
+// block_on_chargeback is kept when the request does not name it.
+func (q *Queries) UpsertDunningSettings(ctx context.Context, arg UpsertDunningSettingsParams) (UpsertDunningSettingsRow, error) {
+	row := q.db.QueryRow(ctx, upsertDunningSettings, arg.TenantID, arg.RetryHours, arg.BlockOnChargeback)
+	var i UpsertDunningSettingsRow
+	err := row.Scan(&i.UpdatedAt, &i.BlockOnChargeback)
+	return i, err
 }

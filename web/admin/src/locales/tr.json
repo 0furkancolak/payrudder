@@ -17,14 +17,9 @@
     }
   },
   "nav": {
-    "tenants": "Kiracılar",
-    "playground": "Oyun alanı",
-    "deadLetters": "Ölü mektuplar",
     "signOut": "Çıkış yap"
   },
   "common": {
-    "loading": "Yükleniyor…",
-    "unknown": "?",
     "cancel": "Vazgeç",
     "copied": "Kopyalandı",
     "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın.",
@@ -36,7 +31,6 @@
     "noMatches": "Bu filtrelere uyan kayıt yok.",
     "moreActions": "Diğer işlemler",
     "view": "Görüntüle",
-    "openFullPage": "Tam sayfada aç",
     "all": "Tümü",
     "confirm": {
       "title": "Emin misiniz?",
@@ -130,7 +124,8 @@
       "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı",
       "settlement_missing": "Ödendi, sağlayıcı mutabakatında yok",
       "settlement_mismatch": "Mutabık tutar farklı",
-      "fee_mismatch": "Sağlayıcı komisyonu farklı"
+      "fee_mismatch": "Sağlayıcı komisyonu farklı",
+      "payment_disputed": "Ödemeye itiraz, karara bağlanmadı"
     },
     "ledgerKind": {
       "charge": "tahsilat",
@@ -154,7 +149,8 @@
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
       "UNCOLLECTIBLE": "vazgeçildi",
-      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "sagaState": {
       "PAYMENT_PENDING": "havale bekleniyor",
@@ -176,7 +172,8 @@
       "REFUNDED": "iade edildi",
       "VOIDED": "iptal edildi",
       "AWAITING_PAYMENT": "ödeme bekleniyor",
-      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "paymentMethod": {
       "bank_transfer": "Banka havalesi",
@@ -223,6 +220,16 @@
       "not_reported": "Ödendi, bildirilmedi",
       "pending_payout": "Bildirildi, ödeme bekliyor",
       "settled": "Mutabık"
+    },
+    "disputeReason": {
+      "fraudulent": "Sahtecilik iddiası",
+      "general": "Genel",
+      "product_not_received": "Ürün alınmadı",
+      "product_unacceptable": "Ürün kabul edilemez",
+      "subscription_canceled": "Abonelik iptal edildi",
+      "duplicate": "Mükerrer ödeme",
+      "unrecognized": "Tanınmayan işlem",
+      "credit_not_processed": "İade işlenmedi"
     }
   },
   "tenants": {
@@ -241,7 +248,6 @@
     "allCurrencies": "Tüm para birimleri",
     "suspend": "Dondur",
     "reinstate": "Yeniden etkinleştir",
-    "suspended": "Donduruldu",
     "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz.",
     "pricePause": {
       "title": "Fiyat değişiklikleri",
@@ -259,7 +265,6 @@
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
-    "grace": "ek süre {value}",
     "invoices": "Faturalar",
     "noInvoices": "Fatura yok.",
     "draft": "(taslak)",
@@ -347,19 +352,6 @@
     }
   },
   "invoice": {
-    "summary": "{kind} · dönem {period} · {customer} · {total} · {status} · saga {saga}",
-    "openPdf": "PDF'yi aç",
-    "noPdfLink": "bağlantı yok",
-    "lines": "Kalemler",
-    "lineColumns": {
-      "no": "#",
-      "kind": "Tür",
-      "description": "Açıklama",
-      "meter": "Sayaç",
-      "quantity": "Miktar",
-      "amount": "Tutar",
-      "period": "Hizmet dönemi"
-    },
     "saga": "Saga zaman çizelgesi",
     "sagaColumns": {
       "seq": "Sıra",
@@ -494,9 +486,7 @@
       "formLabel": "yeni hesap",
       "name": "Hesap adı",
       "currency": "Para birimi",
-      "currencyPlaceholder": "Para birimi (sonradan değişmez)",
       "timezone": "Saat dilimi",
-      "timezonePlaceholder": "IANA saat dilimi, örn. Europe/Istanbul",
       "grace": "Ek süre (saat)",
       "gracePlaceholder": "Ek süre, saat (0 ile 168)",
       "create": "Hesap oluştur",
@@ -564,23 +554,7 @@
   },
   "billing": {
     "tabs": {
-      "label": "Kiracı bölümleri",
-      "overview": "Genel bakış",
-      "customers": "Müşteriler",
-      "packages": "Paketler",
-      "subscriptions": "Abonelikler",
-      "payments": "Ödemeler",
-      "providers": "Sağlayıcılar",
-      "reports": "Raporlar",
-      "pricing": "Kupon ve vergi",
-      "webhooks": "Webhooklar",
-      "einvoice": "E-fatura",
-      "paymentLinks": "Ödeme bağlantıları",
-      "mail": "E-posta",
-      "apps": "Uygulamalar",
-      "address": "Satıcı adresi",
-      "credits": "Krediler",
-      "accounting": "Muhasebe"
+      "subscriptions": "Abonelikler"
     },
     "common": {
       "remove": "Kaldır"
@@ -692,7 +666,6 @@
         "badge": "Engelli",
         "action": "Engelle",
         "lift": "Engeli kaldır",
-        "confirm": "{name} engellensin mi? Onun için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
         "confirmMany": "{n} müşteri engellensin mi? Onlar için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
         "title": "{name} müşterisini engelle",
         "description": "Bu müşteri için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
@@ -734,7 +707,20 @@
         "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir.",
         "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklenirdi: kalemlerin toplamı sıfırın altında."
       },
-      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin."
+      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin.",
+      "cards": {
+        "title": "Kayıtlı kartlar",
+        "card": "Kart",
+        "none": "Ödeme sağlayıcısında bu müşteri için kayıtlı kart yok.",
+        "inUse": "Faturalar bununla tahsil edilir",
+        "delete": "Kartı sil",
+        "deleteAria": "{last4} ile biten kartı sil",
+        "deleteTitle": "{last4} ile biten kart silinsin mi?",
+        "deleteBody": "Kart ödeme sağlayıcısında silinir ve artık tahsilat yapılamaz. Bu geri alınamaz: müşteri kartı, kartın kaydedildiği yerde yeniden girmek zorunda kalır.",
+        "deleteInUse": "Müşterinin faturalarının tahsil edildiği kart bu. Silindikten sonra müşteriye yeni bir ödeme yöntemi tanımlanana kadar sonraki tahsilat başarısız olur. Kart ödeme sağlayıcısında silinir ve bu geri alınamaz.",
+        "deletedInUse": "Kart silindi. Müşterinin faturalarının tahsil edildiği karttı: müşteriye yeni bir ödeme yöntemi tanımlayın.",
+        "hint": "Payrudder kart numarası tutmaz: kart, ödeyenin yazdığı yerde kaydedilir ve müşterinin ödeme yöntemi onu gösterir. Burada kartları görebilir ve birini silebilirsiniz."
+      }
     },
     "packages": {
       "new": "Yeni paket",
@@ -1026,20 +1012,14 @@
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
-      "reconcileHint": "Faturalamanın bir dönemde ödenmiş saydığı faturaları, sağlayıcıların bildirdiği başarılı tahsilatlarla karşılaştırır.",
       "period": "Dönem (YYYY-AA)",
       "run": "Mutabık ol",
-      "reconcileResult": "mutabakat sonucu",
-      "summary": "{paid} ödenmiş fatura ve defterde {charges} başarılı tahsilat.",
-      "agree": "Faturalar ve defter uyuşuyor.",
       "kind": "Tür",
       "invoice": "Fatura",
       "provider": "Sağlayıcı",
       "billed": "Faturalanan",
       "ledgerAmount": "Defter",
-      "detail": "Ayrıntı",
       "truncated": "Yalnızca ilk uyuşmazlıklar listelendi; yukarıdaki sayılar eksiksizdir.",
-      "ledger": "Ödeme defteri",
       "when": "Zaman",
       "status": "Durum",
       "amount": "Tutar",
@@ -1177,15 +1157,11 @@
     },
     "pricing": {
       "coupons": {
-        "title": "Kuponlar",
         "hint": "Kupon, Payrudder'ın peşin faturaladığı sabit ücretten bir yüzde ya da tutar düşer: bir kez, belirli sayıda dönem ya da abonelik sürdüğü sürece. Sağlayıcının yönettiği abonelik bunun yerine sağlayıcıdaki indirimi kullanır.",
         "formLabel": "yeni kupon",
         "code": "Kod",
         "name": "Ad",
         "kind": "Tür",
-        "percent": "Yüzde",
-        "amount": "Tutar",
-        "value": "Değer (10 ya da 12,5 / 4,99)",
         "currency": "Para birimi",
         "duration": "Süre",
         "once": "Yalnızca ilk ücret",
@@ -1199,14 +1175,13 @@
         "inactive": "Devre dışı",
         "redeemed": "Kullanıldı",
         "empty": "Henüz kupon yok.",
-        "badPercent": "Yüzde değil: 0,01 ile 100 arası, en fazla iki ondalık.",
-        "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan.",
         "repeatingFor": "İlk {n} ücret",
         "bulk": {
           "deactivate": "Seçilenleri devre dışı bırak",
           "title": "{n} kupon devre dışı bırakılsın mı? | {n} kupon devre dışı bırakılsın mı?",
           "confirm": "Yeni kullanım almazlar ve devre dışı bırakılan bir kupon yeniden açılamaz. Zaten birine sahip abonelikler onu korur."
-        }
+        },
+        "confirmTitle": "{code} kuponu devre dışı bırakılsın mı?"
       },
       "tax": {
         "title": "Vergi",
@@ -1224,16 +1199,18 @@
         "badRate": "Yüzde değil: 0 ile 100 arası, en fazla iki ondalık."
       },
       "dunning": {
-        "title": "Ödeme yeniden denemeleri",
+        "title": "Ödeme yeniden denemeleri ve chargeback'ler",
         "hint": "Bir tahsilat reddedilirse Payrudder aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
         "defaults": "Hiç ayarlamadınız: standart gecikmeler gösteriliyor.",
         "retry": "{n}. deneme",
         "delay": "{n}. denemeden önceki saat",
         "add": "Deneme ekle",
-        "save": "Denemeleri kaydet",
-        "saved": "Denemeler kaydedildi.",
+        "save": "Ayarları kaydet",
+        "saved": "Ayarlar kaydedildi.",
         "none": "Deneme yok: reddedilen tahsilattan hemen vazgeçilir.",
-        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır."
+        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır.",
+        "blockOnChargeback": "Chargeback açıldığında müşteriyi engelle",
+        "blockOnChargebackHint": "Müşteriyi chargeback kategorisiyle engeller: yeni satın alma olmaz ve açık bir fatura artık ödenemez. Kendiliğinden kalkmaz; müşteri sayfasından siz kaldırırsınız. Bilgi talebi engellemez."
       },
       "promotions": {
         "title": "Promosyonlar",
@@ -1243,10 +1220,8 @@
           "amount": "Tutar indirimi",
           "bonus": "Bonus kredi"
         },
-        "valueBonus": "Ek kredi, % (10 veya 12,5)",
         "bonusValue": "{pct} ek kredi",
         "bonusNote": "Bonus krediler paketin kredileriyle aynı partiye eklenir ve onlarla birlikte sona erer. Yalnızca kredi satın alımları için.",
-        "badBonus": "Ek kredi yüzdesi değil: 0,01 ile 1000 arası, en fazla iki ondalık.",
         "appliesTo": "Geçerli olduğu yer",
         "targets": {
           "subscription": "Abonelik ücreti",
@@ -1254,11 +1229,7 @@
           "payment": "Ödeme bağlantısı veya fatura",
           "legacy": "Kayıt defterinden önce"
         },
-        "noTarget": "Kuponun nerede geçerli olduğunu seçin.",
-        "withoutDefaultCode": "Kuponun kendi adıyla promosyon oluşturma",
         "codeCount": "Kodlar",
-        "manageCodes": "Kodlar",
-        "hideCodes": "Kapat",
         "codes": {
           "title": "{coupon} kuponunun promosyon kodları",
           "hint": "Kodları kendiniz yazın ya da rastgele üretin. Her koda aşağıdaki limit, son kullanma tarihi ve kurallar verilir.",
@@ -1275,8 +1246,6 @@
           "minAmount": "Asgari tutar (isteğe bağlı)",
           "minCurrency": "Asgari tutarın para birimi",
           "allowedCurrencies": "Yalnızca bu para birimlerinde (USD, EUR)",
-          "allowedPlans": "Yalnızca bu planlarda (plan kodları)",
-          "allowedPacks": "Yalnızca bu kredi paketlerinde (kimlikler)",
           "firstPurchase": "Yalnızca ilk alışveriş",
           "onePerCustomer": "Müşteri başına bir kez",
           "restore": "Alışveriş iptal edilirse veya iade edilirse kullanım hakkını geri ver",
@@ -1288,7 +1257,6 @@
           "download": "CSV indir",
           "search": "Kod ara",
           "stateAll": "Her durum",
-          "total": "{n} kod",
           "used": "Kullanım",
           "expiresCol": "Son kullanma",
           "rules": "Kurallar",
@@ -1308,14 +1276,13 @@
             "expires": "Son kullanma gelecekte bir gün olmalı.",
             "minAmount": "Bu para biriminde bir tutar değil: yalnızca rakamlar, para biriminin ondalık sayısını aşmayacak şekilde.",
             "currencies": "Para birimleri USD gibi üç harfli kodlardır, virgülle ayrılır."
-          }
+          },
+          "confirmTitle": "{code} kodu devre dışı bırakılsın mı?",
+          "confirmBody": "Yeni kullanım almaz. Kupon ve diğer kodları çalışmaya devam eder."
         },
         "redemptions": {
-          "title": "Kullanımlar",
-          "hint": "Bir kuponun her kullanımı. İptal veya tam iade kullanımı geri alır; sayaç yalnızca bunu belirten kodlarda geri döner.",
           "coupon": "Kupon",
           "allCoupons": "Tüm kuponlar",
-          "total": "{n} kullanım",
           "customer": "Müşteri",
           "usedOn": "Kullanıldığı yer",
           "discount": "İndirim",
@@ -1370,7 +1337,6 @@
       }
     },
     "webhooks": {
-      "title": "Webhooklar",
       "hint": "Hesapta bir şey olduğunda (fatura ödendi, alacak dekontu oluşturuldu, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Payrudder-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
       "formLabel": "yeni webhook uç noktası",
       "url": "Uç nokta URL'si",
@@ -1413,9 +1379,6 @@
         "live": "Bu adres http kullanıyor: müşteri ve fatura verileri şifresiz iletilir. https adresi kullanın."
       },
       "bulk": {
-        "pause": "Seçilenleri duraklat",
-        "resume": "Seçilenleri sürdür",
-        "delete": "Seçilenleri sil",
         "deleteTitle": "Seçilen uç noktalar silinsin mi?",
         "confirmDelete": "Seçilen uç noktalar silinir ve olay almayı bırakır. Gizli anahtarları geri getirilemez."
       }
@@ -1446,7 +1409,6 @@
       "url": "Ödeme bağlantısı",
       "copy": "Kopyala",
       "replayed": "Bu istek zaten işlendi: bağlantı var, ancak adresi yalnızca bir kez gösterilir.",
-      "list": "Bağlantılar",
       "anyKind": "Her tür",
       "anyStatus": "Her durum",
       "status": "Durum",
@@ -1463,9 +1425,6 @@
       "revoke": "İptal et",
       "confirmRevoke": "Bu bağlantı iptal edilsin mi? Ondan oluşan ödenmemiş faturalar iptal edilir.",
       "empty": "Henüz ödeme bağlantısı yok.",
-      "previous": "Önceki",
-      "next": "Sonraki",
-      "links": "Bağlantılar",
       "paymentLink": "Ödeme bağlantısı",
       "errors": {
         "invoice": "Fatura kimliğini girin.",
@@ -1483,7 +1442,8 @@
         "regenerate": "Bağlantıyı yenile",
         "copied": "Ödeme sayfası bağlantısı kopyalandı",
         "regenerated": "Yeni bağlantı oluşturuldu ve kopyalandı; eskileri artık çalışmıyor",
-        "validFor": "Bağlantılar {days} gün geçerlidir"
+        "validFor": "Bağlantılar {days} gün geçerlidir",
+        "confirmRegenerate": "Bu müşteri için yeni bir ödeme sayfası bağlantısı oluşturulsun mu? Önceden gönderilen bağlantılar çalışmayı durdurur."
       },
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
@@ -1650,7 +1610,6 @@
         "title": "Satın alma bağlantısı",
         "hint": "Müşterinin bu paketi satın almak için açtığı bağlantı. Ödeme onaylandığında krediler bir kez eklenir. Fiyat her zaman paketin fiyatıdır.",
         "formLabel": "Satın alma bağlantısı oluştur",
-        "pack": "Paket",
         "customer": "Müşteri",
         "pickCustomer": "Müşteri seçin",
         "quantity": "Adet",
@@ -1678,7 +1637,6 @@
       }
     },
     "accounting": {
-      "title": "Gelir ve giderler",
       "intro": "Ödenmiş faturalardan kazandığınız ve harcadığınız tutarlar, her para birimi ayrı ayrı.",
       "export": "CSV indir",
       "addExpense": "Gider ekle",
@@ -2161,7 +2119,8 @@
       "errors": {
         "limit": "Sınır en fazla {n} ondalıklı bir miktar olmalı.",
         "thresholds": "Uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir."
-      }
+      },
+      "confirmRemove": "{meter} istisnası kaldırılsın mı? Bu müşteri için yeniden paketin limiti geçerli olur."
     },
     "reconcile": {
       "title": "İnceleme kuyruğu",
@@ -2306,10 +2265,7 @@
       "close": "Kapat",
       "save": "Kaydet",
       "yes": "Evet",
-      "no": "Hayır",
-      "prev": "Önceki",
-      "next": "Sonraki",
-      "total": "Toplam {count}"
+      "no": "Hayır"
     },
     "status": {
       "program": {
@@ -2482,7 +2438,6 @@
       }
     },
     "commissions": {
-      "title": "Komisyonlar",
       "intro": "Bir ortağın getirdiği müşterinin her ödenmiş faturası için bir komisyon, vergisiz net tutar üzerinden. Bekleme süresini bekler, sonra onaylanır ve bir ödemeyle ödenir.",
       "allPartners": "Tüm ortaklar",
       "allStatuses": "Tüm durumlar",
@@ -2527,7 +2482,6 @@
       "nothing": "Geri alınacak başka bir şey yok: bu geri alma zaten yapılmış."
     },
     "payouts": {
-      "title": "Ödemeler",
       "intro": "Ödeme, bir ortağın tek para birimindeki onaylı komisyonlarıdır. Payrudder para taşımaz: elle ya da banka havalesiyle ödeyin, sonra ödemeyi ödendi olarak işaretleyin.",
       "create": "Ödemeleri oluştur",
       "result": "Oluşturulan ödemeler",
@@ -2549,7 +2503,9 @@
       "commissions": "Komisyonlar",
       "commissionsOf": "{code} ödemesinin komisyonları",
       "markPaid": "Ödendi işaretle",
-      "cancel": "İptal et"
+      "cancel": "İptal et",
+      "confirmTitle": "Bu ödeme iptal edilsin mi?",
+      "confirmBody": "Komisyonları başka bir ödemede yeniden ödenebilir hale gelir."
     },
     "pay": {
       "title": "Ödemeyi ödendi olarak işaretle",
@@ -2562,7 +2518,6 @@
       "done": "Ödeme ödendi olarak işaretlendi."
     },
     "journal": {
-      "title": "Yevmiye",
       "intro": "Ödenen ödemelerin defterlerinize işlediği kayıtlar: komisyon gideri karşılığında borç hesabı, borç hesabı karşılığında kasa.",
       "download": "CSV indir",
       "balanced": "Dengeli",
@@ -2827,14 +2782,11 @@
     "slug": "Kısaltma",
     "slugPlaceholder": "Kısaltma (isteğe bağlı, ör. web-shop)",
     "currency": "Para birimi",
-    "currencyPlaceholder": "Para birimi (sonra değişmez)",
     "timezone": "Saat dilimi",
-    "timezonePlaceholder": "IANA saat dilimi, ör. Europe/Istanbul",
     "grace": "Ek süre (saat)",
     "gracePlaceholder": "Ek süre, saat (0 - 168)",
     "create": "Uygulama oluştur",
     "badSlug": "Kısaltma yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter.",
-    "title": "Bu hesabın uygulamaları",
     "immutable": "Bir uygulamayı yeniden adlandırma ve silme API'de henüz yok; uygulamanın para birimi, saat dilimi ve ek süresi değiştirilemez.",
     "environments": "Ortamlar",
     "created": "Oluşturuldu",
@@ -3297,7 +3249,8 @@
         "not_live": "Yalnızca canlı faturalar bir sağlayıcı üzerinden ödenir.",
         "payment_in_progress": "Bu fatura için bir ödeme başlatılıyor. Birazdan yeniden deneyin.",
         "return_url_required": "Ödeme sayfası için bir dönüş adresi gerekli.",
-        "unknown_method": "Bu ödeme yöntemi tanınmıyor."
+        "unknown_method": "Bu ödeme yöntemi tanınmıyor.",
+        "installment_unavailable": "Bu kart ve tutar için bu taksit sayısı sunulmuyor. Tek çekimle ödeyin ya da sayfadaki seçeneklerden birini seçin."
       },
       "ledger": {
         "bad_limit": "Sınır 1 ile 1000 arasında olmalı.",
@@ -3365,6 +3318,9 @@
       "failover": {
         "bad_target": "Yedekleme için, ortamda bulunan iki farklı hesap gerekir; banka havalesi bunda yer alamaz.",
         "not_found": "Bu hesap için bir yedekleme tanımlı değil."
+      },
+      "card": {
+        "not_found": "Müşterinin böyle bir kayıtlı kartı yok."
       }
     },
     "einvoice": {
@@ -3783,6 +3739,16 @@
       },
       "canned_reply": {
         "not_found": "Bu hazır yanıt artık yok."
+      },
+      "attachment": {
+        "account_full": "Kuruluşunuz 50 MB'lık destek dosyası sınırına ulaştı.",
+        "bad_type": "Yalnızca png, jpeg, pdf ve düz metin dosyaları eklenebilir.",
+        "no_app": "Dosyalar bir uygulamayla saklanır: önce bir uygulama oluşturun, sonra dosyayı ekleyin.",
+        "not_found": "Bu dosya bulunamadı.",
+        "rejected": "Dosya eklenemiyor.",
+        "storage_full": "Destek dosyalarının saklandığı alan dolu. Uygulamanızın dosyalarında yer açın ya da dosyayı eklemeden yazın.",
+        "too_large": "Bir dosya en fazla 5 MB olabilir.",
+        "too_many": "Bir talepte en fazla 10 dosya olabilir."
       }
     },
     "audit": {
@@ -3808,7 +3774,6 @@
       "orgCreate": "Organizasyon oluştur"
     },
     "nav": {
-      "home": "Ana sayfa",
       "settings": "Ayarlar",
       "security": "Güvenlik"
     },
@@ -3828,25 +3793,8 @@
       "unknown": "Veri yok"
     },
     "unavailable": "Şu anda kullanılamıyor.",
-    "degraded": "Bazı bölümler yanıt vermedi ({sections}). Geri kalanı güncel.",
-    "sections": {
-      "payments": "ödemeler",
-      "invoices": "faturalar",
-      "customers": "müşteriler",
-      "subscriptions": "abonelikler",
-      "webhooks": "webhook'lar"
-    },
     "kpi": {
-      "revenue": "Gelir",
-      "revenueDays": "Gelir, son {days} gün",
-      "payments": "Ödemeler",
-      "failedCount": "Başarısız: {n}",
-      "openInvoices": "Açık faturalar",
-      "outstanding": "{amount} tahsil edilmedi",
-      "paidInvoices": "Ödenen fatura: {n}",
-      "customers": "Müşteriler",
-      "mrr": "ayda {amount}",
-      "noMrr": "Henüz yinelenen gelir yok"
+      "revenue": "Gelir"
     },
     "card": {
       "revenue": "Gelir, son {days} gün",
@@ -3944,22 +3892,7 @@
       "sandboxNote": "Sandbox: deneme verileri ve sahte bir ödeme sağlayıcısı. Burada gerçek para yok.",
       "banner": "Sandbox: test verisi ve sahte bir ödeme sağlayıcısı. Burada hiçbir şey gerçek para değildir."
     },
-    "donut": {
-      "title": "Duruma göre ödemeler",
-      "label": "Duruma göre {n} ödeme",
-      "center": "ödeme"
-    },
-    "currency": {
-      "title": "Para birimine göre gelir",
-      "empty": "Henüz fatura yok.",
-      "billed": "Faturalanan {amount}",
-      "collected": "Tahsil edilen {amount}",
-      "outstanding": "Bekleyen {amount}",
-      "collectedOf": "{billed} içinden {collected} tahsil edildi"
-    },
     "payments": {
-      "title": "Son ödemeler",
-      "empty": "Son 30 günde ödeme yok.",
       "truncated": "Son 1000 defter kaydı",
       "when": "Zaman",
       "status": "Durum",
@@ -3967,11 +3900,6 @@
       "amount": "Tutar",
       "allStatuses": "Tüm durumlar",
       "allKinds": "Tüm türler"
-    },
-    "invoices": {
-      "title": "Son faturalar",
-      "empty": "Henüz fatura yok.",
-      "draft": "Taslak"
     },
     "invoiceStatus": {
       "draft": "Taslak",
@@ -4094,17 +4022,6 @@
       }
     },
     "links": {
-      "title": "Daha derine inin",
-      "intro": "{env} ortamının çalışma sayfaları.",
-      "customers": "Müşteriler",
-      "paymentLinks": "Ödeme bağlantıları",
-      "credits": "Krediler",
-      "webhooks": "Webhook'lar",
-      "invoices": "Faturalar",
-      "payments": "Ödemeler",
-      "packages": "Paketler",
-      "pricing": "Vergi ve yeniden denemeler",
-      "reports": "Raporlar",
       "readOnly": "Rolünüz görüntüleyici: burada her şeyi okuyabilirsiniz, ancak değişiklik yapamazsınız."
     },
     "settings": {
@@ -4167,7 +4084,6 @@
       "roleOf": "{name} rolü",
       "leave": "Ayrıl",
       "remove": "Çıkar",
-      "removeNamed": "{name} kişisini çıkar",
       "inviteTitle": "Birini davet edin",
       "role": "Rol",
       "invite": "Davet gönder",
@@ -4177,16 +4093,18 @@
       "expiredOn": "{date} tarihinde süresi doldu",
       "expired": "Süresi doldu",
       "resend": "Yeniden gönder",
-      "resendNamed": "{email} adresine daveti yeniden gönder",
       "cancel": "İptal et",
-      "cancelNamed": "{email} adresine daveti iptal et",
       "leaveTitle": "Bu hesaptan ayrılsın mısınız?",
       "leaveBody": "Uygulamalarına ve verilerine erişiminizi hemen kaybedersiniz. Bir sahip sizi yeniden davet edebilir.",
       "removeTitle": "Bu üye çıkarılsın mı?",
       "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
       "allRoles": "Tüm roller",
       "expiresHead": "Geçerlilik",
-      "soleOwner": "Tek sahip sizsiniz, bu yüzden henüz ayrılamazsınız. Önce başka birini sahip yapın."
+      "soleOwner": "Tek sahip sizsiniz, bu yüzden henüz ayrılamazsınız. Önce başka birini sahip yapın.",
+      "cancelInviteTitle": "Bu davet iptal edilsin mi?",
+      "cancelInviteBody": "{email}, kendisine gönderilen bağlantıyla artık katılamaz.",
+      "lowerTitle": "{name} kişisinin rolü düşürülsün mü?",
+      "lowerBody": "{from} rolünden {to} rolüne: {name}, {from} rolünün yapabildiklerini hemen kaybeder."
     },
     "account": {
       "switch": "Hesap",
@@ -4216,7 +4134,6 @@
     "billing": {
       "invoices": {
         "title": "Faturalar",
-        "intro": "Bu ortamın faturaladıkları. Kalemlerini görmek ve PDF'i indirmek için birini açın.",
         "status": "Durum",
         "all": "Tüm durumlar",
         "number": "Numara",
@@ -4225,8 +4142,7 @@
         "created": "Oluşturuldu",
         "total": "Toplam",
         "empty": "Henüz fatura yok. Bir faturalama dönemi kapanınca görünürler.",
-        "draft": "Taslak",
-        "loadMore": "Daha fazla yükle"
+        "draft": "Taslak"
       },
       "invoice": {
         "issued": "Düzenlendi",
@@ -4241,14 +4157,12 @@
       },
       "payments": {
         "title": "Ödemeler",
-        "intro": "Tahsilatlar ve iadeler, en yeni üstte. Her ödeme, vardığı sonucu gösterir.",
         "empty": "Henüz ödeme yok.",
         "kind": "Tür",
         "kinds": {
           "charge": "Tahsilat",
           "refund": "İade"
         },
-        "invoice": "Fatura",
         "viewInvoice": "Faturayı gör"
       }
     },
@@ -4340,8 +4254,6 @@
         "connected": "Bağlı sağlayıcılar",
         "connectedNow": "{provider} bağlandı.",
         "connectTitle": "Sağlayıcı bağla",
-        "provider": "Sağlayıcı",
-        "choose": "Sağlayıcı seçin",
         "secretsOnce": "Gizli anahtarlar kaydettikten sonra bir daha gösterilmez. Test anahtarlarını değil, canlı anahtarları kullanın.",
         "optional": "isteğe bağlı",
         "checkAndConnect": "Denetle ve bağla",
@@ -4374,7 +4286,8 @@
           "buyer_country": "Alıcı ülkesi",
           "buyer_zip_code": "Alıcı posta kodu",
           "buyer_ip": "İşletmenizin genel IP adresi",
-          "buyer_gsm_number": "Alıcı telefon numarası"
+          "buyer_gsm_number": "Alıcı telefon numarası",
+          "enabled_installments": "Ödeyenin seçebileceği taksitler"
         },
         "problems": {
           "required": "Zorunlu.",
@@ -4484,13 +4397,7 @@
     "providers": {
       "connect": "Bağla",
       "manage": "Yönet",
-      "simulator": "Yerleşik simülatör",
       "sandboxNote": "Sandbox yerleşik bir simülatörde çalışır ve gerçek bir karttan asla çekim yapmaz. Bir sağlayıcının kendi ödeme akışını denemek için iyzico veya Paddle'ı test modunda bağlayın; pm_sandbox_ adlı ödeme yöntemleri simülatörde kalır.",
-      "state": {
-        "none": "Bağlı değil",
-        "working": "Bağlı ve çalışıyor",
-        "problem": "Sorun var"
-      },
       "defaultAccount": "Bağlı ve canlı ödemelerde kullanılıyor.",
       "connectedLine": "Bağlı.",
       "notConnectedLine": "Canlı modda bağlı değil.",
@@ -4500,15 +4407,8 @@
       "doneAll": "{provider}, {count} uygulamada bağlandı.",
       "donePartial": "{provider}: {ok} uygulamada bağlandı, {failed} uygulamada başarısız oldu.",
       "appsTitle": "Uygulamalar",
-      "appsIntro": "Bir sağlayıcıyı yalnızca o uygulama için bağlamak, değiştirmek ya da kaldırmak için duruma tıklayın.",
       "app": "Uygulama",
       "noLive": "Canlı ortam yok",
-      "about": {
-        "iyzico": "Türk kartları ve yerel yöntemler",
-        "paddle": "Dünya genelinde kartlar; abonelikleri sağlayıcı yürütür",
-        "banktransfer": "Kendi banka hesabınıza havale ile ödeme",
-        "stripe": "Dünya genelinde kartlar, Stripe hesabınızda Payrudder tarafından tahsil edilir"
-      },
       "scope": {
         "title": "Nereye bağlansın",
         "app": "Yalnızca bu uygulama",
@@ -4562,7 +4462,8 @@
           "api_key": "iyzico üye iş yeri panelinde Ayarlar, Firma Ayarları, API anahtarları altında. Canlı çifti kullanın.",
           "secret_key": "Aynı yerde API anahtarının yanında görünür. Orada yalnızca bir kez gösterilir; şimdi kopyalayın.",
           "buyer_identity_number": "Ödemelerde alıcı görünen kişi veya şirketin vergi kimlik numarası (TCKN veya VKN). Fatura profiliniz bunu doldurur.",
-          "buyer_ip": "İşletmenizin istek gönderdiği sabit genel IP adresi; iyzico anahtarları buna bağlar."
+          "buyer_ip": "İşletmenizin istek gönderdiği sabit genel IP adresi; iyzico anahtarları buna bağlar.",
+          "enabled_installments": "1, 2, 3, 6, 9 ve 12 sayılarından virgülle ayrılmış olarak, örneğin 1, 3, 6. iyzico ödeme formunda ve kayıtlı kart için fatura sayfasında sunulur; faiz iyzico panelinizde belirlediğiniz faizdir, bu yüzden ödeyen faturadan fazla ödeyebilir ve fatura yine tam ödenmiş sayılır. Tek çekim için boş bırakın. Anahtarları değiştirirken yeniden yazın."
         },
         "paddle": {
           "api_key": "Paddle'da Developer tools, Authentication altında canlı bir API anahtarı oluşturun.",
@@ -4583,9 +4484,6 @@
       },
       "confirmDisconnectSandbox": "{provider} sandbox hesabı kaldırılsın mı? Sandbox yeniden yerleşik simülatöre döner.",
       "account": {
-        "title": "Ödeme hesapları",
-        "intro": "Bir sağlayıcıda birden fazla hesap bağlayın (bölge başına bir Paddle hesabı, şirket başına bir iyzico hesabı), varsayılanı seçin ve hangi ülkenin müşterilerini hangi hesabın tahsil edeceğini belirleyin.",
-        "add": "{provider} hesabı ekle",
         "empty": "Henüz bağlı bir ödeme hesabı yok. Yukarıdan bir tane bağlayın.",
         "default": "Varsayılan",
         "makeDefault": "Varsayılan yap",
@@ -5000,14 +4898,11 @@
       "audit": "Denetim günlüğü",
       "auditLog": "Denetim günlüğü"
     },
-    "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
   },
   "privacy": {
     "hide": "Tutarları gizle",
-    "show": "Tutarları göster",
-    "hidden": "Gizli",
-    "banner": "Gizli mod açık: tutarlar gizlendi."
+    "show": "Tutarları göster"
   },
   "picker": {
     "currency": "Para birimi",
@@ -5189,8 +5084,7 @@
     "next": "Sonraki",
     "page": "Sayfa {page} / {pages}",
     "pageOnly": "Sayfa {page}",
-    "goTo": "Sayfaya git",
-    "go": "Git"
+    "goTo": "Sayfaya git"
   },
   "dateRange": {
     "any": "Tüm zamanlar",
@@ -5218,8 +5112,6 @@
     "subscriptions": "Abonelikler",
     "creditNotes": "Alacak dekontları",
     "none": "Henüz yok",
-    "notFound": "Listede yok",
-    "open": "Aç",
     "openCustomerPage": "Bir şeyi değiştirmek için müşteriler sayfasında aç",
     "paymentNotLoaded": "Bu ödeme, konsolun yüklediği en son ödemeler arasında değil."
   },
@@ -5391,6 +5283,36 @@
       },
       "audit": {
         "intro": "Anahtarlarda, üyelerde, fiyatlarda, webhook'larda, müşterilerde, iadelerde ve sağlayıcı hesaplarında yapılan her değişiklik burada kaydedilir. Kayıtlar değiştirilemez veya silinemez."
+      },
+      "support": {
+        "intro": "Payrudder'dan yardım isteyin. Kuruluşunuzdaki herkes bu talepleri görür, yanıtlar da buraya gelir.",
+        "create": "Bir talep açın: ne yaptığınızı, ne beklediğinizi ve ne olduğunu yazın. Seçtiğiniz önceliğe ait süre içinde yanıt veririz."
+      },
+      "supportInbox": {
+        "intro": "Her kuruluşun her talebi, en yeni hareket en üstte. Herkese açık yanıt verin ya da müşterinin hiç görmediği bir iç not bırakın.",
+        "list": "Konuşmayı okumak ve durumunu, önceliğini, atananı ve etiketlerini ayarlamak için bir talebi açın. Birkaçını birlikte değiştirmek için işaretleyin."
+      },
+      "plan": {
+        "intro": "Kuruluşunuzun planı: neleri içerdiği, ne kadarını kullandığınız ve nasıl değiştireceğiniz.",
+        "usageTitle": "Limitlere karşı kullanım",
+        "usage": "Kuruluşun her limitin ne kadarını kullandığı. Bir limite gelince, daha büyük bir plana geçene kadar yenisini oluşturmak reddedilir."
+      },
+      "organisations": {
+        "intro": "Bu kurulumdaki her kuruluş, planıyla birlikte. Birini adıyla veya e-postasıyla bulun ve başka bir plana taşıyın.",
+        "list": "Yönet, bir kuruluşun planını ve güvenlik ayarlarını açar."
+      },
+      "apps": {
+        "intro": "Bu kiracının hesabındaki uygulamalar; her birinin sandbox ve canlı ortamı var. API anahtarlarını burada, ortam başına oluşturun.",
+        "create": "Bir uygulama oluşturun: bir ad, bir para birimi ve bir saat dilimi. Sandbox ve canlı kiracıları onunla birlikte oluşturulur."
+      },
+      "address": {
+        "intro": "Her faturada satıcı olarak basılan adres. Ülkeyle başlayın: diğer alanlar o ülkenin istediklerine göre değişir.",
+        "previewTitle": "Önizleme",
+        "preview": "Satıcı bloğu, fatura onu nasıl basıyorsa tam öyle."
+      },
+      "einvoice": {
+        "intro": "E-faturalarınızı imzalayıp gönderen entegratörü bağlayın ve belgelerin nasıl oluşturulacağını ayarlayın.",
+        "list": "Bu kiracı için bağlı hesaplar, ortam başına bir tane. Canlı hesap gerçek belge gönderir; sandbox olan yalnızca simüle eder."
       }
     }
   },
@@ -5692,10 +5614,20 @@
     "badge": {
       "unread": "Yenilik olan talepler: {n}",
       "waiting": "Bizi bekleyen: {n}"
+    },
+    "confirmCloseTitle": "#{number} numaralı talep kapatılsın mı?",
+    "confirmCloseMany": "{n} talep kapatılsın mı? | {n} talep kapatılsın mı?",
+    "confirmCloseBody": "Kapalı bir talebe artık yanıt verilemez; kişinin yeni bir talep açması gerekir.",
+    "attach": {
+      "add": "Dosya ekle",
+      "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",
+      "remove": "{name} dosyasını kaldır",
+      "failed": "Bu dosyalar eklenemedi:",
+      "openedButFailed": "Talebiniz açıldı ancak bazı dosyalar eklenemedi. Dosyaları bir yanıta ekleyebilirsiniz.",
+      "download": "{name} dosyasını indir"
     }
   },
   "connect": {
-    "nav": "Uygulamanı bağla",
     "title": "Uygulamanı bağla",
     "intro": "Bir uygulamadan ilk kullanım olayına: yapıştıracağın kod ve çalıştıkça yeşile dönen bir kontrol listesi.",
     "checklist": "Neredesin",
@@ -6153,7 +6085,10 @@
       "user": "Parola ve oturum açma",
       "two_factor": "İki adımlı giriş",
       "sign_in": "Giriş",
-      "account": "Kuruluş"
+      "account": "Kuruluş",
+      "subscription": "Abonelikler",
+      "reconciliation": "Mutabakat",
+      "audit": "Kayıt saklama"
     },
     "actions": {
       "api_key": {
@@ -6180,7 +6115,11 @@
       },
       "customer": {
         "blocked": "Müşteri engellendi",
-        "unblocked": "Müşterinin engeli kaldırıldı"
+        "unblocked": "Müşterinin engeli kaldırıldı",
+        "contact_changed": "Müşteri iletişim bilgileri değişti",
+        "address_changed": "Müşteri adresi değişti",
+        "tax_changed": "Müşteri vergi bilgileri değişti",
+        "payment_method_changed": "Müşterinin ödeme yöntemi değişti"
       },
       "credit_note": {
         "issued": "Alacak dekontu düzenlendi",
@@ -6255,7 +6194,57 @@
         "recovery_codes_replaced": "Kurtarma kodları yeniden oluşturuldu",
         "recovery_code_used": "Kurtarma kodu kullanıldı",
         "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
+      },
+      "subscription": {
+        "coupon_applied": "Aboneliğe kupon eklendi",
+        "coupon_removed": "Abonelikten kupon kaldırıldı"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Mutabakat farkı açıklandı",
+        "discrepancy_resolved": "Mutabakat farkı çözüldü",
+        "discrepancy_assigned": "Mutabakat farkı atandı"
+      },
+      "audit": {
+        "pruned": "En eski kayıtlar silindi"
       }
     }
+  },
+  "disputes": {
+    "tab": "İtirazlar",
+    "tabsLabel": "Ödemeler ve itirazlar",
+    "tabs": {
+      "payments": "Ödemeler",
+      "disputes": "İtirazlar"
+    },
+    "title": "İtirazlar",
+    "hint": "Müşterinin bu ödeme için bankasında açtığı vakalar. Bunları ödeme sağlayıcınızda yanıtlayın; Payrudder her birinin durumunu gösterir.",
+    "empty": "İtiraz yok. Bir müşteri bankasında bir ödemeye itiraz ettiğinde vaka burada görünür.",
+    "outcomeLabel": "Sonuç",
+    "allOutcomes": "Tüm sonuçlar",
+    "kindLabel": "Tür",
+    "allKinds": "Tüm türler",
+    "outcome": {
+      "open": "Açık",
+      "won": "Kazanıldı",
+      "lost": "Kaybedildi"
+    },
+    "kind": {
+      "chargeback": "Geri ödeme itirazı (chargeback)",
+      "inquiry": "Bilgi talebi"
+    },
+    "means": {
+      "openChargeback": "Müşterinin bankası bu ödemeyi iade ettirdi: sağlayıcı karar verene kadar parayı geri çekti. Kanıtlarınızı aşağıdaki tarihe kadar gönderin.",
+      "openInquiry": "Müşterinin bankası bu ödemeyi soruyor. Para geri çekilmedi; chargeback'e dönüşmemesi için sağlayıcının talebini yanıtlayın.",
+      "wonChargeback": "Lehinize sonuçlandı: para size geri döndü.",
+      "wonInquiry": "Chargeback'e dönüşmeden kapandı: bir şey kaybedilmedi.",
+      "lost": "Kart sahibi kazandı: para onda kalıyor."
+    },
+    "provider": "Sağlayıcı",
+    "reason": "Gerekçe",
+    "evidenceDue": "Kanıt son tarihi",
+    "opened": "Açıldı",
+    "closed": "Kapandı",
+    "reference": "Vaka",
+    "case": "Vaka"
   }
 }

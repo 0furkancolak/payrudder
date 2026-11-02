@@ -2,9 +2,19 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
 )
 
 func TestErrorsCarryAKey(t *testing.T) {
@@ -51,5 +61,72 @@ func TestReadsCanBeRevalidated(t *testing.T) {
 	// A write is never tagged.
 	if w, _ := do(t, ts, http.MethodPost, "/v1/customers", "live-key", `{"external_id":"a","name":"A","email":"a@example.com"}`); w.Header.Get("ETag") != "" {
 		t.Error("a write response carries an ETag")
+	}
+}
+
+// The text of a transport or library error names internal hosts, ports and library versions. It is not written for the caller and never reaches the body: the caller
+// gets a plain sentence, the request id to quote, and the key (the default one for the code, so a client can still branch on it). An error a service wrote itself with
+// a key keeps its message: that is the explanation the caller is meant to read.
+func TestRawUpstreamTextOfTheRetryableCodesNeverReachesTheCaller(t *testing.T) {
+	raw := map[codes.Code]string{
+		codes.Unavailable:       `connection error: desc = "transport: Error while dialing: dial tcp 10.3.4.5:7001: connect: connection refused"`,
+		codes.DeadlineExceeded:  "context deadline exceeded while waiting for plans-svc.payrudder.svc.cluster.local:7001",
+		codes.ResourceExhausted: "grpc: received message larger than max (9437184 vs. 4194304) from 10.3.4.5:7001",
+		codes.Aborted:           `pq: could not serialize access due to concurrent update (relation "invoices", host 10.3.9.9)`,
+	}
+	for code, text := range raw {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/v1/x", nil)
+		req.Header.Set("X-Request-Id", "req-abc-123")
+		requestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { writeError(w, r, status.Error(code, text)) })).ServeHTTP(rec, req)
+		var body ErrorBody
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		e := body.Error
+		if rec.Code != statusOf(code) || e.Code != codeName(code) || e.Key != errkey.Default(code) || e.RequestID != "req-abc-123" {
+			t.Errorf("%v: status %d, %+v", code, rec.Code, e)
+		}
+		if strings.Contains(rec.Body.String(), "10.3") || strings.Contains(rec.Body.String(), "dial") || strings.Contains(rec.Body.String(), "pq:") ||
+			strings.Contains(rec.Body.String(), "svc.cluster") || strings.Contains(rec.Body.String(), "grpc:") || strings.Contains(rec.Body.String(), "relation") {
+			t.Errorf("%v: the upstream text reached the caller: %s", code, rec.Body)
+		}
+		if e.Message == "" || !strings.Contains(e.Message, "req-abc-123") {
+			t.Errorf("%v: the message %q is empty or does not carry the request id", code, e.Message)
+		}
+	}
+	// An error written with a key is the service's own explanation and keeps its words.
+	authored := errkey.New(codes.ResourceExhausted, "identity.invite.quota", "too many invitations: revoke some or wait a day")
+	rec := httptest.NewRecorder()
+	writeError(rec, httptest.NewRequest(http.MethodGet, "/v1/x", nil), authored)
+	if !strings.Contains(rec.Body.String(), "too many invitations: revoke some or wait a day") || !strings.Contains(rec.Body.String(), "identity.invite.quota") {
+		t.Errorf("an authored error lost its message or key: %s", rec.Body)
+	}
+	// The other codes are unchanged: a caller's mistake says what it was.
+	rec = httptest.NewRecorder()
+	writeError(rec, httptest.NewRequest(http.MethodGet, "/v1/x", nil), status.Error(codes.NotFound, "no such customer"))
+	if !strings.Contains(rec.Body.String(), "no such customer") {
+		t.Errorf("a not-found lost its message: %s", rec.Body)
+	}
+}
+
+// The real thing: plans-svc is not there (nothing listens at 127.0.0.1:1). The client library's own dial error, with the address in it, is what the status holds.
+func TestAnUnreachableBackendAnswers503WithoutItsAddress(t *testing.T) {
+	cc, err := grpcx.NewClient("passthrough:///127.0.0.1:1", grpc.WithDisableRetry())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cc.Close() })
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Plans = plansv1.NewPlansServiceClient(cc) })
+	resp, m := do(t, ts, http.MethodPost, "/v1/customers", "live-key", `{"external_id":"a","name":"A","email":"a@example.com"}`)
+	raw, _ := json.Marshal(m)
+	if resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusGatewayTimeout {
+		t.Fatalf("status %d %s", resp.StatusCode, raw)
+	}
+	if strings.Contains(string(raw), "127.0.0.1") || strings.Contains(string(raw), "dial") || strings.Contains(string(raw), "refused") || strings.Contains(string(raw), "transport") {
+		t.Errorf("the dial error reached the caller: %s", raw)
+	}
+	if e, _ := m["error"].(map[string]any); e["request_id"] == "" || !strings.Contains(e["message"].(string), e["request_id"].(string)) {
+		t.Errorf("the message does not carry the request id: %v", e)
 	}
 }

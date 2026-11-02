@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -64,7 +65,7 @@ type SweepResult struct {
 	Reissued  int
 	Exhausted int
 	Dunned    int
-	// Held counts the dunning retries put off because the tenant is on hold.
+	// Held counts the dunning retries put off because the payment gate said no (the tenant is on hold, or the customer is blocked for fraud or a chargeback).
 	Held int
 	// Polled counts the pending payments (bank transfers) whose status was asked for again.
 	Polled int
@@ -179,12 +180,13 @@ func (e *Engine) sweepDunning(ctx context.Context, s tenantdb.Scope, now time.Ti
 			return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.tenantID, ID: d.id, Now: now})
 		},
 		func(tx pgx.Tx, s *saga) error {
-			if e.cfg.Hold != nil {
-				held, err := e.cfg.Hold(ctx, s.TenantID)
+			// A first charge that is held asks the gate itself (the table says what happens when it still says no); a retry of a decline is put off here.
+			if e.cfg.Gate != nil && s.State != model.PaymentHeld {
+				verdict, err := e.cfg.Gate(ctx, s.TenantID, s.Snap.CustomerExternalID)
 				if err != nil {
-					return fmt.Errorf("is tenant %s on hold: %w", s.TenantID, err)
+					return fmt.Errorf("may the retry of invoice %s be charged: %w", s.InvoiceID, err)
 				}
-				if held {
+				if verdict != paymentgate.Allowed {
 					res.Held++
 					return sqlc.New(tx).HoldSagaDunning(ctx, sqlc.HoldSagaDunningParams{Until: now.Add(DunningHold), TenantID: s.TenantID, ID: s.ID})
 				}
