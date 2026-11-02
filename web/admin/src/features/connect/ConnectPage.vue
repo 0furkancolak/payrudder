@@ -26,13 +26,15 @@ import { PageHeader } from "@/shared/ui/page-header";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { useCreateSamples, useSendTestEvent } from "./api";
 import { SAMPLE_CUSTOMER, SAMPLE_METER, missingSamples } from "./sample";
+import { initialAddress } from "./address";
+import { eventErrorHintKey } from "./eventErrors";
 import { LANGS, keyHintOf, snippets, type Lang } from "./snippets";
 
 /**
  * Connect an app: the steps from "I have an app" to "my first event arrived", with the code to paste. The code is built from the app's own meter and a customer id,
  * for the environment the page is in (a test key shape for the sandbox, a live one for live). The checklist turns green as the things happen: a meter exists, a
- * customer exists, and a usage event has been counted (asked for every few seconds while the page is open). The API address is the deployment's, which the console
- * cannot know, so it is typed once and kept in this browser. Under the webhook code, a button sends the endpoint a test event and shows how the endpoint answered.
+ * customer exists, and a usage event has been counted (asked for every few seconds while the page is open). The API address comes from the deployment's PUBLIC_API_URL setting
+ * (/env.js) when it has one, else it is typed once and kept in this browser. Under the webhook code, a button sends the endpoint a test event and shows how the endpoint answered.
  *
  * For a person who owns the app the page can also make the first things itself: an ingest-only API key (shown once, held in memory until the person says they have it,
  * never stored), in the sandbox a sample meter and customer, and a button that sends one test event as the signed-in person. All three use the APIs the console already uses.
@@ -66,7 +68,7 @@ const readAddress = () => {
     return "";
   }
 };
-const baseUrl = ref(readAddress() || "http://localhost:42800");
+const baseUrl = ref(initialAddress(readAddress(), window.__PAYRUDDER__?.api));
 watch(baseUrl, (v) => {
   try {
     localStorage.setItem(STORE, v);
@@ -248,6 +250,7 @@ const base = computed(() => tenantBase());
           <Badge :variant="testEvent.data.value.status === 'rejected' ? 'destructive' : 'success'">{{ t(`connect.testEvent.badge.${testEvent.data.value.status}`) }}</Badge>
           <span>{{ t(`connect.testEvent.${testEvent.data.value.status}`, { code: testEvent.data.value.error_code ?? "", message: testEvent.data.value.error_message ?? "" }) }}</span>
         </p>
+        <p v-if="eventErrorHintKey(testEvent.data.value?.error_code)" class="text-muted-foreground text-xs" data-testid="connect-test-event-hint">{{ t(eventErrorHintKey(testEvent.data.value?.error_code) ?? "") }}</p>
         <ErrorText :error="firstError(testEvent)" />
       </div>
       <p v-if="block === 'webhook'" class="text-muted-foreground mt-2 text-xs">{{ t("connect.webhookHelp") }} <Link :to="`${base}/${tenantId}/webhooks`" class="text-primary hover:underline">{{ t("connect.webhookLink") }}</Link></p>

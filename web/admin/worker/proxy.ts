@@ -28,6 +28,8 @@ export interface Env {
   /** Where the gateway answers (https://api.example.com), no trailing slash needed. */
   API_ORIGIN: string;
   BRAND_NAME?: string;
+  /** The address developers call the API at (https://api.example.com), shown in the code of the Connect page. Not the same as API_ORIGIN in a deployment that proxies to a private address. */
+  PUBLIC_API_URL?: string;
   /** "true" shows the demo banner. */
   CONSOLE_DEMO?: string;
   /** Shared secret (a Worker secret: `wrangler secret put EDGE_AUTH_SECRET`) sent to the gateway as X-Edge-Auth. The gateway, holding the same value as PAYRUDDER_TRUSTED_PROXY_SECRET, then believes X-Forwarded-For. */
@@ -80,9 +82,20 @@ export function downstreamHeaders(upstream: Headers): Headers {
 }
 
 /** /env.js: the runtime settings the page reads (window.__PAYRUDDER__), the Worker's counterpart of what the container generated from its environment. */
-export function envScript(env: Pick<Env, "BRAND_NAME" | "CONSOLE_DEMO">): string {
+export function envScript(env: Pick<Env, "BRAND_NAME" | "CONSOLE_DEMO" | "PUBLIC_API_URL">): string {
   const brand = (env.BRAND_NAME ?? "").replace(/[^\p{L}\p{N} ._-]/gu, "");
-  return `window.__PAYRUDDER__=${JSON.stringify({ prefill: false, brand, demo: env.CONSOLE_DEMO === "true" })};`;
+  return `window.__PAYRUDDER__=${JSON.stringify({ prefill: false, brand, demo: env.CONSOLE_DEMO === "true", api: publicApiUrl(env.PUBLIC_API_URL) })};`;
+}
+
+/** The public API address from a setting: an http(s) origin with an optional path, no trailing slash, no credentials, query or fragment; anything else is "" (the page then asks). */
+export function publicApiUrl(raw: string | undefined): string {
+  try {
+    const u = new URL((raw ?? "").trim());
+    if ((u.protocol !== "https:" && u.protocol !== "http:") || u.username || u.password) return "";
+    return u.origin + u.pathname.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
 }
 
 export async function handle(request: Request, env: Env): Promise<Response> {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { downstreamHeaders, envScript, handle, isApiPath, upstreamHeaders, upstreamUrl, type Env } from "./proxy";
+import { downstreamHeaders, envScript, handle, isApiPath, publicApiUrl, upstreamHeaders, upstreamUrl, type Env } from "./proxy";
 
 const assets = (body = "<html>spa</html>") => ({ fetch: vi.fn(async () => new Response(body, { headers: { "content-type": "text/html" } })) });
 const envOf = (over: Partial<Env> = {}): Env => ({ ASSETS: assets(), API_ORIGIN: "https://api.example.com/", ...over });
@@ -76,7 +76,25 @@ describe("headers", () => {
 describe("envScript", () => {
   it("renders the settings and strips characters that could break out of the string", () => {
     const js = envScript({ BRAND_NAME: 'Pay"rudder</script>', CONSOLE_DEMO: "true" });
-    expect(js).toBe('window.__PAYRUDDER__={"prefill":false,"brand":"Payrudderscript","demo":true};');
+    expect(js).toBe('window.__PAYRUDDER__={"prefill":false,"brand":"Payrudderscript","demo":true,"api":""};');
+  });
+
+  it("carries the public API address, cleaned, for the code on the Connect page", () => {
+    expect(envScript({ PUBLIC_API_URL: "https://api.example.com/" })).toContain('"api":"https://api.example.com"');
+    expect(envScript({ PUBLIC_API_URL: 'https://api.example.com"};alert(1);//' })).not.toContain("alert(1);//");
+  });
+});
+
+describe("publicApiUrl", () => {
+  it.each([
+    ["https://api.example.com", "https://api.example.com"],
+    [" https://api.example.com/ ", "https://api.example.com"],
+    ["http://localhost:42800", "http://localhost:42800"],
+    ["https://example.com/payrudder/api/", "https://example.com/payrudder/api"],
+    ["https://api.example.com/?x=1#y", "https://api.example.com"],
+  ])("%s -> %s", (raw, want) => expect(publicApiUrl(raw)).toBe(want));
+  it.each([undefined, "", "api.example.com", "ftp://api.example.com", "javascript:alert(1)", "https://user:pw@api.example.com", "not a url"])("%s is no address", (raw) => {
+    expect(publicApiUrl(raw)).toBe("");
   });
 });
 

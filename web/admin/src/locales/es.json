@@ -5677,6 +5677,24 @@
       "accepted": "El evento fue aceptado. La lista se pone en verde cuando se cuente, en unos segundos.",
       "duplicate": "Ya se contó un evento con esta clave; no se añadió nada.",
       "rejected": "El evento fue rechazado: {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "Ningún medidor tiene este código. Cree el medidor en la página Medidores, o corrija meter_code.",
+      "UNKNOWN_CUSTOMER": "Ningún cliente tiene este identificador. Cree primero el cliente, o corrija customer_external_id.",
+      "EVENT_TOO_OLD": "El evento tiene más de 35 días. Envíe el consumo poco después de que ocurra; un consumo más antiguo no se puede contar.",
+      "EVENT_IN_FUTURE": "event_time está más de 5 minutos por delante del reloj de Payrudder. Revise el reloj de su servidor y envíe el momento en que ocurrió el consumo.",
+      "INVALID_EVENT_TIME": "Envíe event_time como un instante RFC 3339, por ejemplo 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "Envíe quantity como un decimal no negativo, en forma de texto como \"1\" o \"1.25\".",
+      "INVALID_QUANTITY_PRECISION": "La cantidad tiene más decimales de los que permite el medidor. Redondéela a la quantity_scale del medidor.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Una clave live debe enviar una idempotency_key con cada evento. Derívela de lo ocurrido (un id de pedido) para que un reintento cuente una sola vez.",
+      "IDEMPOTENCY_KEY_INVALID": "Use de 1 a 128 caracteres: letras, dígitos y _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "Esta clave se usó para otro evento. Use una clave nueva para un evento nuevo; reintente el mismo evento con la misma clave y el mismo contenido.",
+      "INVALID_PROPERTIES": "Envíe como máximo 32 propiedades y 4 KiB en total, con valores de texto, e incluya la propiedad que cuenta un medidor UNIQUE.",
+      "INVALID_CORRECTION": "Una corrección necesita un motivo de 1 a 500 caracteres y la clave del evento que corrige (no la suya).",
+      "CORRECTION_UNKNOWN_EVENT": "No se encontró ningún evento con esa clave. Quizá nunca se aceptó, o es más antiguo que el tiempo que se conservan las claves de idempotencia (al menos 45 días).",
+      "CORRECTION_MISMATCH": "Una corrección debe indicar el mismo cliente y el mismo medidor que el evento que corrige.",
+      "CORRECTION_UNSUPPORTED_METER": "Solo se pueden corregir los eventos de medidores SUM y COUNT sin filtro de propiedades.",
+      "CORRECTION_OF_CORRECTION": "El evento es en sí una corrección. Corrija de nuevo el evento original, con la cantidad que debe tener."
     }
   },
   "contracts": {

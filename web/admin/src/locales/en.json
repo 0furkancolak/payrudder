@@ -5677,6 +5677,24 @@
       "accepted": "The event was accepted. The checklist turns green once it is counted, a few seconds from now.",
       "duplicate": "An event with this key was counted before; nothing was added.",
       "rejected": "The event was rejected: {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "No meter has this code. Create the meter on the Meters page, or fix meter_code.",
+      "UNKNOWN_CUSTOMER": "No customer has this id. Create the customer first, or fix customer_external_id.",
+      "EVENT_TOO_OLD": "The event is more than 35 days old. Send usage soon after it happens; older usage cannot be counted.",
+      "EVENT_IN_FUTURE": "event_time is more than 5 minutes ahead of Payrudder's clock. Check your server's clock and send the moment the usage happened.",
+      "INVALID_EVENT_TIME": "Send event_time as an RFC 3339 instant, for example 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "Send quantity as a non-negative decimal, as text such as \"1\" or \"1.25\".",
+      "INVALID_QUANTITY_PRECISION": "The quantity has more decimal places than the meter allows. Round it to the meter's quantity_scale.",
+      "IDEMPOTENCY_KEY_REQUIRED": "A live key must send an idempotency_key with every event. Derive it from what happened (an order id) so a retry counts once.",
+      "IDEMPOTENCY_KEY_INVALID": "Use 1 to 128 characters: letters, digits and _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "This key was used for a different event. Use a new key for a new event; retry the same event with the same key and the same content.",
+      "INVALID_PROPERTIES": "Send at most 32 properties and 4 KiB in total, with text values, and include the property a UNIQUE meter counts.",
+      "INVALID_CORRECTION": "A correction needs a reason of 1 to 500 characters and the key of the event it corrects (not its own key).",
+      "CORRECTION_UNKNOWN_EVENT": "No event with that key was found. It may never have been accepted, or it is older than idempotency keys are kept (at least 45 days).",
+      "CORRECTION_MISMATCH": "A correction must name the same customer and the same meter as the event it corrects.",
+      "CORRECTION_UNSUPPORTED_METER": "Only events of SUM and COUNT meters without a property filter can be corrected.",
+      "CORRECTION_OF_CORRECTION": "The event is itself a correction. Correct the original event again, with the quantity it should have."
     }
   },
   "contracts": {

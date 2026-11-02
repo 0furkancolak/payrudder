@@ -848,6 +848,8 @@ services:
       GATEWAY_URL: http://gateway:8000
       PAYRUDDER_DEMO: ${PAYRUDDER_DEMO:-false}
       BRAND_NAME: ${BRAND_NAME:-Payrudder}
+      # The address developers call the API at (the gateway's own public address by default); the Connect page puts it in the code it hands out.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-${PAYRUDDER_PUBLIC_URL:-http://localhost:42800}}
       # Local stack only: the operator playground's account form comes pre-filled.
       PREFILL_PLAYGROUND: "true"
     ports: ["42301:3001"]

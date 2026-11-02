@@ -5677,6 +5677,24 @@
       "accepted": "L'événement a été accepté. La liste passe au vert dès qu'il est compté, dans quelques secondes.",
       "duplicate": "Un événement avec cette clé a déjà été compté ; rien n'a été ajouté.",
       "rejected": "L'événement a été rejeté : {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "Aucun compteur n'a ce code. Créez le compteur sur la page Compteurs, ou corrigez meter_code.",
+      "UNKNOWN_CUSTOMER": "Aucun client n'a cet identifiant. Créez d'abord le client, ou corrigez customer_external_id.",
+      "EVENT_TOO_OLD": "L'événement date de plus de 35 jours. Envoyez la consommation peu après qu'elle a eu lieu ; une consommation plus ancienne ne peut pas être comptée.",
+      "EVENT_IN_FUTURE": "event_time a plus de 5 minutes d'avance sur l'horloge de Payrudder. Vérifiez l'horloge de votre serveur et envoyez l'instant où la consommation a eu lieu.",
+      "INVALID_EVENT_TIME": "Envoyez event_time comme un instant RFC 3339, par exemple 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "Envoyez quantity comme un nombre décimal non négatif, sous forme de texte tel que « 1 » ou « 1.25 ».",
+      "INVALID_QUANTITY_PRECISION": "La quantité a plus de décimales que le compteur n'en permet. Arrondissez-la à la quantity_scale du compteur.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Une clé live doit envoyer une idempotency_key avec chaque événement. Déduisez-la de ce qui s'est passé (un numéro de commande) pour qu'une nouvelle tentative ne soit comptée qu'une fois.",
+      "IDEMPOTENCY_KEY_INVALID": "Utilisez de 1 à 128 caractères : lettres, chiffres et _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "Cette clé a servi pour un autre événement. Utilisez une nouvelle clé pour un nouvel événement ; renvoyez le même événement avec la même clé et le même contenu.",
+      "INVALID_PROPERTIES": "Envoyez au plus 32 propriétés et 4 Kio au total, avec des valeurs textuelles, et incluez la propriété que compte un compteur UNIQUE.",
+      "INVALID_CORRECTION": "Une correction exige un motif de 1 à 500 caractères et la clé de l'événement qu'elle corrige (pas la sienne).",
+      "CORRECTION_UNKNOWN_EVENT": "Aucun événement n'a cette clé. Il n'a peut-être jamais été accepté, ou il est plus ancien que la durée de conservation des clés d'idempotence (au moins 45 jours).",
+      "CORRECTION_MISMATCH": "Une correction doit désigner le même client et le même compteur que l'événement qu'elle corrige.",
+      "CORRECTION_UNSUPPORTED_METER": "Seuls les événements des compteurs SUM et COUNT sans filtre de propriété peuvent être corrigés.",
+      "CORRECTION_OF_CORRECTION": "L'événement est lui-même une correction. Corrigez à nouveau l'événement d'origine, avec la quantité qu'il doit avoir."
     }
   },
   "contracts": {

@@ -6,7 +6,11 @@ name: docs
 #
 # Publishing is a separate switch. On a push to main the site is deployed to GitHub Pages only when the repository variable DOCS_PUBLISH is "true" (Settings > Secrets and
 # variables > Actions > Variables) and Pages is set to the "GitHub Actions" source (Settings > Pages). Until then nothing is deployed. Default (not agreed): GitHub Pages.
+#
+# The usual run is offline: internal links are checked, links to other sites are only listed (external-links.txt in the artifact). Run the workflow by hand
+# (Actions > docs > Run workflow) to ask every one of those links as well.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -65,6 +69,8 @@ jobs:
           cache-dependency-path: docs-site/package-lock.json
       - run: npm ci
       - run: npm test
+        env:
+          CHECK_EXTERNAL_LINKS: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:

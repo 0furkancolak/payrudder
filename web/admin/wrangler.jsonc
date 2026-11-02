@@ -16,6 +16,8 @@
   "vars": {
     // Where the gateway answers. Override per environment below; never put a secret here.
     "API_ORIGIN": "http://localhost:42800",
+    // The address developers call the API at; the Connect page puts it in the code it hands out. Usually the same as API_ORIGIN.
+    "PUBLIC_API_URL": "http://localhost:42800",
     "BRAND_NAME": "Payrudder",
     "CONSOLE_DEMO": "false"
   },
@@ -25,12 +27,12 @@
       "name": "payrudder-console-staging",
       // Placeholder: replace with your host. Without "routes" the Worker is reachable on its workers.dev address.
       "routes": [{ "pattern": "console-staging.example.com", "custom_domain": true }],
-      "vars": { "API_ORIGIN": "https://api-staging.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+      "vars": { "API_ORIGIN": "https://api-staging.example.com", "PUBLIC_API_URL": "https://api-staging.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
     },
     "production": {
       "name": "payrudder-console",
       "routes": [{ "pattern": "console.example.com", "custom_domain": true }],
-      "vars": { "API_ORIGIN": "https://api.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+      "vars": { "API_ORIGIN": "https://api.example.com", "PUBLIC_API_URL": "https://api.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
     }
   }
 }
