@@ -310,7 +310,22 @@
       "by": "par {actor}",
       "approvedBy": "approuvé par {actor}",
       "choose": "Choisir un statut",
-      "applyNone": "Définir le statut"
+      "applyNone": "Définir le statut",
+      "filters": "Filtrer l'historique",
+      "filterTo": "Passé à",
+      "filterKind": "Type",
+      "kinds": {
+        "changed": "Changements",
+        "requested": "En attente d'un second opérateur"
+      },
+      "shown": "{shown} changements sur {total}",
+      "noMatch": "Aucun changement ne correspond à ces filtres."
+    },
+    "hold": {
+      "suspended": "{app} est suspendue : ses clés d'API sont arrêtées, les pages et liens de paiement n'acceptent aucun paiement, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
+      "frozen": "{app} est gelée : vous pouvez tout lire, mais rien ne peut être modifié. Les appels d'API en écriture sont refusés, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
+      "banned": "{app} est bannie : ses clés d'API sont arrêtées et rien n'est débité, envoyé par e-mail ni transmis. Seul un opérateur peut lever un bannissement.",
+      "write": "Écrire au support"
     }
   },
   "invoice": {
@@ -4164,9 +4179,9 @@
       "pageIntro": "L'environnement live démarre désactivé : pas de clés live, pas de webhooks live, pas de prélèvements réels. Terminez la liste, puis activez-le.",
       "intro": "Votre environnement live n'est pas encore actif. Terminez ces étapes pour l'activer.",
       "liveNow": "Votre environnement live est actif.",
-      "suspended": "Votre environnement live est suspendu. Contactez le support pour le rétablir.",
+      "suspended": "Votre environnement live est à l'arrêt (suspendu, gelé ou banni). Contactez le support pour le rétablir.",
       "stateActive": "Actif",
-      "stateSuspended": "Suspendu",
+      "stateSuspended": "À l'arrêt",
       "count": "{done} sur {total} faites",
       "noLive": "Ce déploiement n'a pas d'environnement live.",
       "done": "fait",

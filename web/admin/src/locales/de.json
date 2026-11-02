@@ -310,7 +310,22 @@
       "by": "von {actor}",
       "approvedBy": "bestätigt von {actor}",
       "choose": "Status wählen",
-      "applyNone": "Status setzen"
+      "applyNone": "Status setzen",
+      "filters": "Verlauf filtern",
+      "filterTo": "Geändert zu",
+      "filterKind": "Art",
+      "kinds": {
+        "changed": "Änderungen",
+        "requested": "Wartet auf einen zweiten Operator"
+      },
+      "shown": "{shown} von {total} Änderungen",
+      "noMatch": "Keine Änderung passt zu diesen Filtern."
+    },
+    "hold": {
+      "suspended": "{app} ist gesperrt: Die API-Schlüssel sind gestoppt, Zahlungsseiten und Zahlungslinks nehmen keine Zahlungen an, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
+      "frozen": "{app} ist eingefroren: Sie können weiterhin alles lesen, aber nichts ändern. Schreibende API-Aufrufe werden abgelehnt, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
+      "banned": "{app} ist gebannt: Die API-Schlüssel sind gestoppt, und es wird nichts abgebucht, gemailt oder ausgeliefert. Nur ein Operator kann einen Bann aufheben.",
+      "write": "Den Support kontaktieren"
     }
   },
   "invoice": {
@@ -4164,9 +4179,9 @@
       "pageIntro": "Die Live-Umgebung startet ausgeschaltet: keine Live-Schlüssel, keine Live-Webhooks, keine echten Abbuchungen. Arbeiten Sie die Liste ab und schalten Sie sie dann ein.",
       "intro": "Ihre Live-Umgebung ist noch nicht aktiv. Erledigen Sie diese Schritte, um sie einzuschalten.",
       "liveNow": "Ihre Live-Umgebung ist aktiv.",
-      "suspended": "Ihre Live-Umgebung ist gesperrt. Wenden Sie sich an den Support, um sie wieder freizugeben.",
+      "suspended": "Ihre Live-Umgebung ist angehalten (gesperrt, eingefroren oder gebannt). Wenden Sie sich an den Support, um sie wieder freizugeben.",
       "stateActive": "Aktiv",
-      "stateSuspended": "Gesperrt",
+      "stateSuspended": "Angehalten",
       "count": "{done} von {total} erledigt",
       "noLive": "Diese Installation hat keine Live-Umgebung.",
       "done": "erledigt",

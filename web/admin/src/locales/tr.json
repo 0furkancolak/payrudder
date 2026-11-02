@@ -310,7 +310,22 @@
       "by": "{actor} tarafından",
       "approvedBy": "{actor} onayladı",
       "choose": "Bir durum seçin",
-      "applyNone": "Durumu ayarla"
+      "applyNone": "Durumu ayarla",
+      "filters": "Geçmişi filtrele",
+      "filterTo": "Yeni durum",
+      "filterKind": "Tür",
+      "kinds": {
+        "changed": "Değişiklikler",
+        "requested": "İkinci operatör bekleniyor"
+      },
+      "shown": "{total} değişiklikten {shown} tanesi",
+      "noMatch": "Bu filtrelere uyan değişiklik yok."
+    },
+    "hold": {
+      "suspended": "{app} askıya alındı: API anahtarları durdu, ödeme sayfaları ve ödeme bağlantıları ödeme almıyor, hiçbir tahsilat yapılmıyor ve müşterilerine e-posta gitmiyor. Verileriniz saklanır.",
+      "frozen": "{app} donduruldu: her şeyi okuyabilirsiniz ama hiçbir şey değiştirilemez. Yazan API çağrıları reddedilir, hiçbir tahsilat yapılmaz ve müşterilerine e-posta gitmez. Verileriniz saklanır.",
+      "banned": "{app} yasaklandı: API anahtarları durdu ve hiçbir şey tahsil edilmez, e-postalanmaz veya gönderilmez. Yasağı yalnızca bir operatör kaldırabilir.",
+      "write": "Destek ekibine yazın"
     }
   },
   "invoice": {
@@ -4164,9 +4179,9 @@
       "pageIntro": "Canlı ortam kapalı başlar: canlı anahtar, canlı webhook ve gerçek tahsilat yoktur. Listeyi tamamlayın, sonra açın.",
       "intro": "Canlı ortamınız henüz etkin değil. Açmak için şu adımları tamamlayın.",
       "liveNow": "Canlı ortamınız etkin.",
-      "suspended": "Canlı ortamınız askıya alındı. Yeniden açtırmak için destekle iletişime geçin.",
+      "suspended": "Canlı ortamınız durduruldu (askıya alındı, donduruldu veya yasaklandı). Yeniden açtırmak için destekle iletişime geçin.",
       "stateActive": "Etkin",
-      "stateSuspended": "Askıda",
+      "stateSuspended": "Durduruldu",
       "count": "{done} / {total} tamam",
       "noLive": "Bu kurulumda canlı ortam yok.",
       "done": "tamam",

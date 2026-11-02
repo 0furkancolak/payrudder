@@ -310,7 +310,22 @@
       "by": "by {actor}",
       "approvedBy": "approved by {actor}",
       "choose": "Choose a status",
-      "applyNone": "Set a status"
+      "applyNone": "Set a status",
+      "filters": "Filter the history",
+      "filterTo": "Changed to",
+      "filterKind": "Kind",
+      "kinds": {
+        "changed": "Changes",
+        "requested": "Waiting for a second operator"
+      },
+      "shown": "{shown} of {total} changes",
+      "noMatch": "No change matches these filters."
+    },
+    "hold": {
+      "suspended": "{app} is suspended: its API keys have stopped, payment pages and payment links take no payment, nothing is charged and its customers get no mail. Your data is kept.",
+      "frozen": "{app} is frozen: you can still read everything, but nothing can be changed. API calls that write are refused, nothing is charged and its customers get no mail. Your data is kept.",
+      "banned": "{app} is banned: its API keys have stopped and nothing is charged, mailed or sent. Only an operator can lift a ban.",
+      "write": "Write to support"
     }
   },
   "invoice": {
@@ -4164,9 +4179,9 @@
       "pageIntro": "The live environment starts switched off: no live keys, no live webhooks, no real charges. Finish the list, then switch it on.",
       "intro": "Your live environment is not active yet. Finish these steps to switch it on.",
       "liveNow": "Your live environment is active.",
-      "suspended": "Your live environment is suspended. Contact support to have it reinstated.",
+      "suspended": "Your live environment is on hold (suspended, frozen or banned). Contact support to have it reinstated.",
       "stateActive": "Active",
-      "stateSuspended": "Suspended",
+      "stateSuspended": "On hold",
       "count": "{done} of {total} done",
       "noLive": "This deployment has no live environment.",
       "done": "done",
