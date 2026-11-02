@@ -319,6 +319,20 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	_, err = record("cash", 1, "late")
 	wantKey(err, codes.FailedPrecondition, "billing.payment.already_paid")
 
+	// Money recorded by hand is in the audit log, once per payment (the duplicate and the refusals wrote nothing), without the free-text note.
+	if targets, details := auditEntries(t, e.tid, "invoice_payment.recorded"); len(targets) != 2 || targets[0] != id || details[0]["method"] != "bank_transfer" || details[0]["amount_minor"] != float64(400) ||
+		details[0]["reference"] != "BANK-1" || details[1]["method"] != "cash" || details[1]["amount_minor"] != float64(total-400) {
+		t.Fatalf("invoice_payment.recorded = %v %v", targets, details)
+	}
+	if rows, err := shared.sql.Query(context.Background(), `SELECT 1 FROM audit_events WHERE tenant_id = $1 AND detail::text LIKE '%paid at the desk%'`, e.tid); err != nil {
+		t.Fatal(err)
+	} else {
+		defer rows.Close()
+		if rows.Next() {
+			t.Error("the free-text note of a payment is in the audit log")
+		}
+	}
+
 	// Who and when are on the invoice.
 	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
 	got, err := svc.GetInvoice(tctx, &billingv1.GetInvoiceRequest{InvoiceId: id})

@@ -1614,8 +1614,9 @@ type GetDunningReportSummary struct {
 
 // GetPriceChangeResponse is the response of GetPriceChange.
 type GetPriceChangeResponse struct {
-	PriceChange PriceChange       `json:"price_change"`
-	Items       []PriceChangeItem `json:"items"`
+	PriceChange   PriceChange       `json:"price_change"`
+	Items         []PriceChangeItem `json:"items"`
+	NextPageToken string            `json:"next_page_token"`
 }
 
 // GetRevenueReportResponse is the response of GetRevenueReport.
@@ -3965,7 +3966,9 @@ func (p *ListPriceChangesParams) values() url.Values {
 // GetPriceChangeParams are the query parameters of GetPriceChange.
 type GetPriceChangeParams struct {
 	// One of: scheduled, applied, withdrawn, skipped.
-	State string
+	State     string
+	PageSize  *int
+	PageToken string
 }
 
 func (p *GetPriceChangeParams) values() url.Values {
@@ -3975,6 +3978,12 @@ func (p *GetPriceChangeParams) values() url.Values {
 	}
 	if p.State != "" {
 		v.Set("state", p.State)
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
 	}
 	return v
 }

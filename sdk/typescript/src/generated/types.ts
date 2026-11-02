@@ -1642,11 +1642,14 @@ export interface GetExpenseInboxQuery {
 
 export interface GetPriceChangeQuery {
   state?: "scheduled" | "applied" | "withdrawn" | "skipped";
+  page_size?: number;
+  page_token?: string;
 }
 
 export interface GetPriceChangeResponse {
   price_change: PriceChange;
   items: Array<PriceChangeItem>;
+  next_page_token: string;
 }
 
 export interface GetRevenueReportQuery {

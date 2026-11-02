@@ -4,6 +4,7 @@
 package grpcapi
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -56,6 +57,7 @@ import (
 	routingcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/routing/command"
 	routingqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/routing/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionsapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
 	subscriptionsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
@@ -114,7 +116,7 @@ type Server struct {
 
 // newPlans returns a Server on the app pool, or on its router when cells are on. resolver is where a code a seller gives an affiliate is checked against the
 // other tenants' (ADR 0018).
-func newPlans(appDB pgxx.Beginner, resolver *affiliatescmd.Resolver) *Server {
+func newPlans(appDB pgxx.Beginner, systemPool *pgxpool.Pool, resolver *affiliatescmd.Resolver) *Server {
 	db := store.New(appDB)
 	now := time.Now
 
@@ -125,7 +127,7 @@ func newPlans(appDB pgxx.Beginner, resolver *affiliatescmd.Resolver) *Server {
 		overridesHandler:     overridesapi.New(overridescmd.New(db, now), overridesqry.New(db)),
 		plansHandler:         plansapi.New(planscmd.New(db), plansqry.New(db)),
 		subscriptionsHandler: subscriptionsapi.New(subscriptionscmd.New(db, now), subscriptionsQ),
-		changesHandler:       changesapi.New(changescmd.New(db, now), changesqry.New(db, now)),
+		changesHandler:       changesapi.New(changescmd.New(db, now).WithPause(pricePause(systemPool)), changesqry.New(db, now)),
 		couponsHandler:       couponsapi.New(couponscmd.New(db, now).WithRedeemHook(affiliatescmd.AttributeByPromotionCode), couponsqry.New(db)),
 		feesHandler:          feesapi.New(feescmd.New(db), feesqry.New(db, now)),
 		migrationsHandler:    provmigapi.New(provmigcmd.New(db, now), provmigqry.New(db)),
@@ -136,6 +138,14 @@ func newPlans(appDB pgxx.Beginner, resolver *affiliatescmd.Resolver) *Server {
 		db:                   db,
 		now:                  now,
 		resolver:             resolver,
+	}
+}
+
+// pricePause reads the kill switch of price changes on the system pool.
+func pricePause(pool *pgxpool.Pool) changescmd.PauseSource {
+	return func(ctx context.Context) (bool, error) {
+		r, err := sqlc.New(pool).GetPriceChangePause(ctx)
+		return r.Paused, err
 	}
 }
 

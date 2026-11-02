@@ -237,7 +237,20 @@
     "suspend": "Suspendre",
     "reinstate": "Réactiver",
     "suspended": "Suspendu",
-    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement."
+    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement.",
+    "pricePause": {
+      "title": "Changements de prix",
+      "running": "Actifs",
+      "paused": "En pause",
+      "hint": "L'interrupteur d'urgence pour tous les vendeurs : tant qu'il est actif, aucun changement de prix ne planifie d'abonnement (un essai à blanc compte toujours), un lot en cours s'arrête et les avis déjà en file attendent. Les changements déjà planifiés s'appliquent quand même au renouvellement ; un vendeur retire le changement de prix pour en arrêter un.",
+      "by": "Mis en pause par {who} le {date}.",
+      "reason": "Motif",
+      "reasonHint": "Conservé avec le réglage et dans le journal d'audit. 500 caractères au plus.",
+      "pause": "Mettre en pause tous les changements de prix",
+      "resume": "Reprendre les changements de prix",
+      "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
+      "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    }
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -310,7 +323,22 @@
       "by": "par {actor}",
       "approvedBy": "approuvé par {actor}",
       "choose": "Choisir un statut",
-      "applyNone": "Définir le statut"
+      "applyNone": "Définir le statut",
+      "filters": "Filtrer l'historique",
+      "filterTo": "Passé à",
+      "filterKind": "Type",
+      "kinds": {
+        "changed": "Changements",
+        "requested": "En attente d'un second opérateur"
+      },
+      "shown": "{shown} changements sur {total}",
+      "noMatch": "Aucun changement ne correspond à ces filtres."
+    },
+    "hold": {
+      "suspended": "{app} est suspendue : ses clés d'API sont arrêtées, les pages et liens de paiement n'acceptent aucun paiement, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
+      "frozen": "{app} est gelée : vous pouvez tout lire, mais rien ne peut être modifié. Les appels d'API en écriture sont refusés, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
+      "banned": "{app} est bannie : ses clés d'API sont arrêtées et rien n'est débité, envoyé par e-mail ni transmis. Seul un opérateur peut lever un bannissement.",
+      "write": "Écrire au support"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "géré par un prestataire de paiement",
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
-        }
+        },
+        "loadMore": "Afficher plus d'abonnements"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -3085,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Modification de prix introuvable.",
-        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle."
+        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",
@@ -4171,9 +4201,9 @@
       "pageIntro": "L'environnement live démarre désactivé : pas de clés live, pas de webhooks live, pas de prélèvements réels. Terminez la liste, puis activez-le.",
       "intro": "Votre environnement live n'est pas encore actif. Terminez ces étapes pour l'activer.",
       "liveNow": "Votre environnement live est actif.",
-      "suspended": "Votre environnement live est suspendu. Contactez le support pour le rétablir.",
+      "suspended": "Votre environnement live est à l'arrêt (suspendu, gelé ou banni). Contactez le support pour le rétablir.",
       "stateActive": "Actif",
-      "stateSuspended": "Suspendu",
+      "stateSuspended": "À l'arrêt",
       "count": "{done} sur {total} faites",
       "noLive": "Ce déploiement n'a pas d'environnement live.",
       "done": "fait",
@@ -5963,6 +5993,20 @@
       "invoice": "Factures",
       "provider_account": "Comptes de prestataires",
       "tenant": "Réglages et statut du locataire",
+      "price_change": "Changements de prix",
+      "coupon": "Coupons",
+      "promotion_code": "Codes promotionnels",
+      "routing_rules": "Routage des paiements",
+      "tax_rates": "Taux de taxe",
+      "mail_settings": "Réglages des e-mails",
+      "mail_integration": "Fournisseur d'e-mails",
+      "go_live": "Mise en production",
+      "contract": "Contrats",
+      "support": "Assistance",
+      "dunning": "Relances de paiement",
+      "invoice_payment": "Paiements saisis à la main",
+      "bank_transfer": "Virements bancaires",
+      "user": "Mots de passe et connexion",
       "two_factor": "Connexion en deux étapes",
       "sign_in": "Connexion",
       "account": "Organisation"
@@ -6010,6 +6054,56 @@
         "status_requested": "Changement de statut demandé",
         "status_changed": "Statut modifié",
         "settings_updated": "Réglages modifiés"
+      },
+      "price_change": {
+        "scheduled": "Changement de prix planifié",
+        "withdrawn": "Changement de prix retiré"
+      },
+      "coupon": {
+        "created": "Coupon créé",
+        "deactivated": "Coupon désactivé"
+      },
+      "promotion_code": {
+        "created": "Codes promotionnels créés",
+        "deactivated": "Code promotionnel désactivé"
+      },
+      "routing_rules": {
+        "changed": "Routage des paiements modifié"
+      },
+      "tax_rates": {
+        "changed": "Taux de taxe modifiés"
+      },
+      "mail_settings": {
+        "changed": "Réglages des e-mails modifiés"
+      },
+      "mail_integration": {
+        "saved": "Fournisseur d'e-mails connecté",
+        "removed": "Fournisseur d'e-mails déconnecté"
+      },
+      "go_live": {
+        "billing_profile_saved": "Profil de facturation enregistré",
+        "terms_accepted": "Conditions acceptées",
+        "activated": "Environnement de production activé"
+      },
+      "contract": {
+        "version_published": "Version de contrat publiée",
+        "settings_changed": "Réglages des contrats modifiés"
+      },
+      "support": {
+        "status_changed": "Statut d'un ticket d'assistance modifié"
+      },
+      "dunning": {
+        "settings_changed": "Réglages de relance modifiés"
+      },
+      "invoice_payment": {
+        "recorded": "Paiement saisi à la main"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Virement bancaire confirmé"
+      },
+      "user": {
+        "password_reset": "Mot de passe réinitialisé",
+        "sign_in_locked": "Connexion verrouillée"
       },
       "two_factor": {
         "enabled": "Connexion en deux étapes activée",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -35,6 +37,30 @@ const (
 	MinNoticeDays     = 14
 	DefaultNoticeDays = 30
 )
+
+// pauseCheckEvery is how many subscriptions a run handles between two looks at the kill switch: a pause stops a run within a hundred subscriptions.
+const pauseCheckEvery = 100
+
+// errPaused is the answer while the operator has paused every price change (plan 15). A run that was stopped by it has scheduled what it reached; the price change
+// is open, and Retry continues it once price changes are resumed.
+func errPaused() error {
+	return errkey.New(codes.FailedPrecondition, "plans.price_change.paused", "price changes are paused by the operator")
+}
+
+// checkNotPaused answers errPaused while the kill switch is on.
+func (c *Commands) checkNotPaused(ctx context.Context) error {
+	if c.pause == nil {
+		return nil
+	}
+	paused, err := c.pause(ctx)
+	if err != nil {
+		return convert.Err(err, "price change")
+	}
+	if paused {
+		return errPaused()
+	}
+	return nil
+}
 
 // maxActorRunes bounds the actor kept with a price change, as the table does.
 const maxActorRunes = 120
@@ -93,13 +119,27 @@ func (c *Commands) WithdrawPriceChange(ctx context.Context, req *plansv1.Withdra
 	if err != nil {
 		return nil, changesqry.PriceChangeNotFound()
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var waiting []sqlc.ListPendingPriceChangeChangesRow
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		if _, err := changesqry.PriceChange(ctx, q, id); err != nil {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		pc, err := changesqry.PriceChange(ctx, q, id)
+		if err != nil {
 			return err
 		}
-		if _, err := q.WithdrawPriceChange(ctx, sqlc.WithdrawPriceChangeParams{ID: id, WithdrawnBy: actorOf(req.GetActor())}); err != nil {
+		n, err := q.WithdrawPriceChange(ctx, sqlc.WithdrawPriceChangeParams{ID: id, WithdrawnBy: actorOf(req.GetActor())})
+		if err != nil {
 			return err
+		}
+		// Calling it again to finish an interrupted withdrawal withdraws nothing and records nothing.
+		if n > 0 {
+			if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "price_change.withdrawn", TargetType: "price_change", TargetID: id.String(),
+				Summary: fmt.Sprintf("withdrew the move of %s from version %d to %d", pc.GetPlanCode(), pc.GetFromVersion(), pc.GetToVersion()),
+				Detail:  map[string]any{"plan": pc.GetPlanCode(), "from_version": pc.GetFromVersion(), "to_version": pc.GetToVersion()}}); err != nil {
+				return err
+			}
 		}
 		waiting, err = q.ListPendingPriceChangeChanges(ctx, id)
 		return err
@@ -155,6 +195,12 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 	if err != nil {
 		return nil, err
 	}
+	// A dry run changes nothing and mails nobody, so it still counts while the switch is on.
+	if !a.dry {
+		if err := c.checkNotPaused(ctx); err != nil {
+			return nil, err
+		}
+	}
 	resp := &plansv1.SchedulePriceChangeResponse{NoticeDays: int32(a.notice)} //nolint:gosec // bounded by the callers
 	var ids []skippable
 	var toVersion int32
@@ -201,7 +247,12 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		resp.PriceChangeId = pcID.String()
 	}
 	earliest := c.now().Add(time.Duration(a.notice) * 24 * time.Hour)
-	for _, s := range ids {
+	for i, s := range ids {
+		if i > 0 && i%pauseCheckEvery == 0 && !a.dry {
+			if err := c.checkNotPaused(ctx); err != nil {
+				return nil, err
+			}
+		}
 		var o outcome
 		err := c.db.Tx(ctx, func(q *sqlc.Queries) (err error) {
 			o, err = c.priceOne(ctx, q, a, ti.ID, pcID, s.id, toVersion, earliest)
@@ -224,8 +275,15 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		return resp, nil
 	}
 	// The record learns the first date a price changes, and the tenant's webhooks learn of a run that scheduled something.
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		if err := q.SetPriceChangeEffective(ctx, pcID); err != nil {
+			return err
+		}
+		// One entry per run (a retry is a run): what was asked, and how many subscriptions it moved, found moved already and skipped.
+		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "price_change.scheduled", TargetType: "price_change", TargetID: pcID.String(),
+			Summary: fmt.Sprintf("moved %s from version %d to %d at the next renewal, %d days notice", a.plan, a.from, toVersion, a.notice),
+			Detail: map[string]any{"plan": a.plan, "from_version": a.from, "to_version": toVersion, "notice_days": a.notice, "scheduled": resp.Scheduled,
+				"already_scheduled": resp.AlreadyScheduled, "skipped": len(resp.Skipped)}}); err != nil {
 			return err
 		}
 		if resp.Scheduled == 0 {

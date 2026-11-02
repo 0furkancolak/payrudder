@@ -3,12 +3,15 @@ package command
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
@@ -35,9 +38,16 @@ func Set(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, hours []int
 	}
 	var at time.Time
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
-		var err error
-		at, err = sqlc.New(tx).UpsertDunningSettings(ctx, sqlc.UpsertDunningSettingsParams{TenantID: tenantID, RetryHours: hours})
-		return err
+		q := sqlc.New(tx)
+		before, err := q.GetDunningSettings(ctx, tenantID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if at, err = q.UpsertDunningSettings(ctx, sqlc.UpsertDunningSettingsParams{TenantID: tenantID, RetryHours: hours}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: tenantID, Action: "dunning.settings_changed", TargetType: "dunning_settings", Before: before.RetryHours, After: hours,
+			Summary: fmt.Sprintf("set %d dunning retries", len(hours)), Detail: map[string]any{"retry_hours": hours, "previous_retry_hours": before.RetryHours}})
 	})
 	if err != nil {
 		return nil, time.Time{}, apierr.Internal(ctx, err)

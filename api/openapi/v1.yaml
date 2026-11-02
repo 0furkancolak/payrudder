@@ -795,10 +795,12 @@ paths:
     get:
       operationId: getPriceChange
       summary: One price change with its subscriptions and what became of each
-      description: The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+      description: The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
       parameters:
         - { $ref: "#/components/parameters/ID" }
         - { name: state, in: query, required: false, schema: { type: string, enum: [scheduled, applied, withdrawn, skipped] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 500 } }
+        - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetPriceChangeResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -5536,6 +5538,31 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantStatusEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/price-change-pause:
+    get:
+      operationId: getPriceChangePause
+      summary: Whether every price change of the platform is paused
+      description: "The kill switch of price changes (plan 15). Never touched, it says `paused: false` with no time."
+      security: [{ operatorToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PriceChangePause" } } } }
+    put:
+      operationId: setPriceChangePause
+      summary: Pause or resume every price change of the platform
+      description: |
+        While paused, no run or retry (`POST /v1/plans/{code}/price-changes`, `POST /v1/price-changes/{id}/retry`) schedules a subscription: they answer 409
+        `plans.price_change.paused` (a dry run still counts, and withdrawing a price change still works), a run in progress stops within a hundred subscriptions, and
+        the notifier holds the mail of the price changes already scheduled until the switch is released. A change that is already scheduled is still applied at its
+        renewal; withdraw the price change to stop it. Each call is recorded in the audit log with its reason and the signed-in operator.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetPriceChangePauseRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PriceChangePause" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/api-keys:
     post:
       operationId: createApiKey
@@ -5882,12 +5909,27 @@ components:
       required: [price_changes]
       properties:
         price_changes: { type: array, items: { $ref: "#/components/schemas/PriceChange" } }
+    SetPriceChangePauseRequest:
+      type: object
+      required: [paused]
+      properties:
+        paused: { type: boolean }
+        reason: { type: string, maxLength: 500, description: Why; kept with the setting and shown to the next operator. }
+    PriceChangePause:
+      type: object
+      required: [paused, reason, updated_by, update_time]
+      properties:
+        paused: { type: boolean }
+        reason: { type: string }
+        updated_by: { type: string }
+        update_time: { type: string, format: date-time, nullable: true }
     GetPriceChangeResponse:
       type: object
-      required: [price_change, items]
+      required: [price_change, items, next_page_token]
       properties:
         price_change: { $ref: "#/components/schemas/PriceChange" }
         items: { type: array, items: { $ref: "#/components/schemas/PriceChangeItem" } }
+        next_page_token: { type: string }
     WithdrawPriceChangeResponse:
       type: object
       required: [price_change, withdrawn]

@@ -6,10 +6,12 @@ declare(strict_types=1);
 
 namespace Payrudder\Resource\Generated;
 
+use Generator;
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Model\GetPriceChangeResponse;
 use Payrudder\Model\ListPriceChangesResponse;
+use Payrudder\Model\PriceChangeItem;
 use Payrudder\Model\SchedulePriceChangeResponse;
 use Payrudder\Model\WithdrawPriceChangeResponse;
 use Payrudder\RequestOptions;
@@ -37,13 +39,55 @@ final class PriceChangesResource extends AbstractResource
      *
      * @param string $id
      * @param string|null $state
+     * @param int|null $pageSize
+     * @param string|null $pageToken
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function getPriceChange(string $id, ?string $state = null, ?RequestOptions $options = null): GetPriceChangeResponse
+    public function getPriceChange(string $id, ?string $state = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): GetPriceChangeResponse
     {
-        return GetPriceChangeResponse::fromArray($this->call('GET', '/v1/price-changes/' . rawurlencode($id), ['state' => $state], null, $options));
+        return GetPriceChangeResponse::fromArray($this->call('GET', '/v1/price-changes/' . rawurlencode($id), ['state' => $state, 'page_size' => $pageSize, 'page_token' => $pageToken], null, $options));
+    }
+
+    /**
+     * Walks every page of getPriceChange, yielding one response per page. A page token passed in starts the walk there.
+     *
+     * @param string $id
+     * @param string|null $state
+     * @param int|null $pageSize
+     * @param string|null $pageToken
+     * @param RequestOptions|null $options
+     *
+     * @return Generator<int, GetPriceChangeResponse>
+     */
+    public function getPriceChangePages(string $id, ?string $state = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): Generator
+    {
+        do {
+            $page = $this->getPriceChange(id: $id, state: $state, pageSize: $pageSize, pageToken: $pageToken, options: $options);
+            yield $page;
+            $pageToken = $page->nextPageToken;
+        } while ($pageToken !== null && $pageToken !== '');
+    }
+
+    /**
+     * Walks every page of getPriceChange and yields the items one by one.
+     *
+     * @param string $id
+     * @param string|null $state
+     * @param int|null $pageSize
+     * @param string|null $pageToken
+     * @param RequestOptions|null $options
+     *
+     * @return Generator<int, PriceChangeItem>
+     */
+    public function getPriceChangeIterator(string $id, ?string $state = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): Generator
+    {
+        foreach ($this->getPriceChangePages(id: $id, state: $state, pageSize: $pageSize, pageToken: $pageToken, options: $options) as $page) {
+            foreach ($page->items ?? [] as $item) {
+                yield $item;
+            }
+        }
     }
 
     /**

@@ -237,7 +237,20 @@
     "suspend": "Dondur",
     "reinstate": "Yeniden etkinleştir",
     "suspended": "Donduruldu",
-    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz."
+    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz.",
+    "pricePause": {
+      "title": "Fiyat değişiklikleri",
+      "running": "Çalışıyor",
+      "paused": "Duraklatıldı",
+      "hint": "Tüm satıcılar için acil durdurma anahtarı: duraklatıldığında hiçbir fiyat değişikliği abonelik planlamaz (deneme çalıştırması yine sayar), süren bir çalıştırma durur ve sıradaki bildirimler bekler. Zaten planlanmış değişiklikler yenilemelerinde yine uygulanır; birini durdurmak için satıcı fiyat değişikliğini geri çeker.",
+      "by": "{date} tarihinde {who} tarafından duraklatıldı.",
+      "reason": "Gerekçe",
+      "reasonHint": "Ayarla birlikte ve denetim günlüğünde saklanır. En fazla 500 karakter.",
+      "pause": "Tüm fiyat değişikliklerini duraklat",
+      "resume": "Fiyat değişikliklerini sürdür",
+      "confirmPause": "Platformdaki tüm fiyat değişiklikleri duraklatılsın mı? Siz sürdürene kadar hiçbir satıcı yenisini planlayamaz veya yeniden deneyemez ve sıradaki bildirimler bekler.",
+      "confirmResume": "Fiyat değişiklikleri sürdürülsün mü? Satıcılar yeniden planlayıp deneyebilir ve bekleyen bildirimler gönderilir."
+    }
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -310,7 +323,22 @@
       "by": "{actor} tarafından",
       "approvedBy": "{actor} onayladı",
       "choose": "Bir durum seçin",
-      "applyNone": "Durumu ayarla"
+      "applyNone": "Durumu ayarla",
+      "filters": "Geçmişi filtrele",
+      "filterTo": "Yeni durum",
+      "filterKind": "Tür",
+      "kinds": {
+        "changed": "Değişiklikler",
+        "requested": "İkinci operatör bekleniyor"
+      },
+      "shown": "{total} değişiklikten {shown} tanesi",
+      "noMatch": "Bu filtrelere uyan değişiklik yok."
+    },
+    "hold": {
+      "suspended": "{app} askıya alındı: API anahtarları durdu, ödeme sayfaları ve ödeme bağlantıları ödeme almıyor, hiçbir tahsilat yapılmıyor ve müşterilerine e-posta gitmiyor. Verileriniz saklanır.",
+      "frozen": "{app} donduruldu: her şeyi okuyabilirsiniz ama hiçbir şey değiştirilemez. Yazan API çağrıları reddedilir, hiçbir tahsilat yapılmaz ve müşterilerine e-posta gitmez. Verileriniz saklanır.",
+      "banned": "{app} yasaklandı: API anahtarları durdu ve hiçbir şey tahsil edilmez, e-postalanmaz veya gönderilmez. Yasağı yalnızca bir operatör kaldırabilir.",
+      "write": "Destek ekibine yazın"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "ödeme sağlayıcısı yönetiyor",
           "not_changeable": "bu yolla taşınamaz",
           "customer_blocked": "müşteri engelli"
-        }
+        },
+        "loadMore": "Daha fazla abonelik göster"
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
@@ -3085,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Fiyat değişikliği bulunamadı.",
-        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun."
+        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun.",
+        "paused": "Fiyat değişiklikleri operatör tarafından duraklatıldı. Daha sonra tekrar deneyin."
       },
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
@@ -4171,9 +4201,9 @@
       "pageIntro": "Canlı ortam kapalı başlar: canlı anahtar, canlı webhook ve gerçek tahsilat yoktur. Listeyi tamamlayın, sonra açın.",
       "intro": "Canlı ortamınız henüz etkin değil. Açmak için şu adımları tamamlayın.",
       "liveNow": "Canlı ortamınız etkin.",
-      "suspended": "Canlı ortamınız askıya alındı. Yeniden açtırmak için destekle iletişime geçin.",
+      "suspended": "Canlı ortamınız durduruldu (askıya alındı, donduruldu veya yasaklandı). Yeniden açtırmak için destekle iletişime geçin.",
       "stateActive": "Etkin",
-      "stateSuspended": "Askıda",
+      "stateSuspended": "Durduruldu",
       "count": "{done} / {total} tamam",
       "noLive": "Bu kurulumda canlı ortam yok.",
       "done": "tamam",
@@ -5963,6 +5993,20 @@
       "invoice": "Faturalar",
       "provider_account": "Sağlayıcı hesapları",
       "tenant": "Kiracı ayarları ve durumu",
+      "price_change": "Fiyat değişiklikleri",
+      "coupon": "Kuponlar",
+      "promotion_code": "Promosyon kodları",
+      "routing_rules": "Ödeme yönlendirme",
+      "tax_rates": "Vergi oranları",
+      "mail_settings": "E-posta ayarları",
+      "mail_integration": "E-posta sağlayıcısı",
+      "go_live": "Canlıya geçiş",
+      "contract": "Sözleşmeler",
+      "support": "Destek",
+      "dunning": "Tahsilat hatırlatma",
+      "invoice_payment": "Elle kaydedilen ödemeler",
+      "bank_transfer": "Banka havaleleri",
+      "user": "Parola ve oturum açma",
       "two_factor": "İki adımlı giriş",
       "sign_in": "Giriş",
       "account": "Kuruluş"
@@ -6010,6 +6054,56 @@
         "status_requested": "Durum değişikliği istendi",
         "status_changed": "Durum değişti",
         "settings_updated": "Ayarlar değişti"
+      },
+      "price_change": {
+        "scheduled": "Fiyat değişikliği planlandı",
+        "withdrawn": "Fiyat değişikliği geri çekildi"
+      },
+      "coupon": {
+        "created": "Kupon oluşturuldu",
+        "deactivated": "Kupon devre dışı bırakıldı"
+      },
+      "promotion_code": {
+        "created": "Promosyon kodları oluşturuldu",
+        "deactivated": "Promosyon kodu devre dışı bırakıldı"
+      },
+      "routing_rules": {
+        "changed": "Ödeme yönlendirme değişti"
+      },
+      "tax_rates": {
+        "changed": "Vergi oranları değişti"
+      },
+      "mail_settings": {
+        "changed": "E-posta ayarları değişti"
+      },
+      "mail_integration": {
+        "saved": "E-posta sağlayıcısı bağlandı",
+        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı"
+      },
+      "go_live": {
+        "billing_profile_saved": "Fatura profili kaydedildi",
+        "terms_accepted": "Şartlar kabul edildi",
+        "activated": "Canlı ortam etkinleştirildi"
+      },
+      "contract": {
+        "version_published": "Sözleşme sürümü yayınlandı",
+        "settings_changed": "Sözleşme ayarları değişti"
+      },
+      "support": {
+        "status_changed": "Destek talebinin durumu değişti"
+      },
+      "dunning": {
+        "settings_changed": "Tahsilat hatırlatma ayarları değişti"
+      },
+      "invoice_payment": {
+        "recorded": "Ödeme elle kaydedildi"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banka havalesi onaylandı"
+      },
+      "user": {
+        "password_reset": "Parola sıfırlandı",
+        "sign_in_locked": "Oturum açma kilitlendi"
       },
       "two_factor": {
         "enabled": "İki adımlı giriş açıldı",

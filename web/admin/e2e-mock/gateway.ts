@@ -77,6 +77,15 @@ export class MockGateway {
     return { body: { ...(rec.wizard ? { wizard: rec.wizard } : {}), seen_tours: rec.seen_tours } };
   };
 
+  /** The kill switch of price changes, off unless a test pulls it (it is on the operator's tenant list, which many tests open). */
+  pricePause = { paused: false, reason: "", updated_by: "", update_time: null as string | null };
+
+  private pricePauseHandler: Handler = (c) => {
+    if (c.path !== "/admin/v1/price-change-pause") return undefined;
+    if (c.method === "PUT") this.pricePause = { paused: c.body?.paused === true, reason: String(c.body?.reason ?? ""), updated_by: "operator@example.com", update_time: "2026-11-02T09:00:00Z" };
+    return { body: this.pricePause };
+  };
+
   on(handler: Handler): this {
     this.handlers.unshift(handler);
     return this;
@@ -125,7 +134,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
       this.calls.push(call);
-      for (const h of [...this.handlers, this.onboardingHandler, operatorSignIn, geoHandler] as Handler[]) {
+      for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
         if (r) {
           if (r.raw) await route.fulfill({ status: r.status ?? 200, contentType: r.contentType ?? "application/octet-stream", body: r.raw });

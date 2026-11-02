@@ -237,7 +237,20 @@
     "suspend": "Aussetzen",
     "reinstate": "Wieder freigeben",
     "suspended": "Ausgesetzt",
-    "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr."
+    "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr.",
+    "pricePause": {
+      "title": "Preisänderungen",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "hint": "Der Notausschalter für alle Verkäufer: Solange er aktiv ist, plant keine Preisänderung ein Abonnement (ein Probelauf zählt weiterhin), ein laufender Durchlauf stoppt und bereits eingereihte Hinweise warten. Bereits geplante Änderungen gelten weiterhin zur Verlängerung; ein Verkäufer zieht die Preisänderung zurück, um eine zu stoppen.",
+      "by": "Von {who} am {date} pausiert.",
+      "reason": "Grund",
+      "reasonHint": "Wird mit der Einstellung und im Audit-Protokoll gespeichert. Höchstens 500 Zeichen.",
+      "pause": "Alle Preisänderungen pausieren",
+      "resume": "Preisänderungen fortsetzen",
+      "confirmPause": "Alle Preisänderungen der Plattform pausieren? Kein Verkäufer kann eine planen oder wiederholen, bis Sie fortsetzen, und bereits eingereihte Hinweise warten.",
+      "confirmResume": "Preisänderungen fortsetzen? Verkäufer können wieder planen und wiederholen, und die wartenden Hinweise werden versendet."
+    }
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -310,7 +323,22 @@
       "by": "von {actor}",
       "approvedBy": "bestätigt von {actor}",
       "choose": "Status wählen",
-      "applyNone": "Status setzen"
+      "applyNone": "Status setzen",
+      "filters": "Verlauf filtern",
+      "filterTo": "Geändert zu",
+      "filterKind": "Art",
+      "kinds": {
+        "changed": "Änderungen",
+        "requested": "Wartet auf einen zweiten Operator"
+      },
+      "shown": "{shown} von {total} Änderungen",
+      "noMatch": "Keine Änderung passt zu diesen Filtern."
+    },
+    "hold": {
+      "suspended": "{app} ist gesperrt: Die API-Schlüssel sind gestoppt, Zahlungsseiten und Zahlungslinks nehmen keine Zahlungen an, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
+      "frozen": "{app} ist eingefroren: Sie können weiterhin alles lesen, aber nichts ändern. Schreibende API-Aufrufe werden abgelehnt, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
+      "banned": "{app} ist gebannt: Die API-Schlüssel sind gestoppt, und es wird nichts abgebucht, gemailt oder ausgeliefert. Nur ein Operator kann einen Bann aufheben.",
+      "write": "Den Support kontaktieren"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "wird vom Zahlungsanbieter geführt",
           "not_changeable": "so nicht umstellbar",
           "customer_blocked": "Kunde ist gesperrt"
-        }
+        },
+        "loadMore": "Mehr Abonnements anzeigen"
       },
       "prorateAfterTrial": "Die erste Periode ab dem Ende der Testphase berechnen",
       "prorateAfterTrialHelp": "Endet eine Testphase mitten in einer Abrechnungsperiode, wird die Grundgebühr dieser Periode nur vom Ende der Testphase bis zum Periodenende berechnet. Aus: Die Gebühr der ganzen Periode wird berechnet, wie bei Paketen, die vor dieser Option veröffentlicht wurden.",
@@ -3085,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Preisänderung nicht gefunden.",
-        "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an."
+        "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an.",
+        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut."
       },
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
@@ -4171,9 +4201,9 @@
       "pageIntro": "Die Live-Umgebung startet ausgeschaltet: keine Live-Schlüssel, keine Live-Webhooks, keine echten Abbuchungen. Arbeiten Sie die Liste ab und schalten Sie sie dann ein.",
       "intro": "Ihre Live-Umgebung ist noch nicht aktiv. Erledigen Sie diese Schritte, um sie einzuschalten.",
       "liveNow": "Ihre Live-Umgebung ist aktiv.",
-      "suspended": "Ihre Live-Umgebung ist gesperrt. Wenden Sie sich an den Support, um sie wieder freizugeben.",
+      "suspended": "Ihre Live-Umgebung ist angehalten (gesperrt, eingefroren oder gebannt). Wenden Sie sich an den Support, um sie wieder freizugeben.",
       "stateActive": "Aktiv",
-      "stateSuspended": "Gesperrt",
+      "stateSuspended": "Angehalten",
       "count": "{done} von {total} erledigt",
       "noLive": "Diese Installation hat keine Live-Umgebung.",
       "done": "erledigt",
@@ -5963,6 +5993,20 @@
       "invoice": "Rechnungen",
       "provider_account": "Anbieterkonten",
       "tenant": "Mandanteneinstellungen und -status",
+      "price_change": "Preisänderungen",
+      "coupon": "Gutscheine",
+      "promotion_code": "Aktionscodes",
+      "routing_rules": "Zahlungsrouting",
+      "tax_rates": "Steuersätze",
+      "mail_settings": "E-Mail-Einstellungen",
+      "mail_integration": "E-Mail-Anbieter",
+      "go_live": "Livegang",
+      "contract": "Verträge",
+      "support": "Support",
+      "dunning": "Mahnwesen",
+      "invoice_payment": "Manuell erfasste Zahlungen",
+      "bank_transfer": "Banküberweisungen",
+      "user": "Passwörter und Anmeldung",
       "two_factor": "Zwei-Faktor-Anmeldung",
       "sign_in": "Anmeldung",
       "account": "Organisation"
@@ -6010,6 +6054,56 @@
         "status_requested": "Statusänderung angefragt",
         "status_changed": "Status geändert",
         "settings_updated": "Einstellungen geändert"
+      },
+      "price_change": {
+        "scheduled": "Preisänderung geplant",
+        "withdrawn": "Preisänderung zurückgezogen"
+      },
+      "coupon": {
+        "created": "Gutschein erstellt",
+        "deactivated": "Gutschein deaktiviert"
+      },
+      "promotion_code": {
+        "created": "Aktionscodes erstellt",
+        "deactivated": "Aktionscode deaktiviert"
+      },
+      "routing_rules": {
+        "changed": "Zahlungsrouting geändert"
+      },
+      "tax_rates": {
+        "changed": "Steuersätze geändert"
+      },
+      "mail_settings": {
+        "changed": "E-Mail-Einstellungen geändert"
+      },
+      "mail_integration": {
+        "saved": "E-Mail-Anbieter verbunden",
+        "removed": "E-Mail-Anbieter getrennt"
+      },
+      "go_live": {
+        "billing_profile_saved": "Rechnungsprofil gespeichert",
+        "terms_accepted": "Bedingungen akzeptiert",
+        "activated": "Live-Umgebung aktiviert"
+      },
+      "contract": {
+        "version_published": "Vertragsversion veröffentlicht",
+        "settings_changed": "Vertragseinstellungen geändert"
+      },
+      "support": {
+        "status_changed": "Status eines Support-Tickets geändert"
+      },
+      "dunning": {
+        "settings_changed": "Mahneinstellungen geändert"
+      },
+      "invoice_payment": {
+        "recorded": "Zahlung manuell erfasst"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banküberweisung bestätigt"
+      },
+      "user": {
+        "password_reset": "Passwort zurückgesetzt",
+        "sign_in_locked": "Anmeldung gesperrt"
       },
       "two_factor": {
         "enabled": "Zwei-Faktor-Anmeldung eingeschaltet",

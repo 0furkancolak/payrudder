@@ -107,6 +107,8 @@ type fakePlans struct {
 	lastBlock   *plansv1.BlockCustomerRequest
 	lastUnblock *plansv1.UnblockCustomerRequest
 	lastStatus  *plansv1.SetTenantStatusRequest
+	lastPause   *plansv1.SetPriceChangePauseRequest
+	lastItems   *plansv1.GetPriceChangeRequest
 }
 
 func (f *fakePlans) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomerRequest) (*plansv1.CreateCustomerResponse, error) {

@@ -562,6 +562,14 @@ type PriceChangeItem struct {
 	UpdatedAt      time.Time
 }
 
+type PriceChangePause struct {
+	Singleton bool
+	Paused    bool
+	Reason    string
+	UpdatedBy string
+	UpdatedAt *time.Time
+}
+
 type PromotionCode struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID

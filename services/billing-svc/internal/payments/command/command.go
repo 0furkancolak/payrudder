@@ -5,6 +5,7 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
@@ -133,6 +135,12 @@ func record(ctx context.Context, tx pgx.Tx, eng *sagacommand.Engine, in Payment,
 		Reference: ref, Note: note, RecordedBy: actor, RecordedAt: now}
 	if err := q.InsertInvoicePayment(ctx, sqlc.InsertInvoicePaymentParams{TenantID: in.Tenant, ID: row.ID, InvoiceID: in.Invoice, Method: in.Method, AmountMinor: in.AmountMinor,
 		Currency: inv.Currency, ReceivedAt: row.ReceivedAt, Reference: ref, Note: note, RecordedBy: actor, RecordedAt: now}); err != nil {
+		return Result{}, err
+	}
+	// Money that arrived outside a provider is the operator's word: who recorded it, how much, for which invoice. The note is free text and stays out.
+	if err := audit.Record(ctx, tx, audit.Event{TenantID: in.Tenant, Action: "invoice_payment.recorded", TargetType: "invoice", TargetID: in.Invoice.String(),
+		Summary: fmt.Sprintf("recorded %d %s received by %s", in.AmountMinor, inv.Currency, in.Method),
+		Detail:  map[string]any{"payment_id": row.ID.String(), "method": in.Method, "amount_minor": in.AmountMinor, "currency": inv.Currency, "received_at": row.ReceivedAt.Format(time.RFC3339), "reference": ref}}); err != nil {
 		return Result{}, err
 	}
 	res := Result{Payment: row, Paid: paid + in.AmountMinor, Outstanding: inv.TotalMinor - paid - in.AmountMinor}

@@ -33,6 +33,12 @@ service AdminService {
   rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
   // ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
   rpc ListTenantStatusEvents(ListTenantStatusEventsRequest) returns (ListTenantStatusEventsResponse);
+  // GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
+  rpc GetPriceChangePause(GetPriceChangePauseRequest) returns (GetPriceChangePauseResponse);
+  // SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
+  // a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
+  // already scheduled is still applied at its renewal; withdraw the price change to stop that.
+  rpc SetPriceChangePause(SetPriceChangePauseRequest) returns (SetPriceChangePauseResponse);
 }
 
 message CreateAccountRequest {
@@ -207,4 +213,30 @@ message TenantStatusEvent {
   // The second operator of a change that needed one.
   string approved_by = 8;
   google.protobuf.Timestamp create_time = 9;
+}
+
+message GetPriceChangePauseRequest {}
+
+message GetPriceChangePauseResponse {
+  PriceChangePause pause = 1;
+}
+
+message SetPriceChangePauseRequest {
+  bool paused = 1;
+  // Why, kept with the setting and shown to the next operator. At most 500 characters.
+  string reason = 2;
+  // Who asks. The gateway sets it; a value in the request is overwritten.
+  string actor = 3;
+}
+
+message SetPriceChangePauseResponse {
+  PriceChangePause pause = 1;
+}
+
+// The platform-wide pause of price changes. Never set: not paused, and no one has touched it.
+message PriceChangePause {
+  bool paused = 1;
+  string reason = 2;
+  string updated_by = 3;
+  google.protobuf.Timestamp update_time = 4;
 }

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap, type Plan, type PlanVersion } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
@@ -109,12 +109,17 @@ export function usePriceChanges(tenantId: MaybeRefOrGetter<string>, code: MaybeR
   });
 }
 
-/** One price change with its subscriptions (at most 500), once it is opened. */
+const ITEMS_PAGE = 100;
+
+/** One price change with its subscriptions, a page at a time (`fetchNextPage` loads the next), once it is opened. */
 export function usePriceChange(tenantId: MaybeRefOrGetter<string>, id: MaybeRefOrGetter<string>) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: computed(() => priceChangeKeys.one(toValue(tenantId), toValue(id))),
     enabled: computed(() => toValue(tenantId) !== "" && toValue(id) !== ""),
-    queryFn: async () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/price-changes/{id}", { params: { path: { id: toValue(id) } } })),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) =>
+      unwrap(tenantApi(toValue(tenantId)).GET("/v1/price-changes/{id}", { params: { path: { id: toValue(id) }, query: { page_size: ITEMS_PAGE, page_token: pageParam || undefined } } })),
+    getNextPageParam: (last) => last.next_page_token || undefined,
   });
 }
 

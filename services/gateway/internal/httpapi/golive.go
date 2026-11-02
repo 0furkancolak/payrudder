@@ -41,6 +41,8 @@ func (s *Server) goLiveRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
 		{"GET", "/admin/v1/tenants/{id}/status-events", AccessOperator, "", s.tenantStatusEvents},
+		{"GET", "/admin/v1/price-change-pause", AccessOperator, "", s.priceChangePause},
+		{"PUT", "/admin/v1/price-change-pause", AccessOperator, "", s.setPriceChangePause},
 	}
 }
 
@@ -373,6 +375,30 @@ func (s *Server) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) tenantStatusEvents(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Admin.ListTenantStatusEvents(r.Context(), &plansv1.ListTenantStatusEventsRequest{TenantId: r.PathValue("id")})
 	respond(w, r, http.StatusOK, resp, err)
+}
+
+// priceChangePause is GET /admin/v1/price-change-pause: whether the operator has paused every price change, and who and why.
+func (s *Server) priceChangePause(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.GetPriceChangePause(r.Context(), &plansv1.GetPriceChangePauseRequest{})
+	respond(w, r, http.StatusOK, resp.GetPause(), err)
+}
+
+// setPriceChangePause is PUT /admin/v1/price-change-pause: the kill switch of price changes (plan 15), pulled and released by the signed-in operator.
+func (s *Server) setPriceChangePause(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Paused *bool  `json:"paused"`
+		Reason string `json:"reason"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if body.Paused == nil {
+		writeError(w, r, invalid("paused", "required: true pauses every price change, false resumes them"))
+		return
+	}
+	resp, err := s.d.Admin.SetPriceChangePause(r.Context(), &plansv1.SetPriceChangePauseRequest{Paused: *body.Paused, Reason: body.Reason, Actor: actorOf(r)})
+	respond(w, r, http.StatusOK, resp.GetPause(), err)
 }
 
 // appPromote copies the app's sandbox configuration to its live environment (phase 45 D). With dry_run it only returns the diff; without, it applies it, and

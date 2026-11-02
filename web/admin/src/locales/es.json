@@ -237,7 +237,20 @@
     "suspend": "Suspender",
     "reinstate": "Reactivar",
     "suspended": "Suspendido",
-    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante."
+    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante.",
+    "pricePause": {
+      "title": "Cambios de precio",
+      "running": "En marcha",
+      "paused": "En pausa",
+      "hint": "El interruptor de emergencia para todos los vendedores: mientras está activo, ningún cambio de precio programa suscripciones (una simulación sigue contando), una ejecución en curso se detiene y los avisos ya en cola esperan. Los cambios ya programados se siguen aplicando en su renovación; el vendedor retira el cambio de precio para detener uno.",
+      "by": "Pausado por {who} el {date}.",
+      "reason": "Motivo",
+      "reasonHint": "Se guarda con el ajuste y en el registro de auditoría. Hasta 500 caracteres.",
+      "pause": "Pausar todos los cambios de precio",
+      "resume": "Reanudar los cambios de precio",
+      "confirmPause": "¿Pausar todos los cambios de precio de la plataforma? Ningún vendedor podrá programar ni reintentar uno hasta que reanudes, y los avisos ya en cola esperan.",
+      "confirmResume": "¿Reanudar los cambios de precio? Los vendedores podrán volver a programar y reintentar, y los avisos que esperaban se enviarán."
+    }
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -310,7 +323,22 @@
       "by": "por {actor}",
       "approvedBy": "aprobado por {actor}",
       "choose": "Elige un estado",
-      "applyNone": "Establecer estado"
+      "applyNone": "Establecer estado",
+      "filters": "Filtrar el historial",
+      "filterTo": "Cambiado a",
+      "filterKind": "Tipo",
+      "kinds": {
+        "changed": "Cambios",
+        "requested": "En espera de un segundo operador"
+      },
+      "shown": "{shown} de {total} cambios",
+      "noMatch": "Ningún cambio coincide con estos filtros."
+    },
+    "hold": {
+      "suspended": "{app} está suspendida: sus claves de API se han detenido, las páginas y enlaces de pago no aceptan pagos, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "frozen": "{app} está congelada: puede leer todo, pero no se puede cambiar nada. Las llamadas de API que escriben se rechazan, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "banned": "{app} está vetada: sus claves de API se han detenido y no se cobra, envía ni transmite nada. Solo un operador puede levantar un veto.",
+      "write": "Escribir a soporte"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "la gestiona un proveedor de pagos",
           "not_changeable": "no se puede mover así",
           "customer_blocked": "el cliente está bloqueado"
-        }
+        },
+        "loadMore": "Mostrar más suscripciones"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -3085,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Cambio de precio no encontrado.",
-        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo."
+        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo.",
+        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde."
       },
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",
@@ -4171,9 +4201,9 @@
       "pageIntro": "El entorno live empieza apagado: sin claves live, sin webhooks live, sin cobros reales. Completa la lista y luego enciéndelo.",
       "intro": "Tu entorno live aún no está activo. Completa estos pasos para encenderlo.",
       "liveNow": "Tu entorno live está activo.",
-      "suspended": "Tu entorno live está suspendido. Contacta con soporte para restablecerlo.",
+      "suspended": "Tu entorno live está detenido (suspendido, congelado o vetado). Contacta con soporte para restablecerlo.",
       "stateActive": "Activo",
-      "stateSuspended": "Suspendido",
+      "stateSuspended": "Detenido",
       "count": "{done} de {total} hechos",
       "noLive": "Esta instalación no tiene entorno live.",
       "done": "hecho",
@@ -5963,6 +5993,20 @@
       "invoice": "Facturas",
       "provider_account": "Cuentas de proveedores",
       "tenant": "Ajustes y estado del inquilino",
+      "price_change": "Cambios de precio",
+      "coupon": "Cupones",
+      "promotion_code": "Códigos promocionales",
+      "routing_rules": "Enrutamiento de pagos",
+      "tax_rates": "Tasas de impuestos",
+      "mail_settings": "Ajustes de correo",
+      "mail_integration": "Proveedor de correo",
+      "go_live": "Salida a producción",
+      "contract": "Contratos",
+      "support": "Soporte",
+      "dunning": "Reclamación de pagos",
+      "invoice_payment": "Pagos registrados a mano",
+      "bank_transfer": "Transferencias bancarias",
+      "user": "Contraseñas e inicio de sesión",
       "two_factor": "Inicio de sesión en dos pasos",
       "sign_in": "Inicio de sesión",
       "account": "Organización"
@@ -6010,6 +6054,56 @@
         "status_requested": "Cambio de estado solicitado",
         "status_changed": "Estado cambiado",
         "settings_updated": "Ajustes cambiados"
+      },
+      "price_change": {
+        "scheduled": "Cambio de precio programado",
+        "withdrawn": "Cambio de precio retirado"
+      },
+      "coupon": {
+        "created": "Cupón creado",
+        "deactivated": "Cupón desactivado"
+      },
+      "promotion_code": {
+        "created": "Códigos promocionales creados",
+        "deactivated": "Código promocional desactivado"
+      },
+      "routing_rules": {
+        "changed": "Enrutamiento de pagos modificado"
+      },
+      "tax_rates": {
+        "changed": "Tasas de impuestos modificadas"
+      },
+      "mail_settings": {
+        "changed": "Ajustes de correo modificados"
+      },
+      "mail_integration": {
+        "saved": "Proveedor de correo conectado",
+        "removed": "Proveedor de correo desconectado"
+      },
+      "go_live": {
+        "billing_profile_saved": "Perfil de facturación guardado",
+        "terms_accepted": "Términos aceptados",
+        "activated": "Entorno en producción activado"
+      },
+      "contract": {
+        "version_published": "Versión de contrato publicada",
+        "settings_changed": "Ajustes de contratos modificados"
+      },
+      "support": {
+        "status_changed": "Estado de un ticket de soporte modificado"
+      },
+      "dunning": {
+        "settings_changed": "Ajustes de reclamación modificados"
+      },
+      "invoice_payment": {
+        "recorded": "Pago registrado a mano"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Transferencia bancaria confirmada"
+      },
+      "user": {
+        "password_reset": "Contraseña restablecida",
+        "sign_in_locked": "Inicio de sesión bloqueado"
       },
       "two_factor": {
         "enabled": "Inicio de sesión en dos pasos activado",

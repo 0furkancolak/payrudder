@@ -237,7 +237,20 @@
     "suspend": "Suspend",
     "reinstate": "Reinstate",
     "suspended": "Suspended",
-    "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once."
+    "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once.",
+    "pricePause": {
+      "title": "Price changes",
+      "running": "Running",
+      "paused": "Paused",
+      "hint": "The kill switch for every seller: while paused, no price change schedules a subscription (a dry run still counts), a run in progress stops and the notices already queued wait. Changes already scheduled still apply at their renewal; a seller withdraws the price change to stop one.",
+      "by": "Paused by {who} on {date}.",
+      "reason": "Reason",
+      "reasonHint": "Kept with the setting and in the audit log. Up to 500 characters.",
+      "pause": "Pause all price changes",
+      "resume": "Resume price changes",
+      "confirmPause": "Pause every price change on the platform? No seller can schedule or retry one until you resume, and the notices already queued wait.",
+      "confirmResume": "Resume price changes? Sellers can schedule and retry again, and the notices that waited go out."
+    }
   },
   "tenant": {
     "fallbackTitle": "Tenant",
@@ -310,7 +323,22 @@
       "by": "by {actor}",
       "approvedBy": "approved by {actor}",
       "choose": "Choose a status",
-      "applyNone": "Set a status"
+      "applyNone": "Set a status",
+      "filters": "Filter the history",
+      "filterTo": "Changed to",
+      "filterKind": "Kind",
+      "kinds": {
+        "changed": "Changes",
+        "requested": "Waiting for a second operator"
+      },
+      "shown": "{shown} of {total} changes",
+      "noMatch": "No change matches these filters."
+    },
+    "hold": {
+      "suspended": "{app} is suspended: its API keys have stopped, payment pages and payment links take no payment, nothing is charged and its customers get no mail. Your data is kept.",
+      "frozen": "{app} is frozen: you can still read everything, but nothing can be changed. API calls that write are refused, nothing is charged and its customers get no mail. Your data is kept.",
+      "banned": "{app} is banned: its API keys have stopped and nothing is charged, mailed or sent. Only an operator can lift a ban.",
+      "write": "Write to support"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "run by a payment provider",
           "not_changeable": "cannot be moved this way",
           "customer_blocked": "customer is blocked"
-        }
+        },
+        "loadMore": "Show more subscriptions"
       },
       "prorateAfterTrial": "Charge the first period from the end of the trial",
       "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",
@@ -3085,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Price change not found.",
-        "withdrawn": "This price change was withdrawn. Make a new one."
+        "withdrawn": "This price change was withdrawn. Make a new one.",
+        "paused": "Price changes are paused by the operator. Try again later."
       },
       "override": {
         "customer_required": "Say which customer the limit is for.",
@@ -4171,9 +4201,9 @@
       "pageIntro": "The live environment starts switched off: no live keys, no live webhooks, no real charges. Finish the list, then switch it on.",
       "intro": "Your live environment is not active yet. Finish these steps to switch it on.",
       "liveNow": "Your live environment is active.",
-      "suspended": "Your live environment is suspended. Contact support to have it reinstated.",
+      "suspended": "Your live environment is on hold (suspended, frozen or banned). Contact support to have it reinstated.",
       "stateActive": "Active",
-      "stateSuspended": "Suspended",
+      "stateSuspended": "On hold",
       "count": "{done} of {total} done",
       "noLive": "This deployment has no live environment.",
       "done": "done",
@@ -5963,6 +5993,20 @@
       "invoice": "Invoices",
       "provider_account": "Provider accounts",
       "tenant": "Tenant settings and status",
+      "price_change": "Price changes",
+      "coupon": "Coupons",
+      "promotion_code": "Promotion codes",
+      "routing_rules": "Payment routing",
+      "tax_rates": "Tax rates",
+      "mail_settings": "Mail settings",
+      "mail_integration": "Mail provider",
+      "go_live": "Go live",
+      "contract": "Contracts",
+      "support": "Support",
+      "dunning": "Dunning",
+      "invoice_payment": "Payments recorded by hand",
+      "bank_transfer": "Bank transfers",
+      "user": "Passwords and sign-in",
       "two_factor": "Two-factor sign-in",
       "sign_in": "Sign-in",
       "account": "Organisation"
@@ -6010,6 +6054,56 @@
         "status_requested": "Status change requested",
         "status_changed": "Status changed",
         "settings_updated": "Settings changed"
+      },
+      "price_change": {
+        "scheduled": "Price change scheduled",
+        "withdrawn": "Price change withdrawn"
+      },
+      "coupon": {
+        "created": "Coupon created",
+        "deactivated": "Coupon deactivated"
+      },
+      "promotion_code": {
+        "created": "Promotion codes created",
+        "deactivated": "Promotion code deactivated"
+      },
+      "routing_rules": {
+        "changed": "Payment routing changed"
+      },
+      "tax_rates": {
+        "changed": "Tax rates changed"
+      },
+      "mail_settings": {
+        "changed": "Mail settings changed"
+      },
+      "mail_integration": {
+        "saved": "Mail provider connected",
+        "removed": "Mail provider disconnected"
+      },
+      "go_live": {
+        "billing_profile_saved": "Billing profile saved",
+        "terms_accepted": "Terms accepted",
+        "activated": "Live environment activated"
+      },
+      "contract": {
+        "version_published": "Contract version published",
+        "settings_changed": "Contract settings changed"
+      },
+      "support": {
+        "status_changed": "Support ticket status changed"
+      },
+      "dunning": {
+        "settings_changed": "Dunning settings changed"
+      },
+      "invoice_payment": {
+        "recorded": "Payment recorded by hand"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Bank transfer confirmed"
+      },
+      "user": {
+        "password_reset": "Password reset",
+        "sign_in_locked": "Sign-in locked"
       },
       "two_factor": {
         "enabled": "Two-factor sign-in turned on",
