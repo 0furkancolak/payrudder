@@ -3321,6 +3321,9 @@
       },
       "card": {
         "not_found": "El cliente no tiene esa tarjeta guardada."
+      },
+      "refund": {
+        "charge_unclear": "La factura tiene varios cobros correctos y el reembolso no identifica ninguno. Reembolse al cliente en el proveedor de pago y regístrelo después en la nota de crédito."
       }
     },
     "einvoice": {

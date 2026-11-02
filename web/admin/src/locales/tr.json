@@ -3321,6 +3321,9 @@
       },
       "card": {
         "not_found": "Müşterinin böyle bir kayıtlı kartı yok."
+      },
+      "refund": {
+        "charge_unclear": "Faturanın birden fazla başarılı tahsilatı var ve iade tutarı bunlardan birini ayırt etmiyor. Müşteriye iadeyi ödeme sağlayıcısında yapın, ardından alacak dekontunda kaydedin."
       }
     },
     "einvoice": {
