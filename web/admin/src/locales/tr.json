@@ -728,7 +728,8 @@
         "none": "Henüz faturalanacak bir şey yok: bu müşterinin bu dönemde aboneliği ve faturalanacak gecikmiş kullanımı yok.",
         "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir.",
         "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklenirdi: kalemlerin toplamı sıfırın altında."
-      }
+      },
+      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin."
     },
     "packages": {
       "new": "Yeni paket",
@@ -2756,7 +2757,23 @@
         "tr_is_vkn": "Bu bir VKN, yani işletmenin numarası; ama müşteri bir birey (TCKN'si olur). Yine de kaydedebilirsiniz.",
         "eu_vat": "AB'deki bir işletmenin KDV numarası ülke koduyla başlar (örneğin DE136695976). Bu öyle görünmüyor; yine de kaydedebilirsiniz."
       },
-      "warned": "Bu numara bu müşteri için doğru görünmüyor. Nedenini görmek için vergi bilgisini açın."
+      "warned": "Bu numara bu müşteri için doğru görünmüyor. Nedenini görmek için vergi bilgisini açın.",
+      "labels": {
+        "tckn": "TCKN (11 haneli kimlik numarası)",
+        "vkn": "VKN (10 haneli vergi numarası)",
+        "tr": "Vergi numarası (VKN veya TCKN)",
+        "vat": "KDV numarası",
+        "ein": "Vergi kimliği (EIN)",
+        "taxid": "Vergi kimliği"
+      },
+      "about": {
+        "tr_individual": "Türkiye'deki bir birey 11 haneli TCKN ile tanımlanır. İsteğe bağlı: yoksa e-Arşiv faturasında tüketici yer tutucusu kullanılır.",
+        "tr_business": "Türkiye'deki bir işletme 10 haneli VKN ile tanımlanır; VKN zorunludur: VKN'si olmayan bir işletmeye e-fatura kesilmez. Vergi dairesi isteğe bağlıdır.",
+        "tr_unknown": "Yukarıdan müşterinin birey (TCKN) mi işletme (VKN) mi olduğunu seçin: e-faturalar ikisine farklı davranır.",
+        "eu_business": "AB'deki bir işletme, ülke koduyla başlayan KDV kimlik numarasını verir. İsteğe bağlı; yalnızca biçimi ve kontrol basamakları denetlenir, VIES sorgulanmaz.",
+        "gb_business": "Birleşik Krallık'taki bir işletme, KDV mükellefiyse KDV numarasını verir. İsteğe bağlı; denetlenmez.",
+        "us_business": "ABD'deki bir işletme EIN numarasını verebilir. İsteğe bağlı; denetlenmez."
+      }
     },
     "errorKeys": {
       "einvoice": {
