@@ -23,6 +23,7 @@ useful for regressions (the same scenarios run in `nightly.yml`) and for compari
 |---|---|---|---|---|
 | `ingest_steady`: 5,000 events/s in batches of 100, 10 tenants, 3 min (target says 15 min) | p99 < 50 ms, 0 errors, aggregator lag p99 < 5 s | p99 **32.2 ms** (p95 9.5 ms, median 4.6 ms, max 470 ms), **0 errors** of 9,231 requests; aggregator lag p99 **0.02 s** (max 0.02 s), limits lag max 0.02 s; outbox depth max 100 | yes, for 3 min; the 15 min soak is for the nightly | [ingest_steady_5k.json](benchmarks/ingest_steady_5k.json) |
 | `ingest_spike`: 1k → 20k events/s over 1 min, held 1 min, 20 tenants | no 5xx, only 429s above quota, recovers in < 2 min | **0 5xx**, 10 answers of 429, 20,994 requests; **p99 2.35 s at the 20k peak** (median 10 ms, p90 0.79 s); 315 iterations dropped by k6 for lack of VUs; aggregator lag max **0.44 s**, limits 0.15 s; outbox depth max 200 | partly: no 5xx and only 429s, but latency degrades sharply at 20k events/s on this VM. Recovery time was not measured separately | [ingest_spike_20k.json](benchmarks/ingest_spike_20k.json) |
+| `ingest_spike`, **re-run 2026-11-02 on a contended machine** (load 6 to 15, WAL sync 75 to 162 ms) | as above | **89.5 % of 20,062 requests 5xx** (`i/o timeout` writing to Postgres), median 5.0 s | **no** (the machine, see Findings) | [ingest_spike_20k_contended_2026-11-02.json](benchmarks/ingest_spike_20k_contended_2026-11-02.json), [ingest_profile_2026-11-02.txt](benchmarks/ingest_profile_2026-11-02.txt) |
 | `ingest_spike` on 2 tenants (same ramp: forces the per-tenant quota) | 429s above quota, no 5xx | 14,198 429s, **0 5xx**, p99 16.6 ms (the 429s are cheap) | yes | [ingest_spike_2tenants.json](benchmarks/ingest_spike_2tenants.json) |
 | `noisy_neighbor`: tenant A (free tier, quota 100 events/s) sends 1,000 events/s; 9 standard tenants send 100 events/s each | A gets 429s; B-J p99 within 20 % of baseline | A: **1,616 429s**, 185 batches accepted (about 100 events/s, i.e. exactly its quota). Neighbours' p99: **22.7 ms baseline vs 23.3 ms under noise (+2.8 %)** | yes | [noisy_neighbor.json](benchmarks/noisy_neighbor.json) |
 | `entitlement_reads`: 2,000 reads/s, 2 min | p99 < 10 ms | p50 0.9 ms, p95 9.1 ms, **p99 23.4 ms**, max 91 ms, 0 errors of 239,966; 300 iterations dropped by k6 | **no** (p95 meets it, p99 does not at 2k/s on this VM) | [entitlement_reads.json](benchmarks/entitlement_reads.json) |
@@ -74,7 +75,12 @@ A compose service built from this repository without an entry in the file fails 
 - **A first 20k run was discarded.** It showed 5xx and 5 s latencies (`i/o timeout` writing to Postgres). When it was repeated, the Docker VM's disk
   turned out to be 100 % full (`No space left on device`, a Postgres PANIC), which very likely caused it. After freeing the disk and recreating the volumes the
   scenario had no 5xx; the k6 results above are from the clean run. Check `docker run --rm alpine df -h /` before a load run.
-- At 20k events/s a single ingest-svc and a single Postgres on this VM queue requests (p99 2.35 s) instead of failing. Where the time goes was not
-  profiled; adding ingest replicas is only worth trying after finding out whether Postgres is the bottleneck.
+- At 20k events/s a single ingest-svc and a single Postgres on this VM queue requests (p99 2.35 s) instead of failing. **Profiled on 2026-11-02, on a
+  contended machine** ([capacity.md](capacity.md#profile-of-the-ingest-limit-2026-11-02), [artifact](benchmarks/ingest_profile_2026-11-02.txt)): the same scenario
+  answered 5xx to 89.5 % of its requests and 10k events/s steady to 96.8 %, because the disk under Postgres took 75 to 162 ms per WAL sync (idle `pg_test_fsync`:
+  25 to 126 ms); ingest_db's active backends waited on the WAL write and flush (about half) and on `Lock:object`, the commit-ordering lock of `pg_notify`
+  (14 to 38 %), while ingest-svc and the gateway were under half a core. `synchronous_commit = off` cut the failures to 36 %; removing the notify or enlarging the
+  pool alone did nothing; both together, 73 %. So the earlier p99 was queueing behind commits, and how many commits per second the stack takes depends first on the
+  flush time of the machine. Repeat it where `pg_test_fsync` shows under 2 ms before drawing a capacity number from it.
 - `entitlement_reads` at 2k/s misses the p99 target by 2x on this VM while the median is under a millisecond. The cause was not investigated;
   re-measure on CI hardware (the nightly runs it) before changing anything.

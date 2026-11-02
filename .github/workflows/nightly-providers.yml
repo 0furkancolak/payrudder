@@ -1,0 +1,42 @@
+name: nightly-providers
+
+# TestSandbox of each payment adapter against the provider's own sandbox (pkg/payments/{stripe,paddle,iyzico}/sandbox_test.go): the behaviour the adapters' fakes
+# cannot show and the matrices mark UNVERIFIED. Each provider runs only when its repository secrets exist; without them the job says "skipped: no secrets" and
+# succeeds, so a repository or fork without sandbox accounts never gets a red nightly. None of this has run yet: no sandbox account exists
+# (docs/stripe-compatibility-matrix.md, docs/paddle-compatibility-matrix.md, docs/iyzico-compatibility-matrix.md).
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   STRIPE_SANDBOX_API_KEY     a test-mode key (sk_test_..., rk_test_...); a live key makes the test fail on purpose
+#   PADDLE_SANDBOX_API_KEY     a sandbox API key (pdl_sdbx_apikey_...)
+#   IYZICO_SANDBOX_API_KEY, IYZICO_SANDBOX_SECRET_KEY, IYZICO_SANDBOX_CARD   sandbox merchant keys and "cardUserKey:cardToken" of a stored sandbox card
+on:
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    name: ${{ matrix.provider }} sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false # one provider's outage must not hide the others
+      matrix:
+        provider: [stripe, paddle, iyzico]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: TestSandbox
+        env:
+          STRIPE_SANDBOX_API_KEY: ${{ secrets.STRIPE_SANDBOX_API_KEY }}
+          PADDLE_SANDBOX_API_KEY: ${{ secrets.PADDLE_SANDBOX_API_KEY }}
+          IYZICO_SANDBOX_API_KEY: ${{ secrets.IYZICO_SANDBOX_API_KEY }}
+          IYZICO_SANDBOX_SECRET_KEY: ${{ secrets.IYZICO_SANDBOX_SECRET_KEY }}
+          IYZICO_SANDBOX_CARD: ${{ secrets.IYZICO_SANDBOX_CARD }}
+        run: scripts/provider-sandbox.sh ${{ matrix.provider }}
