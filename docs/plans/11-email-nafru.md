@@ -67,6 +67,6 @@ Sending as many tenants' mail from one platform account puts the domain's reputa
 - **A suppression is permanent** until an operator lifts it: no expiry, no automatic lift when the customer changes their address (a new address is a new row).
 
 ## Review addendum (2026-11-01)
-- No bounce, complaint or suppression code exists. Tenants already switch mail off by category (`pkg/mailcategory`); the six templates are the template-contract inventory.
+- No bounce, complaint or suppression code exists. Tenants already switch mail off by category (`pkg/mailcategory`); the six templates (a seventh, `contract_accepted.v1`, arrived with plan 21) are the template-contract inventory.
 - Replace Work 3 (allowance) with: a **`mails` meter per ADR 0024** (the existing `events`, `apps`, `members`, `api_keys` meters give quota, thresholds and alerts without a new table).
 - Default (not agreed): build against a fake with a Resend-compatible shape; the real Nafru tag and application contract stay UNVERIFIED. Add a suppression list fed by a bounce endpoint from fixtures and a per-tenant send rate limit.
