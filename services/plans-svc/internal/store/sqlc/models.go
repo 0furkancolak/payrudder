@@ -696,15 +696,15 @@ type SubscriptionTrialNotice struct {
 }
 
 type SupportAttachment struct {
-	ID          uuid.UUID
-	TicketID    uuid.UUID
-	MessageID   uuid.UUID
-	TenantID    uuid.UUID
-	AssetID     uuid.UUID
-	Filename    string
-	ContentType string
-	SizeBytes   int64
-	CreatedAt   time.Time
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	MessageID       uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	ContentType     string
+	SizeBytes       int64
+	CreatedAt       time.Time
 }
 
 type SupportCannedReply struct {

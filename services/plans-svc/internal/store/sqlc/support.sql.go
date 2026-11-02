@@ -25,11 +25,11 @@ func (q *Queries) DeleteSupportCannedReply(ctx context.Context, id uuid.UUID) (i
 }
 
 const getSupportAttachment = `-- name: GetSupportAttachment :one
-SELECT a.id, a.ticket_id, a.tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
+SELECT a.id, a.ticket_id, a.storage_tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
 FROM support_attachments a
 JOIN support_messages m ON m.id = a.message_id
 JOIN support_tickets t ON t.id = a.ticket_id
-JOIN tenants tn ON tn.id = a.tenant_id
+JOIN tenants tn ON tn.id = a.storage_tenant_id
 WHERE a.id = $1 AND a.ticket_id = $2
 `
 
@@ -39,16 +39,16 @@ type GetSupportAttachmentParams struct {
 }
 
 type GetSupportAttachmentRow struct {
-	ID          uuid.UUID
-	TicketID    uuid.UUID
-	TenantID    uuid.UUID
-	AssetID     uuid.UUID
-	Filename    string
-	Internal    bool
-	AccountID   uuid.UUID
-	Environment string
-	Timezone    string
-	Tier        string
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	Internal        bool
+	AccountID       uuid.UUID
+	Environment     string
+	Timezone        string
+	Tier            string
 }
 
 // One attachment with where it is stored and whether its message is an internal note.
@@ -58,7 +58,7 @@ func (q *Queries) GetSupportAttachment(ctx context.Context, arg GetSupportAttach
 	err := row.Scan(
 		&i.ID,
 		&i.TicketID,
-		&i.TenantID,
+		&i.StorageTenantID,
 		&i.AssetID,
 		&i.Filename,
 		&i.Internal,
@@ -152,19 +152,19 @@ func (q *Queries) GetSupportTicket(ctx context.Context, arg GetSupportTicketPara
 }
 
 const insertSupportAttachment = `-- name: InsertSupportAttachment :exec
-INSERT INTO support_attachments (id, ticket_id, message_id, tenant_id, asset_id, filename, content_type, size_bytes)
+INSERT INTO support_attachments (id, ticket_id, message_id, storage_tenant_id, asset_id, filename, content_type, size_bytes)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertSupportAttachmentParams struct {
-	ID          uuid.UUID
-	TicketID    uuid.UUID
-	MessageID   uuid.UUID
-	TenantID    uuid.UUID
-	AssetID     uuid.UUID
-	Filename    string
-	ContentType string
-	SizeBytes   int64
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	MessageID       uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	ContentType     string
+	SizeBytes       int64
 }
 
 func (q *Queries) InsertSupportAttachment(ctx context.Context, arg InsertSupportAttachmentParams) error {
@@ -172,7 +172,7 @@ func (q *Queries) InsertSupportAttachment(ctx context.Context, arg InsertSupport
 		arg.ID,
 		arg.TicketID,
 		arg.MessageID,
-		arg.TenantID,
+		arg.StorageTenantID,
 		arg.AssetID,
 		arg.Filename,
 		arg.ContentType,

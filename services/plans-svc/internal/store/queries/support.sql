@@ -201,8 +201,8 @@ FROM support_attachments a JOIN support_tickets t ON t.id = a.ticket_id
 WHERE t.account_id = @account_id;
 
 -- name: InsertSupportAttachment :exec
-INSERT INTO support_attachments (id, ticket_id, message_id, tenant_id, asset_id, filename, content_type, size_bytes)
-VALUES (@id, @ticket_id, @message_id, @tenant_id, @asset_id, @filename, @content_type, @size_bytes);
+INSERT INTO support_attachments (id, ticket_id, message_id, storage_tenant_id, asset_id, filename, content_type, size_bytes)
+VALUES (@id, @ticket_id, @message_id, @storage_tenant_id, @asset_id, @filename, @content_type, @size_bytes);
 
 -- The attachments of a ticket's messages (those of internal notes only when asked for), oldest first.
 -- name: ListSupportAttachments :many
@@ -213,9 +213,9 @@ ORDER BY a.created_at, a.id;
 
 -- One attachment with where it is stored and whether its message is an internal note.
 -- name: GetSupportAttachment :one
-SELECT a.id, a.ticket_id, a.tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
+SELECT a.id, a.ticket_id, a.storage_tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
 FROM support_attachments a
 JOIN support_messages m ON m.id = a.message_id
 JOIN support_tickets t ON t.id = a.ticket_id
-JOIN tenants tn ON tn.id = a.tenant_id
+JOIN tenants tn ON tn.id = a.storage_tenant_id
 WHERE a.id = @id AND a.ticket_id = @ticket_id;

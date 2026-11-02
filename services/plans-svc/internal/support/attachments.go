@@ -169,7 +169,7 @@ func (s *Service) AddSupportAttachment(ctx context.Context, req *plansv1.AddSupp
 		if err := withinLimits(ctx, q, ticketID, account, req.GetSizeBytes()); err != nil {
 			return err
 		}
-		if err := q.InsertSupportAttachment(ctx, sqlc.InsertSupportAttachmentParams{ID: uuid.MustParse(out.Id), TicketID: ticketID, MessageID: messageID, TenantID: tenantID, AssetID: assetID,
+		if err := q.InsertSupportAttachment(ctx, sqlc.InsertSupportAttachmentParams{ID: uuid.MustParse(out.Id), TicketID: ticketID, MessageID: messageID, StorageTenantID: tenantID, AssetID: assetID,
 			Filename: name, ContentType: out.ContentType, SizeBytes: out.SizeBytes}); err != nil {
 			return err
 		}
@@ -209,6 +209,6 @@ func (s *Service) GetSupportAttachment(ctx context.Context, req *plansv1.GetSupp
 			return nil, attachmentNotFound()
 		}
 	}
-	return &plansv1.GetSupportAttachmentResponse{Target: &plansv1.SupportAttachmentTarget{TenantId: a.TenantID.String(), Environment: a.Environment, Timezone: a.Timezone, Tier: a.Tier,
+	return &plansv1.GetSupportAttachmentResponse{Target: &plansv1.SupportAttachmentTarget{TenantId: a.StorageTenantID.String(), Environment: a.Environment, Timezone: a.Timezone, Tier: a.Tier,
 		AssetId: a.AssetID.String(), Filename: a.Filename}}, nil
 }
