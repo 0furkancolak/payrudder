@@ -340,7 +340,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(places, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
 	saas := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, DefaultRegion: defaultRegionForTests, BanApproval: banApproval, Box: box, WebhookAllowPrivate: true,
+		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, DefaultRegion: defaultRegionForTests, BanApproval: banApproval, BanRetentionDays: testBanRetentionDays, Box: box, WebhookAllowPrivate: true,
 		Mail: mail, AppURL: testAppURL, OperatorEmails: []string{testOperatorEmail}, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
 	})
 	lis := bufconn.Listen(1 << 20)
@@ -358,6 +358,9 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 
 // banApproval makes the plans-svc a test starts need a second operator for a ban (PAYRUDDER_TENANT_BAN_APPROVAL); only the test of that sets it.
 var banApproval bool
+
+// testBanRetentionDays is the retention period of a banned tenant's data in the plans-svc a test starts (PAYRUDDER_BAN_RETENTION_DAYS).
+const testBanRetentionDays = 90
 
 func operator() context.Context {
 	return metadata.AppendToOutgoingContext(context.Background(), tenant.MDOperator, "true")

@@ -3773,6 +3773,38 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/hold:
+    get:
+      operationId: appHold
+      tags: [Product]
+      summary: What the operator has done to the app's live environment, as its owners may know it
+      description: >
+        The status of the live environment (a suspension, a freeze or a ban stops the app, see the notice on every page), a suspension or a freeze the operator scheduled for it, the day a
+        banned app's data is kept until, and the latest appeal. Any member of the account may read it. It never carries the operator's category or note.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppHold" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/appeal:
+    post:
+      operationId: appAppeal
+      tags: [Product]
+      summary: Appeal against a suspension, a freeze or a ban of the app
+      description: >
+        An owner states why the operator should lift the hold (up to 2000 characters). Only an owner, only while the live environment is held (409 plans.appeal.not_held), and one
+        appeal is open at a time (409 plans.appeal.exists). The operator decides it and the owners are mailed the answer.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AppAppealRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/TenantAppeal" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/promote:
     post:
       operationId: appPromote
@@ -6149,6 +6181,68 @@ paths:
       responses:
         "204": { description: Removed }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{id}/lifecycle:
+    get:
+      operationId: getTenantLifecycle
+      summary: A live tenant's retention deadline and scheduled status
+      description: The deadline a banned tenant's data is kept until (a job marks it due and deletes nothing), and the suspension or freeze scheduled for the tenant.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TenantLifecycle" } } } }
+  /admin/v1/tenants/{id}/scheduled-status:
+    put:
+      operationId: scheduleTenantStatus
+      summary: Schedule a suspension or a freeze of an active live tenant
+      description: >
+        Applied by a sweeper at the time, as the operator `system`, to a tenant that is active by then (any other is left as it is). A ban is never scheduled. One schedule per tenant: a
+        new one replaces the old. The owners are mailed when it is applied, as for any change of status. Recorded in the audit log.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ScheduleTenantStatusRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TenantLifecycle" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: cancelScheduledTenantStatus
+      summary: Cancel the scheduled status of a tenant
+      description: A tenant with nothing scheduled is not an error.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TenantLifecycle" } } } }
+  /admin/v1/appeals:
+    get:
+      operationId: listTenantAppeals
+      summary: The owners' appeals against a hold, newest first
+      description: The latest 200, of every tenant or of one (`tenant_id`), of every status or of one (`status`).
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [open, accepted, rejected] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantAppealsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/appeals/{id}/decision:
+    post:
+      operationId: decideTenantAppeal
+      summary: Accept or reject an open appeal
+      description: >
+        Accepting reinstates the tenant (active) and mails the owners the answer (not the mail of the reinstatement); rejecting needs an answer. The owners are mailed either way and
+        the decision is audited. 409 plans.appeal.not_open for an appeal decided already.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DecideTenantAppealRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TenantAppeal" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/price-change-pause:
     get:
       operationId: getPriceChangePause
@@ -9699,6 +9793,65 @@ components:
         status: { type: string, enum: [active, suspended, frozen, banned] }
         reason: { type: string, maxLength: 500 }
         category: { type: string, enum: [nonpayment, fraud, abuse, legal, request, other] }
+    TenantAppeal:
+      type: object
+      required: [id, tenant_id, status, held_status, statement, submitted_by, answer, decided_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        status: { type: string, enum: [open, accepted, rejected] }
+        held_status: { type: string, enum: [suspended, frozen, banned], description: "The status the app was in when the owner appealed" }
+        statement: { type: string, description: "What the owner wrote" }
+        submitted_by: { type: string, description: "The owner's verified address" }
+        answer: { type: string, description: "The operator's answer to the owner; empty while open" }
+        decided_by: { type: string }
+        create_time: { type: string, format: date-time }
+        decide_time: { type: string, format: date-time, nullable: true }
+    AppAppealRequest:
+      type: object
+      required: [statement]
+      properties:
+        statement: { type: string, maxLength: 2000 }
+    AppHold:
+      type: object
+      required: [status, can_appeal]
+      properties:
+        status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED, TENANT_STATUS_FROZEN, TENANT_STATUS_BANNED] }
+        scheduled_status: { type: string, enum: [suspended, frozen], description: "Set when the operator scheduled one" }
+        scheduled_time: { type: string, format: date-time, nullable: true }
+        retention_until: { type: string, format: date-time, nullable: true, description: "Set only while the app is banned" }
+        appeal: { allOf: [{ $ref: "#/components/schemas/TenantAppeal" }], nullable: true, description: "The latest appeal, open or decided" }
+        can_appeal: { type: boolean, description: "An owner of an app that is held and has no open appeal" }
+    TenantLifecycle:
+      type: object
+      properties:
+        retention_until: { type: string, format: date-time, nullable: true, description: "A banned tenant's data is kept until then; nothing deletes it" }
+        retention_due_time: { type: string, format: date-time, nullable: true, description: "When the retention job marked the deadline due" }
+        scheduled_status: { type: string, enum: [suspended, frozen] }
+        scheduled_time: { type: string, format: date-time, nullable: true }
+        scheduled_category: { type: string }
+        scheduled_reason: { type: string }
+        scheduled_by: { type: string }
+    ScheduleTenantStatusRequest:
+      type: object
+      required: [status, schedule_time]
+      properties:
+        status: { type: string, enum: [suspended, frozen] }
+        schedule_time: { type: string, format: date-time, description: "In the future, within a year" }
+        category: { type: string, enum: [nonpayment, fraud, abuse, legal, request, other] }
+        reason: { type: string, maxLength: 500 }
+    DecideTenantAppealRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [accepted, rejected] }
+        answer: { type: string, maxLength: 1000, description: "Required to reject" }
+    ListTenantAppealsResponse:
+      type: object
+      required: [appeals, app_names]
+      properties:
+        appeals: { type: array, items: { $ref: "#/components/schemas/TenantAppeal" } }
+        app_names: { type: object, additionalProperties: { type: string }, description: "The app's name by tenant id" }
     TenantStatusEvent:
       type: object
       required: [id, kind, from_status, to_status, category, reason, actor, approved_by, create_time]

@@ -106,17 +106,21 @@ type fakePlans struct {
 	lastOperator bool
 	lastPM       string
 	// customer is what GetCustomer answers to a lookup by Payrudder's id (the hosted pages know the customer by it); nil keeps the failure the other tests expect.
-	customer    *plansv1.Customer
-	lastBlock   *plansv1.BlockCustomerRequest
-	lastListAdd *plansv1.AddBlocklistEntryRequest
-	lastListDel *plansv1.RemoveBlocklistEntryRequest
-	lastPlatAdd *plansv1.AddPlatformBlocklistEntryRequest
-	lastUnblock *plansv1.UnblockCustomerRequest
-	lastStatus  *plansv1.SetTenantStatusRequest
-	lastPause   *plansv1.SetPriceChangePauseRequest
-	lastNotice  *plansv1.SetPriceChangeNoticeRequest
-	lastSched   *plansv1.SchedulePriceChangeRequest
-	lastItems   *plansv1.GetPriceChangeRequest
+	customer     *plansv1.Customer
+	lastBlock    *plansv1.BlockCustomerRequest
+	lastListAdd  *plansv1.AddBlocklistEntryRequest
+	lastListDel  *plansv1.RemoveBlocklistEntryRequest
+	lastPlatAdd  *plansv1.AddPlatformBlocklistEntryRequest
+	lastUnblock  *plansv1.UnblockCustomerRequest
+	lastStatus   *plansv1.SetTenantStatusRequest
+	lastPause    *plansv1.SetPriceChangePauseRequest
+	lastNotice   *plansv1.SetPriceChangeNoticeRequest
+	lastSched    *plansv1.SchedulePriceChangeRequest
+	lastItems    *plansv1.GetPriceChangeRequest
+	lastSchedule *plansv1.ScheduleTenantStatusRequest
+	lastCancel   *plansv1.CancelScheduledTenantStatusRequest
+	lastAppeals  *plansv1.ListTenantAppealsRequest
+	lastDecision *plansv1.DecideTenantAppealRequest
 }
 
 func (f *fakePlans) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomerRequest) (*plansv1.CreateCustomerResponse, error) {

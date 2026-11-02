@@ -46,6 +46,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
+	tenantscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/command"
 	trialcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/trialnotices/command"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
@@ -74,6 +75,9 @@ type Config struct {
 	Secrets secretbox.Settings
 	// BanApproval makes a ban of a tenant need a second operator: the first request is recorded, the same request from another operator within a day applies it.
 	BanApproval bool `env:"PAYRUDDER_TENANT_BAN_APPROVAL"`
+	// BanRetentionDays is how long a banned tenant's data is kept before the retention job marks the deadline due (a mark and an audit entry: nothing is ever deleted by it).
+	// 0 records no deadline.
+	BanRetentionDays int `env:"PAYRUDDER_BAN_RETENTION_DAYS"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
 	WebhookAllowPrivate bool `env:"PAYRUDDER_WEBHOOK_ALLOW_PRIVATE"`
 	// SMTPAddr and MailFrom are the platform's own mail path: the mail Payrudder writes to people (verification, password reset, invitations). A tenant's
@@ -273,7 +277,9 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd,
+	// Scheduled suspensions are applied, and the end of a banned tenant's retention period is marked (docs/plans/14-tenant-management.md): the same commands the operator's calls use.
+	lifecycle := tenantscmd.New(places.Pool(), apikeyscmd.New(places.Pool(), evictor, log), log).WithBanApproval(cfg.BanApproval).WithMail(mail, cfg.AppURL).WithRetention(cfg.BanRetentionDays)
+	w := &workers{cfg: cfg, lifecycle: lifecycle, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd,
 		support: support.New(systemPool, log, support.Config{Mail: mail, Operators: cfg.OperatorEmails, AppURL: cfg.AppURL})}
 	return w.run(ctx)
 }
@@ -397,7 +403,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 		return nil, nil, nil, nil, err
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, DefaultRegion: cfg.DefaultRegion, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, DefaultRegion: cfg.DefaultRegion, BanApproval: cfg.BanApproval, BanRetentionDays: cfg.BanRetentionDays, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
@@ -417,9 +423,10 @@ type workers struct {
 	srv        *grpc.Server
 	grpcHealth *grpchealth.Server
 	lis        net.Listener
-	sandbox    *sandbox.Runner   // runs the sandbox resets and the retention sweep
-	saas       *saascmd.Commands // makes every account a customer of the platform tenant (does nothing with SaaS off)
-	support    *support.Service  // the help desk, for the job that closes the tickets nobody answered
+	sandbox    *sandbox.Runner      // runs the sandbox resets and the retention sweep
+	saas       *saascmd.Commands    // makes every account a customer of the platform tenant (does nothing with SaaS off)
+	support    *support.Service     // the help desk, for the job that closes the tickets nobody answered
+	lifecycle  *tenantscmd.Commands // applies the scheduled statuses and marks the retention deadlines that passed
 }
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
@@ -447,6 +454,7 @@ func (w *workers) run(ctx context.Context) error {
 	g.Go(func() error { return trials.Run(gctx) })
 	// A block that ran out by itself is cleared, and customer.unblocked is sent (docs/plans/13-customer-ban.md).
 	g.Go(func() error { return customerscmd.NewSweeper(w.pool, w.app, w.places, 0, w.log).Run(gctx) })
+	g.Go(func() error { return w.lifecycle.RunLifecycle(gctx, time.Minute) })
 	if w.saas.Enabled() {
 		g.Go(func() error { return w.saas.Run(gctx) })
 	}

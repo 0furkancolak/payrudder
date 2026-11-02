@@ -34,6 +34,11 @@ const (
 	AdminService_ListPlatformBlocklist_FullMethodName        = "/payrudder.plans.v1.AdminService/ListPlatformBlocklist"
 	AdminService_AddPlatformBlocklistEntry_FullMethodName    = "/payrudder.plans.v1.AdminService/AddPlatformBlocklistEntry"
 	AdminService_RemovePlatformBlocklistEntry_FullMethodName = "/payrudder.plans.v1.AdminService/RemovePlatformBlocklistEntry"
+	AdminService_GetTenantLifecycle_FullMethodName           = "/payrudder.plans.v1.AdminService/GetTenantLifecycle"
+	AdminService_ScheduleTenantStatus_FullMethodName         = "/payrudder.plans.v1.AdminService/ScheduleTenantStatus"
+	AdminService_CancelScheduledTenantStatus_FullMethodName  = "/payrudder.plans.v1.AdminService/CancelScheduledTenantStatus"
+	AdminService_ListTenantAppeals_FullMethodName            = "/payrudder.plans.v1.AdminService/ListTenantAppeals"
+	AdminService_DecideTenantAppeal_FullMethodName           = "/payrudder.plans.v1.AdminService/DecideTenantAppeal"
 	AdminService_GetPriceChangePause_FullMethodName          = "/payrudder.plans.v1.AdminService/GetPriceChangePause"
 	AdminService_SetPriceChangePause_FullMethodName          = "/payrudder.plans.v1.AdminService/SetPriceChangePause"
 	AdminService_GetPriceChangeNotice_FullMethodName         = "/payrudder.plans.v1.AdminService/GetPriceChangeNotice"
@@ -78,6 +83,18 @@ type AdminServiceClient interface {
 	AddPlatformBlocklistEntry(ctx context.Context, in *AddPlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*AddPlatformBlocklistEntryResponse, error)
 	// RemovePlatformBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
 	RemovePlatformBlocklistEntry(ctx context.Context, in *RemovePlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*RemovePlatformBlocklistEntryResponse, error)
+	// GetTenantLifecycle returns a live tenant's retention deadline (a banned tenant's data is kept until then; a job marks it due and deletes nothing) and the status change
+	// scheduled for it.
+	GetTenantLifecycle(ctx context.Context, in *GetTenantLifecycleRequest, opts ...grpc.CallOption) (*GetTenantLifecycleResponse, error)
+	// ScheduleTenantStatus schedules a suspension or a freeze of an active live tenant at a future time; the sweeper applies it as the operator "system" (a ban is never
+	// scheduled). One schedule per tenant: a new one replaces the old. The owners are told by the mail of the change when it is applied.
+	ScheduleTenantStatus(ctx context.Context, in *ScheduleTenantStatusRequest, opts ...grpc.CallOption) (*ScheduleTenantStatusResponse, error)
+	// CancelScheduledTenantStatus drops the schedule (nothing scheduled is not an error).
+	CancelScheduledTenantStatus(ctx context.Context, in *CancelScheduledTenantStatusRequest, opts ...grpc.CallOption) (*CancelScheduledTenantStatusResponse, error)
+	// ListTenantAppeals returns the owners' appeals, newest first (the latest 200), of one tenant or of all, of one status or of all.
+	ListTenantAppeals(ctx context.Context, in *ListTenantAppealsRequest, opts ...grpc.CallOption) (*ListTenantAppealsResponse, error)
+	// DecideTenantAppeal accepts or rejects an open appeal. Accepting reinstates the tenant (active). Both mail the owners with the operator's answer and are audited.
+	DecideTenantAppeal(ctx context.Context, in *DecideTenantAppealRequest, opts ...grpc.CallOption) (*DecideTenantAppealResponse, error)
 	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
 	GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error)
 	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
@@ -249,6 +266,56 @@ func (c *adminServiceClient) RemovePlatformBlocklistEntry(ctx context.Context, i
 	return out, nil
 }
 
+func (c *adminServiceClient) GetTenantLifecycle(ctx context.Context, in *GetTenantLifecycleRequest, opts ...grpc.CallOption) (*GetTenantLifecycleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTenantLifecycleResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetTenantLifecycle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ScheduleTenantStatus(ctx context.Context, in *ScheduleTenantStatusRequest, opts ...grpc.CallOption) (*ScheduleTenantStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScheduleTenantStatusResponse)
+	err := c.cc.Invoke(ctx, AdminService_ScheduleTenantStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) CancelScheduledTenantStatus(ctx context.Context, in *CancelScheduledTenantStatusRequest, opts ...grpc.CallOption) (*CancelScheduledTenantStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelScheduledTenantStatusResponse)
+	err := c.cc.Invoke(ctx, AdminService_CancelScheduledTenantStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ListTenantAppeals(ctx context.Context, in *ListTenantAppealsRequest, opts ...grpc.CallOption) (*ListTenantAppealsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTenantAppealsResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListTenantAppeals_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) DecideTenantAppeal(ctx context.Context, in *DecideTenantAppealRequest, opts ...grpc.CallOption) (*DecideTenantAppealResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DecideTenantAppealResponse)
+	err := c.cc.Invoke(ctx, AdminService_DecideTenantAppeal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *adminServiceClient) GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPriceChangePauseResponse)
@@ -327,6 +394,18 @@ type AdminServiceServer interface {
 	AddPlatformBlocklistEntry(context.Context, *AddPlatformBlocklistEntryRequest) (*AddPlatformBlocklistEntryResponse, error)
 	// RemovePlatformBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
 	RemovePlatformBlocklistEntry(context.Context, *RemovePlatformBlocklistEntryRequest) (*RemovePlatformBlocklistEntryResponse, error)
+	// GetTenantLifecycle returns a live tenant's retention deadline (a banned tenant's data is kept until then; a job marks it due and deletes nothing) and the status change
+	// scheduled for it.
+	GetTenantLifecycle(context.Context, *GetTenantLifecycleRequest) (*GetTenantLifecycleResponse, error)
+	// ScheduleTenantStatus schedules a suspension or a freeze of an active live tenant at a future time; the sweeper applies it as the operator "system" (a ban is never
+	// scheduled). One schedule per tenant: a new one replaces the old. The owners are told by the mail of the change when it is applied.
+	ScheduleTenantStatus(context.Context, *ScheduleTenantStatusRequest) (*ScheduleTenantStatusResponse, error)
+	// CancelScheduledTenantStatus drops the schedule (nothing scheduled is not an error).
+	CancelScheduledTenantStatus(context.Context, *CancelScheduledTenantStatusRequest) (*CancelScheduledTenantStatusResponse, error)
+	// ListTenantAppeals returns the owners' appeals, newest first (the latest 200), of one tenant or of all, of one status or of all.
+	ListTenantAppeals(context.Context, *ListTenantAppealsRequest) (*ListTenantAppealsResponse, error)
+	// DecideTenantAppeal accepts or rejects an open appeal. Accepting reinstates the tenant (active). Both mail the owners with the operator's answer and are audited.
+	DecideTenantAppeal(context.Context, *DecideTenantAppealRequest) (*DecideTenantAppealResponse, error)
 	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
 	GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error)
 	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
@@ -392,6 +471,21 @@ func (UnimplementedAdminServiceServer) AddPlatformBlocklistEntry(context.Context
 }
 func (UnimplementedAdminServiceServer) RemovePlatformBlocklistEntry(context.Context, *RemovePlatformBlocklistEntryRequest) (*RemovePlatformBlocklistEntryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemovePlatformBlocklistEntry not implemented")
+}
+func (UnimplementedAdminServiceServer) GetTenantLifecycle(context.Context, *GetTenantLifecycleRequest) (*GetTenantLifecycleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTenantLifecycle not implemented")
+}
+func (UnimplementedAdminServiceServer) ScheduleTenantStatus(context.Context, *ScheduleTenantStatusRequest) (*ScheduleTenantStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScheduleTenantStatus not implemented")
+}
+func (UnimplementedAdminServiceServer) CancelScheduledTenantStatus(context.Context, *CancelScheduledTenantStatusRequest) (*CancelScheduledTenantStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelScheduledTenantStatus not implemented")
+}
+func (UnimplementedAdminServiceServer) ListTenantAppeals(context.Context, *ListTenantAppealsRequest) (*ListTenantAppealsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTenantAppeals not implemented")
+}
+func (UnimplementedAdminServiceServer) DecideTenantAppeal(context.Context, *DecideTenantAppealRequest) (*DecideTenantAppealResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DecideTenantAppeal not implemented")
 }
 func (UnimplementedAdminServiceServer) GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPriceChangePause not implemented")
@@ -696,6 +790,96 @@ func _AdminService_RemovePlatformBlocklistEntry_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_GetTenantLifecycle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTenantLifecycleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetTenantLifecycle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetTenantLifecycle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetTenantLifecycle(ctx, req.(*GetTenantLifecycleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ScheduleTenantStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScheduleTenantStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ScheduleTenantStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ScheduleTenantStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ScheduleTenantStatus(ctx, req.(*ScheduleTenantStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_CancelScheduledTenantStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelScheduledTenantStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).CancelScheduledTenantStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_CancelScheduledTenantStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).CancelScheduledTenantStatus(ctx, req.(*CancelScheduledTenantStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ListTenantAppeals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTenantAppealsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListTenantAppeals(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListTenantAppeals_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListTenantAppeals(ctx, req.(*ListTenantAppealsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_DecideTenantAppeal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecideTenantAppealRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).DecideTenantAppeal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_DecideTenantAppeal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).DecideTenantAppeal(ctx, req.(*DecideTenantAppealRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AdminService_GetPriceChangePause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPriceChangePauseRequest)
 	if err := dec(in); err != nil {
@@ -834,6 +1018,26 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemovePlatformBlocklistEntry",
 			Handler:    _AdminService_RemovePlatformBlocklistEntry_Handler,
+		},
+		{
+			MethodName: "GetTenantLifecycle",
+			Handler:    _AdminService_GetTenantLifecycle_Handler,
+		},
+		{
+			MethodName: "ScheduleTenantStatus",
+			Handler:    _AdminService_ScheduleTenantStatus_Handler,
+		},
+		{
+			MethodName: "CancelScheduledTenantStatus",
+			Handler:    _AdminService_CancelScheduledTenantStatus_Handler,
+		},
+		{
+			MethodName: "ListTenantAppeals",
+			Handler:    _AdminService_ListTenantAppeals_Handler,
+		},
+		{
+			MethodName: "DecideTenantAppeal",
+			Handler:    _AdminService_DecideTenantAppeal_Handler,
 		},
 		{
 			MethodName: "GetPriceChangePause",

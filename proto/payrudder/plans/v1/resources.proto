@@ -558,3 +558,36 @@ message BlocklistEntry {
   string created_by = 5;
   google.protobuf.Timestamp create_time = 6;
 }
+
+// An owner's appeal against a suspended, frozen or banned app (plan 14). The operator decides it.
+message TenantAppeal {
+  string id = 1;
+  string tenant_id = 2;
+  // "open", "accepted" or "rejected".
+  string status = 3;
+  // The status the app was in when the owner appealed: "suspended", "frozen" or "banned".
+  string held_status = 4;
+  // What the owner wrote (up to 2000 characters).
+  string statement = 5;
+  // The owner's verified address.
+  string submitted_by = 6;
+  // The operator's answer to the owner (up to 1000 characters); empty while the appeal is open. The operator's category and note of the hold are never in it.
+  string answer = 7;
+  string decided_by = 8;
+  google.protobuf.Timestamp create_time = 9;
+  google.protobuf.Timestamp decide_time = 10;
+}
+
+// The retention deadline of a banned live tenant and the status change the operator scheduled for it (plan 14).
+message TenantLifecycle {
+  // When a banned tenant's data may be considered for deletion: the ban's time plus the retention period. Empty unless the tenant is banned. Nothing deletes anything.
+  google.protobuf.Timestamp retention_until = 1;
+  // When the retention job noticed the deadline had passed and marked it due; empty before.
+  google.protobuf.Timestamp retention_due_time = 2;
+  // The status the tenant is to be put in at scheduled_time: "suspended" or "frozen"; empty when nothing is scheduled.
+  string scheduled_status = 3;
+  google.protobuf.Timestamp scheduled_time = 4;
+  string scheduled_category = 5;
+  string scheduled_reason = 6;
+  string scheduled_by = 7;
+}

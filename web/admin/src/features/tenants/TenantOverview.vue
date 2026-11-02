@@ -7,6 +7,8 @@ import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { InvoiceTable } from "@/features/invoices";
 import { Card } from "@/shared/ui/card";
 import JobLookup from "./JobLookup.vue";
+import TenantAppealsCard from "./TenantAppealsCard.vue";
+import TenantLifecycleCard from "./TenantLifecycleCard.vue";
 import TenantStatusCard from "./TenantStatusCard.vue";
 
 /** A tenant for the operator: the dashboard of the tenant, its newest invoices, its status (with the history of its changes) and the lookup of replay and re-rating jobs. */
@@ -32,6 +34,8 @@ function setQuery(q: DashQuery) {
   </Card>
 
   <TenantStatusCard :tenant-id="id" class="mb-6" />
+  <TenantLifecycleCard :tenant-id="id" class="mb-6" />
+  <TenantAppealsCard :tenant-id="id" class="mb-6" />
 
   <Card>
     <div>

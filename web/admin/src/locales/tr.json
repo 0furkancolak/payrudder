@@ -364,7 +364,61 @@
       "suspended": "{app} askıya alındı: API anahtarları durdu, ödeme sayfaları ve ödeme bağlantıları ödeme almıyor, hiçbir tahsilat yapılmıyor ve müşterilerine e-posta gitmiyor. Verileriniz saklanır.",
       "frozen": "{app} donduruldu: her şeyi okuyabilirsiniz ama hiçbir şey değiştirilemez. Yazan API çağrıları reddedilir, hiçbir tahsilat yapılmaz ve müşterilerine e-posta gitmez. Verileriniz saklanır.",
       "banned": "{app} yasaklandı: API anahtarları durdu ve hiçbir şey tahsil edilmez, e-postalanmaz veya gönderilmez. Yasağı yalnızca bir operatör kaldırabilir.",
-      "write": "Destek ekibine yazın"
+      "write": "Destek ekibine yazın",
+      "retention": "Verileriniz {date} tarihine kadar saklanır.",
+      "scheduledSuspended": "{app} {date} tarihinde askıya alınacak: API anahtarları duracak ve hiçbir şey tahsil edilmeyecek. Bunun bir hata olduğunu düşünüyorsanız destek ekibine yazın.",
+      "scheduledFrozen": "{app} {date} tarihinde dondurulacak: her şeyi okuyabilmeye devam edeceksiniz ama hiçbir şey değiştirilemeyecek ve hiçbir şey tahsil edilmeyecek. Bunun bir hata olduğunu düşünüyorsanız destek ekibine yazın.",
+      "appeal": {
+        "button": "İtiraz et",
+        "hint": "Operatöre kısıtlamanın neden kaldırılması gerektiğini anlatın. Yalnızca sahipler itiraz edebilir. Operatör e-posta ile yanıtlar.",
+        "statement": "Ne oldu",
+        "submit": "İtirazı gönder",
+        "cancel": "Vazgeç",
+        "sent": "{date} tarihinde itiraz ettiniz. Operatör henüz yanıtlamadı.",
+        "accepted": "İtirazınız {date} tarihinde kabul edildi.",
+        "rejected": "İtirazınız {date} tarihinde kabul edilmedi.",
+        "answer": "Operatör şunu yazdı: {answer}"
+      }
+    },
+    "lifecycle": {
+      "title": "Saklama ve takvim",
+      "retentionUntil": "Veriler {date} tarihine kadar saklanır.",
+      "retentionDue": "Saklama süresi {date} tarihinde bitti. Hiçbir şey otomatik silinmez: verilerin akıbetine bir kişi karar verir.",
+      "retentionNone": "Yasaklı değil: saklama son tarihi yok.",
+      "scheduled": "{date} tarihinde {status} ({by} tarafından planlandı)",
+      "none": "Planlanmış bir şey yok.",
+      "hint": "Etkin bir canlı uygulama, o zamanda sistem tarafından bu duruma alınır. Yasak planlanamaz.",
+      "status": "Durum",
+      "time": "Ne zaman",
+      "category": "Kategori",
+      "reason": "Neden",
+      "submit": "Planla",
+      "cancel": "Planı iptal et",
+      "confirmCancel": "Planlanan durum iptal edilsin mi?"
+    },
+    "appeals": {
+      "title": "İtirazlar",
+      "empty": "İtiraz yok.",
+      "columns": {
+        "status": "Durum",
+        "held": "Karşı",
+        "by": "Sahip",
+        "sent": "Gönderildi",
+        "statement": "Sahibin yazdığı"
+      },
+      "status": {
+        "open": "Açık",
+        "accepted": "Kabul edildi",
+        "rejected": "Reddedildi"
+      },
+      "decide": "Karara bağla",
+      "sheetTitle": "{app} itirazı",
+      "answer": "Sahiplere yanıtınız",
+      "answerHint": "Sahipler bunu e-postayla alır. Reddetmek için gereklidir.",
+      "accept": "Kabul et ve yeniden etkinleştir",
+      "reject": "Reddet",
+      "confirmAccept": "Bu itiraz kabul edilsin mi? {app} yeniden hizmete girer.",
+      "openTitle": "Açık itirazlar"
     }
   },
   "invoice": {
@@ -3266,6 +3320,11 @@
       },
       "blocklist": {
         "full": "Bir engelleme listesi en fazla 1000 kayıt tutar. Daha fazlasını eklemeden önce bazılarını kaldırın."
+      },
+      "appeal": {
+        "not_held": "Yalnızca operatörün askıya aldığı, dondurduğu veya yasakladığı bir uygulamaya itiraz edilebilir.",
+        "exists": "Zaten açık bir itiraz var. Operatör yanıtlayacak.",
+        "not_open": "Bu itiraz zaten karara bağlandı."
       }
     },
     "common": {

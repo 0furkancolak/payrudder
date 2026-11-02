@@ -89,6 +89,11 @@ service IdentityService {
   rpc CreateMyApp(CreateMyAppRequest) returns (CreateMyAppResponse);
   rpc ListMyApps(ListMyAppsRequest) returns (ListMyAppsResponse);
   rpc GetMyApp(GetMyAppRequest) returns (GetMyAppResponse);
+  // GetMyAppHold says what the operator has done to the app's live environment as the owners may know it (plan 14): its status, a suspension or a freeze scheduled for
+  // it, the date a banned app's data is kept until, and the latest appeal. Any member may read it. It never carries the operator's category or note.
+  rpc GetMyAppHold(GetMyAppHoldRequest) returns (GetMyAppHoldResponse);
+  // SubmitMyAppAppeal lets an owner state why the operator should lift a suspension, a freeze or a ban of the app. One open appeal at a time.
+  rpc SubmitMyAppAppeal(SubmitMyAppAppealRequest) returns (SubmitMyAppAppealResponse);
   // RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
   rpc RenameMyApp(RenameMyAppRequest) returns (RenameMyAppResponse);
   // DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
@@ -306,6 +311,34 @@ message GetMyAppRequest {
 message GetMyAppResponse {
   App app = 1;
   string role = 2;
+}
+
+message GetMyAppHoldRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message GetMyAppHoldResponse {
+  TenantStatus status = 1;
+  // "suspended" or "frozen" when the operator scheduled one, else empty.
+  string scheduled_status = 2;
+  google.protobuf.Timestamp scheduled_time = 3;
+  // Set only while the app is banned.
+  google.protobuf.Timestamp retention_until = 4;
+  // The latest appeal of the app, open or decided; unset when there is none.
+  TenantAppeal appeal = 5;
+  // Whether this person may appeal now: an owner of an app that is held and has no open appeal.
+  bool can_appeal = 6;
+}
+
+message SubmitMyAppAppealRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string statement = 3;
+}
+
+message SubmitMyAppAppealResponse {
+  TenantAppeal appeal = 1;
 }
 
 message RenameMyAppRequest {

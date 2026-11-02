@@ -41,7 +41,9 @@ type Commands struct {
 	banApproval bool
 	mail        usermail.Sender // tells the owners of a status change; nil: nobody
 	appURL      string
-	now         func() time.Time
+	// retentionDays is how long a banned tenant's data is kept before the retention job marks the deadline due (0: no deadline is recorded).
+	retentionDays int
+	now           func() time.Time
 }
 
 // New returns the tenant commands on the system pool. keys drops a suspended tenant's keys from the gateway cache.
@@ -212,6 +214,12 @@ func held(status string) bool {
 // its reason and who made it. Suspending or banning evicts every key of the tenant from the gateway cache at once; a frozen tenant's keys stay, read-only. Where the
 // ban approval is on, asking for a ban only records the request (plans.tenant.approval_pending); the same request from another operator within a day applies it.
 func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRequest) (*plansv1.Tenant, error) {
+	return c.setStatus(ctx, req, "", false)
+}
+
+// setStatus is SetStatus. onlyFrom, when set, makes the change happen only to a tenant in that status (a scheduled suspension applies to an active tenant only; any other
+// leaves the tenant as it is). quiet leaves out the mail of the change: the decision of an appeal has a mail of its own.
+func (c *Commands) setStatus(ctx context.Context, req *plansv1.SetTenantStatusRequest, onlyFrom string, quiet bool) (*plansv1.Tenant, error) {
 	id, err := domain.ParseID("tenant_id", req.GetTenantId())
 	if err != nil {
 		return nil, err
@@ -250,6 +258,9 @@ func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRe
 		switch {
 		case cur.Environment != env.Live.String():
 			return errkey.New(codes.FailedPrecondition, "plans.tenant.bad_transition", "a sandbox tenant is always active")
+		case onlyFrom != "" && cur.Status != onlyFrom:
+			out = cur
+			return nil
 		case cur.Status == want:
 			out = cur
 			return nil
@@ -275,6 +286,9 @@ func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRe
 		if out, err = q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: id, Status: want}); err != nil {
 			return err
 		}
+		if err := c.trackRetention(ctx, q, id, cur.Status, want); err != nil {
+			return err
+		}
 		if err := q.InsertTenantStatusEvent(ctx, sqlc.InsertTenantStatusEventParams{ID: idgen.NewUUIDv7(), LiveTenantID: id, Kind: "changed", FromStatus: cur.Status, ToStatus: want,
 			Category: req.GetCategory(), Reason: reason, Actor: actor, ApprovedBy: approver}); err != nil {
 			return err
@@ -294,7 +308,9 @@ func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRe
 		if err := c.keys.EvictTenant(ctx, id); err != nil {
 			return nil, err
 		}
-		c.notifyOwners(ctx, id, from, out.Status)
+		if !quiet {
+			c.notifyOwners(ctx, id, from, out.Status)
+		}
 	}
 	return convert.Tenant(out), nil
 }

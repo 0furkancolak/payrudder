@@ -15,6 +15,7 @@ import (
 type appManageCalls struct {
 	renames []*plansv1.RenameMyAppRequest
 	deletes []*plansv1.DeleteMyAppRequest
+	appeals []*plansv1.SubmitMyAppAppealRequest
 }
 
 func (f *fakeIdentity) RenameMyApp(_ context.Context, req *plansv1.RenameMyAppRequest) (*plansv1.RenameMyAppResponse, error) {
