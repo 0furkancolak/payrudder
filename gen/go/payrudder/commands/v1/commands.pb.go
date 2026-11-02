@@ -1396,8 +1396,11 @@ type ChargePayment struct {
 	Provider string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
 	// The number of the invoice, for providers that print a payment reference on it (a bank transfer).
 	InvoiceNumber string `protobuf:"bytes,8,opt,name=invoice_number,json=invoiceNumber,proto3" json:"invoice_number,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The external id of the customer being charged, for a provider that vets the payer and so needs their name, phone, tax id and address (iyzico): payments-worker
+	// reads the customer record then, not before. Empty for a charge nobody is billed for by name.
+	CustomerExternalId string `protobuf:"bytes,9,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ChargePayment) Reset() {
@@ -1482,6 +1485,13 @@ func (x *ChargePayment) GetProvider() string {
 func (x *ChargePayment) GetInvoiceNumber() string {
 	if x != nil {
 		return x.InvoiceNumber
+	}
+	return ""
+}
+
+func (x *ChargePayment) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
 	}
 	return ""
 }
@@ -2256,7 +2266,7 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x03bic\x18\x04 \x01(\tR\x03bic\x12\x1c\n" +
 	"\treference\x18\x05 \x01(\tR\treference\"T\n" +
 	"\x10RenderInvoicePdf\x12@\n" +
-	"\ainvoice\x18\x01 \x01(\v2&.payrudder.commands.v1.InvoiceSnapshotR\ainvoice\"\xa9\x02\n" +
+	"\ainvoice\x18\x01 \x01(\v2&.payrudder.commands.v1.InvoiceSnapshotR\ainvoice\"\xdb\x02\n" +
 	"\rChargePayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +
@@ -2266,7 +2276,8 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x0fdunning_attempt\x18\x05 \x01(\x05R\x0edunningAttempt\x12'\n" +
 	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
 	"\bprovider\x18\a \x01(\tR\bprovider\x12%\n" +
-	"\x0einvoice_number\x18\b \x01(\tR\rinvoiceNumber\"\xba\x01\n" +
+	"\x0einvoice_number\x18\b \x01(\tR\rinvoiceNumber\x120\n" +
+	"\x14customer_external_id\x18\t \x01(\tR\x12customerExternalId\"\xba\x01\n" +
 	"\rRefundPayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +

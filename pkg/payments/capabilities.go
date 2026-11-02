@@ -38,6 +38,9 @@ type Capabilities struct {
 	// When false (iyzico allows repeated refunds, the Paddle adapter sends no key, and neither documents a lookup by key), payments-worker never sends a refund
 	// again under a key it has already used: it answers from the ledger and payment_attempts, and parks a refund whose earlier outcome is unknown.
 	IdempotentRefunds bool
+	// NeedsBuyer: the provider vets the payer and refuses a payment without their name, phone, tax id and address (iyzico), so payments-worker reads the customer record
+	// for a charge or a checkout and passes it as the Buyer. A provider without it is not sent the customer's data.
+	NeedsBuyer bool
 	// Currencies the provider can charge in. Empty means any.
 	Currencies []string
 }

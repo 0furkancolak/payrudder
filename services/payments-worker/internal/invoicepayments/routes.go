@@ -46,14 +46,15 @@ func (h *Handler) invoiceLink(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
-// methods is GET /admin/tenants/{tenant}/invoice-methods?environment=live&currency=&country=&provider=
+// methods is GET /admin/tenants/{tenant}/invoice-methods?environment=live&currency=&country=&provider=&customer=
 func (h *Handler) methods(w http.ResponseWriter, r *http.Request) {
 	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
 	q := r.URL.Query()
-	list, err := query.Methods(r.Context(), h.Query, t, query.Filter{Environment: q.Get("environment"), Currency: q.Get("currency"), Country: q.Get("country"), Provider: q.Get("provider")})
+	list, err := query.Methods(r.Context(), h.Query, t, query.Filter{Environment: q.Get("environment"), Currency: q.Get("currency"), Country: q.Get("country"), Provider: q.Get("provider"),
+		CustomerExternalID: q.Get("customer")})
 	if err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return
@@ -79,6 +80,8 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case res.Kind == "instructions":
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"kind": res.Kind, "reference": res.Reference, "lines": res.Lines})
+	case res.Kind == "html":
+		httpx.WriteJSON(w, http.StatusCreated, map[string]any{"kind": res.Kind, "html": res.HTML})
 	case res.Reused:
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"kind": res.Kind, "url": res.URL, "reused": true})
 	default:

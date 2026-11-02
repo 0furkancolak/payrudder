@@ -78,6 +78,28 @@
       }
     },
     {
+      "name": "invoice.render.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "invoice.render.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "invoice.render",
+        "x-message-ttl": 600000
+      }
+    },
+    {
       "name": "payment.charge",
       "vhost": "/",
       "durable": true,
@@ -129,6 +151,28 @@
         "x-dead-letter-exchange": "billing.commands",
         "x-dead-letter-routing-key": "payment.charge",
         "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "payment.charge.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "payment.charge.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.charge",
+        "x-message-ttl": 600000
       }
     },
     {
@@ -186,6 +230,28 @@
       }
     },
     {
+      "name": "payment.refund.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "payment.refund.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.refund",
+        "x-message-ttl": 600000
+      }
+    },
+    {
       "name": "payment.status",
       "vhost": "/",
       "durable": true,
@@ -237,6 +303,28 @@
         "x-dead-letter-exchange": "billing.commands",
         "x-dead-letter-routing-key": "payment.status",
         "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "payment.status.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "payment.status.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "payment.status",
+        "x-message-ttl": 600000
       }
     },
     {
@@ -294,6 +382,28 @@
       }
     },
     {
+      "name": "notification.send.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "notification.send.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "notification.send",
+        "x-message-ttl": 600000
+      }
+    },
+    {
       "name": "einvoice.issue",
       "vhost": "/",
       "durable": true,
@@ -345,6 +455,28 @@
         "x-dead-letter-exchange": "billing.commands",
         "x-dead-letter-routing-key": "einvoice.issue",
         "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "einvoice.issue.retry.5m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "einvoice.issue",
+        "x-message-ttl": 300000
+      }
+    },
+    {
+      "name": "einvoice.issue.retry.10m",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "billing.commands",
+        "x-dead-letter-routing-key": "einvoice.issue",
+        "x-message-ttl": 600000
       }
     },
     {
@@ -453,6 +585,20 @@
       "routing_key": "invoice.render.retry.2m"
     },
     {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "invoice.render.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "invoice.render.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "invoice.render.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "invoice.render.retry.10m"
+    },
+    {
       "source": "billing.commands",
       "vhost": "/",
       "destination": "payment.charge",
@@ -486,6 +632,20 @@
       "destination": "payment.charge.retry.2m",
       "destination_type": "queue",
       "routing_key": "payment.charge.retry.2m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.charge.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "payment.charge.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.charge.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "payment.charge.retry.10m"
     },
     {
       "source": "billing.commands",
@@ -523,6 +683,20 @@
       "routing_key": "payment.refund.retry.2m"
     },
     {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.refund.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "payment.refund.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.refund.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "payment.refund.retry.10m"
+    },
+    {
       "source": "billing.commands",
       "vhost": "/",
       "destination": "payment.status",
@@ -556,6 +730,20 @@
       "destination": "payment.status.retry.2m",
       "destination_type": "queue",
       "routing_key": "payment.status.retry.2m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.status.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "payment.status.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "payment.status.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "payment.status.retry.10m"
     },
     {
       "source": "billing.commands",
@@ -593,6 +781,20 @@
       "routing_key": "notification.send.retry.2m"
     },
     {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "notification.send.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "notification.send.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "notification.send.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "notification.send.retry.10m"
+    },
+    {
       "source": "billing.commands",
       "vhost": "/",
       "destination": "einvoice.issue",
@@ -626,6 +828,20 @@
       "destination": "einvoice.issue.retry.2m",
       "destination_type": "queue",
       "routing_key": "einvoice.issue.retry.2m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "einvoice.issue.retry.5m",
+      "destination_type": "queue",
+      "routing_key": "einvoice.issue.retry.5m"
+    },
+    {
+      "source": "billing.commands.retry",
+      "vhost": "/",
+      "destination": "einvoice.issue.retry.10m",
+      "destination_type": "queue",
+      "routing_key": "einvoice.issue.retry.10m"
     },
     {
       "source": "billing.replies",

@@ -74,6 +74,44 @@ func TestRabbitX(t *testing.T) {
 		}
 	})
 
+	t.Run("RetryAfterLongerThanTheTierGoesToALongerDelayQueue", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		seen := make(chan struct{}, 1)
+		go func() {
+			_ = rabbitx.Consume(ctx, url, rabbitx.QueuePaymentCharge, 4, func(hctx context.Context, d amqp.Delivery) rabbitx.Outcome {
+				rabbitx.AskRetryAfter(hctx, 3*time.Minute) // a provider's Retry-After
+				select {
+				case seen <- struct{}{}:
+				default:
+				}
+				return rabbitx.Retry
+			}, log)
+		}()
+		publish(rabbitx.QueuePaymentCharge, "rate-limited")
+		<-seen
+		conn, err := amqp.Dial(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		ch, _ := conn.Channel()
+		// The retry waits in the 5 minute queue, not the 5 second one; the queue is only looked at, never waited for.
+		deadline := time.Now().Add(20 * time.Second)
+		for time.Now().Before(deadline) {
+			q, err := ch.QueueDeclarePassive(rabbitx.QueuePaymentCharge+".retry.5m", true, false, false, false, amqp.Table{"x-message-ttl": int64(5 * 60 * 1000),
+				"x-dead-letter-exchange": rabbitx.ExchangeCommands, "x-dead-letter-routing-key": rabbitx.QueuePaymentCharge})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q.Messages == 1 {
+				return
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		t.Fatal("the retry never reached payment.charge.retry.5m")
+	})
+
 	t.Run("RejectedMessageLandsInTheDLQ", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

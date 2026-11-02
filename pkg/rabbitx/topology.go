@@ -51,12 +51,38 @@ type Tier struct {
 // Tiers are the retry delays, by attempt (the first retry waits 5 s).
 var Tiers = []Tier{{"5s", 5 * time.Second}, {"30s", 30 * time.Second}, {"2m", 2 * time.Minute}}
 
+// HoldTiers are the longer delay queues a retry goes to when a provider asked for a longer wait than the tier of its attempt (a Retry-After); they are never chosen
+// by attempt alone. The longest of them is the most a retry ever waits.
+var HoldTiers = []Tier{{"5m", 5 * time.Minute}, {"10m", 10 * time.Minute}}
+
+// RetryCeiling bounds how long a provider's Retry-After may hold a retry back (default 10 minutes, which is also the longest tier; a larger value changes nothing).
+var RetryCeiling = 10 * time.Minute
+
 // MaxAttempts is how often a worker retries a transient error before dead-lettering.
 const MaxAttempts = 3
 
 // RetryRoutingKey is the routing key on the retry exchange for the nth retry (1-based) of a queue.
 func RetryRoutingKey(queue string, retry int) string {
 	return fmt.Sprintf("%s.retry.%s", queue, Tiers[min(max(retry, 1), len(Tiers))-1].Name)
+}
+
+// RetryRoutingKeyAfter is RetryRoutingKey for a retry that must wait at least wait (what the provider asked for): the delay is the longer of the attempt's tier and
+// wait, at most RetryCeiling, and the retry goes to the shortest queue that holds it that long. A zero or shorter wait is RetryRoutingKey.
+func RetryRoutingKeyAfter(queue string, retry int, wait time.Duration) string {
+	tier := Tiers[min(max(retry, 1), len(Tiers))-1]
+	want := min(wait, RetryCeiling)
+	if want <= tier.Delay {
+		return RetryRoutingKey(queue, retry)
+	}
+	tiers := append(append([]Tier{}, Tiers...), HoldTiers...)
+	for _, t := range tiers {
+		if t.Delay >= want {
+			tier = t
+			break
+		}
+		tier = t // none is long enough: the longest
+	}
+	return fmt.Sprintf("%s.retry.%s", queue, tier.Name)
 }
 
 type exchange struct{ Name, Kind string }
@@ -85,7 +111,7 @@ func queues() []queue {
 	for _, q := range CommandQueues {
 		out = append(out, queue{Name: q, Arguments: quorum(ExchangeDLX, q), Bindings: []binding{{ExchangeCommands, q}}})
 		out = append(out, queue{Name: q + ".dlq", Arguments: amqp.Table{"x-queue-type": "quorum"}, Bindings: []binding{{ExchangeDLX, q}}})
-		for _, t := range Tiers {
+		for _, t := range append(append([]Tier{}, Tiers...), HoldTiers...) {
 			out = append(out, queue{
 				Name:      fmt.Sprintf("%s.retry.%s", q, t.Name),
 				Arguments: amqp.Table{"x-message-ttl": t.Delay.Milliseconds(), "x-dead-letter-exchange": ExchangeCommands, "x-dead-letter-routing-key": q},
