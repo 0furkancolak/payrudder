@@ -5,8 +5,11 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
@@ -62,6 +65,9 @@ type Config struct {
 	// MailRatePerMinute and MailRateBurst cap how fast the platform's sender sends one tenant's live mail, per replica; 0 per minute switches the cap off.
 	MailRatePerMinute int `env:"NOTIFIER_MAIL_RATE_PER_MINUTE"`
 	MailRateBurst     int `env:"NOTIFIER_MAIL_RATE_BURST"`
+	// RedisURL puts the rate limit's buckets in Redis, so that every replica draws from one bucket per tenant (the rate is then the platform's, not per replica);
+	// empty keeps the buckets in each replica, and Redis being down falls back to them.
+	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// EventsAddr is where the notifier listens for the provider's bounce and complaint notices and the operator's suppression-list calls (/v1/mail-events,
 	// /v1/mail-suppressions); empty switches the listener off. Every request is signed with MailEventsSecret (pkg/webhooksig).
 	EventsAddr       string `env:"NOTIFIER_EVENTS_ADDR"`
@@ -127,7 +133,16 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	suppressions := store.Suppressions{DB: pool}
 	mailer := &delivery.Mailer{Default: platform, From: cfg.MailFrom, Notes: notes, Suppress: suppressions}
 	// One tenant cannot spend the sending domain's reputation: the platform's sender is rate limited per tenant.
-	mailer.Limit = &delivery.Limiter{PerMinute: cfg.MailRatePerMinute, Burst: cfg.MailRateBurst}
+	mailer.Limit = &delivery.Limiter{PerMinute: cfg.MailRatePerMinute, Burst: cfg.MailRateBurst, Log: log}
+	if cfg.RedisURL != "" {
+		opts, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			return fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
+		}
+		rdb := redis.NewClient(opts)
+		defer func() { _ = rdb.Close() }()
+		mailer.Limit.Shared = delivery.RedisBuckets{Client: rdb}
+	}
 	// A tenant's mail switch (plans-svc) is read before every send.
 	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
 	// A tenant the operator has suspended, frozen or banned sends its customers no mail; the status is read through the short cache the usage consumers use.
@@ -241,7 +256,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return renewalConsumer.Run(gctx) })
 	g.Go(func() error { return withdrawalConsumer.Run(gctx) })
 	if cfg.EventsAddr != "" {
-		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, Notes: notes, List: suppressions, Log: log}
+		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, Notes: notes, List: suppressions, Messages: notes, PreviewPriceChange: pricechange.Preview, Log: log}
 		g.Go(func() error {
 			log.Info("notifier listening for mail events", "addr", cfg.EventsAddr)
 			return health.ServeServer(gctx, &http.Server{Addr: cfg.EventsAddr, Handler: events.Routes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second})

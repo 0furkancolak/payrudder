@@ -13,6 +13,7 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/mailevents"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/templates"
 )
 
@@ -120,4 +121,23 @@ func TestPausedPriceChangesHoldTheMail(t *testing.T) {
 			t.Fatalf("err = %v", err)
 		}
 	})
+}
+
+// The console's preview is the mail the consumer would send: the same data, in the customer's language, the date in the tenant's zone and the amount written the
+// way the language writes it.
+func TestPreviewIsTheMailTheConsumerWouldSend(t *testing.T) {
+	in := mailevents.PriceChangePreview{Locale: "de", CustomerName: "Ada", TenantName: "Acme", PlanCode: "pro", EffectiveTime: time.Date(2026, 12, 5, 23, 30, 0, 0, time.UTC),
+		NewRenewalMinor: 123456, Currency: "EUR", Timezone: "Europe/Berlin"}
+	r, err := Preview(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := templates.Render(Template, withLocale(mailData(&eventsv1.PriceChangeScheduled{PlanCode: "pro", EffectiveAt: timestamppb.New(in.EffectiveTime), NewRenewalMinor: 123456, Currency: "EUR"}, "Ada", "Acme", "Europe/Berlin", "de"), "de"), false)
+	if err != nil || r.Subject != want.Subject || r.HTML != want.HTML || r.Text != want.Text {
+		t.Fatalf("preview differs from the mail: %v\n%q\n%q", err, r.Subject, want.Subject)
+	}
+	// 23:30 UTC is the next day in Berlin, and a German reader gets a German date and amount.
+	if !strings.Contains(r.Subject, "pro") || !strings.Contains(r.Text, "1.234,56") || !strings.Contains(r.Subject, "6. Dezember 2026") {
+		t.Errorf("subject %q, text %q", r.Subject, r.Text)
+	}
 }

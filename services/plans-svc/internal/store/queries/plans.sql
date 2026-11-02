@@ -143,6 +143,24 @@ WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 SELECT meter_code, limit_units, alert_thresholds_pct, quota_window, mode FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 
+-- The published versions of a plan, published before a time, that carry no entitlement on a meter (the backfill of the `mails` allowance, plan 11).
+-- name: ListVersionsWithoutEntitlement :many
+SELECT v.id, v.version FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
+WHERE v.tenant_id = app_tenant_id() AND p.code = @plan_code AND v.published_at < @before::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM plan_entitlements e WHERE e.tenant_id = v.tenant_id AND e.plan_version_id = v.id AND e.meter_code = @meter_code::text)
+ORDER BY v.version;
+
+-- When the tenant's first version of a meter was made (the epoch when there is none, so that nothing was published before it).
+-- name: FirstMeterTime :one
+SELECT COALESCE(min(created_at), to_timestamp(0))::timestamptz AS created_at FROM meters WHERE tenant_id = app_tenant_id() AND code = $1;
+
+-- The subscriptions on one plan version whose entitlements are (or will be) in force at now, oldest start first.
+-- name: ListUnendedSubscriptionsOnVersion :many
+SELECT customer_id, lower(active)::timestamptz AS start_time, upper_inf(active)::bool AS open_ended, COALESCE(upper(active), lower(active))::timestamptz AS end_time
+FROM subscriptions
+WHERE tenant_id = app_tenant_id() AND plan_version_id = @plan_version_id AND (upper_inf(active) OR upper(active) > @now::timestamptz)
+ORDER BY lower(active), id;
+
 -- name: UpsertEntitlementOverride :one
 INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode)
 VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)

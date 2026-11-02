@@ -63,8 +63,14 @@ type services struct {
 	Expenses *ExpensesService
 	// Invoices groups the invoices operations.
 	Invoices *InvoicesService
+	// MailMessages groups the mail messages operations.
+	MailMessages *MailMessagesService
+	// MailPreviews groups the mail previews operations.
+	MailPreviews *MailPreviewsService
 	// MailSettings groups the mail settings operations.
 	MailSettings *MailSettingsService
+	// MailSuppressions groups the mail suppressions operations.
+	MailSuppressions *MailSuppressionsService
 	// Meters groups the meters operations.
 	Meters *MetersService
 	// PaymentLinks groups the payment links operations.
@@ -119,7 +125,10 @@ func (s *services) initServices(c *Client) {
 	s.ExpenseRules = (*ExpenseRulesService)(&service{c: c})
 	s.Expenses = (*ExpensesService)(&service{c: c})
 	s.Invoices = (*InvoicesService)(&service{c: c})
+	s.MailMessages = (*MailMessagesService)(&service{c: c})
+	s.MailPreviews = (*MailPreviewsService)(&service{c: c})
 	s.MailSettings = (*MailSettingsService)(&service{c: c})
+	s.MailSuppressions = (*MailSuppressionsService)(&service{c: c})
 	s.Meters = (*MetersService)(&service{c: c})
 	s.PaymentLinks = (*PaymentLinksService)(&service{c: c})
 	s.Payments = (*PaymentsService)(&service{c: c})
@@ -1993,6 +2002,60 @@ func (s *InvoicesService) GetInvoicePdf(ctx context.Context, id string, opts ...
 	return &out, nil
 }
 
+// MailMessagesService is the mail messages namespace of the API.
+type MailMessagesService service
+
+// ListMailMessages: The tenant's recent mail, newest first (GET /v1/mail-messages).
+//
+// The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what
+// the provider reported (`delivered`, `delayed`, `bounced` for good, `soft_bounced`, `complained`). Mail
+// without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+func (s *MailMessagesService) ListMailMessages(ctx context.Context, params *ListMailMessagesParams, opts ...RequestOption) (*ListMailMessagesResponse, error) {
+	var out ListMailMessagesResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/mail-messages", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListMailMessagesAll walks every page of ListMailMessages and yields the items one by one. It stops at the
+// first error, which is yielded once.
+func (s *MailMessagesService) ListMailMessagesAll(ctx context.Context, params *ListMailMessagesParams, opts ...RequestOption) iter.Seq2[MailMessage, error] {
+	return paginate(func(token string) ([]MailMessage, string, error) {
+		var p ListMailMessagesParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListMailMessages(ctx, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Messages, page.NextPageToken, nil
+	})
+}
+
+// MailPreviewsService is the mail previews namespace of the API.
+type MailPreviewsService service
+
+// PreviewPriceChangeMail: The notice a customer would get of a price change, without sending anything (POST
+// /v1/mail-previews/price-change).
+//
+// Renders the price-change notice in the language given (the tenant's default when none), with the date written
+// in the tenant's time zone and the amount, in the tenant's currency, the way that language writes money. It is
+// the mail the notifier would send; nothing is sent or kept. Show `html` in a sandboxed frame.
+func (s *MailPreviewsService) PreviewPriceChangeMail(ctx context.Context, req *PriceChangeMailPreviewRequest, opts ...RequestOption) (*RenderedMail, error) {
+	if req == nil {
+		req = &PriceChangeMailPreviewRequest{}
+	}
+	var body any = req
+	var out RenderedMail
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/mail-previews/price-change", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // MailSettingsService is the mail settings namespace of the API.
 type MailSettingsService service
 
@@ -2026,6 +2089,48 @@ func (s *MailSettingsService) SetMailSettings(ctx context.Context, req *MailSett
 		return nil, err
 	}
 	return &out, nil
+}
+
+// MailSuppressionsService is the mail suppressions namespace of the API.
+type MailSuppressionsService service
+
+// ListMailSuppressions: The addresses the tenant's mail is not sent to (GET /v1/mail-suppressions).
+//
+// An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand.
+// Mail to it is dropped as done, whatever the mail is. In address order, a page at a time (`page_size` 1 to
+// 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
+// deployment whose gateway is not connected to the notifier.
+func (s *MailSuppressionsService) ListMailSuppressions(ctx context.Context, params *ListMailSuppressionsParams, opts ...RequestOption) (*ListMailSuppressionsResponse, error) {
+	var out ListMailSuppressionsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/mail-suppressions", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListMailSuppressionsAll walks every page of ListMailSuppressions and yields the items one by one. It stops at
+// the first error, which is yielded once.
+func (s *MailSuppressionsService) ListMailSuppressionsAll(ctx context.Context, params *ListMailSuppressionsParams, opts ...RequestOption) iter.Seq2[MailSuppression, error] {
+	return paginate(func(token string) ([]MailSuppression, string, error) {
+		var p ListMailSuppressionsParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListMailSuppressions(ctx, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Suppressions, page.NextPageToken, nil
+	})
+}
+
+// DeleteMailSuppression: Mail an address again (DELETE /v1/mail-suppressions/{address}).
+//
+// Lifts the suppression of one address. Lifting an address that is not on the list is 404
+// `gateway.mail.suppression_not_found`. An address that bounces again is put back by that bounce.
+func (s *MailSuppressionsService) DeleteMailSuppression(ctx context.Context, address string, opts ...RequestOption) error {
+	return s.c.do(ctx, requestSpec{method: http.MethodDelete, path: "/v1/mail-suppressions/" + url.PathEscape(address), query: nil, body: nil}, nil, opts)
 }
 
 // MetersService is the meters namespace of the API.

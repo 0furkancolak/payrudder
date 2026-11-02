@@ -7,6 +7,8 @@ import { Card } from "@/shared/ui/card";
 import { Switch } from "@/shared/ui/switch";
 import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
+import MailMessagesCard from "./MailMessagesCard.vue";
+import MailSuppressionsCard from "./MailSuppressionsCard.vue";
 
 const { t } = useI18n();
 const tenantId = useRouteTenantId();
@@ -27,6 +29,7 @@ function toggle(category: MailCategory, on: boolean) {
 </script>
 
 <template>
+  <div class="flex flex-col gap-6">
   <Card class="gap-0 p-3">
     <p class="text-muted-foreground px-3 pt-2 pb-3 text-sm">{{ t("billing.mail.hint") }}</p>
     <ul class="divide-y" :aria-label="t('billing.mail.title')">
@@ -41,4 +44,7 @@ function toggle(category: MailCategory, on: boolean) {
     <p class="text-muted-foreground px-3 pt-3 text-xs">{{ t("billing.mail.providerNote") }}</p>
     <ErrorText :error="failure" class="px-3" />
   </Card>
+  <MailSuppressionsCard />
+  <MailMessagesCard />
+  </div>
 </template>

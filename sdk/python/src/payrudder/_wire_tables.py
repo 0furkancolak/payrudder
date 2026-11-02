@@ -348,6 +348,9 @@ MODELS: dict[str, dict[str, Any]] = {
         'tiered': ('model', 'PriceTiered'),
         'package': ('model', 'PricePackage'),
     },
+    'PriceChangeMailPreviewRequest': {
+        'new_renewal_minor': ('int',),
+    },
     'PriceInput': {
         'tiered': ('model', 'PriceInputTiered'),
         'package': ('model', 'PriceInputPackage'),

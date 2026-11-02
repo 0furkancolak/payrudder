@@ -144,3 +144,47 @@ func (o Offsets) Load(ctx context.Context, _ string, partitions []int32) (map[in
 func (o Offsets) Save(ctx context.Context, partition int32, next int64) error {
 	return o.pg().Save(ctx, partition, next)
 }
+
+// Message is one line of a tenant's message log: a mail the notifier claimed for the tenant, and what became of it.
+type Message struct {
+	Key       string `json:"key"`
+	Kind      string `json:"kind"`
+	Template  string `json:"template"`
+	Recipient string `json:"recipient"`
+	// State is sending (claimed, not sent yet), sent, or what the provider reported of it: delivered, delayed, bounced (for good), soft_bounced or complained.
+	State     string     `json:"state"`
+	ClaimTime time.Time  `json:"claim_time"`
+	SendTime  *time.Time `json:"send_time"`
+}
+
+// MessagesAfter is the position after the last message of a page: the claim time and key of that message (zero: the first page).
+type MessagesAfter struct {
+	At  time.Time
+	Key string
+}
+
+// ListForTenant returns up to pageSize of the tenant's mail, newest first, after the given position.
+func (n Notifications) ListForTenant(ctx context.Context, tenantID uuid.UUID, after MessagesAfter, pageSize int32) ([]Message, error) {
+	rows, err := sqlc.New(n.DB).ListTenantMessages(ctx, sqlc.ListTenantMessagesParams{TenantID: &tenantID, AfterKey: after.Key, AfterAt: after.At, PageSize: pageSize})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Message, len(rows))
+	for i, r := range rows {
+		state := "sent"
+		switch {
+		case r.Status != "SENT":
+			state = "sending"
+		case r.DeliveryState != "":
+			state = r.DeliveryState
+		}
+		out[i] = Message{Key: r.DedupKey, Kind: r.Kind, Template: r.Template, Recipient: r.Recipient, State: state, ClaimTime: r.ClaimedAt, SendTime: r.SentAt}
+	}
+	return out, nil
+}
+
+// RecordDelivery keeps what the provider reported of a message, by its message id, for the message log. A permanent bounce or a complaint is not overwritten.
+func (n Notifications) RecordDelivery(ctx context.Context, messageID, state string) error {
+	_, err := sqlc.New(n.DB).RecordDelivery(ctx, sqlc.RecordDeliveryParams{MessageID: &messageID, DeliveryState: state})
+	return err
+}

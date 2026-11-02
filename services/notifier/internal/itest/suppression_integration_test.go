@@ -72,6 +72,12 @@ func TestBounceSuppressesTheNextMail(t *testing.T) {
 		t.Fatal("a permanent bounce must put the address on the list, whatever its case")
 	}
 
+	// The message log says the first mail bounced; nobody else's does.
+	msgs, err := notes.ListForTenant(ctx, tenantA, store.MessagesAfter{}, 10)
+	if err != nil || len(msgs) != 1 || msgs[0].Key != "k1" || msgs[0].State != "bounced" || msgs[0].Recipient != "Ada@Example.com" || msgs[0].Template != "payment_failed.v1" || msgs[0].SendTime == nil {
+		t.Fatalf("the tenant's message log after the bounce = %+v, %v; want the one mail, bounced", msgs, err)
+	}
+
 	if id := send(tenantA, "k2", "ada@example.com"); id != delivery.Dropped || len(nafru.Sent()) != 1 {
 		t.Errorf("the next mail to a bounced address: id %q, %d sent", id, len(nafru.Sent()))
 	}
@@ -92,5 +98,17 @@ func TestBounceSuppressesTheNextMail(t *testing.T) {
 	_ = resp.Body.Close()
 	if id := send(tenantA, "k2", "ada@example.com"); id == delivery.Dropped || len(nafru.Sent()) != 4 {
 		t.Errorf("after the suppression is lifted: %q, %d sent", id, len(nafru.Sent()))
+	}
+	// The log of tenant A: newest first, three mails (the dropped one left no row), the first still bounced, and a page of two continues with the third.
+	page1, err := notes.ListForTenant(ctx, tenantA, store.MessagesAfter{}, 2)
+	if err != nil || len(page1) != 2 || page1[0].Key != "k2" || page1[1].Key != "k3" || page1[0].State != "sent" {
+		t.Fatalf("first page = %+v, %v", page1, err)
+	}
+	page2, err := notes.ListForTenant(ctx, tenantA, store.MessagesAfter{At: page1[1].ClaimTime, Key: page1[1].Key}, 2)
+	if err != nil || len(page2) != 1 || page2[0].Key != "k1" || page2[0].State != "bounced" {
+		t.Fatalf("second page = %+v, %v", page2, err)
+	}
+	if other, _ := notes.ListForTenant(ctx, uuid.New(), store.MessagesAfter{}, 10); len(other) != 0 {
+		t.Errorf("a tenant with no mail sees %+v", other)
 	}
 }

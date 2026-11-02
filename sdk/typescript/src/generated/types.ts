@@ -2111,6 +2111,26 @@ export interface ListInvoicesResponse {
   next_page_token: string;
 }
 
+export interface ListMailMessagesQuery {
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListMailMessagesResponse {
+  messages: Array<MailMessage>;
+  next_page_token: string;
+}
+
+export interface ListMailSuppressionsQuery {
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListMailSuppressionsResponse {
+  suppressions: Array<MailSuppression>;
+  next_page_token: string;
+}
+
 export interface ListMetersResponse {
   meters: Array<Meter>;
 }
@@ -2197,6 +2217,18 @@ export interface ListWebhookEndpointsResponse {
   endpoints: Array<WebhookEndpoint>;
 }
 
+export interface MailMessage {
+  /** The notifier's key for the mail (one mail has one key, however often it was asked for). */
+  key: string;
+  /** What asked for it: command, limit, trial, price_change, contract, renewal or withdrawal. */
+  kind: string;
+  template: string;
+  recipient: string;
+  state: "sending" | "sent" | "delivered" | "delayed" | "bounced" | "soft_bounced" | "complained";
+  claim_time: string;
+  send_time: string | null;
+}
+
 export interface MailSettings {
   categories: Array<{
     category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
@@ -2209,6 +2241,14 @@ export interface MailSettingsInput {
     category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
     enabled?: boolean;
   }>;
+}
+
+export interface MailSuppression {
+  address: string;
+  reason: "bounce" | "complaint" | "manual";
+  /** What the provider or the operator said. */
+  detail: string;
+  create_time: string;
 }
 
 export interface MarkAffiliatePayoutPaidRequest {
@@ -2401,6 +2441,28 @@ export interface PriceChangeItem {
   effective_time: string | null;
   /** When the customer's mail was queued; unset for a skipped one */
   notify_time: string | null;
+}
+
+export interface PriceChangeMailPreviewRequest {
+  /** The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language. */
+  locale?: string;
+  customer_name?: string;
+  plan_code: string;
+  /** When the new price starts. */
+  effective_time: string;
+  /** The new renewal fee in the tenant's currency, in minor units. */
+  new_renewal_minor: Int64;
+}
+
+export interface PriceChangeMailPreviewRequestParams {
+  /** The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language. */
+  locale?: string;
+  customer_name?: string;
+  plan_code: string;
+  /** When the new price starts. */
+  effective_time: string;
+  /** The new renewal fee in the tenant's currency, in minor units. */
+  new_renewal_minor: Int64Input;
 }
 
 export interface PriceChangeSkipped {
@@ -2646,6 +2708,12 @@ export interface RecordContractAcceptanceRequest {
 export interface RecordContractAcceptanceResponse {
   group_id: string;
   acceptances: Array<ContractAcceptance>;
+}
+
+export interface RenderedMail {
+  subject: string;
+  html: string;
+  text: string;
 }
 
 export interface RequestContractWithdrawalRefundRequest {

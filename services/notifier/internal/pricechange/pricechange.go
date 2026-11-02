@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -26,7 +27,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/mailevents"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/templates"
 )
 
 // Topic is the topic of the facts plans-svc relays from its outbox.
@@ -193,4 +196,12 @@ func mailData(ev *eventsv1.PriceChangeScheduled, customerName, tenantName, zone,
 		"customer_name": customerName, "tenant_name": tenantName, "plan_code": ev.GetPlanCode(),
 		"effective_date": f.Date(ev.GetEffectiveAt().AsTime().In(loc)), "new_renewal": f.Money(ev.GetNewRenewalMinor(), exp, ev.GetCurrency()),
 	}
+}
+
+// Preview renders the notice as Consume would write it for a customer, from the numbers the console has (the date in the tenant's time zone, the amount in the
+// language of the mail). It sends nothing.
+func Preview(in mailevents.PriceChangePreview) (mailevents.Rendered, error) {
+	ev := &eventsv1.PriceChangeScheduled{PlanCode: in.PlanCode, EffectiveAt: timestamppb.New(in.EffectiveTime), NewRenewalMinor: in.NewRenewalMinor, Currency: in.Currency}
+	r, err := templates.Render(Template, withLocale(mailData(ev, in.CustomerName, in.TenantName, in.Timezone, in.Locale), in.Locale), false)
+	return mailevents.Rendered{Subject: r.Subject, HTML: r.HTML, Text: r.Text}, err
 }

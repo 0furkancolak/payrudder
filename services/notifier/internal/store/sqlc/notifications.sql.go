@@ -55,6 +55,68 @@ func (q *Queries) GetSentMessageID(ctx context.Context, dedupKey string) (*strin
 	return smtp_message_id, err
 }
 
+const listTenantMessages = `-- name: ListTenantMessages :many
+SELECT dedup_key, kind, template, recipient, status, claimed_at, sent_at, delivery_state
+FROM sent_notifications
+WHERE tenant_id = $1
+  AND ($2::text = '' OR (claimed_at, dedup_key) < ($3::timestamptz, $2::text))
+ORDER BY claimed_at DESC, dedup_key DESC
+LIMIT $4
+`
+
+type ListTenantMessagesParams struct {
+	TenantID *uuid.UUID
+	AfterKey string
+	AfterAt  time.Time
+	PageSize int32
+}
+
+type ListTenantMessagesRow struct {
+	DedupKey      string
+	Kind          string
+	Template      string
+	Recipient     string
+	Status        string
+	ClaimedAt     time.Time
+	SentAt        *time.Time
+	DeliveryState string
+}
+
+// A tenant's recent mail, newest first, a page at a time (the keyset is the claim time and the dedup key), with what the provider reported of each.
+func (q *Queries) ListTenantMessages(ctx context.Context, arg ListTenantMessagesParams) ([]ListTenantMessagesRow, error) {
+	rows, err := q.db.Query(ctx, listTenantMessages,
+		arg.TenantID,
+		arg.AfterKey,
+		arg.AfterAt,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTenantMessagesRow{}
+	for rows.Next() {
+		var i ListTenantMessagesRow
+		if err := rows.Scan(
+			&i.DedupKey,
+			&i.Kind,
+			&i.Template,
+			&i.Recipient,
+			&i.Status,
+			&i.ClaimedAt,
+			&i.SentAt,
+			&i.DeliveryState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockNotification = `-- name: LockNotification :one
 SELECT status, claimed_at, smtp_message_id FROM sent_notifications WHERE dedup_key = $1 FOR UPDATE
 `
@@ -101,6 +163,25 @@ func (q *Queries) NotificationByMessageID(ctx context.Context, smtpMessageID *st
 	var i NotificationByMessageIDRow
 	err := row.Scan(&i.TenantID, &i.Recipient)
 	return i, err
+}
+
+const recordDelivery = `-- name: RecordDelivery :execrows
+UPDATE sent_notifications SET delivery_state = $1
+WHERE smtp_message_id = $2 AND delivery_state NOT IN ('bounced', 'complained')
+`
+
+type RecordDeliveryParams struct {
+	DeliveryState string
+	MessageID     *string
+}
+
+// What the provider reported of a message. A permanent bounce or a complaint is the last word: a late "delivered" or "delayed" does not take it back.
+func (q *Queries) RecordDelivery(ctx context.Context, arg RecordDeliveryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recordDelivery, arg.DeliveryState, arg.MessageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const releaseNotification = `-- name: ReleaseNotification :exec

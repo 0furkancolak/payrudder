@@ -1732,6 +1732,50 @@ class MailSettingsInput(TypedDict, total=False):
     categories: list[MailSettingsInputCategoriesItem]
 
 
+class MailSuppression(TypedDict):
+    address: str
+    reason: Literal["bounce", "complaint", "manual"]
+    detail: str
+    create_time: str
+
+
+class ListMailSuppressionsResponse(TypedDict):
+    suppressions: list[MailSuppression]
+    next_page_token: str
+
+
+class MailMessage(TypedDict):
+    key: str
+    kind: str
+    template: str
+    recipient: str
+    state: Literal["sending", "sent", "delivered", "delayed", "bounced", "soft_bounced", "complained"]
+    claim_time: str
+    send_time: str | None
+
+
+class ListMailMessagesResponse(TypedDict):
+    messages: list[MailMessage]
+    next_page_token: str
+
+
+class _PriceChangeMailPreviewRequestRequired(TypedDict):
+    plan_code: str
+    effective_time: str | datetime
+    new_renewal_minor: int
+
+
+class PriceChangeMailPreviewRequest(_PriceChangeMailPreviewRequestRequired, total=False):
+    locale: str
+    customer_name: str
+
+
+class RenderedMail(TypedDict):
+    subject: str
+    html: str
+    text: str
+
+
 class PreviewRoutingRequest(TypedDict, total=False):
     country: str
     currency: str

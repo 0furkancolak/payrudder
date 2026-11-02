@@ -154,6 +154,10 @@ import type {
   ListInboxItemsQuery,
   ListInvoicesQuery,
   ListInvoicesResponse,
+  ListMailMessagesQuery,
+  ListMailMessagesResponse,
+  ListMailSuppressionsQuery,
+  ListMailSuppressionsResponse,
   ListMetersResponse,
   ListPaymentLinksQuery,
   ListPaymentLinksResponse,
@@ -182,6 +186,7 @@ import type {
   PreviewContractResponse,
   PreviewRoutingRequest,
   PreviewRoutingResponse,
+  PriceChangeMailPreviewRequestParams,
   PromotionCode,
   PromotionQuote,
   PromotionQuoteRequestParams,
@@ -189,6 +194,7 @@ import type {
   PublishPlanVersionRequestParams,
   RecordContractAcceptanceRequest,
   RecordContractAcceptanceResponse,
+  RenderedMail,
   RequestContractWithdrawalRefundRequestParams,
   ResolveInboxItemRequest,
   ReverseAffiliateCommissionRequestParams,
@@ -1548,6 +1554,38 @@ export class InvoicesResource {
   }
 }
 
+export class MailMessagesResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The tenant's recent mail, newest first
+   *
+   * The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
+   * `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+   *
+   * `GET /v1/mail-messages`
+   */
+  listMailMessages(query?: ListMailMessagesQuery, options?: RequestOptions): Promise<ListMailMessagesResponse> {
+    return this.t.request<ListMailMessagesResponse>({ method: "GET", path: `/v1/mail-messages`, query, response: "json" }, options);
+  }
+}
+
+export class MailPreviewsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The notice a customer would get of a price change, without sending anything
+   *
+   * Renders the price-change notice in the language given (the tenant's default when none), with the date written in the tenant's time zone and the amount, in the tenant's
+   * currency, the way that language writes money. It is the mail the notifier would send; nothing is sent or kept. Show `html` in a sandboxed frame.
+   *
+   * `POST /v1/mail-previews/price-change`
+   */
+  previewPriceChangeMail(body: PriceChangeMailPreviewRequestParams, options?: RequestOptions): Promise<RenderedMail> {
+    return this.t.request<RenderedMail>({ method: "POST", path: `/v1/mail-previews/price-change`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
 export class MailSettingsResource {
   constructor(private readonly t: Transport) {}
 
@@ -1572,6 +1610,34 @@ export class MailSettingsResource {
    */
   setMailSettings(body: MailSettingsInput, options?: RequestOptions): Promise<MailSettings> {
     return this.t.request<MailSettings>({ method: "PUT", path: `/v1/mail-settings`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
+export class MailSuppressionsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The addresses the tenant's mail is not sent to
+   *
+   * An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
+   * In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
+   * deployment whose gateway is not connected to the notifier.
+   *
+   * `GET /v1/mail-suppressions`
+   */
+  listMailSuppressions(query?: ListMailSuppressionsQuery, options?: RequestOptions): Promise<ListMailSuppressionsResponse> {
+    return this.t.request<ListMailSuppressionsResponse>({ method: "GET", path: `/v1/mail-suppressions`, query, response: "json" }, options);
+  }
+
+  /**
+   * Mail an address again
+   *
+   * Lifts the suppression of one address. Lifting an address that is not on the list is 404 `gateway.mail.suppression_not_found`. An address that bounces again is put back by that bounce.
+   *
+   * `DELETE /v1/mail-suppressions/{address}`
+   */
+  deleteMailSuppression(address: string, options?: RequestOptions): Promise<void> {
+    return this.t.request<void>({ method: "DELETE", path: `/v1/mail-suppressions/${seg(address)}`, response: "none" }, options);
   }
 }
 

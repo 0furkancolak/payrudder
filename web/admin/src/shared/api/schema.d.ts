@@ -2190,6 +2190,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mail-suppressions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The addresses the tenant's mail is not sent to
+         * @description An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
+         *     In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
+         *     deployment whose gateway is not connected to the notifier.
+         */
+        get: operations["listMailSuppressions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mail-suppressions/{address}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Mail an address again
+         * @description Lifts the suppression of one address. Lifting an address that is not on the list is 404 `gateway.mail.suppression_not_found`. An address that bounces again is put back by that bounce.
+         */
+        delete: operations["deleteMailSuppression"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mail-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's recent mail, newest first
+         * @description The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
+         *     `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+         */
+        get: operations["listMailMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mail-previews/price-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The notice a customer would get of a price change, without sending anything
+         * @description Renders the price-change notice in the language given (the tenant's default when none), with the date written in the tenant's time zone and the amount, in the tenant's
+         *     currency, the way that language writes money. It is the mail the notifier would send; nothing is sent or kept. Show `html` in a sandboxed frame.
+         */
+        post: operations["previewPriceChangeMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/routing-rules/preview": {
         parameters: {
             query?: never;
@@ -6514,6 +6598,58 @@ export interface components {
             updated_by: string;
             /** Format: date-time */
             update_time: string | null;
+        };
+        MailSuppression: {
+            address: string;
+            /** @enum {string} */
+            reason: "bounce" | "complaint" | "manual";
+            /** @description What the provider or the operator said. */
+            detail: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListMailSuppressionsResponse: {
+            suppressions: components["schemas"]["MailSuppression"][];
+            next_page_token: string;
+        };
+        MailMessage: {
+            /** @description The notifier's key for the mail (one mail has one key, however often it was asked for). */
+            key: string;
+            /** @description What asked for it: command, limit, trial, price_change, contract, renewal or withdrawal. */
+            kind: string;
+            template: string;
+            recipient: string;
+            /** @enum {string} */
+            state: "sending" | "sent" | "delivered" | "delayed" | "bounced" | "soft_bounced" | "complained";
+            /** Format: date-time */
+            claim_time: string;
+            /** Format: date-time */
+            send_time: string | null;
+        };
+        ListMailMessagesResponse: {
+            messages: components["schemas"]["MailMessage"][];
+            next_page_token: string;
+        };
+        PriceChangeMailPreviewRequest: {
+            /** @description The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language. */
+            locale?: string;
+            customer_name?: string;
+            plan_code: string;
+            /**
+             * Format: date-time
+             * @description When the new price starts.
+             */
+            effective_time: string;
+            /**
+             * Format: int64
+             * @description The new renewal fee in the tenant's currency, in minor units.
+             */
+            new_renewal_minor: number;
+        };
+        RenderedMail: {
+            subject: string;
+            html: string;
+            text: string;
         };
         GetPriceChangeResponse: {
             price_change: components["schemas"]["PriceChange"];
@@ -16519,6 +16655,105 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+        };
+    };
+    listMailSuppressions: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMailSuppressionsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    deleteMailSuppression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                address: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lifted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listMailMessages: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMailMessagesResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    previewPriceChangeMail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceChangeMailPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderedMail"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     previewRouting: {

@@ -21,6 +21,7 @@ func (s *Server) routes() []Route {
 		s.withdrawRoutes(),
 		s.portalRoutes(),
 		s.reportRoutingAndMailRoutes(),
+		s.mailRoutes(),
 		s.creditRoutes(),
 		s.accountingRoutes(),
 		s.inboxRoutes(),
