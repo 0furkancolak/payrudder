@@ -159,6 +159,12 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run e2e:mock
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: console-e2e-mock-results
+          path: web/admin/test-results
+          if-no-files-found: ignore
 
   backup:
     name: backup scripts and point-in-time recovery drill
