@@ -145,7 +145,7 @@ func lastDecline(rows []ledgerRow, invoiceID string) string {
 	for i := len(rows) - 1; i >= 0; i-- {
 		if r := rows[i]; r.InvoiceID == invoiceID && r.Kind == "charge" && r.Status != "pending" {
 			if failedStatus(r.Status) {
-				return r.Detail
+				return r.DeclineCode
 			}
 			return ""
 		}

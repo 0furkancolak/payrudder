@@ -330,7 +330,8 @@ func (q *Queries) ListSuccessfulCharges(ctx context.Context, tenantID uuid.UUID)
 }
 
 const lookupLedgerByInvoices = `-- name: LookupLedgerByInvoices :many
-SELECT id, invoice_id::text AS invoice_id, provider, environment, kind, status, amount_minor, currency, occurred_at
+SELECT id, invoice_id::text AS invoice_id, provider, environment, kind, status, amount_minor, currency, occurred_at,
+  COALESCE(CASE WHEN kind = 'charge' AND status = 'declined' THEN detail END, '')::text AS decline_detail
 FROM payment_ledger WHERE tenant_id = $1 AND invoice_id = ANY($2::uuid[]) ORDER BY id DESC LIMIT 1000
 `
 
@@ -340,17 +341,19 @@ type LookupLedgerByInvoicesParams struct {
 }
 
 type LookupLedgerByInvoicesRow struct {
-	ID          int64
-	InvoiceID   string
-	Provider    string
-	Environment string
-	Kind        string
-	Status      string
-	AmountMinor int64
-	Currency    string
-	OccurredAt  time.Time
+	ID            int64
+	InvoiceID     string
+	Provider      string
+	Environment   string
+	Kind          string
+	Status        string
+	AmountMinor   int64
+	Currency      string
+	OccurredAt    time.Time
+	DeclineDetail string
 }
 
+// detail is returned only for the charge a provider refused (a decline code), and the Go side lets through nothing that is not a code.
 func (q *Queries) LookupLedgerByInvoices(ctx context.Context, arg LookupLedgerByInvoicesParams) ([]LookupLedgerByInvoicesRow, error) {
 	rows, err := q.db.Query(ctx, lookupLedgerByInvoices, arg.TenantID, arg.InvoiceIds)
 	if err != nil {
@@ -370,6 +373,7 @@ func (q *Queries) LookupLedgerByInvoices(ctx context.Context, arg LookupLedgerBy
 			&i.AmountMinor,
 			&i.Currency,
 			&i.OccurredAt,
+			&i.DeclineDetail,
 		); err != nil {
 			return nil, err
 		}

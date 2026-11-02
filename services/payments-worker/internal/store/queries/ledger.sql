@@ -39,7 +39,9 @@ FROM payment_ledger WHERE tenant_id = @tenant_id AND kind = 'charge' AND provide
 GROUP BY provider, provider_ref HAVING count(DISTINCT status) > 1 ORDER BY provider, provider_ref;
 
 -- name: LookupLedgerByInvoices :many
-SELECT id, invoice_id::text AS invoice_id, provider, environment, kind, status, amount_minor, currency, occurred_at
+-- detail is returned only for the charge a provider refused (a decline code), and the Go side lets through nothing that is not a code.
+SELECT id, invoice_id::text AS invoice_id, provider, environment, kind, status, amount_minor, currency, occurred_at,
+  COALESCE(CASE WHEN kind = 'charge' AND status = 'declined' THEN detail END, '')::text AS decline_detail
 FROM payment_ledger WHERE tenant_id = @tenant_id AND invoice_id = ANY(@invoice_ids::uuid[]) ORDER BY id DESC LIMIT 1000;
 
 -- name: FindOpenCheckout :one

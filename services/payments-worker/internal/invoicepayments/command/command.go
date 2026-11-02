@@ -163,7 +163,7 @@ func startCheckout(ctx context.Context, d Deps, t, invoice uuid.UUID, in Payment
 	return Started{Kind: "redirect", URL: co.URL}, nil
 }
 
-// callbackFor is the callback URL of an attempt: the template with the attempt's key in its place (the key has colons, which a path takes, and is escaped anyway).
+// callbackFor is the callback URL of an attempt: the template with the attempt's key in its place, escaped for a path (the colons of a key are legal there).
 func callbackFor(template, key string) string {
 	return strings.ReplaceAll(template, "{key}", url.PathEscape(key))
 }
