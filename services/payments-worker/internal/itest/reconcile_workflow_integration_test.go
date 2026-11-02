@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -322,6 +323,21 @@ func TestResolvingDiscrepancies(t *testing.T) {
 	}
 	if got, _, _ := f.disc.Get(ctx, f.tenant, b.ID); got.Status != store.DiscResolved {
 		t.Errorf("the discrepancy the ledger fact resolved is %s after the next run, want resolved", got.Status)
+	}
+
+	// Plan 22 G4: what the operator decided is in the audit log, once for each change (resolving twice is one entry), with the kind and the owner and without the note.
+	for action, want := range map[string]int{"reconciliation.discrepancy_explained": 1, "reconciliation.discrepancy_resolved": 3} {
+		var n int
+		if err := f.w.At(f.tenant).QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE tenant_id = $1 AND action = $2`, f.tenant, action).Scan(&n); err != nil || n != want {
+			t.Errorf("%s: %d entries, %v; want %d", action, n, err, want)
+		}
+	}
+	var target, detail string
+	if err := f.w.At(f.tenant).QueryRow(ctx, `SELECT target_id, detail::text FROM audit_events WHERE tenant_id = $1 AND action = 'reconciliation.discrepancy_explained'`, f.tenant).Scan(&target, &detail); err != nil {
+		t.Fatal(err)
+	}
+	if target != strconv.FormatInt(c.ID, 10) || !strings.Contains(detail, `"kind": "amount_mismatch"`) || !strings.Contains(detail, `"owner": "ayse"`) || strings.Contains(detail, "50 cent") {
+		t.Errorf("discrepancy_explained = target %s, detail %s", target, detail)
 	}
 }
 

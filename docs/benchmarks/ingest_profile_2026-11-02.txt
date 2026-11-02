@@ -1,0 +1,38 @@
+Ingest at 20k and 10k events/s on the local compose stack, 2026-11-02 (plan 22 G17, docs/capacity.md). Nothing in the code was changed; experiments B to D change a setting of the scratch Postgres or ingest-svc's pool only.
+
+Machine: Apple Silicon Mac, Docker VM with 2.9 GiB and 6 vCPU shared with ~20 containers of other projects; the host's load average was 6 to 15 (10 cores) during every run, mostly other people's builds and tests. Stack: reduced (Postgres 17, Redpanda, Redis, RabbitMQ, MinIO, Mailpit, plans-svc, ingest-svc, aggregator, limits-svc, billing-svc, assets-svc, gateway; no ClickHouse, analytics-svc, payments-worker, observability), SaaS mode off, one replica each, k6 2.3.0 (grafana/k6) on the same network and in the same VM. Binaries built on the host (GOOS=linux GOARCH=arm64) and packaged on distroless: building the images in the VM crashed Docker's engine once.
+
+pg_test_fsync in the throwaway Postgres container, idle (load 7.8): fdatasync 126 ms, fsync 66 ms, open_sync 55 ms per 8 kB write; two 8 kB writes: fdatasync 32 ms, fsync 25 ms. (Normal for a local SSD: well under 1 ms.)
+
+== spike-20k: ingest_spike, 20 tenants, 1k -> 20k events/s over 1 min, held 1 min, 100-1000 VUs (4m40s)
+   requests 20062, failed (5xx after k6's 5 s wait) 17960 = 89.5%, dropped iterations 1268, duration median 5009 ms, p90 5077, p99 5466, max 6595
+   (meta: [Errno 2] No such file or directory: '/tmp/k6res/spike-20k.meta')
+== a-baseline-10k: ingest_steady 10,000 events/s (100 requests/s of 100 events), 10 tenants, 90 s: as the code is
+   requests 8787, failed (5xx after k6's 5 s wait) 8503 = 96.8%, dropped iterations 453, duration median 5003 ms, p90 5016, p99 5286, max 5681
+   load before: 11.83 11.88 13.77 | load after: 14.93 12.60 13.77 (1, 5, 15 minute load averages)
+   pg_stat_wal after (reset before the run): wal_records 2190307, wal_bytes 353415886, wal_write 1157, wal_sync 1071, wal_write_time 418 ms, wal_sync_time 95073 ms = 89 ms per sync
+   ingest_db active backends by wait event (78 one-second samples, 233 backend samples): LWLock:WALWrite 35%; CPU/none:- 33%; IO:WalSync 15%; Lock:object 14%; Client:ClientRead 1%
+== b-nonotify-10k: same, pg_notify removed from ingest_db.enqueue_outbox (scratch database only)
+   requests 8835, failed (5xx after k6's 5 s wait) 8460 = 95.8%, dropped iterations 406, duration median 5002 ms, p90 5005, p99 5026, max 5106
+   load before: 15.31 13.12 13.91 | load after: 7.34 11.15 13.04 (1, 5, 15 minute load averages)
+   pg_stat_wal after (reset before the run): wal_records 2745872, wal_bytes 387874659, wal_write 1450, wal_sync 1380, wal_write_time 313 ms, wal_sync_time 103872 ms = 75 ms per sync
+   ingest_db active backends by wait event (86 one-second samples, 350 backend samples): LWLock:WALWrite 75%; IO:WalSync 17%; CPU/none:- 8%; IO:WalWrite 0%
+== c-syncoff-10k: same, pg_notify removed and synchronous_commit = off
+   requests 8751, failed (5xx after k6's 5 s wait) 3163 = 36.1%, dropped iterations 489, duration median 4758 ms, p90 5014, p99 5118, max 5523
+   load before: 6.52 10.85 12.91 | load after: 11.66 10.89 12.65 (1, 5, 15 minute load averages)
+   pg_stat_wal after (reset before the run): wal_records 6251823, wal_bytes 907513279, wal_write 764, wal_sync 572, wal_write_time 1274 ms, wal_sync_time 71513 ms = 125 ms per sync
+   ingest_db active backends by wait event (82 one-second samples, 357 backend samples): LWLock:WALWrite 36%; CPU/none:- 29%; LWLock:BufferContent 11%; IO:DataFileRead 10%; LWLock:WALInsert 4%
+== d-pool64-10k: same, original function and synchronous_commit on, ingest-svc pools of 64 (app) and 16 (system) instead of 4
+   requests 8720, failed (5xx after k6's 5 s wait) 8436 = 96.7%, dropped iterations 521, duration median 5007 ms, p90 5078, p99 5401, max 6248
+   load before: 6.02 9.21 11.82 | load after: 11.04 10.15 11.88 (1, 5, 15 minute load averages)
+   pg_stat_wal after (reset before the run): wal_records 2309113, wal_bytes 380842587, wal_write 736, wal_sync 679, wal_write_time 1887 ms, wal_sync_time 89304 ms = 132 ms per sync
+   ingest_db active backends by wait event (64 one-second samples, 2022 backend samples): Lock:object 38%; LWLock:BufferContent 16%; CPU/none:- 16%; LWLock:WALInsert 13%; LWLock:WALWrite 8%
+== e-nonotify-pool64-10k: pg_notify removed AND ingest-svc pools of 64 and 16, synchronous_commit on
+   requests 8755, failed (5xx after k6's 5 s wait) 6409 = 73.2%, dropped iterations 486, duration median 5002 ms, p90 5018, p99 5309, max 5656
+   load before: 10.49 10.14 11.80 | load after: 8.33 9.69 11.42 (1, 5, 15 minute load averages)
+   pg_stat_wal after (reset before the run): wal_records 3960298, wal_bytes 639559914, wal_write 742, wal_sync 632, wal_write_time 2027 ms, wal_sync_time 102392 ms = 162 ms per sync
+   ingest_db active backends by wait event (85 one-second samples, 3821 backend samples): LWLock:WALWrite 44%; LWLock:WALInsert 23%; LWLock:BufferContent 21%; CPU/none:- 5%; Lock:extend 4%
+
+== spike-20k, all databases: wait events of active client backends (sampled every second): ingest_db Lock:object 32.5%, LWLock:WALWrite 23.3%, IO:WalSync 12.0%, CPU 8.6%; aggregator_db LWLock:WALWrite 11.2%, IO:WalSync 6.8%; plans_db < 2%
+== spike-20k, container CPU (docker stats, ~50 samples over the run): postgres max 186% (median 26%), ingest-svc max 182% (median 14%), gateway max 178% (median 6%), every other container under 70%; VM memory in use at most 1,410 MiB of 2,980
+== ingest-svc log during the failures: 'ingest: write failed: enqueue outbox: write failed: write tcp ...->postgres:5432: i/o timeout' and 'insert idempotency keys: ...: i/o timeout'

@@ -158,6 +158,27 @@ func (l Ledger) RefundFact(ctx context.Context, tenant, invoice uuid.UUID, key s
 	return *ref, true, nil
 }
 
+// InvoiceCharge is a successful charge of an invoice: the provider's id of it and what it took.
+type InvoiceCharge struct {
+	ProviderRef string
+	AmountMinor int64
+}
+
+// InvoiceCharges returns the successful charges of the invoice at one provider account (its key, stripe~eu), by the provider's reference.
+func (l Ledger) InvoiceCharges(ctx context.Context, tenant, invoice uuid.UUID, provider string) ([]InvoiceCharge, error) {
+	rows, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListInvoiceChargesRow, error) {
+		return q.ListInvoiceCharges(ctx, sqlc.ListInvoiceChargesParams{TenantID: tenant, InvoiceID: &invoice, Provider: provider})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]InvoiceCharge, len(rows))
+	for i, r := range rows {
+		out[i] = InvoiceCharge{ProviderRef: r.ProviderRef, AmountMinor: r.AmountMinor}
+	}
+	return out, nil
+}
+
 // Charge is a successful charge in the ledger.
 type Charge struct {
 	InvoiceID, Provider, ProviderRef, Currency string

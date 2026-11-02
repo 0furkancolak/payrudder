@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,6 +37,7 @@ func TestAggregator(t *testing.T) {
 	t.Run("SameEventAtTwoOffsetsCountsOnce", testDuplicateEvent)
 	t.Run("ZombieConsumerCannotMoveOffsetsBackOrDoubleCount", testZombie)
 	t.Run("PoisonRecordsGoToTheDLQAndTheRestIsApplied", testPoison)
+	t.Run("ALostBrokerNeedsTheConsumerProgressDeletedBeforeTheOutboxIsReplayed", testBrokerLoss)
 	t.Run("PostgresOutageDoesNotDLQ", testPostgresOutage)
 	t.Run("FractionalMeterIsExact", testFractional)
 	t.Run("LateEventsLandInLateUsage", testLate)
@@ -209,6 +211,90 @@ func testZombie(t *testing.T) {
 
 	compare(t, "usage_aggregates", led.onTime, onTimeRows(t, tenants...))
 	compare(t, "late_usage", led.late, lateRows(t, tenants...))
+}
+
+// testBrokerLoss is the order of docs/runbooks/backup-restore.md for a lost broker: the topic comes back empty, the events still in the services' outboxes are published
+// into it (together with some the aggregator had already counted: the relay is at-least-once and the topic's old content is gone), and the consumer's progress, which lives
+// in Postgres next to its effects, must be deleted first. With the old progress the aggregator resumes at an offset of the OLD log and silently skips whatever the new
+// one holds before it; the test shows that, because it is the reason for the step, and then shows the step working: nothing counted twice, nothing lost.
+func testBrokerLoss(t *testing.T) {
+	r := newRun(t, runOpts{partitions: 1}) // one partition: offsets and their order are exact
+	tn, cust := uuid.New(), uuid.New()
+	k := rowKey{tenant: tn, customer: cust, meter: "sum_m", period: "2026-11"}
+	e := func(id string, units int64) *eventsv1.UsageEvent {
+		return ev(id, tn, cust, "sum_m", units, 0, "2026-11", nov)
+	}
+	waitFor := func(what, qty string, count int64) {
+		t.Helper()
+		deadline := time.Now().Add(30 * time.Second)
+		for {
+			g := onTimeRows(t, tn)[k]
+			if g.qty == qty && g.count == count {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: aggregate = %+v, want %s over %d events", what, g, qty, count)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	r.produce(e("LOSS00000001", 10), e("LOSS00000002", 20), e("LOSS00000003", 30))
+	r.start(r.group)
+	r.drain(30 * time.Second)
+	waitFor("before the loss", "60", 3)
+	r.stop()
+
+	// The broker loses its disk: the topic exists again, empty. What the outboxes publish into it: two events the aggregator has counted already, and two it never saw.
+	admin, err := kgo.NewClient(kgo.SeedBrokers(shared.kafka.Brokers))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close()
+	adm := kadm.NewClient(admin)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	if _, err := adm.DeleteTopics(ctx, r.topic); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := adm.CreateTopic(ctx, 1, 1, nil, r.topic); err == nil {
+			break
+		} else if ctx.Err() != nil {
+			t.Fatalf("recreating the topic: %v", err)
+		}
+		time.Sleep(200 * time.Millisecond) // the broker is still removing the old one
+	}
+	r.produce(e("LOSS00000002", 20), e("LOSS00000003", 30), e("LOSS00000004", 40), e("LOSS00000005", 50))
+
+	// Without the step: the stored progress says 3 of a log that now holds the replayed events at 0 to 3, so the aggregator reads offset 3 on and skips event 4.
+	r.start(r.group)
+	waitFor("with the old progress", "110", 4)
+	time.Sleep(time.Second)
+	if g := onTimeRows(t, tn)[k]; g.qty != "110" || g.count != 4 {
+		t.Fatalf("with the old progress the aggregate = %+v; the test expects event 4 to be skipped (110 over 4), which is why the progress must be deleted", g)
+	}
+	r.stop()
+
+	// With the step: delete the progress, start again; the replayed events are recognised, the skipped one is counted.
+	before := counterTotal(t, "aggregator_duplicates_skipped")
+	// The service's own role cannot do it (offsets only ever advance: aggregator_system has no DELETE on consumer_offsets), which is why the runbook has the operator do it as the owner.
+	owner, err := pgx.Connect(context.Background(), shared.db.Migrator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close(context.Background())
+	if _, err := shared.system.Exec(context.Background(), `DELETE FROM consumer_offsets WHERE consumer_group = $1 AND topic = $2`, r.group, r.topic); err == nil {
+		t.Fatal("aggregator_system can delete consumer progress: offsets could then move backwards without an operator")
+	}
+	if _, err := owner.Exec(context.Background(), `DELETE FROM consumer_offsets WHERE consumer_group = $1 AND topic = $2`, r.group, r.topic); err != nil {
+		t.Fatal(err)
+	}
+	r.start(r.group)
+	waitFor("after deleting the progress", "150", 5)
+	if d := counterTotal(t, "aggregator_duplicates_skipped") - before; d != 3 {
+		t.Fatalf("aggregator_duplicates_skipped grew by %d, want 3 (events 2, 3 and 5 read again)", d)
+	}
 }
 
 func testPoison(t *testing.T) {
