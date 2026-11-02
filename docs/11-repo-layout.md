@@ -15,6 +15,7 @@ payrudder/
 │       ├── plans/v1/  ingest/v1/  aggregator/v1/  limits/v1/  billing/v1/  analytics/v1/
 │       └── testdata/               # golden binary fixtures per release
 ├── sdk/                            # client libraries of the tenant API: typescript/ go/ python/ php/ (docs/18-sdks.md)
+├── examples/                       # small apps to copy: express/ fastapi/ go-nethttp/ (usage + webhook verification), smoke-tested in CI against a fake API made from the OpenAPI file
 ├── gen/go/                         # module github.com/0furkancolak/payrudder/gen/go — generated, committed
 ├── pkg/                            # module github.com/0furkancolak/payrudder/pkg
 │   ├── config/                     # env parsing

@@ -2,11 +2,12 @@
 // node build.mjs [outDir]   (default: docs-site/dist)
 // Needs Node 22.18 or newer: the language tabs of the reference are made by the console's own snippet generator (web/admin/src/features/connect/snippets.ts), which Node
 // reads directly by stripping its types.
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { marked } from "marked";
 import { parse } from "yaml";
+import { clientScript } from "./client.mjs";
 import { collect, render as renderChangelog } from "./changelog.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -26,12 +27,18 @@ export const GUIDES = [
   { section: "Tutorials", src: content("tutorial-usage-billing.md"), page: "tutorial-usage-billing", title: "Usage-based billing, end to end", status: "draft" },
   { section: "Tutorials", src: content("tutorial-webhooks.md"), page: "tutorial-webhooks", title: "Receive webhooks on your machine", status: "draft", generate: webhookCode },
   { section: "Tutorials", src: content("tutorial-payments.md"), page: "tutorial-payments", title: "Let a customer pay", status: "draft" },
+  { section: "Tutorials", src: content("migrate-from-stripe.md"), page: "migrate-from-stripe", title: "Migrate from Stripe Billing", status: "draft" },
+  { section: "Payment providers", src: content("provider-stripe.md"), page: "provider-stripe", title: "Stripe", status: "draft" },
+  { section: "Payment providers", src: content("provider-paddle.md"), page: "provider-paddle", title: "Paddle", status: "draft" },
+  { section: "Payment providers", src: content("provider-iyzico.md"), page: "provider-iyzico", title: "iyzico", status: "draft" },
   { section: "Concepts", src: content("authentication.md"), page: "authentication", title: "Authentication", status: "draft" },
   { section: "Concepts", src: content("usage-metering.md"), page: "usage-metering", title: "Usage metering", status: "draft" },
   { section: "Concepts", src: content("idempotency.md"), page: "idempotency", title: "Idempotency", status: "draft" },
   { section: "Concepts", src: content("test-mode.md"), page: "test-mode", title: "Test mode", status: "draft" },
   { section: "Concepts", src: docs("16-webhooks.md"), page: "webhooks", title: "Webhooks" },
   { section: "Concepts", src: docs("19-contracts.md"), page: "contracts", title: "Contracts" },
+  { section: "Concepts", src: content("tax-and-einvoices.md"), page: "tax-and-einvoices", title: "Tax and e-invoices", status: "draft" },
+  { section: "Concepts", src: content("security.md"), page: "security", title: "Security", status: "draft" },
   { section: "Concepts", src: content("errors.md"), also: [docs("error-keys.md")], page: "errors", title: "Errors", generate: errorCatalogue },
   { section: "Libraries", src: docs("18-sdks.md"), page: "sdks", title: "SDKs" },
   { section: "Libraries", src: content("cli.md"), page: "cli", title: "Command line", status: "pre-release" },
@@ -240,7 +247,7 @@ table{border-collapse:collapse;width:100%;font-size:.9rem;margin:.5rem 0 1rem}th
 .req{color:#c0392b;font-size:.7rem}.anchor{text-decoration:none;opacity:.4;font-size:.9rem}
 details{margin:.5rem 0}summary{cursor:pointer;color:var(--mut)}
 #q{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}
-#hits{list-style:none;padding:0;margin:6px 0}#hits a{font-size:.85rem}
+#hits{list-style:none;padding:0;margin:6px 0}#hits a{font-size:.85rem}#hits small{color:var(--mut)}
 .status{border:1px solid var(--line);border-inline-start:4px solid var(--brand);background:var(--soft);padding:8px 12px;border-radius:8px;font-size:.875rem;margin:0 0 1.5rem}
 .status-stable{border-inline-start-color:#2b7a4b}.status-preview{border-inline-start-color:#b7791f}.status-pre-release,.status-draft{border-inline-start-color:#c0392b}
 .tabs [role=tablist]{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.tabs button{font:inherit;font-size:.85rem;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--fg);cursor:pointer}
@@ -257,14 +264,7 @@ function layout({ title, body, nav, current, up = "" }) {
 ${nav.map((g) => `<h2>${esc(g.title)}</h2>${g.items.map((i) => `<a href="${up}${i.href}"${i.href === current ? ' aria-current="page"' : ""}>${esc(i.label)}</a>`).join("")}`).join("")}
 </nav>
 <main>${body}</main></div>
-<script>(function(){var q=document.getElementById('q'),h=document.getElementById('hits'),idx=null;
-function load(){return idx?Promise.resolve(idx):fetch('${up}search.json').then(function(r){return r.json()}).then(function(j){idx=j;return j})}
-q.addEventListener('input',function(){var t=q.value.trim().toLowerCase();h.innerHTML='';if(t.length<2)return;load().then(function(j){
-var words=t.split(/\\s+/),n=0;for(var i=0;i<j.length&&n<12;i++){var e=j[i],hay=(e.title+' '+e.text).toLowerCase();if(words.every(function(w){return hay.indexOf(w)>=0}))
-{var li=document.createElement('li'),a=document.createElement('a');a.href='${up}'+e.url;a.textContent=e.title;li.appendChild(a);h.appendChild(li);n++}}})})})();
-document.querySelectorAll('.tabs').forEach(function(t){var b=t.querySelectorAll('[role=tab]'),p=t.querySelectorAll('[role=tabpanel]');
-function show(i){b.forEach(function(x,j){x.setAttribute('aria-selected',String(j===i));p[j].hidden=j!==i})}
-b.forEach(function(x,i){x.addEventListener('click',function(){show(i)})});show(0)});</script>
+<script>${clientScript(up)}</script>
 </body></html>`;
 }
 
@@ -346,9 +346,41 @@ async function errorCatalogue({ doc, files }) {
   const meaning = meaningsOf(JSON.parse(await readFile(join(root, "web/admin/src/locales/en.json"), "utf8")));
   const areas = [...new Set(keys.map((k) => k.split(".")[0]))].sort();
   const codes = doc.components?.schemas?.EventResult?.properties?.error_code?.enum ?? [];
-  return `<h2 id="event-codes">Usage event error codes</h2><table class="fields"><thead><tr><th>error_code</th><th>Meaning</th></tr></thead><tbody>${codes.map((c) => `<tr><td><code>${esc(c)}</code></td><td>${esc(EVENT_CODES[c] ?? "")}</td></tr>`).join("")}</tbody></table>
+  const hints = JSON.parse(await readFile(join(root, "web/admin/src/locales/en.json"), "utf8")).connect?.eventErrors ?? {};
+  return `<h2 id="event-codes">Usage event error codes</h2><p>An event the API refuses comes back <code>rejected</code> with one of these codes and does not fail the rest of the batch. The console shows the same advice, in its six languages, under the test event on the Connect page.</p><table class="fields"><thead><tr><th>error_code</th><th>Meaning</th><th>What to do</th></tr></thead><tbody>${codes.map((c) => `<tr id="event-code-${esc(c)}"><td><code>${esc(c)}</code></td><td>${esc(EVENT_CODES[c] ?? "")}</td><td>${esc(hints[c] ?? "")}</td></tr>`).join("")}</tbody></table>
 <h2 id="keys">All keys</h2><p>${keys.length} keys, ${areas.length} areas. The meaning is the English message the console shows for the key; the API's own <code>message</code> may differ in wording.</p>
 ${areas.map((a) => `<h3 id="area-${esc(a)}">${esc(a)}</h3><p>${esc(AREAS[a] ?? "")}</p><table class="fields"><thead><tr><th>Key</th><th>Meaning</th></tr></thead><tbody>${keys.filter((k) => k.split(".")[0] === a).map((k) => `<tr id="key-${esc(k)}"><td><code>${esc(k)}</code></td><td>${esc(meaning[k] ?? "")}</td></tr>`).join("")}</tbody></table>`).join("")}`;
+}
+
+/** What the search reads of a model: its description, then each field with the start of what it says. */
+function modelText(schema) {
+  const fields = Object.entries(schema?.properties ?? {}).map(([k, v]) => `${k} ${String(v.description ?? "").slice(0, 100)}`);
+  return textOf(`${schema?.description ?? ""} ${fields.join(" ")}`).slice(0, 800);
+}
+
+/**
+ * Pages that were renamed: the old address keeps working. A static host has no redirect rules, so each old page is a small page that sends the browser on (and names the
+ * new address for a search engine and for a reader without scripts).
+ */
+export const REDIRECTS = { "error-keys.html": "errors.html" };
+const redirectPage = (to) => `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Moved</title><link rel="canonical" href="${esc(to)}"><meta http-equiv="refresh" content="0; url=${esc(to)}"><meta name="robots" content="noindex"></head>
+<body><p>This page moved to <a href="${esc(to)}">${esc(to)}</a>.</p></body></html>`;
+
+/** Every link to another site in the built pages: Map of address -> the pages that carry it. Nothing is requested here; the list is written to external-links.txt. */
+export async function externalLinksOf(outDir) {
+  const found = new Map();
+  const files = [];
+  for (const f of await readdir(outDir)) if (f.endsWith(".html") && !(f in REDIRECTS)) files.push(f);
+  for (const f of await readdir(join(outDir, "api"))) files.push(`api/${f}`);
+  for (const f of files) {
+    const html = await readFile(join(outDir, f), "utf8");
+    for (const m of html.matchAll(/<a [^>]*href="(https?:\/\/[^"]+)"/g)) {
+      const url = m[1].replace(/&amp;/g, "&");
+      found.set(url, (found.get(url) ?? new Set()).add(f));
+    }
+  }
+  return new Map([...found].sort(([a], [b]) => a.localeCompare(b)));
 }
 
 export async function build(outDir = join(here, "dist")) {
@@ -391,7 +423,7 @@ export async function build(outDir = join(here, "dist")) {
     html = html.replace("</h1>", `</h1>\n${statusBanner(status)}`);
     if (g.generate) html += await g.generate({ doc, root, files: g.also });
     await writeFile(join(outDir, `${g.page}.html`), layout({ title: g.title, body: html, nav, current: `${g.page}.html` }));
-    search.push({ title: g.title, url: `${g.page}.html`, text: textOf(html).slice(0, 4000) });
+    search.push({ title: g.title, kind: "Guide", url: `${g.page}.html`, text: textOf(html).slice(0, 4000) });
   }
 
   for (const g of groups) {
@@ -400,7 +432,9 @@ export async function build(outDir = join(here, "dist")) {
     const body = `<h1>${esc(g)}</h1>${statusBanner("stable")}<p><a href="index.html">API reference</a></p>${mine.map((o) => operationHtml(doc, o, base)).join("")}
 <h2>Models</h2>${schemas.map((n) => `<section id="schema-${esc(n)}"><h3>${esc(n)}</h3>${fieldRows(doc, { $ref: `#/components/schemas/${n}` }) || `<p>${typeOf(doc, doc.components.schemas[n])}</p>`}</section>`).join("")}`;
     await writeFile(join(outDir, "api", `${g}.html`), layout({ title: `${g} API`, body, nav, current: `api/${g}.html`, up: "../" }));
-    for (const o of mine) search.push({ title: `${o.method} ${o.path}`, url: `api/${g}.html#${o.id}`, text: `${o.op.summary ?? ""} ${textOf(marked.parse(String(o.op.description ?? "")))}`.slice(0, 1500) });
+    // Every model on the page can be found by its name, by a field name or by what the fields say.
+    for (const n of schemas) search.push({ title: n, kind: "Model", url: `api/${g}.html#schema-${n}`, text: modelText(doc.components.schemas[n]) });
+    for (const o of mine) search.push({ title: `${o.method} ${o.path}`, kind: "Operation", url: `api/${g}.html#${o.id}`, text: `${o.op.summary ?? ""} ${textOf(marked.parse(String(o.op.description ?? "")))}`.slice(0, 1500) });
   }
 
   const overview = `<h1>API reference</h1>${statusBanner("stable")}<p>${ops.length} operations of the tenant API, authenticated with an API key (<code>Authorization: Bearer qk_…</code>). The same OpenAPI file, <code>api/openapi/v1.yaml</code>, is what the SDKs are generated from.</p>
@@ -411,6 +445,10 @@ export async function build(outDir = join(here, "dist")) {
 ${sections.map((t) => `<h2>${esc(t)}</h2><ul>${GUIDES.filter((g) => g.section === t).map((g) => `<li><a href="${g.page}.html">${esc(g.title)}</a></li>`).join("")}</ul>`).join("")}<h2>API reference</h2><ul><li><a href="api/index.html">API reference</a></li></ul>`;
   await writeFile(join(outDir, "index.html"), layout({ title: "Documentation", body: home, nav, current: "index.html" }));
   await writeFile(join(outDir, "search.json"), JSON.stringify(search));
+  for (const [from, to] of Object.entries(REDIRECTS)) await writeFile(join(outDir, from), redirectPage(to));
+  // For a reviewer, and for `CHECK_EXTERNAL_LINKS=1 npm test`, which asks each of them (the build and the usual test run stay offline).
+  const external = await externalLinksOf(outDir);
+  await writeFile(join(outDir, "external-links.txt"), [...external].map(([url, pagesWith]) => `${url}\t${[...pagesWith].join(" ")}`).join("\n") + (external.size ? "\n" : ""));
   return { outDir, operations: ops.length, groups };
 }
 

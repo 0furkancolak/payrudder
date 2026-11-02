@@ -5647,6 +5647,24 @@
       "accepted": "Das Ereignis wurde angenommen. Die Checkliste wird grün, sobald es gezählt ist, in wenigen Sekunden.",
       "duplicate": "Ein Ereignis mit diesem Schlüssel wurde schon gezählt; es wurde nichts hinzugefügt.",
       "rejected": "Das Ereignis wurde abgelehnt: {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "Kein Zähler hat diesen Code. Legen Sie den Zähler auf der Seite „Zähler“ an oder korrigieren Sie meter_code.",
+      "UNKNOWN_CUSTOMER": "Kein Kunde hat diese ID. Legen Sie zuerst den Kunden an oder korrigieren Sie customer_external_id.",
+      "EVENT_TOO_OLD": "Das Ereignis ist älter als 35 Tage. Senden Sie die Nutzung kurz nach ihrem Eintreten; ältere Nutzung kann nicht gezählt werden.",
+      "EVENT_IN_FUTURE": "event_time liegt mehr als 5 Minuten vor der Uhr von Payrudder. Prüfen Sie die Uhr Ihres Servers und senden Sie den Zeitpunkt, zu dem die Nutzung stattfand.",
+      "INVALID_EVENT_TIME": "Senden Sie event_time als RFC-3339-Zeitpunkt, zum Beispiel 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "Senden Sie quantity als nicht negative Dezimalzahl, als Text wie „1“ oder „1.25“.",
+      "INVALID_QUANTITY_PRECISION": "Die Menge hat mehr Nachkommastellen, als der Zähler erlaubt. Runden Sie sie auf die quantity_scale des Zählers.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Ein Live-Schlüssel muss mit jedem Ereignis einen idempotency_key senden. Leiten Sie ihn aus dem Geschehen ab (etwa einer Bestell-ID), damit eine Wiederholung nur einmal zählt.",
+      "IDEMPOTENCY_KEY_INVALID": "Verwenden Sie 1 bis 128 Zeichen: Buchstaben, Ziffern und _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "Dieser Schlüssel wurde für ein anderes Ereignis verwendet. Nehmen Sie für ein neues Ereignis einen neuen Schlüssel; wiederholen Sie dasselbe Ereignis mit demselben Schlüssel und demselben Inhalt.",
+      "INVALID_PROPERTIES": "Senden Sie höchstens 32 Eigenschaften und insgesamt 4 KiB, mit Textwerten, und nehmen Sie die Eigenschaft auf, die ein UNIQUE-Zähler zählt.",
+      "INVALID_CORRECTION": "Eine Korrektur braucht einen Grund mit 1 bis 500 Zeichen und den Schlüssel des Ereignisses, das sie korrigiert (nicht ihren eigenen).",
+      "CORRECTION_UNKNOWN_EVENT": "Es wurde kein Ereignis mit diesem Schlüssel gefunden. Es wurde vielleicht nie angenommen, oder es ist älter, als Idempotenzschlüssel aufbewahrt werden (mindestens 45 Tage).",
+      "CORRECTION_MISMATCH": "Eine Korrektur muss denselben Kunden und denselben Zähler nennen wie das Ereignis, das sie korrigiert.",
+      "CORRECTION_UNSUPPORTED_METER": "Nur Ereignisse von SUM- und COUNT-Zählern ohne Eigenschaftsfilter lassen sich korrigieren.",
+      "CORRECTION_OF_CORRECTION": "Das Ereignis ist selbst eine Korrektur. Korrigieren Sie das ursprüngliche Ereignis erneut, mit der Menge, die es haben soll."
     }
   },
   "contracts": {

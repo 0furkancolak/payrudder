@@ -5647,6 +5647,24 @@
       "accepted": "Olay kabul edildi. Sayıldığında kontrol listesi yeşile döner; birkaç saniye sürer.",
       "duplicate": "Bu anahtarla bir olay daha önce sayıldı; hiçbir şey eklenmedi.",
       "rejected": "Olay reddedildi: {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "Bu koda sahip bir sayaç yok. Sayaçlar sayfasında sayacı oluştur veya meter_code değerini düzelt.",
+      "UNKNOWN_CUSTOMER": "Bu kimliğe sahip bir müşteri yok. Önce müşteriyi oluştur veya customer_external_id değerini düzelt.",
+      "EVENT_TOO_OLD": "Olay 35 günden eski. Kullanımı gerçekleştikten kısa süre sonra gönder; daha eski kullanım sayılamaz.",
+      "EVENT_IN_FUTURE": "event_time, Payrudder'ın saatinden 5 dakikadan fazla ileride. Sunucunun saatini kontrol et ve kullanımın gerçekleştiği anı gönder.",
+      "INVALID_EVENT_TIME": "event_time değerini RFC 3339 anı olarak gönder, örneğin 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "quantity değerini negatif olmayan bir ondalık sayı olarak, \"1\" veya \"1.25\" gibi bir metin biçiminde gönder.",
+      "INVALID_QUANTITY_PRECISION": "Miktarın ondalık basamağı sayacın izin verdiğinden fazla. Sayacın quantity_scale değerine yuvarla.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Canlı anahtar her olayla birlikte bir idempotency_key göndermeli. Olaydan türet (örneğin sipariş kimliği); böylece yeniden deneme bir kez sayılır.",
+      "IDEMPOTENCY_KEY_INVALID": "1 ile 128 karakter kullan: harf, rakam ve _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "Bu anahtar başka bir olay için kullanılmış. Yeni olay için yeni anahtar kullan; aynı olayı yeniden denerken aynı anahtarı ve aynı içeriği gönder.",
+      "INVALID_PROPERTIES": "En çok 32 özellik ve toplam 4 KiB gönder, değerler metin olsun; UNIQUE sayacın saydığı özelliği de ekle.",
+      "INVALID_CORRECTION": "Düzeltme için 1 ile 500 karakterlik bir neden ve düzelttiği olayın anahtarı gerekir (kendi anahtarı değil).",
+      "CORRECTION_UNKNOWN_EVENT": "Bu anahtarla bir olay bulunamadı. Hiç kabul edilmemiş olabilir veya idempotency anahtarlarının saklandığı süreden (en az 45 gün) eski olabilir.",
+      "CORRECTION_MISMATCH": "Düzeltme, düzelttiği olayla aynı müşteriyi ve aynı sayacı belirtmeli.",
+      "CORRECTION_UNSUPPORTED_METER": "Yalnızca özellik filtresi olmayan SUM ve COUNT sayaçlarının olayları düzeltilebilir.",
+      "CORRECTION_OF_CORRECTION": "Olayın kendisi bir düzeltme. Asıl olayı olması gereken miktarla yeniden düzelt."
     }
   },
   "contracts": {

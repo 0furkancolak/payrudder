@@ -1,0 +1,88 @@
+name: examples
+
+# The framework templates under examples/ (Express, FastAPI, Go net/http) are compiled and smoke-tested: each starts next to docs-site/fakeapi.mjs (a stand-in for the API
+# made from api/openapi/v1.yaml) and examples/smoke.mjs checks that a delivery signed the documented way is accepted, that a changed body, a wrong secret, an old timestamp and
+# a missing header are refused, and that POST /usage reaches the API as a valid usage event. It proves the template runs and uses the SDK correctly, not that a real
+# gateway accepts anything. The SDKs are installed from this checkout: nothing is published.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/**"
+      - "docs-site/fakeapi.mjs"
+      - "api/openapi/v1.yaml"
+      - "sdk/**"
+      - ".github/workflows/examples.yml"
+  pull_request:
+    paths:
+      - "examples/**"
+      - "docs-site/fakeapi.mjs"
+      - "api/openapi/v1.yaml"
+      - "sdk/**"
+      - ".github/workflows/examples.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: examples-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  express:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Build the SDK the template depends on
+        working-directory: sdk/typescript
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - run: npm ci --no-audit --no-fund
+        working-directory: examples/express
+      - run: npm run check
+        working-directory: examples/express
+      - run: node examples/smoke.mjs examples/express npm start
+
+  fastapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - run: pip install -r requirements.txt
+        working-directory: examples/fastapi
+      - run: python -m compileall -q examples/fastapi
+      - run: node examples/smoke.mjs examples/fastapi sh -c 'exec uvicorn main:app --host 127.0.0.1 --port "$PORT"'
+
+  go-nethttp:
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - run: go vet ./...
+        working-directory: examples/go-nethttp
+      - run: go build -o "$RUNNER_TEMP/nethttp" .
+        working-directory: examples/go-nethttp
+      - run: node examples/smoke.mjs examples/go-nethttp "$RUNNER_TEMP/nethttp"

@@ -1,0 +1,62 @@
+name: snippets-run
+
+# The quick-start code (web/admin/src/features/connect/snippets.ts: the Connect page and the reference's language tabs) is RUN here: curl, TypeScript (the SDK built from this
+# checkout), Python and Go, against docs-site/fakeapi.mjs, a stand-in for the API made from api/openapi/v1.yaml. It proves that the pasted code starts, reaches the address it
+# was given, sends a bearer key and a body that fits the contract, and reads the answer; hostile customer ids and meter codes are run too.
+# It does NOT prove that the real gateway accepts the request: that needs the compose stack, a database and a sandbox key, which no job here starts (default, not agreed:
+# a job against the stack is heavy and flaky on a shared runner; make the fake the gate and run the stack by hand with `make dev`). PHP is only linted and looked up by
+# snippets.yml. A missing tool fails the job (SNIPPETS_REQUIRE_TOOLS=1), it never skips a language silently.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/admin/src/features/connect/snippets.ts"
+      - "docs-site/fakeapi.mjs"
+      - "docs-site/snippets.run.test.mjs"
+      - "api/openapi/v1.yaml"
+      - "sdk/**"
+      - ".github/workflows/snippets-run.yml"
+  pull_request:
+    paths:
+      - "web/admin/src/features/connect/snippets.ts"
+      - "docs-site/fakeapi.mjs"
+      - "docs-site/snippets.run.test.mjs"
+      - "api/openapi/v1.yaml"
+      - "sdk/**"
+      - ".github/workflows/snippets-run.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snippets-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Node 22.18 or newer: the test imports snippets.ts (types stripped) and runs the TypeScript snippet as .mts.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+      - name: Build the TypeScript SDK the snippet imports
+        working-directory: sdk/typescript
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - name: Run every snippet against the fake API
+        working-directory: docs-site
+        env:
+          SNIPPETS_REQUIRE_TOOLS: "1"
+        run: node --test snippets.run.test.mjs

@@ -6,7 +6,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { parse } from "yaml";
-import { EVENT_CODES, GUIDES, OPERATOR_AREAS, STATUSES, TABBED, build, errorKeys, exampleOf, loadPublication, meaningsOf, operationsOf, publicationOf } from "./build.mjs";
+import { EVENT_CODES, GUIDES, OPERATOR_AREAS, REDIRECTS, STATUSES, TABBED, build, errorKeys, exampleOf, externalLinksOf, loadPublication, meaningsOf, operationsOf, publicationOf } from "./build.mjs";
 import { LANGS } from "../web/admin/src/features/connect/snippets.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -14,9 +14,10 @@ const doc = parse(await readFile(resolve(here, "../api/openapi/v1.yaml"), "utf8"
 const out = await mkdtemp(join(tmpdir(), "docs-"));
 const built = await build(out);
 
+/** The pages of the site; the small pages that send an old address to its new one (REDIRECTS) are not pages. */
 async function pages() {
   const all = [];
-  for (const f of await readdir(out)) if (f.endsWith(".html")) all.push(f);
+  for (const f of await readdir(out)) if (f.endsWith(".html") && !(f in REDIRECTS)) all.push(f);
   for (const f of await readdir(join(out, "api"))) all.push(`api/${f}`);
   return all;
 }
@@ -45,6 +46,26 @@ test("only the tenant API is documented: no operation of the operator, console o
     for (const id of hidden) assert.ok(!html.includes(`id="${id}"`), `${f} documents ${id}`);
     assert.ok(!/<h3><span class="m [^>]*>[A-Z]+<\/span> <code>\/(admin|app|auth)\//.test(html), `${f} has an entry for a non-tenant route`);
   }
+});
+
+test("the public text of the tenant API (the description of the API, of every /v1 operation and of every model they reach) names no operator route and no deployment variable", () => {
+  const seen = new Set();
+  const texts = [["info.description", doc.info.description]];
+  const walk = (n, path) => {
+    if (typeof n === "string") return void (path.endsWith("description") || path.endsWith("summary") ? texts.push([path, n]) : null);
+    if (Array.isArray(n)) return n.forEach((x, i) => walk(x, `${path}[${i}]`));
+    if (!n || typeof n !== "object") return;
+    if (typeof n.$ref === "string" && n.$ref.startsWith("#/")) {
+      if (seen.has(n.$ref)) return;
+      seen.add(n.$ref);
+      return walk(n.$ref.slice(2).split("/").reduce((x, k) => x?.[k], doc), n.$ref.slice(2));
+    }
+    for (const [k, v] of Object.entries(n)) walk(v, `${path}.${k}`);
+  };
+  for (const o of operationsOf(doc)) walk(o.op, `${o.method} ${o.path}`);
+  assert.ok(texts.length > 500, `only ${texts.length} texts were read`);
+  const bad = texts.filter(([, t]) => /\/admin\/|\/app\/v1|\/auth\/|PAYRUDDER_[A-Z_]+|payrudderctl/.test(t));
+  assert.deepEqual(bad.map(([p, t]) => `${p}: ${t.match(/\/admin\/\S*|\/app\/v1\S*|\/auth\/\S*|PAYRUDDER_[A-Z_]+|payrudderctl/)[0]}`), [], "rewrite these descriptions for a reader outside the deployment (api/openapi/v1.yaml)");
 });
 
 test("no page shows a broken template value, and every internal link points at a page or an anchor that exists", async () => {
@@ -164,7 +185,7 @@ test("the concept pages are built, in the sidebar, and say what the repository d
 test("the pages for concepts do not point at a path the API does not have", async () => {
   const known = new Set(Object.keys(doc.paths));
   const toPattern = (p) => new RegExp(`^${p.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments"]) {
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments", "migrate-from-stripe", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security"]) {
     const md = await readFile(join(here, "content", `${page}.md`), "utf8");
     const seen = [];
     for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) seen.push(m[1].replace(/\/$/, ""));
@@ -210,11 +231,19 @@ test("the error catalogue has every key of docs/error-keys.md except the operato
   assert.ok(html.includes("Translate the key, not the message"));
 });
 
-test("every error_code of a rejected usage event is listed and explained", () => {
+test("every error_code of a rejected usage event is listed, explained and has a hint of what to do", async () => {
   const codes = doc.components.schemas.EventResult.properties.error_code.enum;
   assert.ok(codes.length >= 10);
   for (const c of codes) assert.ok(EVENT_CODES[c], `${c} has no meaning in EVENT_CODES`);
   for (const c of Object.keys(EVENT_CODES)) assert.ok(codes.includes(c), `${c} is explained but the API does not send it`);
+  // The hint is the console's English text (connect.eventErrors.<code>), so the docs and the Connect page cannot say different things.
+  const hints = JSON.parse(await readFile(resolve(here, "../web/admin/src/locales/en.json"), "utf8")).connect.eventErrors;
+  const html = await readFile(join(out, "errors.html"), "utf8");
+  for (const c of codes) {
+    assert.ok(hints[c]?.length > 20, `${c} has no hint in connect.eventErrors of the English locale`);
+    assert.ok(html.includes(`id="event-code-${c}"`) && html.includes(hints[c].replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch])), `${c}: the errors page does not show its hint`);
+  }
+  assert.deepEqual(Object.keys(hints).sort(), [...codes].sort(), "the English hints name a code the API does not send, or lack one it does");
 });
 
 // ---- language tabs
@@ -281,4 +310,108 @@ test("the errors page maps every error type of the four SDKs and says what the c
 test("a link to the API reference stays a link only when that page exists", async () => {
   const h = await readFile(join(out, "tutorial-payments.html"), "utf8");
   assert.match(h, /href="api\/customers\.html"/);
+});
+
+// ---- search over models, renamed pages, links to other sites (plan 19)
+
+test("the search finds a model by its name, by a field name and by what a field says, and every hit lands on an anchor that exists", async () => {
+  const idx = JSON.parse(await readFile(join(out, "search.json"), "utf8"));
+  const models = idx.filter((e) => e.kind === "Model");
+  assert.ok(models.length > 100, `only ${models.length} models are searchable`);
+  assert.ok(idx.some((e) => e.kind === "Guide") && idx.some((e) => e.kind === "Operation"));
+  const create = models.find((e) => e.title === "CreateCustomerRequest");
+  assert.ok(create, "CreateCustomerRequest is not in the index");
+  assert.match(create.text, /\bexternal_id\b/);
+  assert.match(create.text, /language of the customer's mails/);
+  const ids = new Map();
+  for (const e of idx) {
+    const [file, frag] = e.url.split("#");
+    if (!ids.has(file)) ids.set(file, new Set([...(await readFile(join(out, file), "utf8")).matchAll(/id="([^"]+)"/g)].map((m) => m[1])));
+    if (frag) assert.ok(ids.get(file).has(frag), `${e.title} -> ${e.url} has no anchor`);
+  }
+});
+
+test("a renamed page keeps its old address: a page that sends the browser on, to a page that exists", async () => {
+  assert.deepEqual(Object.keys(REDIRECTS), ["error-keys.html"]);
+  for (const [from, to] of Object.entries(REDIRECTS)) {
+    assert.ok(!GUIDES.some((g) => `${g.page}.html` === from), `${from} is a page again: drop its redirect`);
+    const stub = await readFile(join(out, from), "utf8");
+    assert.ok(stub.includes(`http-equiv="refresh" content="0; url=${to}"`), `${from} does not refresh to ${to}`);
+    assert.ok(stub.includes(`rel="canonical" href="${to}"`));
+    assert.ok(stub.includes(`<a href="${to}">`), "a reader without scripts gets a link");
+    assert.ok(existsSync(join(out, to)), `${from} points at ${to}, which is not built`);
+  }
+});
+
+test("the links to other sites are https, are listed in external-links.txt, and (only with CHECK_EXTERNAL_LINKS=1) answer", async (t) => {
+  const external = await externalLinksOf(out);
+  assert.ok(external.size >= 2, "no link to another site was found: is the check reading the pages?");
+  const listed = (await readFile(join(out, "external-links.txt"), "utf8")).trim().split("\n").map((l) => l.split("\t")[0]);
+  assert.deepEqual(listed, [...external.keys()]);
+  for (const [url, pagesWith] of external) {
+    assert.ok(url.startsWith("https://"), `${[...pagesWith].join(", ")} links to ${url}: use https`);
+    assert.doesNotThrow(() => new URL(url), url);
+  }
+  t.diagnostic(`${external.size} links to other sites: ${[...external.keys()].join(" ")}`);
+  if (process.env.CHECK_EXTERNAL_LINKS !== "1") return t.skip("offline; set CHECK_EXTERNAL_LINKS=1 to ask each link");
+  // Online and on request: a link that answers with an error status, or not at all, is listed together.
+  const dead = [];
+  for (const url of external.keys()) {
+    try {
+      const res = await fetch(url, { method: "GET", redirect: "follow", signal: AbortSignal.timeout(20_000) });
+      if (res.status >= 400) dead.push(`${url} -> ${res.status}`);
+    } catch (err) {
+      dead.push(`${url} -> ${err.message}`);
+    }
+  }
+  assert.deepEqual(dead, []);
+});
+
+// ---- the provider guides, the migration tutorial, the tax and security pages (plan 19)
+
+test("the provider guides, the migration tutorial, and the tax and security pages are built, in the sidebar, draft, and link only to what exists", async () => {
+  for (const page of ["migrate-from-stripe", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security"]) {
+    const h = await readFile(join(out, `${page}.html`), "utf8");
+    assert.match(h, /data-status="draft"/, page);
+    assert.match(h, new RegExp(`href="${page}\\.html"`), `${page} is not in the sidebar`);
+  }
+  // The links between them stay links.
+  const stripe = await readFile(join(out, "provider-stripe.html"), "utf8");
+  assert.match(stripe, /href="tax-and-einvoices\.html"/);
+  assert.match(await readFile(join(out, "migrate-from-stripe.html"), "utf8"), /href="provider-stripe\.html"/);
+  assert.match(await readFile(join(out, "tax-and-einvoices.html"), "utf8"), /href="provider-paddle\.html"/);
+});
+
+test("a provider guide says what is not verified: no guide describes a provider as proven, and each names the matrix it comes from", async () => {
+  for (const page of ["provider-stripe", "provider-paddle", "provider-iyzico"]) {
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    assert.match(md, /## What has not been verified/, `${page} has no section on what is unverified`);
+    assert.match(md, /UNVERIFIED/, `${page} marks nothing UNVERIFIED`);
+    assert.match(md, /compatibility matrix/, `${page} does not say where it comes from`);
+    assert.match(md, /Nothing here has run against|No (iyzico|Paddle) account/, `${page} does not say it was never run`);
+  }
+});
+
+test("what the security page says about the audit log, keys and webhook signatures matches the repository's documents", async () => {
+  const md = await readFile(join(here, "content", "security.md"), "utf8");
+  const audit = await readFile(resolve(here, "../docs/audit-log-and-two-factor.md"), "utf8");
+  // Every area the page lists as recorded is an action the audit document records, and every area it lists as not recorded yet is still listed there as open.
+  for (const action of ["api_key.", "member.", "plan.", "webhook_endpoint.", "customer.blocked", "credit_note.", "provider_account.", "einvoice_account.", "tenant.status_changed", "two_factor."]) {
+    assert.ok(audit.includes(action), `the audit document no longer records ${action}: update security.md`);
+  }
+  assert.match(audit, /Not recorded yet/);
+  assert.match(md, /GET \/v1\/audit-events/);
+  assert.ok(doc.paths["/v1/audit-events"] && doc.paths["/v1/audit-events/export"]);
+  const hooks = await readFile(resolve(here, "../docs/16-webhooks.md"), "utf8");
+  assert.match(hooks, /Payrudder-Signature: t=/);
+  assert.match(hooks, /24 hours/);
+  assert.match(md, /Payrudder-Signature: t=/);
+  assert.match(md, /24 hours/);
+  assert.match(md, /five minutes/);
+});
+
+test("the tax page's API facts are the OpenAPI file's: the tax-rate route, the customer tax route and the e-document routes", () => {
+  assert.ok(doc.paths["/v1/tax-rates"].put && doc.paths["/v1/customers/{external_id}/tax"].put && doc.paths["/v1/e-invoices/{id}/files/{kind}"].get);
+  const warnings = doc.components.schemas.Customer.properties.tax_id_warning.description;
+  for (const w of ["tr_individual", "tr_business", "tr_any", "tr_is_tckn", "tr_is_vkn", "eu_vat"]) assert.ok(warnings.includes(w), `${w} is not a tax_id_warning`);
 });

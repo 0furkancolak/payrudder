@@ -2,7 +2,7 @@
 // form. A production build served without that variable prefills nothing. (The operator token is never served to a page; there is no token form.)
 declare global {
   interface Window {
-    __PAYRUDDER__?: { prefill?: boolean; brand?: string; demo?: boolean };
+    __PAYRUDDER__?: { prefill?: boolean; brand?: string; demo?: boolean; api?: string };
   }
 }
 

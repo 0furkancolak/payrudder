@@ -775,7 +775,7 @@ export interface CreatedPaymentLink {
   idempotency_key: string;
   /** The secret part of the link; shown once, empty on a replay */
   token: string;
-  /** Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay */
+  /** Absolute when the deployment has a public address set; empty on a replay */
   url: string;
   replayed: boolean;
 }
@@ -1797,7 +1797,7 @@ export interface Invoice {
   create_time: string | null;
   finalize_time: string | null;
   lines: Array<InvoiceLine>;
-  /** Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
+  /** Payments recorded by hand by the operator (they do not come through a payment provider), oldest first. Only the single-invoice reads fill it. */
   payments: Array<InvoicePayment>;
   plan_version_id: string;
   pdf_object_key: string;

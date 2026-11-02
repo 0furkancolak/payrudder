@@ -1,0 +1,20 @@
+{
+  "name": "payrudder-example-express",
+  "private": true,
+  "type": "module",
+  "description": "Express app that sends usage to Payrudder and verifies its webhooks (a template, not a package).",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "start": "node server.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@payrudder/sdk": "file:../../sdk/typescript",
+    "express": "5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

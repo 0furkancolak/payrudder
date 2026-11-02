@@ -1,18 +1,20 @@
 openapi: 3.1.0
+# Maintainers: the `/admin/v1` routes below require `Authorization: Bearer <operator token>` (the machine credential `PAYRUDDER_OPERATOR_TOKEN`, for scripts,
+# `payrudderctl` and tests; it is never typed into a page) or the session token of a platform operator: a person who signed in and verified an address listed in
+# `PAYRUDDER_OPERATOR_EMAILS`. The server decides this on every request. This note is a comment, not the description, because the description is public: the developer
+# site, the SDKs and the MCP server's OpenAPI resource show it, and they cover the tenant API (`/v1/*`) only. This file is hand-maintained (docs/03-services/gateway.md):
+# a contract test fails if a route in the gateway's route table is missing here or vice versa.
 info:
   title: Payrudder API
   version: v1
   description: |
-    Public HTTP/JSON API of the Payrudder gateway (docs/03-services/gateway.md).
+    HTTP/JSON API of Payrudder: meters, usage events, customers, plans, subscriptions, invoices, payments and webhooks.
 
     - Tenant routes authenticate with `Authorization: Bearer qk_{test|live}_<prefix>_<secret>`. `qk_test_` keys act on the
       account's sandbox tenant, `qk_live_` keys on its live tenant.
-    - `/admin/v1` routes require `Authorization: Bearer <operator token>` (the machine credential `PAYRUDDER_OPERATOR_TOKEN`, for scripts, `payrudderctl` and tests;
-      it is never typed into a page) **or** the session token of a platform operator: a person who signed in and verified an address listed in
-      `PAYRUDDER_OPERATOR_EMAILS`. The server decides this on every request.
     - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`, counts, sizes) are
       rendered as JSON strings (`type: string, format: int64`) and accepted as strings or numbers. Decimal quantities and prices are strings.
-      The few objects the gateway builds by hand for the console and the operator (dashboards, overview, organization tables, the payment ledger,
+      The few objects built by hand (dashboards, overview, organization tables, the payment ledger,
       bank-transfer receipts) send their int64 values as JSON numbers; their schemas say `type: integer, format: int64`.
     - Objects that come from protobuf messages always carry every field (they are `required` in the schema): a number is `0`, a string `""`, a list `[]`,
       and a timestamp or nested object that is not set is `null` (marked `nullable`). A field that can be left out of an object is not in `required`.
@@ -23,7 +25,6 @@ info:
       unique key (customer, meter, plan, coupon, ...).
     - Errors always use the `Error` envelope. 429 responses carry `Retry-After` (seconds).
 
-    This file is hand-maintained. A contract test fails if a route in the gateway's route table is missing here or vice versa.
 servers:
   - url: http://localhost:42800
 security:
@@ -1060,7 +1061,7 @@ paths:
       summary: The tenant's invoice inbox address
       description: >
         Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser.
-        Made on first use. `address` is empty until the deployment sets an inbound domain (PAYRUDDER_INBOUND_DOMAIN).
+        Made on first use. `address` is empty until the deployment has an inbound mail domain.
       parameters: [{ name: app_id, in: query, schema: { type: string, format: uuid }, description: "The inbox of one app instead of the whole tenant" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseInbox" } } } }
@@ -1799,7 +1800,7 @@ paths:
       description: >
         The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days
         (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in
-        English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL).
+        English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the deployment has a public address set.
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: false
@@ -2361,9 +2362,8 @@ paths:
       description: >
         Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending
         and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed
-        across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. The operator's
-        `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service
-        does not answer.
+        across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. Provider references and decline
+        details are not part of the answer. `503` when the payment service does not answer.
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 }, description: "The answer folds the newest 1000 ledger rows and returns the first limit payments; there is no page_token (truncated says when the window was full)" }
       responses:
@@ -6195,7 +6195,7 @@ components:
         lines: { type: array, items: { $ref: "#/components/schemas/InvoiceLine" } }
         payments:
           type: array
-          description: Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it.
+          description: Payments recorded by hand by the operator (they do not come through a payment provider), oldest first. Only the single-invoice reads fill it.
           items: { $ref: "#/components/schemas/InvoicePayment" }
         plan_version_id: { type: string }
         pdf_object_key: { type: string }
@@ -10433,7 +10433,7 @@ components:
         use_count: { type: integer, description: "Invoices the link created (ad hoc)" }
         idempotency_key: { type: string }
         token: { type: string, description: "The secret part of the link; shown once, empty on a replay" }
-        url: { type: string, description: "Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay" }
+        url: { type: string, description: "Absolute when the deployment has a public address set; empty on a replay" }
         replayed: { type: boolean }
     CustomerPayment:
       type: object

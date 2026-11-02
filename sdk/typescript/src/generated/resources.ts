@@ -1354,7 +1354,7 @@ export class ExpenseInboxResource {
   /**
    * The tenant's invoice inbox address
    *
-   * Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser. Made on first use. `address` is empty until the deployment sets an inbound domain (PAYRUDDER_INBOUND_DOMAIN).
+   * Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser. Made on first use. `address` is empty until the deployment has an inbound mail domain.
    *
    * `GET /v1/expense-inbox`
    */
@@ -1521,7 +1521,7 @@ export class InvoicesResource {
   /**
    * Make a link to the invoice that its customer can open without signing in
    *
-   * The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL).
+   * The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the deployment has a public address set.
    *
    * `POST /v1/invoices/{id}/links`
    */
@@ -1658,7 +1658,7 @@ export class PaymentsResource {
   /**
    * The tenant's payments (charges and refunds), newest first
    *
-   * Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. The operator's `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service does not answer.
+   * Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. Provider references and decline details are not part of the answer. `503` when the payment service does not answer.
    *
    * `GET /v1/payments`
    */
