@@ -13,10 +13,11 @@ import (
 )
 
 type Account struct {
-	ID        uuid.UUID
-	Name      string
-	CreatedAt time.Time
-	Platform  bool
+	ID               uuid.UUID
+	Name             string
+	CreatedAt        time.Time
+	Platform         bool
+	RequireTwoFactor bool
 }
 
 type AccountInvite struct {
@@ -203,6 +204,25 @@ type AppAudit struct {
 	CreatedAt time.Time
 }
 
+type AuditEvent struct {
+	ID         uuid.UUID
+	TenantID   *uuid.UUID
+	AccountID  *uuid.UUID
+	ActorType  string
+	ActorID    string
+	ActorEmail string
+	Action     string
+	TargetType string
+	TargetID   string
+	Summary    string
+	Detail     json.RawMessage
+	BeforeHash string
+	AfterHash  string
+	SourceIp   string
+	RequestID  string
+	CreatedAt  time.Time
+}
+
 type ConfigPromotion struct {
 	ID              uuid.UUID
 	AppID           uuid.UUID
@@ -348,39 +368,41 @@ type CouponRedemption struct {
 }
 
 type Customer struct {
-	TenantID           uuid.UUID
-	ID                 uuid.UUID
-	ExternalID         string
-	Name               string
-	Email              string
-	PaymentMethod      *string
-	CreatedAt          time.Time
-	Country            *string
-	BillingCurrency    *string
-	Address            json.RawMessage
-	TaxID              string
-	TaxOffice          string
-	EInvoiceRegistered bool
-	Locale             string
-	CustomerType       string
-	BlockedAt          *time.Time
-	BlockReason        string
-	BlockCategory      string
-	BlockedUntil       *time.Time
-	Phone              string
-	TaxIDValidatedAt   *time.Time
+	TenantID            uuid.UUID
+	ID                  uuid.UUID
+	ExternalID          string
+	Name                string
+	Email               string
+	PaymentMethod       *string
+	CreatedAt           time.Time
+	Country             *string
+	BillingCurrency     *string
+	Address             json.RawMessage
+	TaxID               string
+	TaxOffice           string
+	EInvoiceRegistered  bool
+	Locale              string
+	CustomerType        string
+	BlockedAt           *time.Time
+	BlockReason         string
+	BlockCategory       string
+	BlockedUntil        *time.Time
+	Phone               string
+	TaxIDValidatedAt    *time.Time
+	BlockSuspendService bool
 }
 
 type CustomerBlockEvent struct {
-	TenantID     uuid.UUID
-	ID           uuid.UUID
-	CustomerID   uuid.UUID
-	Action       string
-	Category     string
-	Reason       string
-	BlockedUntil *time.Time
-	Actor        string
-	CreatedAt    time.Time
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	CustomerID     uuid.UUID
+	Action         string
+	Category       string
+	Reason         string
+	BlockedUntil   *time.Time
+	Actor          string
+	CreatedAt      time.Time
+	SuspendService bool
 }
 
 type CustomerCoupon struct {
@@ -415,6 +437,15 @@ type GoLiveAudit struct {
 	Action       string
 	Detail       json.RawMessage
 	CreatedAt    time.Time
+}
+
+type LoginChallenge struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash []byte
+	Attempts  int32
+	ExpiresAt time.Time
+	CreatedAt time.Time
 }
 
 type LoginCode struct {
@@ -794,6 +825,14 @@ type UserOnboarding struct {
 	UpdatedAt time.Time
 }
 
+type UserRecoveryCode struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	CodeHash  []byte
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}
+
 type UserSession struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID
@@ -812,6 +851,14 @@ type UserToken struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 	UsedAt    *time.Time
+}
+
+type UserTotp struct {
+	UserID      uuid.UUID
+	SecretEnc   []byte
+	ConfirmedAt *time.Time
+	LastStep    int64
+	CreatedAt   time.Time
 }
 
 type WebhookDelivery struct {

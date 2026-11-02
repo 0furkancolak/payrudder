@@ -36,9 +36,16 @@ export const KEY_RESOURCES: readonly KeyResource[] = [
   { resource: "assets", read: "assets:read", write: "assets:write" },
   { resource: "contracts", read: "contracts:read", write: "contracts:write" },
   { resource: "sandbox", write: "sandbox:write" },
+  { resource: "audit", read: "audit:read" },
 ];
 
 export const ALL_PERMISSIONS: readonly KeyPermission[] = KEY_RESOURCES.flatMap((r) => [r.read, r.write].filter((p): p is KeyPermission => p !== undefined));
+
+/**
+ * The audit log names people and addresses, so a key reads it only when it is given audit:read on purpose (the admin role and a custom key): the read_only
+ * role is every :read but this one (pkg/apikey RolePermissions).
+ */
+const READ_ONLY_EXCLUDES: readonly KeyPermission[] = ["audit:read"];
 
 /** The set of a fixed role (the same as the gateway's pkg/apikey RolePermissions); null for custom, which has no fixed set. */
 export function permissionsOfRole(role: KeyRole): readonly KeyPermission[] | null {
@@ -46,7 +53,7 @@ export function permissionsOfRole(role: KeyRole): readonly KeyPermission[] | nul
     case "admin":
       return ALL_PERMISSIONS;
     case "read_only":
-      return ALL_PERMISSIONS.filter((p) => p.endsWith(":read"));
+      return ALL_PERMISSIONS.filter((p) => p.endsWith(":read") && !READ_ONLY_EXCLUDES.includes(p));
     case "ingest_only":
       return ["events:write"];
     case "billing":

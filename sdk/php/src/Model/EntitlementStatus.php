@@ -31,6 +31,7 @@ final class EntitlementStatus implements Model
      * @param EntitlementStatusMode|string|null $mode
      * @param bool|null $overLimit
      * @param bool|null $overridden
+     * @param bool|null $suspended
      */
     public function __construct(
         public readonly ?string $customerExternalId = null,
@@ -47,6 +48,7 @@ final class EntitlementStatus implements Model
         public readonly EntitlementStatusMode|string|null $mode = null,
         public readonly ?bool $overLimit = null,
         public readonly ?bool $overridden = null,
+        public readonly ?bool $suspended = null,
     ) {}
 
     /**
@@ -69,6 +71,7 @@ final class EntitlementStatus implements Model
             mode: Cast::enum(EntitlementStatusMode::class, $data['mode'] ?? null),
             overLimit: Cast::bool($data['over_limit'] ?? null),
             overridden: Cast::bool($data['overridden'] ?? null),
+            suspended: Cast::bool($data['suspended'] ?? null),
         );
     }
 
@@ -92,6 +95,7 @@ final class EntitlementStatus implements Model
             'mode' => Cast::wire($this->mode),
             'over_limit' => $this->overLimit,
             'overridden' => $this->overridden,
+            'suspended' => $this->suspended,
         ]);
     }
 }

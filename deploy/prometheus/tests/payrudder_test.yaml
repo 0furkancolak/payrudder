@@ -418,6 +418,138 @@ tests:
               summary: "invoices waiting for a dunning retry doubled in six hours (30 now)"
 
   - interval: 1m
+    name: LedgerWriteFailed pages on a failed ledger write, also the first one a provider ever had, and is quiet when the counter is flat
+    input_series:
+      - series: 'ledger_write_failures_total{provider="paddle", kind="refund"}'
+        values: '1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+      - series: 'ledger_write_failures_total{provider="iyzico", kind="charge"}'
+        values: '_ _ _ _ _ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'ledger_write_failures_total{provider="stripe", kind="charge"}'
+        values: '3+0x24'
+    alert_rule_test:
+      # At 11 minutes: paddle's counter rose at minute 3, iyzico's series appeared at minute 5, stripe's has been flat since the start.
+      - eval_time: 11m
+        alertname: LedgerWriteFailed
+        exp_alerts:
+          - exp_labels: { severity: page, service: payments-worker, provider: paddle, kind: refund }
+            exp_annotations:
+              summary: "paddle: a refund happened at the provider but its ledger row was not written (the books are short until the webhook or a reconciliation writes it)"
+          - exp_labels: { severity: page, service: payments-worker, provider: iyzico, kind: charge }
+            exp_annotations:
+              summary: "iyzico: a charge happened at the provider but its ledger row was not written (the books are short until the webhook or a reconciliation writes it)"
+      - eval_time: 24m
+        alertname: LedgerWriteFailed
+        exp_alerts: []
+
+  - interval: 1m
+    name: RefundOutcomeUnknown warns when a refund is parked, and stays quiet for a provider with none
+    input_series:
+      - series: 'refund_outcome_unknown_total{provider="iyzico"}'
+        values: '0 0 0 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+      - series: 'refund_outcome_unknown_total{provider="paddle"}'
+        values: '0+0x24'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: RefundOutcomeUnknown
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker, provider: iyzico }
+            exp_annotations:
+              summary: "iyzico: a refund's outcome is unknown and it was not sent again (check it at the provider; the credit note stays failed)"
+      - eval_time: 24m
+        alertname: RefundOutcomeUnknown
+        exp_alerts: []
+
+  - interval: 1m
+    name: ProviderCircuitOpened warns when a breaker opens (not when it closes), and ProviderChargesRefused pages only when charges are refused for ten minutes
+    input_series:
+      - series: 'provider_breaker_transitions_total{provider="stripe", to="open"}'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'provider_breaker_transitions_total{provider="iyzico", to="closed"}'
+        values: '0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'provider_breaker_rejections_total{provider="stripe"}'
+        values: '0+2x14 28+0x46'
+      - series: 'provider_breaker_rejections_total{provider="paddle"}'
+        values: '0 0 0 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: ProviderCircuitOpened
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker, provider: stripe }
+            exp_annotations:
+              summary: "stripe: the circuit breaker of a provider account opened (repeated outages); its charges are refused without a call and retried later"
+      - eval_time: 20m
+        alertname: ProviderCircuitOpened
+        exp_alerts: []
+      # Stripe keeps being refused: ten minutes of it pages. Paddle was refused once and then not again: nothing.
+      - eval_time: 12m
+        alertname: ProviderChargesRefused
+        exp_alerts:
+          - exp_labels: { severity: page, service: payments-worker, provider: stripe }
+            exp_annotations:
+              summary: "stripe: charges have been refused by an open circuit breaker for ten minutes (the provider is down or unreachable; payments are delayed)"
+      - eval_time: 5m
+        alertname: ProviderChargesRefused
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: ProviderChargesRefused
+        exp_alerts: []
+
+  - interval: 1m
+    name: ReconciliationBacklog warns when more than ten live discrepancies wait for an hour, and not for a short or small queue
+    input_series:
+      - series: 'reconciliation_discrepancies_open{kind="paid_without_charge"}'
+        values: '6+0x120'
+      - series: 'reconciliation_discrepancies_open{kind="amount_mismatch"}'
+        values: '3+0x120'
+      - series: 'reconciliation_discrepancies_open{kind="fee_mismatch"}'
+        values: '_x30 2+0x90'
+    alert_rule_test:
+      # 9 open from the start: not above ten. The two fee mismatches arrive at minute 30 and make 11, which has to last an hour.
+      - eval_time: 80m
+        alertname: ReconciliationBacklog
+        exp_alerts: []
+      - eval_time: 95m
+        alertname: ReconciliationBacklog
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "11 live reconciliation discrepancies are waiting for an operator (the review queue on the Payments page)"
+
+  - interval: 1m
+    name: ReconciliationBacklog resolves when the queue is worked down
+    input_series:
+      - series: 'reconciliation_discrepancies_open{kind="paid_without_charge"}'
+        values: '12+0x69 4+0x60'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ReconciliationBacklog
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "12 live reconciliation discrepancies are waiting for an operator (the review queue on the Payments page)"
+      - eval_time: 110m
+        alertname: ReconciliationBacklog
+        exp_alerts: []
+
+  - interval: 1m
+    name: SettlementOverdue warns on a payment past the settlement lag for an hour, and ignores the other kinds
+    input_series:
+      - series: 'reconciliation_discrepancies_open{kind="settlement_missing"}'
+        values: '_x10 2+0x100'
+      - series: 'reconciliation_discrepancies_open{kind="fee_mismatch"}'
+        values: '5+0x110'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: SettlementOverdue
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: SettlementOverdue
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "2 paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
+
+  - interval: 1m
     name: DLQGrowing fires when a queue gains ten dead letters in a quarter of an hour, and not for a standing backlog
     input_series:
       - series: 'rabbitmq_detailed_queue_messages_ready{queue="payment.charge.dlq"}'

@@ -234,6 +234,9 @@ message BlockCustomerRequest {
   google.protobuf.Timestamp blocked_until = 4;
   // Who blocks; set by the gateway (the person's address, or the key), never by a client.
   string actor = 5;
+  // Also suspend the customer's service: limits-svc answers "not allowed" for every meter until the block is lifted or ends (usage is still ingested). Needs the
+  // customer not to be blocked already (a block in force is kept as it is).
+  bool suspend_service = 6;
 }
 
 message BlockCustomerResponse {
@@ -269,6 +272,8 @@ message CustomerBlockEvent {
   // Who did it: a person's address, "key:<id>" for an API key, or "operator".
   string actor = 6;
   google.protobuf.Timestamp create_time = 7;
+  // On a block: whether it also suspended the customer's service.
+  bool suspend_service = 8;
 }
 
 message SetCustomerTaxRequest {

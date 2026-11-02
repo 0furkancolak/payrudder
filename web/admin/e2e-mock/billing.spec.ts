@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage, pickPlace, confirmDialog, rowAction } from "./ui";
+import { pickCurrency, pickFilter, pickLanguage, pickPlace, confirmDialog, rowAction } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, create_time: "2026-10-05T10:00:00Z", ...extra });
 
@@ -1097,6 +1097,103 @@ test.describe("payments", () => {
     const imp = gw.called("POST", `/admin/v1/tenants/${TENANT}/settlement/import`)[0];
     expect(imp?.query.get("environment")).toBe("live");
     expect(imp?.query.get("provider")).toBe("stripe");
+  });
+});
+
+test.describe("fee rules", () => {
+  const rule = (provider: string, currency: string, bps: number, fixed: number) => ({ environment: "live", provider, currency, rate_bps: bps, fixed_minor: fixed, updated_at: "2026-10-20T10:00:00Z" });
+
+  test("the expected fees are listed, filtered, added, edited and removed; a rate is typed as a percentage and sent in hundredths", async ({ page }) => {
+    const rules = [rule("stripe", "USD", 290, 30), rule("paddle~eu", "EUR", 500, 50)];
+    const base = `/admin/v1/tenants/${TENANT}`;
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `${base}/ledger`) return { body: { entries: [] } };
+      if (c.method === "GET" && c.path === `${base}/reconciliation/discrepancies`) return { body: { discrepancies: [], counts: [], next_page_token: "" } };
+      if (c.path === `${base}/settlement/payments`) return { body: { period: c.query.get("period"), payments: [] } };
+      if (c.path !== `${base}/settlement/fee-rules`) return undefined;
+      if (c.method === "GET") return { body: { rules } };
+      if (c.method === "PUT") {
+        const next = { environment: "live", ...c.body, updated_at: "2026-11-02T10:00:00Z" } as ReturnType<typeof rule>;
+        const i = rules.findIndex((r) => r.provider === next.provider && r.currency === next.currency);
+        if (i >= 0) rules[i] = next;
+        else rules.push(next);
+        return { body: { rule: next } };
+      }
+      if (c.method === "DELETE") {
+        const i = rules.findIndex((r) => r.provider === c.query.get("provider") && r.currency === c.query.get("currency"));
+        if (i < 0) return { status: 404, body: { error: { code: "NOT_FOUND", key: "payments.settlement.fee_rule_not_found", message: "no" } } };
+        rules.splice(i, 1);
+        return { status: 204, body: {} };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payments");
+    const card = page.getByTestId("fee-rules-card");
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toContainText("2.9%");
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toContainText("$0.30");
+    await expect(card.getByTestId("fee-rule-paddle~eu-EUR")).toContainText("5%");
+
+    // A filter applies on its button, like every list.
+    await pickFilter(page, "Currency", "EUR");
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toHaveCount(0);
+    await expect(card.getByTestId("fee-rule-paddle~eu-EUR")).toBeVisible();
+    await card.getByRole("button", { name: "Clear" }).first().click();
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toBeVisible();
+
+    // A row opens its detail beside the list; editing keeps the rule's name and sends the new numbers.
+    await card.getByTestId("fee-rule-stripe-USD").click();
+    const detail = page.getByTestId("detail-sheet");
+    await expect(detail).toContainText("Stripe");
+    await expect(detail).toContainText("2.9%");
+    await detail.getByTestId("fee-rule-edit").click();
+    const sheet = page.getByTestId("fee-rule-sheet");
+    await expect(sheet.getByTestId("fee-rule-provider")).toBeDisabled();
+    await expect(sheet.getByTestId("fee-rule-rate")).toHaveValue("2.9");
+    await expect(sheet.getByTestId("fee-rule-fixed")).toHaveValue("0.30");
+    await sheet.getByTestId("fee-rule-rate").fill("3.1");
+    await sheet.getByTestId("fee-rule-fixed").fill("0.35");
+    await sheet.getByTestId("fee-rule-save").click();
+    await expect(sheet).toBeHidden();
+    expect(gw.called("PUT", `${base}/settlement/fee-rules`)[0]?.body).toEqual({ environment: "live", provider: "stripe", currency: "USD", rate_bps: 310, fixed_minor: 35 });
+    await page.keyboard.press("Escape");
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toContainText("3.1%");
+    await expect(card.getByTestId("fee-rule-stripe-USD")).toContainText("$0.35");
+
+    // A new rule: a wrong rate is said before anything is sent; a right one is saved with the currency in capitals.
+    await card.getByTestId("fee-rule-add").click();
+    await sheet.getByTestId("fee-rule-provider").fill("paddle");
+    await sheet.getByTestId("fee-rule-currency").fill("usd");
+    await sheet.getByTestId("fee-rule-rate").fill("101");
+    await sheet.getByTestId("fee-rule-save").click();
+    await expect(sheet.getByTestId("fee-rule-problem")).toContainText("0 to 100");
+    expect(gw.called("PUT", `${base}/settlement/fee-rules`)).toHaveLength(1);
+    await sheet.getByTestId("fee-rule-rate").fill("5");
+    await sheet.getByTestId("fee-rule-save").click();
+    await expect(card.getByTestId("fee-rule-paddle-USD")).toContainText("5%");
+    expect(gw.called("PUT", `${base}/settlement/fee-rules`)[1]?.body).toEqual({ environment: "live", provider: "paddle", currency: "USD", rate_bps: 500, fixed_minor: 0 });
+
+    // Removing asks first and names the rule.
+    await rowAction(card.getByTestId("fee-rule-paddle~eu-EUR"), "Remove");
+    await expect(page.getByTestId("confirm-dialog")).toContainText("paddle~eu");
+    await confirmDialog(page, "yes");
+    await expect(card.getByTestId("fee-rule-paddle~eu-EUR")).toHaveCount(0);
+    const del = gw.called("DELETE", `${base}/settlement/fee-rules`)[0];
+    expect([del?.query.get("environment"), del?.query.get("provider"), del?.query.get("currency")]).toEqual(["live", "paddle~eu", "EUR"]);
+  });
+
+  test("with no rule the card says what that means", async ({ page }) => {
+    const base = `/admin/v1/tenants/${TENANT}`;
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `${base}/ledger`) return { body: { entries: [] } };
+      if (c.method === "GET" && c.path === `${base}/reconciliation/discrepancies`) return { body: { discrepancies: [], counts: [], next_page_token: "" } };
+      if (c.path === `${base}/settlement/payments`) return { body: { period: c.query.get("period"), payments: [] } };
+      if (c.path === `${base}/settlement/fee-rules`) return { body: { rules: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payments");
+    await expect(page.getByTestId("fee-rules-card")).toContainText("No fee rules");
   });
 });
 

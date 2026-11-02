@@ -138,7 +138,33 @@ func Republish(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.U
 	return q.NotifyOutbox(ctx)
 }
 
-// emit writes one outbox row on the entitlement key of (customer, meter); a nil payload is a tombstone.
+// Suspend writes, in the caller's transaction, the customer's suspension record: no meter of the customer is allowed (limits-svc answers "not allowed" whatever
+// the limit and the usage) until the record ends. until is when the block ends by itself; nil: until Unsuspend. It sits on the key of an empty meter, next to the
+// customer's limits, which are untouched: usage is still counted.
+func Suspend(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, from time.Time, until *time.Time) error {
+	st := &eventsv1.EntitlementState{TenantId: tenantID.String(), CustomerId: customerID.String(), Suspended: true, ValidFrom: timestamppb.New(from)}
+	if until != nil {
+		st.ValidUntil = timestamppb.New(*until)
+	}
+	payload, err := proto.Marshal(st)
+	if err != nil {
+		return err
+	}
+	if err := emit(ctx, q, tenantID, customerID, "", payload); err != nil {
+		return err
+	}
+	return q.NotifyOutbox(ctx)
+}
+
+// Unsuspend ends the customer's suspension record (a tombstone), in the caller's transaction.
+func Unsuspend(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID) error {
+	if err := emit(ctx, q, tenantID, customerID, "", nil); err != nil {
+		return err
+	}
+	return q.NotifyOutbox(ctx)
+}
+
+// emit writes one outbox row on the entitlement key of (customer, meter); a nil payload is a tombstone. An empty meter is the customer's suspension.
 func emit(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, meter string, payload []byte) error {
 	key := fmt.Sprintf("%s/%s/%s", tenantID, customerID, meter)
 	return q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: topic, PartitionKey: key, Payload: payload})

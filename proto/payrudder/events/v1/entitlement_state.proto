@@ -7,6 +7,10 @@ import "google/protobuf/timestamp.proto";
 // EntitlementState is the limit a customer has on one meter, published by plans-svc on plans.entitlements.v1
 // (compacted; key: "{tenant_id}/{customer_id}/{meter_code}"). A tombstone (empty value) ends the entitlement.
 //
+// A record with an empty meter_code is not a limit: it is the customer's suspension (key: "{tenant_id}/{customer_id}/", suspended = true), which the seller
+// set by blocking the customer with suspend_service. While it holds (valid_from <= now < valid_until, open-ended when valid_until is unset) limits-svc answers
+// "not allowed" for every meter of that customer. A tombstone on that key lifts it; so does valid_until passing.
+//
 // Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
 message EntitlementState {
   string tenant_id = 1;
@@ -26,4 +30,6 @@ message EntitlementState {
   string mode = 11;
   // The limit is the customer's own (an override), not the plan version's.
   bool override = 12;
+  // Only on the customer's suspension record (empty meter_code): the customer may use nothing. Ignored on a limit.
+  bool suspended = 13;
 }

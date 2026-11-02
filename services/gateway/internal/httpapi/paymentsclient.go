@@ -14,6 +14,7 @@ import (
 	"time"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
@@ -45,6 +46,7 @@ func (s *Server) paymentsDo(ctx context.Context, method, path string, query url.
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Request-Id", requestID(ctx))
+	audit.SetHeaders(ctx, req.Header)
 	if s.d.PaymentsToken != "" {
 		req.Header.Set("X-Internal-Token", s.d.PaymentsToken)
 	}

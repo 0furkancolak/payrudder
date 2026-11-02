@@ -35,6 +35,9 @@ func (s *Server) integrationRoutes() []Route {
 		{"GET", "/app/v1/apps/{id}/integrations/e-invoice/routing", AccessSession, ratelimit.ClassRead, s.appEInvoiceRoutingGet},
 		{"PUT", "/app/v1/apps/{id}/integrations/e-invoice/routing", AccessSession, ratelimit.ClassWrite, s.appEInvoiceRoutingPut},
 		{"GET", "/app/v1/apps/{id}/integrations/audit", AccessSession, ratelimit.ClassRead, s.appIntegrationAudit},
+		{"GET", "/app/v1/apps/{id}/integrations/payment-accounts/health", AccessSession, ratelimit.ClassRead, s.appAccountHealth},
+		{"PUT", "/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover", AccessSession, ratelimit.ClassWrite, s.appFailover},
+		{"DELETE", "/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover", AccessSession, ratelimit.ClassWrite, s.appFailover},
 		{"GET", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassRead, s.appMailGet},
 		{"PUT", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailPut},
 		{"DELETE", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailDelete},
@@ -223,6 +226,43 @@ func (s *Server) appEInvoiceRoutingPut(w http.ResponseWriter, r *http.Request) {
 	}
 	noStore(w)
 	s.paymentsForward(s.eInvoicePath(live, "/routing"), withAccount("", sess))(w, r)
+}
+
+// appAccountHealth is what payments-worker last saw of each live payment account (the periodic check, the circuit breaker) and the account a charge fails over
+// to (plan 22 G8, docs/provider-health.md). Any member reads it.
+func (s *Server) appAccountHealth(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	s.paymentsForward(func(*http.Request) string { return "/admin/tenants/" + url.PathEscape(live) + "/account-health" }, withAccount("", sess))(w, r)
+}
+
+// appFailover sets (PUT, {"failover_to": "stripe~eu"}) or removes (DELETE) the account a new charge goes to when the account in the path definitely did not process
+// it. Only the owner; the live environment only; recorded for this person. payments-worker checks that both accounts exist and that the target can take part.
+func (s *Server) appFailover(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, err := s.ownerLiveTenant(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	account, err := accountParam(r.PathValue("account"))
+	if err != nil || account == "" {
+		writeError(w, r, invalid("account", "an account key such as stripe or stripe~eu"))
+		return
+	}
+	noStore(w)
+	path := func(*http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(live) + "/provider-accounts/" + url.PathEscape(account) + "/failover"
+	}
+	s.paymentsForward(path, func(pr *httputil.ProxyRequest) {
+		pr.Out.URL.RawQuery = url.Values{"environment": {env.Live.String()}}.Encode()
+		pr.Out.Header.Set("X-Payrudder-Actor", "user:"+sess.UserID)
+	})(w, r)
 }
 
 // auditKinds are the kinds of account the audit trail tells apart; the mail provider's changes are not in it (they are plans-svc's, not payments-worker's).

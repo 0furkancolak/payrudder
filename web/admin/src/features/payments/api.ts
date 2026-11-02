@@ -116,3 +116,32 @@ export function useImportSettlement(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "settlement"] }),
   });
 }
+
+// --- fee rules (docs/reconciliation.md#fee-rules)
+
+/** What each provider is expected to keep of a payment, per currency. They are under "settlement" so that changing one refreshes the expected fees the payments list shows. */
+export function useFeeRules(tenantId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...reconcileKeys.settlement(toValue(tenantId), "fee-rules")] as const),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{tenant_id}/settlement/fee-rules", { params: { path: { tenant_id: toValue(tenantId) } } })),
+  });
+}
+
+/** Sets the expected fee of a provider in a currency (replaces the rule of that provider and currency, so it is also the edit). */
+export function usePutFeeRule(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { environment: "sandbox" | "live"; provider: string; currency: string; rate_bps: number; fixed_minor: number }) =>
+      unwrap(api.PUT("/admin/v1/tenants/{tenant_id}/settlement/fee-rules", { params: { path: { tenant_id: toValue(tenantId) } }, body: v })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "settlement"] }),
+  });
+}
+
+export function useDeleteFeeRule(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { environment: "sandbox" | "live"; provider: string; currency: string }) =>
+      unwrap(api.DELETE("/admin/v1/tenants/{tenant_id}/settlement/fee-rules", { params: { path: { tenant_id: toValue(tenantId) }, query: v } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "settlement"] }),
+  });
+}

@@ -290,8 +290,8 @@ export function generate(specText) {
 
     // pagination
     if (queryParams.some((q) => q.name === "page_token") && resSchema?.properties?.next_page_token && !op.requestBody) {
-      // A side array of aggregates (`totals`) is not the page's items.
-      const arrays = Object.entries(resSchema.properties).filter(([k, v]) => v.type === "array" && !/^totals?$/.test(k));
+      // A side array (the aggregates `totals`, the services that did not answer `unavailable_sources`) is not the page's items.
+      const arrays = Object.entries(resSchema.properties).filter(([k, v]) => v.type === "array" && !/^(totals?|unavailable_sources)$/.test(k));
       if (arrays.length !== 1) warnings.push(`${id}: expected exactly one array property in the paged response, found ${arrays.length}`);
       else {
         const callArgs = args.filter((a) => a.name !== "query").map((a) => a.name);

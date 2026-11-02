@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PeekHost from "@/features/related/PeekHost.vue";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
+import { setupRedirect } from "@/features/product/twoFactor";
 import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
@@ -150,6 +151,16 @@ const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 watch([isOperator, shell.path], () => {
   if (isPerson.value && !isOperator.value && OPERATOR_PATHS.test(shell.path.value)) void navigate({ to: "/app" });
 });
+
+// An organisation the person owns requires two-factor sign-in and they have none: the security page is the only page they have (the API refuses the rest).
+watch(
+  [shell.path, () => shell.me.data.value?.user?.two_factor_setup_required],
+  ([path, required]) => {
+    const to = setupRedirect(path, isPerson.value && required === true);
+    if (to) void navigate({ to, replace: true });
+  },
+  { immediate: true },
+);
 
 // Alt+P turns privacy mode on and off from anywhere (not while typing in a field).
 function onKey(e: KeyboardEvent) {

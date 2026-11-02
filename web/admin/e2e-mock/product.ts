@@ -107,6 +107,24 @@ export const keys = [
   { id: "k3", tenant_id: LIVE, prefix: "oldkey00", environment: "ENVIRONMENT_LIVE", status: "STATUS_REVOKED", role: "admin", create_time: "2026-09-12T09:00:00Z" },
 ];
 
+/** The two-factor sign-in of Ada (plan 22, G9): the mocked gateway switches her between plain sign-in and the second step with these. */
+export interface TwoFactorState {
+  enabled: boolean;
+  /** An organisation Ada owns requires it: it cannot be turned off, and while it is off she must set it up (every route but /auth answers 403 setup_required). */
+  required: boolean;
+  /** The recovery codes still valid; one is spent when it signs in or turns two-factor off. */
+  recovery: string[];
+  /** Whether a setup has been started (confirm refuses a code without one). */
+  started: boolean;
+  /** The six digits the authenticator app shows now. */
+  code: string;
+  enableTime: string | null;
+}
+
+export const CHALLENGE = "qc_" + "C".repeat(43);
+export const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
+export const recoveryCodes = (prefix: string) => Array.from({ length: 10 }, (_, i) => `${prefix}${i}-abcd`);
+
 export interface ProductState {
   apps: unknown[];
   keys: typeof keys;
@@ -131,14 +149,19 @@ export interface ProductState {
   operator: boolean;
   methods: { password: boolean; otp: boolean; google: boolean };
   code: string;
+  twoFactor: TwoFactorState;
+  /** The account's policy: its owners must sign in with a second factor. */
+  requireTwoFactor: boolean;
 }
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
 export function productGateway(gw: MockGateway, state: Partial<ProductState> = {}): { gw: MockGateway; state: ProductState } {
   const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), dashboard: null, sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
     role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, operator: false,
-    methods: { password: true, otp: true, google: false }, code: "123456", ...state };
-  const who = () => ({ ...user, email_verified: s.verified });
+    methods: { password: true, otp: true, google: false }, code: "123456",
+    twoFactor: { enabled: false, required: false, recovery: recoveryCodes("old"), started: false, code: "123456", enableTime: null }, requireTwoFactor: false, ...state };
+  const tf = s.twoFactor;
+  const who = () => ({ ...user, email_verified: s.verified, two_factor_enabled: tf.enabled, two_factor_setup_required: tf.required && !tf.enabled });
   const badLink = { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
   gw.on((c) => {
     if (c.path === "/auth/signin" && c.method === "POST") {
@@ -176,7 +199,12 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path === "/auth/me") return { body: { user: who(), memberships: s.memberships, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" } };
     if (c.path === "/app/v1/account" && c.method === "GET") {
       const id = c.query.get("account_id") ?? ACCOUNT;
-      return { body: { id, name: id === ACCOUNT ? s.accountName : (s.memberships.find((m) => m.account_id === id)?.account_name ?? ""), role: s.role, create_time: "2026-10-01T09:00:00Z", members: s.members } };
+      return { body: { id, name: id === ACCOUNT ? s.accountName : (s.memberships.find((m) => m.account_id === id)?.account_name ?? ""), role: s.role, require_two_factor_for_owners: s.requireTwoFactor, create_time: "2026-10-01T09:00:00Z", members: s.members } };
+    }
+    if (c.path === "/app/v1/account/security" && c.method === "PATCH") {
+      if (s.role !== "owner") return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.account.forbidden", message: "owners only" } } };
+      s.requireTwoFactor = c.body?.require_two_factor_for_owners === true;
+      return { body: { require_two_factor_for_owners: s.requireTwoFactor } };
     }
     if (c.path === "/app/v1/accounts" && c.method === "POST") {
       const name = String(c.body?.name ?? "").trim();
@@ -278,7 +306,70 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     }
     return undefined;
   });
+  twoFactorRoutes(gw, s, who);
   return { gw, state: s };
+}
+
+/**
+ * Two-factor sign-in on top of the product API (registered after it, so it answers first): while `twoFactor.enabled`, a right password or a right e-mailed
+ * code answers a challenge instead of a session and `/auth/2fa/verify` takes `twoFactor.code` or an unspent recovery code; `/auth/2fa*` is the setup, the
+ * status, turning it off and new recovery codes; and while an organisation requires it and Ada has none, every route but `/auth/*` is refused with 403
+ * `identity.two_factor.setup_required`, as the gateway does.
+ */
+function twoFactorRoutes(gw: MockGateway, s: ProductState, who: () => Record<string, unknown>): void {
+  const tf = s.twoFactor;
+  const wrong = { status: 401, body: { error: { code: "UNAUTHENTICATED", key: "identity.two_factor.invalid", message: "wrong or expired code" } } };
+  const session = () => ({ user: who(), memberships: s.memberships, token: SESSION, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" });
+  const challenge = { second_factor_required: true, challenge: CHALLENGE, challenge_expire_time: "2026-10-21T12:05:00Z" };
+  /** A current code, or a recovery code (which is spent). */
+  const accepts = (code: unknown): boolean => {
+    if (code === tf.code) return true;
+    if (typeof code === "string" && tf.recovery.includes(code)) {
+      tf.recovery = tf.recovery.filter((r) => r !== code);
+      return true;
+    }
+    return false;
+  };
+  gw.on((c) => {
+    if (c.path === "/auth/signin" && c.method === "POST" && tf.enabled && c.body?.password === "right password!") return { body: challenge };
+    if (c.path === "/auth/otp/verify" && c.method === "POST" && tf.enabled && c.body?.code === s.code) return { body: challenge };
+    if (c.path === "/auth/2fa/verify" && c.method === "POST") return c.body?.challenge === CHALLENGE && accepts(c.body?.code) ? { body: session() } : wrong;
+    if (c.path === "/auth/me" && c.method === "GET" && c.headers["authorization"] === `Bearer ${SESSION}` && s.sessionOk) {
+      return { body: { user: who(), memberships: s.memberships, operator: s.operator, expire_time: "2026-11-04T09:00:00Z" } };
+    }
+    if (c.path === "/auth/2fa" && c.method === "GET") {
+      return { body: { enabled: tf.enabled, enable_time: tf.enableTime, recovery_codes_remaining: tf.enabled ? tf.recovery.length : 0, setup_required: tf.required && !tf.enabled, required_by_organisation: tf.required } };
+    }
+    if (c.path === "/auth/2fa/setup" && c.method === "POST") {
+      if (tf.enabled) return { status: 409, body: { error: { code: "ALREADY_EXISTS", key: "identity.two_factor.already_enabled", message: "already on" } } };
+      tf.started = true;
+      return { body: { secret: TOTP_SECRET, otpauth_uri: `otpauth://totp/Payrudder:${user.email}?secret=${TOTP_SECRET}&issuer=Payrudder` } };
+    }
+    if (c.path === "/auth/2fa/confirm" && c.method === "POST") {
+      if (!tf.started) return { status: 400, body: { error: { code: "FAILED_PRECONDITION", key: "identity.two_factor.no_setup", message: "set it up first" } } };
+      if (c.body?.code !== tf.code) return wrong;
+      tf.enabled = true;
+      tf.enableTime = "2026-10-21T12:00:00Z";
+      tf.recovery = recoveryCodes("new");
+      return { body: { recovery_codes: tf.recovery } };
+    }
+    if (c.path === "/auth/2fa/disable" && c.method === "POST") {
+      if (tf.required) return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.two_factor.required_by_organisation", message: "required" } } };
+      if (!accepts(c.body?.code)) return wrong;
+      tf.enabled = false;
+      tf.started = false;
+      return { status: 204, body: {} };
+    }
+    if (c.path === "/auth/2fa/recovery-codes" && c.method === "POST") {
+      if (!accepts(c.body?.code)) return wrong;
+      tf.recovery = recoveryCodes("fresh");
+      return { body: { recovery_codes: tf.recovery } };
+    }
+    if (tf.required && !tf.enabled && (c.path.startsWith("/app/v1") || c.path.startsWith("/v1/"))) {
+      return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.two_factor.setup_required", message: "set up two-factor sign-in" } } };
+    }
+    return undefined;
+  });
 }
 
 /** The app of the fixture with its live environment in the given status (inactive: just created, nothing set up yet). */

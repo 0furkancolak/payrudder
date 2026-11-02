@@ -45,6 +45,7 @@ A data migration on the payment path: needs a rehearsal on a copy and a rollback
 
 ## Review addendum (2026-11-01)
 - Plan 22 (G7, G8) needs a stable `account_id`; record that dependency. Reuse `provider_account_events` for the audit view; add a "who takes this customer" tester using `previewRouting`.
+- **Status (2026-11-02, console, `feat/console-fee-rules-health`):** the page now shows each payment account's health (what payments-worker last saw, an open circuit first) and sets the failover (owner), with a Health filter; see [`../provider-health.md`](../provider-health.md) and [13-admin-ui](../13-admin-ui.md).
 - **Status (2026-11-02, plan 22 G7/G8):** reconciliation (`reconciliation_discrepancies`, `settlement_lines`, `fee_rules`) and the provider health state key their rows by the **account key** (`provider~label`) the ledger already uses, exactly as the convention stands; none of them has an `account_id`. If this plan moves to real account ids, those tables (and `provider_account_health`, plan 22 G8) are two more places of the migration: `provider` becomes the account id and the base provider is looked up. Nothing in either feature reads the label other than through `payments.BaseProvider`.
 
 

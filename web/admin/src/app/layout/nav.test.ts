@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { affiliateRoutes } from "@/features/affiliates/routes";
 import { contractRoutes } from "@/features/contracts/routes";
+import { auditOperatorRoutes, auditRoutes } from "@/features/audit/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { PERSON_PAGES, activeItem, buildNav, type ShellContext } from "./nav";
@@ -42,7 +43,7 @@ describe("buildNav", () => {
     expect(section("usageProducts")).toEqual(["usage", "meters", "packages", "pricing", "coupons"]);
     expect(section("money")).toEqual(["accounting", "reports", "affiliates"]);
     expect(section("developers")).toEqual(["apiKeys", "connect", "webhooks", "sandbox"]);
-    expect(section("settings")).toEqual(["appSettings", "integrations", "mail", "contracts"]);
+    expect(section("settings")).toEqual(["appSettings", "integrations", "mail", "contracts", "audit"]);
   });
 
   it("links the dashboard and the app's own pages under the app and the rest under the tenant, every link carrying the scope", () => {
@@ -94,7 +95,7 @@ describe("buildNav", () => {
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
-    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "supportInbox", "myApps"]);
+    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "supportInbox", "auditLog", "myApps"]);
     const tenant = keys(buildNav({ level: "tenant", tenantId: "T" }));
     for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps", "myApps"]) expect(tenant).toContain(k);
   });
@@ -214,5 +215,37 @@ describe("Settings > Contracts", () => {
 
   it("is only listed when its route exists", () => {
     expect(keys(buildNav(app(), new Set(["customers"])))).not.toContain("contracts");
+  });
+});
+
+describe("Audit log", () => {
+  const parent = createRoute({ getParentRoute: () => ({}) as AnyRoute, path: "/app/t/$id" });
+  const pathsOf = (routes: AnyRoute[]) => routes.map((r) => (r.options as { path?: string }).path);
+
+  it("is the last page of the app's settings, at the tenant's path, and current under it", () => {
+    const nav = buildNav(app());
+    expect(nav.find((s) => s.key === "settings")?.items.at(-1)?.key).toBe("audit");
+    expect(flat(nav).find((i) => i.key === "audit")?.to).toBe("/app/t/T/audit");
+    expect(activeItem(nav, "/app/t/T/audit")?.key).toBe("audit");
+    expect(PERSON_PAGES).toContain("audit");
+  });
+
+  it("is not offered to somebody who is only a viewer (the API refuses it to them anyway), and still is to everybody else", () => {
+    expect(keys(buildNav(app({ viewer: true })))).not.toContain("audit");
+    expect(keys(buildNav(app({ viewer: false })))).toContain("audit");
+    expect(keys(buildNav(app()))).toContain("audit");
+  });
+
+  it("is in the operator's tenant console too, and the platform has the log across tenants", () => {
+    expect(flat(buildNav({ level: "tenant", tenantId: "T" })).find((i) => i.key === "audit")?.to).toBe("/tenants/T/audit");
+    const platform = flat(buildNav({ level: "platform" }));
+    expect(platform.find((i) => i.key === "auditLog")?.to).toBe("/audit");
+    expect(activeItem(buildNav({ level: "platform" }), "/audit")?.key).toBe("auditLog");
+  });
+
+  it("is only listed when its route exists, and has routes at the paths the sidebar links to", () => {
+    expect(keys(buildNav(app(), new Set(["customers"])))).not.toContain("audit");
+    expect(pathsOf(auditRoutes(parent))).toEqual(["audit"]);
+    expect(pathsOf(auditOperatorRoutes(parent))).toEqual(["/audit"]);
   });
 });

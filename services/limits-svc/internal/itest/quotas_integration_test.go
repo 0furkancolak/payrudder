@@ -33,11 +33,12 @@ var (
 func TestQuotas(t *testing.T) {
 	top = t
 	for name, fn := range map[string]func(*testing.T){
-		"DailyWindowCountsAndFiresInItsDay": testDailyWindow,
-		"ModesDecideAllowed":                testModes,
-		"ShortWindowsAreReconciled":         testShortWindowReconciled,
-		"YearAndLifetimeWindows":            testYearAndLifetime,
-		"WindowsOfAMaxMeter":                testMaxMeterWindows,
+		"DailyWindowCountsAndFiresInItsDay":  testDailyWindow,
+		"ModesDecideAllowed":                 testModes,
+		"ShortWindowsAreReconciled":          testShortWindowReconciled,
+		"YearAndLifetimeWindows":             testYearAndLifetime,
+		"WindowsOfAMaxMeter":                 testMaxMeterWindows,
+		"ASuspendedCustomerIsAllowedNothing": testSuspendedCustomer,
 	} {
 		t.Run(name, fn)
 	}
@@ -93,6 +94,24 @@ func (q *quotaPod) setQuota(tenantID, customer uuid.UUID, meter string, limit in
 		LimitUnits: limit, AlertThresholdsPct: thresholds, ValidFrom: timestamppb.New(time.Now().Add(-time.Hour)), Window: window, Mode: mode, Override: override,
 	}
 	rec := &kgo.Record{Key: []byte(fmt.Sprintf("%s/%s/%s", tenantID, customer, meter)), Value: mustMarshal(q.t, st), Offset: q.entOff}
+	q.entOff++
+	if err := q.ents.Apply(context.Background(), 0, []*kgo.Record{rec}); err != nil {
+		q.t.Fatal(err)
+	}
+}
+
+// suspend feeds the customer's suspension record (the empty meter) to the map, as plans-svc publishes it when a customer is blocked with suspend_service; until
+// is when the block ends by itself (zero: open-ended). A nil record is the tombstone.
+func (q *quotaPod) suspend(tenantID, customer uuid.UUID, until time.Time, tombstone bool) {
+	q.t.Helper()
+	rec := &kgo.Record{Key: []byte(fmt.Sprintf("%s/%s/", tenantID, customer)), Offset: q.entOff}
+	if !tombstone {
+		st := &eventsv1.EntitlementState{TenantId: tenantID.String(), CustomerId: customer.String(), Suspended: true, ValidFrom: timestamppb.New(time.Now().Add(-time.Hour))}
+		if !until.IsZero() {
+			st.ValidUntil = timestamppb.New(until)
+		}
+		rec.Value = mustMarshal(q.t, st)
+	}
 	q.entOff++
 	if err := q.ents.Apply(context.Background(), 0, []*kgo.Record{rec}); err != nil {
 		q.t.Fatal(err)
@@ -352,5 +371,55 @@ func testMaxMeterWindows(t *testing.T) {
 	res := q.reconcile(map[string]int64{monthKey: 30, dayKey: 10})
 	if res.Corrections != 1 || q.get(dayKey) != 10 {
 		t.Fatalf("reconcile = %+v, day counter %d, want it set to the aggregator's 10", res, q.get(dayKey))
+	}
+}
+
+// A customer the seller suspended is allowed nothing: not a meter with a soft limit that would always allow, not a meter with no limit, and so for every
+// customer-facing answer (CheckEntitlement and GetLimitStatus); another customer of the tenant is untouched. Usage is still counted (the events are facts). The
+// suspension ends with the block (valid_until) or with the tombstone, and the limits are as they were.
+func testSuspendedCustomer(t *testing.T) {
+	q := newQuotaPod(t)
+	tn, cust, other := uuid.New(), uuid.New(), uuid.New()
+	q.setQuota(tn, cust, "api", 10, "month", "soft", false, 100)
+	q.setQuota(tn, other, "api", 10, "month", "soft", false, 100)
+	for _, c := range []uuid.UUID{cust, other} {
+		if st := q.status(tn, c, "api"); !st.GetAllowed() || st.GetSuspended() {
+			t.Fatalf("before the suspension: %v", st)
+		}
+	}
+	q.suspend(tn, cust, time.Time{}, false)
+	for _, meter := range []string{"api", "calls"} { // one with a (soft) limit, one without any
+		if st := q.status(tn, cust, meter); st.GetAllowed() || !st.GetSuspended() {
+			t.Fatalf("suspended, %s: %v (want not allowed and suspended)", meter, st)
+		}
+	}
+	if st := q.status(tn, other, "api"); !st.GetAllowed() || st.GetSuspended() {
+		t.Fatalf("another customer of the tenant: %v", st)
+	}
+	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tn, Timezone: "Europe/Istanbul"})
+	all, err := grpcapi.New(q.rdb, q.ents, defaultMeters, nil).GetLimitStatus(ctx, &limitsv1.GetLimitStatusRequest{CustomerId: cust.String()})
+	if err != nil || len(all.GetStatuses()) != 1 || all.GetStatuses()[0].GetAllowed() || !all.GetStatuses()[0].GetSuspended() {
+		t.Fatalf("GetLimitStatus = %v, %v", all, err)
+	}
+	if q.rdb.Exists(context.Background(), entitlements.MirrorKey(tn, cust, "")).Val() != 1 {
+		t.Error("the suspension is not mirrored in Redis")
+	}
+
+	q.apply(q.ev.event(tn, cust, "api", 3, 0, nil))
+	if st := q.status(tn, cust, "api"); st.GetUsedUnits() != 3 || st.GetAllowed() {
+		t.Fatalf("usage of a suspended customer: %v (want it counted, and still not allowed)", st)
+	}
+
+	q.suspend(tn, cust, time.Time{}, true)
+	if st := q.status(tn, cust, "api"); !st.GetAllowed() || st.GetSuspended() || st.GetLimitUnits() != 10 || st.GetUsedUnits() != 3 {
+		t.Fatalf("after the tombstone: %v (want the limit and the usage as they were)", st)
+	}
+	if q.rdb.Exists(context.Background(), entitlements.MirrorKey(tn, cust, "")).Val() != 0 {
+		t.Error("the mirror outlived the tombstone")
+	}
+	// A suspension whose block has ended by itself no longer holds, and no job had to run.
+	q.suspend(tn, cust, time.Now().Add(-time.Minute), false)
+	if st := q.status(tn, cust, "api"); !st.GetAllowed() || st.GetSuspended() {
+		t.Fatalf("a suspension that ended: %v", st)
 	}
 }
