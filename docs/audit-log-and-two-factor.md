@@ -28,8 +28,19 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `invoice.void`, `invoice.retry` (the operator's saga actions) | billing-svc `sagas/command/operator.go` |
 | `provider_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.failover_set`, `.failover_cleared`; `einvoice_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.routing_changed` | payments-worker `store/accounts.go`, `store/health.go`, `store/einvoice.go` (next to `provider_account_events`) |
 | `two_factor.enabled`, `.disabled`, `.recovery_codes_replaced`, `.recovery_code_used`, `account.two_factor_policy_changed` | plans-svc `identity/command/twofactor.go` |
+| `price_change.scheduled` (one per run, a retry is a run; counts of scheduled, already scheduled, skipped; a dry run writes none), `price_change.withdrawn` (only when something was withdrawn) | plans-svc `changes/command/pricechange.go` |
+| `coupon.created`, `coupon.deactivated`, `promotion_code.created` (the count, never the codes), `promotion_code.deactivated` | plans-svc `coupons/command/command.go` |
+| `routing_rules.changed` (the new rules; the hash of them as `after_hash`), `tax_rates.changed` (counts, hashes before and after), `mail_settings.changed` (the categories off, before and now) | plans-svc `routing`, `tax`, `mailsettings` `command` |
+| `mail_integration.saved` (provider, API address, sender; never the key nor its hint), `mail_integration.removed` | plans-svc `mailintegration/command` |
+| `go_live.billing_profile_saved` (country, whether a tax id was given), `go_live.terms_accepted`, `go_live.activated` | plans-svc `golive/command` (the first two next to `go_live_audit`, whose action list is closed; `activated` is only here) |
+| `contract.version_published` (kind, audience, number, locales; not the text nor its hash, which the log would mask as an opaque run), `contract.settings_changed` (the settings; the locales of the cancel texts but not the texts) | plans-svc `contracts/contracts.go` |
+| `support.status_changed` (an account entry: the ticket belongs to an account, and only support changes the status this way) | plans-svc `support/support.go` |
+| `user.password_reset` (by the person's link; ends every session), `user.sign_in_locked` (the failure that set the lock; the address the failures came from; actor `system`, written best effort: if the entry cannot be written it is logged and the sign-in answers as before) | plans-svc `identity/command` |
+| `dunning.settings_changed` (the retry delays before and after) | billing-svc `dunning/command` |
+| `invoice_payment.recorded` (method, amount, reference, date; not the free-text note) | billing-svc `payments/command` |
+| `bank_transfer.receipt_recorded` (reference, amount, what is still outstanding; not the note) | payments-worker `store/transfers.go` |
 
-**Not recorded yet** (each is a hook of a few lines at the command that owns it): price changes scheduled (`changes`), coupon and promotion changes, routing rules and tax rates, dunning settings, mail integration, e-invoice accounts, offline invoice payments and bank-transfer receipts, the operator's payment-ledger actions, the go-live profile and terms (they have `go_live_audit`), an app archived, password changes and resets, sign-ins themselves and failed attempts. A refund's *outcome* (the provider answered) is not an entry; the request is.
+**Not recorded yet** (each is a hook of a few lines at the command that owns it): a coupon put on or taken off a subscription, a promotion redeemed by a customer, a customer's contact details changed, the operator's payment-ledger actions, a subscription changed or cancelled, an app archived, contract acceptances and withdrawals, a sign-in from an address never seen before (optional in the plan, not built) and sign-ins themselves. A refund's *outcome* (the provider answered) is not an entry; the request is. There is no "password change" for a signed-in person: the only way to set a password after sign-up is the mailed reset link.
 
 ### Reading it
 
@@ -43,6 +54,8 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 Filters: `action` (names or areas like `api_key.*`, comma separated), `actor` (id or e-mail), `target_type`, `target_id`, `from`, `to`, `page_size`, `page_token`. A tenant's page also holds the entries of its **account** that belong to no tenant (its members), read from plans-svc.
 
 **Cells.** A tenant in a cell has its entries written in its own transaction, so in its schema (the twin migrations); entries written on the system pool (API keys, the tenant's status, members, sign-ins) are always in the pooled database. Asking for a tenant reads both. The operator's view *across* tenants reads the pooled databases only: a tenant in a cell is read by naming it.
+
+The areas above that the plan listed last (price changes to sign-in locks) are in the console's filter and labelled in the six languages (`audit.areas` and `audit.actions` in the locales; `KNOWN_ACTIONS` and `AUDIT_AREAS` in `web/admin/src/features/audit/lib.ts`).
 
 ### Adding a hook
 

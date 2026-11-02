@@ -5923,6 +5923,20 @@
       "invoice": "Faturalar",
       "provider_account": "Sağlayıcı hesapları",
       "tenant": "Kiracı ayarları ve durumu",
+      "price_change": "Fiyat değişiklikleri",
+      "coupon": "Kuponlar",
+      "promotion_code": "Promosyon kodları",
+      "routing_rules": "Ödeme yönlendirme",
+      "tax_rates": "Vergi oranları",
+      "mail_settings": "E-posta ayarları",
+      "mail_integration": "E-posta sağlayıcısı",
+      "go_live": "Canlıya geçiş",
+      "contract": "Sözleşmeler",
+      "support": "Destek",
+      "dunning": "Tahsilat hatırlatma",
+      "invoice_payment": "Elle kaydedilen ödemeler",
+      "bank_transfer": "Banka havaleleri",
+      "user": "Parola ve oturum açma",
       "two_factor": "İki adımlı giriş",
       "sign_in": "Giriş",
       "account": "Kuruluş"
@@ -5970,6 +5984,56 @@
         "status_requested": "Durum değişikliği istendi",
         "status_changed": "Durum değişti",
         "settings_updated": "Ayarlar değişti"
+      },
+      "price_change": {
+        "scheduled": "Fiyat değişikliği planlandı",
+        "withdrawn": "Fiyat değişikliği geri çekildi"
+      },
+      "coupon": {
+        "created": "Kupon oluşturuldu",
+        "deactivated": "Kupon devre dışı bırakıldı"
+      },
+      "promotion_code": {
+        "created": "Promosyon kodları oluşturuldu",
+        "deactivated": "Promosyon kodu devre dışı bırakıldı"
+      },
+      "routing_rules": {
+        "changed": "Ödeme yönlendirme değişti"
+      },
+      "tax_rates": {
+        "changed": "Vergi oranları değişti"
+      },
+      "mail_settings": {
+        "changed": "E-posta ayarları değişti"
+      },
+      "mail_integration": {
+        "saved": "E-posta sağlayıcısı bağlandı",
+        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı"
+      },
+      "go_live": {
+        "billing_profile_saved": "Fatura profili kaydedildi",
+        "terms_accepted": "Şartlar kabul edildi",
+        "activated": "Canlı ortam etkinleştirildi"
+      },
+      "contract": {
+        "version_published": "Sözleşme sürümü yayınlandı",
+        "settings_changed": "Sözleşme ayarları değişti"
+      },
+      "support": {
+        "status_changed": "Destek talebinin durumu değişti"
+      },
+      "dunning": {
+        "settings_changed": "Tahsilat hatırlatma ayarları değişti"
+      },
+      "invoice_payment": {
+        "recorded": "Ödeme elle kaydedildi"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banka havalesi onaylandı"
+      },
+      "user": {
+        "password_reset": "Parola sıfırlandı",
+        "sign_in_locked": "Oturum açma kilitlendi"
       },
       "two_factor": {
         "enabled": "İki adımlı giriş açıldı",

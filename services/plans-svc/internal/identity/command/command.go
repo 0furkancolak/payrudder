@@ -263,6 +263,7 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 	if !ok {
 		if tried.LockedUntil != nil {
 			c.log.WarnContext(ctx, "sign-in locked after repeated failures", "user_id", user.ID, "failures", tried.FailedLogins)
+			c.lockNote(ctx, tried, "password")
 		}
 		return Opened{}, invalidCredentials()
 	}

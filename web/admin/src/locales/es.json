@@ -5923,6 +5923,20 @@
       "invoice": "Facturas",
       "provider_account": "Cuentas de proveedores",
       "tenant": "Ajustes y estado del inquilino",
+      "price_change": "Cambios de precio",
+      "coupon": "Cupones",
+      "promotion_code": "Códigos promocionales",
+      "routing_rules": "Enrutamiento de pagos",
+      "tax_rates": "Tasas de impuestos",
+      "mail_settings": "Ajustes de correo",
+      "mail_integration": "Proveedor de correo",
+      "go_live": "Salida a producción",
+      "contract": "Contratos",
+      "support": "Soporte",
+      "dunning": "Reclamación de pagos",
+      "invoice_payment": "Pagos registrados a mano",
+      "bank_transfer": "Transferencias bancarias",
+      "user": "Contraseñas e inicio de sesión",
       "two_factor": "Inicio de sesión en dos pasos",
       "sign_in": "Inicio de sesión",
       "account": "Organización"
@@ -5970,6 +5984,56 @@
         "status_requested": "Cambio de estado solicitado",
         "status_changed": "Estado cambiado",
         "settings_updated": "Ajustes cambiados"
+      },
+      "price_change": {
+        "scheduled": "Cambio de precio programado",
+        "withdrawn": "Cambio de precio retirado"
+      },
+      "coupon": {
+        "created": "Cupón creado",
+        "deactivated": "Cupón desactivado"
+      },
+      "promotion_code": {
+        "created": "Códigos promocionales creados",
+        "deactivated": "Código promocional desactivado"
+      },
+      "routing_rules": {
+        "changed": "Enrutamiento de pagos modificado"
+      },
+      "tax_rates": {
+        "changed": "Tasas de impuestos modificadas"
+      },
+      "mail_settings": {
+        "changed": "Ajustes de correo modificados"
+      },
+      "mail_integration": {
+        "saved": "Proveedor de correo conectado",
+        "removed": "Proveedor de correo desconectado"
+      },
+      "go_live": {
+        "billing_profile_saved": "Perfil de facturación guardado",
+        "terms_accepted": "Términos aceptados",
+        "activated": "Entorno en producción activado"
+      },
+      "contract": {
+        "version_published": "Versión de contrato publicada",
+        "settings_changed": "Ajustes de contratos modificados"
+      },
+      "support": {
+        "status_changed": "Estado de un ticket de soporte modificado"
+      },
+      "dunning": {
+        "settings_changed": "Ajustes de reclamación modificados"
+      },
+      "invoice_payment": {
+        "recorded": "Pago registrado a mano"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Transferencia bancaria confirmada"
+      },
+      "user": {
+        "password_reset": "Contraseña restablecida",
+        "sign_in_locked": "Inicio de sesión bloqueado"
       },
       "two_factor": {
         "enabled": "Inicio de sesión en dos pasos activado",

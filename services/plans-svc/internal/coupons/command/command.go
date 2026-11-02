@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 	"regexp"
 	"slices"
@@ -17,9 +18,11 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/model"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
@@ -76,8 +79,12 @@ func (c *Commands) Create(ctx context.Context, in *plansv1.Coupon) (*plansv1.Cou
 	if err != nil {
 		return nil, err
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.Coupon
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		r, err := q.InsertCoupon(ctx, p)
 		if err != nil {
 			return err
@@ -94,7 +101,9 @@ func (c *Commands) Create(ctx context.Context, in *plansv1.Coupon) (*plansv1.Cou
 			row.PromotionCodeCount = 1
 		}
 		out = couponsqry.Message(row)
-		return nil
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "coupon.created", TargetType: "coupon", TargetID: out.GetCode(), Summary: "created the coupon " + out.GetCode(),
+			Detail: map[string]any{"code": out.GetCode(), "percent_bps": out.GetPercentBps(), "amount_minor": out.GetAmountMinor(), "currency": out.GetCurrency(),
+				"duration": out.GetDuration().String(), "max_redemptions": out.GetMaxRedemptions()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "coupon")
@@ -213,8 +222,12 @@ func appliesTo(in *plansv1.Coupon, v *domain.Violations) []string {
 
 // Deactivate stops a coupon from being redeemed again; subscriptions that have it keep it.
 func (c *Commands) Deactivate(ctx context.Context, code string) (*plansv1.Coupon, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.Coupon
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		if n, err := q.DeactivateCoupon(ctx, code); err != nil {
 			return err
 		} else if n == 0 {
@@ -225,7 +238,8 @@ func (c *Commands) Deactivate(ctx context.Context, code string) (*plansv1.Coupon
 			return err
 		}
 		out = couponsqry.Message(r)
-		return nil
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "coupon.deactivated", TargetType: "coupon", TargetID: out.GetCode(), Summary: "deactivated the coupon " + out.GetCode(),
+			Detail: map[string]any{"code": out.GetCode(), "redeemed": out.GetRedeemed()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "coupon")
@@ -333,8 +347,12 @@ func (c *Commands) CreatePromotionCodes(ctx context.Context, req *plansv1.Create
 	if err != nil {
 		return nil, err
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []*plansv1.PromotionCode
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		cp, err := q.GetCoupon(ctx, req.GetCouponCode())
 		if err != nil {
 			return err
@@ -351,7 +369,9 @@ func (c *Commands) CreatePromotionCodes(ctx context.Context, req *plansv1.Create
 		for _, r := range rows {
 			out = append(out, couponsqry.PromotionMessage(couponsqry.PromotionCodeRow(r)))
 		}
-		return nil
+		// The codes themselves stay out of the entry: they are what a discount is redeemed with.
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "promotion_code.created", TargetType: "coupon", TargetID: req.GetCouponCode(),
+			Summary: fmt.Sprintf("made %d promotion codes for the coupon %s", len(out), req.GetCouponCode()), Detail: map[string]any{"coupon": req.GetCouponCode(), "count": len(out)}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "coupon")
@@ -485,8 +505,12 @@ func nonNil(s []string) []string {
 
 // DeactivatePromotionCode stops one code; the coupon and its other codes keep working.
 func (c *Commands) DeactivatePromotionCode(ctx context.Context, code string) (*plansv1.PromotionCode, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.PromotionCode
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		if n, err := q.DeactivatePromotionCode(ctx, code); err != nil {
 			return err
 		} else if n == 0 {
@@ -497,7 +521,8 @@ func (c *Commands) DeactivatePromotionCode(ctx context.Context, code string) (*p
 			return err
 		}
 		out = couponsqry.PromotionMessage(r)
-		return nil
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "promotion_code.deactivated", TargetType: "promotion_code", TargetID: code,
+			Summary: "deactivated the promotion code " + code, Detail: map[string]any{"coupon": out.GetCouponCode()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "promotion code")

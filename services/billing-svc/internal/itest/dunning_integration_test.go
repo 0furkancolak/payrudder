@@ -38,6 +38,10 @@ func testTenantDunningSettings(t *testing.T) {
 	if got, _ = svc.GetDunningSettings(tctx, &billingv1.GetDunningSettingsRequest{}); got.GetSettings().GetDefaultsInUse() || len(got.GetSettings().GetRetryHours()) != 1 {
 		t.Fatalf("after set = %+v", got)
 	}
+	// The refused attempts left nothing; the change left one entry in its transaction, with the delays before and after.
+	if targets, details := auditEntries(t, e.tid, "dunning.settings_changed"); len(targets) != 1 || targets[0] != "" || len(details[0]["retry_hours"].([]any)) != 1 || details[0]["retry_hours"].([]any)[0] != float64(2) {
+		t.Fatalf("dunning.settings_changed = %v %v, want one entry with retry_hours [2]", targets, details)
+	}
 
 	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
 		if stubworker.Kind(c) == "charge" {

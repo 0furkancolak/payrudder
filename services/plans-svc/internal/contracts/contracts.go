@@ -23,6 +23,7 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -122,8 +123,12 @@ func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.Publi
 	if _, err := domain.ValidateContractBodies(req.GetBodies()); err != nil {
 		return nil, err
 	}
+	tid, err := tenantOf(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.ContractVersion
-	err := s.tx(ctx, "contract version", func(q *sqlc.Queries) error {
+	err = convert.Err(s.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		n, err := q.NextContractVersionNumber(ctx, sqlc.NextContractVersionNumberParams{Kind: req.GetKind(), Audience: audience})
 		if err != nil {
 			return err
@@ -138,6 +143,11 @@ func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.Publi
 			return err
 		}
 		out = versionOf(v, v.Number)
+		if err := audit.Record(ctx, tx, audit.Event{TenantID: tid, Action: "contract.version_published", TargetType: "contract_version", TargetID: v.ID.String(),
+			Summary: "published " + v.Kind + " (" + v.Audience + ") version " + strconv.Itoa(int(v.Number)),
+			Detail:  map[string]any{"kind": v.Kind, "audience": v.Audience, "number": v.Number, "material": v.Material, "locales": sortedLocales(req.GetBodies())}}); err != nil { // the hash is in contract_versions; the log would mask it as an opaque run
+			return err
+		}
 		data, err := json.Marshal(map[string]any{"version_id": v.ID.String(), "kind": v.Kind, "audience": v.Audience, "number": v.Number, "material": v.Material, "sha256": v.Sha256,
 			"locales": sortedLocales(req.GetBodies()), "published_at": v.CreatedAt.UTC().Format(time.RFC3339)})
 		if err != nil {
@@ -145,7 +155,7 @@ func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.Publi
 		}
 		_, err = webhookscmd.Emit(ctx, q, v.ID, webhooksmodel.ContractVersionPublished, data, v.CreatedAt)
 		return err
-	})
+	}), "contract version")
 	if err != nil {
 		return nil, err
 	}
@@ -319,8 +329,12 @@ func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContr
 	if err := domain.ValidateCancelTexts(req.GetRenewalCancelTexts()); err != nil {
 		return nil, err
 	}
+	tid, err := tenantOf(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out *plansv1.ContractSettings
-	err := s.tx(ctx, "contract settings", func(q *sqlc.Queries) error {
+	err = convert.Err(s.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		cur, err := q.ListContractCurrent(ctx)
 		if err != nil {
 			return err
@@ -367,8 +381,12 @@ func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContr
 			return err
 		}
 		out = settingsOf(st, published)
-		return nil
-	})
+		// The texts of the cancel notices are the seller's own wording and stay out of the entry; their locales do not.
+		return audit.Record(ctx, tx, audit.Event{TenantID: tid, Action: "contract.settings_changed", TargetType: "contract_settings", Before: old, After: st,
+			Summary: "changed the contract settings", Detail: map[string]any{"required_kinds": required, "immediate_start": st.ImmediateStart, "retention_months": st.RetentionMonths,
+				"withdrawal_refund": st.WithdrawalRefund, "renewal_notice_days": st.RenewalNoticeDays, "withdrawal_function": st.WithdrawalFunction,
+				"renewal_cancel_text_locales": sortedLocales(texts)}})
+	}), "contract settings")
 	if err != nil {
 		return nil, err
 	}

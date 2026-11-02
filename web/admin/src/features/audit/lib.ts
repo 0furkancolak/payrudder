@@ -6,7 +6,7 @@ export type AuditEvent = components["schemas"]["AuditEvent"];
 export type ActorType = AuditEvent["actor_type"];
 
 /** The areas of the log (the part of an action before its dot), in the order the filter lists them. */
-export const AUDIT_AREAS = ["api_key", "member", "plan", "webhook_endpoint", "customer", "credit_note", "invoice", "provider_account", "tenant", "two_factor", "sign_in", "account"] as const;
+export const AUDIT_AREAS = ["api_key", "member", "plan", "webhook_endpoint", "customer", "credit_note", "invoice", "provider_account", "tenant", "price_change", "coupon", "promotion_code", "routing_rules", "tax_rates", "mail_settings", "mail_integration", "go_live", "contract", "support", "dunning", "invoice_payment", "bank_transfer", "user", "two_factor", "sign_in", "account"] as const;
 
 export const ACTOR_TYPES: readonly ActorType[] = ["user", "api_key", "operator", "system"];
 
@@ -24,6 +24,12 @@ export const KNOWN_ACTIONS: readonly string[] = [
   "provider_account.connected", "provider_account.replaced", "provider_account.removed", "provider_account.default_changed",
   "tenant.status_requested", "tenant.status_changed", "tenant.settings_updated",
   "two_factor.enabled", "two_factor.disabled", "two_factor.recovery_codes_regenerated",
+  "price_change.scheduled", "price_change.withdrawn",
+  "coupon.created", "coupon.deactivated", "promotion_code.created", "promotion_code.deactivated",
+  "routing_rules.changed", "tax_rates.changed", "mail_settings.changed", "mail_integration.saved", "mail_integration.removed",
+  "go_live.billing_profile_saved", "go_live.terms_accepted", "go_live.activated",
+  "contract.version_published", "contract.settings_changed", "support.status_changed", "dunning.settings_changed",
+  "invoice_payment.recorded", "bank_transfer.receipt_recorded", "user.password_reset", "user.sign_in_locked",
 ];
 
 /** The i18n key of an action's label, or null when the console has none for it (show the action itself). */

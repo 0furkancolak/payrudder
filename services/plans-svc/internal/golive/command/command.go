@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	pkgaudit "github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
@@ -67,7 +68,9 @@ func ownerLive(ctx context.Context, q *sqlc.Queries, userID, appID string) (app 
 	return app, row, nil
 }
 
-func audit(ctx context.Context, q *sqlc.Queries, app *plansv1.App, tenant uuid.UUID, userID, action string, detail map[string]any) error {
+// audit writes go_live_audit and, in the same transaction, the platform's audit log (pkg/audit) under the name go_live.<action>.
+func audit(ctx context.Context, tx pgx.Tx, app *plansv1.App, tenant uuid.UUID, userID, action string, detail map[string]any) error {
+	q := sqlc.New(tx)
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return idquery.NotFound("app")
@@ -80,7 +83,10 @@ func audit(ctx context.Context, q *sqlc.Queries, app *plansv1.App, tenant uuid.U
 	if err != nil {
 		return err
 	}
-	return q.InsertGoLiveAudit(ctx, sqlc.InsertGoLiveAuditParams{ID: uuid.New(), AppID: aid, LiveTenantID: tenant, UserID: uid, Action: action, Detail: raw})
+	if err := q.InsertGoLiveAudit(ctx, sqlc.InsertGoLiveAuditParams{ID: uuid.New(), AppID: aid, LiveTenantID: tenant, UserID: uid, Action: action, Detail: raw}); err != nil {
+		return err
+	}
+	return pkgaudit.Record(ctx, tx, pkgaudit.Event{TenantID: tenant, Action: "go_live." + action, TargetType: "app", TargetID: aid.String(), Summary: app.GetName() + ": " + action, Detail: detail})
 }
 
 // UpdateBillingProfile saves the seller's legal name, tax id and address on the app's live tenant. Only the owner may; the profile is checked as the checklist
@@ -109,7 +115,7 @@ func (c *Commands) UpdateBillingProfile(ctx context.Context, req *plansv1.Update
 		if err != nil {
 			return convert.Err(err, "tenant")
 		}
-		if err := audit(ctx, q, app, row.ID, req.GetUserId(), auditBillingProfile, map[string]any{"country": address.GetCountry(), "tax_id_set": legal.GetTaxId() != ""}); err != nil {
+		if err := audit(ctx, tx, app, row.ID, req.GetUserId(), auditBillingProfile, map[string]any{"country": address.GetCountry(), "tax_id_set": legal.GetTaxId() != ""}); err != nil {
 			return err
 		}
 		out = convert.Tenant(row)
@@ -133,7 +139,7 @@ func (c *Commands) AcceptTerms(ctx context.Context, req *plansv1.AcceptMyTermsRe
 			return err
 		}
 		if row.TermsAcceptedAt == nil {
-			if err := acceptTerms(ctx, q, app, row.ID, req.GetUserId()); err != nil {
+			if err := acceptTerms(ctx, tx, app, row.ID, req.GetUserId()); err != nil {
 				return err
 			}
 			if row, err = q.LockTenantForGoLive(ctx, row.ID); err != nil {
@@ -150,15 +156,15 @@ func (c *Commands) AcceptTerms(ctx context.Context, req *plansv1.AcceptMyTermsRe
 }
 
 // acceptTerms writes the acceptance and its audit row.
-func acceptTerms(ctx context.Context, q *sqlc.Queries, app *plansv1.App, tenant uuid.UUID, userID string) error {
+func acceptTerms(ctx context.Context, tx pgx.Tx, app *plansv1.App, tenant uuid.UUID, userID string) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return idquery.NotFound("app")
 	}
-	if err := q.AcceptTenantTerms(ctx, sqlc.AcceptTenantTermsParams{ID: tenant, UserID: &uid}); err != nil {
+	if err := sqlc.New(tx).AcceptTenantTerms(ctx, sqlc.AcceptTenantTermsParams{ID: tenant, UserID: &uid}); err != nil {
 		return err
 	}
-	return audit(ctx, q, app, tenant, userID, auditTerms, map[string]any{})
+	return audit(ctx, tx, app, tenant, userID, auditTerms, map[string]any{})
 }
 
 // Activate turns the live tenant of an app the owner belongs to from inactive to active. It is idempotent: an active tenant answers with its checklist.
@@ -196,7 +202,7 @@ func (c *Commands) Activate(ctx context.Context, req *plansv1.ActivateMyAppReque
 		}
 		if req.GetAcceptTerms() {
 			if row.TermsAcceptedAt == nil {
-				if err := acceptTerms(ctx, q, app, tid, req.GetUserId()); err != nil {
+				if err := acceptTerms(ctx, tx, app, tid, req.GetUserId()); err != nil {
 					return err
 				}
 			}
@@ -213,6 +219,10 @@ func (c *Commands) Activate(ctx context.Context, req *plansv1.ActivateMyAppReque
 		}
 		row, err = q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: tid, Status: domain.StatusActive})
 		if err != nil {
+			return err
+		}
+		// go_live_audit only knows the two actions above; the platform's log has this one too.
+		if err := pkgaudit.Record(ctx, tx, pkgaudit.Event{TenantID: tid, Action: "go_live.activated", TargetType: "app", TargetID: app.GetId(), Summary: app.GetName() + ": live environment activated"}); err != nil {
 			return err
 		}
 		out = list

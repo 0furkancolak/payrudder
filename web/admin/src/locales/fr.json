@@ -5923,6 +5923,20 @@
       "invoice": "Factures",
       "provider_account": "Comptes de prestataires",
       "tenant": "Réglages et statut du locataire",
+      "price_change": "Changements de prix",
+      "coupon": "Coupons",
+      "promotion_code": "Codes promotionnels",
+      "routing_rules": "Routage des paiements",
+      "tax_rates": "Taux de taxe",
+      "mail_settings": "Réglages des e-mails",
+      "mail_integration": "Fournisseur d'e-mails",
+      "go_live": "Mise en production",
+      "contract": "Contrats",
+      "support": "Assistance",
+      "dunning": "Relances de paiement",
+      "invoice_payment": "Paiements saisis à la main",
+      "bank_transfer": "Virements bancaires",
+      "user": "Mots de passe et connexion",
       "two_factor": "Connexion en deux étapes",
       "sign_in": "Connexion",
       "account": "Organisation"
@@ -5970,6 +5984,56 @@
         "status_requested": "Changement de statut demandé",
         "status_changed": "Statut modifié",
         "settings_updated": "Réglages modifiés"
+      },
+      "price_change": {
+        "scheduled": "Changement de prix planifié",
+        "withdrawn": "Changement de prix retiré"
+      },
+      "coupon": {
+        "created": "Coupon créé",
+        "deactivated": "Coupon désactivé"
+      },
+      "promotion_code": {
+        "created": "Codes promotionnels créés",
+        "deactivated": "Code promotionnel désactivé"
+      },
+      "routing_rules": {
+        "changed": "Routage des paiements modifié"
+      },
+      "tax_rates": {
+        "changed": "Taux de taxe modifiés"
+      },
+      "mail_settings": {
+        "changed": "Réglages des e-mails modifiés"
+      },
+      "mail_integration": {
+        "saved": "Fournisseur d'e-mails connecté",
+        "removed": "Fournisseur d'e-mails déconnecté"
+      },
+      "go_live": {
+        "billing_profile_saved": "Profil de facturation enregistré",
+        "terms_accepted": "Conditions acceptées",
+        "activated": "Environnement de production activé"
+      },
+      "contract": {
+        "version_published": "Version de contrat publiée",
+        "settings_changed": "Réglages des contrats modifiés"
+      },
+      "support": {
+        "status_changed": "Statut d'un ticket d'assistance modifié"
+      },
+      "dunning": {
+        "settings_changed": "Réglages de relance modifiés"
+      },
+      "invoice_payment": {
+        "recorded": "Paiement saisi à la main"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Virement bancaire confirmé"
+      },
+      "user": {
+        "password_reset": "Mot de passe réinitialisé",
+        "sign_in_locked": "Connexion verrouillée"
       },
       "two_factor": {
         "enabled": "Connexion en deux étapes activée",
