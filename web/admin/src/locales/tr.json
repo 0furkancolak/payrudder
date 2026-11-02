@@ -4635,7 +4635,46 @@
         },
         "checkAndConnect": "Denetle ve bağla",
         "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
-        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
+        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır.",
+        "identity": {
+          "title": "Gönderen kimliği",
+          "intro": "Posta sağlayıcıları e-postayı göndericinin alan adının DNS'te yayımladıklarına göre değerlendirir. Bu araç, e-postanın gönderildiği adres için SPF, DKIM ve DMARC kayıtlarına bakar.",
+          "selector": "DKIM seçicisi (isteğe bağlı)",
+          "selectorHelp": "Sağlayıcınızın DKIM anahtarını yayımladığı ad. DKIM'i atlamak için boş bırakın.",
+          "check": "DNS'i denetle",
+          "checking": "Denetleniyor…",
+          "domain": "Alan adı: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Yayımlanmış",
+            "weak": "Yayımlanmış ama zayıf",
+            "missing": "Bulunamadı",
+            "invalid": "Geçersiz",
+            "unchecked": "Denetlenmedi",
+            "error": "Denetlenemedi"
+          },
+          "detail": {
+            "hard_fail": "Diğer göndericileri reddeder (-all)",
+            "soft_fail": "Diğer göndericileri şüpheli işaretler (~all)",
+            "neutral": "Diğer göndericiler hakkında bir şey söylemez (?all)",
+            "pass_all": "Her göndericiye izin verir (+all)",
+            "no_all": "Kapanış kuralı yok",
+            "multiple": "Birden fazla SPF kaydı var: alıcılar bunu hata sayar",
+            "policy_none": "Politika none: hatalar yalnızca raporlanır",
+            "policy_none_inherited": "Politika none, üst alan adından",
+            "quarantine": "Politika: quarantine",
+            "quarantine_inherited": "Politika: quarantine, üst alan adından",
+            "reject": "Politika: reject",
+            "reject_inherited": "Politika: reject, üst alan adından",
+            "no_selector": "Denetlemek için seçiciyi girin",
+            "revoked": "Anahtar iptal edilmiş (boş p=)"
+          },
+          "note": "Bu yalnızca herkese açık DNS'i okur. Kayıtların sağlayıcınızı gösterip göstermediğini ya da sağlayıcınızın alan adını doğrulayıp doğrulamadığını söylemez. Bir değişikliğin yayılması saatler sürebilir."
+        }
       },
       "accounts": {
         "title": "Hesaplar",
