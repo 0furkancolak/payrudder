@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
-import type { Audience, Kind, SettingsDraft } from "./lib";
+import { acceptanceQuery, type AcceptanceFilter, type Audience, type Kind, type SettingsDraft } from "./lib";
 
 type Schemas = components["schemas"];
 
@@ -11,6 +12,8 @@ export const contractKeys = {
   settings: (tenantId: string) => ["tenants", tenantId, "contract-settings"] as const,
   withdrawals: (tenantId: string) => ["tenants", tenantId, "contract-withdrawals"] as const,
   acceptances: (tenantId: string, customer: string) => ["tenants", tenantId, "contract-acceptances", customer] as const,
+  invoice: (tenantId: string, id: string) => ["tenants", tenantId, "contract-invoice", id] as const,
+  paidInvoices: (tenantId: string, customer: string) => ["tenants", tenantId, "invoices", "paid-of-customer", customer] as const,
 };
 
 // No tenant yet (the page is still resolving its app): a call without X-Payrudder-Tenant would be refused with a 401.
@@ -75,12 +78,20 @@ export function useContractWithdrawals(tenantId: MaybeRefOrGetter<string>, custo
   });
 }
 
-/** Decides a withdrawal (accepted or rejected, once) or marks an accepted one refunded; the seller refunds, Payrudder does not move the money. */
+/**
+ * Decides a withdrawal (accepted or rejected, once) or marks an accepted one refunded; the seller refunds, Payrudder does not move the money unless the settings ask for it.
+ * `refundAmountMinor` (accepting only) is what to refund when it is less than what is left of the invoice; "0" or nothing is all of it.
+ */
 export function useDecideWithdrawal(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { id: string; status: "accepted" | "rejected" | "refunded"; note: string }) =>
-      unwrap(tenantApi(toValue(tenantId)).PUT("/v1/contract-withdrawals/{id}/status", { params: { path: { id: v.id } }, body: { status: v.status, note: v.note } })),
+    mutationFn: (v: { id: string; status: "accepted" | "rejected" | "refunded"; note: string; refundAmountMinor?: string }) =>
+      unwrap(
+        tenantApi(toValue(tenantId)).PUT("/v1/contract-withdrawals/{id}/status", {
+          params: { path: { id: v.id } },
+          body: { status: v.status, note: v.note, ...(v.refundAmountMinor && v.refundAmountMinor !== "0" ? { refund_amount_minor: v.refundAmountMinor } : {}) },
+        }),
+      ),
     onSuccess: () => queries.invalidateQueries({ queryKey: contractKeys.withdrawals(toValue(tenantId)) }),
   });
 }
@@ -89,32 +100,63 @@ export function useDecideWithdrawal(tenantId: MaybeRefOrGetter<string>) {
 export function useRequestRefund(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => unwrap(tenantApi(toValue(tenantId)).POST("/v1/contract-withdrawals/{id}/refund", { params: { path: { id } }, body: {} })),
+    mutationFn: (v: { id: string; amountMinor?: string }) =>
+      unwrap(tenantApi(toValue(tenantId)).POST("/v1/contract-withdrawals/{id}/refund", { params: { path: { id: v.id } }, body: v.amountMinor && v.amountMinor !== "0" ? { amount_minor: v.amountMinor } : {} })),
     onSuccess: () => queries.invalidateQueries({ queryKey: contractKeys.withdrawals(toValue(tenantId)) }),
   });
 }
 
-/** Records a statement a customer made outside the pages (a mail, a call) as a withdrawal request, from the console. */
+/** Records a statement a customer made outside the pages (a mail, a call) as a withdrawal request, from the console. `invoiceId` names the invoice they withdraw from. */
 export function useRecordWithdrawal(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { customer: string; statement: string; receiveTime?: string }) =>
+    mutationFn: (v: { customer: string; statement: string; receiveTime?: string; invoiceId?: string }) =>
       unwrap(
         tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/contract-withdrawals", {
           params: { path: { external_id: v.customer } },
-          body: { statement: v.statement, source: "console", ...(v.receiveTime ? { receive_time: v.receiveTime } : {}) },
+          body: { statement: v.statement, source: "console", ...(v.receiveTime ? { receive_time: v.receiveTime } : {}), ...(v.invoiceId ? { invoice_id: v.invoiceId } : {}) },
         }),
       ),
     onSuccess: () => queries.invalidateQueries({ queryKey: contractKeys.withdrawals(toValue(tenantId)) }),
   });
 }
 
-/** Everything a customer accepted, one row per version; the log groups them. */
-export function useContractAcceptances(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>) {
-  return useQuery({
-    queryKey: computed(() => contractKeys.acceptances(toValue(tenantId), toValue(customer))),
-    queryFn: async () => (await unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/contract-acceptances", { params: { path: { external_id: toValue(customer) } } }))).acceptances ?? [],
+const ACCEPTANCE_PAGE = 20;
+
+/**
+ * What a customer accepted, one row per version, newest first, a page at a time (`fetchNextPage` for "Show more") and narrowed by the filter. A checkout moment's rows can
+ * land on two pages; the log groups them by `group_id`, so the group completes when the next page is read.
+ */
+export function useContractAcceptances(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>, filter: MaybeRefOrGetter<AcceptanceFilter>) {
+  return useInfiniteQuery({
+    queryKey: computed(() => [...contractKeys.acceptances(toValue(tenantId), toValue(customer)), acceptanceQuery(toValue(filter))] as const),
+    initialPageParam: "",
+    queryFn: ({ pageParam }) =>
+      unwrap(
+        tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/contract-acceptances", {
+          params: { path: { external_id: toValue(customer) }, query: { ...acceptanceQuery(toValue(filter)), page_size: ACCEPTANCE_PAGE, page_token: pageParam || undefined } },
+        }),
+      ),
+    getNextPageParam: (last) => last.next_page_token || undefined,
     enabled: ready(tenantId, () => toValue(customer) !== ""),
+  });
+}
+
+/** The invoice a withdrawal names (asked for when `id` is set): its number, currency and total, for the amount that may be refunded. */
+export function useWithdrawalInvoice(tenantId: MaybeRefOrGetter<string>, id: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => contractKeys.invoice(toValue(tenantId), toValue(id))),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}", { params: { path: { id: toValue(id) } } })),
+    enabled: ready(tenantId, () => toValue(id) !== ""),
+  });
+}
+
+/** The paid invoices of a customer, newest first: the ones a withdrawal can name (an invoice that was not paid has nothing to refund). */
+export function useCustomerPaidInvoices(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>, on?: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => contractKeys.paidInvoices(toValue(tenantId), toValue(customer))),
+    queryFn: async () => (await unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices", { params: { query: { customer: toValue(customer), status: "paid", page_size: PAGE.long } } }))).invoices ?? [],
+    enabled: ready(tenantId, () => toValue(customer) !== "" && toValue(on ?? true)),
   });
 }
 

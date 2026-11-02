@@ -38,6 +38,8 @@ type fakeContracts struct {
 	// the follow-ups (withdrawal refund, the withdrawal function, the portal)
 	settings      *plansv1.ContractSettings
 	accepted      []*plansv1.ContractAcceptance
+	listed        *plansv1.ListContractAcceptancesRequest
+	nextPage      string
 	withdrawals   []*plansv1.ContractWithdrawal
 	claimErr      error
 	reclaimed     bool

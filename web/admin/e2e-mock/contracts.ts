@@ -60,7 +60,7 @@ export interface Withdrawal {
   decided_by: string;
   decision_note: string;
   credit_note_id: string;
-  refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+  refund_state: "none" | "requesting" | "requested" | "refunded" | "refund_failed" | "outside" | "failed";
   refund_note: string;
   refund_time: string | null;
 }
@@ -147,11 +147,36 @@ export const acceptance = (id: string, group: string, kind: string, at: string, 
 /** The page a customer accepted, as the backend stores it. Its script must never run in the console. */
 export const SNAPSHOT_HTML = "<!doctype html><html><head><meta charset=\"utf-8\"><title>snapshot</title></head><body><h1>Accepted page</h1><p>Distance sales contract v2</p><script>window.top.__pwned = 1; window.__pwned = 1;</script></body></html>";
 
+/** An invoice as the invoice routes answer it: the withdrawal sheet lists a customer's paid ones and the dialog reads the one a withdrawal names. */
+export interface MockInvoice {
+  id: string;
+  number: string;
+  customer_external_id: string;
+  currency: string;
+  total_minor: string;
+  status: string;
+  finalize_time: string;
+  create_time: string;
+}
+
+export const invoice = (id: string, customer: string, total: string, extra: Partial<MockInvoice> = {}): MockInvoice => ({
+  id,
+  number: `INV-${id}`,
+  customer_external_id: customer,
+  currency: "USD",
+  total_minor: total,
+  status: "paid",
+  finalize_time: "2026-10-10T10:00:00Z",
+  create_time: "2026-10-10T10:00:00Z",
+  ...extra,
+});
+
 export interface ContractsState {
   versions: Version[];
   settings: { required_kinds: string[]; immediate_start: boolean; retention_months: number; withdrawal_refund: string; renewal_notice_days: number; renewal_cancel_texts: Record<string, string>; withdrawal_function: boolean };
   withdrawals: Withdrawal[];
   acceptances: Acceptance[];
+  invoices: MockInvoice[];
 }
 
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -179,6 +204,7 @@ export function contractsGateway(gw: MockGateway, init: Partial<Omit<ContractsSt
     versions: [],
     withdrawals: [],
     acceptances: [],
+    invoices: [],
     ...init,
     settings: { required_kinds: [], immediate_start: false, retention_months: 36, withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true, ...init.settings },
   };
@@ -265,7 +291,26 @@ export function contractsGateway(gw: MockGateway, init: Partial<Omit<ContractsSt
       return { status: 201, body: w };
     }
     const accepted = /^\/v1\/customers\/([^/]+)\/contract-acceptances$/.exec(c.path);
-    if (accepted && c.method === "GET") return { body: { acceptances: state.acceptances.filter((a) => a.customer_external_id === accepted[1]) } };
+    if (accepted && c.method === "GET") {
+      // The log as the API serves it: newest first, narrowed by kind, source and the time range (from inclusive, to exclusive), a page at a time with an index as the token.
+      const kind = c.query.get("kind");
+      const source = c.query.get("source");
+      const from = c.query.get("from");
+      const to = c.query.get("to");
+      const rows = state.acceptances
+        .filter((a) => a.customer_external_id === accepted[1] && (!kind || a.kind === kind) && (!source || a.source === source))
+        .filter((a) => (!from || Date.parse(a.accept_time) >= Date.parse(from)) && (!to || Date.parse(a.accept_time) < Date.parse(to)))
+        .sort((a, b) => Date.parse(b.accept_time) - Date.parse(a.accept_time) || b.id.localeCompare(a.id));
+      const size = Number(c.query.get("page_size") ?? 100);
+      const start = Number(c.query.get("page_token") ?? 0);
+      return { body: { acceptances: rows.slice(start, start + size), next_page_token: start + size < rows.length ? String(start + size) : "" } };
+    }
+    if (c.path === "/v1/invoices" && c.method === "GET" && c.query.get("status") === "paid" && c.query.get("customer")) {
+      return { body: { invoices: state.invoices.filter((i) => i.customer_external_id === c.query.get("customer") && i.status === "paid"), next_page_token: "" } };
+    }
+    const oneInvoice = /^\/v1\/invoices\/([^/]+)$/.exec(c.path);
+    const found = oneInvoice ? state.invoices.find((i) => i.id === oneInvoice[1]) : undefined;
+    if (found && c.method === "GET") return { body: { ...found, lines: [], payments: [] } };
     if (/^\/v1\/contract-acceptances\/[^/]+\/snapshot$/.test(c.path) && c.method === "GET") return { body: { html: SNAPSHOT_HTML, sha256: "cafe".repeat(16), group_id: "g-new" } };
     return undefined;
   });

@@ -54,8 +54,9 @@ func (s *Server) contractRequirementsFor(r *http.Request, resp *billingv1.GetHos
 	}
 	customerID, ref := contractCustomer(resp)
 	exp := int(resp.GetCurrencyExponent())
+	// A link that names its own agreements asks for those instead of the seller's setting (docs/plans/21-contracts.md); the portal and a link with none ask for the setting.
 	return s.d.Contracts.GetContractRequirements(tenant.OutgoingFor(r.Context(), tid), &plansv1.GetContractRequirementsRequest{CustomerId: customerID, ContextRef: ref, Locale: lang, CustomerType: resp.GetCustomerType(),
-		GuestName: resp.GetCustomerName(), Order: &plansv1.ContractOrder{Description: resp.GetPayment().GetDescription(), Total: money.FormatMinorGrouped(resp.GetInvoice().GetTotalMinor(), exp), Currency: resp.GetInvoice().GetCurrency()}})
+		GuestName: resp.GetCustomerName(), RequiredKinds: resp.GetRequiredContracts(), Order: &plansv1.ContractOrder{Description: resp.GetPayment().GetDescription(), Total: money.FormatMinorGrouped(resp.GetInvoice().GetTotalMinor(), exp), Currency: resp.GetInvoice().GetCurrency()}})
 }
 
 // contractsView builds what the page asks for. It is nil when nothing is to be accepted; unavailable says the seller's agreements cannot be shown (the page then

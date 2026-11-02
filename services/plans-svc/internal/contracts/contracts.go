@@ -25,6 +25,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -42,6 +43,9 @@ const WithdrawalReceivedTopic = "contract.withdrawal-received.v1"
 
 // refundStale is how long a refund request stands as "requesting" before another caller may take it over: the caller that made it died before it recorded an answer.
 const refundStale = 5 * time.Minute
+
+// farFuture is the end of an acceptance log's time range when the caller names none.
+var farFuture = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // Service implements plansv1.ContractServiceServer.
 type Service struct {
@@ -441,10 +445,19 @@ func (st *state) pending() []string {
 
 func (st *state) enforced() bool { return len(st.settings.RequiredKinds) > 0 }
 
-func evaluate(ctx context.Context, q *sqlc.Queries, w who) (*state, error) {
+// evaluate reads what the tenant requires of a person. kinds, when it has any, are required instead of the tenant's setting (a payment link names its own); they must be kinds that exist.
+func evaluate(ctx context.Context, q *sqlc.Queries, w who, kinds []string) (*state, error) {
 	settings, err := loadSettings(ctx, q)
 	if err != nil {
 		return nil, err
+	}
+	if len(kinds) > 0 {
+		for _, k := range kinds {
+			if !domain.ValidContractKind(k) {
+				return nil, domain.Invalid("required_kinds", "one of "+strings.Join(domain.ContractKinds, ", "))
+			}
+		}
+		settings.RequiredKinds = kinds
 	}
 	st := &state{settings: settings, audience: domain.AudienceOf(w.typ)}
 	if len(settings.RequiredKinds) == 0 {
@@ -493,7 +506,7 @@ func evaluate(ctx context.Context, q *sqlc.Queries, w who) (*state, error) {
 // plans.contract.not_accepted while a kind the seller requires is not accepted by the customer, in the version that counts. A seller that requires nothing never
 // refuses. Renewals and dunning charges never call it: nobody is there to accept.
 func Check(ctx context.Context, q *sqlc.Queries, c sqlc.Customer) error {
-	st, err := evaluate(ctx, q, who{customer: &c, typ: c.CustomerType})
+	st, err := evaluate(ctx, q, who{customer: &c, typ: c.CustomerType}, nil)
 	if err != nil {
 		return err
 	}
@@ -550,7 +563,7 @@ func (s *Service) GetContractRequirements(ctx context.Context, req *plansv1.GetC
 		if err != nil {
 			return err
 		}
-		st, err := evaluate(ctx, q, w)
+		st, err := evaluate(ctx, q, w, req.GetRequiredKinds())
 		if err != nil {
 			return err
 		}
@@ -810,7 +823,45 @@ func tenantOf(ctx context.Context) (uuid.UUID, error) {
 	return ti.ID, err
 }
 
+// ListContractAcceptances is a customer's acceptance log, newest first, a page at a time, narrowed by kind, source, version and the time of acceptance.
 func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.ListContractAcceptancesRequest) (*plansv1.ListContractAcceptancesResponse, error) {
+	size, ok := page.Size(req.GetPageSize(), 100, 200)
+	if !ok {
+		return nil, domain.Invalid("page_size", "1..200")
+	}
+	p := sqlc.ListCustomerContractAcceptancesParams{Kind: req.GetKind(), Source: req.GetSource(), PageSize: size + 1, FromTime: time.Time{}, ToTime: farFuture}
+	if p.Kind != "" && !domain.ValidContractKind(p.Kind) {
+		return nil, domain.Invalid("kind", "one of "+strings.Join(domain.ContractKinds, ", "))
+	}
+	if p.Source != "" && !slices.Contains([]string{"api", "hosted"}, p.Source) {
+		return nil, domain.Invalid("source", "api or hosted")
+	}
+	if v := req.GetVersionId(); v != "" {
+		id, err := domain.ParseID("version_id", v)
+		if err != nil {
+			return nil, err
+		}
+		p.VersionID = id
+	}
+	for field, bound := range map[string]struct {
+		in  *timestamppb.Timestamp
+		out *time.Time
+	}{"from_time": {req.GetFromTime(), &p.FromTime}, "to_time": {req.GetToTime(), &p.ToTime}} {
+		if bound.in == nil {
+			continue
+		}
+		if err := bound.in.CheckValid(); err != nil {
+			return nil, domain.Invalid(field, "a valid time")
+		}
+		*bound.out = bound.in.AsTime()
+	}
+	cur := page.Start()
+	if tok := req.GetPageToken(); tok != "" {
+		if cur, ok = page.ParseCursor(tok); !ok {
+			return nil, domain.Invalid("page_token", "not one this API gave")
+		}
+	}
+	p.AfterTime, p.AfterID = cur.At, cur.ID
 	var out []*plansv1.ContractAcceptance
 	err := s.tx(ctx, "contract acceptance", func(q *sqlc.Queries) error {
 		w, err := s.resolve(ctx, q, req.GetCustomerExternalId(), req.GetCustomerId(), "", "")
@@ -820,7 +871,8 @@ func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.List
 		if w.customer == nil {
 			return domain.Invalid("customer_external_id", "required")
 		}
-		rows, err := q.ListCustomerContractAcceptances(ctx, &w.customer.ID)
+		p.CustomerID = &w.customer.ID
+		rows, err := q.ListCustomerContractAcceptances(ctx, p)
 		if err != nil {
 			return err
 		}
@@ -833,7 +885,17 @@ func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.List
 		}
 		return nil
 	})
-	return &plansv1.ListContractAcceptancesResponse{Acceptances: out}, err
+	resp := &plansv1.ListContractAcceptancesResponse{}
+	if err != nil {
+		return resp, err
+	}
+	var more bool
+	if resp.Acceptances, more = page.Trim(out, int(size)); more {
+		last := resp.Acceptances[len(resp.Acceptances)-1]
+		id, _ := uuid.Parse(last.Id) // an id we made
+		resp.NextPageToken = page.Cursor{At: last.AcceptTime.AsTime(), ID: id}.Token()
+	}
+	return resp, nil
 }
 
 // GetContractSnapshot returns the page the acceptance's group was shown to and accepted, as it was written then, with its sha256. The page is checked against the hash the
@@ -1087,8 +1149,10 @@ func (s *Service) ClaimContractWithdrawalRefund(ctx context.Context, req *plansv
 			return refundNotPossible("only an accepted withdrawal is refunded")
 		case w.InvoiceID == nil:
 			return refundNotPossible("the withdrawal names no invoice: refund it by hand")
-		case w.RefundState == "requested" || w.RefundState == "outside":
+		case w.RefundState == "requested" || w.RefundState == "outside" || w.RefundState == "refunded":
 			return refundNotPossible("a refund was asked for already")
+		case w.RefundState == "refund_failed":
+			return refundNotPossible("the credit note was made and the provider did not return the money: retry the credit note's refund, a second credit note would credit the invoice twice")
 		case w.RefundState == "requesting" && w.RefundAt != nil && now.Sub(*w.RefundAt) < refundStale:
 			return refundNotPossible("a refund is being asked for")
 		}

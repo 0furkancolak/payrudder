@@ -1454,7 +1454,10 @@
         "revoke": "Revoke selected",
         "revokeTitle": "Revoke {n} payment link? | Revoke {n} payment links?",
         "confirmRevoke": "Revoked links stop working at once and cannot be brought back. Unpaid invoices made from them are voided."
-      }
+      },
+      "agreements": "Agreements the payer accepts",
+      "agreementsHint": "Ticked here, they replace the agreements required on the Contracts page for this link only. Tick none to use that setting.",
+      "agreementsSetting": "As set on the Contracts page"
     },
     "mail": {
       "title": "E-mail",
@@ -2860,7 +2863,8 @@
         "invoice_required": "A payment link of kind invoice needs an invoice.",
         "not_found": "There is no such payment link.",
         "customer_required": "A credit pack link needs the customer who receives the credits.",
-        "pack_required": "A credit pack link needs a pack."
+        "pack_required": "A credit pack link needs a pack.",
+        "bad_required_contracts": "A link can name each of the distance sales contract, the pre-information, the terms of service and the privacy notice once."
       },
       "portal_link": {
         "customer_not_found": "There is no such customer.",
@@ -5819,14 +5823,24 @@
         "requesting": "Being asked for",
         "requested": "Requested",
         "outside": "Refund it yourself",
-        "failed": "Failed"
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "refund_failed": "Card refund failed"
       },
       "creditNote": "Credit note {id}",
       "acceptRefund": {
         "asked": "Your settings also ask billing to refund the invoice this withdrawal names to the customer's card, now. A payment made another way is marked for you to refund yourself.",
         "left": "Your settings leave the refund to you: afterwards use “Request refund”, or refund the customer yourself.",
         "noInvoice": "This withdrawal names no invoice, so no refund is asked for: refund the customer yourself."
-      }
+      },
+      "invoiceLine": "Invoice {number} · {total}",
+      "amount": "Amount to refund ({currency}, optional)",
+      "amountHint": "Leave empty to refund everything that is left of the invoice. Name a smaller amount when the service already ran and the customer owes part of it.",
+      "amountErrors": {
+        "amount": "Type an amount in this currency, more than zero.",
+        "tooMuch": "That is more than the invoice."
+      },
+      "refundFailedHint": "The credit note exists but the provider did not return the money. Retry that credit note's refund under Credit notes; do not ask for a second one."
     },
     "customer": {
       "log": "Agreements accepted",
@@ -5853,7 +5867,15 @@
       "withdrawals": "Withdrawals",
       "record": "Record a withdrawal",
       "noWithdrawals": "No withdrawal requests from this customer.",
-      "decideThere": "Decide withdrawals under Contracts"
+      "decideThere": "Decide withdrawals under Contracts",
+      "filters": {
+        "label": "Filter the acceptances",
+        "kind": "Kind of agreement",
+        "allKinds": "All agreements",
+        "source": "Where it was accepted",
+        "allSources": "Anywhere"
+      },
+      "showMore": "Show more"
     },
     "record": {
       "title": "Record a withdrawal",
@@ -5863,7 +5885,10 @@
       "statementHint": "In their words, up to 2000 characters.",
       "received": "When it reached you (optional)",
       "receivedHint": "Leave empty for now.",
-      "submit": "Record withdrawal"
+      "submit": "Record withdrawal",
+      "invoice": "Invoice (optional)",
+      "invoiceHint": "The paid invoice the customer withdraws from. With it, accepting the withdrawal can refund the customer; without it you refund by hand.",
+      "noInvoice": "No invoice"
     }
   },
   "audit": {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { absoluteUrl, fieldErrors, statusVariant, toRequest, type LinkForm } from "./lib";
 
-const base: LinkForm = { kind: "adhoc", invoiceId: "", amount: "12.50", currency: "USD", description: "Setup", customer: "", promotion: "", singleUse: true, days: "30", key: "k1" };
+const base: LinkForm = { kind: "adhoc", invoiceId: "", amount: "12.50", currency: "USD", description: "Setup", customer: "", promotion: "", contracts: [], singleUse: true, days: "30", key: "k1" };
 
 describe("toRequest", () => {
   it("turns a typed amount into minor units", () => {
@@ -10,6 +10,13 @@ describe("toRequest", () => {
   it("names the customer when given", () => {
     const r = toRequest({ ...base, customer: " cus_1 " });
     expect("body" in r && r.body.customer_external_id).toBe("cus_1");
+  });
+  it("carries the agreements the payer must accept, for either kind of link, and none when none are chosen", () => {
+    const r = toRequest({ ...base, contracts: ["tos", "privacy"] });
+    expect("body" in r && r.body.required_contracts).toEqual(["tos", "privacy"]);
+    const inv = toRequest({ ...base, kind: "invoice", invoiceId: "inv-1", contracts: ["distance_sales"] });
+    expect("body" in inv && inv.body.required_contracts).toEqual(["distance_sales"]);
+    expect("required_contracts" in (toRequest(base) as { body: object }).body).toBe(false);
   });
   it("carries the promotion code of an ad hoc link, and none when it is empty", () => {
     const r = toRequest({ ...base, promotion: " SPRING10 " });

@@ -13,13 +13,14 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
+import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { useContractSettings, useContractWithdrawals, useDecideWithdrawal, useRequestRefund } from "./api";
-import { canRequestRefund, withdrawalMoves, type ContractWithdrawal, type WithdrawalStatus } from "./lib";
+import { useContractSettings, useContractWithdrawals, useDecideWithdrawal, useRequestRefund, useWithdrawalInvoice } from "./api";
+import { canRequestRefund, refundAmount, withdrawalMoves, type ContractWithdrawal, type WithdrawalStatus } from "./lib";
 
 /**
  * The withdrawal requests of the seller's customers. The seller decides: a request that was received is accepted or rejected, once, and an accepted one
@@ -41,7 +42,7 @@ const failure = computed(() => decide.error.value ?? requestRefund.error.value);
 const list = computed(() => withdrawals.data.value ?? []);
 const STATUSES: WithdrawalStatus[] = ["received", "accepted", "rejected", "refunded"];
 const TONES: Record<WithdrawalStatus, Tone> = { received: "warning", accepted: "info", rejected: "neutral", refunded: "success" };
-const REFUND_TONES: Record<ContractWithdrawal["refund_state"], Tone> = { none: "neutral", requesting: "warning", requested: "info", outside: "warning", failed: "danger" };
+const REFUND_TONES: Record<ContractWithdrawal["refund_state"], Tone> = { none: "neutral", requesting: "warning", requested: "info", refunded: "success", refund_failed: "danger", outside: "warning", failed: "danger" };
 
 const table = useTableState<ContractWithdrawal>(list, {
   searchFields: (w) => [w.customer_external_id, w.statement, w.decided_by, w.decision_note],
@@ -63,6 +64,13 @@ const acceptRefund = computed(() => {
   return settings.data.value?.withdrawal_refund === "none" ? "left" : "asked";
 });
 const note = ref("");
+const amount = ref("");
+/** Whether the dialog starts a refund (accepting with the setting on, or asking again): then the invoice is shown and a smaller amount may be named. */
+const asksAmount = computed(() => deciding.value?.status === "refund" || acceptRefund.value === "asked");
+const invoice = useWithdrawalInvoice(() => props.tenantId, () => (asksAmount.value ? (deciding.value?.row.invoice_id ?? "") : ""));
+/** The typed amount against the invoice; nothing to check until the invoice is read. */
+const amountCheck = computed(() => (invoice.data.value ? refundAmount(amount.value, invoice.data.value.currency, invoice.data.value.total_minor) : { minor: "0" }));
+const amountError = computed(() => ("error" in amountCheck.value ? t(`contracts.withdrawals.amountErrors.${amountCheck.value.error}`) : undefined));
 const open = computed({
   get: () => deciding.value !== null,
   set: (v) => {
@@ -70,16 +78,17 @@ const open = computed({
   },
 });
 function ask(row: ContractWithdrawal, status: Action) {
-  note.value = "";
+  note.value = amount.value = "";
   decide.reset();
   requestRefund.reset();
   deciding.value = { row, status };
 }
 function confirm() {
   const d = deciding.value;
-  if (!d) return;
-  if (d.status === "refund") requestRefund.mutate(d.row.id, { onSuccess: () => (deciding.value = null) });
-  else decide.mutate({ id: d.row.id, status: d.status, note: note.value.trim() }, { onSuccess: () => (deciding.value = null) });
+  if (!d || "error" in amountCheck.value) return;
+  const amountMinor = asksAmount.value ? amountCheck.value.minor : undefined;
+  if (d.status === "refund") requestRefund.mutate({ id: d.row.id, amountMinor }, { onSuccess: () => (deciding.value = null) });
+  else decide.mutate({ id: d.row.id, status: d.status, note: note.value.trim(), refundAmountMinor: amountMinor }, { onSuccess: () => (deciding.value = null) });
 }
 </script>
 
@@ -129,6 +138,7 @@ function confirm() {
                 <StatusPill :tone="REFUND_TONES[w.refund_state]" data-testid="withdrawal-refund-state">{{ t(`contracts.withdrawals.refundStates.${w.refund_state}`) }}</StatusPill>
                 <span v-if="w.credit_note_id" class="text-muted-foreground mono block break-all" data-testid="withdrawal-credit-note">{{ t("contracts.withdrawals.creditNote", { id: w.credit_note_id }) }}</span>
                 <span v-if="w.refund_note" class="text-muted-foreground block break-words" dir="auto">{{ w.refund_note }}</span>
+                <span v-if="w.refund_state === 'refund_failed'" class="text-muted-foreground block" data-testid="withdrawal-refund-retry-hint">{{ t("contracts.withdrawals.refundFailedHint") }}</span>
               </template>
               <template v-else>—</template>
             </TableCell>
@@ -154,13 +164,20 @@ function confirm() {
           <DialogDescription>{{ deciding ? t(`contracts.withdrawals.decide.${deciding.status}.body`) : "" }}</DialogDescription>
         </DialogHeader>
         <p v-if="acceptRefund" class="bg-muted rounded-xl px-3 py-2 text-sm" data-testid="withdrawal-refund-effect">{{ t(`contracts.withdrawals.acceptRefund.${acceptRefund}`) }}</p>
+        <template v-if="asksAmount && invoice.data.value">
+          <p class="text-sm" data-testid="withdrawal-invoice-line">{{ t("contracts.withdrawals.invoiceLine", { number: invoice.data.value.number, total: fmt.money(invoice.data.value.total_minor, invoice.data.value.currency) }) }}</p>
+          <FormField :label="t('contracts.withdrawals.amount', { currency: invoice.data.value.currency })" for="withdrawal-amount" :hint="t('contracts.withdrawals.amountHint')" :error="amountError">
+            <Input id="withdrawal-amount" v-model="amount" inputmode="decimal" :aria-invalid="amountError ? true : undefined" aria-describedby="withdrawal-amount-error" data-testid="withdrawal-amount" />
+          </FormField>
+        </template>
+        <ErrorText v-else-if="asksAmount" :error="invoice.error.value" />
         <FormField v-if="deciding?.status !== 'refund'" :label="t('contracts.withdrawals.note')" for="withdrawal-note" :hint="t('contracts.withdrawals.noteHint')">
           <Textarea id="withdrawal-note" v-model="note" maxlength="1000" data-testid="withdrawal-note" />
         </FormField>
         <ErrorText :error="failure" />
         <DialogFooter>
           <Button type="button" variant="ghost" @click="open = false">{{ t("common.cancel") }}</Button>
-          <Button type="button" :disabled="decide.isPending.value || requestRefund.isPending.value" data-testid="withdrawal-confirm" @click="confirm">{{ deciding ? t(`contracts.withdrawals.actions.${deciding.status}`) : "" }}</Button>
+          <Button type="button" :disabled="decide.isPending.value || requestRefund.isPending.value || 'error' in amountCheck" data-testid="withdrawal-confirm" @click="confirm">{{ deciding ? t(`contracts.withdrawals.actions.${deciding.status}`) : "" }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

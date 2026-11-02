@@ -2,6 +2,7 @@
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useContractSettings } from "@/features/contracts/api";
 import { useTenantCurrency } from "@/features/tenants/currency";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import { newKey } from "@/shared/lib/key";
@@ -37,10 +38,15 @@ const form = ref<LinkForm>({
   description: "",
   customer: props.customer,
   promotion: "",
+  contracts: [],
   singleUse: true,
   days: "30",
   key: newKey(),
 });
+// The agreements a link may name are the ones the seller has published (the API refuses any other); a seller who has published none is not offered the choice.
+const contractSettings = useContractSettings(tenantId);
+const published = computed(() => contractSettings.data.value?.published_kinds ?? []);
+watch(published, (list) => (form.value.contracts = form.value.contracts.filter((k) => list.includes(k))));
 const check = useFormErrors(() => {
   const f = fieldErrors(form.value);
   const msg = (k: "invoice" | "amount" | "description" | "days") => (f[k] ? t(`billing.paymentLinks.errors.${k}`) : undefined);
@@ -119,6 +125,11 @@ function another() {
           <FormField :label="t('billing.paymentLinks.days')" for="pl-days" :error="errs.days">
             <Input id="pl-days" v-model="form.days" inputmode="numeric" :aria-invalid="errs.days ? true : undefined" aria-describedby="pl-days-error" />
           </FormField>
+          <fieldset v-if="published.length > 0" class="grid gap-2" data-testid="pl-contracts">
+            <legend class="mb-1 text-sm font-medium">{{ t("billing.paymentLinks.agreements") }}</legend>
+            <label v-for="k in published" :key="k" class="flex items-center gap-2 text-sm"><input v-model="form.contracts" type="checkbox" class="size-4" :value="k" :data-testid="`pl-contract-${k}`" />{{ t(`contracts.kinds.${k}`) }}</label>
+            <p class="text-muted-foreground text-xs">{{ t("billing.paymentLinks.agreementsHint") }}</p>
+          </fieldset>
           <label class="flex items-center gap-2 text-sm"><input v-model="form.singleUse" type="checkbox" class="size-4" />{{ t("billing.paymentLinks.singleUse") }}</label>
           <p class="text-muted-foreground text-xs">{{ t(form.kind === "adhoc" ? "billing.paymentLinks.adhocHint" : "billing.paymentLinks.invoiceHint") }}</p>
           <ErrorText :error="act.create.error.value" />

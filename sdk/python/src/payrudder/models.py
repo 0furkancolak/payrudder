@@ -307,6 +307,7 @@ class ContractAcceptance(TypedDict):
 
 class ListContractAcceptancesResponse(TypedDict):
     acceptances: list[ContractAcceptance]
+    next_page_token: str
 
 
 class ContractAcceptanceItem(TypedDict):
@@ -371,7 +372,7 @@ class ContractWithdrawal(TypedDict):
     decided_by: str
     decision_note: str
     credit_note_id: str
-    refund_state: Literal["none", "requesting", "requested", "outside", "failed"]
+    refund_state: Literal["none", "requesting", "requested", "refunded", "refund_failed", "outside", "failed"]
     refund_note: str
     refund_time: str | None
 
@@ -1825,6 +1826,7 @@ class PaymentLink(TypedDict):
     quantity: int
     credits: int
     promotion_code: str
+    required_contracts: list[Literal["distance_sales", "pre_info", "tos", "privacy"]]
     invoice_id: str
     customer_external_id: str
     single_use: bool
@@ -1856,6 +1858,7 @@ class CreatePaymentLinkRequest(TypedDict, total=False):
     customer_external_id: str
     single_use: bool
     promotion_code: str
+    required_contracts: list[Literal["distance_sales", "pre_info", "tos", "privacy"]]
     expires_in_days: int
     idempotency_key: str
 
@@ -1868,6 +1871,7 @@ class CreatedPaymentLink(TypedDict):
     quantity: int
     credits: int
     promotion_code: str
+    required_contracts: list[Literal["distance_sales", "pre_info", "tos", "privacy"]]
     invoice_id: str
     customer_external_id: str
     single_use: bool

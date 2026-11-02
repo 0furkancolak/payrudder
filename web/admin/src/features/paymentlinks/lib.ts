@@ -1,4 +1,5 @@
 import type { components } from "@/shared/api/schema";
+import type { Kind } from "@/features/contracts/lib";
 import { parseMajor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
 
@@ -16,6 +17,8 @@ export interface LinkForm {
   customer: string;
   /** A promotion code the payer gets without typing it (optional, ad hoc links). */
   promotion: string;
+  /** The agreements the payer accepts on this link's page instead of the seller's setting; none means the setting applies. */
+  contracts: Kind[];
   singleUse: boolean;
   days: string;
   key: string;
@@ -25,7 +28,7 @@ export interface LinkForm {
 export function toRequest(f: LinkForm): { body: CreateLinkBody } | { error: "invoice" | "amount" | "description" | "days" } {
   const days = Number(f.days);
   if (!validLinkDays(days)) return { error: "days" };
-  const common = { kind: f.kind, single_use: f.singleUse, expires_in_days: days, idempotency_key: f.key };
+  const common = { kind: f.kind, single_use: f.singleUse, expires_in_days: days, idempotency_key: f.key, ...(f.contracts.length > 0 ? { required_contracts: f.contracts } : {}) };
   if (f.kind === "invoice") {
     if (!f.invoiceId.trim()) return { error: "invoice" };
     return { body: { ...common, invoice_id: f.invoiceId.trim() } };

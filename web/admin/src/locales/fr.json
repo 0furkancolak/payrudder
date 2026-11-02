@@ -1454,7 +1454,10 @@
         "revoke": "Révoquer la sélection",
         "revokeTitle": "Révoquer {n} lien de paiement ? | Révoquer {n} liens de paiement ?",
         "confirmRevoke": "Les liens révoqués cessent de fonctionner immédiatement et ne peuvent pas être rétablis. Les factures impayées qui en sont issues sont annulées."
-      }
+      },
+      "agreements": "Accords que le payeur accepte",
+      "agreementsHint": "Cochés ici, ils remplacent les accords exigés sur la page Contrats pour ce lien seulement. N'en cochez aucun pour garder ce réglage.",
+      "agreementsSetting": "Selon la page Contrats"
     },
     "mail": {
       "title": "E-mail",
@@ -2860,7 +2863,8 @@
         "invoice_required": "Un lien de paiement de type facture nécessite une facture.",
         "not_found": "Ce lien de paiement n'existe pas.",
         "customer_required": "Un lien de pack de crédits a besoin du client qui reçoit les crédits.",
-        "pack_required": "Un lien de pack de crédits a besoin d'un pack."
+        "pack_required": "Un lien de pack de crédits a besoin d'un pack.",
+        "bad_required_contracts": "Un lien peut nommer une seule fois chacun de ces documents : le contrat de vente à distance, les informations précontractuelles, les conditions d'utilisation et la politique de confidentialité."
       },
       "portal_link": {
         "customer_not_found": "Ce client n'existe pas.",
@@ -5819,14 +5823,24 @@
         "requesting": "En cours de demande",
         "requested": "Demandé",
         "outside": "À rembourser vous-même",
-        "failed": "Échec"
+        "failed": "Échec",
+        "refunded": "Remboursé",
+        "refund_failed": "Remboursement sur la carte échoué"
       },
       "creditNote": "Avoir {id}",
       "acceptRefund": {
         "asked": "Vos paramètres demandent aussi, maintenant, le remboursement de la facture désignée par cette rétractation sur la carte du client. Un paiement fait autrement est marqué pour que vous remboursiez vous-même.",
         "left": "Vos paramètres vous laissent le remboursement : utilisez ensuite « Demander le remboursement », ou remboursez le client vous-même.",
         "noInvoice": "Cette rétractation ne désigne aucune facture, donc aucun remboursement n'est demandé : remboursez le client vous-même."
-      }
+      },
+      "invoiceLine": "Facture {number} · {total}",
+      "amount": "Montant à rembourser ({currency}, facultatif)",
+      "amountHint": "Laissez vide pour rembourser tout ce qui reste de la facture. Indiquez un montant plus petit si le service a déjà été rendu et que le client en doit une partie.",
+      "amountErrors": {
+        "amount": "Saisissez un montant dans cette devise, supérieur à zéro.",
+        "tooMuch": "C'est plus que la facture."
+      },
+      "refundFailedHint": "L'avoir existe mais le prestataire n'a pas rendu l'argent. Relancez le remboursement de cet avoir sous Avoirs ; n'en demandez pas un second."
     },
     "customer": {
       "log": "Accords acceptés",
@@ -5853,7 +5867,15 @@
       "withdrawals": "Rétractations",
       "record": "Enregistrer une rétractation",
       "noWithdrawals": "Aucune demande de rétractation de ce client.",
-      "decideThere": "Décider des rétractations sous Contrats"
+      "decideThere": "Décider des rétractations sous Contrats",
+      "filters": {
+        "label": "Filtrer les acceptations",
+        "kind": "Type d'accord",
+        "allKinds": "Tous les accords",
+        "source": "Où elle a été acceptée",
+        "allSources": "Partout"
+      },
+      "showMore": "Afficher plus"
     },
     "record": {
       "title": "Enregistrer une rétractation",
@@ -5863,7 +5885,10 @@
       "statementHint": "Avec ses mots, jusqu'à 2000 caractères.",
       "received": "Quand elle vous est parvenue (facultatif)",
       "receivedHint": "Laissez vide pour maintenant.",
-      "submit": "Enregistrer la rétractation"
+      "submit": "Enregistrer la rétractation",
+      "invoice": "Facture (facultatif)",
+      "invoiceHint": "La facture payée dont le client se rétracte. Avec elle, accepter la rétractation peut rembourser le client ; sans elle, vous remboursez à la main.",
+      "noInvoice": "Aucune facture"
     }
   },
   "audit": {

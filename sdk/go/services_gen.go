@@ -1234,12 +1234,34 @@ func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID st
 
 // ListContractAcceptances: What the customer accepted, newest first (GET
 // /v1/customers/{external_id}/contract-acceptances).
-func (s *CustomersService) ListContractAcceptances(ctx context.Context, externalID string, opts ...RequestOption) (*ListContractAcceptancesResponse, error) {
+//
+// The customer's acceptance log, a page at a time (`page_size`, default 100, at most 200; the next page is
+// `next_page_token`, empty on the last). The filters narrow it and combine: `kind`, `source` (api, hosted),
+// `version_id` (one version of a text) and the time the customer accepted, `from` (inclusive) to `to`
+// (exclusive), as RFC 3339 times.
+func (s *CustomersService) ListContractAcceptances(ctx context.Context, externalID string, params *ListContractAcceptancesParams, opts ...RequestOption) (*ListContractAcceptancesResponse, error) {
 	var out ListContractAcceptancesResponse
-	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: nil, body: nil}, &out, opts); err != nil {
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// ListContractAcceptancesAll walks every page of ListContractAcceptances and yields the items one by one. It
+// stops at the first error, which is yielded once.
+func (s *CustomersService) ListContractAcceptancesAll(ctx context.Context, externalID string, params *ListContractAcceptancesParams, opts ...RequestOption) iter.Seq2[ContractAcceptance, error] {
+	return paginate(func(token string) ([]ContractAcceptance, string, error) {
+		var p ListContractAcceptancesParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListContractAcceptances(ctx, externalID, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Acceptances, page.NextPageToken, nil
+	})
 }
 
 // RecordContractAcceptance: Record that the customer accepted the current versions (an embedded checkout) (POST

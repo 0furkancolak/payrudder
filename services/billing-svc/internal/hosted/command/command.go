@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -117,10 +118,12 @@ type CreateInput struct {
 	PackID   uuid.UUID
 	Quantity int32
 	// PromotionCode (kinds adhoc and credit_pack) is applied when the payer continues, unless the payer types another.
-	PromotionCode  string
-	SingleUse      *bool
-	ExpiresInDays  int32
-	IdempotencyKey string
+	PromotionCode string
+	// RequiredContracts are the agreements the payer accepts on this link's page instead of the seller's tenant-wide setting; empty: the setting (docs/plans/21-contracts.md).
+	RequiredContracts []string
+	SingleUse         *bool
+	ExpiresInDays     int32
+	IdempotencyKey    string
 	// RequireOpen refuses an invoice that is already paid or void. The phase-23 endpoint (a link to any finalized invoice, a receipt for a paid one) does not.
 	RequireOpen bool
 }
@@ -130,6 +133,23 @@ type Created struct {
 	Link     sqlc.GetPaymentLinkRowRow
 	Token    string
 	Replayed bool
+}
+
+// contractKinds are the kinds of agreement plans-svc knows (internal/domain.ContractKinds), in the order its texts are shown in.
+var contractKinds = []string{"distance_sales", "pre_info", "tos", "privacy"}
+
+// cleanContracts checks the kinds a link names and puts them in the order of contractKinds; a kind twice or one that does not exist is refused. It never returns nil (the column is not null).
+func cleanContracts(kinds []string) ([]string, error) {
+	out := []string{}
+	for _, k := range contractKinds {
+		if slices.Contains(kinds, k) {
+			out = append(out, k)
+		}
+	}
+	if len(out) != len(kinds) {
+		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_required_contracts", "required_contracts names each of distance_sales, pre_info, tos and privacy at most once")
+	}
+	return out, nil
 }
 
 func (in *CreateInput) normalize() error {
@@ -151,11 +171,14 @@ func (in *CreateInput) normalize() error {
 		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_kind", "pack_id and quantity belong to a credit_pack link")
 	}
 	in.PromotionCode = strings.TrimSpace(in.PromotionCode)
+	var err error
 	if in.PromotionCode != "" && (in.Kind == KindInvoice || !promotionCodeRe.MatchString(in.PromotionCode)) {
 		return errkey.New(codes.InvalidArgument, "billing.payment_link.bad_promotion_code",
 			"promotion_code is 2 to 40 letters, digits, - or _, and belongs to an adhoc or credit_pack link: an invoice that exists is not changed")
 	}
-	var err error
+	if in.RequiredContracts, err = cleanContracts(in.RequiredContracts); err != nil {
+		return err
+	}
 	switch in.Kind {
 	case KindInvoice:
 		err = in.checkInvoiceLink()
@@ -248,8 +271,8 @@ func (in *CreateInput) singleUse() bool {
 
 // fingerprint is what an idempotency key is bound to: the same key with other parameters is a mistake, not a repeat.
 func (in *CreateInput) fingerprint() []byte {
-	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d|%s|%d|%s", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days(),
-		in.PackID, in.Quantity, strings.ToUpper(in.PromotionCode)))
+	h := sha256.Sum256(fmt.Appendf(nil, "%s|%s|%d|%s|%s|%s|%t|%d|%s|%d|%s|%s", in.Kind, in.InvoiceID, in.AmountMinor, in.Currency, in.Description, in.CustomerExternalID, in.singleUse(), in.days(),
+		in.PackID, in.Quantity, strings.ToUpper(in.PromotionCode), strings.Join(in.RequiredContracts, ",")))
 	return h[:]
 }
 
@@ -307,7 +330,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 			}
 		}
 		p := sqlc.InsertPaymentLinkParams{TenantID: tenantID, ID: id, Kind: in.Kind, TokenHash: query.TokenHash(token), ExpiresAt: expires, SingleUse: in.singleUse(),
-			IdempotencyKey: store.NilIfEmpty(in.IdempotencyKey), RequestHash: requestHash(in)}
+			IdempotencyKey: store.NilIfEmpty(in.IdempotencyKey), RequestHash: requestHash(in), RequiredContracts: in.RequiredContracts}
 		switch in.Kind {
 		case KindInvoice:
 			ext, err := checkInvoice(ctx, q, tenantID, in)
