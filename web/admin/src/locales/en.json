@@ -75,7 +75,10 @@
       "selectAllMore": "Select all matching results",
       "confirmAllTitle": "Apply to {n} rows?",
       "confirmAll": "This acts on all {n} selected rows, including those on other pages.",
-      "loadFailed": "The rest of the list could not be loaded, so not all results are selected."
+      "loadFailed": "The rest of the list could not be loaded, so not all results are selected.",
+      "progressLabel": "Progress of the bulk action",
+      "progress": "{n} of {total} done",
+      "progressFailed": "{failed} not changed"
     },
     "appliedFilters": "Applied filters"
   },

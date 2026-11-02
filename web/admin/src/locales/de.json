@@ -75,7 +75,10 @@
       "selectAllMore": "Alle passenden Ergebnisse auswählen",
       "confirmAllTitle": "Auf {n} Zeilen anwenden?",
       "confirmAll": "Das betrifft alle {n} ausgewählten Zeilen, auch die auf anderen Seiten.",
-      "loadFailed": "Der Rest der Liste konnte nicht geladen werden, daher sind nicht alle Ergebnisse ausgewählt."
+      "loadFailed": "Der Rest der Liste konnte nicht geladen werden, daher sind nicht alle Ergebnisse ausgewählt.",
+      "progressLabel": "Fortschritt der Sammelaktion",
+      "progress": "{n} von {total} erledigt",
+      "progressFailed": "{failed} nicht geändert"
     },
     "appliedFilters": "Angewendete Filter"
   },
