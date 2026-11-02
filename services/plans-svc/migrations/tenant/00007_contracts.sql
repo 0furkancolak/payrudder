@@ -1,4 +1,4 @@
--- Contracts for the seller's customers (docs/plans/21-contracts.md), the tenant schema's copy of ../00008_contracts.sql: the same tables, columns, constraints,
+-- Contracts for the seller's customers (docs/plans/21-contracts.md), the tenant schema's copy of ../00009_contracts.sql: the same tables, columns, constraints,
 -- indexes, policies, trigger and privileges; the trigger asks the tenant's row setting for the facts the public one reads from the tenants table.
 
 -- +goose Up
