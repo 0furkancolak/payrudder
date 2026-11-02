@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -99,4 +101,53 @@ func ValidateURL(raw string, allowPrivate bool) error {
 		return ErrForbiddenAddress
 	}
 	return nil
+}
+
+// ValidateLandingURL checks an address that a visitor's browser is sent to from one of our own: http or https, a host that is a public name (not an IP address in any
+// spelling, not "localhost", not a name only a private network resolves), and no user name or password before the host ("https://shop.example@evil.example" shows
+// the first host and goes to the second). Nothing is requested from the platform's network, so unlike ValidateURL this is about who the visitor is led to.
+func ValidateLandingURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return errors.New("not a URL")
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return errors.New("must be an http:// or https:// address")
+	}
+	if u.User != nil {
+		return errors.New("must not carry a user name or password")
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	switch {
+	case host == "":
+		return errors.New("has no host")
+	case endsInNumber(host) || strings.Contains(host, ":"):
+		return errors.New("must name a host, not an IP address")
+	case !strings.Contains(host, ".") || host == "localhost" || hasSuffixIn(host, ".localhost", ".local", ".internal", ".localdomain", ".home.arpa"):
+		return errors.New("must be a public host name")
+	}
+	return nil
+}
+
+// endsInNumber is the browsers' test for an IPv4 address in any spelling (127.1, 0x7f.0.0.1, 2130706433): the last label of the host is a number, decimal or 0x hex.
+func endsInNumber(host string) bool {
+	last := host[strings.LastIndexByte(host, '.')+1:]
+	if last == "" {
+		return false
+	}
+	digits := strings.Trim(last, "0123456789")
+	if digits == "" {
+		return true
+	}
+	hex, ok := strings.CutPrefix(last, "0x")
+	return ok && strings.Trim(hex, "0123456789abcdef") == ""
+}
+
+func hasSuffixIn(s string, suffixes ...string) bool {
+	for _, x := range suffixes {
+		if strings.HasSuffix(s, x) {
+			return true
+		}
+	}
+	return false
 }

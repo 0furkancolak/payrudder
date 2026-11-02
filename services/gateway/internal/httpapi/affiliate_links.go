@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -135,6 +136,13 @@ func (s *Server) affiliateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if to := landing(resp.GetLandingUrl(), resp.GetCode()); to != "" {
+		if !resp.GetLandingTrusted() {
+			// A sandbox, an app that is not live yet or an owner nobody has verified: the address is theirs to choose, so this domain does not send the visitor there by
+			// itself (an open redirect). A page names the host and the visitor decides.
+			u, _ := url.Parse(to)
+			s.render(w, r, http.StatusOK, "leaving", &leavingView{pageBase: newBase(lang), To: to, Host: u.Host})
+			return
+		}
 		hostedHeaders(w)
 		http.Redirect(w, r, to, http.StatusFound)
 		return
@@ -143,13 +151,14 @@ func (s *Server) affiliateLink(w http.ResponseWriter, r *http.Request) {
 }
 
 // landing is the address a partner's visitor is sent to: the program's landing page with the code added as ?ref= (unless it has one), so that the seller's own sign-up
-// can read it. Empty when the program has no landing page.
+// can read it. Empty when the program has no landing page, or when its address is one no visitor of ours is sent to (a user name before the host, an IP address,
+// localhost, another scheme: checked here again because the address was stored before the rule existed or by something that skipped it).
 func landing(base, code string) string {
 	if base == "" {
 		return ""
 	}
 	u, err := url.Parse(base)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+	if err != nil || safehttp.ValidateLandingURL(base) != nil {
 		return ""
 	}
 	q := u.Query()
@@ -166,6 +175,14 @@ type referralView struct {
 }
 
 func (v *referralView) Title() string { return v.L["ref_title"] }
+
+// leavingView is the page that stops a visitor before an address this site did not vouch for: the host they would go to, and the link.
+type leavingView struct {
+	pageBase
+	To, Host string
+}
+
+func (v *leavingView) Title() string { return v.L["leave_title"] }
 
 type privacyView struct{ pageBase }
 

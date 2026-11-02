@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
@@ -103,6 +104,9 @@ type Config struct {
 	// (30s) and then lets one charge through to see whether the provider is back.
 	BreakerFailures int           `env:"PAYMENTS_BREAKER_FAILURES"`
 	BreakerOpenFor  time.Duration `env:"PAYMENTS_BREAKER_OPEN_FOR"`
+	// RedisURL, when set, makes the circuit breaker of an account one for all replicas (docs/provider-health.md); without it, or when Redis cannot be reached, each replica
+	// keeps its own.
+	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// HealthInterval is the pause between the checks of every account's health (5m; 0 turns the checks off) and HealthTimeout the limit of one (10s).
 	HealthInterval time.Duration `env:"PAYMENTS_HEALTH_INTERVAL"`
 	HealthTimeout  time.Duration `env:"PAYMENTS_HEALTH_TIMEOUT"`
@@ -232,6 +236,15 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		// The circuit breakers and the failover are of the tenants' own provider accounts, which need the secrets key like everything else that calls a provider for them.
 		providerHealth := store.ProviderHealth{DB: db}
 		h.Breakers = &accounthealth.Breakers{Settings: payments.BreakerSettings{Failures: cfg.BreakerFailures, OpenFor: cfg.BreakerOpenFor}, Store: providerHealth, Log: log}
+		if cfg.RedisURL != "" {
+			opts, err := redis.ParseURL(cfg.RedisURL)
+			if err != nil {
+				return fmt.Errorf("PAYRUDDER_REDIS_URL: %w", err)
+			}
+			rdb := redis.NewClient(opts)
+			defer func() { _ = rdb.Close() }()
+			h.Breakers.Shared = &accounthealth.RedisBreakers{Client: rdb, Log: log}
+		}
 		h.Failovers = providerHealth
 		if cfg.HealthInterval > 0 {
 			monitor = &accounthealth.Monitor{Store: providerHealth, Resolver: h.Resolver, Breakers: h.Breakers, Interval: cfg.HealthInterval, Timeout: cfg.HealthTimeout, Log: log}

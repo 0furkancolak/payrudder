@@ -75,6 +75,11 @@ func TestRequiredPermission(t *testing.T) {
 		{http.MethodPut, "/v1/tax-rates", PermSettingsWrite},
 		{http.MethodPost, "/v1/webhook-endpoints", PermWebhooksWrite},
 		{http.MethodPost, "/v1/sandbox/close-period", PermSandboxWrite},
+		// A checkout's server records a withdrawal with customers:write; what returns money to a card is invoices:write, as the credit-note routes are.
+		{http.MethodPost, "/v1/customers/{external_id}/contract-withdrawals", PermCustomersWrite},
+		{http.MethodPut, "/v1/contract-withdrawals/{id}/status", PermCustomersWrite},
+		{http.MethodPost, "/v1/contract-withdrawals/{id}/refund", PermInvoicesWrite},
+		{http.MethodPost, "/v1/credit-notes", PermInvoicesWrite},
 	}
 	for _, c := range cases {
 		got, ok := RequiredPermission(c.method, c.path)

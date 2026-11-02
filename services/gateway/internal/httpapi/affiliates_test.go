@@ -27,7 +27,9 @@ type fakeAffiliates struct {
 	tracked []*plansv1.TrackAffiliateClickRequest
 }
 
-// TrackAffiliateClick knows three partners: ANN (no landing page), LAND (a landing page that has a query already) and BOB (no landing page, a 7-day window).
+// TrackAffiliateClick knows these partners: ANN (no landing page), LAND (a landing page that has a query already, of a tenant that is vouched for), BOB (no landing page,
+// a 7-day window), SAND (a landing page of a tenant that is not: a sandbox, say) and, vouched for or not, landing pages that no visitor is sent to: USERINFO, LOCAL, IPV4,
+// SCRIPT and PRIVATE.
 func (f *fakeAffiliates) TrackAffiliateClick(_ context.Context, r *plansv1.TrackAffiliateClickRequest) (*plansv1.TrackAffiliateClickResponse, error) {
 	f.mu.Lock()
 	f.tracked = append(f.tracked, r)
@@ -36,7 +38,15 @@ func (f *fakeAffiliates) TrackAffiliateClick(_ context.Context, r *plansv1.Track
 	case "ANN":
 		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "ANN", AttributionWindowDays: 30, Counted: !r.GetSkipCount()}, nil
 	case "LAND":
-		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "LAND", AttributionWindowDays: 30, LandingUrl: "https://shop.example.com/welcome?utm=x", Counted: true}, nil
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "LAND", AttributionWindowDays: 30, LandingUrl: "https://shop.example.com/welcome?utm=x", Counted: true, LandingTrusted: true}, nil
+	case "SAND":
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "SAND", AttributionWindowDays: 30, LandingUrl: "https://shop.example.com/welcome?utm=x", Counted: true}, nil
+	case "USERINFO", "LOCAL", "IPV4", "SCRIPT", "PRIVATE":
+		bad := map[string]string{"USERINFO": "https://shop.example.com@evil.example/x", "LOCAL": "http://localhost:3000/x", "IPV4": "https://203.0.113.9/x", "SCRIPT": "javascript:alert(1)",
+			"PRIVATE": "https://192.168.0.10/admin"}[strings.ToUpper(r.GetCode())]
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: strings.ToUpper(r.GetCode()), AttributionWindowDays: 30, LandingUrl: bad, Counted: true, LandingTrusted: true}, nil
+	case "USERINFO_UNTRUSTED":
+		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "USERINFO_UNTRUSTED", AttributionWindowDays: 30, LandingUrl: "https://shop.example.com@evil.example/x", Counted: true}, nil
 	case "BOB":
 		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: "BOB", AttributionWindowDays: 7, Counted: !r.GetSkipCount()}, nil
 	case "BROKEN":
