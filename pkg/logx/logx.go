@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"go.opentelemetry.io/otel/trace"
@@ -78,3 +79,23 @@ func (Redacted) LogValue() slog.Value { return slog.StringValue("[REDACTED]") }
 
 // String keeps fmt from printing the secret too.
 func (Redacted) String() string { return "[REDACTED]" }
+
+// Scrub blanks the secrets that end up in free text such as an error message: Payrudder tokens (API keys qk_..., sessions qs_..., webhook secrets
+// whsec_...), provider keys (sk_/rk_), bearer tokens, the password of a URL, and the value after password=, secret:, token=, api_key=, authorization: and
+// the like. Redacted covers a value the code knows is secret; Scrub is for text it did not build, so it is deliberately greedy.
+func Scrub(s string) string {
+	for _, r := range scrubbers {
+		s = r.re.ReplaceAllString(s, r.with)
+	}
+	return s
+}
+
+var scrubbers = []struct {
+	re   *regexp.Regexp
+	with string
+}{
+	{regexp.MustCompile(`\b(?:qk|qs|whsec|sk|rk)_[A-Za-z0-9_-]{8,}`), "[REDACTED]"},
+	{regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}`), "Bearer [REDACTED]"},
+	{regexp.MustCompile(`(?i)(://[^/\s:@]*:)[^@\s/]+@`), "${1}[REDACTED]@"},
+	{regexp.MustCompile(`(?i)\b(password|passwd|secret|token|api[_-]?key|authorization|dsn)(["']?\s*[:=]\s*["']?)(?:bearer\s+)?[^\s"',;&]+`), "${1}${2}[REDACTED]"},
+}

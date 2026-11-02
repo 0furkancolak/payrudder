@@ -28,6 +28,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/logx"
@@ -40,6 +41,8 @@ const (
 	healthCheckTimeout = 2 * time.Second
 	// telemetryFlush bounds the flush of traces and metrics at exit.
 	telemetryFlush = 5 * time.Second
+	// errorFlush bounds the wait for error reports at exit.
+	errorFlush = 2 * time.Second
 )
 
 // Runtime is what a service gets once the common start-up is done.
@@ -93,6 +96,15 @@ func Run[C any, P Configured[C]](defaults []byte, run func(ctx context.Context, 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Error tracking is off unless PAYRUDDER_ERROR_TRACKING_URL is set. A DSN that does not parse is told and ignored: a process must not refuse to start over its error reporting.
+	tracker, err := errtrack.New(errtrack.Options{DSN: base.ErrorTrackingURL, Service: base.ServiceName, Version: base.Version, Environment: string(base.Env), Log: log})
+	if err != nil {
+		log.Warn("error tracking is off", "reason", err.Error())
+	}
+	errtrack.Install(tracker)
+	defer errtrack.Flush(errorFlush)
+	defer errtrack.Recover(ctx) // a panic of this goroutine is reported, then the process dies as before
+
 	reg := health.NewRegistry()
 	providers, err := otelx.Setup(ctx, otelx.Options{
 		ServiceName: base.ServiceName, Version: base.Version, Environment: string(base.Env), OTLPEndpoint: base.OTLPEndpoint, Registry: reg,
@@ -135,6 +147,14 @@ func NewGroup(ctx context.Context, log *slog.Logger, metricsAddr string, hh *hea
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return health.Serve(gctx, metricsAddr, hh) })
 	return &Group{Group: g, ctx: gctx, log: log}
+}
+
+// Go runs f as a member of the group. A panic in f is reported to the error tracker (when there is one) and then crashes the process as it always did.
+func (g *Group) Go(f func() error) {
+	g.Group.Go(func() error {
+		defer errtrack.Recover(g.ctx)
+		return f()
+	})
 }
 
 // Context is cancelled when a member fails or the parent is cancelled. Workers run on it.
