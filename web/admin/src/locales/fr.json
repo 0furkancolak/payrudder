@@ -1515,6 +1515,7 @@
       },
       "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Payrudder.",
       "loadMore": "Afficher plus",
+      "notConnected": "Le journal des e-mails et la liste des adresses bloquées ne sont pas connectés sur ce déploiement : rien ne peut être affiché ici.",
       "suppressions": {
         "title": "Adresses que nous ne contactons plus",
         "hint": "Une adresse figure ici lorsque son e-mail a été rejeté définitivement, a provoqué une plainte ou a été placé ici par l'opérateur. Quel que soit l'e-mail, il ne lui est pas envoyé tant que vous ne la réactivez pas.",

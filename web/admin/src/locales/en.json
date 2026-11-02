@@ -1515,6 +1515,7 @@
       },
       "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail.",
       "loadMore": "Show more",
+      "notConnected": "The mail log and the list of held-back addresses are not connected on this deployment, so nothing can be shown here.",
       "suppressions": {
         "title": "Addresses we do not mail",
         "hint": "An address lands here when its mail bounced for good, drew a complaint, or the operator put it here. Whatever the mail is, it is not sent to the address until you mail it again.",

@@ -411,7 +411,8 @@ func testSaas(t *testing.T) {
 		_, err = e.saasAPI.SetOrganizationPlan(ctx, &plansv1.SetOrganizationPlanRequest{AccountId: ada.account, PlanCode: "scale"})
 		wantCode(t, "a person overriding a plan", err, codes.PermissionDenied, "identity.operator.forbidden")
 
-		list, err := e.saasAPI.ListOrganizations(operator(), &plansv1.ListOrganizationsRequest{PageSize: 200})
+		// The suite shares one database and creates more than a page of organisations: find this one by its owner, not by luck of the order.
+		list, err := e.saasAPI.ListOrganizations(operator(), &plansv1.ListOrganizationsRequest{PageSize: 200, Query: "ada@saas.example"})
 		if err != nil {
 			t.Fatal(err)
 		}

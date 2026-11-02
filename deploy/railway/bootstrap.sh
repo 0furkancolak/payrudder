@@ -31,6 +31,7 @@ done
 [[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
 REPO=${REPO:-owner/payrudder}
 # OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
+# ERROR_TRACKING_URL (environment): the DSN of a GlitchTip or Sentry project (https://<public key>@host/<project id>); set as PAYRUDDER_ERROR_TRACKING_URL on every Go service. Empty: not set, error tracking stays off.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
 run() {
@@ -103,6 +104,7 @@ GO_MEMLIMIT=${GO_MEMLIMIT:-96MiB}
 go_service() { # <service name> <dir> <port>
   vars "$1" "SERVICE_DIR=$2" RAILWAY_DOCKERFILE_PATH=deploy/railway/go.Dockerfile "GOMEMLIMIT=$GO_MEMLIMIT"
   common "$1" "$3"
+  if [[ -n ${ERROR_TRACKING_URL:-} && $1 != mockpsp ]]; then vars "$1" "PAYRUDDER_ERROR_TRACKING_URL=$ERROR_TRACKING_URL"; fi
 }
 
 INFRA=(rabbitmq redpanda minio mailpit)
@@ -156,6 +158,7 @@ secret payments-worker PAYRUDDER_SECRETS_KEY b64
 # Replacing this key: PAYRUDDER_SECRETS_KEY_ID / _PREVIOUS / _PREVIOUS_ID on payments-worker, and the same as references on plans-svc (README, docs/runbooks/secrets-key-rotation.md).
 secret plans-svc PAYRUDDER_OTP_PEPPER hex32
 secret payments-worker PAYMENTS_INTERNAL_TOKEN hex32
+secret notifier NOTIFIER_MAIL_EVENTS_SECRET hex32
 
 note "plans-svc"
 go_service plans-svc services/plans-svc 9100
@@ -217,7 +220,8 @@ vars invoice-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices S3_ASSETS_
 note "notifier"
 go_service notifier services/notifier 9100
 pg_vars notifier notifier system migrator
-vars notifier 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025
+vars notifier 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025 \
+  NOTIFIER_EVENTS_ADDR=:9111
 
 note "gateway"
 go_service gateway services/gateway 8000
@@ -228,7 +232,8 @@ vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGES
   "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "PAYRUDDER_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
   'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live \
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
-  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}"
+  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" \
+  PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111 'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}'
 
 note "admin-ui"
 vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "PAYRUDDER_DEMO=$DEMO" BRAND_NAME=Payrudder
