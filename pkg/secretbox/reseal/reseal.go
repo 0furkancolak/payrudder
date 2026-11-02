@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -66,8 +67,31 @@ type Input struct {
 	Log    *slog.Logger
 }
 
+// identifier and columnType are all a table, column or key name and a key's type may be: the statements below are built from them (identifiers cannot be
+// parameters), so a registry that held anything else is refused before the first statement. The registry is code (places.go), never input.
+var (
+	identifier = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	columnType = regexp.MustCompile(`^(uuid|text|bigint|integer)$`)
+)
+
+func checkColumns(cols []Column) error {
+	for _, c := range cols {
+		ok := identifier.MatchString(c.Table) && identifier.MatchString(c.Column) && len(c.Key) > 0 && c.AAD != nil
+		for _, k := range c.Key {
+			ok = ok && identifier.MatchString(k.Name) && columnType.MatchString(k.Type)
+		}
+		if !ok {
+			return fmt.Errorf("reseal: %q is not a column of boxes this package may build a statement for", c.name())
+		}
+	}
+	return nil
+}
+
 // Run visits the pooled database and every tenant schema of every cell and returns one report per column, in the order of in.Columns.
 func Run(ctx context.Context, in Input) ([]Report, error) {
+	if err := checkColumns(in.Columns); err != nil {
+		return nil, err
+	}
 	if in.Batch <= 0 {
 		in.Batch = 200
 	}
