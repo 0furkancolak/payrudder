@@ -143,6 +143,31 @@ func (q *Queries) GetChargeProvider(ctx context.Context, arg GetChargeProviderPa
 	return provider, err
 }
 
+const getLatestChargeStart = `-- name: GetLatestChargeStart :one
+SELECT COALESCE(min(a.created_at), now())::timestamptz AS started_at, count(*) AS attempts
+FROM payment_attempts a
+WHERE a.tenant_id = $1 AND a.invoice_id = $2 AND a.kind = 'charge'
+  AND a.idempotency_key = (SELECT l.idempotency_key FROM payment_attempts l WHERE l.tenant_id = $1 AND l.invoice_id = $2 AND l.kind = 'charge' ORDER BY l.created_at DESC LIMIT 1)
+`
+
+type GetLatestChargeStartParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+type GetLatestChargeStartRow struct {
+	StartedAt time.Time
+	Attempts  int64
+}
+
+// When the newest charge key of an invoice was first tried (the start of the window a payment that waits for the customer has), and how many attempts it has.
+func (q *Queries) GetLatestChargeStart(ctx context.Context, arg GetLatestChargeStartParams) (GetLatestChargeStartRow, error) {
+	row := q.db.QueryRow(ctx, getLatestChargeStart, arg.TenantID, arg.InvoiceID)
+	var i GetLatestChargeStartRow
+	err := row.Scan(&i.StartedAt, &i.Attempts)
+	return i, err
+}
+
 const listRefundAttemptsByKey = `-- name: ListRefundAttemptsByKey :many
 SELECT command_id, status, reply FROM payment_attempts
 WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'refund' AND idempotency_key = $3 AND command_id <> $4

@@ -49,3 +49,15 @@ func Get(ctx context.Context, db *tenantdb.DB, tenantID, invoiceID uuid.UUID) (*
 	}
 	return &History{Saga: saga, Events: events}, nil
 }
+
+// Wait reads what the payment of an invoice waits for (see billingv1.PaymentWait).
+func Wait(ctx context.Context, db *tenantdb.DB, tenantID, invoiceID uuid.UUID) (sqlc.GetSagaWaitRow, error) {
+	row, err := db.Q(tenantID).GetSagaWait(ctx, sqlc.GetSagaWaitParams{TenantID: tenantID, InvoiceID: invoiceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, ErrNoSaga
+	}
+	if err != nil {
+		return row, apierr.Internal(ctx, err)
+	}
+	return row, nil
+}

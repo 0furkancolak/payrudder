@@ -2438,6 +2438,44 @@ paths:
               schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/payment-wait:
+    get:
+      operationId: getInvoicePaymentWait
+      summary: What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+      description: >
+        Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and
+        `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the
+        payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider
+        again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentWait" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/release:
+    post:
+      operationId: releaseHeldInvoice
+      summary: Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+      description: >
+        Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still
+        blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked
+        customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/void:
+    post:
+      operationId: voidHeldInvoice
+      summary: Void an invoice whose first charge is held
+      description: >
+        Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be
+        voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /v1/audit-events:
     get:
       operationId: listAuditEvents
@@ -6703,6 +6741,15 @@ components:
         dunning_attempt: { type: integer }
         last_error: { type: string }
         version: { type: integer }
+    PaymentWait:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, examples: [PAYMENT_HELD], description: "The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED" }
+        since_time: { type: string, format: date-time, description: "When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered)" }
+        next_check_time: { type: string, format: date-time, description: "When Payrudder looks again (the next pass over held charges, or the next question to the provider)" }
+        hold_reason: { type: string, enum: [customer_blocked, tenant_on_hold, none], description: "PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked" }
+        window_ends_time: { type: string, format: date-time, description: "PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer" }
     InvoiceLine:
       type: object
       required: [line_no, kind, meter_code, origin_period_id, quantity, amount_minor, description, service_from, service_to]

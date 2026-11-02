@@ -19,53 +19,56 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BillingService_GetInvoice_FullMethodName           = "/payrudder.billing.v1.BillingService/GetInvoice"
-	BillingService_ListInvoices_FullMethodName         = "/payrudder.billing.v1.BillingService/ListInvoices"
-	BillingService_GetUpcomingInvoice_FullMethodName   = "/payrudder.billing.v1.BillingService/GetUpcomingInvoice"
-	BillingService_GetInvoicePdfUrl_FullMethodName     = "/payrudder.billing.v1.BillingService/GetInvoicePdfUrl"
-	BillingService_GetRevenueReport_FullMethodName     = "/payrudder.billing.v1.BillingService/GetRevenueReport"
-	BillingService_GetDunningReport_FullMethodName     = "/payrudder.billing.v1.BillingService/GetDunningReport"
-	BillingService_GetCreditNote_FullMethodName        = "/payrudder.billing.v1.BillingService/GetCreditNote"
-	BillingService_ListCreditNotes_FullMethodName      = "/payrudder.billing.v1.BillingService/ListCreditNotes"
-	BillingService_GetEInvoice_FullMethodName          = "/payrudder.billing.v1.BillingService/GetEInvoice"
-	BillingService_ListEInvoices_FullMethodName        = "/payrudder.billing.v1.BillingService/ListEInvoices"
-	BillingService_GetEInvoiceFileUrl_FullMethodName   = "/payrudder.billing.v1.BillingService/GetEInvoiceFileUrl"
-	BillingService_CreateInvoiceLink_FullMethodName    = "/payrudder.billing.v1.BillingService/CreateInvoiceLink"
-	BillingService_RevokeInvoiceLinks_FullMethodName   = "/payrudder.billing.v1.BillingService/RevokeInvoiceLinks"
-	BillingService_CreatePaymentLink_FullMethodName    = "/payrudder.billing.v1.BillingService/CreatePaymentLink"
-	BillingService_GetPaymentLink_FullMethodName       = "/payrudder.billing.v1.BillingService/GetPaymentLink"
-	BillingService_ListPaymentLinks_FullMethodName     = "/payrudder.billing.v1.BillingService/ListPaymentLinks"
-	BillingService_RevokePaymentLink_FullMethodName    = "/payrudder.billing.v1.BillingService/RevokePaymentLink"
-	BillingService_CreatePortalLink_FullMethodName     = "/payrudder.billing.v1.BillingService/CreatePortalLink"
-	BillingService_RevokePortalLinks_FullMethodName    = "/payrudder.billing.v1.BillingService/RevokePortalLinks"
-	BillingService_SettleInvoicePayment_FullMethodName = "/payrudder.billing.v1.BillingService/SettleInvoicePayment"
-	BillingService_RecordPaymentDispute_FullMethodName = "/payrudder.billing.v1.BillingService/RecordPaymentDispute"
-	BillingService_GetDunningSettings_FullMethodName   = "/payrudder.billing.v1.BillingService/GetDunningSettings"
-	BillingService_SetDunningSettings_FullMethodName   = "/payrudder.billing.v1.BillingService/SetDunningSettings"
-	BillingService_ListCreditPacks_FullMethodName      = "/payrudder.billing.v1.BillingService/ListCreditPacks"
-	BillingService_CreateCreditPack_FullMethodName     = "/payrudder.billing.v1.BillingService/CreateCreditPack"
-	BillingService_SetCreditPackActive_FullMethodName  = "/payrudder.billing.v1.BillingService/SetCreditPackActive"
-	BillingService_GetCreditBalance_FullMethodName     = "/payrudder.billing.v1.BillingService/GetCreditBalance"
-	BillingService_GrantCredits_FullMethodName         = "/payrudder.billing.v1.BillingService/GrantCredits"
-	BillingService_ConsumeCredits_FullMethodName       = "/payrudder.billing.v1.BillingService/ConsumeCredits"
-	BillingService_ListCreditLedger_FullMethodName     = "/payrudder.billing.v1.BillingService/ListCreditLedger"
-	BillingService_CreateExpense_FullMethodName        = "/payrudder.billing.v1.BillingService/CreateExpense"
-	BillingService_UpdateExpense_FullMethodName        = "/payrudder.billing.v1.BillingService/UpdateExpense"
-	BillingService_VoidExpense_FullMethodName          = "/payrudder.billing.v1.BillingService/VoidExpense"
-	BillingService_ListExpenses_FullMethodName         = "/payrudder.billing.v1.BillingService/ListExpenses"
-	BillingService_GetExpenseInbox_FullMethodName      = "/payrudder.billing.v1.BillingService/GetExpenseInbox"
-	BillingService_RotateExpenseInbox_FullMethodName   = "/payrudder.billing.v1.BillingService/RotateExpenseInbox"
-	BillingService_ListInboxItems_FullMethodName       = "/payrudder.billing.v1.BillingService/ListInboxItems"
-	BillingService_GetInboxItemFile_FullMethodName     = "/payrudder.billing.v1.BillingService/GetInboxItemFile"
-	BillingService_ResolveInboxItem_FullMethodName     = "/payrudder.billing.v1.BillingService/ResolveInboxItem"
-	BillingService_ReceiveInboxMail_FullMethodName     = "/payrudder.billing.v1.BillingService/ReceiveInboxMail"
-	BillingService_ListExpenseRules_FullMethodName     = "/payrudder.billing.v1.BillingService/ListExpenseRules"
-	BillingService_SaveExpenseRule_FullMethodName      = "/payrudder.billing.v1.BillingService/SaveExpenseRule"
-	BillingService_DeleteExpenseRule_FullMethodName    = "/payrudder.billing.v1.BillingService/DeleteExpenseRule"
-	BillingService_GetAccountingSummary_FullMethodName = "/payrudder.billing.v1.BillingService/GetAccountingSummary"
-	BillingService_GetDashboardStats_FullMethodName    = "/payrudder.billing.v1.BillingService/GetDashboardStats"
-	BillingService_GetCreditSettings_FullMethodName    = "/payrudder.billing.v1.BillingService/GetCreditSettings"
-	BillingService_SetCreditSettings_FullMethodName    = "/payrudder.billing.v1.BillingService/SetCreditSettings"
+	BillingService_GetInvoice_FullMethodName            = "/payrudder.billing.v1.BillingService/GetInvoice"
+	BillingService_ListInvoices_FullMethodName          = "/payrudder.billing.v1.BillingService/ListInvoices"
+	BillingService_GetUpcomingInvoice_FullMethodName    = "/payrudder.billing.v1.BillingService/GetUpcomingInvoice"
+	BillingService_GetInvoicePdfUrl_FullMethodName      = "/payrudder.billing.v1.BillingService/GetInvoicePdfUrl"
+	BillingService_GetRevenueReport_FullMethodName      = "/payrudder.billing.v1.BillingService/GetRevenueReport"
+	BillingService_GetDunningReport_FullMethodName      = "/payrudder.billing.v1.BillingService/GetDunningReport"
+	BillingService_GetCreditNote_FullMethodName         = "/payrudder.billing.v1.BillingService/GetCreditNote"
+	BillingService_ListCreditNotes_FullMethodName       = "/payrudder.billing.v1.BillingService/ListCreditNotes"
+	BillingService_GetEInvoice_FullMethodName           = "/payrudder.billing.v1.BillingService/GetEInvoice"
+	BillingService_ListEInvoices_FullMethodName         = "/payrudder.billing.v1.BillingService/ListEInvoices"
+	BillingService_GetEInvoiceFileUrl_FullMethodName    = "/payrudder.billing.v1.BillingService/GetEInvoiceFileUrl"
+	BillingService_CreateInvoiceLink_FullMethodName     = "/payrudder.billing.v1.BillingService/CreateInvoiceLink"
+	BillingService_RevokeInvoiceLinks_FullMethodName    = "/payrudder.billing.v1.BillingService/RevokeInvoiceLinks"
+	BillingService_GetInvoicePaymentWait_FullMethodName = "/payrudder.billing.v1.BillingService/GetInvoicePaymentWait"
+	BillingService_ReleaseHeldInvoice_FullMethodName    = "/payrudder.billing.v1.BillingService/ReleaseHeldInvoice"
+	BillingService_VoidHeldInvoice_FullMethodName       = "/payrudder.billing.v1.BillingService/VoidHeldInvoice"
+	BillingService_CreatePaymentLink_FullMethodName     = "/payrudder.billing.v1.BillingService/CreatePaymentLink"
+	BillingService_GetPaymentLink_FullMethodName        = "/payrudder.billing.v1.BillingService/GetPaymentLink"
+	BillingService_ListPaymentLinks_FullMethodName      = "/payrudder.billing.v1.BillingService/ListPaymentLinks"
+	BillingService_RevokePaymentLink_FullMethodName     = "/payrudder.billing.v1.BillingService/RevokePaymentLink"
+	BillingService_CreatePortalLink_FullMethodName      = "/payrudder.billing.v1.BillingService/CreatePortalLink"
+	BillingService_RevokePortalLinks_FullMethodName     = "/payrudder.billing.v1.BillingService/RevokePortalLinks"
+	BillingService_SettleInvoicePayment_FullMethodName  = "/payrudder.billing.v1.BillingService/SettleInvoicePayment"
+	BillingService_RecordPaymentDispute_FullMethodName  = "/payrudder.billing.v1.BillingService/RecordPaymentDispute"
+	BillingService_GetDunningSettings_FullMethodName    = "/payrudder.billing.v1.BillingService/GetDunningSettings"
+	BillingService_SetDunningSettings_FullMethodName    = "/payrudder.billing.v1.BillingService/SetDunningSettings"
+	BillingService_ListCreditPacks_FullMethodName       = "/payrudder.billing.v1.BillingService/ListCreditPacks"
+	BillingService_CreateCreditPack_FullMethodName      = "/payrudder.billing.v1.BillingService/CreateCreditPack"
+	BillingService_SetCreditPackActive_FullMethodName   = "/payrudder.billing.v1.BillingService/SetCreditPackActive"
+	BillingService_GetCreditBalance_FullMethodName      = "/payrudder.billing.v1.BillingService/GetCreditBalance"
+	BillingService_GrantCredits_FullMethodName          = "/payrudder.billing.v1.BillingService/GrantCredits"
+	BillingService_ConsumeCredits_FullMethodName        = "/payrudder.billing.v1.BillingService/ConsumeCredits"
+	BillingService_ListCreditLedger_FullMethodName      = "/payrudder.billing.v1.BillingService/ListCreditLedger"
+	BillingService_CreateExpense_FullMethodName         = "/payrudder.billing.v1.BillingService/CreateExpense"
+	BillingService_UpdateExpense_FullMethodName         = "/payrudder.billing.v1.BillingService/UpdateExpense"
+	BillingService_VoidExpense_FullMethodName           = "/payrudder.billing.v1.BillingService/VoidExpense"
+	BillingService_ListExpenses_FullMethodName          = "/payrudder.billing.v1.BillingService/ListExpenses"
+	BillingService_GetExpenseInbox_FullMethodName       = "/payrudder.billing.v1.BillingService/GetExpenseInbox"
+	BillingService_RotateExpenseInbox_FullMethodName    = "/payrudder.billing.v1.BillingService/RotateExpenseInbox"
+	BillingService_ListInboxItems_FullMethodName        = "/payrudder.billing.v1.BillingService/ListInboxItems"
+	BillingService_GetInboxItemFile_FullMethodName      = "/payrudder.billing.v1.BillingService/GetInboxItemFile"
+	BillingService_ResolveInboxItem_FullMethodName      = "/payrudder.billing.v1.BillingService/ResolveInboxItem"
+	BillingService_ReceiveInboxMail_FullMethodName      = "/payrudder.billing.v1.BillingService/ReceiveInboxMail"
+	BillingService_ListExpenseRules_FullMethodName      = "/payrudder.billing.v1.BillingService/ListExpenseRules"
+	BillingService_SaveExpenseRule_FullMethodName       = "/payrudder.billing.v1.BillingService/SaveExpenseRule"
+	BillingService_DeleteExpenseRule_FullMethodName     = "/payrudder.billing.v1.BillingService/DeleteExpenseRule"
+	BillingService_GetAccountingSummary_FullMethodName  = "/payrudder.billing.v1.BillingService/GetAccountingSummary"
+	BillingService_GetDashboardStats_FullMethodName     = "/payrudder.billing.v1.BillingService/GetDashboardStats"
+	BillingService_GetCreditSettings_FullMethodName     = "/payrudder.billing.v1.BillingService/GetCreditSettings"
+	BillingService_SetCreditSettings_FullMethodName     = "/payrudder.billing.v1.BillingService/SetCreditSettings"
 )
 
 // BillingServiceClient is the client API for BillingService service.
@@ -97,6 +100,16 @@ type BillingServiceClient interface {
 	CreateInvoiceLink(ctx context.Context, in *CreateInvoiceLinkRequest, opts ...grpc.CallOption) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
 	RevokeInvoiceLinks(ctx context.Context, in *RevokeInvoiceLinksRequest, opts ...grpc.CallOption) (*RevokeInvoiceLinksResponse, error)
+	// GetInvoicePaymentWait says what an invoice's payment is waiting for when the wait is Payrudder's or the customer's to end: the first charge held by the payment gate
+	// (PAYMENT_HELD: why, since when, when it is looked at again) or a payment that needs the customer to confirm it with their bank (PAYMENT_ACTION_REQUIRED: since when
+	// the customer was mailed, when the next look is). Any other state answers the state alone.
+	GetInvoicePaymentWait(ctx context.Context, in *GetInvoicePaymentWaitRequest, opts ...grpc.CallOption) (*GetInvoicePaymentWaitResponse, error)
+	// ReleaseHeldInvoice asks the payment gate again for an invoice whose first charge is held and charges it when the gate lets it through; where the gate still says no it stays
+	// held (and the answer says so). It never overrides the gate. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any other state.
+	ReleaseHeldInvoice(ctx context.Context, in *ReleaseHeldInvoiceRequest, opts ...grpc.CallOption) (*ReleaseHeldInvoiceResponse, error)
+	// VoidHeldInvoice voids an invoice whose first charge is held: nothing was charged, so nothing is refunded. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any
+	// other state (the operator's VoidInvoice handles a paid one, with its refund).
+	VoidHeldInvoice(ctx context.Context, in *VoidHeldInvoiceRequest, opts ...grpc.CallOption) (*VoidHeldInvoiceResponse, error)
 	// CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
 	CreatePaymentLink(ctx context.Context, in *CreatePaymentLinkRequest, opts ...grpc.CallOption) (*CreatePaymentLinkResponse, error)
 	GetPaymentLink(ctx context.Context, in *GetPaymentLinkRequest, opts ...grpc.CallOption) (*GetPaymentLinkResponse, error)
@@ -304,6 +317,36 @@ func (c *billingServiceClient) RevokeInvoiceLinks(ctx context.Context, in *Revok
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RevokeInvoiceLinksResponse)
 	err := c.cc.Invoke(ctx, BillingService_RevokeInvoiceLinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetInvoicePaymentWait(ctx context.Context, in *GetInvoicePaymentWaitRequest, opts ...grpc.CallOption) (*GetInvoicePaymentWaitResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInvoicePaymentWaitResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetInvoicePaymentWait_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ReleaseHeldInvoice(ctx context.Context, in *ReleaseHeldInvoiceRequest, opts ...grpc.CallOption) (*ReleaseHeldInvoiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReleaseHeldInvoiceResponse)
+	err := c.cc.Invoke(ctx, BillingService_ReleaseHeldInvoice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) VoidHeldInvoice(ctx context.Context, in *VoidHeldInvoiceRequest, opts ...grpc.CallOption) (*VoidHeldInvoiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VoidHeldInvoiceResponse)
+	err := c.cc.Invoke(ctx, BillingService_VoidHeldInvoice_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -679,6 +722,16 @@ type BillingServiceServer interface {
 	CreateInvoiceLink(context.Context, *CreateInvoiceLinkRequest) (*CreateInvoiceLinkResponse, error)
 	// RevokeInvoiceLinks makes every link to an invoice stop working.
 	RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error)
+	// GetInvoicePaymentWait says what an invoice's payment is waiting for when the wait is Payrudder's or the customer's to end: the first charge held by the payment gate
+	// (PAYMENT_HELD: why, since when, when it is looked at again) or a payment that needs the customer to confirm it with their bank (PAYMENT_ACTION_REQUIRED: since when
+	// the customer was mailed, when the next look is). Any other state answers the state alone.
+	GetInvoicePaymentWait(context.Context, *GetInvoicePaymentWaitRequest) (*GetInvoicePaymentWaitResponse, error)
+	// ReleaseHeldInvoice asks the payment gate again for an invoice whose first charge is held and charges it when the gate lets it through; where the gate still says no it stays
+	// held (and the answer says so). It never overrides the gate. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any other state.
+	ReleaseHeldInvoice(context.Context, *ReleaseHeldInvoiceRequest) (*ReleaseHeldInvoiceResponse, error)
+	// VoidHeldInvoice voids an invoice whose first charge is held: nothing was charged, so nothing is refunded. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any
+	// other state (the operator's VoidInvoice handles a paid one, with its refund).
+	VoidHeldInvoice(context.Context, *VoidHeldInvoiceRequest) (*VoidHeldInvoiceResponse, error)
 	// CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
 	CreatePaymentLink(context.Context, *CreatePaymentLinkRequest) (*CreatePaymentLinkResponse, error)
 	GetPaymentLink(context.Context, *GetPaymentLinkRequest) (*GetPaymentLinkResponse, error)
@@ -800,6 +853,15 @@ func (UnimplementedBillingServiceServer) CreateInvoiceLink(context.Context, *Cre
 }
 func (UnimplementedBillingServiceServer) RevokeInvoiceLinks(context.Context, *RevokeInvoiceLinksRequest) (*RevokeInvoiceLinksResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeInvoiceLinks not implemented")
+}
+func (UnimplementedBillingServiceServer) GetInvoicePaymentWait(context.Context, *GetInvoicePaymentWaitRequest) (*GetInvoicePaymentWaitResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetInvoicePaymentWait not implemented")
+}
+func (UnimplementedBillingServiceServer) ReleaseHeldInvoice(context.Context, *ReleaseHeldInvoiceRequest) (*ReleaseHeldInvoiceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReleaseHeldInvoice not implemented")
+}
+func (UnimplementedBillingServiceServer) VoidHeldInvoice(context.Context, *VoidHeldInvoiceRequest) (*VoidHeldInvoiceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VoidHeldInvoice not implemented")
 }
 func (UnimplementedBillingServiceServer) CreatePaymentLink(context.Context, *CreatePaymentLinkRequest) (*CreatePaymentLinkResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreatePaymentLink not implemented")
@@ -1154,6 +1216,60 @@ func _BillingService_RevokeInvoiceLinks_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BillingServiceServer).RevokeInvoiceLinks(ctx, req.(*RevokeInvoiceLinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetInvoicePaymentWait_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInvoicePaymentWaitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetInvoicePaymentWait(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetInvoicePaymentWait_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetInvoicePaymentWait(ctx, req.(*GetInvoicePaymentWaitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ReleaseHeldInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReleaseHeldInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ReleaseHeldInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ReleaseHeldInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ReleaseHeldInvoice(ctx, req.(*ReleaseHeldInvoiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_VoidHeldInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VoidHeldInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).VoidHeldInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_VoidHeldInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).VoidHeldInvoice(ctx, req.(*VoidHeldInvoiceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1828,6 +1944,18 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeInvoiceLinks",
 			Handler:    _BillingService_RevokeInvoiceLinks_Handler,
+		},
+		{
+			MethodName: "GetInvoicePaymentWait",
+			Handler:    _BillingService_GetInvoicePaymentWait_Handler,
+		},
+		{
+			MethodName: "ReleaseHeldInvoice",
+			Handler:    _BillingService_ReleaseHeldInvoice_Handler,
+		},
+		{
+			MethodName: "VoidHeldInvoice",
+			Handler:    _BillingService_VoidHeldInvoice_Handler,
 		},
 		{
 			MethodName: "CreatePaymentLink",

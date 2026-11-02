@@ -85,6 +85,9 @@ type Server struct {
 	Disputes DisputesAPI
 	// DisputeCases keeps the cases a dispute notification opens, ends or reopens.
 	DisputeCases store.Disputes
+	// TransferWindow is how long a payment that waits (a bank transfer, a card that needs the customer's 3-D Secure) waits before it counts as declined
+	// (PAYMENTS_TRANSFER_WINDOW_DAYS); the same value the handler judges by.
+	TransferWindow time.Duration
 	// SettlementLag is how long a payment may go unreported by its provider before that is a finding (PAYMENTS_SETTLEMENT_LAG); zero is settlement.DefaultLag.
 	SettlementLag time.Duration
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
@@ -158,7 +161,7 @@ func (s *Server) modules() []RouteRegistrar {
 			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
 		&health.Handler{Store: store.ProviderHealth{DB: s.Ledger.DB}, Log: s.Log},
-		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger, Disputes: s.DisputeCases}, Command: ledgercommand.Deps{Reset: s.Reset}},
+		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger, Disputes: s.DisputeCases, Attempts: s.Attempts, Window: s.TransferWindow}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
 			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Customers: s.Plans, Log: s.Log}},
