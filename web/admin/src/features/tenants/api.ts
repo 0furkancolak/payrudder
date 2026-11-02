@@ -94,3 +94,19 @@ export async function lookupJob(kind: "replay" | "rerating", tenantId: string, j
   }
   return unwrap(api.GET("/admin/v1/tenants/{tenant_id}/rerating-jobs/{job_id}", { params: { path: { tenant_id: tenantId, job_id: jobId } } }));
 }
+
+export const pauseKey = ["price-change-pause"] as const;
+
+/** Whether the operator has paused every price change of the platform (plan 15), who paused them and why. */
+export function usePriceChangePause() {
+  return useQuery({ queryKey: pauseKey, queryFn: () => unwrap(api.GET("/admin/v1/price-change-pause")) });
+}
+
+/** Pulls or releases the kill switch of price changes. The reason is kept with the setting and in the audit log. */
+export function useSetPriceChangePause() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { paused: boolean; reason?: string }) => unwrap(api.PUT("/admin/v1/price-change-pause", { body: { paused: v.paused, reason: v.reason ?? "" } })),
+    onSuccess: (data) => queries.setQueryData(pauseKey, data),
+  });
+}

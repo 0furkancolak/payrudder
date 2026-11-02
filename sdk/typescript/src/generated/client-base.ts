@@ -44,6 +44,8 @@ import type {
   CreditLedgerPage,
   EInvoiceList,
   ExpensePage,
+  GetPriceChangeQuery,
+  GetPriceChangeResponse,
   ListAffiliateCommissionsQuery,
   ListAffiliateCommissionsResponse,
   ListAffiliateJournalQuery,
@@ -113,6 +115,14 @@ export class Paginators {
     return paginate(
       (q) => this.r.subscriptions.listSubscriptions(q, options),
       (page) => page.subscriptions,
+      query,
+    );
+  }
+
+  getPriceChange(id: string, query?: GetPriceChangeQuery, options?: RequestOptions): AsyncGenerator<NonNullable<GetPriceChangeResponse["items"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.priceChanges.getPriceChange(id, q, options),
+      (page) => page.items,
       query,
     );
   }

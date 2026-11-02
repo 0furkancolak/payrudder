@@ -237,7 +237,20 @@
     "suspend": "Suspender",
     "reinstate": "Reactivar",
     "suspended": "Suspendido",
-    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante."
+    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante.",
+    "pricePause": {
+      "title": "Cambios de precio",
+      "running": "En marcha",
+      "paused": "En pausa",
+      "hint": "El interruptor de emergencia para todos los vendedores: mientras está activo, ningún cambio de precio programa suscripciones (una simulación sigue contando), una ejecución en curso se detiene y los avisos ya en cola esperan. Los cambios ya programados se siguen aplicando en su renovación; el vendedor retira el cambio de precio para detener uno.",
+      "by": "Pausado por {who} el {date}.",
+      "reason": "Motivo",
+      "reasonHint": "Se guarda con el ajuste y en el registro de auditoría. Hasta 500 caracteres.",
+      "pause": "Pausar todos los cambios de precio",
+      "resume": "Reanudar los cambios de precio",
+      "confirmPause": "¿Pausar todos los cambios de precio de la plataforma? Ningún vendedor podrá programar ni reintentar uno hasta que reanudes, y los avisos ya en cola esperan.",
+      "confirmResume": "¿Reanudar los cambios de precio? Los vendedores podrán volver a programar y reintentar, y los avisos que esperaban se enviarán."
+    }
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -862,7 +875,8 @@
           "run_by_provider": "la gestiona un proveedor de pagos",
           "not_changeable": "no se puede mover así",
           "customer_blocked": "el cliente está bloqueado"
-        }
+        },
+        "loadMore": "Mostrar más suscripciones"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Cambio de precio no encontrado.",
-        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo."
+        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo.",
+        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde."
       },
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",
@@ -3419,6 +3434,9 @@
         "not_configured": "Este despliegue aún no puede ofrecer el inicio de sesión en dos pasos: no tiene clave de secretos.",
         "required_by_organisation": "Una organización de la que es propietario exige el inicio de sesión en dos pasos, por lo que no puede desactivarlo.",
         "setup_required": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo primero en la página de seguridad."
+      },
+      "user": {
+        "not_found": "Ninguna persona inicia sesión con esa dirección."
       }
     },
     "gateway": {
@@ -5468,7 +5486,19 @@
       "clear": "Quitar los límites propios",
       "save": "Guardar",
       "saved": "Guardado.",
-      "cleared": "Límites propios quitados."
+      "cleared": "Límites propios quitados.",
+      "twoFactor": {
+        "title": "Segundo factor perdido",
+        "hint": "Para una persona que ha perdido tanto su aplicación de autenticación como sus códigos de recuperación. Comprueba primero quién lo pide. Se desactiva su inicio de sesión en dos pasos, se cierran sus sesiones en todas partes, se le envía un correo y el restablecimiento queda en el registro de auditoría con tu motivo.",
+        "email": "Dirección de inicio de sesión de la persona",
+        "reason": "Motivo (se guarda en el registro de auditoría)",
+        "reset": "Desactivar el inicio de sesión en dos pasos",
+        "confirmTitle": "¿Desactivar el inicio de sesión en dos pasos?",
+        "confirmBody": "{email} se desconectará en todas partes y podrá iniciar sesión solo con su contraseña hasta que lo configure de nuevo. Se le envía un correo y el restablecimiento se registra con tu nombre y tu motivo.",
+        "confirm": "Desactivar",
+        "done": "El inicio de sesión en dos pasos de {email} está desactivado. Se le ha enviado un correo.",
+        "nothing": "{email} no tenía el inicio de sesión en dos pasos activado; no se cambió nada."
+      }
     }
   },
   "support": {
@@ -5981,6 +6011,20 @@
       "invoice": "Facturas",
       "provider_account": "Cuentas de proveedores",
       "tenant": "Ajustes y estado del inquilino",
+      "price_change": "Cambios de precio",
+      "coupon": "Cupones",
+      "promotion_code": "Códigos promocionales",
+      "routing_rules": "Enrutamiento de pagos",
+      "tax_rates": "Tasas de impuestos",
+      "mail_settings": "Ajustes de correo",
+      "mail_integration": "Proveedor de correo",
+      "go_live": "Salida a producción",
+      "contract": "Contratos",
+      "support": "Soporte",
+      "dunning": "Reclamación de pagos",
+      "invoice_payment": "Pagos registrados a mano",
+      "bank_transfer": "Transferencias bancarias",
+      "user": "Contraseñas e inicio de sesión",
       "two_factor": "Inicio de sesión en dos pasos",
       "sign_in": "Inicio de sesión",
       "account": "Organización"
@@ -6029,10 +6073,62 @@
         "status_changed": "Estado cambiado",
         "settings_updated": "Ajustes cambiados"
       },
+      "price_change": {
+        "scheduled": "Cambio de precio programado",
+        "withdrawn": "Cambio de precio retirado"
+      },
+      "coupon": {
+        "created": "Cupón creado",
+        "deactivated": "Cupón desactivado"
+      },
+      "promotion_code": {
+        "created": "Códigos promocionales creados",
+        "deactivated": "Código promocional desactivado"
+      },
+      "routing_rules": {
+        "changed": "Enrutamiento de pagos modificado"
+      },
+      "tax_rates": {
+        "changed": "Tasas de impuestos modificadas"
+      },
+      "mail_settings": {
+        "changed": "Ajustes de correo modificados"
+      },
+      "mail_integration": {
+        "saved": "Proveedor de correo conectado",
+        "removed": "Proveedor de correo desconectado"
+      },
+      "go_live": {
+        "billing_profile_saved": "Perfil de facturación guardado",
+        "terms_accepted": "Términos aceptados",
+        "activated": "Entorno en producción activado"
+      },
+      "contract": {
+        "version_published": "Versión de contrato publicada",
+        "settings_changed": "Ajustes de contratos modificados"
+      },
+      "support": {
+        "status_changed": "Estado de un ticket de soporte modificado"
+      },
+      "dunning": {
+        "settings_changed": "Ajustes de reclamación modificados"
+      },
+      "invoice_payment": {
+        "recorded": "Pago registrado a mano"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Transferencia bancaria confirmada"
+      },
+      "user": {
+        "password_reset": "Contraseña restablecida",
+        "sign_in_locked": "Inicio de sesión bloqueado"
+      },
       "two_factor": {
         "enabled": "Inicio de sesión en dos pasos activado",
         "disabled": "Inicio de sesión en dos pasos desactivado",
-        "recovery_codes_regenerated": "Códigos de recuperación regenerados"
+        "recovery_codes_replaced": "Códigos de recuperación regenerados",
+        "recovery_code_used": "Código de recuperación usado",
+        "reset_by_operator": "Inicio de sesión en dos pasos restablecido por el soporte"
       }
     }
   }

@@ -237,7 +237,20 @@
     "suspend": "Dondur",
     "reinstate": "Yeniden etkinleştir",
     "suspended": "Donduruldu",
-    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz."
+    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz.",
+    "pricePause": {
+      "title": "Fiyat değişiklikleri",
+      "running": "Çalışıyor",
+      "paused": "Duraklatıldı",
+      "hint": "Tüm satıcılar için acil durdurma anahtarı: duraklatıldığında hiçbir fiyat değişikliği abonelik planlamaz (deneme çalıştırması yine sayar), süren bir çalıştırma durur ve sıradaki bildirimler bekler. Zaten planlanmış değişiklikler yenilemelerinde yine uygulanır; birini durdurmak için satıcı fiyat değişikliğini geri çeker.",
+      "by": "{date} tarihinde {who} tarafından duraklatıldı.",
+      "reason": "Gerekçe",
+      "reasonHint": "Ayarla birlikte ve denetim günlüğünde saklanır. En fazla 500 karakter.",
+      "pause": "Tüm fiyat değişikliklerini duraklat",
+      "resume": "Fiyat değişikliklerini sürdür",
+      "confirmPause": "Platformdaki tüm fiyat değişiklikleri duraklatılsın mı? Siz sürdürene kadar hiçbir satıcı yenisini planlayamaz veya yeniden deneyemez ve sıradaki bildirimler bekler.",
+      "confirmResume": "Fiyat değişiklikleri sürdürülsün mü? Satıcılar yeniden planlayıp deneyebilir ve bekleyen bildirimler gönderilir."
+    }
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -862,7 +875,8 @@
           "run_by_provider": "ödeme sağlayıcısı yönetiyor",
           "not_changeable": "bu yolla taşınamaz",
           "customer_blocked": "müşteri engelli"
-        }
+        },
+        "loadMore": "Daha fazla abonelik göster"
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Fiyat değişikliği bulunamadı.",
-        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun."
+        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun.",
+        "paused": "Fiyat değişiklikleri operatör tarafından duraklatıldı. Daha sonra tekrar deneyin."
       },
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
@@ -3419,6 +3434,9 @@
         "not_configured": "Bu kurulum henüz iki adımlı giriş sunamıyor: gizli anahtar tanımlı değil.",
         "required_by_organisation": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kıldığı için kapatamazsınız.",
         "setup_required": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Önce güvenlik sayfasında kurun."
+      },
+      "user": {
+        "not_found": "Bu adresle oturum açan bir kişi yok."
       }
     },
     "gateway": {
@@ -5468,7 +5486,19 @@
       "clear": "Özel limitleri kaldır",
       "save": "Kaydet",
       "saved": "Kaydedildi.",
-      "cleared": "Özel limitler kaldırıldı."
+      "cleared": "Özel limitler kaldırıldı.",
+      "twoFactor": {
+        "title": "Kaybolan ikinci adım",
+        "hint": "Hem kimlik doğrulayıcı uygulamasını hem kurtarma kodlarını kaybeden kişi için. Önce isteyenin kim olduğunu doğrulayın. Kişinin iki adımlı oturum açması kapatılır, her yerden çıkış yaptırılır, e-posta gönderilir ve sıfırlama gerekçenizle birlikte denetim günlüğüne yazılır.",
+        "email": "Kişinin oturum açma adresi",
+        "reason": "Gerekçe (denetim günlüğünde saklanır)",
+        "reset": "İki adımlı oturum açmayı kapat",
+        "confirmTitle": "İki adımlı oturum açma kapatılsın mı?",
+        "confirmBody": "{email} her yerden çıkış yapacak ve yeniden kurana kadar yalnızca parolasıyla oturum açabilecek. Kişiye e-posta gönderilir; sıfırlama adınız ve gerekçenizle kaydedilir.",
+        "confirm": "Kapat",
+        "done": "{email} için iki adımlı oturum açma kapatıldı. Kişiye e-posta gönderildi.",
+        "nothing": "{email} için iki adımlı oturum açma açık değildi; hiçbir şey değişmedi."
+      }
     }
   },
   "support": {
@@ -5981,6 +6011,20 @@
       "invoice": "Faturalar",
       "provider_account": "Sağlayıcı hesapları",
       "tenant": "Kiracı ayarları ve durumu",
+      "price_change": "Fiyat değişiklikleri",
+      "coupon": "Kuponlar",
+      "promotion_code": "Promosyon kodları",
+      "routing_rules": "Ödeme yönlendirme",
+      "tax_rates": "Vergi oranları",
+      "mail_settings": "E-posta ayarları",
+      "mail_integration": "E-posta sağlayıcısı",
+      "go_live": "Canlıya geçiş",
+      "contract": "Sözleşmeler",
+      "support": "Destek",
+      "dunning": "Tahsilat hatırlatma",
+      "invoice_payment": "Elle kaydedilen ödemeler",
+      "bank_transfer": "Banka havaleleri",
+      "user": "Parola ve oturum açma",
       "two_factor": "İki adımlı giriş",
       "sign_in": "Giriş",
       "account": "Kuruluş"
@@ -6029,10 +6073,62 @@
         "status_changed": "Durum değişti",
         "settings_updated": "Ayarlar değişti"
       },
+      "price_change": {
+        "scheduled": "Fiyat değişikliği planlandı",
+        "withdrawn": "Fiyat değişikliği geri çekildi"
+      },
+      "coupon": {
+        "created": "Kupon oluşturuldu",
+        "deactivated": "Kupon devre dışı bırakıldı"
+      },
+      "promotion_code": {
+        "created": "Promosyon kodları oluşturuldu",
+        "deactivated": "Promosyon kodu devre dışı bırakıldı"
+      },
+      "routing_rules": {
+        "changed": "Ödeme yönlendirme değişti"
+      },
+      "tax_rates": {
+        "changed": "Vergi oranları değişti"
+      },
+      "mail_settings": {
+        "changed": "E-posta ayarları değişti"
+      },
+      "mail_integration": {
+        "saved": "E-posta sağlayıcısı bağlandı",
+        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı"
+      },
+      "go_live": {
+        "billing_profile_saved": "Fatura profili kaydedildi",
+        "terms_accepted": "Şartlar kabul edildi",
+        "activated": "Canlı ortam etkinleştirildi"
+      },
+      "contract": {
+        "version_published": "Sözleşme sürümü yayınlandı",
+        "settings_changed": "Sözleşme ayarları değişti"
+      },
+      "support": {
+        "status_changed": "Destek talebinin durumu değişti"
+      },
+      "dunning": {
+        "settings_changed": "Tahsilat hatırlatma ayarları değişti"
+      },
+      "invoice_payment": {
+        "recorded": "Ödeme elle kaydedildi"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banka havalesi onaylandı"
+      },
+      "user": {
+        "password_reset": "Parola sıfırlandı",
+        "sign_in_locked": "Oturum açma kilitlendi"
+      },
       "two_factor": {
         "enabled": "İki adımlı giriş açıldı",
         "disabled": "İki adımlı giriş kapatıldı",
-        "recovery_codes_regenerated": "Kurtarma kodları yeniden oluşturuldu"
+        "recovery_codes_replaced": "Kurtarma kodları yeniden oluşturuldu",
+        "recovery_code_used": "Kurtarma kodu kullanıldı",
+        "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
       }
     }
   }

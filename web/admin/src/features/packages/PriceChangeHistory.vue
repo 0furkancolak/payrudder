@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { askConfirm } from "@/shared/lib/confirm";
 import { useFormat } from "@/shared/lib/format";
@@ -22,6 +22,7 @@ const retry = useRetryPriceChange(() => props.tenantId);
 const withdraw = useWithdrawPriceChange(() => props.tenantId);
 const opened = ref("");
 const detail = usePriceChange(() => props.tenantId, opened);
+const items = computed(() => detail.data.value?.pages.flatMap((p) => p.items) ?? []);
 const notice = ref("");
 
 const tone = (state: PriceChangeItem["state"]) => ({ scheduled: "info", applied: "success", withdrawn: "neutral", skipped: "warning" })[state] as "info" | "success" | "neutral" | "warning";
@@ -75,7 +76,7 @@ async function withdrawAll(id: string, n: number) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="it in detail.data.value.items" :key="it.subscription_id">
+          <TableRow v-for="it in items" :key="it.subscription_id">
             <TableCell class="mono">{{ it.customer_external_id }}</TableCell>
             <TableCell>
               <StatusPill :tone="tone(it.state)">{{ t(`billing.packages.priceChange.itemState.${it.state}`) }}</StatusPill>
@@ -86,6 +87,9 @@ async function withdrawAll(id: string, n: number) {
           </TableRow>
         </TableBody>
       </Table>
+      <Button v-if="opened === pc.id && detail.hasNextPage.value" type="button" size="sm" variant="outline" class="mt-2" :disabled="detail.isFetchingNextPage.value" :data-testid="`pc-more-${pc.id}`" @click="detail.fetchNextPage()">
+        {{ t("billing.packages.priceChange.loadMore") }}
+      </Button>
     </div>
   </section>
 </template>

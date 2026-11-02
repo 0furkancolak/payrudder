@@ -237,7 +237,20 @@
     "suspend": "Aussetzen",
     "reinstate": "Wieder freigeben",
     "suspended": "Ausgesetzt",
-    "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr."
+    "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr.",
+    "pricePause": {
+      "title": "Preisänderungen",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "hint": "Der Notausschalter für alle Verkäufer: Solange er aktiv ist, plant keine Preisänderung ein Abonnement (ein Probelauf zählt weiterhin), ein laufender Durchlauf stoppt und bereits eingereihte Hinweise warten. Bereits geplante Änderungen gelten weiterhin zur Verlängerung; ein Verkäufer zieht die Preisänderung zurück, um eine zu stoppen.",
+      "by": "Von {who} am {date} pausiert.",
+      "reason": "Grund",
+      "reasonHint": "Wird mit der Einstellung und im Audit-Protokoll gespeichert. Höchstens 500 Zeichen.",
+      "pause": "Alle Preisänderungen pausieren",
+      "resume": "Preisänderungen fortsetzen",
+      "confirmPause": "Alle Preisänderungen der Plattform pausieren? Kein Verkäufer kann eine planen oder wiederholen, bis Sie fortsetzen, und bereits eingereihte Hinweise warten.",
+      "confirmResume": "Preisänderungen fortsetzen? Verkäufer können wieder planen und wiederholen, und die wartenden Hinweise werden versendet."
+    }
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -862,7 +875,8 @@
           "run_by_provider": "wird vom Zahlungsanbieter geführt",
           "not_changeable": "so nicht umstellbar",
           "customer_blocked": "Kunde ist gesperrt"
-        }
+        },
+        "loadMore": "Mehr Abonnements anzeigen"
       },
       "prorateAfterTrial": "Die erste Periode ab dem Ende der Testphase berechnen",
       "prorateAfterTrialHelp": "Endet eine Testphase mitten in einer Abrechnungsperiode, wird die Grundgebühr dieser Periode nur vom Ende der Testphase bis zum Periodenende berechnet. Aus: Die Gebühr der ganzen Periode wird berechnet, wie bei Paketen, die vor dieser Option veröffentlicht wurden.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Preisänderung nicht gefunden.",
-        "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an."
+        "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an.",
+        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut."
       },
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
@@ -3419,6 +3434,9 @@
         "not_configured": "Diese Installation kann die Zwei-Faktor-Anmeldung noch nicht anbieten: Es ist kein Geheimnisschlüssel gesetzt.",
         "required_by_organisation": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung, daher können Sie sie nicht ausschalten.",
         "setup_required": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie zuerst auf der Sicherheitsseite ein."
+      },
+      "user": {
+        "not_found": "Mit dieser Adresse meldet sich keine Person an."
       }
     },
     "gateway": {
@@ -5468,7 +5486,19 @@
       "clear": "Eigene Limits entfernen",
       "save": "Speichern",
       "saved": "Gespeichert.",
-      "cleared": "Eigene Limits entfernt."
+      "cleared": "Eigene Limits entfernt.",
+      "twoFactor": {
+        "title": "Verlorener zweiter Faktor",
+        "hint": "Für eine Person, die sowohl ihre Authenticator-App als auch ihre Wiederherstellungscodes verloren hat. Prüfen Sie zuerst, wer anfragt. Die Zwei-Faktor-Anmeldung der Person wird ausgeschaltet, sie wird überall abgemeldet und per E-Mail informiert; das Zurücksetzen wird mit Ihrer Begründung im Audit-Log festgehalten.",
+        "email": "Anmelde-Adresse der Person",
+        "reason": "Begründung (wird im Audit-Log gespeichert)",
+        "reset": "Zwei-Faktor-Anmeldung ausschalten",
+        "confirmTitle": "Zwei-Faktor-Anmeldung ausschalten?",
+        "confirmBody": "{email} wird überall abgemeldet und kann sich nur mit dem Passwort anmelden, bis die Zwei-Faktor-Anmeldung neu eingerichtet ist. Die Person wird per E-Mail informiert; das Zurücksetzen wird mit Ihrem Namen und Ihrer Begründung festgehalten.",
+        "confirm": "Ausschalten",
+        "done": "Die Zwei-Faktor-Anmeldung von {email} ist ausgeschaltet. Die Person wurde per E-Mail informiert.",
+        "nothing": "{email} hatte keine Zwei-Faktor-Anmeldung; es wurde nichts geändert."
+      }
     }
   },
   "support": {
@@ -5981,6 +6011,20 @@
       "invoice": "Rechnungen",
       "provider_account": "Anbieterkonten",
       "tenant": "Mandanteneinstellungen und -status",
+      "price_change": "Preisänderungen",
+      "coupon": "Gutscheine",
+      "promotion_code": "Aktionscodes",
+      "routing_rules": "Zahlungsrouting",
+      "tax_rates": "Steuersätze",
+      "mail_settings": "E-Mail-Einstellungen",
+      "mail_integration": "E-Mail-Anbieter",
+      "go_live": "Livegang",
+      "contract": "Verträge",
+      "support": "Support",
+      "dunning": "Mahnwesen",
+      "invoice_payment": "Manuell erfasste Zahlungen",
+      "bank_transfer": "Banküberweisungen",
+      "user": "Passwörter und Anmeldung",
       "two_factor": "Zwei-Faktor-Anmeldung",
       "sign_in": "Anmeldung",
       "account": "Organisation"
@@ -6029,10 +6073,62 @@
         "status_changed": "Status geändert",
         "settings_updated": "Einstellungen geändert"
       },
+      "price_change": {
+        "scheduled": "Preisänderung geplant",
+        "withdrawn": "Preisänderung zurückgezogen"
+      },
+      "coupon": {
+        "created": "Gutschein erstellt",
+        "deactivated": "Gutschein deaktiviert"
+      },
+      "promotion_code": {
+        "created": "Aktionscodes erstellt",
+        "deactivated": "Aktionscode deaktiviert"
+      },
+      "routing_rules": {
+        "changed": "Zahlungsrouting geändert"
+      },
+      "tax_rates": {
+        "changed": "Steuersätze geändert"
+      },
+      "mail_settings": {
+        "changed": "E-Mail-Einstellungen geändert"
+      },
+      "mail_integration": {
+        "saved": "E-Mail-Anbieter verbunden",
+        "removed": "E-Mail-Anbieter getrennt"
+      },
+      "go_live": {
+        "billing_profile_saved": "Rechnungsprofil gespeichert",
+        "terms_accepted": "Bedingungen akzeptiert",
+        "activated": "Live-Umgebung aktiviert"
+      },
+      "contract": {
+        "version_published": "Vertragsversion veröffentlicht",
+        "settings_changed": "Vertragseinstellungen geändert"
+      },
+      "support": {
+        "status_changed": "Status eines Support-Tickets geändert"
+      },
+      "dunning": {
+        "settings_changed": "Mahneinstellungen geändert"
+      },
+      "invoice_payment": {
+        "recorded": "Zahlung manuell erfasst"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banküberweisung bestätigt"
+      },
+      "user": {
+        "password_reset": "Passwort zurückgesetzt",
+        "sign_in_locked": "Anmeldung gesperrt"
+      },
       "two_factor": {
         "enabled": "Zwei-Faktor-Anmeldung eingeschaltet",
         "disabled": "Zwei-Faktor-Anmeldung ausgeschaltet",
-        "recovery_codes_regenerated": "Wiederherstellungscodes neu erzeugt"
+        "recovery_codes_replaced": "Wiederherstellungscodes neu erzeugt",
+        "recovery_code_used": "Wiederherstellungscode verwendet",
+        "reset_by_operator": "Zwei-Faktor-Anmeldung vom Support zurückgesetzt"
       }
     }
   }

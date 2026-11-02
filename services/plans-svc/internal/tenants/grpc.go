@@ -75,3 +75,25 @@ func (h *Handler) ListTenantStatusEvents(ctx context.Context, req *plansv1.ListT
 	}
 	return h.cmd.StatusEvents(ctx, req)
 }
+
+func (h *Handler) GetPriceChangePause(ctx context.Context, _ *plansv1.GetPriceChangePauseRequest) (*plansv1.GetPriceChangePauseResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	p, err := h.cmd.GetPriceChangePause(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetPriceChangePauseResponse{Pause: p}, nil
+}
+
+func (h *Handler) SetPriceChangePause(ctx context.Context, req *plansv1.SetPriceChangePauseRequest) (*plansv1.SetPriceChangePauseResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	p, err := h.cmd.SetPriceChangePause(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetPriceChangePauseResponse{Pause: p}, nil
+}

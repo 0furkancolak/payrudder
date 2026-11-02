@@ -2247,14 +2247,32 @@ func (s *PriceChangesService) ListPriceChanges(ctx context.Context, params *List
 
 // GetPriceChange: One price change with its subscriptions and what became of each (GET /v1/price-changes/{id}).
 //
-// The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one
-// follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+// The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is
+// empty on the last page), optionally only those in one state. The state of a scheduled one follows its change
+// - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
 func (s *PriceChangesService) GetPriceChange(ctx context.Context, id string, params *GetPriceChangeParams, opts ...RequestOption) (*GetPriceChangeResponse, error) {
 	var out GetPriceChangeResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/price-changes/" + url.PathEscape(id), query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// GetPriceChangeAll walks every page of GetPriceChange and yields the items one by one. It stops at the first
+// error, which is yielded once.
+func (s *PriceChangesService) GetPriceChangeAll(ctx context.Context, id string, params *GetPriceChangeParams, opts ...RequestOption) iter.Seq2[PriceChangeItem, error] {
+	return paginate(func(token string) ([]PriceChangeItem, string, error) {
+		var p GetPriceChangeParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.GetPriceChange(ctx, id, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Items, page.NextPageToken, nil
+	})
 }
 
 // RetryPriceChange: Try the skipped subscriptions of a price change again (POST /v1/price-changes/{id}/retry).

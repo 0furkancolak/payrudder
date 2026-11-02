@@ -796,10 +796,12 @@ paths:
     get:
       operationId: getPriceChange
       summary: One price change with its subscriptions and what became of each
-      description: The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+      description: The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
       parameters:
         - { $ref: "#/components/parameters/ID" }
         - { name: state, in: query, required: false, schema: { type: string, enum: [scheduled, applied, withdrawn, skipped] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 500 } }
+        - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetPriceChangeResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -5507,6 +5509,25 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/users/two-factor/reset:
+    post:
+      operationId: adminResetUserTwoFactor
+      summary: Turn off a person's two-factor sign-in after they lost the device and the recovery codes
+      description: |
+        For a person who cannot sign in because they have neither their authenticator app nor a recovery code. Check who is asking by other means first; Payrudder cannot.
+        The secret, the recovery codes and the open second-step challenges are removed, every session of the person ends, the lock from failed sign-ins is cleared, the person
+        is mailed (in their language) and the reset is written to the audit log (`two_factor.reset_by_operator`) with your `reason` and name. `was_enabled` is false when
+        nothing was on: then nothing is changed, recorded or mailed. An owner of an account that requires two-factor sign-in must set it up again at the next sign-in.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminResetUserTwoFactorRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdminResetUserTwoFactorResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/status-events:
     get:
       operationId: listTenantStatusEvents
@@ -5517,6 +5538,31 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantStatusEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/price-change-pause:
+    get:
+      operationId: getPriceChangePause
+      summary: Whether every price change of the platform is paused
+      description: "The kill switch of price changes (plan 15). Never touched, it says `paused: false` with no time."
+      security: [{ operatorToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PriceChangePause" } } } }
+    put:
+      operationId: setPriceChangePause
+      summary: Pause or resume every price change of the platform
+      description: |
+        While paused, no run or retry (`POST /v1/plans/{code}/price-changes`, `POST /v1/price-changes/{id}/retry`) schedules a subscription: they answer 409
+        `plans.price_change.paused` (a dry run still counts, and withdrawing a price change still works), a run in progress stops within a hundred subscriptions, and
+        the notifier holds the mail of the price changes already scheduled until the switch is released. A change that is already scheduled is still applied at its
+        renewal; withdraw the price change to stop it. Each call is recorded in the audit log with its reason and the signed-in operator.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetPriceChangePauseRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PriceChangePause" } } } }
+        "400": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/api-keys:
     post:
       operationId: createApiKey
@@ -5863,12 +5909,27 @@ components:
       required: [price_changes]
       properties:
         price_changes: { type: array, items: { $ref: "#/components/schemas/PriceChange" } }
+    SetPriceChangePauseRequest:
+      type: object
+      required: [paused]
+      properties:
+        paused: { type: boolean }
+        reason: { type: string, maxLength: 500, description: Why; kept with the setting and shown to the next operator. }
+    PriceChangePause:
+      type: object
+      required: [paused, reason, updated_by, update_time]
+      properties:
+        paused: { type: boolean }
+        reason: { type: string }
+        updated_by: { type: string }
+        update_time: { type: string, format: date-time, nullable: true }
     GetPriceChangeResponse:
       type: object
-      required: [price_change, items]
+      required: [price_change, items, next_page_token]
       properties:
         price_change: { $ref: "#/components/schemas/PriceChange" }
         items: { type: array, items: { $ref: "#/components/schemas/PriceChangeItem" } }
+        next_page_token: { type: string }
     WithdrawPriceChangeResponse:
       type: object
       required: [price_change, withdrawn]
@@ -8062,6 +8123,17 @@ components:
         organizations: { type: array, items: { $ref: "#/components/schemas/OrganizationRow" } }
         next_page_token: { type: string }
         platform: { $ref: "#/components/schemas/PlatformInfo" }
+    AdminResetUserTwoFactorRequest:
+      type: object
+      required: [email, reason]
+      properties:
+        email: { type: string, format: email, description: The person's sign-in address }
+        reason: { type: string, minLength: 1, maxLength: 500, description: Why; kept in the audit log }
+    AdminResetUserTwoFactorResponse:
+      type: object
+      required: [was_enabled]
+      properties:
+        was_enabled: { type: boolean }
     AdminSetOrganizationPlanRequest:
       type: object
       properties:

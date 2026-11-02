@@ -17,10 +17,12 @@ final class GetPriceChangeResponse implements Model
     /**
      * @param PriceChange|null $priceChange
      * @param list<PriceChangeItem>|null $items
+     * @param string|null $nextPageToken
      */
     public function __construct(
         public readonly ?PriceChange $priceChange = null,
         public readonly ?array $items = null,
+        public readonly ?string $nextPageToken = null,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ final class GetPriceChangeResponse implements Model
         return new static(
             priceChange: Cast::model(PriceChange::class, $data['price_change'] ?? null),
             items: Cast::models(PriceChangeItem::class, $data['items'] ?? null),
+            nextPageToken: Cast::string($data['next_page_token'] ?? null),
         );
     }
 
@@ -42,6 +45,7 @@ final class GetPriceChangeResponse implements Model
         return Cast::compact([
             'price_change' => Cast::wire($this->priceChange),
             'items' => Cast::wire($this->items),
+            'next_page_token' => $this->nextPageToken,
         ]);
     }
 }

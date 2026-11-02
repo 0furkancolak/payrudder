@@ -237,7 +237,20 @@
     "suspend": "Suspendre",
     "reinstate": "Réactiver",
     "suspended": "Suspendu",
-    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement."
+    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement.",
+    "pricePause": {
+      "title": "Changements de prix",
+      "running": "Actifs",
+      "paused": "En pause",
+      "hint": "L'interrupteur d'urgence pour tous les vendeurs : tant qu'il est actif, aucun changement de prix ne planifie d'abonnement (un essai à blanc compte toujours), un lot en cours s'arrête et les avis déjà en file attendent. Les changements déjà planifiés s'appliquent quand même au renouvellement ; un vendeur retire le changement de prix pour en arrêter un.",
+      "by": "Mis en pause par {who} le {date}.",
+      "reason": "Motif",
+      "reasonHint": "Conservé avec le réglage et dans le journal d'audit. 500 caractères au plus.",
+      "pause": "Mettre en pause tous les changements de prix",
+      "resume": "Reprendre les changements de prix",
+      "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
+      "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    }
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -862,7 +875,8 @@
           "run_by_provider": "géré par un prestataire de paiement",
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
-        }
+        },
+        "loadMore": "Afficher plus d'abonnements"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Modification de prix introuvable.",
-        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle."
+        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",
@@ -3419,6 +3434,9 @@
         "not_configured": "Ce déploiement ne peut pas encore proposer la connexion en deux étapes : il n'a pas de clé de secrets.",
         "required_by_organisation": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes : vous ne pouvez donc pas la désactiver.",
         "setup_required": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la d'abord sur la page Sécurité."
+      },
+      "user": {
+        "not_found": "Aucune personne ne se connecte avec cette adresse."
       }
     },
     "gateway": {
@@ -5468,7 +5486,19 @@
       "clear": "Retirer les limites propres",
       "save": "Enregistrer",
       "saved": "Enregistré.",
-      "cleared": "Limites propres retirées."
+      "cleared": "Limites propres retirées.",
+      "twoFactor": {
+        "title": "Second facteur perdu",
+        "hint": "Pour une personne qui a perdu à la fois son application d'authentification et ses codes de récupération. Vérifiez d'abord qui fait la demande. La connexion en deux étapes de la personne est désactivée, elle est déconnectée partout et reçoit un e-mail ; la réinitialisation est inscrite au journal d'audit avec votre motif.",
+        "email": "Adresse de connexion de la personne",
+        "reason": "Motif (conservé dans le journal d'audit)",
+        "reset": "Désactiver la connexion en deux étapes",
+        "confirmTitle": "Désactiver la connexion en deux étapes ?",
+        "confirmBody": "{email} sera déconnecté partout et pourra se connecter avec son seul mot de passe jusqu'à ce qu'il la configure de nouveau. La personne reçoit un e-mail ; la réinitialisation est enregistrée avec votre nom et votre motif.",
+        "confirm": "Désactiver",
+        "done": "La connexion en deux étapes de {email} est désactivée. La personne a reçu un e-mail.",
+        "nothing": "{email} n'avait pas activé la connexion en deux étapes ; rien n'a été modifié."
+      }
     }
   },
   "support": {
@@ -5981,6 +6011,20 @@
       "invoice": "Factures",
       "provider_account": "Comptes de prestataires",
       "tenant": "Réglages et statut du locataire",
+      "price_change": "Changements de prix",
+      "coupon": "Coupons",
+      "promotion_code": "Codes promotionnels",
+      "routing_rules": "Routage des paiements",
+      "tax_rates": "Taux de taxe",
+      "mail_settings": "Réglages des e-mails",
+      "mail_integration": "Fournisseur d'e-mails",
+      "go_live": "Mise en production",
+      "contract": "Contrats",
+      "support": "Assistance",
+      "dunning": "Relances de paiement",
+      "invoice_payment": "Paiements saisis à la main",
+      "bank_transfer": "Virements bancaires",
+      "user": "Mots de passe et connexion",
       "two_factor": "Connexion en deux étapes",
       "sign_in": "Connexion",
       "account": "Organisation"
@@ -6029,10 +6073,62 @@
         "status_changed": "Statut modifié",
         "settings_updated": "Réglages modifiés"
       },
+      "price_change": {
+        "scheduled": "Changement de prix planifié",
+        "withdrawn": "Changement de prix retiré"
+      },
+      "coupon": {
+        "created": "Coupon créé",
+        "deactivated": "Coupon désactivé"
+      },
+      "promotion_code": {
+        "created": "Codes promotionnels créés",
+        "deactivated": "Code promotionnel désactivé"
+      },
+      "routing_rules": {
+        "changed": "Routage des paiements modifié"
+      },
+      "tax_rates": {
+        "changed": "Taux de taxe modifiés"
+      },
+      "mail_settings": {
+        "changed": "Réglages des e-mails modifiés"
+      },
+      "mail_integration": {
+        "saved": "Fournisseur d'e-mails connecté",
+        "removed": "Fournisseur d'e-mails déconnecté"
+      },
+      "go_live": {
+        "billing_profile_saved": "Profil de facturation enregistré",
+        "terms_accepted": "Conditions acceptées",
+        "activated": "Environnement de production activé"
+      },
+      "contract": {
+        "version_published": "Version de contrat publiée",
+        "settings_changed": "Réglages des contrats modifiés"
+      },
+      "support": {
+        "status_changed": "Statut d'un ticket d'assistance modifié"
+      },
+      "dunning": {
+        "settings_changed": "Réglages de relance modifiés"
+      },
+      "invoice_payment": {
+        "recorded": "Paiement saisi à la main"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Virement bancaire confirmé"
+      },
+      "user": {
+        "password_reset": "Mot de passe réinitialisé",
+        "sign_in_locked": "Connexion verrouillée"
+      },
       "two_factor": {
         "enabled": "Connexion en deux étapes activée",
         "disabled": "Connexion en deux étapes désactivée",
-        "recovery_codes_regenerated": "Codes de récupération régénérés"
+        "recovery_codes_replaced": "Codes de récupération régénérés",
+        "recovery_code_used": "Code de récupération utilisé",
+        "reset_by_operator": "Connexion en deux étapes réinitialisée par le support"
       }
     }
   }

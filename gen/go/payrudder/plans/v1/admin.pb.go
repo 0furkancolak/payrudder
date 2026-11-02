@@ -1534,6 +1534,261 @@ func (x *TenantStatusEvent) GetCreateTime() *timestamppb.Timestamp {
 	return nil
 }
 
+type GetPriceChangePauseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPriceChangePauseRequest) Reset() {
+	*x = GetPriceChangePauseRequest{}
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPriceChangePauseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPriceChangePauseRequest) ProtoMessage() {}
+
+func (x *GetPriceChangePauseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPriceChangePauseRequest.ProtoReflect.Descriptor instead.
+func (*GetPriceChangePauseRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_admin_proto_rawDescGZIP(), []int{25}
+}
+
+type GetPriceChangePauseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pause         *PriceChangePause      `protobuf:"bytes,1,opt,name=pause,proto3" json:"pause,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPriceChangePauseResponse) Reset() {
+	*x = GetPriceChangePauseResponse{}
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPriceChangePauseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPriceChangePauseResponse) ProtoMessage() {}
+
+func (x *GetPriceChangePauseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPriceChangePauseResponse.ProtoReflect.Descriptor instead.
+func (*GetPriceChangePauseResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_admin_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetPriceChangePauseResponse) GetPause() *PriceChangePause {
+	if x != nil {
+		return x.Pause
+	}
+	return nil
+}
+
+type SetPriceChangePauseRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Paused bool                   `protobuf:"varint,1,opt,name=paused,proto3" json:"paused,omitempty"`
+	// Why, kept with the setting and shown to the next operator. At most 500 characters.
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Who asks. The gateway sets it; a value in the request is overwritten.
+	Actor         string `protobuf:"bytes,3,opt,name=actor,proto3" json:"actor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPriceChangePauseRequest) Reset() {
+	*x = SetPriceChangePauseRequest{}
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPriceChangePauseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPriceChangePauseRequest) ProtoMessage() {}
+
+func (x *SetPriceChangePauseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPriceChangePauseRequest.ProtoReflect.Descriptor instead.
+func (*SetPriceChangePauseRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_admin_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SetPriceChangePauseRequest) GetPaused() bool {
+	if x != nil {
+		return x.Paused
+	}
+	return false
+}
+
+func (x *SetPriceChangePauseRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *SetPriceChangePauseRequest) GetActor() string {
+	if x != nil {
+		return x.Actor
+	}
+	return ""
+}
+
+type SetPriceChangePauseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pause         *PriceChangePause      `protobuf:"bytes,1,opt,name=pause,proto3" json:"pause,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPriceChangePauseResponse) Reset() {
+	*x = SetPriceChangePauseResponse{}
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPriceChangePauseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPriceChangePauseResponse) ProtoMessage() {}
+
+func (x *SetPriceChangePauseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPriceChangePauseResponse.ProtoReflect.Descriptor instead.
+func (*SetPriceChangePauseResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_admin_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SetPriceChangePauseResponse) GetPause() *PriceChangePause {
+	if x != nil {
+		return x.Pause
+	}
+	return nil
+}
+
+// The platform-wide pause of price changes. Never set: not paused, and no one has touched it.
+type PriceChangePause struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Paused        bool                   `protobuf:"varint,1,opt,name=paused,proto3" json:"paused,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	UpdatedBy     string                 `protobuf:"bytes,3,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PriceChangePause) Reset() {
+	*x = PriceChangePause{}
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PriceChangePause) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PriceChangePause) ProtoMessage() {}
+
+func (x *PriceChangePause) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_admin_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PriceChangePause.ProtoReflect.Descriptor instead.
+func (*PriceChangePause) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_admin_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *PriceChangePause) GetPaused() bool {
+	if x != nil {
+		return x.Paused
+	}
+	return false
+}
+
+func (x *PriceChangePause) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *PriceChangePause) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+func (x *PriceChangePause) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
 var File_payrudder_plans_v1_admin_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
@@ -1649,7 +1904,23 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\vapproved_by\x18\b \x01(\tR\n" +
 	"approvedBy\x12;\n" +
 	"\vcreate_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime2\xd3\t\n" +
+	"createTime\"\x1c\n" +
+	"\x1aGetPriceChangePauseRequest\"Y\n" +
+	"\x1bGetPriceChangePauseResponse\x12:\n" +
+	"\x05pause\x18\x01 \x01(\v2$.payrudder.plans.v1.PriceChangePauseR\x05pause\"b\n" +
+	"\x1aSetPriceChangePauseRequest\x12\x16\n" +
+	"\x06paused\x18\x01 \x01(\bR\x06paused\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x14\n" +
+	"\x05actor\x18\x03 \x01(\tR\x05actor\"Y\n" +
+	"\x1bSetPriceChangePauseResponse\x12:\n" +
+	"\x05pause\x18\x01 \x01(\v2$.payrudder.plans.v1.PriceChangePauseR\x05pause\"\x9e\x01\n" +
+	"\x10PriceChangePause\x12\x16\n" +
+	"\x06paused\x18\x01 \x01(\bR\x06paused\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\x03 \x01(\tR\tupdatedBy\x12;\n" +
+	"\vupdate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime2\xc3\v\n" +
 	"\fAdminService\x12d\n" +
 	"\rCreateAccount\x12(.payrudder.plans.v1.CreateAccountRequest\x1a).payrudder.plans.v1.CreateAccountResponse\x12X\n" +
 	"\tCreateApp\x12$.payrudder.plans.v1.CreateAppRequest\x1a%.payrudder.plans.v1.CreateAppResponse\x12U\n" +
@@ -1662,7 +1933,9 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\rResolveApiKey\x12(.payrudder.plans.v1.ResolveApiKeyRequest\x1a).payrudder.plans.v1.ResolveApiKeyResponse\x12^\n" +
 	"\vTouchApiKey\x12&.payrudder.plans.v1.TouchApiKeyRequest\x1a'.payrudder.plans.v1.TouchApiKeyResponse\x12j\n" +
 	"\x0fSetTenantStatus\x12*.payrudder.plans.v1.SetTenantStatusRequest\x1a+.payrudder.plans.v1.SetTenantStatusResponse\x12\x7f\n" +
-	"\x16ListTenantStatusEvents\x121.payrudder.plans.v1.ListTenantStatusEventsRequest\x1a2.payrudder.plans.v1.ListTenantStatusEventsResponseB\xd3\x01\n" +
+	"\x16ListTenantStatusEvents\x121.payrudder.plans.v1.ListTenantStatusEventsRequest\x1a2.payrudder.plans.v1.ListTenantStatusEventsResponse\x12v\n" +
+	"\x13GetPriceChangePause\x12..payrudder.plans.v1.GetPriceChangePauseRequest\x1a/.payrudder.plans.v1.GetPriceChangePauseResponse\x12v\n" +
+	"\x13SetPriceChangePause\x12..payrudder.plans.v1.SetPriceChangePauseRequest\x1a/.payrudder.plans.v1.SetPriceChangePauseResponseB\xd3\x01\n" +
 	"\x16com.payrudder.plans.v1B\n" +
 	"AdminProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
 
@@ -1678,7 +1951,7 @@ func file_payrudder_plans_v1_admin_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_admin_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_payrudder_plans_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_payrudder_plans_v1_admin_proto_goTypes = []any{
 	(*CreateAccountRequest)(nil),           // 0: payrudder.plans.v1.CreateAccountRequest
 	(*CreateAccountResponse)(nil),          // 1: payrudder.plans.v1.CreateAccountResponse
@@ -1705,81 +1978,93 @@ var file_payrudder_plans_v1_admin_proto_goTypes = []any{
 	(*ListTenantStatusEventsRequest)(nil),  // 22: payrudder.plans.v1.ListTenantStatusEventsRequest
 	(*ListTenantStatusEventsResponse)(nil), // 23: payrudder.plans.v1.ListTenantStatusEventsResponse
 	(*TenantStatusEvent)(nil),              // 24: payrudder.plans.v1.TenantStatusEvent
-	(*durationpb.Duration)(nil),            // 25: google.protobuf.Duration
-	(TenantTier)(0),                        // 26: payrudder.plans.v1.TenantTier
-	(*Account)(nil),                        // 27: payrudder.plans.v1.Account
-	(*App)(nil),                            // 28: payrudder.plans.v1.App
-	(*Tenant)(nil),                         // 29: payrudder.plans.v1.Tenant
-	(*Address)(nil),                        // 30: payrudder.plans.v1.Address
-	(*BankTransferDetails)(nil),            // 31: payrudder.plans.v1.BankTransferDetails
-	(*LegalInfo)(nil),                      // 32: payrudder.plans.v1.LegalInfo
-	(ApiKey_Scope)(0),                      // 33: payrudder.plans.v1.ApiKey.Scope
-	(*ApiKey)(nil),                         // 34: payrudder.plans.v1.ApiKey
-	(ApiKey_Status)(0),                     // 35: payrudder.plans.v1.ApiKey.Status
-	(Environment)(0),                       // 36: payrudder.plans.v1.Environment
-	(TenantStatus)(0),                      // 37: payrudder.plans.v1.TenantStatus
-	(*timestamppb.Timestamp)(nil),          // 38: google.protobuf.Timestamp
+	(*GetPriceChangePauseRequest)(nil),     // 25: payrudder.plans.v1.GetPriceChangePauseRequest
+	(*GetPriceChangePauseResponse)(nil),    // 26: payrudder.plans.v1.GetPriceChangePauseResponse
+	(*SetPriceChangePauseRequest)(nil),     // 27: payrudder.plans.v1.SetPriceChangePauseRequest
+	(*SetPriceChangePauseResponse)(nil),    // 28: payrudder.plans.v1.SetPriceChangePauseResponse
+	(*PriceChangePause)(nil),               // 29: payrudder.plans.v1.PriceChangePause
+	(*durationpb.Duration)(nil),            // 30: google.protobuf.Duration
+	(TenantTier)(0),                        // 31: payrudder.plans.v1.TenantTier
+	(*Account)(nil),                        // 32: payrudder.plans.v1.Account
+	(*App)(nil),                            // 33: payrudder.plans.v1.App
+	(*Tenant)(nil),                         // 34: payrudder.plans.v1.Tenant
+	(*Address)(nil),                        // 35: payrudder.plans.v1.Address
+	(*BankTransferDetails)(nil),            // 36: payrudder.plans.v1.BankTransferDetails
+	(*LegalInfo)(nil),                      // 37: payrudder.plans.v1.LegalInfo
+	(ApiKey_Scope)(0),                      // 38: payrudder.plans.v1.ApiKey.Scope
+	(*ApiKey)(nil),                         // 39: payrudder.plans.v1.ApiKey
+	(ApiKey_Status)(0),                     // 40: payrudder.plans.v1.ApiKey.Status
+	(Environment)(0),                       // 41: payrudder.plans.v1.Environment
+	(TenantStatus)(0),                      // 42: payrudder.plans.v1.TenantStatus
+	(*timestamppb.Timestamp)(nil),          // 43: google.protobuf.Timestamp
 }
 var file_payrudder_plans_v1_admin_proto_depIdxs = []int32{
-	25, // 0: payrudder.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
-	26, // 1: payrudder.plans.v1.CreateAccountRequest.tier:type_name -> payrudder.plans.v1.TenantTier
-	27, // 2: payrudder.plans.v1.CreateAccountResponse.account:type_name -> payrudder.plans.v1.Account
-	25, // 3: payrudder.plans.v1.CreateAppRequest.grace_period:type_name -> google.protobuf.Duration
-	26, // 4: payrudder.plans.v1.CreateAppRequest.tier:type_name -> payrudder.plans.v1.TenantTier
-	28, // 5: payrudder.plans.v1.CreateAppResponse.app:type_name -> payrudder.plans.v1.App
-	28, // 6: payrudder.plans.v1.ListAppsResponse.apps:type_name -> payrudder.plans.v1.App
-	29, // 7: payrudder.plans.v1.GetTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
-	29, // 8: payrudder.plans.v1.ListTenantsResponse.tenants:type_name -> payrudder.plans.v1.Tenant
-	25, // 9: payrudder.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
-	26, // 10: payrudder.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> payrudder.plans.v1.TenantTier
-	30, // 11: payrudder.plans.v1.UpdateTenantSettingsRequest.address:type_name -> payrudder.plans.v1.Address
-	31, // 12: payrudder.plans.v1.UpdateTenantSettingsRequest.bank_transfer:type_name -> payrudder.plans.v1.BankTransferDetails
-	32, // 13: payrudder.plans.v1.UpdateTenantSettingsRequest.legal:type_name -> payrudder.plans.v1.LegalInfo
-	29, // 14: payrudder.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> payrudder.plans.v1.Tenant
-	33, // 15: payrudder.plans.v1.CreateApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	34, // 16: payrudder.plans.v1.CreateApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	34, // 17: payrudder.plans.v1.RevokeApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	35, // 18: payrudder.plans.v1.ResolveApiKeyResponse.status:type_name -> payrudder.plans.v1.ApiKey.Status
-	36, // 19: payrudder.plans.v1.ResolveApiKeyResponse.environment:type_name -> payrudder.plans.v1.Environment
-	26, // 20: payrudder.plans.v1.ResolveApiKeyResponse.tier:type_name -> payrudder.plans.v1.TenantTier
-	37, // 21: payrudder.plans.v1.ResolveApiKeyResponse.tenant_status:type_name -> payrudder.plans.v1.TenantStatus
-	33, // 22: payrudder.plans.v1.ResolveApiKeyResponse.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	38, // 23: payrudder.plans.v1.ResolveApiKeyResponse.expire_time:type_name -> google.protobuf.Timestamp
-	37, // 24: payrudder.plans.v1.SetTenantStatusRequest.status:type_name -> payrudder.plans.v1.TenantStatus
-	29, // 25: payrudder.plans.v1.SetTenantStatusResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	30, // 0: payrudder.plans.v1.CreateAccountRequest.grace_period:type_name -> google.protobuf.Duration
+	31, // 1: payrudder.plans.v1.CreateAccountRequest.tier:type_name -> payrudder.plans.v1.TenantTier
+	32, // 2: payrudder.plans.v1.CreateAccountResponse.account:type_name -> payrudder.plans.v1.Account
+	30, // 3: payrudder.plans.v1.CreateAppRequest.grace_period:type_name -> google.protobuf.Duration
+	31, // 4: payrudder.plans.v1.CreateAppRequest.tier:type_name -> payrudder.plans.v1.TenantTier
+	33, // 5: payrudder.plans.v1.CreateAppResponse.app:type_name -> payrudder.plans.v1.App
+	33, // 6: payrudder.plans.v1.ListAppsResponse.apps:type_name -> payrudder.plans.v1.App
+	34, // 7: payrudder.plans.v1.GetTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	34, // 8: payrudder.plans.v1.ListTenantsResponse.tenants:type_name -> payrudder.plans.v1.Tenant
+	30, // 9: payrudder.plans.v1.UpdateTenantSettingsRequest.grace_period:type_name -> google.protobuf.Duration
+	31, // 10: payrudder.plans.v1.UpdateTenantSettingsRequest.tier:type_name -> payrudder.plans.v1.TenantTier
+	35, // 11: payrudder.plans.v1.UpdateTenantSettingsRequest.address:type_name -> payrudder.plans.v1.Address
+	36, // 12: payrudder.plans.v1.UpdateTenantSettingsRequest.bank_transfer:type_name -> payrudder.plans.v1.BankTransferDetails
+	37, // 13: payrudder.plans.v1.UpdateTenantSettingsRequest.legal:type_name -> payrudder.plans.v1.LegalInfo
+	34, // 14: payrudder.plans.v1.UpdateTenantSettingsResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	38, // 15: payrudder.plans.v1.CreateApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
+	39, // 16: payrudder.plans.v1.CreateApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	39, // 17: payrudder.plans.v1.RevokeApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	40, // 18: payrudder.plans.v1.ResolveApiKeyResponse.status:type_name -> payrudder.plans.v1.ApiKey.Status
+	41, // 19: payrudder.plans.v1.ResolveApiKeyResponse.environment:type_name -> payrudder.plans.v1.Environment
+	31, // 20: payrudder.plans.v1.ResolveApiKeyResponse.tier:type_name -> payrudder.plans.v1.TenantTier
+	42, // 21: payrudder.plans.v1.ResolveApiKeyResponse.tenant_status:type_name -> payrudder.plans.v1.TenantStatus
+	38, // 22: payrudder.plans.v1.ResolveApiKeyResponse.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
+	43, // 23: payrudder.plans.v1.ResolveApiKeyResponse.expire_time:type_name -> google.protobuf.Timestamp
+	42, // 24: payrudder.plans.v1.SetTenantStatusRequest.status:type_name -> payrudder.plans.v1.TenantStatus
+	34, // 25: payrudder.plans.v1.SetTenantStatusResponse.tenant:type_name -> payrudder.plans.v1.Tenant
 	24, // 26: payrudder.plans.v1.ListTenantStatusEventsResponse.events:type_name -> payrudder.plans.v1.TenantStatusEvent
-	37, // 27: payrudder.plans.v1.TenantStatusEvent.from_status:type_name -> payrudder.plans.v1.TenantStatus
-	37, // 28: payrudder.plans.v1.TenantStatusEvent.to_status:type_name -> payrudder.plans.v1.TenantStatus
-	38, // 29: payrudder.plans.v1.TenantStatusEvent.create_time:type_name -> google.protobuf.Timestamp
-	0,  // 30: payrudder.plans.v1.AdminService.CreateAccount:input_type -> payrudder.plans.v1.CreateAccountRequest
-	2,  // 31: payrudder.plans.v1.AdminService.CreateApp:input_type -> payrudder.plans.v1.CreateAppRequest
-	4,  // 32: payrudder.plans.v1.AdminService.ListApps:input_type -> payrudder.plans.v1.ListAppsRequest
-	6,  // 33: payrudder.plans.v1.AdminService.GetTenant:input_type -> payrudder.plans.v1.GetTenantRequest
-	8,  // 34: payrudder.plans.v1.AdminService.ListTenants:input_type -> payrudder.plans.v1.ListTenantsRequest
-	10, // 35: payrudder.plans.v1.AdminService.UpdateTenantSettings:input_type -> payrudder.plans.v1.UpdateTenantSettingsRequest
-	12, // 36: payrudder.plans.v1.AdminService.CreateApiKey:input_type -> payrudder.plans.v1.CreateApiKeyRequest
-	14, // 37: payrudder.plans.v1.AdminService.RevokeApiKey:input_type -> payrudder.plans.v1.RevokeApiKeyRequest
-	16, // 38: payrudder.plans.v1.AdminService.ResolveApiKey:input_type -> payrudder.plans.v1.ResolveApiKeyRequest
-	18, // 39: payrudder.plans.v1.AdminService.TouchApiKey:input_type -> payrudder.plans.v1.TouchApiKeyRequest
-	20, // 40: payrudder.plans.v1.AdminService.SetTenantStatus:input_type -> payrudder.plans.v1.SetTenantStatusRequest
-	22, // 41: payrudder.plans.v1.AdminService.ListTenantStatusEvents:input_type -> payrudder.plans.v1.ListTenantStatusEventsRequest
-	1,  // 42: payrudder.plans.v1.AdminService.CreateAccount:output_type -> payrudder.plans.v1.CreateAccountResponse
-	3,  // 43: payrudder.plans.v1.AdminService.CreateApp:output_type -> payrudder.plans.v1.CreateAppResponse
-	5,  // 44: payrudder.plans.v1.AdminService.ListApps:output_type -> payrudder.plans.v1.ListAppsResponse
-	7,  // 45: payrudder.plans.v1.AdminService.GetTenant:output_type -> payrudder.plans.v1.GetTenantResponse
-	9,  // 46: payrudder.plans.v1.AdminService.ListTenants:output_type -> payrudder.plans.v1.ListTenantsResponse
-	11, // 47: payrudder.plans.v1.AdminService.UpdateTenantSettings:output_type -> payrudder.plans.v1.UpdateTenantSettingsResponse
-	13, // 48: payrudder.plans.v1.AdminService.CreateApiKey:output_type -> payrudder.plans.v1.CreateApiKeyResponse
-	15, // 49: payrudder.plans.v1.AdminService.RevokeApiKey:output_type -> payrudder.plans.v1.RevokeApiKeyResponse
-	17, // 50: payrudder.plans.v1.AdminService.ResolveApiKey:output_type -> payrudder.plans.v1.ResolveApiKeyResponse
-	19, // 51: payrudder.plans.v1.AdminService.TouchApiKey:output_type -> payrudder.plans.v1.TouchApiKeyResponse
-	21, // 52: payrudder.plans.v1.AdminService.SetTenantStatus:output_type -> payrudder.plans.v1.SetTenantStatusResponse
-	23, // 53: payrudder.plans.v1.AdminService.ListTenantStatusEvents:output_type -> payrudder.plans.v1.ListTenantStatusEventsResponse
-	42, // [42:54] is the sub-list for method output_type
-	30, // [30:42] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	42, // 27: payrudder.plans.v1.TenantStatusEvent.from_status:type_name -> payrudder.plans.v1.TenantStatus
+	42, // 28: payrudder.plans.v1.TenantStatusEvent.to_status:type_name -> payrudder.plans.v1.TenantStatus
+	43, // 29: payrudder.plans.v1.TenantStatusEvent.create_time:type_name -> google.protobuf.Timestamp
+	29, // 30: payrudder.plans.v1.GetPriceChangePauseResponse.pause:type_name -> payrudder.plans.v1.PriceChangePause
+	29, // 31: payrudder.plans.v1.SetPriceChangePauseResponse.pause:type_name -> payrudder.plans.v1.PriceChangePause
+	43, // 32: payrudder.plans.v1.PriceChangePause.update_time:type_name -> google.protobuf.Timestamp
+	0,  // 33: payrudder.plans.v1.AdminService.CreateAccount:input_type -> payrudder.plans.v1.CreateAccountRequest
+	2,  // 34: payrudder.plans.v1.AdminService.CreateApp:input_type -> payrudder.plans.v1.CreateAppRequest
+	4,  // 35: payrudder.plans.v1.AdminService.ListApps:input_type -> payrudder.plans.v1.ListAppsRequest
+	6,  // 36: payrudder.plans.v1.AdminService.GetTenant:input_type -> payrudder.plans.v1.GetTenantRequest
+	8,  // 37: payrudder.plans.v1.AdminService.ListTenants:input_type -> payrudder.plans.v1.ListTenantsRequest
+	10, // 38: payrudder.plans.v1.AdminService.UpdateTenantSettings:input_type -> payrudder.plans.v1.UpdateTenantSettingsRequest
+	12, // 39: payrudder.plans.v1.AdminService.CreateApiKey:input_type -> payrudder.plans.v1.CreateApiKeyRequest
+	14, // 40: payrudder.plans.v1.AdminService.RevokeApiKey:input_type -> payrudder.plans.v1.RevokeApiKeyRequest
+	16, // 41: payrudder.plans.v1.AdminService.ResolveApiKey:input_type -> payrudder.plans.v1.ResolveApiKeyRequest
+	18, // 42: payrudder.plans.v1.AdminService.TouchApiKey:input_type -> payrudder.plans.v1.TouchApiKeyRequest
+	20, // 43: payrudder.plans.v1.AdminService.SetTenantStatus:input_type -> payrudder.plans.v1.SetTenantStatusRequest
+	22, // 44: payrudder.plans.v1.AdminService.ListTenantStatusEvents:input_type -> payrudder.plans.v1.ListTenantStatusEventsRequest
+	25, // 45: payrudder.plans.v1.AdminService.GetPriceChangePause:input_type -> payrudder.plans.v1.GetPriceChangePauseRequest
+	27, // 46: payrudder.plans.v1.AdminService.SetPriceChangePause:input_type -> payrudder.plans.v1.SetPriceChangePauseRequest
+	1,  // 47: payrudder.plans.v1.AdminService.CreateAccount:output_type -> payrudder.plans.v1.CreateAccountResponse
+	3,  // 48: payrudder.plans.v1.AdminService.CreateApp:output_type -> payrudder.plans.v1.CreateAppResponse
+	5,  // 49: payrudder.plans.v1.AdminService.ListApps:output_type -> payrudder.plans.v1.ListAppsResponse
+	7,  // 50: payrudder.plans.v1.AdminService.GetTenant:output_type -> payrudder.plans.v1.GetTenantResponse
+	9,  // 51: payrudder.plans.v1.AdminService.ListTenants:output_type -> payrudder.plans.v1.ListTenantsResponse
+	11, // 52: payrudder.plans.v1.AdminService.UpdateTenantSettings:output_type -> payrudder.plans.v1.UpdateTenantSettingsResponse
+	13, // 53: payrudder.plans.v1.AdminService.CreateApiKey:output_type -> payrudder.plans.v1.CreateApiKeyResponse
+	15, // 54: payrudder.plans.v1.AdminService.RevokeApiKey:output_type -> payrudder.plans.v1.RevokeApiKeyResponse
+	17, // 55: payrudder.plans.v1.AdminService.ResolveApiKey:output_type -> payrudder.plans.v1.ResolveApiKeyResponse
+	19, // 56: payrudder.plans.v1.AdminService.TouchApiKey:output_type -> payrudder.plans.v1.TouchApiKeyResponse
+	21, // 57: payrudder.plans.v1.AdminService.SetTenantStatus:output_type -> payrudder.plans.v1.SetTenantStatusResponse
+	23, // 58: payrudder.plans.v1.AdminService.ListTenantStatusEvents:output_type -> payrudder.plans.v1.ListTenantStatusEventsResponse
+	26, // 59: payrudder.plans.v1.AdminService.GetPriceChangePause:output_type -> payrudder.plans.v1.GetPriceChangePauseResponse
+	28, // 60: payrudder.plans.v1.AdminService.SetPriceChangePause:output_type -> payrudder.plans.v1.SetPriceChangePauseResponse
+	47, // [47:61] is the sub-list for method output_type
+	33, // [33:47] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_admin_proto_init() }
@@ -1794,7 +2079,7 @@ func file_payrudder_plans_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_admin_proto_rawDesc), len(file_payrudder_plans_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
@@ -123,13 +125,15 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 		hint = hint[len(hint)-4:]
 	}
 	var out *plansv1.MailIntegration
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		r, err := q.UpsertMailIntegration(ctx, sqlc.UpsertMailIntegrationParams{Provider: req.GetProvider(), BaseUrl: strings.TrimRight(req.GetBaseUrl(), "/"), ApiKeyEnc: sealed, KeyHint: hint, FromAddress: req.GetFrom()})
 		if err != nil {
 			return err
 		}
 		out = mailqry.Message(r)
-		return nil
+		// Never the key, nor its hint: the provider, the address of its API and the sender.
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.saved", TargetType: "mail_integration", TargetID: req.GetProvider(),
+			Summary: "connected the mail provider " + req.GetProvider(), Detail: map[string]any{"provider": req.GetProvider(), "base_url": r.BaseUrl, "from": req.GetFrom()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "mail integration")
@@ -139,7 +143,11 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 
 // Delete removes the connection: the tenant's mail goes through Payrudder's own sender again.
 func (c *Commands) Delete(ctx context.Context) error {
-	return convert.Err(c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	t, err := tenant.Require(ctx)
+	if err != nil {
+		return err
+	}
+	return convert.Err(c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		n, err := q.DeleteMailIntegration(ctx)
 		if err != nil {
 			return err
@@ -147,7 +155,7 @@ func (c *Commands) Delete(ctx context.Context) error {
 		if n == 0 {
 			return errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no e-mail provider is connected")
 		}
-		return nil
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.removed", TargetType: "mail_integration", Summary: "disconnected the mail provider"})
 	}), "mail integration")
 }
 

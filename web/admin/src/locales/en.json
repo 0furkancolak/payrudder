@@ -237,7 +237,20 @@
     "suspend": "Suspend",
     "reinstate": "Reinstate",
     "suspended": "Suspended",
-    "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once."
+    "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once.",
+    "pricePause": {
+      "title": "Price changes",
+      "running": "Running",
+      "paused": "Paused",
+      "hint": "The kill switch for every seller: while paused, no price change schedules a subscription (a dry run still counts), a run in progress stops and the notices already queued wait. Changes already scheduled still apply at their renewal; a seller withdraws the price change to stop one.",
+      "by": "Paused by {who} on {date}.",
+      "reason": "Reason",
+      "reasonHint": "Kept with the setting and in the audit log. Up to 500 characters.",
+      "pause": "Pause all price changes",
+      "resume": "Resume price changes",
+      "confirmPause": "Pause every price change on the platform? No seller can schedule or retry one until you resume, and the notices already queued wait.",
+      "confirmResume": "Resume price changes? Sellers can schedule and retry again, and the notices that waited go out."
+    }
   },
   "tenant": {
     "fallbackTitle": "Tenant",
@@ -862,7 +875,8 @@
           "run_by_provider": "run by a payment provider",
           "not_changeable": "cannot be moved this way",
           "customer_blocked": "customer is blocked"
-        }
+        },
+        "loadMore": "Show more subscriptions"
       },
       "prorateAfterTrial": "Charge the first period from the end of the trial",
       "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Price change not found.",
-        "withdrawn": "This price change was withdrawn. Make a new one."
+        "withdrawn": "This price change was withdrawn. Make a new one.",
+        "paused": "Price changes are paused by the operator. Try again later."
       },
       "override": {
         "customer_required": "Say which customer the limit is for.",
@@ -3419,6 +3434,9 @@
         "not_configured": "This deployment cannot offer two-factor sign-in yet: it has no secrets key.",
         "required_by_organisation": "An organisation you own requires two-factor sign-in, so you cannot turn it off.",
         "setup_required": "An organisation you own requires two-factor sign-in. Set it up on the security page first."
+      },
+      "user": {
+        "not_found": "No person signs in with that address."
       }
     },
     "gateway": {
@@ -5468,7 +5486,19 @@
       "clear": "Clear own limits",
       "save": "Save",
       "saved": "Saved.",
-      "cleared": "Own limits cleared."
+      "cleared": "Own limits cleared.",
+      "twoFactor": {
+        "title": "Lost second factor",
+        "hint": "For a person who has lost both their authenticator app and their recovery codes. Check who is asking first. Their two-factor sign-in is turned off, they are signed out everywhere and mailed, and the reset is written to the audit log with your reason.",
+        "email": "Person's sign-in address",
+        "reason": "Reason (kept in the audit log)",
+        "reset": "Turn off two-factor sign-in",
+        "confirmTitle": "Turn off two-factor sign-in?",
+        "confirmBody": "{email} will be signed out everywhere and can sign in with the password alone until they set it up again. They are mailed, and the reset is recorded with your name and reason.",
+        "confirm": "Turn it off",
+        "done": "Two-factor sign-in of {email} is off. They have been mailed.",
+        "nothing": "{email} had no two-factor sign-in; nothing was changed."
+      }
     }
   },
   "support": {
@@ -5981,6 +6011,20 @@
       "invoice": "Invoices",
       "provider_account": "Provider accounts",
       "tenant": "Tenant settings and status",
+      "price_change": "Price changes",
+      "coupon": "Coupons",
+      "promotion_code": "Promotion codes",
+      "routing_rules": "Payment routing",
+      "tax_rates": "Tax rates",
+      "mail_settings": "Mail settings",
+      "mail_integration": "Mail provider",
+      "go_live": "Go live",
+      "contract": "Contracts",
+      "support": "Support",
+      "dunning": "Dunning",
+      "invoice_payment": "Payments recorded by hand",
+      "bank_transfer": "Bank transfers",
+      "user": "Passwords and sign-in",
       "two_factor": "Two-factor sign-in",
       "sign_in": "Sign-in",
       "account": "Organisation"
@@ -6029,10 +6073,62 @@
         "status_changed": "Status changed",
         "settings_updated": "Settings changed"
       },
+      "price_change": {
+        "scheduled": "Price change scheduled",
+        "withdrawn": "Price change withdrawn"
+      },
+      "coupon": {
+        "created": "Coupon created",
+        "deactivated": "Coupon deactivated"
+      },
+      "promotion_code": {
+        "created": "Promotion codes created",
+        "deactivated": "Promotion code deactivated"
+      },
+      "routing_rules": {
+        "changed": "Payment routing changed"
+      },
+      "tax_rates": {
+        "changed": "Tax rates changed"
+      },
+      "mail_settings": {
+        "changed": "Mail settings changed"
+      },
+      "mail_integration": {
+        "saved": "Mail provider connected",
+        "removed": "Mail provider disconnected"
+      },
+      "go_live": {
+        "billing_profile_saved": "Billing profile saved",
+        "terms_accepted": "Terms accepted",
+        "activated": "Live environment activated"
+      },
+      "contract": {
+        "version_published": "Contract version published",
+        "settings_changed": "Contract settings changed"
+      },
+      "support": {
+        "status_changed": "Support ticket status changed"
+      },
+      "dunning": {
+        "settings_changed": "Dunning settings changed"
+      },
+      "invoice_payment": {
+        "recorded": "Payment recorded by hand"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Bank transfer confirmed"
+      },
+      "user": {
+        "password_reset": "Password reset",
+        "sign_in_locked": "Sign-in locked"
+      },
       "two_factor": {
         "enabled": "Two-factor sign-in turned on",
         "disabled": "Two-factor sign-in turned off",
-        "recovery_codes_regenerated": "Recovery codes regenerated"
+        "recovery_codes_replaced": "Recovery codes regenerated",
+        "recovery_code_used": "Recovery code used",
+        "reset_by_operator": "Two-factor sign-in reset by support"
       }
     }
   }

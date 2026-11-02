@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -208,6 +209,14 @@ func (c *Commands) ResetPassword(ctx context.Context, req *plansv1.ResetPassword
 		}
 		userID = uid
 		if err := q.SetPassword(ctx, sqlc.SetPasswordParams{ID: uid, PasswordHash: hash}); err != nil {
+			return err
+		}
+		u, err := q.GetUser(ctx, uid)
+		if err != nil {
+			return err
+		}
+		if err := audit.Record(ctx, tx, audit.Event{By: who(u), Action: "user.password_reset", TargetType: "user", TargetID: uid.String(),
+			Summary: "set a new password with a mailed link; every session was ended", Detail: map[string]any{"sessions_revoked": true}}); err != nil {
 			return err
 		}
 		if err := q.MarkEmailVerified(ctx, uid); err != nil {
