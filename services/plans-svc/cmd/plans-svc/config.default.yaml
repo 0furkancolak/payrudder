@@ -5,6 +5,10 @@ PAYRUDDER_RELAY_WORKERS: "1"
 PAYRUDDER_RELAY_BATCH_SIZE: "200"
 PAYRUDDER_WEBHOOK_ALLOW_PRIVATE: "false"
 PAYRUDDER_ALLOWED_ENVIRONMENTS: "sandbox,live"
+# The region the tenants of a new app are pinned to (tenants.region) when the request names none: lower-case letters, digits and hyphens. Empty pins nothing and every
+# gateway serves the tenant (docs/runbooks/scaling.md). A gateway with PAYRUDDER_REGION set names its own region in the requests it makes, so this is only for apps made
+# without going through such a gateway (an operator, a script).
+PAYRUDDER_DEFAULT_REGION: ""
 # "true": banning a tenant needs a second operator (the first request is recorded, the same request from another operator within a day applies it). Default off.
 PAYRUDDER_TENANT_BAN_APPROVAL: "false"
 # The platform's own mail path, for the mail Payrudder writes to people (e-mail verification, password reset, invitations). The default is the development

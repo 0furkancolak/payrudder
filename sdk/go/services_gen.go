@@ -743,10 +743,13 @@ type ContractAcceptancesService service
 // A self-contained HTML document in `html` (no script, no external resource), written again from the stored
 // record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the
 // customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example
-// in a sandboxed frame.
-func (s *ContractAcceptancesService) GetContractSnapshot(ctx context.Context, id string, opts ...RequestOption) (*GetContractSnapshotResponse, error) {
+// in a sandboxed frame. With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only,
+// in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character
+// the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML
+// page is the only copy.
+func (s *ContractAcceptancesService) GetContractSnapshot(ctx context.Context, id string, params *GetContractSnapshotParams, opts ...RequestOption) (*GetContractSnapshotResponse, error) {
 	var out GetContractSnapshotResponse
-	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contract-acceptances/" + url.PathEscape(id) + "/snapshot", query: nil, body: nil}, &out, opts); err != nil {
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contract-acceptances/" + url.PathEscape(id) + "/snapshot", query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

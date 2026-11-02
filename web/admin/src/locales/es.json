@@ -3100,6 +3100,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "El nombre de la región solo puede tener minúsculas, dígitos y guiones, y como máximo 31 caracteres.",
         "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
         "slug_taken": "Esta cuenta ya tiene una app con ese identificador."
       },
@@ -3551,6 +3552,7 @@
         "unreachable": "No se puede acceder al servicio de pagos ahora mismo. Inténtalo de nuevo en un momento."
       },
       "region": {
+        "unknown": "Esa región no existe en este despliegue. Elija una de la lista.",
         "wrong": "Este entorno se sirve desde otra región. Envíe la solicitud a la pasarela de su región (consulte las cabeceras X-Payrudder-Region y X-Payrudder-Region-Url)."
       },
       "rate_limit": {
@@ -3942,6 +3944,8 @@
       "name": "Nombre de la aplicación",
       "currency": "Moneda",
       "timezone": "Zona horaria",
+      "region": "Región",
+      "regionHint": "Dónde se guardan los datos de esta app. La consola no puede cambiarlo después, y se accede a la app desde la dirección de esa región.",
       "immutable": "La moneda y la zona horaria no se pueden cambiar después: los periodos de facturación se cortan en esa zona horaria.",
       "submit": "Crear aplicación",
       "badCurrency": "Elija una moneda de la lista.",
@@ -6067,7 +6071,17 @@
         "source": "Dónde se aceptó",
         "allSources": "En cualquier lugar"
       },
-      "showMore": "Mostrar más"
+      "showMore": "Mostrar más",
+      "requirements": "Lo que el cliente debe aceptar",
+      "reqOff": "No exiges acuerdos: no se le pide nada a este cliente.",
+      "reqSatisfied": "Todo lo exigido está aceptado",
+      "reqOpen": "Por aceptar: {n}",
+      "reqAccepted": "Aceptado {time}",
+      "reqToAccept": "Por aceptar",
+      "reqConsents": "A un consumidor también se le pide que solicite el inicio inmediato del servicio y que reconozca la pérdida del derecho de desistimiento.",
+      "reqMissing": "No hay texto publicado para: {kinds}. Se rechaza el pago hasta que lo haya.",
+      "downloadPdf": "Descargar PDF",
+      "pdfUnavailable": "No se puede hacer un PDF de esta página: su texto tiene caracteres que la fuente del PDF no puede dibujar. Vea la página en su lugar."
     },
     "record": {
       "title": "Registrar un desistimiento",

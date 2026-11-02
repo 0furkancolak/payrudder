@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -157,10 +158,12 @@ func (s *Server) recordContractAcceptance(w http.ResponseWriter, r *http.Request
 	respond(w, r, http.StatusCreated, resp, err)
 }
 
-// contractSnapshot is GET /v1/contract-acceptances/{id}/snapshot: the page the customer accepted as one self-contained HTML document in `html`, with its sha256. The
-// page is the customer's text and the seller's variables: whoever shows it shows it as untrusted (the console puts it in a sandboxed frame).
+// contractSnapshot is GET /v1/contract-acceptances/{id}/snapshot?pdf=: the page the customer accepted as one self-contained HTML document in `html`, with its sha256; with
+// pdf=true also the same page drawn as a PDF (base64 in `pdf`, or `pdf_unavailable` when the page has characters the PDF font cannot draw). The page is the customer's text
+// and the seller's variables: whoever shows it shows it as untrusted (the console puts it in a sandboxed frame).
 func (s *Server) contractSnapshot(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Contracts.GetContractSnapshot(r.Context(), &plansv1.GetContractSnapshotRequest{AcceptanceId: r.PathValue("id")})
+	pdf, _ := strconv.ParseBool(r.URL.Query().Get("pdf"))
+	resp, err := s.d.Contracts.GetContractSnapshot(r.Context(), &plansv1.GetContractSnapshotRequest{AcceptanceId: r.PathValue("id"), IncludePdf: pdf})
 	noStore(w)
 	respond(w, r, http.StatusOK, resp, err)
 }

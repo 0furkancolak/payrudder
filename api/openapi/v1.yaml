@@ -380,8 +380,12 @@ paths:
     get:
       operationId: getContractSnapshot
       summary: The page the customer accepted, as it was rendered then
-      description: A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
-      parameters: [{ $ref: "#/components/parameters/ID" }]
+      description: |
+        A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+        With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only, in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML page is the only copy.
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: pdf, in: query, required: false, schema: { type: boolean, default: false }, description: "Also draw the page as a PDF" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetContractSnapshotResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -2294,6 +2298,19 @@ paths:
         "200": { description: "The accepted page", content: { text/html: { schema: { type: string } } } }
         "404": { description: "Not this customer's acceptance, or the link does not exist", content: { text/html: { schema: { type: string } } } }
         "429": { description: "Too many requests" }
+  /c/{token}/agreements/{id}/pdf:
+    get:
+      operationId: portalAgreementPdf
+      summary: The page the customer accepted, as a PDF to keep
+      description: The same stored snapshot drawn as a PDF (text only, ending with the sha256 of the page), as a download. Only an acceptance of this portal's customer opens; any other id is a 404. A text the PDF font cannot draw (Arabic, a name in Chinese) has no PDF; the answer is a 404 page that points to the HTML page.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "The PDF", content: { application/pdf: { schema: { type: string, format: binary } } } }
+        "404": { description: "Not this customer's acceptance, the link does not exist, or the text has no PDF", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
   /v1/payment-links:
     post:
       operationId: createPaymentLink
@@ -3336,6 +3353,19 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+  /app/v1/regions:
+    get:
+      operationId: appListRegions
+      tags: [Product]
+      summary: The regions an app can be pinned to from this deployment
+      description: >
+        Where the data of a new app can live, and where it lives when the person chooses none. Both are empty on a deployment without regions (its gateway has no
+        `PAYRUDDER_REGION`), where nothing is pinned. An app is pinned when it is created (`region` of `appCreateApp`); a gateway of another region then answers 421
+        `gateway.region.wrong` for it.
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppRegionsResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
   /app/v1/apps:
     get:
       operationId: appListApps
@@ -8064,6 +8094,13 @@ components:
         slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
         currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
         timezone: { type: string, examples: [Europe/Istanbul] }
+        region: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: "Where the app's data lives, one of `appListRegions`; left out: this gateway's region (none on a deployment without regions). Cannot be changed afterwards except by moving the tenant" }
+    AppRegionsResponse:
+      type: object
+      required: [regions, default_region]
+      properties:
+        regions: { type: array, items: { type: string } }
+        default_region: { type: string, description: "Empty on a deployment without regions" }
     AppGetAppResponse:
       type: object
       required: [app, role]
@@ -8398,6 +8435,7 @@ components:
         timezone: { type: string, examples: [Europe/Istanbul] }
         grace_period: { type: string, examples: ["86400s"] }
         tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+        region: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: "The region of the app's tenants; left out: the deployment's default (`PAYRUDDER_DEFAULT_REGION` of plans-svc, itself empty: not pinned)" }
     ListAppsResponse:
       type: object
       required: [apps]
@@ -11179,7 +11217,7 @@ components:
               provider: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     Tenant:
       type: object
-      required: [id, account_id, app_id, address, legal, e_invoice_on, default_language, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
+      required: [id, account_id, app_id, address, legal, e_invoice_on, default_language, region, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
       properties:
         id: { type: string, format: uuid }
         account_id: { type: string, format: uuid }
@@ -11188,6 +11226,7 @@ components:
         legal: { allOf: [{ $ref: "#/components/schemas/LegalInfo" }], nullable: true }
         e_invoice_on: { type: string, enum: ["off", finalized, paid], description: When an invoice becomes an e-document }
         default_language: { type: string, enum: ["", en, tr, de, fr, es, ar], description: "The language of the tenant's invoices and mails for a customer who has none of their own. Empty is English" }
+        region: { type: string, description: "Where the tenant's data lives (set when the app was created, or when the tenant was moved into a cell); empty: not pinned, every gateway serves it" }
         environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
         name: { type: string }
         tier: { type: string }
@@ -11452,6 +11491,8 @@ components:
         html: { type: string }
         sha256: { type: string }
         group_id: { type: string, format: uuid }
+        pdf: { type: string, format: byte, description: "The page as a PDF, base64; only with pdf=true and when the page can be drawn" }
+        pdf_unavailable: { type: boolean, description: "true when pdf=true was asked and the page cannot be drawn in the PDF font" }
     ContractWithdrawal:
       type: object
       required: [id, customer_id, customer_external_id, subscription_id, invoice_id, statement, source, status, receive_time, decide_time, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_time]

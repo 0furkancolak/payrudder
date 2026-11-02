@@ -228,3 +228,7 @@ The job inventory has no loop over tenants here (each of the four acts for the t
 ## As built: the audit log in payments-worker (plan 22, G4)
 
 `audit_events` (migration `00006`, twin in `tenant/00007`; no row-level security, like the rest of payments_db) is written next to `provider_account_events` when a provider account is connected, replaced, removed or made the default, with the actor the gateway sent (`audit.Middleware` reads the `X-Payrudder-Audit-*` headers). `GET /admin/tenants/{tenant}/audit-events` and `GET /admin/audit-events` answer the gateway's fan-out with the same message `AuditService` uses. Nothing of the account's settings is in an entry. See [audit-log-and-two-factor.md](../audit-log-and-two-factor.md).
+
+## The notifier attaches the PDF copy of an accepted agreement (plan 21)
+
+When a customer accepts an agreement the notifier asks plans-svc for the PDF drawn from the stored page of that acceptance (hash checked first; drawn on request, never stored; see [21](../plans/21-contracts.md), "The PDF copies") and attaches it to the mail as `agreement-<first 12 characters of the hash>.pdf` (`mailx.Message.Attachments`: SMTP sends MIME parts, Resend its `attachments` array). A mail without the PDF is sent when the PDF cannot be drawn; the copy is also downloadable from the portal and the console.

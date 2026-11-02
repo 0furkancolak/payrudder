@@ -369,10 +369,15 @@ class RecordContractAcceptanceResponse(TypedDict):
     acceptances: list[ContractAcceptance]
 
 
-class GetContractSnapshotResponse(TypedDict):
+class _GetContractSnapshotResponseRequired(TypedDict):
     html: str
     sha256: str
     group_id: str
+
+
+class GetContractSnapshotResponse(_GetContractSnapshotResponseRequired, total=False):
+    pdf: str
+    pdf_unavailable: bool
 
 
 class CreateContractWithdrawalRequest(TypedDict, total=False):

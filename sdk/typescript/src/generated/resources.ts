@@ -90,6 +90,7 @@ import type {
   GetAnalyticsUsageResponse,
   GetContractRequirementsQuery,
   GetContractRequirementsResponse,
+  GetContractSnapshotQuery,
   GetContractSnapshotResponse,
   GetContractStarterQuery,
   GetContractStarterResponse,
@@ -641,11 +642,12 @@ export class ContractAcceptancesResource {
    * The page the customer accepted, as it was rendered then
    *
    * A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+   * With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only, in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML page is the only copy.
    *
    * `GET /v1/contract-acceptances/{id}/snapshot`
    */
-  getContractSnapshot(id: string, options?: RequestOptions): Promise<GetContractSnapshotResponse> {
-    return this.t.request<GetContractSnapshotResponse>({ method: "GET", path: `/v1/contract-acceptances/${seg(id)}/snapshot`, response: "json" }, options);
+  getContractSnapshot(id: string, query?: GetContractSnapshotQuery, options?: RequestOptions): Promise<GetContractSnapshotResponse> {
+    return this.t.request<GetContractSnapshotResponse>({ method: "GET", path: `/v1/contract-acceptances/${seg(id)}/snapshot`, query, response: "json" }, options);
   }
 }
 

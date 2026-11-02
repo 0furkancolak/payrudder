@@ -437,6 +437,7 @@ export interface paths {
         /**
          * The page the customer accepted, as it was rendered then
          * @description A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+         *     With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only, in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML page is the only copy.
          */
         get: operations["getContractSnapshot"];
         put?: never;
@@ -2885,6 +2886,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/c/{token}/agreements/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The page the customer accepted, as a PDF to keep
+         * @description The same stored snapshot drawn as a PDF (text only, ending with the sha256 of the page), as a download. Only an acceptance of this portal's customer opens; any other id is a 404. A text the PDF font cannot draw (Arabic, a name in Chinese) has no PDF; the answer is a 404 page that points to the HTML page.
+         */
+        get: operations["portalAgreementPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payment-links": {
         parameters: {
             query?: never;
@@ -3966,6 +3987,26 @@ export interface paths {
          * @description The invitation must have been sent to the person's own address (`403 identity.invite.wrong_user` otherwise). Accepting proves the address.
          */
         post: operations["appAcceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The regions an app can be pinned to from this deployment
+         * @description Where the data of a new app can live, and where it lives when the person chooses none. Both are empty on a deployment without regions (its gateway has no `PAYRUDDER_REGION`), where nothing is pinned. An app is pinned when it is created (`region` of `appCreateApp`); a gateway of another region then answers 421 `gateway.region.wrong` for it.
+         */
+        get: operations["appListRegions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8888,6 +8929,13 @@ export interface components {
             currency: string;
             /** @example Europe/Istanbul */
             timezone: string;
+            /** @description Where the app's data lives, one of `appListRegions`; left out: this gateway's region (none on a deployment without regions). Cannot be changed afterwards except by moving the tenant */
+            region?: string;
+        };
+        AppRegionsResponse: {
+            regions: string[];
+            /** @description Empty on a deployment without regions */
+            default_region: string;
         };
         AppGetAppResponse: {
             app: components["schemas"]["App"] | null;
@@ -9197,6 +9245,8 @@ export interface components {
             grace_period: string;
             /** @enum {string} */
             tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+            /** @description The region of the app's tenants; left out: the deployment's default (`PAYRUDDER_DEFAULT_REGION` of plans-svc, itself empty: not pinned) */
+            region?: string;
         };
         ListAppsResponse: {
             apps: components["schemas"]["App"][];
@@ -12949,6 +12999,8 @@ export interface components {
              * @enum {string}
              */
             default_language: "" | "en" | "tr" | "de" | "fr" | "es" | "ar";
+            /** @description Where the tenant's data lives (set when the app was created, or when the tenant was moved into a cell); empty: not pinned, every gateway serves it */
+            region: string;
             /** @enum {string} */
             environment: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             name: string;
@@ -13283,6 +13335,13 @@ export interface components {
             sha256: string;
             /** Format: uuid */
             group_id: string;
+            /**
+             * Format: byte
+             * @description The page as a PDF, base64; only with pdf=true and when the page can be drawn
+             */
+            pdf?: string;
+            /** @description true when pdf=true was asked and the page cannot be drawn in the PDF font */
+            pdf_unavailable?: boolean;
         };
         ContractWithdrawal: {
             /** Format: uuid */
@@ -14056,7 +14115,10 @@ export interface operations {
     };
     getContractSnapshot: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Also draw the page as a PDF */
+                pdf?: boolean;
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -18428,6 +18490,45 @@ export interface operations {
             };
         };
     };
+    portalAgreementPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Not this customer's acceptance, the link does not exist, or the text has no PDF */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listPaymentLinks: {
         parameters: {
             query?: {
@@ -20174,6 +20275,27 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+        };
+    };
+    appListRegions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppRegionsResponse"];
+                };
+            };
+            401: components["responses"]["Error"];
         };
     };
     appListApps: {

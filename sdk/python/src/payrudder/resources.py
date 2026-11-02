@@ -374,12 +374,12 @@ class ContractAcceptancesResource:
     def __init__(self, client: Payrudder) -> None:
         self._client = client
 
-    def get_contract_snapshot(self, id: str, *, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
+    def get_contract_snapshot(self, id: str, *, pdf: bool | None = None, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
         """The page the customer accepted, as it was rendered then.
 
         ``GET /v1/contract-acceptances/{id}/snapshot``
         """
-        return cast("m.GetContractSnapshotResponse", self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", options=options))
+        return cast("m.GetContractSnapshotResponse", self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", query={"pdf": pdf}, options=options))
 
 
 class ContractWithdrawalsResource:
@@ -2228,12 +2228,12 @@ class AsyncContractAcceptancesResource:
     def __init__(self, client: AsyncPayrudder) -> None:
         self._client = client
 
-    async def get_contract_snapshot(self, id: str, *, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
+    async def get_contract_snapshot(self, id: str, *, pdf: bool | None = None, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
         """The page the customer accepted, as it was rendered then.
 
         ``GET /v1/contract-acceptances/{id}/snapshot``
         """
-        return cast("m.GetContractSnapshotResponse", await self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", options=options))
+        return cast("m.GetContractSnapshotResponse", await self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", query={"pdf": pdf}, options=options))
 
 
 class AsyncContractWithdrawalsResource:
