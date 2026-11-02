@@ -215,6 +215,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.run.sandbox_only`
 - `billing.saga.event_not_possible`
 - `billing.saga.not_found`
+- `billing.saga.void_needs_confirmation`
 - `billing.sandbox.unknown_scenario`
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`

@@ -1604,7 +1604,8 @@
       "kind": {
         "grant": "Hinzugefügt",
         "consume": "Verbraucht",
-        "expire": "Verfallen"
+        "expire": "Verfallen",
+        "revoke": "Zurückgenommen"
       },
       "purchase": {
         "title": "Kauflink",
@@ -3010,7 +3011,8 @@
       },
       "saga": {
         "event_not_possible": "Das ist im aktuellen Zahlungsstatus der Rechnung nicht möglich.",
-        "not_found": "Diese Rechnung hat noch keinen Zahlungsvorgang: Sie ist nicht finalisiert."
+        "not_found": "Diese Rechnung hat noch keinen Zahlungsvorgang: Sie ist nicht finalisiert.",
+        "void_needs_confirmation": "Die Zahlung dieser Rechnung ist unbekannt, der Zahlungsanbieter hat sie möglicherweise abgebucht. Prüfen Sie beim Anbieter, dass nichts abgebucht wurde, stornieren Sie die Rechnung dann und bestätigen Sie das."
       },
       "storage": {
         "not_configured": "Der Dateispeicher ist in dieser Installation nicht eingerichtet."
