@@ -1541,6 +1541,33 @@ func (s *CustomersService) SetPaymentMethod(ctx context.Context, externalID stri
 	return &out, nil
 }
 
+// CreatePaymentMethodSetup: Make the link to the provider's page where the customer saves a card for later
+// charges (POST /v1/customers/{external_id}/payment-method-setup).
+//
+// For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode).
+// The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer
+// has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the
+// string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing
+// to call afterwards. The customer is made at the provider once and remembered, so asking again for the same
+// customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you
+// to collect the customer's explicit consent to be charged without them present (the amount and timing, how the
+// amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep
+// the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a
+// sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not
+// exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no
+// account for it.
+func (s *CustomersService) CreatePaymentMethodSetup(ctx context.Context, externalID string, req *CreatePaymentMethodSetupRequest, opts ...RequestOption) (*PaymentMethodSetup, error) {
+	if req == nil {
+		req = &CreatePaymentMethodSetupRequest{}
+	}
+	var body any = req
+	var out PaymentMethodSetup
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/payment-method-setup", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListCustomerPayments: The customer's invoices and the payments recorded for them (GET
 // /v1/customers/{external_id}/payments).
 //

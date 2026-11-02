@@ -193,6 +193,17 @@ export function useDeleteCustomerCard(tenantId: MaybeRefOrGetter<string>, extern
   });
 }
 
+/**
+ * Makes the link to the provider's own page where the customer saves a card for later charges (Stripe's Checkout in setup mode). Nothing is charged and nothing is set here:
+ * the card becomes the customer's payment method when the provider's notification says it was saved. Payrudder keeps no consent in this flow.
+ */
+export function useAskForCard(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useMutation({
+    mutationFn: (returnUrl: string) =>
+      unwrap(tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/payment-method-setup", { params: { path: { external_id: toValue(externalId) } }, body: { provider: "stripe", return_url: returnUrl } })),
+  });
+}
+
 export interface CustomerTax {
   tax_id?: string;
   tax_office?: string;

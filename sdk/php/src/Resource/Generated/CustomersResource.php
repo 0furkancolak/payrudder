@@ -18,6 +18,7 @@ use Payrudder\Model\ContractAcceptance;
 use Payrudder\Model\ContractWithdrawal;
 use Payrudder\Model\CreateContractWithdrawalRequest;
 use Payrudder\Model\CreateCustomerRequest;
+use Payrudder\Model\CreatePaymentMethodSetupRequest;
 use Payrudder\Model\CreatePortalLinkRequest;
 use Payrudder\Model\CreatePortalLinkResponse;
 use Payrudder\Model\CreditBalance;
@@ -44,6 +45,7 @@ use Payrudder\Model\ListCustomerPaymentsResponse;
 use Payrudder\Model\ListCustomersResponse;
 use Payrudder\Model\ListEntitlementOverridesResponse;
 use Payrudder\Model\ListEntitlementsResponse;
+use Payrudder\Model\PaymentMethodSetup;
 use Payrudder\Model\RecordContractAcceptanceRequest;
 use Payrudder\Model\RecordContractAcceptanceResponse;
 use Payrudder\Model\RevokePortalLinksResponse;
@@ -144,6 +146,20 @@ final class CustomersResource extends AbstractResource
     public function setPaymentMethod(string $externalId, SetPaymentMethodRequest|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/payment-method', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Make the link to the provider's page where the customer saves a card for later charges (POST /v1/customers/{external_id}/payment-method-setup).
+     *
+     * @param string $externalId
+     * @param CreatePaymentMethodSetupRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function createPaymentMethodSetup(string $externalId, CreatePaymentMethodSetupRequest|array $body, ?RequestOptions $options = null): PaymentMethodSetup
+    {
+        return PaymentMethodSetup::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/payment-method-setup', [], Cast::body($body), $options));
     }
 
     /**

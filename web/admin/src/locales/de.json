@@ -757,6 +757,26 @@
         "deleteInUse": "Das ist die Karte, mit der die Rechnungen des Kunden belastet werden. Nach dem Löschen schlägt die nächste Abbuchung fehl, bis für den Kunden eine neue Zahlungsmethode gesetzt ist. Die Karte wird beim Zahlungsanbieter gelöscht, das lässt sich nicht rückgängig machen.",
         "deletedInUse": "Die Karte wurde gelöscht. Es war die Karte, mit der die Rechnungen des Kunden belastet werden: Setzen Sie eine neue Zahlungsmethode für den Kunden.",
         "hint": "Payrudder speichert keine Kartennummern: eine Karte wird dort gespeichert, wo der Zahler sie eingibt, und die Zahlungsmethode des Kunden benennt sie. Hier sehen Sie die Karten und können eine löschen."
+      },
+      "askCard": {
+        "action": "Karte anfordern",
+        "title": "Kunden um eine Karte bitten",
+        "hint": "Stripe öffnet seine eigene Seite, auf der der Kunde eine Karte für spätere Abbuchungen speichert. Jetzt wird nichts abgebucht und keine Kartennummer läuft über Payrudder. Den Link schicken Sie dem Kunden.",
+        "consent": "In diesem Ablauf holt und speichert Payrudder keine Einwilligung. Stripes Leitfaden verlangt, dass Sie die ausdrückliche Zustimmung des Kunden zur Abbuchung in seiner Abwesenheit einholen (Betrag und Zeitpunkt, wie der Betrag bestimmt wird, wie gekündigt wird) und diese festhalten. Schicken Sie den Link zusammen mit Ihren Bedingungen und bewahren Sie die Zustimmung selbst auf.",
+        "returnUrl": "Rücksprungadresse",
+        "returnUrlHint": "Wohin Stripe den Kunden nach der Seite schickt: eine Adresse von Ihnen, nur https.",
+        "errors": {
+          "required": "Geben Sie die Adresse ein, zu der der Kunde zurückkehrt.",
+          "notHttps": "Die Adresse muss mit https:// beginnen und eine Website nennen.",
+          "tooLong": "Die Adresse ist zu lang (höchstens 2000 Zeichen)."
+        },
+        "made": "Der Link ist fertig. Schicken Sie ihn dem Kunden.",
+        "link": "Link zur Stripe-Seite",
+        "copy": "Kopieren",
+        "after": "Hat der Kunde die Karte gespeichert, meldet Stripe das an Payrudder und die Karte wird sein Zahlungsmittel: spätere Rechnungen werden damit abgebucht. Hier ist nichts weiter zu tun. Funktioniert der Link nicht mehr, erstellen Sie einen neuen.",
+        "close": "Schließen",
+        "make": "Link erstellen",
+        "again": "Neuen Link erstellen"
       }
     },
     "packages": {
