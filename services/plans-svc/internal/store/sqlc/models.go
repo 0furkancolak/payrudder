@@ -730,6 +730,12 @@ type SupportEvent struct {
 	CreatedAt time.Time
 }
 
+type SupportHoliday struct {
+	AppID uuid.UUID
+	Day   pgtype.Date
+	Name  string
+}
+
 type SupportMessage struct {
 	ID           uuid.UUID
 	TicketID     uuid.UUID
@@ -739,6 +745,7 @@ type SupportMessage struct {
 	Internal     bool
 	Body         string
 	CreatedAt    time.Time
+	Tsv          interface{}
 }
 
 type SupportTicket struct {
@@ -762,6 +769,21 @@ type SupportTicket struct {
 	SlaZone          string
 	OpenerSeenAt     *time.Time
 	Tags             []string
+	SlaTier          string
+	SlaAppID         *uuid.UUID
+	MergedInto       *uuid.UUID
+	Rating           *int16
+	RatingComment    string
+	RatedAt          *time.Time
+}
+
+type SupportTicketLink struct {
+	ID           uuid.UUID
+	TicketID     uuid.UUID
+	LinkTenantID uuid.UUID
+	Kind         string
+	Ref          string
+	CreatedAt    time.Time
 }
 
 type TaxRate struct {

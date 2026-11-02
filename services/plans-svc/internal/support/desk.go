@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -70,12 +71,34 @@ func (s *Service) GetSupportReport(ctx context.Context, _ *plansv1.GetSupportRep
 	if err != nil {
 		return nil, err
 	}
+	rs, err := q.SupportRatingStats(ctx, reportWindowDays)
+	if err != nil {
+		return nil, err
+	}
+	rc, err := q.SupportRatingCounts(ctx, reportWindowDays)
+	if err != nil {
+		return nil, err
+	}
 	pri := make([]*plansv1.SupportCount, len(byPriority))
 	for i, r := range byPriority {
 		pri[i] = &plansv1.SupportCount{Value: r.Value, Count: r.Count}
 	}
 	return &plansv1.GetSupportReportResponse{Waiting: queue.Waiting, Breached: queue.Breached, ByStatus: counts(byStatus), ByPriority: pri, WindowDays: reportWindowDays,
-		Opened: fa.Opened, Answered: fa.Answered, AnsweredOnTime: fa.AnsweredOnTime, MedianFirstAnswerSeconds: fa.MedianSeconds, AverageFirstAnswerSeconds: fa.AverageSeconds}, nil
+		Opened: fa.Opened, Answered: fa.Answered, AnsweredOnTime: fa.AnsweredOnTime, MedianFirstAnswerSeconds: fa.MedianSeconds, AverageFirstAnswerSeconds: fa.AverageSeconds,
+		Rated: rs.Rated, AverageRating: rs.Average, Ratings: ratingCounts(rc)}, nil
+}
+
+// ratingCounts lists how many tickets gave each rating from 1 to 5, a zero for one nobody gave.
+func ratingCounts(rows []sqlc.SupportRatingCountsRow) []*plansv1.SupportCount {
+	n := map[int32]int32{}
+	for _, r := range rows {
+		n[r.Value] = r.Count
+	}
+	out := make([]*plansv1.SupportCount, 5)
+	for i := range out {
+		out[i] = &plansv1.SupportCount{Value: strconv.Itoa(i + 1), Count: n[int32(i+1)]} //nolint:gosec // 1 to 5
+	}
+	return out
 }
 
 // ListSupportOperators lists the addresses a ticket can be assigned to.

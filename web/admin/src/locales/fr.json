@@ -3739,7 +3739,10 @@
       },
       "ticket": {
         "closed": "Ce ticket est clos. Ouvrez-en un nouveau.",
-        "not_found": "Ce ticket est introuvable."
+        "not_found": "Ce ticket est introuvable.",
+        "merged": "Ce ticket a été fusionné dans un autre. Écrivez-y.",
+        "cannot_merge": "Ces deux tickets ne peuvent pas être fusionnés : il faut deux tickets différents d'une même personne dans une même organisation, aucun déjà fusionné, et celui qui reçoit ne doit pas être fermé.",
+        "not_solved": "Vous pouvez noter un ticket une fois qu'il est résolu."
       },
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
@@ -5596,7 +5599,7 @@
     "filters": {
       "any": "Tous",
       "late": "En retard seulement",
-      "searchHint": "Objet ou #numéro"
+      "searchHint": "Sujet, #numéro ou mots des messages"
     },
     "status": {
       "active": "Actifs",
@@ -5632,7 +5635,7 @@
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord",
     "unread": "Nouveau",
-    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application.",
+    "businessHours": "Les délais de réponse comptent les heures ouvrables : du lundi au vendredi, de 09:00 à 18:00, dans le fuseau de votre app, hors jours fermés. Les délais ci-dessus valent pour une app du forfait standard : une app gratuite a plus de temps, une app entreprise moins. Le ticket indique l'heure exacte.",
     "tags": {
       "title": "Étiquettes",
       "filter": "Étiquette",
@@ -5663,7 +5666,10 @@
       "onTime": "Réponses dans les temps",
       "answeredOf": "{answered} répondus sur {opened} ouverts",
       "byStatus": "Tous les tickets, par statut",
-      "byPriority": "Encore en attente, par priorité"
+      "byPriority": "Encore en attente, par priorité",
+      "satisfaction": "Satisfaction, {days} derniers jours",
+      "ratingAverage": "{average} sur 5 d'après {n} notes",
+      "stars": "{n} étoiles"
     },
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",
@@ -5679,6 +5685,64 @@
       "failed": "Ces fichiers n'ont pas été joints :",
       "openedButFailed": "Votre ticket a été ouvert, mais certains fichiers n'ont pas été joints. Vous pouvez les joindre à une réponse.",
       "download": "Télécharger {name}"
+    },
+    "links": {
+      "title": "Concerne",
+      "none": "Aucun élément lié.",
+      "kind": {
+        "customer": "Client",
+        "invoice": "Facture",
+        "subscription": "Abonnement"
+      },
+      "env": {
+        "live": "production",
+        "sandbox": "bac à sable"
+      },
+      "remove": "Retirer le lien vers {link}",
+      "kindLabel": "Type",
+      "refLabel": "Identifiant du client ou de l'élément",
+      "envLabel": "Environnement",
+      "customerHint": "L'identifiant du client dans votre app",
+      "idHint": "L'identifiant affiché sur sa page",
+      "add": "Lier",
+      "needsApp": "Choisissez d'abord une app : un lien désigne un élément de cette app."
+    },
+    "rating": {
+      "ask": "Comment avez-vous trouvé notre aide ?",
+      "stars": "{n} sur 5",
+      "comment": "Un commentaire (facultatif)",
+      "send": "Envoyer la note",
+      "yours": "Votre note",
+      "change": "Modifier",
+      "operatorSees": "Noté {n} sur 5 par le client"
+    },
+    "merge": {
+      "open": "Fusionner dans un autre ticket",
+      "title": "Fusionner #{number} dans un autre ticket",
+      "hint": "Ses messages et ses fichiers passent dans l'autre ticket et celui-ci est fermé avec un renvoi vers lui. Seuls deux tickets de la même personne peuvent être fusionnés.",
+      "into": "Fusionner dans",
+      "none": "Cette personne n'a pas d'autre ticket dans la liste qui puisse le recevoir. Effacez le filtre de statut pour en voir plus.",
+      "confirm": "Fusionner",
+      "mergedInto": "Ce ticket a été fusionné dans #{number}. Ses messages s'y trouvent.",
+      "joined": "a fusionné le ticket {number} dans celui-ci",
+      "joinedOther": "a fusionné ce ticket dans {number}"
+    },
+    "holidays": {
+      "open": "Jours fermés de {app}",
+      "title": "Jours fermés de {app}",
+      "hint": "L'horloge de première réponse des tickets de cette app ne tourne pas ces jours-là, comme un week-end. Ce sont des jours civils dans le fuseau de l'app. Un ticket déjà ouvert garde son échéance ; changer sa priorité la recalcule avec les jours tels qu'ils sont alors.",
+      "none": "Aucun jour fermé pour l'instant.",
+      "day": "Jour",
+      "name": "Nom (facultatif)",
+      "add": "Ajouter le jour",
+      "save": "Enregistrer les jours fermés",
+      "remove": "Retirer {day}"
+    },
+    "slaTier": "L'échéance a été calculée pour une app du forfait {tier}.",
+    "tier": {
+      "free": "gratuit",
+      "standard": "standard",
+      "enterprise": "entreprise"
     }
   },
   "connect": {

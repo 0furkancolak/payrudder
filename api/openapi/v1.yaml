@@ -4654,6 +4654,7 @@ paths:
       summary: The support tickets of every account the person belongs to, newest activity first
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [active, open, pending, solved, closed] }, description: "active is open and pending" }
+        - { name: search, in: query, schema: { type: string, maxLength: 200 }, description: "Matches the subject, the ticket number and the words of the messages the person can read (not the operator's internal notes). Full text, whole words: no prefixes" }
       security: [{ sessionToken: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketList" } } } }
@@ -4664,8 +4665,9 @@ paths:
       tags: [Support]
       summary: Open a support ticket for an account (and optionally one of its apps)
       description: |
-        The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+        The first answer is due by the priority and the plan of the ticket's app (free, standard or enterprise; a default table, not agreed), counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC, not on the app's days off). For a free app (the plan every new app starts on): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
         An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
+        `links` may point at up to five customers, invoices or subscriptions of the account's apps (`404 support.app.not_found` for an app that is not the account's); only the pointer is kept, whether the object exists is not checked.
       security: [{ sessionToken: [] }]
       requestBody:
         required: true
@@ -4761,6 +4763,25 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/support/tickets/{id}/rating:
+    post:
+      operationId: appRateSupportTicket
+      tags: [Support]
+      summary: Rate a solved or closed ticket, 1 to 5 with an optional comment. A second call replaces the first; the operator's report shows the ratings
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportRatingRequest" }
+      responses:
+        "200": { description: Rated, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/support/tickets:
     get:
       operationId: listSupportTickets
@@ -4770,7 +4791,7 @@ paths:
         - { name: status, in: query, schema: { type: string, enum: [active, open, pending, solved, closed] } }
         - { name: priority, in: query, schema: { type: string, enum: [low, normal, high, urgent] } }
         - { name: assignee, in: query, schema: { type: string } }
-        - { name: search, in: query, schema: { type: string }, description: Matches the subject and the ticket number }
+        - { name: search, in: query, schema: { type: string, maxLength: 200 }, description: "Matches the subject, the ticket number and the words of the messages, the operator's internal notes included. Full text (Postgres, the simple configuration), whole words: no prefixes" }
         - { name: sla_breached, in: query, schema: { type: boolean }, description: Only tickets whose first answer is overdue }
         - { name: tag, in: query, schema: { type: string }, description: Only tickets that carry this tag }
       responses:
@@ -4788,7 +4809,7 @@ paths:
     patch:
       operationId: updateSupportTicket
       tags: [Support]
-      summary: Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
+      summary: Change a ticket's status, priority, assignee, tags or links (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -4812,6 +4833,53 @@ paths:
             schema: { $ref: "#/components/schemas/SupportOperatorReplyRequest" }
       responses:
         "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/tickets/{id}/merge:
+    post:
+      operationId: mergeSupportTickets
+      tags: [Support]
+      summary: Merge this ticket into another of the same person (operator)
+      description: |
+        The messages and files of this ticket move into `into_ticket_id`; this ticket is closed and points at it (`merged_into_id`, `merged_into_number`). Both must be
+        tickets of one person in one account, neither merged already, and the target not closed (`409 support.ticket.cannot_merge`). A person's message that waits
+        for the operator reopens a target that was pending or solved; the earlier first-answer deadline holds while neither was answered. Both tickets are unread for
+        the person afterwards. A merged ticket takes no reply or change (`409 support.ticket.merged`). Recorded in the audit log.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportMergeRequest" }
+      responses:
+        "200": { description: Merged, content: { application/json: { schema: { $ref: "#/components/schemas/SupportMergeResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/apps/{app_id}/holidays:
+    get:
+      operationId: getSupportHolidays
+      tags: [Support]
+      summary: The days off of an app, on which the first-answer clock of its tickets does not run (operator)
+      parameters: [{ name: app_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportHolidays" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setSupportHolidays
+      tags: [Support]
+      summary: Replace the days off of an app (operator)
+      description: |
+        The whole list: at most 200 days, each once, within three years of today. A ticket already open keeps its deadline; a change of its priority counts it again with the
+        days as they are then. Recorded in the audit log.
+      parameters: [{ name: app_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetSupportHolidaysRequest" }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/SupportHolidayList" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/support/unread:
@@ -6390,7 +6458,7 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
-      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread, tags]
+      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread, tags, merged_into_id, merged_into_number, rating, rating_comment, rate_time, links, sla_tier]
       properties:
         id: { type: string, format: uuid }
         number: { type: integer, format: int64, description: "The short number shown as #1042" }
@@ -6416,13 +6484,31 @@ components:
         message_count: { type: integer }
         unread: { type: boolean, description: "True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account" }
         tags: { type: array, items: { type: string }, description: "The operator's own labels, at most five. Always empty in what the person's calls return" }
+        merged_into_id: { type: string, description: "The ticket this one was merged into (closed, its messages moved there); empty otherwise" }
+        merged_into_number: { type: integer, format: int64 }
+        rating: { type: integer, minimum: 0, maximum: 5, description: "1 to 5 once the person rated the ticket, else 0" }
+        rating_comment: { type: string }
+        rate_time: { type: string, format: date-time, nullable: true }
+        links: { type: array, items: { $ref: "#/components/schemas/SupportLink" }, description: "The objects the ticket links to; filled when one ticket is read with its thread, empty in the lists" }
+        sla_tier: { type: string, enum: ["", free, standard, enterprise], description: "The plan of the ticket's app the first-answer deadline was counted for. Always empty in what the person's calls return" }
+    SupportLink:
+      type: object
+      required: [kind, ref, app_id, environment]
+      description: A pointer from a ticket to an object of one of the account's apps. Only the pointer is kept; the console opens the object under the viewer's own access.
+      properties:
+        kind: { type: string, enum: [customer, invoice, subscription] }
+        ref: { type: string, maxLength: 200, description: "A customer's external id; the id (a UUID) of an invoice or a subscription" }
+        app_id: { type: string, format: uuid }
+        environment: { type: string, enum: [sandbox, live] }
+        tenant_id: { type: string, format: uuid, description: "Filled when read: the tenant of that app environment" }
+        app_name: { type: string, description: "Filled when read" }
     SupportEvent:
       type: object
       required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
-      description: One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority.
+      description: One change of a ticket's status, priority, assignee or tags, or a merge. The history is append-only. The person's calls return only the changes of status and priority and the merges.
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [status, priority, assignee, tags], description: A change of tags has the list joined by commas in from_value and to_value }
+        kind: { type: string, enum: [status, priority, assignee, tags, merge], description: "A change of tags has the list joined by commas in from_value and to_value. A merge has from_value `#1041` on the ticket that kept the thread (that ticket joined it) and to_value `#1042` on the ticket that joined" }
         actor_kind: { type: string, enum: [customer, operator, system], description: "system is the job that closes a ticket that waited for the person for 7 days" }
         actor_name: { type: string }
         from_value: { type: string }
@@ -6476,6 +6562,46 @@ components:
         category: { type: string, enum: [billing, integration, bug, question, other] }
         priority: { type: string, enum: [low, normal, high, urgent], default: normal }
         body: { type: string, minLength: 1, maxLength: 10000 }
+        links: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/SupportLink" }, description: "Optional: the customers, invoices or subscriptions of the account's apps the ticket is about" }
+    SupportRatingRequest:
+      type: object
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, maxLength: 1000 }
+    SupportMergeRequest:
+      type: object
+      required: [into_ticket_id]
+      properties:
+        into_ticket_id: { type: string, format: uuid, description: The ticket that keeps the messages }
+    SupportMergeResult:
+      type: object
+      required: [ticket, into_ticket]
+      properties:
+        ticket: { $ref: "#/components/schemas/SupportTicket", description: The ticket that was closed }
+        into_ticket: { $ref: "#/components/schemas/SupportTicket", description: The ticket that keeps the thread }
+    SupportHoliday:
+      type: object
+      required: [day]
+      properties:
+        day: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", description: "yyyy-mm-dd, a calendar day in the time zone of the app" }
+        name: { type: string, maxLength: 100 }
+    SupportHolidayList:
+      type: object
+      required: [holidays]
+      properties:
+        holidays: { type: array, items: { $ref: "#/components/schemas/SupportHoliday" } }
+    SupportHolidays:
+      type: object
+      required: [app_name, holidays]
+      properties:
+        app_name: { type: string }
+        holidays: { type: array, items: { $ref: "#/components/schemas/SupportHoliday" } }
+    SetSupportHolidaysRequest:
+      type: object
+      required: [holidays]
+      properties:
+        holidays: { type: array, maxItems: 200, items: { $ref: "#/components/schemas/SupportHoliday" } }
     SupportReplyRequest:
       type: object
       required: [body]
@@ -6499,7 +6625,7 @@ components:
         count: { type: integer }
     SupportReport:
       type: object
-      required: [waiting, breached, by_status, by_priority, window_days, opened, answered, answered_on_time, median_first_answer_seconds, average_first_answer_seconds]
+      required: [waiting, breached, by_status, by_priority, window_days, opened, answered, answered_on_time, median_first_answer_seconds, average_first_answer_seconds, rated, average_rating, ratings]
       properties:
         waiting: { type: integer, description: Tickets waiting for the operator (open) }
         breached: { type: integer, description: "Of those, the ones with no first answer past their deadline" }
@@ -6511,6 +6637,9 @@ components:
         answered_on_time: { type: integer, description: "Of those, the ones answered by their deadline" }
         median_first_answer_seconds: { type: integer, format: int64, description: "Wall-clock seconds from opening to the first public answer; 0 when none was answered" }
         average_first_answer_seconds: { type: integer, format: int64 }
+        rated: { type: integer, description: Tickets rated in the window }
+        average_rating: { type: number, format: double, description: "The average of those ratings; 0 when none" }
+        ratings: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: "How many tickets gave each rating, value 1 to 5, every one listed" }
     SupportOperator:
       type: object
       required: [email, name]
@@ -6553,6 +6682,7 @@ components:
         status: { type: string, enum: [open, pending, solved, closed] }
         priority: { type: string, enum: [low, normal, high, urgent] }
         assignee: { type: string, maxLength: 100, description: "One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed" }
+        links: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/SupportLink" }, description: "With this key the ticket's links become exactly this list (an empty list clears them); without it they stay" }
         tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30, pattern: "^[a-z0-9][a-z0-9-]*$" }, description: "With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once" }
     SupportOperatorReplyRequest:
       type: object

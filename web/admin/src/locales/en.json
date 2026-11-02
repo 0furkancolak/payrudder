@@ -3739,7 +3739,10 @@
       },
       "ticket": {
         "closed": "This ticket is closed. Open a new one.",
-        "not_found": "That ticket was not found."
+        "not_found": "That ticket was not found.",
+        "merged": "This ticket was merged into another one. Write there.",
+        "cannot_merge": "These two tickets cannot be merged: they must be two different tickets of one person in one organisation, neither merged already, and the one to merge into must not be closed.",
+        "not_solved": "You can rate a ticket once it is solved."
       },
       "tickets": {
         "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
@@ -5596,7 +5599,7 @@
     "filters": {
       "any": "Any",
       "late": "Only late",
-      "searchHint": "Subject or #number"
+      "searchHint": "Subject, #number or words in the messages"
     },
     "status": {
       "active": "Active",
@@ -5632,7 +5635,7 @@
     "sortPriority": "Highest priority first",
     "sortDue": "Answer due soonest",
     "unread": "New",
-    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app.",
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app, not on its days off. The times above are for an app on the standard plan: a free app has more time, an enterprise app less. The ticket shows the exact time.",
     "tags": {
       "title": "Tags",
       "filter": "Tag",
@@ -5663,7 +5666,10 @@
       "onTime": "Answered in time",
       "answeredOf": "{answered} answered of {opened} opened",
       "byStatus": "Every ticket, by status",
-      "byPriority": "Still waiting, by priority"
+      "byPriority": "Still waiting, by priority",
+      "satisfaction": "Satisfaction, last {days} days",
+      "ratingAverage": "{average} of 5 from {n} ratings",
+      "stars": "{n} stars"
     },
     "badge": {
       "unread": "Tickets with news: {n}",
@@ -5679,6 +5685,64 @@
       "failed": "These files were not attached:",
       "openedButFailed": "Your ticket was opened, but some files were not attached. You can attach them to a reply.",
       "download": "Download {name}"
+    },
+    "links": {
+      "title": "Related to",
+      "none": "No linked records.",
+      "kind": {
+        "customer": "Customer",
+        "invoice": "Invoice",
+        "subscription": "Subscription"
+      },
+      "env": {
+        "live": "live",
+        "sandbox": "sandbox"
+      },
+      "remove": "Remove the link to {link}",
+      "kindLabel": "Kind",
+      "refLabel": "Customer id or record id",
+      "envLabel": "Environment",
+      "customerHint": "The customer's id in your app",
+      "idHint": "The id shown on its page",
+      "add": "Link it",
+      "needsApp": "Choose an app first: a link points at a record of that app."
+    },
+    "rating": {
+      "ask": "How was our help?",
+      "stars": "{n} of 5",
+      "comment": "A comment (optional)",
+      "send": "Send rating",
+      "yours": "Your rating",
+      "change": "Change",
+      "operatorSees": "Rated {n} of 5 by the customer"
+    },
+    "merge": {
+      "open": "Merge into another ticket",
+      "title": "Merge #{number} into another ticket",
+      "hint": "Its messages and files move into the other ticket and this one is closed with a pointer to it. Only two tickets of the same person can be merged.",
+      "into": "Merge into",
+      "none": "This person has no other ticket in the list that can take it. Clear the status filter to see more.",
+      "confirm": "Merge",
+      "mergedInto": "This ticket was merged into #{number}. Its messages are there.",
+      "joined": "merged ticket {number} into this one",
+      "joinedOther": "merged this ticket into {number}"
+    },
+    "holidays": {
+      "open": "Days off of {app}",
+      "title": "Days off of {app}",
+      "hint": "The first-answer clock of this app's tickets does not run on these days, like a weekend. Days are calendar days in the app's time zone. A ticket already open keeps its deadline; changing its priority counts it again with the days as they are then.",
+      "none": "No days off yet.",
+      "day": "Day",
+      "name": "Name (optional)",
+      "add": "Add the day",
+      "save": "Save the days off",
+      "remove": "Remove {day}"
+    },
+    "slaTier": "The deadline was counted for an app on the {tier} plan.",
+    "tier": {
+      "free": "free",
+      "standard": "standard",
+      "enterprise": "enterprise"
     }
   },
   "connect": {

@@ -17,6 +17,12 @@ import "google/protobuf/timestamp.proto";
 // does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
 // messages only.
 //
+// Business hours: the deadline of the first answer follows the ticket's priority and the plan (tier) of its app (free, standard or enterprise; a default table in the
+// domain package, not agreed) and does not run on the app's days off, a list of dates the operator keeps per app (GetSupportHolidays). A person who has had a ticket
+// solved or closed may rate it from 1 to 5 with a comment; the report shows the ratings. The operator can merge two tickets of one person. A ticket may link to a
+// customer, an invoice or a subscription of one of the account's apps (shown as a link in the console). The list of tickets can be searched by the words of the
+// messages (Postgres full text, the person's list over the public messages only).
+//
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
 service SupportService {
@@ -27,6 +33,8 @@ service SupportService {
   rpc ReplyMySupportTicket(ReplyMySupportTicketRequest) returns (ReplyMySupportTicketResponse);
   // SetMySupportTicketStatus lets the person mark the ticket solved or reopen it.
   rpc SetMySupportTicketStatus(SetMySupportTicketStatusRequest) returns (SetMySupportTicketStatusResponse);
+  // RateMySupportTicket records how the person found the help on a solved or closed ticket: 1 to 5 and an optional comment. A second call replaces the first.
+  rpc RateMySupportTicket(RateMySupportTicketRequest) returns (RateMySupportTicketResponse);
 
   rpc ListSupportTickets(ListSupportTicketsRequest) returns (ListSupportTicketsResponse);
   // GetSupportTicket returns the ticket with its whole thread, internal notes included.
@@ -34,6 +42,13 @@ service SupportService {
   // ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
   rpc ReplySupportTicket(ReplySupportTicketRequest) returns (ReplySupportTicketResponse);
   rpc UpdateSupportTicket(UpdateSupportTicketRequest) returns (UpdateSupportTicketResponse);
+  // MergeSupportTickets moves the messages (and their files) of one ticket into another ticket of the same person and account and closes the first with a pointer to
+  // the second. Neither may be merged already, and the target may not be closed.
+  rpc MergeSupportTickets(MergeSupportTicketsRequest) returns (MergeSupportTicketsResponse);
+  // GetSupportHolidays lists the days off of an app, on which the first-answer clock of its tickets does not run.
+  rpc GetSupportHolidays(GetSupportHolidaysRequest) returns (GetSupportHolidaysResponse);
+  // SetSupportHolidays replaces the days off of an app. It does not move the deadline of a ticket already open (a change of its priority does).
+  rpc SetSupportHolidays(SetSupportHolidaysRequest) returns (SetSupportHolidaysResponse);
 
   // CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
   rpc CountMySupportUnread(CountMySupportUnreadRequest) returns (CountMySupportUnreadResponse);
@@ -93,6 +108,32 @@ message SupportTicket {
   bool unread = 23;
   // The operator's own labels ("refund", "vat"), at most five, lower case. Never shown to the person who opened the ticket: the "My" calls leave it empty.
   repeated string tags = 24;
+  // The ticket this one was merged into (closed, its messages moved there); empty otherwise.
+  string merged_into_id = 25;
+  int64 merged_into_number = 26;
+  // 1 to 5 once the person rated the ticket, else 0.
+  int32 rating = 27;
+  string rating_comment = 28;
+  google.protobuf.Timestamp rate_time = 29;
+  // The objects the ticket links to. Filled by the calls that return one ticket with its thread, not by the lists.
+  repeated SupportLink links = 30;
+  // The plan of the app the first-answer deadline was counted for: free, standard or enterprise. Never shown to the person who opened the ticket.
+  string sla_tier = 31;
+}
+
+// SupportLink points from a ticket to an object of one of the account's apps: a customer (by its external id), an invoice or a subscription (by id). Only the
+// pointer is stored: whether the object exists is not checked (invoices live in billing-svc), and the console opens it under the viewer's own access.
+message SupportLink {
+  // customer, invoice or subscription.
+  string kind = 1;
+  // The customer's external id, or the id of the invoice or subscription.
+  string ref = 2;
+  // An app of the ticket's account (not archived) and its environment, sandbox or live.
+  string app_id = 3;
+  string environment = 4;
+  // Filled when read: the tenant of that app environment (the console's address) and the app's name.
+  string tenant_id = 5;
+  string app_name = 6;
 }
 
 // SupportEvent is one change of a ticket's status, priority, assignee or tags, in the order they happened. The history is never edited. The "My" calls return only
@@ -150,6 +191,8 @@ message OpenMySupportTicketRequest {
   string category = 5;
   string priority = 6;
   string body = 7;
+  // Optional: up to five objects the ticket is about.
+  repeated SupportLink links = 8;
 }
 message OpenMySupportTicketResponse {
   SupportTicket ticket = 1;
@@ -161,6 +204,8 @@ message ListMySupportTicketsRequest {
   string user_id = 1;
   // Optional: open, pending, solved, closed, or "active" for open and pending.
   string status = 2;
+  // Optional: matches the subject, the number and the words of the messages the person can read (not the operator's notes).
+  string search = 3;
 }
 message ListMySupportTicketsResponse {
   repeated SupportTicket tickets = 1;
@@ -202,7 +247,7 @@ message ListSupportTicketsRequest {
   string status = 1;
   string priority = 2;
   string assignee = 3;
-  // Matches the subject and the number, case-insensitively.
+  // Matches the subject and the number, case-insensitively, and the words of the messages, the operator's notes included (full text, no prefixes).
   string search = 4;
   // Only tickets whose first answer is overdue.
   bool sla_breached = 5;
@@ -248,9 +293,60 @@ message UpdateSupportTicketRequest {
   // With set_tags the ticket's tags become exactly these (at most five, each lower case letters, digits and hyphens, at most 30 characters); without it they stay.
   bool set_tags = 6;
   repeated string tags = 7;
+  // With set_links the ticket's links become exactly these (at most five); without it they stay.
+  bool set_links = 8;
+  repeated SupportLink links = 9;
 }
 message UpdateSupportTicketResponse {
   SupportTicket ticket = 1;
+}
+
+message RateMySupportTicketRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  // 1 to 5.
+  int32 rating = 3;
+  // Optional, at most 1000 characters.
+  string comment = 4;
+}
+message RateMySupportTicketResponse {
+  SupportTicket ticket = 1;
+}
+
+message MergeSupportTicketsRequest {
+  // The ticket that is closed and whose messages move.
+  string ticket_id = 1;
+  // The ticket that keeps them.
+  string into_ticket_id = 2;
+  // Who merges, as shown in the history.
+  string author_name = 3;
+}
+message MergeSupportTicketsResponse {
+  SupportTicket ticket = 1;
+  SupportTicket into_ticket = 2;
+}
+
+message SupportHoliday {
+  // yyyy-mm-dd, a calendar day in the time zone of the app.
+  string day = 1;
+  string name = 2;
+}
+message GetSupportHolidaysRequest {
+  string app_id = 1;
+}
+message GetSupportHolidaysResponse {
+  string app_name = 1;
+  repeated SupportHoliday holidays = 2;
+}
+message SetSupportHolidaysRequest {
+  string app_id = 1;
+  // The whole list: at most 200 days, each once, within three years of today.
+  repeated SupportHoliday holidays = 2;
+  // Who saves it, kept in the audit log. The gateway sets it.
+  string author_name = 3;
+}
+message SetSupportHolidaysResponse {
+  repeated SupportHoliday holidays = 1;
 }
 
 message CountMySupportUnreadRequest {
@@ -276,6 +372,10 @@ message GetSupportReportResponse {
   int32 answered_on_time = 8;
   int64 median_first_answer_seconds = 9;
   int64 average_first_answer_seconds = 10;
+  // The tickets rated in the last window_days days: how many, the average (0 when none) and how many gave each rating (value "1" to "5", every one listed).
+  int32 rated = 11;
+  double average_rating = 12;
+  repeated SupportCount ratings = 13;
 }
 message SupportCount {
   string value = 1;

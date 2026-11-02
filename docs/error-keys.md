@@ -569,6 +569,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `support.attachment.too_large`
 - `support.attachment.too_many`
 - `support.canned_reply.not_found`
+- `support.ticket.cannot_merge`
 - `support.ticket.closed`
+- `support.ticket.merged`
 - `support.ticket.not_found`
+- `support.ticket.not_solved`
 - `support.tickets.too_many`

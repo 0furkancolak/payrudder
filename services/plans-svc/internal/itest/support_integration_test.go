@@ -58,7 +58,7 @@ func testSupport(t *testing.T) {
 		}
 		// The clock counts Monday to Friday 09:00-18:00 in the app's zone (Europe/Berlin), so the deadline depends on when the test runs: it is between the deadline
 		// of the moment before the call and the one of the moment after it, and never inside a weekend or outside the working day.
-		due, lo, hi := tk.GetFirstResponseDue().AsTime(), domain.SupportFirstResponseDue(before, "high", "Europe/Berlin"), domain.SupportFirstResponseDue(after, "high", "Europe/Berlin")
+		due, lo, hi := tk.GetFirstResponseDue().AsTime(), domain.SupportFirstResponseDue(before, "free", "high", "Europe/Berlin", nil), domain.SupportFirstResponseDue(after, "free", "high", "Europe/Berlin", nil)
 		if due.Before(lo) || due.After(hi) {
 			t.Errorf("high priority is due %v, want between %v and %v", due, lo, hi)
 		}
@@ -156,7 +156,7 @@ func testSupport(t *testing.T) {
 			t.Fatalf("update: %v %+v", err, u.GetTicket())
 		}
 		// The deadline follows the priority, counted from when the ticket was opened (the account has an app in Berlin, hence its zone).
-		if want := domain.SupportFirstResponseDue(u.GetTicket().GetCreateTime().AsTime(), "urgent", "Europe/Berlin"); !u.GetTicket().GetFirstResponseDue().AsTime().Equal(want) {
+		if want := domain.SupportFirstResponseDue(u.GetTicket().GetCreateTime().AsTime(), "free", "urgent", "Europe/Berlin", nil); !u.GetTicket().GetFirstResponseDue().AsTime().Equal(want) {
 			t.Errorf("urgent is due %v, want %v", u.GetTicket().GetFirstResponseDue().AsTime(), want)
 		}
 		// Push the deadline into the past: the ticket is now late and the filter finds it.
@@ -355,7 +355,7 @@ func testSupportDesk(t *testing.T) {
 	// The allow-list is the person's: every kind of history line the database accepts (the check constraint says which) is written for this ticket, and the person
 	// reads exactly the kinds named here. A new kind added to the constraint is hidden from the person until it is added to this list on purpose.
 	t.Run("the person reads only the history kinds on the allow-list; any other kind the database accepts stays the operator's", func(t *testing.T) {
-		allowed := map[string]bool{"status": true, "priority": true}
+		allowed := map[string]bool{"status": true, "priority": true, "merge": true}
 		var def string
 		if err := e.system.QueryRow(ctx, `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'support_events_kind_check'`).Scan(&def); err != nil {
 			t.Fatal(err)
