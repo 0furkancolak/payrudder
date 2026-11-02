@@ -85,6 +85,15 @@ func (q *Queries) BlockCustomer(ctx context.Context, arg BlockCustomerParams) (C
 	return i, err
 }
 
+const clearDefaultMailIntegration = `-- name: ClearDefaultMailIntegration :exec
+UPDATE tenant_mail_integrations SET is_default = false WHERE tenant_id = app_tenant_id() AND is_default
+`
+
+func (q *Queries) ClearDefaultMailIntegration(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, clearDefaultMailIntegration)
+	return err
+}
+
 const countCouponPeriod = `-- name: CountCouponPeriod :exec
 UPDATE subscription_coupons SET periods_applied = periods_applied + 1 WHERE tenant_id = app_tenant_id() AND subscription_id = $1
 `
@@ -226,15 +235,25 @@ func (q *Queries) DeleteEntitlementOverride(ctx context.Context, arg DeleteEntit
 }
 
 const deleteMailIntegration = `-- name: DeleteMailIntegration :execrows
-DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id()
+DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = $1
 `
 
-func (q *Queries) DeleteMailIntegration(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteMailIntegration)
+// A routing rule that names the account goes with it (ON DELETE CASCADE).
+func (q *Queries) DeleteMailIntegration(ctx context.Context, account string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMailIntegration, account)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteMailRouting = `-- name: DeleteMailRouting :exec
+DELETE FROM tenant_mail_routing WHERE tenant_id = app_tenant_id()
+`
+
+func (q *Queries) DeleteMailRouting(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteMailRouting)
+	return err
 }
 
 const deleteRoutingRules = `-- name: DeleteRoutingRules :exec
@@ -412,6 +431,29 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 	return i, err
 }
 
+const getDefaultMailIntegration = `-- name: GetDefaultMailIntegration :one
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND is_default
+`
+
+func (q *Queries) GetDefaultMailIntegration(ctx context.Context) (TenantMailIntegration, error) {
+	row := q.db.QueryRow(ctx, getDefaultMailIntegration)
+	var i TenantMailIntegration
+	err := row.Scan(
+		&i.TenantID,
+		&i.Provider,
+		&i.BaseUrl,
+		&i.ApiKeyEnc,
+		&i.KeyHint,
+		&i.FromAddress,
+		&i.CheckedAt,
+		&i.CheckProblem,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsDefault,
+	)
+	return i, err
+}
+
 const getMailDisabled = `-- name: GetMailDisabled :one
 SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id()
 `
@@ -424,12 +466,11 @@ func (q *Queries) GetMailDisabled(ctx context.Context) ([]string, error) {
 }
 
 const getMailIntegration = `-- name: GetMailIntegration :one
-SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id()
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = $1
 `
 
-// The tenant's own e-mail provider (phase 53). The key is sealed; plans-svc's own commands open it.
-func (q *Queries) GetMailIntegration(ctx context.Context) (TenantMailIntegration, error) {
-	row := q.db.QueryRow(ctx, getMailIntegration)
+func (q *Queries) GetMailIntegration(ctx context.Context, account string) (TenantMailIntegration, error) {
+	row := q.db.QueryRow(ctx, getMailIntegration, account)
 	var i TenantMailIntegration
 	err := row.Scan(
 		&i.TenantID,
@@ -441,6 +482,23 @@ func (q *Queries) GetMailIntegration(ctx context.Context) (TenantMailIntegration
 		&i.CheckedAt,
 		&i.CheckProblem,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsDefault,
+	)
+	return i, err
+}
+
+const getMailRoutingFor = `-- name: GetMailRoutingFor :one
+SELECT tenant_id, language, account, updated_at FROM tenant_mail_routing WHERE tenant_id = app_tenant_id() AND language = $1
+`
+
+func (q *Queries) GetMailRoutingFor(ctx context.Context, language string) (TenantMailRouting, error) {
+	row := q.db.QueryRow(ctx, getMailRoutingFor, language)
+	var i TenantMailRouting
+	err := row.Scan(
+		&i.TenantID,
+		&i.Language,
+		&i.Account,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -848,6 +906,20 @@ func (q *Queries) InsertCustomerBlockEvent(ctx context.Context, arg InsertCustom
 		arg.Actor,
 		arg.CreatedAt,
 	)
+	return err
+}
+
+const insertMailRouting = `-- name: InsertMailRouting :exec
+INSERT INTO tenant_mail_routing (tenant_id, language, account) VALUES (app_tenant_id(), $1, $2)
+`
+
+type InsertMailRoutingParams struct {
+	Language string
+	Account  string
+}
+
+func (q *Queries) InsertMailRouting(ctx context.Context, arg InsertMailRoutingParams) error {
+	_, err := q.db.Exec(ctx, insertMailRouting, arg.Language, arg.Account)
 	return err
 }
 
@@ -1639,6 +1711,73 @@ func (q *Queries) ListLiveSubscriptionsOnVersion(ctx context.Context, planVersio
 	return items, nil
 }
 
+const listMailIntegrations = `-- name: ListMailIntegrations :many
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() ORDER BY is_default DESC, provider
+`
+
+// The tenant's own e-mail provider accounts (phase 53, plan 10). The key is sealed; plans-svc's own commands open it. An account is named by its key in `provider`
+// ("nafru", "nafru~eu"); one is the default.
+func (q *Queries) ListMailIntegrations(ctx context.Context) ([]TenantMailIntegration, error) {
+	rows, err := q.db.Query(ctx, listMailIntegrations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TenantMailIntegration{}
+	for rows.Next() {
+		var i TenantMailIntegration
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.Provider,
+			&i.BaseUrl,
+			&i.ApiKeyEnc,
+			&i.KeyHint,
+			&i.FromAddress,
+			&i.CheckedAt,
+			&i.CheckProblem,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsDefault,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMailRouting = `-- name: ListMailRouting :many
+SELECT tenant_id, language, account, updated_at FROM tenant_mail_routing WHERE tenant_id = app_tenant_id() ORDER BY language
+`
+
+func (q *Queries) ListMailRouting(ctx context.Context) ([]TenantMailRouting, error) {
+	rows, err := q.db.Query(ctx, listMailRouting)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TenantMailRouting{}
+	for rows.Next() {
+		var i TenantMailRouting
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.Language,
+			&i.Account,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingChangesFor = `-- name: ListPendingChangesFor :many
 SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, c.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscription_changes c
@@ -2372,11 +2511,16 @@ func (q *Queries) MarkAdjustmentBilled(ctx context.Context, id uuid.UUID) (int64
 
 const markMailIntegrationChecked = `-- name: MarkMailIntegrationChecked :exec
 UPDATE tenant_mail_integrations SET checked_at = CASE WHEN $1::text = '' THEN now() ELSE checked_at END, check_problem = $1::text
-WHERE tenant_id = app_tenant_id()
+WHERE tenant_id = app_tenant_id() AND provider = $2
 `
 
-func (q *Queries) MarkMailIntegrationChecked(ctx context.Context, problem string) error {
-	_, err := q.db.Exec(ctx, markMailIntegrationChecked, problem)
+type MarkMailIntegrationCheckedParams struct {
+	Problem string
+	Account string
+}
+
+func (q *Queries) MarkMailIntegrationChecked(ctx context.Context, arg MarkMailIntegrationCheckedParams) error {
+	_, err := q.db.Exec(ctx, markMailIntegrationChecked, arg.Problem, arg.Account)
 	return err
 }
 
@@ -2586,6 +2730,18 @@ func (q *Queries) SetCustomerTax(ctx context.Context, arg SetCustomerTaxParams) 
 		&i.BlockSuspendService,
 	)
 	return i, err
+}
+
+const setDefaultMailIntegration = `-- name: SetDefaultMailIntegration :execrows
+UPDATE tenant_mail_integrations SET is_default = true WHERE tenant_id = app_tenant_id() AND provider = $1
+`
+
+func (q *Queries) SetDefaultMailIntegration(ctx context.Context, account string) (int64, error) {
+	result, err := q.db.Exec(ctx, setDefaultMailIntegration, account)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setPaymentMethod = `-- name: SetPaymentMethod :one
@@ -2809,11 +2965,12 @@ func (q *Queries) UpsertMailDisabled(ctx context.Context, disabled []string) err
 }
 
 const upsertMailIntegration = `-- name: UpsertMailIntegration :one
-INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, now(), '')
-ON CONFLICT (tenant_id) DO UPDATE SET provider = EXCLUDED.provider, base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
-  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now()
-RETURNING tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at
+INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, is_default)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, now(), '', $6)
+ON CONFLICT (tenant_id, provider) DO UPDATE SET base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
+  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now(),
+  is_default = tenant_mail_integrations.is_default OR EXCLUDED.is_default
+RETURNING tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default
 `
 
 type UpsertMailIntegrationParams struct {
@@ -2822,8 +2979,10 @@ type UpsertMailIntegrationParams struct {
 	ApiKeyEnc   []byte
 	KeyHint     string
 	FromAddress string
+	IsDefault   bool
 }
 
+// Replacing an account keeps what it was (the default or not); the caller clears the old default first when this one is to be it.
 func (q *Queries) UpsertMailIntegration(ctx context.Context, arg UpsertMailIntegrationParams) (TenantMailIntegration, error) {
 	row := q.db.QueryRow(ctx, upsertMailIntegration,
 		arg.Provider,
@@ -2831,6 +2990,7 @@ func (q *Queries) UpsertMailIntegration(ctx context.Context, arg UpsertMailInteg
 		arg.ApiKeyEnc,
 		arg.KeyHint,
 		arg.FromAddress,
+		arg.IsDefault,
 	)
 	var i TenantMailIntegration
 	err := row.Scan(
@@ -2844,6 +3004,7 @@ func (q *Queries) UpsertMailIntegration(ctx context.Context, arg UpsertMailInteg
 		&i.CheckProblem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsDefault,
 	)
 	return i, err
 }

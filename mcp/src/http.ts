@@ -3,13 +3,14 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createApi } from "./api.js";
 import { keyPrefix, type Audit } from "./audit.js";
 import { liveRefusal } from "./privacy.js";
+import { createRateLimit, limitKeyOf } from "./ratelimit.js";
 import { createServer } from "./server.js";
 
 /**
  * Streamable HTTP (MCP spec 2025-03-26), for an assistant that is not on the same machine as the server. It is stateless: every POST to /mcp carries the caller's own API
  * key as a bearer token and is answered on its own, with that key and no other (nothing is shared between callers, no session is kept). The API address is the server's
  * (never taken from a request), so a caller cannot point it somewhere else. The key's role is what limits the caller; the server does not check the key, the API does on
- * the first call. This is key authentication only: there is no OAuth and no rate limit of its own (the API's limits are per tenant and shared by every key), and every tool call is written to the audit log (audit.ts) with the caller's key prefix (docs/plans/20-mcp.md).
+ * the first call. This is key authentication only: there is no OAuth. The API's limits are per tenant and shared by every key; the server adds a limit per key when `ratePerMinute` is set (ratelimit.ts). Every tool call is written to the audit log (audit.ts) with the caller's key prefix (docs/plans/20-mcp.md).
  */
 export interface HttpOptions {
   baseUrl: string;
@@ -20,6 +21,8 @@ export interface HttpOptions {
   allowPersonalData?: boolean;
   /** One record per tool call, with the caller's key prefix (audit.ts). */
   audit?: Audit;
+  /** Tool calls a minute for each key (ratelimit.ts); 0 or unset is no limit. */
+  ratePerMinute?: number;
   /** Injected in tests. */
   fetch?: typeof fetch;
 }
@@ -56,6 +59,7 @@ function readBody(req: IncomingMessage): Promise<unknown> {
 }
 
 export function createHttpServer(o: HttpOptions): Server {
+  const limit = createRateLimit(o.ratePerMinute ?? 0);
   return listen(async (req, res) => {
     try {
       if (new URL(req.url ?? "/", "http://x").pathname !== "/mcp") return reply(res, 404, "The MCP endpoint is /mcp.");
@@ -66,7 +70,7 @@ export function createHttpServer(o: HttpOptions): Server {
       const refusal = liveRefusal(key, o.allowLive ?? false);
       if (refusal) return reply(res, 403, refusal);
       const body = await readBody(req);
-      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, allowPersonalData: o.allowPersonalData ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}) });
+      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, allowPersonalData: o.allowPersonalData ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}), ...(limit ? { rateLimit: () => limit.take(limitKeyOf(key)) } : {}) });
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         void transport.close();

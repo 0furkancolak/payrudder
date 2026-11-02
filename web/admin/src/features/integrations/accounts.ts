@@ -1,25 +1,27 @@
 import type { AccountProblem } from "@/features/product/liveProvider";
 import { accountRows, splitAccountKey, type AccountView } from "@/features/providers/connections";
+import { API_LOCALES, type ApiLocale } from "@/shared/lib/locale";
 import type { CardState } from "./status";
 
 /**
  * The accounts of an app as one list, whatever they are for: the payment accounts (several at one provider, labelled), the e-invoice accounts (the same) and
- * the e-mail sender in use. Pure functions; the card only draws what they return.
+ * the e-mail accounts (the same, with Payrudder's built-in sender as the row that is in use while none is connected). Pure functions; the card only draws what
+ * they return.
  */
 export type AccountKind = "payment" | "einvoice" | "mail";
 export const ACCOUNT_KINDS: readonly AccountKind[] = ["payment", "einvoice", "mail"];
 
 export interface AccountEntry {
-  /** The test id and the key in a list: the account key, or `mail:builtin` / `mail:nafru`. */
+  /** The test id and the key in a list: the account key, or `mail:builtin` / `mail:nafru` / `mail:nafru~eu` for e-mail. */
   id: string;
   kind: AccountKind;
-  /** The account key ("paddle~eu", "nilvera"); empty for the e-mail rows, which are not accounts of the same kind. */
+  /** The account key ("paddle~eu", "nilvera", "nafru~eu"); empty for the built-in sender, which is not an account. */
   key: string;
   provider: string;
   label: string;
   state: CardState;
   problem: AccountProblem | null;
-  /** The one a charge or a document goes to when no rule names another; for e-mail, the sender in use. */
+  /** The one a charge, a document or a mail goes to when no rule names another; the built-in sender is "in use" while no e-mail account is connected. */
   isDefault: boolean;
   mode: string;
 }
@@ -38,9 +40,27 @@ export function eInvoiceAccounts(res: { account?: EInvoiceAccountView | null; ac
   return res?.account ? [{ ...res.account, account: res.account.account ?? res.account.provider, is_default: res.account.is_default ?? true }] : [];
 }
 
+export interface MailAccountView {
+  account?: string;
+  provider?: string;
+  label?: string;
+  from?: string;
+  base_url?: string;
+  key_hint?: string;
+  check_problem?: string;
+  is_default?: boolean;
+}
+
 interface MailView {
   connected?: boolean;
-  integration?: { check_problem?: string } | null;
+  integration?: MailAccountView | null;
+  accounts?: readonly MailAccountView[];
+}
+
+/** The own e-mail accounts as the API lists them, the default first; a gateway that only knows the default (`integration`) is read as an app with that one account. */
+export function mailAccounts(res: MailView | null | undefined): MailAccountView[] {
+  if (res?.accounts) return [...res.accounts];
+  return res?.integration ? [{ ...res.integration, account: res.integration.account ?? "nafru", is_default: true }] : [];
 }
 
 export function accountEntries(input: { payments: readonly AccountView[] | undefined; eInvoice: readonly EInvoiceAccountView[]; mail: MailView | null | undefined }): AccountEntry[] {
@@ -52,9 +72,12 @@ export function accountEntries(input: { payments: readonly AccountView[] | undef
     const key = a.account ?? a.provider ?? "";
     out.push({ id: key, kind: "einvoice", key, provider: a.provider ?? splitAccountKey(key).provider, label: a.label ?? splitAccountKey(key).label, state: "working", problem: null, isDefault: a.is_default === true, mode: a.mode ?? "" });
   }
-  const own = input.mail?.connected === true;
-  out.push({ id: "mail:builtin", kind: "mail", key: "", provider: "payrudderMail", label: "", state: own ? "unused" : "always", problem: null, isDefault: !own, mode: "" });
-  if (own) out.push({ id: "mail:nafru", kind: "mail", key: "", provider: "nafru", label: "", state: input.mail?.integration?.check_problem ? "problem" : "working", problem: null, isDefault: true, mode: "" });
+  const own = mailAccounts(input.mail);
+  out.push({ id: "mail:builtin", kind: "mail", key: "", provider: "payrudderMail", label: "", state: own.length > 0 ? "unused" : "always", problem: null, isDefault: own.length === 0, mode: "" });
+  for (const a of own) {
+    const key = a.account ?? "nafru";
+    out.push({ id: `mail:${key}`, kind: "mail", key, provider: a.provider ?? splitAccountKey(key).provider, label: a.label ?? splitAccountKey(key).label, state: a.check_problem ? "problem" : "working", problem: null, isDefault: a.is_default === true, mode: "" });
+  }
   return out.sort((a, b) => ACCOUNT_KINDS.indexOf(a.kind) - ACCOUNT_KINDS.indexOf(b.kind) || a.provider.localeCompare(b.provider) || a.label.localeCompare(b.label));
 }
 
@@ -77,6 +100,30 @@ export function eInvoiceTaker(accounts: readonly EInvoiceAccountView[], rules: r
   const def = accounts.find((a) => a.is_default);
   return def ? { account: def.account ?? def.provider ?? null, via: "default" } : { account: null, via: "none" };
 }
+
+export interface MailRule {
+  language: string;
+  account: string;
+}
+
+export interface MailTaker {
+  /** The own account that sends the mail, or null when Payrudder's built-in sender does (no account is connected). */
+  account: string | null;
+  via: "rule" | "default" | "builtin";
+}
+
+/** Which e-mail account would send a mail in `language`: the account a rule names for it, else the default (the notifier's own rule: no language is English). */
+export function mailTaker(accounts: readonly MailAccountView[], rules: readonly MailRule[], language: string): MailTaker {
+  if (accounts.length === 0) return { account: null, via: "builtin" };
+  const lang = language === "" ? "en" : language;
+  const rule = rules.find((r) => r.language === lang);
+  if (rule && accounts.some((a) => a.account === rule.account)) return { account: rule.account, via: "rule" };
+  const def = accounts.find((a) => a.is_default) ?? accounts[0];
+  return { account: def?.account ?? null, via: "default" };
+}
+
+/** The languages a mail is in, and so the languages a routing rule can name. */
+export const MAIL_LANGUAGES: readonly ApiLocale[] = API_LOCALES;
 
 /** What an audit entry says, as the key of its sentence (`product.integrations.accounts.audit.actions.<action>`). */
 export const AUDIT_ACTIONS = ["connected", "replaced", "removed", "default_set", "routing_changed"] as const;
