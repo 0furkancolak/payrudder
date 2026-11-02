@@ -293,6 +293,17 @@ function extras(gw: MockGateway, initial: { account?: { provider: string; mode: 
       return { body: { rules: state.mailRules } };
     }
     if (c.path === `${mBase}/test`) return { body: { ok: true, message_id: "em_1" } };
+    if (c.path === `${mBase}/identity` && c.method === "GET") {
+      const selector = c.query.get("selector") ?? "";
+      return {
+        body: {
+          from: "Acme Billing <billing@acme.example>", domain: "acme.example", checked_time: "2026-11-02T10:00:00Z",
+          spf: { status: "ok", detail: "hard_fail", record: "v=spf1 include:_spf.mail.example -all" },
+          dkim: selector ? { status: "missing", selector } : { status: "unchecked", detail: "no_selector" },
+          dmarc: { status: "weak", detail: "policy_none", record: "v=DMARC1; p=none" },
+        },
+      };
+    }
     if (c.path === "/v1/mail-settings" && c.method === "GET") return { body: { categories: Object.entries(state.categories).map(([category, enabled]) => ({ category, enabled })) } };
     if (c.path === "/v1/mail-settings" && c.method === "PUT") {
       for (const x of (c.body?.categories as { category: string; enabled: boolean }[]) ?? []) state.categories[x.category] = x.enabled;
@@ -423,6 +434,19 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await sheet.getByTestId("integration-test").click();
     await expect(sheet.getByTestId("integration-test-result")).toContainText("owner@example.com");
     expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/test`)[0]?.body).toEqual({ to: "owner@example.com", account: "nafru" });
+    // The sender's identity: what the domain publishes in DNS. Without a selector DKIM is not guessed; with one it is looked up under that name.
+    const identity = sheet.getByTestId("mail-identity");
+    await identity.getByTestId("mail-identity-check").click();
+    await expect(identity.getByTestId("mail-identity-spf")).toContainText("Published");
+    await expect(identity.getByTestId("mail-identity-spf")).toContainText("Rejects other senders");
+    await expect(identity.getByTestId("mail-identity-dkim")).toContainText("Not checked");
+    await expect(identity.getByTestId("mail-identity-dmarc")).toContainText("Published, but weak");
+    await expect(identity.getByTestId("mail-identity-dmarc")).toContainText("failures are only reported");
+    expect(gw.called("GET", `/app/v1/apps/${APP}/integrations/mail/identity`)[0]?.query.get("selector")).toBeNull();
+    await identity.getByTestId("mail-identity-selector").fill("Mail1");
+    await identity.getByTestId("mail-identity-check").click();
+    await expect(identity.getByTestId("mail-identity-dkim")).toContainText("Not found");
+    expect(gw.called("GET", `/app/v1/apps/${APP}/integrations/mail/identity`).at(-1)?.query.get("selector")).toBe("mail1");
     await sheet.getByTestId("integration-disconnect").click();
     await confirmDialog(page, "yes");
     await expect(page.getByTestId("integration-state-nafru")).toHaveText("Not connected");

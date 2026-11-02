@@ -2,6 +2,7 @@
 // node build.mjs [outDir]   (default: docs-site/dist)
 // Needs Node 22.18 or newer: the language tabs of the reference are made by the console's own snippet generator (web/admin/src/features/connect/snippets.ts), which Node
 // reads directly by stripping its types.
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -40,6 +41,11 @@ export const GUIDES = [
   { section: "Payment providers", src: content("provider-iyzico.md"), page: "provider-iyzico", title: "iyzico", status: "draft" },
   { section: "Concepts", src: content("authentication.md"), page: "authentication", title: "Authentication", status: "draft" },
   { section: "Concepts", src: content("usage-metering.md"), page: "usage-metering", title: "Usage metering", status: "draft" },
+  { section: "Concepts", src: content("plans-and-packages.md"), page: "plans-and-packages", title: "Packages and plans", status: "draft" },
+  { section: "Concepts", src: content("subscriptions.md"), page: "subscriptions", title: "Subscriptions", status: "draft" },
+  { section: "Concepts", src: content("invoices.md"), page: "invoices", title: "Invoices", status: "draft" },
+  { section: "Concepts", src: content("credits.md"), page: "credits", title: "Credits and balances", status: "draft" },
+  { section: "Concepts", src: content("dunning.md"), page: "dunning", title: "Failed payments and retries", status: "draft" },
   { section: "Concepts", src: content("idempotency.md"), page: "idempotency", title: "Idempotency", status: "draft" },
   { section: "Concepts", src: content("test-mode.md"), page: "test-mode", title: "Test mode", status: "draft" },
   { section: "Concepts", src: content("versioning.md"), page: "versioning", title: "Versioning", status: "draft" },
@@ -243,6 +249,7 @@ a{color:var(--brand)}code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,mono
 code{background:var(--code);padding:.1em .35em;border-radius:6px}pre{background:var(--code);padding:14px 16px;border-radius:12px;overflow-x:auto}pre code{background:none;padding:0}
 .layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
 nav.side{border-inline-end:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav.side .ver{display:block;color:var(--mut);margin:2px 8px 10px}
 nav.side h2{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:20px 0 6px}
 nav.side a{display:block;padding:3px 8px;border-radius:8px;text-decoration:none;color:var(--fg);font-size:.9rem}
 nav.side a[aria-current=page]{background:var(--soft);font-weight:600}
@@ -262,12 +269,27 @@ details{margin:.5rem 0}summary{cursor:pointer;color:var(--mut)}
 .tabs button[aria-selected=true]{background:var(--brand);border-color:var(--brand);color:var(--bg)}
 @media(max-width:800px){.layout{grid-template-columns:1fr}nav.side{position:static;height:auto;border-inline-end:0;border-bottom:1px solid var(--line)}}`;
 
-function layout({ title, body, nav, current, up = "" }) {
+/**
+ * Which version of the API the site describes (the path version of the OpenAPI file) and which commit it was built from. Nothing is tagged yet, so the commit is how a
+ * reader of a hosted copy tells how old it is; without git (a copy of the sources) the commit is left out.
+ */
+export function versionLine(apiVersion, root) {
+  let commit = "";
+  try {
+    commit = execFileSync("git", ["-C", root, "log", "-1", "--format=%h %cs"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    /* not a git checkout */
+  }
+  return `API ${apiVersion}${commit ? ` · built from ${commit}` : ""}`;
+}
+
+function layout({ title, body, nav, current, up = "", version = "" }) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Payrudder developers</title><style>${CSS}</style></head>
 <body><div class="layout">
 <nav class="side" aria-label="Documentation"><a href="${up}index.html" style="font-weight:700">Payrudder developers</a>
+<small class="ver" data-api-version>${esc(version)}</small>
 <input id="q" type="search" placeholder="Search" aria-label="Search the documentation" autocomplete="off"><ul id="hits"></ul>
 ${nav.map((g) => `<h2>${esc(g.title)}</h2>${g.items.map((i) => `<a href="${up}${i.href}"${i.href === current ? ' aria-current="page"' : ""}>${esc(i.label)}</a>`).join("")}`).join("")}
 </nav>
@@ -277,6 +299,36 @@ ${nav.map((g) => `<h2>${esc(g.title)}</h2>${g.items.map((i) => `<a href="${up}${
 }
 
 const textOf = (html) => html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * A heading of a guide that has no id gets one made from its text (`## Meter versions` -> `meter-versions`, a repeat gets `-2`), so a section can be linked to and found by
+ * the search. Headings that a generator wrote with an id of their own are left as they are.
+ */
+const plain = (html) => html.replace(/<[^>]+>/g, "").replace(/&(#39|quot|amp|lt|gt);/g, (_, e) => ({ "#39": "'", quot: '"', amp: "&", lt: "<", gt: ">" })[e]).replace(/\s+/g, " ").trim();
+export function withHeadingIds(html) {
+  const used = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  return html.replace(/<h([23])>([\s\S]*?)<\/h\1>/g, (_, level, inner) => {
+    const base = slug(plain(inner)) || "section";
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    used.add(id);
+    return `<h${level} id="${id}">${inner}</h${level}>`;
+  });
+}
+
+/**
+ * What the search holds of a guide: one entry for the page (its title and the text before the first section) and one for each section (`Page: Section`, landing on the
+ * section), with the whole text of the section, so a word anywhere in a long guide finds the part it is in.
+ */
+export function guideEntries(g, html) {
+  const [intro, ...sections] = html.split(/(?=<h2[ >])/);
+  const entries = [{ title: g.title, kind: "Guide", url: `${g.page}.html`, text: textOf(intro).slice(0, 4000) }];
+  for (const sec of sections) {
+    const m = /^<h2 id="([^"]+)">([\s\S]*?)<\/h2>/.exec(sec);
+    if (m) entries.push({ title: `${g.title}: ${plain(m[2])}`, kind: "Guide", url: `${g.page}.html#${m[1]}`, text: textOf(sec).slice(0, 6000) });
+  }
+  return entries;
+}
 
 /** A page's status: its own, else the one docs/publication.yaml gives the document it comes from. */
 function guideStatus(g, pub) {
@@ -406,6 +458,7 @@ export async function build(outDir = join(here, "dist")) {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(join(outDir, "api"), { recursive: true });
   const search = [];
+  const shell = (o) => layout({ ...o, version: versionLine(doc.info.version, root) });
 
   for (const g of GUIDES) {
     const md = await readFile(g.src, "utf8");
@@ -430,8 +483,9 @@ export async function build(outDir = join(here, "dist")) {
     });
     html = html.replace("</h1>", `</h1>\n${statusBanner(status)}`);
     if (g.generate) html += await g.generate({ doc, root, files: g.also });
-    await writeFile(join(outDir, `${g.page}.html`), layout({ title: g.title, body: html, nav, current: `${g.page}.html` }));
-    search.push({ title: g.title, kind: "Guide", url: `${g.page}.html`, text: textOf(html).slice(0, 4000) });
+    html = withHeadingIds(html);
+    await writeFile(join(outDir, `${g.page}.html`), shell({ title: g.title, body: html, nav, current: `${g.page}.html` }));
+    search.push(...guideEntries(g, html));
   }
 
   for (const g of groups) {
@@ -439,7 +493,7 @@ export async function build(outDir = join(here, "dist")) {
     const schemas = usedSchemas(doc, mine);
     const body = `<h1>${esc(g)}</h1>${statusBanner("stable")}<p><a href="index.html">API reference</a></p>${mine.map((o) => operationHtml(doc, o, base)).join("")}
 <h2>Models</h2>${schemas.map((n) => `<section id="schema-${esc(n)}"><h3>${esc(n)}</h3>${fieldRows(doc, { $ref: `#/components/schemas/${n}` }) || `<p>${typeOf(doc, doc.components.schemas[n])}</p>`}</section>`).join("")}`;
-    await writeFile(join(outDir, "api", `${g}.html`), layout({ title: `${g} API`, body, nav, current: `api/${g}.html`, up: "../" }));
+    await writeFile(join(outDir, "api", `${g}.html`), shell({ title: `${g} API`, body, nav, current: `api/${g}.html`, up: "../" }));
     // Every model on the page can be found by its name, by a field name or by what the fields say.
     for (const n of schemas) search.push({ title: n, kind: "Model", url: `api/${g}.html#schema-${n}`, text: modelText(doc.components.schemas[n]) });
     for (const o of mine) search.push({ title: `${o.method} ${o.path}`, kind: "Operation", url: `api/${g}.html#${o.id}`, text: `${o.op.summary ?? ""} ${textOf(marked.parse(String(o.op.description ?? "")))}`.slice(0, 1500) });
@@ -447,11 +501,11 @@ export async function build(outDir = join(here, "dist")) {
 
   const overview = `<h1>API reference</h1>${statusBanner("stable")}<p>${ops.length} operations of the tenant API, authenticated with an API key (<code>Authorization: Bearer qk_…</code>). The same OpenAPI file, <code>api/openapi/v1.yaml</code>, is what the SDKs are generated from.</p>
 <ul>${groups.map((g) => `<li><a href="${g}.html">${esc(g)}</a> (${ops.filter((o) => o.group === g).length})</li>`).join("")}</ul>`;
-  await writeFile(join(outDir, "api", "index.html"), layout({ title: "API reference", body: overview, nav, current: "api/index.html", up: "../" }));
+  await writeFile(join(outDir, "api", "index.html"), shell({ title: "API reference", body: overview, nav, current: "api/index.html", up: "../" }));
 
   const home = `<h1>Payrudder developers</h1>${statusBanner("preview")}<p>Meter usage, price it, invoice it, collect the money. Start with <a href="getting-started.html">Getting started</a>, then use the <a href="api/index.html">API reference</a>.</p>
 ${sections.map((t) => `<h2>${esc(t)}</h2><ul>${GUIDES.filter((g) => g.section === t).map((g) => `<li><a href="${g.page}.html">${esc(g.title)}</a></li>`).join("")}</ul>`).join("")}<h2>API reference</h2><ul><li><a href="api/index.html">API reference</a></li></ul>`;
-  await writeFile(join(outDir, "index.html"), layout({ title: "Documentation", body: home, nav, current: "index.html" }));
+  await writeFile(join(outDir, "index.html"), shell({ title: "Documentation", body: home, nav, current: "index.html" }));
   await writeFile(join(outDir, "search.json"), JSON.stringify(search));
   for (const [from, to] of Object.entries(REDIRECTS)) await writeFile(join(outDir, from), redirectPage(to));
   // For a reviewer, and for `CHECK_EXTERNAL_LINKS=1 npm test`, which asks each of them (the build and the usual test run stay offline).

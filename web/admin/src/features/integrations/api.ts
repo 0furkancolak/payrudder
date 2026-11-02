@@ -164,3 +164,13 @@ export function useFailoverActions(appId: MaybeRefOrGetter<string>) {
     }),
   };
 }
+
+/**
+ * What the domain of the app's own e-mail sender publishes in DNS (SPF, DKIM, DMARC). A lookup and not a stored fact, so a mutation the person starts: `selector` is the DKIM
+ * selector the provider publishes its key under, empty to leave DKIM unchecked.
+ */
+export function useMailIdentity(appId: MaybeRefOrGetter<string>) {
+  return useMutation({
+    mutationFn: (selector: string) => unwrap(api.GET("/app/v1/apps/{id}/integrations/mail/identity", { params: { path: { id: toValue(appId) }, query: selector ? { selector } : {} } })),
+  });
+}

@@ -2,12 +2,16 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -15,6 +19,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -45,6 +50,7 @@ func (s *Server) integrationRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/integrations/mail/default", AccessSession, ratelimit.ClassWrite, s.appMailDefault},
 		{"GET", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassRead, s.appMailRoutingGet},
 		{"PUT", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassWrite, s.appMailRoutingPut},
+		{"GET", "/app/v1/apps/{id}/integrations/mail/identity", AccessSession, ratelimit.ClassWrite, s.appMailIdentity},
 	}
 }
 
@@ -452,4 +458,52 @@ func (s *Server) appMailRoutingPut(w http.ResponseWriter, r *http.Request) {
 	noStore(w)
 	resp, err := s.d.MailIntegration.PutMailRouting(tenant.OutgoingFor(r.Context(), id), req)
 	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailIdentity checks what the domain of the live sender publishes in DNS (SPF, DKIM, DMARC), for the address the app's own mail provider sends from. It looks up three
+// names and changes nothing; ?selector= is the DKIM selector the provider publishes its key under (without it DKIM is reported as not checked, not guessed). Any member may
+// ask; it is rate-limited like a write because each call is outbound lookups. The app with no provider of its own sends through Payrudder's sender, which is not its
+// domain's to check: 404 plans.mail_integration.not_connected.
+func (s *Server) appMailIdentity(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	conn, err := s.d.MailIntegration.GetMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.GetMailIntegrationRequest{})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if !conn.GetConnected() {
+		writeError(w, r, errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no e-mail provider is connected"))
+		return
+	}
+	lookup := s.d.LookupTXT
+	if lookup == nil {
+		lookup = net.DefaultResolver.LookupTXT
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	res, err := mailx.CheckIdentity(ctx, lookup, conn.GetIntegration().GetFrom(), r.URL.Query().Get("selector"))
+	if errors.Is(err, mailx.ErrIdentityInput) {
+		writeError(w, r, invalid("selector", "a DKIM selector of letters, digits, dots and dashes; the sender must be an address at a domain"))
+		return
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStoreJSON(w)
+	writeJSONValue(w, http.StatusOK, struct {
+		mailx.Identity
+		From        string `json:"from"`
+		CheckedTime string `json:"checked_time"`
+	}{res, conn.GetIntegration().GetFrom(), time.Now().UTC().Format(time.RFC3339)})
 }

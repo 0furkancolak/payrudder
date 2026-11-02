@@ -4637,7 +4637,46 @@
         },
         "checkAndConnect": "تحقق واربط",
         "confirmRemove": "هل تريد قطع اتصال مزوّد بريدك الخاص؟ سيُرسل البريد المباشر من Payrudder مجددًا.",
-        "templatesNote": "تريد مظهرك الخاص؟ أضف Payrudder ضمن التطبيقات في Nafru Email وعدّل القوالب هناك. يحمل كل بريد اسمه في الوسم payrudder_template ليُطبَّق القالب المناسب."
+        "templatesNote": "تريد مظهرك الخاص؟ أضف Payrudder ضمن التطبيقات في Nafru Email وعدّل القوالب هناك. يحمل كل بريد اسمه في الوسم payrudder_template ليُطبَّق القالب المناسب.",
+        "identity": {
+          "title": "هوية المرسل",
+          "intro": "يحكم مزوّدو البريد على الرسالة بما يعلنه نطاق المرسل في DNS. يبحث هذا الفحص عن SPF وDKIM وDMARC للعنوان الذي يُرسل منه بريدك.",
+          "selector": "محدّد DKIM (اختياري)",
+          "selectorHelp": "الاسم الذي ينشر مزوّدك مفتاح DKIM تحته. اتركه فارغاً لتخطي DKIM.",
+          "check": "افحص DNS",
+          "checking": "جارٍ الفحص…",
+          "domain": "النطاق: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "منشور",
+            "weak": "منشور لكنه ضعيف",
+            "missing": "غير موجود",
+            "invalid": "غير صالح",
+            "unchecked": "لم يُفحص",
+            "error": "تعذّر الفحص"
+          },
+          "detail": {
+            "hard_fail": "يرفض المرسلين الآخرين (-all)",
+            "soft_fail": "يعتبر المرسلين الآخرين مشبوهين (~all)",
+            "neutral": "لا يقول شيئاً عن المرسلين الآخرين (?all)",
+            "pass_all": "يسمح بأي مرسل (+all)",
+            "no_all": "لا توجد قاعدة ختامية",
+            "multiple": "أكثر من سجل SPF واحد: يعدّه المستقبِلون خطأً",
+            "policy_none": "السياسة none: تُبلَّغ الإخفاقات فقط",
+            "policy_none_inherited": "السياسة none، من النطاق الأعلى",
+            "quarantine": "السياسة: quarantine",
+            "quarantine_inherited": "السياسة: quarantine، من النطاق الأعلى",
+            "reject": "السياسة: reject",
+            "reject_inherited": "السياسة: reject، من النطاق الأعلى",
+            "no_selector": "أدخل المحدّد لفحصه",
+            "revoked": "أُلغي المفتاح (p= فارغ)"
+          },
+          "note": "هذا يقرأ DNS العام فقط. ولا يخبر هل تذكر السجلات مزوّدك، ولا هل تحقق مزوّدك من النطاق. قد يستغرق انتشار أي تغيير ساعات."
+        }
       },
       "accounts": {
         "title": "الحسابات",

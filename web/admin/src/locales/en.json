@@ -4637,7 +4637,46 @@
         },
         "checkAndConnect": "Check and connect",
         "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again.",
-        "templatesNote": "Want your own look? In Nafru Email, add Payrudder under Applications and edit the templates there. Every mail carries its name in the payrudder_template tag, so the right template is applied."
+        "templatesNote": "Want your own look? In Nafru Email, add Payrudder under Applications and edit the templates there. Every mail carries its name in the payrudder_template tag, so the right template is applied.",
+        "identity": {
+          "title": "Sender identity",
+          "intro": "Mailbox providers judge mail by what the sender's domain publishes in DNS. This looks up SPF, DKIM and DMARC for the address your mail is sent from.",
+          "selector": "DKIM selector (optional)",
+          "selectorHelp": "The name your provider publishes the DKIM key under. Leave it empty to skip DKIM.",
+          "check": "Check DNS",
+          "checking": "Checking…",
+          "domain": "Domain: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Published",
+            "weak": "Published, but weak",
+            "missing": "Not found",
+            "invalid": "Invalid",
+            "unchecked": "Not checked",
+            "error": "Could not be checked"
+          },
+          "detail": {
+            "hard_fail": "Rejects other senders (-all)",
+            "soft_fail": "Marks other senders as suspicious (~all)",
+            "neutral": "Says nothing about other senders (?all)",
+            "pass_all": "Allows any sender (+all)",
+            "no_all": "Has no closing rule",
+            "multiple": "More than one SPF record: receivers treat this as an error",
+            "policy_none": "Policy is none: failures are only reported",
+            "policy_none_inherited": "Policy is none, from the parent domain",
+            "quarantine": "Policy: quarantine",
+            "quarantine_inherited": "Policy: quarantine, from the parent domain",
+            "reject": "Policy: reject",
+            "reject_inherited": "Policy: reject, from the parent domain",
+            "no_selector": "Enter the selector to check it",
+            "revoked": "The key was revoked (an empty p=)"
+          },
+          "note": "This only reads public DNS. It does not tell whether the records name your provider, nor whether your provider has verified the domain. A change can take hours to spread."
+        }
       },
       "accounts": {
         "title": "Accounts",

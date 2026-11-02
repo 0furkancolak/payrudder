@@ -351,10 +351,21 @@ func (d *delivery) findCharge(key string) bool {
 	return true
 }
 
+// account is the key of the provider account the notification is about: the account the charge was made through when it is known (iyzico~tr; the primary account of a
+// provider is just "iyzico"), else the provider the URL names. A provider whose URL names no tenant (iyzico) is told one URL for all of a tenant's accounts, so the URL cannot
+// be what says which account it is; and a URL that does name a label must not make the same payment another account's. The ledger row, the name billing is told and the
+// account that confirms the notification all use it, which is what the payer's return uses too (returns.Complete).
+func (d *delivery) account() string {
+	if d.at.Provider != "" && payments.BaseProvider(d.at.Provider) == payments.BaseProvider(d.name) {
+		return d.at.Provider
+	}
+	return d.name
+}
+
 // confirm asks the provider's own account whether the notification is genuine. It reports false once it has answered.
 func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
 	ctx := d.r.Context()
-	prov, err := d.s.Resolver.Named(ctx, d.tenant, d.name, d.env)
+	prov, err := d.s.Resolver.Named(ctx, d.tenant, d.account(), d.env)
 	if err != nil {
 		d.retry(d.tenant, err)
 		return payments.Notification{}, false
@@ -422,7 +433,7 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 		return err
 	}
 	if conf.ProviderRef != "" {
-		if n, err := d.s.Ledger.Outcomes(ctx, entry.TenantID, d.name, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
+		if n, err := d.s.Ledger.Outcomes(ctx, entry.TenantID, entry.Provider, entry.Kind, conf.ProviderRef); err == nil && n > 1 {
 			discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
 			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
 		}
@@ -440,7 +451,7 @@ func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEn
 		return nil
 	}
 	res, err := d.s.Billing.SettleInvoicePayment(ctx, d.tenant, &billingv1.SettleInvoicePaymentRequest{
-		InvoiceId: entry.InvoiceID.String(), Provider: d.name, ProviderRef: entry.ProviderRef, AmountMinor: entry.AmountMinor, Currency: entry.Currency})
+		InvoiceId: entry.InvoiceID.String(), Provider: entry.Provider, ProviderRef: entry.ProviderRef, AmountMinor: entry.AmountMinor, Currency: entry.Currency})
 	if err != nil {
 		return fmt.Errorf("settle invoice %s: %w", entry.InvoiceID, err)
 	}
@@ -459,7 +470,7 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 	if conf.Kind == payments.KindRefund {
 		kind = store.KindRefund
 	}
-	entry := store.LedgerEntry{TenantID: d.tenant, Provider: d.name, Environment: d.env, Kind: kind, AmountMinor: conf.AmountMinor, Currency: conf.Currency,
+	entry := store.LedgerEntry{TenantID: d.tenant, Provider: d.account(), Environment: d.env, Kind: kind, AmountMinor: conf.AmountMinor, Currency: conf.Currency,
 		ProviderRef: conf.ProviderRef, IdempotencyKey: conf.Ref.IdempotencyKey, Source: store.SourceWebhook}
 	if d.at.InvoiceID != uuid.Nil {
 		entry.InvoiceID = d.at.InvoiceID

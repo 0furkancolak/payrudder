@@ -110,8 +110,9 @@ func Complete(ctx context.Context, d Deps, key string, form url.Values) (Outcome
 		d.Log.WarnContext(ctx, "a return could not be confirmed", "provider", at.Provider, "tenant", at.TenantID, "err", err)
 		return Outcome{}, refuse.New(http.StatusServiceUnavailable, "payments.webhook.try_again", "try again")
 	}
-	// The same row the provider's notification writes (the adapter's name, the charge's key and the provider's id), so whichever arrives second changes nothing.
-	entry := store.LedgerEntry{TenantID: at.TenantID, InvoiceID: at.InvoiceID, Provider: payments.BaseProvider(at.Provider), Environment: at.Environment, Kind: store.KindCharge,
+	// The same row the provider's notification writes (the key of the account the attempt was made through, the charge's key and the provider's id), so whichever arrives
+	// second changes nothing: iyzico~tr, not iyzico, for a labelled account.
+	entry := store.LedgerEntry{TenantID: at.TenantID, InvoiceID: at.InvoiceID, Provider: at.Provider, Environment: at.Environment, Kind: store.KindCharge,
 		AmountMinor: at.AmountMinor, Currency: at.Currency, ProviderRef: st.ChargeID, IdempotencyKey: key, Source: store.SourceCommand}
 	switch st.State {
 	case payments.StateSucceeded:
@@ -138,7 +139,7 @@ func (d Deps) settle(ctx context.Context, at store.Attempt, providerRef string, 
 		return nil
 	}
 	res, err := d.Billing.SettleInvoicePayment(ctx, at.TenantID, &billingv1.SettleInvoicePaymentRequest{
-		InvoiceId: at.InvoiceID.String(), Provider: payments.BaseProvider(at.Provider), ProviderRef: providerRef, AmountMinor: at.AmountMinor, Currency: at.Currency})
+		InvoiceId: at.InvoiceID.String(), Provider: at.Provider, ProviderRef: providerRef, AmountMinor: at.AmountMinor, Currency: at.Currency})
 	if err != nil {
 		return fmt.Errorf("settle invoice %s: %w", at.InvoiceID, err)
 	}

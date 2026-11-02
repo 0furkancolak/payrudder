@@ -4637,7 +4637,46 @@
         },
         "checkAndConnect": "Vérifier et connecter",
         "confirmRemove": "Déconnecter votre propre fournisseur d'e-mail ? Les e-mails live repartent de Payrudder.",
-        "templatesNote": "Envie de votre propre style ? Dans Nafru Email, ajoutez Payrudder sous Applications et modifiez les modèles là-bas. Chaque e-mail porte son nom dans l'étiquette payrudder_template, pour que le bon modèle s'applique."
+        "templatesNote": "Envie de votre propre style ? Dans Nafru Email, ajoutez Payrudder sous Applications et modifiez les modèles là-bas. Chaque e-mail porte son nom dans l'étiquette payrudder_template, pour que le bon modèle s'applique.",
+        "identity": {
+          "title": "Identité de l'expéditeur",
+          "intro": "Les fournisseurs de messagerie jugent un e-mail d'après ce que le domaine de l'expéditeur publie dans le DNS. Cette vérification cherche SPF, DKIM et DMARC pour l'adresse d'où part votre courrier.",
+          "selector": "Sélecteur DKIM (facultatif)",
+          "selectorHelp": "Le nom sous lequel votre fournisseur publie la clé DKIM. Laissez vide pour ignorer DKIM.",
+          "check": "Vérifier le DNS",
+          "checking": "Vérification…",
+          "domain": "Domaine : {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Publié",
+            "weak": "Publié, mais faible",
+            "missing": "Introuvable",
+            "invalid": "Invalide",
+            "unchecked": "Non vérifié",
+            "error": "Vérification impossible"
+          },
+          "detail": {
+            "hard_fail": "Rejette les autres expéditeurs (-all)",
+            "soft_fail": "Marque les autres expéditeurs comme suspects (~all)",
+            "neutral": "Ne dit rien des autres expéditeurs (?all)",
+            "pass_all": "Autorise tout expéditeur (+all)",
+            "no_all": "Pas de règle finale",
+            "multiple": "Plus d'un enregistrement SPF : les destinataires y voient une erreur",
+            "policy_none": "Politique none : les échecs sont seulement signalés",
+            "policy_none_inherited": "Politique none, héritée du domaine parent",
+            "quarantine": "Politique : quarantine",
+            "quarantine_inherited": "Politique : quarantine, héritée du domaine parent",
+            "reject": "Politique : reject",
+            "reject_inherited": "Politique : reject, héritée du domaine parent",
+            "no_selector": "Saisissez le sélecteur pour le vérifier",
+            "revoked": "La clé a été révoquée (p= vide)"
+          },
+          "note": "Cela ne lit que le DNS public. On ne sait pas si les enregistrements désignent votre fournisseur, ni si votre fournisseur a vérifié le domaine. Une modification peut mettre des heures à se propager."
+        }
       },
       "accounts": {
         "title": "Comptes",

@@ -4637,7 +4637,46 @@
         },
         "checkAndConnect": "Comprobar y conectar",
         "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
-        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta."
+        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta.",
+        "identity": {
+          "title": "Identidad del remitente",
+          "intro": "Los proveedores de correo juzgan un mensaje por lo que el dominio del remitente publica en el DNS. Esta comprobación busca SPF, DKIM y DMARC de la dirección desde la que se envía su correo.",
+          "selector": "Selector DKIM (opcional)",
+          "selectorHelp": "El nombre bajo el que su proveedor publica la clave DKIM. Déjelo vacío para omitir DKIM.",
+          "check": "Comprobar el DNS",
+          "checking": "Comprobando…",
+          "domain": "Dominio: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Publicado",
+            "weak": "Publicado, pero débil",
+            "missing": "No encontrado",
+            "invalid": "No válido",
+            "unchecked": "No comprobado",
+            "error": "No se pudo comprobar"
+          },
+          "detail": {
+            "hard_fail": "Rechaza a otros remitentes (-all)",
+            "soft_fail": "Marca a otros remitentes como sospechosos (~all)",
+            "neutral": "No dice nada de otros remitentes (?all)",
+            "pass_all": "Permite a cualquier remitente (+all)",
+            "no_all": "No tiene regla final",
+            "multiple": "Más de un registro SPF: los receptores lo tratan como un error",
+            "policy_none": "Política none: los fallos solo se notifican",
+            "policy_none_inherited": "Política none, del dominio superior",
+            "quarantine": "Política: quarantine",
+            "quarantine_inherited": "Política: quarantine, del dominio superior",
+            "reject": "Política: reject",
+            "reject_inherited": "Política: reject, del dominio superior",
+            "no_selector": "Introduzca el selector para comprobarlo",
+            "revoked": "La clave fue revocada (p= vacío)"
+          },
+          "note": "Esto solo lee el DNS público. No dice si los registros nombran a su proveedor ni si su proveedor ha verificado el dominio. Un cambio puede tardar horas en propagarse."
+        }
       },
       "accounts": {
         "title": "Cuentas",

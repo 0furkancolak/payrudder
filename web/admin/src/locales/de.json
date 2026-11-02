@@ -4637,7 +4637,46 @@
         },
         "checkAndConnect": "Prüfen und verbinden",
         "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
-        "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird."
+        "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird.",
+        "identity": {
+          "title": "Absenderidentität",
+          "intro": "Mailanbieter beurteilen E-Mails nach dem, was die Domain des Absenders im DNS veröffentlicht. Diese Prüfung sucht SPF, DKIM und DMARC für die Adresse, von der Ihre E-Mails kommen.",
+          "selector": "DKIM-Selektor (optional)",
+          "selectorHelp": "Der Name, unter dem Ihr Anbieter den DKIM-Schlüssel veröffentlicht. Leer lassen, um DKIM zu überspringen.",
+          "check": "DNS prüfen",
+          "checking": "Wird geprüft…",
+          "domain": "Domain: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Veröffentlicht",
+            "weak": "Veröffentlicht, aber schwach",
+            "missing": "Nicht gefunden",
+            "invalid": "Ungültig",
+            "unchecked": "Nicht geprüft",
+            "error": "Konnte nicht geprüft werden"
+          },
+          "detail": {
+            "hard_fail": "Weist andere Absender ab (-all)",
+            "soft_fail": "Markiert andere Absender als verdächtig (~all)",
+            "neutral": "Sagt nichts über andere Absender (?all)",
+            "pass_all": "Erlaubt jeden Absender (+all)",
+            "no_all": "Hat keine abschließende Regel",
+            "multiple": "Mehr als ein SPF-Eintrag: Empfänger werten das als Fehler",
+            "policy_none": "Richtlinie none: Fehlschläge werden nur gemeldet",
+            "policy_none_inherited": "Richtlinie none, von der übergeordneten Domain",
+            "quarantine": "Richtlinie: quarantine",
+            "quarantine_inherited": "Richtlinie: quarantine, von der übergeordneten Domain",
+            "reject": "Richtlinie: reject",
+            "reject_inherited": "Richtlinie: reject, von der übergeordneten Domain",
+            "no_selector": "Selektor eingeben, um zu prüfen",
+            "revoked": "Der Schlüssel wurde widerrufen (leeres p=)"
+          },
+          "note": "Dies liest nur das öffentliche DNS. Es sagt nicht, ob die Einträge Ihren Anbieter nennen, und nicht, ob Ihr Anbieter die Domain verifiziert hat. Eine Änderung kann Stunden brauchen, bis sie überall gilt."
+        }
       },
       "accounts": {
         "title": "Konten",

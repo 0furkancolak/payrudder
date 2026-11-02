@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/mailadmin"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -26,6 +28,7 @@ type MailAdmin interface {
 	Unsuppress(ctx context.Context, tenantID uuid.UUID, address string) error
 	Messages(ctx context.Context, tenantID uuid.UUID, after string, size int) ([]mailadmin.Message, string, error)
 	PreviewPriceChange(ctx context.Context, in mailadmin.PriceChangePreview) (mailadmin.Rendered, error)
+	Event(ctx context.Context, e mailx.Event) error
 }
 
 func (s *Server) mailRoutes() []Route {
@@ -34,8 +37,48 @@ func (s *Server) mailRoutes() []Route {
 		{"DELETE", "/v1/mail-suppressions/{address}", AccessTenant, ratelimit.ClassWrite, s.deleteMailSuppression},
 		{"GET", "/v1/mail-messages", AccessTenant, ratelimit.ClassRead, s.listMailMessages},
 		{"POST", "/v1/mail-previews/price-change", AccessTenant, ratelimit.ClassRead, s.previewPriceChangeMail},
+		{"POST", "/inbound/mail-events", AccessPublic, "", s.inboundMailEvents},
 	}
 }
+
+// inboundMailEvents is the webhook of the mail provider's delivery events (bounces, complaints, deliveries): the translating layer between a provider and the notifier's
+// neutral endpoint. The body is a Resend webhook, signed with Svix (pkg/mailx: ParseResendWebhook, VerifySvix; UNVERIFIED that Nafru's webhooks are the same); a request
+// that does not verify is 401, an event that says nothing about delivery is 200 and ignored, and a notifier that cannot be reached is 503 so that the provider sends it
+// again (the notifier's side is idempotent). 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET is set (with the notifier's address).
+func (s *Server) inboundMailEvents(w http.ResponseWriter, r *http.Request) {
+	if s.d.MailWebhookSecret == "" || s.d.Mail == nil {
+		http.NotFound(w, r)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, mailWebhookLimit+1))
+	if err != nil || len(body) > mailWebhookLimit {
+		http.Error(w, "the body is too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if mailx.VerifySvix(r.Header, body, s.d.MailWebhookSecret, time.Now(), mailx.SvixTolerance) != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	events, err := mailx.ParseResendWebhook(body)
+	if err != nil {
+		writeError(w, r, errkey.New(codes.InvalidArgument, "gateway.request.malformed_json", "the body must be the JSON of a delivery webhook"))
+		return
+	}
+	for _, e := range events {
+		if err := s.d.Mail.Event(r.Context(), e); err != nil {
+			var bad mailadmin.BadRequestError
+			if errors.As(err, &bad) {
+				continue // the notifier refused this event for good; a retry would be refused again, and the others in the body may still count
+			}
+			writeError(w, r, errkey.New(codes.Unavailable, "gateway.mail.unavailable", "the notifier did not answer: try again in a moment"))
+			return
+		}
+	}
+	writeJSONValue(w, http.StatusOK, map[string]int{"events": len(events)})
+}
+
+// mailWebhookLimit is the largest webhook body taken: a delivery event is a few hundred bytes.
+const mailWebhookLimit = 64 << 10
 
 // mailTenant is the tenant of the request, or the answer when the notifier is not reachable from here. The tenant comes from the credential, never from the request.
 func (s *Server) mailAdminTenant(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
