@@ -71,7 +71,6 @@ func TestInvalidPairsAreRejected(t *testing.T) {
 		{Voided, EvPdfRendered},  // a render reply for a voided invoice
 		{PaymentDeclined, EvPaymentOK},
 		{PaymentRequested, EvVoid}, // never void while a charge is in flight
-		{PaymentUnknown, EvVoid},
 		{Finalized, EvPaymentOK},
 		{Draft, EvStart},  // drafts are finalized by the run, not by the saga
 		{Paid, EvSettled}, // a second payment of a paid invoice is a discrepancy for the operator, not a transition
@@ -129,6 +128,10 @@ func TestPendingPaymentTransitions(t *testing.T) {
 	check(PaymentPending, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 1, MaxDunning: 3}, PaymentDeclined, EffScheduleDunning)
 	check(PaymentPending, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 3, MaxDunning: 3}, Uncollectible, EffNone)
 	check(PaymentPending, EvVoid, c, Voided, EffNone) // an invoice nobody will pay can be voided
+	// A parked invoice whose payment is unknown can be voided too (plan 22 G2 says it can). It is not refunded: nothing is known to have been taken, and the operator confirms in
+	// the call that no charge was made (sagas/command Void), which is why this is the one void that needs it.
+	check(PaymentUnknown, EvVoid, c, Voided, EffNone)
+	check(PaymentUnknown, EvVoid, Ctx{TotalMinor: 500, Paid: true, MaxDunning: 3}, Voided, EffNone)
 	check(PaymentDeclined, EvRetry, c, PaymentUnknown, EffQueryStatus)
 	for _, s := range []State{PaymentUnknown, PaymentPending, PaymentDeclined, NotifyRequested, NotifyFailed, Completed} {
 		check(s, EvSettled, c, Paid, EffNone)

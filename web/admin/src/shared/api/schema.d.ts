@@ -6646,7 +6646,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Void an invoice, refunding it first when it was paid */
+        /**
+         * Void an invoice, refunding it first when it was paid
+         * @description An invoice whose payment is unknown (its saga is parked in `PAYMENT_UNKNOWN`: the provider may have taken the money and not said so) is voided only with `confirm_not_charged: true`, the operator's word that they checked at the provider that nothing was charged. Without it the call is refused with 409 `billing.saga.void_needs_confirmation` and nothing changes. Nothing is refunded for such an invoice. The confirmation and the reason are recorded in the audit log.
+         */
         post: operations["adminVoidInvoice"];
         delete?: never;
         options?: never;
@@ -10059,7 +10062,10 @@ export interface components {
         AdminVoidInvoiceRequest: {
             /** Format: uuid */
             tenant_id: string;
+            /** @description Kept in the audit log. */
             reason?: string;
+            /** @description The operator checked at the provider that no charge was made. Required for an invoice whose payment is unknown (PAYMENT_UNKNOWN). */
+            confirm_not_charged?: boolean;
         };
         AdminRecordInvoicePaymentRequest: {
             /** Format: uuid */
@@ -12259,10 +12265,10 @@ export interface components {
             /** Format: uuid */
             lot_id: string;
             /** @enum {string} */
-            kind: "grant" | "consume" | "expire";
+            kind: "grant" | "consume" | "expire" | "revoke";
             /**
              * Format: int64
-             * @description int64 as a string; negative for consume and expire
+             * @description int64 as a string; negative for consume, expire and revoke (a revoke takes back the credits of a credit pack whose invoice was voided or credited; 0 when none of them was left to take, and its reason says how many could not be)
              */
             amount: string;
             reason: string;

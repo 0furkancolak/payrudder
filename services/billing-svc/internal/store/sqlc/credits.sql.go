@@ -204,6 +204,29 @@ func (q *Queries) GetLedgerByKey(ctx context.Context, arg GetLedgerByKeyParams) 
 	return items, nil
 }
 
+const getPurchaseLot = `-- name: GetPurchaseLot :one
+SELECT id, customer_id, granted FROM credit_lots WHERE tenant_id = $1 AND source = 'purchase' AND source_ref = $2
+`
+
+type GetPurchaseLotParams struct {
+	TenantID  uuid.UUID
+	SourceRef *string
+}
+
+type GetPurchaseLotRow struct {
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	Granted    int64
+}
+
+// The lot a paid pack invoice granted (one per invoice): what a void or a credit note of the invoice takes back.
+func (q *Queries) GetPurchaseLot(ctx context.Context, arg GetPurchaseLotParams) (GetPurchaseLotRow, error) {
+	row := q.db.QueryRow(ctx, getPurchaseLot, arg.TenantID, arg.SourceRef)
+	var i GetPurchaseLotRow
+	err := row.Scan(&i.ID, &i.CustomerID, &i.Granted)
+	return i, err
+}
+
 const insertCreditPack = `-- name: InsertCreditPack :one
 
 INSERT INTO credit_packs (tenant_id, id, name, credits, price_minor, currency, validity_days)
@@ -476,6 +499,22 @@ type LockCustomerCreditsParams struct {
 func (q *Queries) LockCustomerCredits(ctx context.Context, arg LockCustomerCreditsParams) error {
 	_, err := q.db.Exec(ctx, lockCustomerCredits, arg.TenantID, arg.CustomerID)
 	return err
+}
+
+const lockLotRemaining = `-- name: LockLotRemaining :one
+SELECT remaining FROM credit_lots WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type LockLotRemainingParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) LockLotRemaining(ctx context.Context, arg LockLotRemainingParams) (int64, error) {
+	row := q.db.QueryRow(ctx, lockLotRemaining, arg.TenantID, arg.ID)
+	var remaining int64
+	err := row.Scan(&remaining)
+	return remaining, err
 }
 
 const nextCreditExpiry = `-- name: NextCreditExpiry :one

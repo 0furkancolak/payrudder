@@ -355,6 +355,8 @@ var Table = []Row{
 	{PaymentDeclined, EvVoid, Always, Voided, EffNone},
 	{AwaitingPayment, EvVoid, Always, Voided, EffNone},
 	{PaymentPending, EvVoid, Always, Voided, EffNone},
+	// The payment is unknown (the provider may have taken the money and not said so): nothing is refunded, and the operator confirms that no charge was made.
+	{PaymentUnknown, EvVoid, Always, Voided, EffNone},
 	{PaymentActionRequired, EvVoid, Always, Voided, EffNone},
 	{PaymentHeld, EvVoid, Always, Voided, EffNone},
 	{NotifyRequested, EvVoid, PaidWithMoney, RefundRequested, EffRefund},

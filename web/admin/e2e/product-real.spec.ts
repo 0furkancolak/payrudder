@@ -282,9 +282,9 @@ test.describe("product app, real stack", () => {
     await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await page.locator('a[data-nav="settings"]').click();
     await page.getByRole("button", { name: "Sign out" }).click();
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin(\?|$)/);
     await page.goto("/app");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin(\?|$)/);
 
     const other = await signUp();
     for (let i = 0; i < 5; i++) {

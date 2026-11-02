@@ -228,6 +228,44 @@ func (q *Queries) ListConflictingCharges(ctx context.Context, tenantID uuid.UUID
 	return items, nil
 }
 
+const listInvoiceCharges = `-- name: ListInvoiceCharges :many
+SELECT DISTINCT ON (provider_ref) provider_ref::text AS provider_ref, amount_minor FROM payment_ledger
+WHERE tenant_id = $1 AND invoice_id = $2 AND provider = $3 AND kind = 'charge' AND status = 'succeeded' AND provider_ref IS NOT NULL
+ORDER BY provider_ref, id
+`
+
+type ListInvoiceChargesParams struct {
+	TenantID  uuid.UUID
+	InvoiceID *uuid.UUID
+	Provider  string
+}
+
+type ListInvoiceChargesRow struct {
+	ProviderRef string
+	AmountMinor int64
+}
+
+// The successful charges of an invoice at one provider account, one per provider reference (the command's answer and the notification of the same charge are one row).
+func (q *Queries) ListInvoiceCharges(ctx context.Context, arg ListInvoiceChargesParams) ([]ListInvoiceChargesRow, error) {
+	rows, err := q.db.Query(ctx, listInvoiceCharges, arg.TenantID, arg.InvoiceID, arg.Provider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListInvoiceChargesRow{}
+	for rows.Next() {
+		var i ListInvoiceChargesRow
+		if err := rows.Scan(&i.ProviderRef, &i.AmountMinor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLedger = `-- name: ListLedger :many
 SELECT id, invoice_id, provider, environment, kind, status, amount_minor, currency, provider_ref, source, detail, occurred_at
 FROM payment_ledger WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2::bigint

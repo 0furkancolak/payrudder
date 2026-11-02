@@ -15,17 +15,29 @@ import (
 
 // Events is the inbox of provider notifications. A notification is kept where its tenant's data is; one whose tenant is not known (yet) is kept in the pooled
 // database, which is also where the inbox of a deployment without cells is.
-type Events struct{ DB DB }
+type Events struct {
+	DB DB
+	// ReclaimAfter is how long a notification may stay received or failed before the provider's retry takes it over (the delivery that recorded it is taken to have
+	// died); zero is DefaultReclaimAfter.
+	ReclaimAfter time.Duration
+}
+
+// DefaultReclaimAfter is the window of Events.ReclaimAfter. Default (not agreed): 10 minutes, longer than any delivery takes (the provider calls time out in seconds).
+const DefaultReclaimAfter = 10 * time.Minute
 
 // ByTenant reports whether the inbox is kept per tenant, in the tenant's place: true when cells are on. Then the tenant of a notification has to be known before
 // it is written, and the pooled database keeps only the notifications that belong to no tenant.
 func (e Events) ByTenant() bool { return hasCells(e.DB) }
 
 // Receive records a notification of the tenant (uuid.Nil when it is not known). It reports false when the provider's event id was seen before (the provider
-// retries).
+// retries), unless the delivery that recorded it is taken to have died: a notification still received or failed after ReclaimAfter is recorded again, and true.
 func (e Events) Receive(ctx context.Context, tenant uuid.UUID, provider, eventID string, body []byte) (bool, error) {
+	after := e.ReclaimAfter
+	if after <= 0 {
+		after = DefaultReclaimAfter
+	}
 	n, err := get(ctx, e.DB, tenant, func(q *sqlc.Queries) (int64, error) {
-		return q.ReceiveProviderEvent(ctx, sqlc.ReceiveProviderEventParams{Provider: provider, EventID: eventID, Body: body})
+		return q.ReceiveProviderEvent(ctx, sqlc.ReceiveProviderEventParams{Provider: provider, EventID: eventID, Body: body, ReclaimAfterSecs: after.Seconds()})
 	})
 	return n == 1, err
 }

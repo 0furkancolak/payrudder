@@ -243,7 +243,7 @@ State machine, step classes (compensatable → **pivot** = charge → retriable)
 2. **Guarded transitions.** `UPDATE … WHERE version = $v AND state = $expected`. Duplicate or stale replies are no-ops.
 3. **Deterministic command IDs** `uuidv5(saga|step|attempt)`. Workers dedup on them.
 4. **Timeouts are first-class.** Every `*_REQUESTED` state has a `step_deadline`. The sweeper retries ×3, then fails the step.
-5. **Ambiguous payment outcome** → `PAYMENT_UNKNOWN` → status query by idempotency key. Never charge twice.
+5. **Ambiguous payment outcome** → `PAYMENT_UNKNOWN` → status query by idempotency key. Never charge twice. An operator who has checked at the provider that nothing was charged can void a parked invoice (`confirm_not_charged` on `POST /admin/v1/invoices/{id}/void`; without it the void is refused, because the provider may have taken the money).
 6. **Compensation only before the pivot,** plus refund via an explicit `VoidInvoice` after it. Steps after the pivot (notify)
    are retried forward, never compensated.
 7. **Human in the loop.** `*_FAILED` states are terminal until an operator calls `RetryInvoiceSaga`. Every transition is in `saga_events`.

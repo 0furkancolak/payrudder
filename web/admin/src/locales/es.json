@@ -1604,7 +1604,8 @@
       "kind": {
         "grant": "Añadido",
         "consume": "Gastado",
-        "expire": "Caducado"
+        "expire": "Caducado",
+        "revoke": "Retirado"
       },
       "purchase": {
         "title": "Enlace de compra",
@@ -3010,7 +3011,8 @@
       },
       "saga": {
         "event_not_possible": "Esto no se puede hacer mientras la factura está en su estado de pago actual.",
-        "not_found": "Esta factura aún no tiene proceso de pago: no está finalizada."
+        "not_found": "Esta factura aún no tiene proceso de pago: no está finalizada.",
+        "void_needs_confirmation": "Se desconoce el pago de esta factura, así que el proveedor de pago pudo haberla cobrado. Compruebe en el proveedor que no se cobró nada, anule después la factura y confírmelo."
       },
       "storage": {
         "not_configured": "El almacenamiento de archivos no está configurado en este despliegue."
@@ -3321,6 +3323,9 @@
       },
       "card": {
         "not_found": "El cliente no tiene esa tarjeta guardada."
+      },
+      "refund": {
+        "charge_unclear": "La factura tiene varios cobros correctos y el reembolso no identifica ninguno. Reembolse al cliente en el proveedor de pago y regístrelo después en la nota de crédito."
       }
     },
     "einvoice": {

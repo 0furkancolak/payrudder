@@ -1604,7 +1604,8 @@
       "kind": {
         "grant": "Ajouté",
         "consume": "Dépensé",
-        "expire": "Expiré"
+        "expire": "Expiré",
+        "revoke": "Retiré"
       },
       "purchase": {
         "title": "Lien d'achat",
@@ -3010,7 +3011,8 @@
       },
       "saga": {
         "event_not_possible": "Cela n'est pas possible dans l'état de paiement actuel de la facture.",
-        "not_found": "Cette facture n'a pas encore de processus de paiement : elle n'est pas finalisée."
+        "not_found": "Cette facture n'a pas encore de processus de paiement : elle n'est pas finalisée.",
+        "void_needs_confirmation": "Le paiement de cette facture est inconnu : le prestataire de paiement l'a peut-être encaissé. Vérifiez chez le prestataire qu'aucun encaissement n'a eu lieu, puis annulez la facture en le confirmant."
       },
       "storage": {
         "not_configured": "Le stockage de fichiers n'est pas configuré sur ce déploiement."
@@ -3321,6 +3323,9 @@
       },
       "card": {
         "not_found": "Le client n'a pas cette carte enregistrée."
+      },
+      "refund": {
+        "charge_unclear": "La facture a plusieurs encaissements réussis et le remboursement n'en désigne aucun avec certitude. Remboursez le client chez le prestataire de paiement, puis enregistrez-le sur l'avoir."
       }
     },
     "einvoice": {

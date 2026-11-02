@@ -91,6 +91,9 @@ const (
 	// CodeRefundUnknown: this refund was started before and nothing records how it went. It is not sent again, because a provider that does not dedupe by key
 	// would refund twice. The credit note then shows the refund as failed with this code, and an operator checks the refund at the provider.
 	CodeRefundUnknown = "REFUND_OUTCOME_UNKNOWN"
+	// CodeRefundChargeUnclear: the command names no charge and the ledger holds several successful charges of the invoice at the account, none of which the refund's
+	// amount singles out. The provider was not asked and nothing moved, so the refund may be asked for again.
+	CodeRefundChargeUnclear = "REFUND_CHARGE_UNCLEAR"
 )
 
 // BuyerIncomplete starts the decline code of a charge the provider could not take because the customer record lacks what it needs: "buyer_incomplete:phone,tax_id",
@@ -272,6 +275,8 @@ var codeKeys = map[string]string{
 	CodePending:       errkey.Key("payments.charge.pending"),
 	// An unknown refund outcome is a timeout of sorts. No client shows a refund's error key (the credit note carries the code and the message), so it has no key of its own.
 	CodeRefundUnknown: errkey.Key("payments.charge.timeout"),
+	// The credit note shows the code and the message; the key is for a client that has the reply and not the note.
+	CodeRefundChargeUnclear: errkey.Key("payments.refund.charge_unclear"),
 }
 
 func errored(code, msg string) *commandsv1.ReplyEnvelope {
@@ -438,6 +443,12 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	if err != nil {
 		return nil, err
 	}
+	if !redelivered {
+		// Billing re-issues a charge nobody answered in time with a new command id and the same key: the command id is not what tells a repeat from a first try.
+		if redelivered, err = h.chargedBefore(ctx, run, invoiceID, ch.GetIdempotencyKey()); err != nil {
+			return nil, err
+		}
+	}
 	if redelivered && h.Failovers != nil {
 		// A command that failed over goes on at the account it failed over to when it is delivered again, never back to the first: that one may be up again by now.
 		if fo, ok, err := h.Attempts.FailoverAttempt(ctx, run.tenant, invoiceID, payments.FailoverPrefix(ch.GetIdempotencyKey())); err != nil {
@@ -487,6 +498,19 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 		}
 	}
 	return h.chargeOutcome(ctx, entry, res, err)
+}
+
+// chargedBefore reports whether a charge under key was started by another command, at this account or at the one it failed over to, or the ledger already holds its outcome.
+// Such a charge may have reached the provider: it is asked first (askBeforeCharging), goes on where it failed over (resumeFailover) and is never failed over again.
+func (h *Handler) chargedBefore(ctx context.Context, run commandRun, invoice uuid.UUID, key string) (bool, error) {
+	if before, err := h.Attempts.ChargedBefore(ctx, run.tenant, invoice, key, run.id); err != nil || before {
+		return before, err
+	}
+	if h.Ledger.DB == nil {
+		return false, nil
+	}
+	_, ok, err := h.Ledger.ChargeFact(ctx, run.tenant, key)
+	return ok, err
 }
 
 // account is the provider account an adapter was built for, when the resolver built it: the mock and the configured live provider are no one's account.
@@ -605,8 +629,20 @@ func (h *Handler) keepAttempt(ctx context.Context, run commandRun, attempt uuid.
 
 // askBeforeCharging handles the redelivery of a charge to a provider that does not dedupe by key: the provider may have been
 // called before the crash, so it is asked, never charged blindly. A nil reply and error mean the charge goes ahead.
+//
+// A provider that cannot say (Paddle, which settles by notification and answers a status query only with "awaiting the notification", or an iyzico lookup that failed)
+// may still have its outcome in the ledger, once its notification has been confirmed: that answers the command instead of an error.
 func (h *Handler) askBeforeCharging(ctx context.Context, prov payments.PaymentProvider, entry store.LedgerEntry) (*commandsv1.ReplyEnvelope, error) {
 	st, err := prov.Status(ctx, entry.IdempotencyKey)
+	if err != nil || (st.State != payments.StateSucceeded && st.State != payments.StateDeclined) {
+		if h.Ledger.DB != nil {
+			if f, ok, lerr := h.Ledger.ChargeFact(ctx, entry.TenantID, entry.IdempotencyKey); lerr != nil {
+				return nil, lerr
+			} else if ok {
+				return replyFromFact(f), nil
+			}
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -715,6 +751,10 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 		// The credit note then shows the refund as failed, with this reason: the money goes back outside Payrudder (for a bank transfer, by a transfer back).
 		return errored(CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder, then record it on the credit note (Resolve refund)"), nil
 	}
+	chargeID, reply, err := h.refundCharge(ctx, run, prov, invoiceID, rf)
+	if err != nil || reply != nil {
+		return reply, err
+	}
 	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindRefund, run.env, prov.Name(), rf.GetIdempotencyKey(), rf)
 	if err != nil {
 		return nil, err
@@ -724,7 +764,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 			return reply, err
 		}
 	}
-	res, err := prov.Refund(ctx, h.refundRequest(ctx, run, invoiceID, rf))
+	res, err := prov.Refund(ctx, h.refundRequest(ctx, run, invoiceID, rf, chargeID))
 	if err != nil {
 		return providerFailure(err)
 	}
@@ -834,6 +874,14 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 		return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
 	}
 	return statusFromProvider(st), nil
+}
+
+// replyFromFact answers a charge command from the outcome the ledger holds for its key.
+func replyFromFact(f store.Fact) *commandsv1.ReplyEnvelope {
+	if f.Status == store.StatusSucceeded {
+		return succeededReply(f.ProviderRef)
+	}
+	return declinedReply(f.Detail, false)
 }
 
 // providerStatus asks the provider how a charge went: by the reference the first response gave when the adapter can be asked that way and the attempt has one (a Stripe

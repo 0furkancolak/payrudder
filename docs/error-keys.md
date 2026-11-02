@@ -215,6 +215,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.run.sandbox_only`
 - `billing.saga.event_not_possible`
 - `billing.saga.not_found`
+- `billing.saga.void_needs_confirmation`
 - `billing.sandbox.unknown_scenario`
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`
@@ -422,6 +423,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.reconcile.resolved`
 - `payments.reconcile.too_long`
 - `payments.reconcile.too_many`
+- `payments.refund.charge_unclear`
 - `payments.request.bad_audit_filter`
 - `payments.request.bad_body`
 - `payments.request.bad_environment`

@@ -124,9 +124,9 @@ test.describe.serial("operator console", () => {
 
   test("a signed-out visitor is sent to the sign-in page, which has no token form, and the machine token is no password", async ({ page }) => {
     await page.goto("/operator");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin(\?|$)/);
     await page.goto("/tenants");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin(\?|$)/);
     await expect(page.getByLabel(/operator token/i)).toHaveCount(0);
     // The API's machine credential is not a sign-in either: typed as a password it is just a wrong one.
     await page.getByLabel("E-mail").fill(operatorEmail);

@@ -37,3 +37,10 @@ UPDATE payment_attempts SET provider_ref = @provider_ref WHERE command_id = @com
 -- What the attempts of a charge under one key hold: the provider's reference (empty when none answered with one), when the first was started, and how many there are.
 SELECT COALESCE(max(provider_ref), '')::text AS provider_ref, COALESCE(min(created_at), now())::timestamptz AS started_at, count(*) AS attempts
 FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND idempotency_key = @idempotency_key;
+
+-- name: CountEarlierChargeAttempts :one
+-- The other charge commands started for an invoice under an idempotency key, or under a failover key made from it (the attempt at another account). Billing re-issues a
+-- charge nobody answered with a new command id and the same key, so the command id cannot tell a repeat from a first try.
+SELECT count(*) FROM payment_attempts
+WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND command_id <> @except_command_id
+  AND (idempotency_key = @idempotency_key OR starts_with(idempotency_key, @failover_prefix::text));

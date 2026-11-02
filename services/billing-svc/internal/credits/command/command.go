@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -217,6 +218,60 @@ func PurchasePaid(ctx context.Context, tx pgx.Tx, p Purchase) error {
 		data["expires_at"] = expires.UTC().Format(time.RFC3339)
 	}
 	return tenantevents.Write(ctx, tx, p.TenantID, tenantevents.CreditsPurchased, p.InvoiceID.String(), p.Now, data)
+}
+
+// RevokePurchase takes back the credits of a pack invoice that was voided or credited, inside the caller's transaction (docs/plans/22, review finding 4). The credits of a
+// lot are the invoice's: the share to take back is the lot's share that the credited part of the invoice makes, so a credit note of a fifth of the invoice takes a fifth of
+// the credits and one that closes the invoice takes all that is left, whatever the notes' sizes and the rounding (the rounding is half to even; the shares add up exactly).
+// before and after are what the invoice's credit notes had given back before this event and have given back after it, total what the invoice charged; a void takes the rest:
+// after = total. An invoice that granted no credits (not a pack, not paid) has no lot and nothing happens.
+//
+// Only what is still there is taken: credits the customer already spent or that expired cannot be. The take-back is a "revoke" row of the append-only ledger for what could be
+// taken (the balance never goes below zero), and its reason records "unrecoverable" for the rest. Idempotent per invoice and event (event is "void" or "cn:<credit note id>"):
+// the ledger row carries that key, so a replayed void or note takes nothing more. why is the sentence the ledger shows.
+func RevokePurchase(ctx context.Context, tx pgx.Tx, tenantID, invoiceID uuid.UUID, before, after, total int64, event, why string) error {
+	q := sqlc.New(tx)
+	ref := invoiceID.String()
+	lot, err := q.GetPurchaseLot(ctx, sqlc.GetPurchaseLotParams{TenantID: tenantID, SourceRef: &ref})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	// The customer's credits change one transaction at a time, locked before the lot's row as everywhere else.
+	if err := q.LockCustomerCredits(ctx, sqlc.LockCustomerCreditsParams{TenantID: tenantID, CustomerID: lot.CustomerID}); err != nil {
+		return err
+	}
+	key := invoiceID.String() + ":revoke:" + event
+	if prior, err := q.GetLedgerByKey(ctx, sqlc.GetLedgerByKeyParams{TenantID: tenantID, CustomerID: lot.CustomerID, IdempotencyKey: &key}); err != nil || len(prior) > 0 {
+		return err
+	}
+	if total <= 0 {
+		return nil
+	}
+	want := subscription.ScaleHalfEven(lot.Granted, min(after, total), total) - subscription.ScaleHalfEven(lot.Granted, min(max(before, 0), total), total)
+	if want <= 0 {
+		return nil
+	}
+	left, err := q.LockLotRemaining(ctx, sqlc.LockLotRemainingParams{TenantID: tenantID, ID: lot.ID})
+	if err != nil {
+		return err
+	}
+	take := min(want, left)
+	if take > 0 {
+		if n, err := q.TakeFromLot(ctx, sqlc.TakeFromLotParams{TenantID: tenantID, ID: lot.ID, Amount: take}); err != nil || n != 1 {
+			if err == nil {
+				err = errors.New("credits: a locked lot changed under the lock")
+			}
+			return err
+		}
+	}
+	reason := "credit pack taken back: " + why
+	if take < want {
+		reason += "; unrecoverable: " + strconv.FormatInt(want-take, 10) + " of " + strconv.FormatInt(want, 10) + " credits had been spent or had expired"
+	}
+	return q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: lot.CustomerID, LotID: lot.ID, Kind: "revoke", Amount: -take, IdempotencyKey: &key, Reason: reason})
 }
 
 // grantLot opens a lot of credits and writes its grant to the ledger. It reports false, and writes nothing, when a lot with the same source reference exists

@@ -1604,7 +1604,8 @@
       "kind": {
         "grant": "Eklendi",
         "consume": "Harcandı",
-        "expire": "Süresi doldu"
+        "expire": "Süresi doldu",
+        "revoke": "Geri alındı"
       },
       "purchase": {
         "title": "Satın alma bağlantısı",
@@ -3010,7 +3011,8 @@
       },
       "saga": {
         "event_not_possible": "Fatura mevcut ödeme durumundayken bu yapılamaz.",
-        "not_found": "Bu faturanın henüz bir ödeme süreci yok: kesinleştirilmemiş."
+        "not_found": "Bu faturanın henüz bir ödeme süreci yok: kesinleştirilmemiş.",
+        "void_needs_confirmation": "Bu faturanın ödemesi bilinmiyor, bu yüzden ödeme sağlayıcısı tahsil etmiş olabilir. Sağlayıcıda hiçbir tahsilat yapılmadığını kontrol edin, ardından faturayı iptal edip bunu onaylayın."
       },
       "storage": {
         "not_configured": "Bu kurulumda dosya depolama yapılandırılmamış."
@@ -3321,6 +3323,9 @@
       },
       "card": {
         "not_found": "Müşterinin böyle bir kayıtlı kartı yok."
+      },
+      "refund": {
+        "charge_unclear": "Faturanın birden fazla başarılı tahsilatı var ve iade tutarı bunlardan birini ayırt etmiyor. Müşteriye iadeyi ödeme sağlayıcısında yapın, ardından alacak dekontunda kaydedin."
       }
     },
     "einvoice": {

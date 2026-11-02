@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
+	creditscommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -151,6 +152,9 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 		if err := creditHandPayments(ctx, tx, s); err != nil {
 			return err
 		}
+		if err := revokePurchasedCredits(ctx, tx, s); err != nil {
+			return err
+		}
 		// An invoice that used a coupon gives its redemption back; plans-svc is told by the scheduler (the reversal is queued in this transaction).
 		return sqlc.New(tx).QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: s.TenantID, ID: s.InvoiceID})
 	}
@@ -185,6 +189,16 @@ func creditHandPayments(ctx context.Context, tx pgx.Tx, s *saga) error {
 	}
 	return q.InsertCreditBalanceForVoidedInvoice(ctx, sqlc.InsertCreditBalanceForVoidedInvoiceParams{TenantID: s.TenantID, CustomerID: s.CustomerID, ID: uuid.New(),
 		AmountMinor: hand, SourceInvoiceID: s.InvoiceID, Currency: s.Currency})
+}
+
+// revokePurchasedCredits takes back the credits a voided credit-pack invoice granted when it was paid: what its credit notes did not take back already, as far as the customer
+// still has them (credits.RevokePurchase). An invoice that was not a paid pack has no lot, and nothing happens.
+func revokePurchasedCredits(ctx context.Context, tx pgx.Tx, s *saga) error {
+	credited, err := sqlc.New(tx).SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+	if err != nil {
+		return err
+	}
+	return creditscommand.RevokePurchase(ctx, tx, s.TenantID, s.InvoiceID, credited, s.TotalMinor, s.TotalMinor, "void", "invoice "+s.Number+" was voided")
 }
 
 // dunningDelays are the delays before retry 1..n: the tenant's own when set (hours, or minutes in a sandbox tenant), else the defaults.
