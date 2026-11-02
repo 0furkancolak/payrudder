@@ -449,7 +449,7 @@ func concurrentIssueCheck(c *check) {
 	var wg sync.WaitGroup
 	for i := range callers {
 		wg.Add(1)
-		go func() {
+		go func() { // no errtrack: test support; a panic in the adapter under test fails the test run
 			defer wg.Done()
 			results[i], errs[i] = p.Issue(ctxBg(), req)
 		}()
