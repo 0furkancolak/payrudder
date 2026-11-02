@@ -23,6 +23,7 @@ func productionValues() []string { return append(ownSecrets(), "--set", "global.
 // signing secret of the mail listener lets its caller suppress a tenant's mail. The services refuse the same values at startup (pkg/config CheckSecret); this
 // catches it before the install.
 func TestProductionRefusesThePublishedSecrets(t *testing.T) {
+	needHelm(t)
 	profiles := map[string][]string{
 		"production":   {"--set", "global.environment=production"},
 		"railway":      {"--set", "global.environment=railway"},
