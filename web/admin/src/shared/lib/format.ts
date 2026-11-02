@@ -83,6 +83,11 @@ export function formatCount(n: number | null | undefined, locale: string): strin
   return numberFormat(locale, false).format(n ?? 0);
 }
 
+/** A number with at most one decimal and the locale's separators (a rating average); "—" when there is none. */
+export function formatDecimal(v: number | null | undefined, locale: string): string {
+  return v === null || v === undefined ? "—" : numberFormat(locale, true).format(v);
+}
+
 /** A percentage the API computed ("12.3", at most one decimal) with the sign of the locale; "—" when there is none. */
 export function formatPercent(v: number | null | undefined, locale: string): string {
   return v === null || v === undefined ? "—" : `${numberFormat(locale, true).format(v)}%`;
@@ -90,7 +95,7 @@ export function formatPercent(v: number | null | undefined, locale: string): str
 
 /**
  * The formatters of the page's own language: `const fmt = useFormat()` then `fmt.date(v)`, `fmt.date(v, "dateTime", "—")`, `fmt.money(minor, currency)`,
- * `fmt.amount(minor, currency)`, `fmt.count(n)`, `fmt.percent(p)`. Amounts go through `formatMinor`, so privacy mode applies to them.
+ * `fmt.amount(minor, currency)`, `fmt.count(n)`, `fmt.percent(p)`, `fmt.decimal(v)`. Amounts go through `formatMinor`, so privacy mode applies to them.
  */
 export function useFormat() {
   const { locale } = useI18n();
@@ -99,6 +104,7 @@ export function useFormat() {
     utcDay: (value: string | null | undefined, style: "day" | "monthDay" | "month" = "day", empty = "") => formatUtcDay(value, locale.value, style, empty),
     count: (n: number | null | undefined) => formatCount(n, locale.value),
     percent: (v: number | null | undefined) => formatPercent(v, locale.value),
+    decimal: (v: number | null | undefined) => formatDecimal(v, locale.value),
     money: (minor: string | number | undefined, currency: string | undefined) => formatMinor(minor, currency, locale.value),
     /** Like `money`, but a missing figure counts as zero (a total that has no rows yet). */
     amount: (minor: string | number | null | undefined, currency: string | undefined) => formatMinor(minor ?? 0, currency, locale.value),

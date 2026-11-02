@@ -7,13 +7,16 @@ import { confirmDialog, pickFilter, pickFilters } from "./ui";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-function gateway(opts: { approval?: boolean } = {}) {
+function gateway(opts: { approval?: boolean; historyDown?: boolean } = {}) {
   let status = "TENANT_STATUS_ACTIVE";
   const events: Record<string, unknown>[] = [];
   const names: Record<string, string> = { active: "TENANT_STATUS_ACTIVE", suspended: "TENANT_STATUS_SUSPENDED", frozen: "TENANT_STATUS_FROZEN", banned: "TENANT_STATUS_BANNED" };
   const gw = baseTenant(new MockGateway());
   gw.on((c) => (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}` ? { body: { id: TENANT, name: "Acme", environment: "ENVIRONMENT_LIVE", tier: "TENANT_TIER_STANDARD", currency: "TRY", timezone: "Europe/Istanbul", status } } : undefined));
-  gw.on((c) => (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/status-events` ? { body: { events } } : undefined));
+  gw.on((c) => {
+    if (c.method !== "GET" || c.path !== `/admin/v1/tenants/${TENANT}/status-events`) return undefined;
+    return opts.historyDown ? { status: 503, body: { error: { code: "UNAVAILABLE", key: "", message: "status history is down" } } } : { body: { events } };
+  });
   gw.on((c) => {
     if (c.method !== "PUT" || c.path !== `/admin/v1/tenants/${TENANT}/status`) return undefined;
     const to = names[String(c.body?.status)]!;
@@ -28,6 +31,15 @@ function gateway(opts: { approval?: boolean } = {}) {
   });
   return gw;
 }
+
+test("a failed read of the status history says so and does not claim that nothing changed yet", async ({ page }) => {
+  const gw = gateway({ historyDown: true });
+  await gw.install(page);
+  await openTenantPage(page, "");
+  const history = page.getByTestId("tenant-status").getByTestId("tenant-status-history");
+  await expect(history).toContainText("status history is down");
+  await expect(history).not.toContainText("No change yet.");
+});
 
 test("freezing a tenant asks, keeps the category and the reason, and shows the history; lifting it is one click", async ({ page }) => {
   const gw = gateway();

@@ -5,6 +5,7 @@ import { useFormat } from "@/shared/lib/format";
 import { askConfirm } from "@/shared/lib/confirm";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
@@ -118,6 +119,7 @@ async function apply() {
     <section :aria-label="t('tenant.status.history')" data-testid="tenant-status-history">
       <h3 class="m-0 mb-2 text-sm font-semibold">{{ t("tenant.status.history") }}</h3>
       <Skeleton v-if="events.isPending.value" class="h-5 w-40" />
+      <ErrorState v-else-if="events.isError.value" :error="events.error.value" :retrying="events.isFetching.value" @retry="events.refetch()" />
       <p v-else-if="allEvents.length === 0" class="text-muted-foreground m-0 text-sm">{{ t("tenant.status.historyEmpty") }}</p>
       <template v-else>
         <div class="mb-2 flex flex-wrap items-center gap-2" role="group" :aria-label="t('tenant.status.filters')" data-testid="tenant-status-filters">

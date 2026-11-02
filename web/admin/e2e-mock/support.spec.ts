@@ -595,6 +595,18 @@ test.describe("support: tags, canned replies, the report and the badges", () => 
     await expect(report.getByTestId("report-rating-counts")).toContainText("2 stars 1");
   });
 
+  test("a failed read of the operator's inbox says so and does not claim the queue is empty", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [ticket()]);
+    // The last handler added is asked first.
+    gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/support/tickets" ? { status: 503, body: { error: { code: "UNAVAILABLE", key: "", message: "the help desk is down" } } } : undefined));
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await expect(page.getByText("the help desk is down")).toBeVisible();
+    await expect(page.getByTestId("inbox-empty")).toHaveCount(0);
+  });
+
   test("the help page's link counts the tickets with news, and nothing when there are none", async ({ page }) => {
     const gw = productGateway(new MockGateway()).gw;
     helpDesk(gw, [ticket({ unread: true })]);

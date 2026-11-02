@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDate, formatPercent, formatUtcDay, isolateDate } from "./format";
+import { formatCount, formatDate, formatDecimal, formatPercent, formatUtcDay, isolateDate } from "./format";
 
 describe("formatDate", () => {
   it("gives the empty text for nothing and for an unreadable date instead of throwing", () => {
@@ -39,6 +39,12 @@ describe("counts and percentages", () => {
   it("shows one decimal at most, and a dash for no value", () => {
     expect(formatPercent(12.34, "en-US")).toBe("12.3%");
     expect(formatPercent(null, "en-US")).toBe("—");
+  });
+
+  it("writes a decimal with the separators of the language", () => {
+    expect(formatDecimal(4.26, "en-US")).toBe("4.3");
+    expect(formatDecimal(4.26, "de")).toBe("4,3");
+    expect(formatDecimal(undefined, "en-US")).toBe("—");
   });
 });
 
