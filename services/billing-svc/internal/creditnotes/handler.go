@@ -69,6 +69,31 @@ func (h *Handler) RetryCreditNoteRefund(ctx context.Context, req *billingv1.Retr
 	return &billingv1.RetryCreditNoteRefundResponse{CreditNote: creditNoteProto(cn, query.CustomerExternalID(ctx, h.system, tid, cn.InvoiceID))}, nil
 }
 
+var resolutions = map[billingv1.RefundResolution]string{
+	billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED:     model.ResolutionRefunded,
+	billingv1.RefundResolution_REFUND_RESOLUTION_NOT_REFUNDED: model.ResolutionNotRefunded,
+}
+
+// ResolveCreditNoteRefund implements billingv1.BillingAdminServiceServer.
+func (h *Handler) ResolveCreditNoteRefund(ctx context.Context, req *billingv1.ResolveCreditNoteRefundRequest) (*billingv1.ResolveCreditNoteRefundResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	tid, err := errkey.ParseUUID("billing.tenant.bad_id", "tenant_id", req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	id, err := errkey.ParseUUID("billing.credit_note.bad_id", "credit_note_id", req.GetCreditNoteId())
+	if err != nil {
+		return nil, err
+	}
+	cn, err := h.notes.ResolveRefund(ctx, tid, id, resolutions[req.GetResolution()], req.GetProviderRefundId(), req.GetNote())
+	if err != nil {
+		return nil, err
+	}
+	return &billingv1.ResolveCreditNoteRefundResponse{CreditNote: creditNoteProto(cn, query.CustomerExternalID(ctx, h.system, tid, cn.InvoiceID))}, nil
+}
+
 // GetCreditNote implements billingv1.BillingServiceServer.
 func (h *Handler) GetCreditNote(ctx context.Context, req *billingv1.GetCreditNoteRequest) (*billingv1.GetCreditNoteResponse, error) {
 	ti, err := tenant.Require(ctx)

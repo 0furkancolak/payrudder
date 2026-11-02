@@ -110,9 +110,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.credit_note.bad_id`
 - `billing.credit_note.bad_page_size`
 - `billing.credit_note.bad_page_token`
+- `billing.credit_note.bad_refund_id`
+- `billing.credit_note.bad_resolution`
 - `billing.credit_note.fully_credited`
 - `billing.credit_note.not_found`
 - `billing.credit_note.not_paid`
+- `billing.credit_note.note_too_long`
 - `billing.credit_note.nothing_to_refund`
 - `billing.credit_note.reason_too_long`
 - `billing.credit_note.refund_not_failed`

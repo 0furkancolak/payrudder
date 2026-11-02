@@ -1282,7 +1282,25 @@
       "retryRefund": "Erstattung wiederholen",
       "new": "Neue Gutschrift",
       "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte.",
-      "allWhere": "Überall"
+      "allWhere": "Überall",
+      "resolve": {
+        "action": "Rückerstattung klären",
+        "title": "Rückerstattung von {number} klären",
+        "description": "Verwenden Sie dies, wenn eine Rückerstattung fehlgeschlagen ist oder ihr Ausgang unbekannt ist. Der Zahlungsanbieter wird erst wieder gefragt, wenn Sie sagen, was Sie festgestellt haben: Prüfen Sie dort zuerst, ob der Kunde das Geld zurückerhalten hat.",
+        "formLabel": "Rückerstattung klären",
+        "found": "Was haben Sie beim Zahlungsanbieter festgestellt?",
+        "refunded": "Erstattet",
+        "notRefunded": "Nicht erstattet",
+        "refundId": "Rückerstattungsreferenz",
+        "refundIdHint": "Die Referenz des Zahlungsanbieters für die Rückerstattung oder für die Überweisung, die Sie außerhalb von Payrudder veranlasst haben. Sie wird ins Zahlungsbuch geschrieben.",
+        "notRefundedHint": "Die Rückerstattung wird beim Zahlungsanbieter unter einem neuen Schlüssel erneut angefordert. Ist die erste doch durchgegangen, erhält der Kunde das Geld doppelt – wählen Sie dies daher nur nach einer Prüfung.",
+        "note": "Was Sie geprüft haben",
+        "noteHint": "Optional. Wird im Audit-Protokoll gespeichert.",
+        "submitRefunded": "Als erstattet erfassen",
+        "submitNotRefunded": "Erneut anfordern",
+        "confirmRefunded": "{number} ({amount}) mit der Referenz {ref} als erstattet erfassen? Die Gutschrift gilt dann als erstattet und die Rückerstattung wird ins Zahlungsbuch geschrieben.",
+        "confirmNotRefunded": "Sie sagen, dass {number} ({amount}) nicht erstattet wurde. Die Rückerstattung wird beim Zahlungsanbieter unter einem neuen Schlüssel erneut angefordert; ist die erste durchgegangen, erhält der Kunde das Geld doppelt. Fortfahren?"
+      }
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2750,7 +2768,10 @@
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 200 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
         "not_found": "Diese Gutschrift wurde nicht gefunden.",
-        "reason_too_long": "Der Grund darf höchstens 500 Zeichen lang sein."
+        "reason_too_long": "Der Grund darf höchstens 500 Zeichen lang sein.",
+        "bad_refund_id": "Geben Sie bei einer erfolgten Rückerstattung die Referenz des Zahlungsanbieters an (eine Zeile, höchstens 200 Zeichen); wurde nicht erstattet, lassen Sie das Feld leer.",
+        "bad_resolution": "Wählen Sie, ob der Kunde das Geld zurückerhalten hat oder nicht.",
+        "note_too_long": "Die Notiz darf höchstens 500 Zeichen lang sein."
       },
       "dunning": {
         "bad_delay": "Jede Wiederholungsverzögerung muss zwischen 1 und 720 Stunden liegen.",

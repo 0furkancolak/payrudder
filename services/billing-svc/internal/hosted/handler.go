@@ -211,12 +211,12 @@ func (h *Handler) SettleInvoicePayment(ctx context.Context, req *billingv1.Settl
 	if err != nil {
 		return nil, err
 	}
-	settled, err := command.SettleInvoicePayment(ctx, h.d, ti.ID, command.SettleInput{
+	settled, repeat, err := command.SettleInvoicePayment(ctx, h.d, ti.ID, command.SettleInput{
 		InvoiceID: id, Provider: req.GetProvider(), ProviderRef: req.GetProviderRef(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency()})
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.SettleInvoicePaymentResponse{Settled: settled}, nil
+	return &billingv1.SettleInvoicePaymentResponse{Settled: settled, Repeat: repeat}, nil
 }
 
 // GetHostedInvoice implements billingv1.HostedInvoiceServiceServer.

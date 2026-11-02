@@ -78,7 +78,7 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 		}
 		if refund {
 			cn.Refund = true
-			err = c.requestRefund(ctx, tx, tenantID, cn, inv.Environment, 1, 0, 0)
+			err = c.requestRefund(ctx, tx, tenantID, cn, inv.Environment, 1, 0, 0, "")
 		} else {
 			err = q.InsertCreditBalanceForNote(ctx, sqlc.InsertCreditBalanceForNoteParams{TenantID: tenantID, CustomerID: inv.CustomerID, ID: uuid.New(), AmountMinor: amount,
 				SourceCreditNoteID: cn.ID, Currency: inv.Currency})

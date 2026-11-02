@@ -39,8 +39,10 @@ INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, curren
 VALUES (@tenant_id, @id, @customer_id, @invoice_id, @number, @currency, @total_minor, @reason, @created_at, @disposition);
 
 -- name: MarkRefundRequested :exec
+-- refund_ref is set while a refund is requested only when an operator confirmed it was made (the worker records it; the resend carries it).
 UPDATE credit_notes SET refund_state = 'requested', refund_attempt = @refund_attempt, refund_command_id = @refund_command_id::uuid,
-       refund_requested_at = @refund_requested_at::timestamptz, refund_error = NULL, refund_run_from = @refund_run_from, refund_generation = @refund_generation
+       refund_requested_at = @refund_requested_at::timestamptz, refund_error = NULL, refund_run_from = @refund_run_from, refund_generation = @refund_generation,
+       refund_ref = NULLIF(@refund_ref::text, '')
 WHERE tenant_id = @tenant_id AND id = @id;
 
 -- name: LockCreditNoteByRefundCommand :one
@@ -58,7 +60,7 @@ UPDATE credit_notes SET refund_state = 'refunded', refund_ref = @refund_ref::tex
 UPDATE credit_notes SET refund_state = 'failed', refund_error = @refund_error::text WHERE tenant_id = @tenant_id AND id = @id;
 
 -- name: ListRefundsAwaitingReply :many
-SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.refund_attempt, c.refund_run_from, c.refund_generation,
+SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.refund_attempt, c.refund_run_from, c.refund_generation, COALESCE(c.refund_ref, '')::text AS refund_ref,
        COALESCE(i.snapshot->>'environment', 'live')::text AS environment
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
 WHERE c.refund_state = 'requested' AND c.refund_requested_at <= @requested_before::timestamptz

@@ -296,6 +296,23 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 	if first["bank_reference"] != "TRX-1" || first["recorded_by"] != "alice@example.com" || first["received_at"] != "2026-11-05T10:00:00Z" || first["note"] != "statement line" {
 		t.Errorf("receipt audit = %v; want who, when and the bank reference", first)
 	}
+	// The invoice is paid now. A bank reference confirmed before is still answered as a duplicate (an operator pressing the button twice, a statement imported twice), not
+	// refused as a payment for a closed invoice; the same reference with another amount, and money under a new reference, are still refused.
+	billing.mu.Lock()
+	billing.status = "paid"
+	billing.mu.Unlock()
+	if code, out := receipt(invoice, 100000, "TRX-2"); code != 200 || out["duplicate"] != true || out["paid"] != true {
+		t.Fatalf("a receipt repeated after the invoice was paid: %d %v; want 200 duplicate", code, out)
+	}
+	if code, out := receipt(invoice, 99999, "TRX-2"); code != 409 || errKey(out) != "payments.transfer.reference_reused" {
+		t.Fatalf("the paid invoice's reference with another amount: %d %v", code, out)
+	}
+	if code, out := receipt(invoice, 100, "TRX-3"); code != 409 || errKey(out) != "payments.transfer.invoice_closed" {
+		t.Fatalf("new money for the paid invoice: %d %v", code, out)
+	}
+	billing.mu.Lock()
+	billing.status = "open"
+	billing.mu.Unlock()
 	// The saga could not be told (billing-svc down): the receipt stands, the response says so, and the poll finds the payment.
 	billing.mu.Lock()
 	billing.nudgeFn = func() error { return status.Error(codes.Unavailable, "down") }
@@ -465,4 +482,53 @@ func TestBankTransferExpiryRejectionAndLatePayment(t *testing.T) {
 func itoa(n int64) string {
 	b, _ := json.Marshal(n)
 	return string(b)
+}
+
+// A confirmed transfer is two rows, the ledger fact and the receipt, written in one transaction (plan 22 G15). The receipt is written second: a note the database
+// refuses fails it after the ledger row, and the ledger row must go too. A ledger fact without its receipt would count as money received that no receipt explains, and
+// the repeat of the same reference would then be "a duplicate" of nothing.
+func TestAReceiptThatFailsHalfwayLeavesNothing(t *testing.T) {
+	pg := testkit.StartPostgres(t)
+	cdb := openDB(t, pg)
+	ctx := context.Background()
+	transfers, ledger := store.Transfers{DB: cdb.DB}, store.Ledger{DB: cdb.DB}
+	tenant, invoice := uuid.New(), uuid.New()
+	receipt := store.NewReceipt{TenantID: tenant, InvoiceID: invoice, Provider: banktransfer.Name, Environment: "live", AmountMinor: 1000, Currency: "TRY", BankReference: "TRX-9",
+		ReceivedAt: time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC), RecordedBy: "alice@example.com"}
+	rows := func() (ledgerRows, receipts int, received int64) {
+		t.Helper()
+		l, err := ledger.List(ctx, tenant, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := transfers.Receipts(ctx, tenant, invoice)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum, err := transfers.Received(ctx, tenant, invoice, banktransfer.Name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(l), len(r), sum.Minor
+	}
+
+	bad := receipt
+	bad.Note = "a note with a NUL \x00 byte, which the database refuses"
+	if _, err := transfers.Record(ctx, bad, 1000); err == nil {
+		t.Fatal("a receipt whose note the database refuses was recorded")
+	}
+	if l, r, sum := rows(); l != 0 || r != 0 || sum != 0 {
+		t.Fatalf("after the failed receipt: %d ledger rows, %d receipts, %d received; want none of them", l, r, sum)
+	}
+
+	res, err := transfers.Record(ctx, receipt, 1000)
+	if err != nil || res.Duplicate || res.Received != 1000 {
+		t.Fatalf("the same reference after the failure = %+v, %v; want a first receipt of 1000", res, err)
+	}
+	if again, err := transfers.Record(ctx, receipt, 1000); err != nil || !again.Duplicate {
+		t.Fatalf("the repeat = %+v, %v; want a duplicate", again, err)
+	}
+	if l, r, sum := rows(); l != 1 || r != 1 || sum != 1000 {
+		t.Fatalf("after the receipt and its repeat: %d ledger rows, %d receipts, %d received; want 1, 1, 1000", l, r, sum)
+	}
 }

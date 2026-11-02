@@ -1282,7 +1282,25 @@
       "retryRefund": "İadeyi yeniden dene",
       "new": "Yeni alacak dekontu",
       "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider.",
-      "allWhere": "Tümü"
+      "allWhere": "Tümü",
+      "resolve": {
+        "action": "İadeyi sonuçlandır",
+        "title": "{number} iadesini sonuçlandır",
+        "description": "Bir iade başarısız olduysa ya da sonucu bilinmiyorsa kullanın. Ne bulduğunuzu söyleyene kadar sağlayıcıya yeniden sorulmaz: önce orada müşteriye geri ödeme yapılıp yapılmadığını kontrol edin.",
+        "formLabel": "iadeyi sonuçlandır",
+        "found": "Sağlayıcıda ne buldunuz?",
+        "refunded": "Geri ödendi",
+        "notRefunded": "Geri ödenmedi",
+        "refundId": "İade referansı",
+        "refundIdHint": "Sağlayıcının iade referansı ya da Payrudder dışında yaptığınız havalenin referansı. Ödeme defterine yazılır.",
+        "notRefundedHint": "İade, sağlayıcıdan yeni bir anahtarla yeniden istenecek. İlki gerçekten yapılmışsa müşteriye iki kez ödeme yapılır; bu yüzden bunu yalnızca kontrol ettikten sonra seçin.",
+        "note": "Ne kontrol ettiniz",
+        "noteHint": "İsteğe bağlı. Denetim günlüğüne kaydedilir.",
+        "submitRefunded": "Geri ödendi olarak kaydet",
+        "submitNotRefunded": "Yeniden iste",
+        "confirmRefunded": "{number} ({amount}) {ref} referansıyla geri ödendi olarak kaydedilsin mi? Alacak dekontu iade edildi durumuna geçer ve iade ödeme defterine yazılır.",
+        "confirmNotRefunded": "{number} ({amount}) tutarının geri ödenmediğini söylüyorsunuz. İade, sağlayıcıdan yeni bir anahtarla yeniden istenir; ilki yapılmışsa müşteriye iki kez ödeme yapılır. Devam edilsin mi?"
+      }
     },
     "webhooks": {
       "title": "Webhooklar",
@@ -2750,7 +2768,10 @@
         "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalı.",
         "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
         "not_found": "Bu alacak dekontu bulunamadı.",
-        "reason_too_long": "Gerekçe en fazla 500 karakter olabilir."
+        "reason_too_long": "Gerekçe en fazla 500 karakter olabilir.",
+        "bad_refund_id": "İade yapıldıysa sağlayıcının iade referansını (tek satır, en fazla 200 karakter) girin; yapılmadıysa boş bırakın.",
+        "bad_resolution": "Müşteriye geri ödeme yapılıp yapılmadığını seçin.",
+        "note_too_long": "Not en fazla 500 karakter olabilir."
       },
       "dunning": {
         "bad_delay": "Her yeniden deneme gecikmesi 1 ile 720 saat arasında olmalı.",

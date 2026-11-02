@@ -292,3 +292,220 @@ func testCreditNoteRefundToCard(t *testing.T) {
 		t.Errorf("a refund of unknown outcome was asked for under %d keys: %v, want one", len(keys), keys)
 	}
 }
+
+// A refund whose outcome is unknown is parked until an operator says what they found at the provider (plan 22 G1): that it was made (the worker is told to record the
+// reference under the key the refund was asked under, and the note becomes refunded with it) or that it was not (the refund is asked again under a new key).
+func testResolveCreditNoteRefund(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	var parked, quiet uuid.UUID // the first refund of these invoices comes back REFUND_OUTCOME_UNKNOWN; the confirmation of quiet's is not answered until it is sent again
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, seen int) stubworker.Action {
+		rf := c.GetRefundPayment()
+		switch {
+		case rf == nil:
+			return stubworker.Action{Reply: stubworker.Succeed}
+		case rf.GetConfirmedRefundId() == "" && (rf.GetInvoiceId() == parked.String() || rf.GetInvoiceId() == quiet.String()) && seen == 0:
+			return stubworker.Action{Reply: stubworker.Fixed(&commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{
+				Code: "REFUND_OUTCOME_UNKNOWN", Message: "stub"}}})}
+		case rf.GetConfirmedRefundId() != "" && rf.GetInvoiceId() == quiet.String() && c.GetAttempt() < 3:
+			return stubworker.Action{}
+		}
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	svc := e.api()
+	op := tenant.WithOperator(context.Background())
+	tctx := tenant.NewContext(context.Background(), tenant.Info{ID: e.tid})
+	customer := uuid.New()
+	get := func(id string) *billingv1.CreditNote {
+		r, err := svc.GetCreditNote(tctx, &billingv1.GetCreditNoteRequest{CreditNoteId: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.GetCreditNote()
+	}
+	failedNote := func(inv uuid.UUID, number string) string {
+		seedSaga(t, e.tid, inv)
+		r, err := svc.CreateCreditNote(op, &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), RefundToCard: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := r.GetCreditNote().GetId()
+		testkit.Eventually(t, 30*time.Second, "the refund of unknown outcome to park", func() bool { return get(id).GetRefundState() == billingv1.RefundState_REFUND_STATE_FAILED })
+		if got := get(id).GetRefundError(); !strings.HasPrefix(got, "REFUND_OUTCOME_UNKNOWN:") {
+			t.Fatalf("%s: refund_error = %q", number, got)
+		}
+		return id
+	}
+	resolve := func(id string, r billingv1.RefundResolution, ref, note string) (*billingv1.CreditNote, error) {
+		out, err := svc.ResolveCreditNoteRefund(op, &billingv1.ResolveCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: id, Resolution: r, ProviderRefundId: ref, Note: note})
+		return out.GetCreditNote(), err
+	}
+	keysOf := func(inv uuid.UUID) (keys []string, confirmed []string) {
+		for _, c := range stub.Commands() {
+			if rf := c.GetRefundPayment(); rf != nil && rf.GetInvoiceId() == inv.String() {
+				keys = append(keys, rf.GetIdempotencyKey())
+				confirmed = append(confirmed, rf.GetConfirmedRefundId())
+			}
+		}
+		return keys, confirmed
+	}
+	audited := func(id string) (resolution, ref, note string, same bool, n int) {
+		rows, err := shared.sql.Query(context.Background(), `SELECT detail->>'resolution', COALESCE(detail->>'provider_refund_id', ''), COALESCE(detail->>'note', ''), (detail->>'same_key')::bool
+			FROM audit_events WHERE tenant_id = $1 AND action = 'credit_note.refund_resolved' AND target_id = $2`, e.tid, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			n++
+			if err := rows.Scan(&resolution, &ref, &note, &same); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return
+	}
+
+	parked = seedOne(t, e.tid, customer, "cus_rs1", "paid", "USD", "INV-2026-000201", 900, "live")
+	id := failedNote(parked, "parked")
+
+	// What is refused: nothing says which, a reference for a refund that was not made, none for one that was, a long note, a stranger's note, a note that did not fail.
+	for name, c := range map[string]struct {
+		r         billingv1.RefundResolution
+		ref, note string
+		key       string
+	}{
+		"no resolution":           {billingv1.RefundResolution_REFUND_RESOLUTION_UNSPECIFIED, "", "", "billing.credit_note.bad_resolution"},
+		"refunded without a ref":  {billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, "  ", "", "billing.credit_note.bad_refund_id"},
+		"a ref with two lines":    {billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, "re_1\nre_2", "", "billing.credit_note.bad_refund_id"},
+		"not refunded with a ref": {billingv1.RefundResolution_REFUND_RESOLUTION_NOT_REFUNDED, "re_1", "", "billing.credit_note.bad_refund_id"},
+		"a long note":             {billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, "re_1", strings.Repeat("x", 501), "billing.credit_note.note_too_long"},
+	} {
+		_, err := resolve(id, c.r, c.ref, c.note)
+		t.Run(name, func(t *testing.T) { keyOf(t, err, codes.InvalidArgument, c.key) })
+	}
+	if _, err := resolve(uuid.NewString(), billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, "re_1", ""); status.Code(err) != codes.NotFound {
+		t.Errorf("an unknown note: %v", err)
+	}
+	if _, err := svc.ResolveCreditNoteRefund(tctx, &billingv1.ResolveCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: id,
+		Resolution: billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, ProviderRefundId: "re_1"}); status.Code(err) == codes.OK {
+		t.Errorf("a tenant (not the operator) resolved a refund")
+	}
+	if get(id).GetRefundState() != billingv1.RefundState_REFUND_STATE_FAILED {
+		t.Fatalf("a refused resolution changed the note: %v", get(id))
+	}
+
+	// It was made: the note is refunded with the operator's reference, the worker was told under the same key, and the audit log says who checked what.
+	keys0, _ := keysOf(parked)
+	out, err := resolve(id, billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, " re_8841 ", "seen in the provider's dashboard")
+	if err != nil || out.GetRefundState() != billingv1.RefundState_REFUND_STATE_REQUESTED {
+		t.Fatalf("resolve as refunded = %v, %v", out, err)
+	}
+	testkit.Eventually(t, 30*time.Second, "the confirmed refund to be recorded", func() bool { return get(id).GetRefundState() == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	var state, ref string
+	if err := shared.sql.QueryRow(context.Background(), `SELECT refund_state, COALESCE(refund_ref, '') FROM credit_notes WHERE tenant_id = $1 AND id = $2`, e.tid, id).Scan(&state, &ref); err != nil || ref != "re_8841" {
+		t.Fatalf("refund_ref = %q (%s), %v", ref, state, err)
+	}
+	keys, confirmed := keysOf(parked)
+	if len(keys) != 2 || keys[1] != keys0[0] || confirmed[0] != "" || confirmed[1] != "re_8841" {
+		t.Errorf("commands: keys %v confirmed %v; the confirmation must carry the key of the refund that was parked and the reference", keys, confirmed)
+	}
+	if r, rf, note, same, n := audited(id); n != 1 || r != "refunded" || rf != "re_8841" || note != "seen in the provider's dashboard" || !same {
+		t.Errorf("audit = %q %q %q same_key=%v x%d", r, rf, note, same, n)
+	}
+	if _, err := resolve(id, billingv1.RefundResolution_REFUND_RESOLUTION_NOT_REFUNDED, "", ""); status.Code(err) != codes.FailedPrecondition {
+		t.Errorf("resolving a refunded note again: %v", err)
+	}
+
+	// It was not made: the refund is asked again under a new key, only because the operator said so.
+	parked2 := seedOne(t, e.tid, customer, "cus_rs2", "paid", "USD", "INV-2026-000202", 400, "live")
+	parked = parked2
+	id2 := failedNote(parked2, "parked2")
+	out, err = resolve(id2, billingv1.RefundResolution_REFUND_RESOLUTION_NOT_REFUNDED, "", "not in the provider's dashboard")
+	if err != nil || out.GetRefundState() != billingv1.RefundState_REFUND_STATE_REQUESTED {
+		t.Fatalf("resolve as not refunded = %v, %v", out, err)
+	}
+	testkit.Eventually(t, 30*time.Second, "the new refund to go through", func() bool { return get(id2).GetRefundState() == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	keys, confirmed = keysOf(parked2)
+	if len(keys) != 2 || keys[0] == keys[1] || confirmed[1] != "" {
+		t.Errorf("commands: keys %v confirmed %v; the second refund must carry a new key and no confirmation", keys, confirmed)
+	}
+	if r, _, _, same, n := audited(id2); n != 1 || r != "not_refunded" || same {
+		t.Errorf("audit = %q same_key=%v x%d", r, same, n)
+	}
+
+	// The confirmation is resent with its reference when nobody answers it, so a resend never goes to a provider as a plain refund.
+	quiet = seedOne(t, e.tid, customer, "cus_rs3", "paid", "USD", "INV-2026-000203", 300, "live")
+	id3 := failedNote(quiet, "quiet")
+	if _, err := resolve(id3, billingv1.RefundResolution_REFUND_RESOLUTION_REFUNDED, "re_77", ""); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 20*time.Second, "the unanswered confirmation to arrive", func() bool { _, c := keysOf(quiet); return len(c) >= 2 })
+	for i := 0; i < 2; i++ {
+		e.clk.Advance(6 * time.Minute)
+		if err := e.notes.SweepRefunds(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		testkit.Eventually(t, 20*time.Second, "the resent command", func() bool {
+			_, c := keysOf(quiet)
+			return len(c) >= 3+i || get(id3).GetRefundState() == billingv1.RefundState_REFUND_STATE_REFUNDED
+		})
+	}
+	testkit.Eventually(t, 30*time.Second, "the resent confirmation to be recorded", func() bool { return get(id3).GetRefundState() == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	_, confirmed = keysOf(quiet)
+	for i, c := range confirmed[1:] {
+		if c != "re_77" {
+			t.Errorf("command %d of the confirmation carries %q, want re_77", i+2, c)
+		}
+	}
+}
+
+// A credit note that refunds to the card writes the note, the next number of the series, the refund request, the command for payments-worker and the audit entry in
+// one transaction (plan 22 G15). The audit entry is the last write: an address the log cannot store fails it after all the others, and nothing of the others stays:
+// no note, no number used up (the next note is the first of the series, no gap), no command in the outbox for the provider, no event for the tenant's endpoints.
+func testCreditNoteRollsBackWhole(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	stub := e.startWorkers(nil)
+	svc := e.api()
+	op := tenant.WithOperator(context.Background())
+	inv := seedOne(t, e.tid, uuid.New(), "cus_rb", "paid", "USD", "INV-2026-000301", 1000, "live")
+	seedSaga(t, e.tid, inv)
+	count := func(table string) (n int) {
+		if err := shared.sql.QueryRow(context.Background(), "SELECT count(*) FROM "+table+" WHERE tenant_id = $1", e.tid).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	issue := func(ctx context.Context) (*billingv1.CreateCreditNoteResponse, error) {
+		return svc.CreateCreditNote(ctx, &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), AmountMinor: 400, RefundToCard: true})
+	}
+	tables := []string{"credit_notes", "credit_note_seq", "outbox", "tenant_event_outbox", "audit_events"}
+	before := map[string]int{}
+	for _, tb := range tables {
+		before[tb] = count(tb)
+	}
+
+	if _, err := issue(audit.NewContext(op, audit.Actor{Type: audit.ActorOperator, Email: "ops\x00@example.com"})); status.Code(err) != codes.Internal {
+		t.Fatalf("a note whose audit entry cannot be written: %v, want Internal", err)
+	}
+	for _, tb := range tables {
+		if got := count(tb); got != before[tb] {
+			t.Errorf("%s has %d rows after the failed change, %d before: the transaction left a half state", tb, got, before[tb])
+		}
+	}
+	var state string
+	if err := shared.sql.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state); err != nil || state != "COMPLETED" {
+		t.Errorf("saga = %q, %v; a failed credit note must not touch it", state, err)
+	}
+
+	// The same call without the fault is the first note of the series, and it is the only refund that ever reaches the provider.
+	ok, err := issue(op)
+	if err != nil || ok.GetCreditNote().GetNumber() != "CN-2026-000001" {
+		t.Fatalf("the note after the failure = %v, %v; want CN-2026-000001 (no number was used up)", ok.GetCreditNote(), err)
+	}
+	testkit.Eventually(t, 30*time.Second, "the refund to reach the worker", func() bool { return stub.Count("refund") >= 1 })
+	if n := stub.Count("refund"); n != 1 {
+		t.Errorf("refund commands = %d, want 1: the failed change must not have sent one", n)
+	}
+	if got := count("credit_notes"); got != before["credit_notes"]+1 {
+		t.Errorf("credit notes = %d, want %d", got, before["credit_notes"]+1)
+	}
+}

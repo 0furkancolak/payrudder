@@ -1282,7 +1282,25 @@
       "retryRefund": "Réessayer le remboursement",
       "new": "Nouvel avoir",
       "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte.",
-      "allWhere": "Partout"
+      "allWhere": "Partout",
+      "resolve": {
+        "action": "Régler le remboursement",
+        "title": "Régler le remboursement de {number}",
+        "description": "À utiliser lorsqu'un remboursement a échoué ou que son issue est inconnue. Le prestataire n'est pas interrogé à nouveau tant que vous n'avez pas dit ce que vous avez constaté : vérifiez d'abord chez lui si le client a été remboursé.",
+        "formLabel": "régler le remboursement",
+        "found": "Qu'avez-vous constaté chez le prestataire ?",
+        "refunded": "Remboursé",
+        "notRefunded": "Non remboursé",
+        "refundId": "Référence du remboursement",
+        "refundIdHint": "La référence du remboursement chez le prestataire, ou celle du virement fait en dehors de Payrudder. Elle est inscrite au grand livre des paiements.",
+        "notRefundedHint": "Le remboursement sera redemandé au prestataire avec une nouvelle clé. Si le premier a bien eu lieu, le client est remboursé deux fois : ne choisissez ceci qu'après vérification.",
+        "note": "Ce que vous avez vérifié",
+        "noteHint": "Facultatif. Conservé dans le journal d'audit.",
+        "submitRefunded": "Enregistrer comme remboursé",
+        "submitNotRefunded": "Redemander",
+        "confirmRefunded": "Enregistrer {number} ({amount}) comme remboursé, avec la référence {ref} ? L'avoir passe à l'état remboursé et le remboursement est inscrit au grand livre des paiements.",
+        "confirmNotRefunded": "Vous indiquez que {number} ({amount}) n'a pas été remboursé. Le remboursement est redemandé au prestataire avec une nouvelle clé ; si le premier a eu lieu, le client est remboursé deux fois. Continuer ?"
+      }
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2750,7 +2768,10 @@
         "bad_page_size": "La taille de page doit être comprise entre 1 et 200.",
         "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
         "not_found": "Cet avoir est introuvable.",
-        "reason_too_long": "Le motif ne peut pas dépasser 500 caractères."
+        "reason_too_long": "Le motif ne peut pas dépasser 500 caractères.",
+        "bad_refund_id": "Indiquez la référence du remboursement chez le prestataire (une ligne, 200 caractères au plus) si le remboursement a eu lieu, et aucune sinon.",
+        "bad_resolution": "Indiquez si le client a été remboursé ou non.",
+        "note_too_long": "La note ne peut pas dépasser 500 caractères."
       },
       "dunning": {
         "bad_delay": "Chaque délai de nouvelle tentative doit être compris entre 1 et 720 heures.",

@@ -150,6 +150,9 @@ service BillingAdminService {
   rpc CreateCreditNote(CreateCreditNoteRequest) returns (CreateCreditNoteResponse);
   // RetryCreditNoteRefund asks the provider again for a refund that failed.
   rpc RetryCreditNoteRefund(RetryCreditNoteRefundRequest) returns (RetryCreditNoteRefundResponse);
+  // ResolveCreditNoteRefund settles a refund that failed (above all one whose outcome is unknown) with what the operator found out at the provider: it was made (its
+  // reference is recorded in the ledger and the note becomes refunded) or it was not (the refund is asked again under a new idempotency key). Written to the audit log.
+  rpc ResolveCreditNoteRefund(ResolveCreditNoteRefundRequest) returns (ResolveCreditNoteRefundResponse);
   // RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
   rpc RetryEInvoice(RetryEInvoiceRequest) returns (RetryEInvoiceResponse);
   // CancelEInvoice cancels an issued e-document where the provider and the law allow it.
@@ -616,6 +619,28 @@ message RetryCreditNoteRefundRequest {
 }
 
 message RetryCreditNoteRefundResponse {
+  CreditNote credit_note = 1;
+}
+
+enum RefundResolution {
+  REFUND_RESOLUTION_UNSPECIFIED = 0;
+  // The customer was paid back: at the provider, or outside Payrudder (a bank transfer back). provider_refund_id says where to find it.
+  REFUND_RESOLUTION_REFUNDED = 1;
+  // The customer was not paid back and the operator wants the refund asked again, under a new idempotency key.
+  REFUND_RESOLUTION_NOT_REFUNDED = 2;
+}
+
+message ResolveCreditNoteRefundRequest {
+  string tenant_id = 1;
+  string credit_note_id = 2;
+  RefundResolution resolution = 3;
+  // For REFUNDED: the provider's reference of the refund (or the bank's of the transfer back), at most 200 characters. Required.
+  string provider_refund_id = 4;
+  // What the operator checked, at most 500 characters. Kept in the audit log.
+  string note = 5;
+}
+
+message ResolveCreditNoteRefundResponse {
   CreditNote credit_note = 1;
 }
 
@@ -1114,6 +1139,8 @@ message SettleInvoicePaymentRequest {
 message SettleInvoicePaymentResponse {
   // False when the invoice was already paid or is not waiting for a payment.
   bool settled = 1;
+  // True when settled is false because this very payment (provider and reference) settled the invoice before: a repeat of a notification, not a second payment.
+  bool repeat = 2;
 }
 
 message CreditPack {

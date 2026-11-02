@@ -6308,6 +6308,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/credit-notes/{id}/resolve-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Settle a credit note refund that failed with what was found out at the provider
+         * @description The way out of a refund whose outcome is unknown (code REFUND_OUTCOME_UNKNOWN, a timeout, no answer): the provider is never asked again under the same key, because iyzico and Paddle do not dedupe a refund and could pay the customer twice. Check the refund at the provider first. `REFUND_RESOLUTION_REFUNDED`: it was made (or the customer was paid back outside Payrudder); `provider_refund_id` is required, is written to the payment ledger under the refund's key, and the note becomes refunded. `REFUND_RESOLUTION_NOT_REFUNDED`: it was not made; the refund is asked again under a new idempotency key. Only a note whose refund failed; written to the audit log with the note.
+         */
+        post: operations["adminResolveCreditNoteRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/api-keys/{id}": {
         parameters: {
             query?: never;
@@ -9401,6 +9421,16 @@ export interface components {
         AdminRetryCreditNoteRefundRequest: {
             /** Format: uuid */
             tenant_id: string;
+        };
+        AdminResolveCreditNoteRefundRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+            /** @enum {string} */
+            resolution: "REFUND_RESOLUTION_REFUNDED" | "REFUND_RESOLUTION_NOT_REFUNDED";
+            /** @description The provider's reference of the refund (or the bank's of a transfer back); required for REFUND_RESOLUTION_REFUNDED, refused for the other */
+            provider_refund_id?: string;
+            /** @description What was checked at the provider; kept in the audit log */
+            note?: string;
         };
         /** @description A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at. */
         SignedUrl: {
@@ -23776,6 +23806,35 @@ export interface operations {
                     "application/json": components["schemas"]["CreditNote"];
                 };
             };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    adminResolveCreditNoteRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResolveCreditNoteRefundRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNote"];
+                };
+            };
+            400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };

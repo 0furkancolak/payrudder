@@ -5734,6 +5734,27 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/credit-notes/{id}/resolve-refund:
+    post:
+      operationId: adminResolveCreditNoteRefund
+      summary: Settle a credit note refund that failed with what was found out at the provider
+      description: >
+        The way out of a refund whose outcome is unknown (code REFUND_OUTCOME_UNKNOWN, a timeout, no answer): the provider is never asked again under the same key, because iyzico and Paddle
+        do not dedupe a refund and could pay the customer twice. Check the refund at the provider first. `REFUND_RESOLUTION_REFUNDED`: it was made (or the customer was paid back outside Payrudder);
+        `provider_refund_id` is required, is written to the payment ledger under the refund's key, and the note becomes refunded. `REFUND_RESOLUTION_NOT_REFUNDED`: it was not made; the
+        refund is asked again under a new idempotency key. Only a note whose refund failed; written to the audit log with the note.
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminResolveCreditNoteRefundRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/api-keys/{id}:
     delete:
       operationId: revokeApiKey
@@ -8656,6 +8677,14 @@ components:
       required: [tenant_id]
       properties:
         tenant_id: { type: string, format: uuid }
+    AdminResolveCreditNoteRefundRequest:
+      type: object
+      required: [tenant_id, resolution]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        resolution: { type: string, enum: [REFUND_RESOLUTION_REFUNDED, REFUND_RESOLUTION_NOT_REFUNDED] }
+        provider_refund_id: { type: string, maxLength: 200, description: "The provider's reference of the refund (or the bank's of a transfer back); required for REFUND_RESOLUTION_REFUNDED, refused for the other" }
+        note: { type: string, maxLength: 500, description: "What was checked at the provider; kept in the audit log" }
     SignedUrl:
       type: object
       description: "A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at."

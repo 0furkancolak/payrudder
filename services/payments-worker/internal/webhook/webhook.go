@@ -406,8 +406,7 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 	if err != nil {
 		return err
 	}
-	fresh, err := d.s.Ledger.Append(ctx, entry)
-	if err != nil {
+	if _, err := d.s.Ledger.Append(ctx, entry); err != nil {
 		return err
 	}
 	if conf.ProviderRef != "" {
@@ -416,11 +415,11 @@ func (d *delivery) recordCharge(conf payments.Notification) error {
 			d.s.Log.ErrorContext(ctx, "payment outcomes disagree", "provider", d.name, "ref", conf.ProviderRef, "tenant", d.tenant, "invoice", d.at.InvoiceID)
 		}
 	}
-	return d.settleHostedPayment(ctx, entry, fresh)
+	return d.settleHostedPayment(ctx, entry)
 }
 
 // settleHostedPayment tells billing that a hosted payment succeeded. An error makes the provider retry the notification.
-func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEntry, fresh bool) error {
+func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEntry) error {
 	if entry.Kind != store.KindCharge || entry.Status != store.StatusSucceeded || !strings.HasPrefix(entry.IdempotencyKey, invoicepaymentscommand.LinkKeyPrefix) || entry.InvoiceID == uuid.Nil {
 		return nil
 	}
@@ -433,8 +432,10 @@ func (d *delivery) settleHostedPayment(ctx context.Context, entry store.LedgerEn
 	if err != nil {
 		return fmt.Errorf("settle invoice %s: %w", entry.InvoiceID, err)
 	}
-	if !res.GetSettled() && fresh {
-		// A new confirmed payment for an invoice that is no longer waiting for one (paid another way meanwhile): the customer paid twice. The operator refunds.
+	if !res.GetSettled() && !res.GetRepeat() {
+		// A confirmed payment for an invoice that is no longer waiting for one and was not settled by this payment (paid another way meanwhile): the customer paid twice.
+		// The operator refunds. Not tied to a fresh ledger row: the row may be there from a delivery whose settle call failed, and the retry is what finds the invoice
+		// paid. Billing says when this very payment settled the invoice, so a repeat of a notification (the inbox already keeps one delivery per event) is no alert.
 		discrepancy.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", d.name)))
 		d.s.Log.ErrorContext(ctx, "hosted payment for an invoice that was not waiting for one", "provider", d.name, "tenant", d.tenant, "invoice", entry.InvoiceID, "ref", entry.ProviderRef)
 	}

@@ -1503,8 +1503,11 @@ type RefundPayment struct {
 	Currency       string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
 	PspChargeId    string                 `protobuf:"bytes,4,opt,name=psp_charge_id,json=pspChargeId,proto3" json:"psp_charge_id,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Set when an operator has confirmed that this refund was made (at the provider or outside Payrudder) and gave its reference: the provider is not asked, the worker
+	// writes the fact to its ledger under idempotency_key and answers PaymentRefunded with this reference.
+	ConfirmedRefundId string `protobuf:"bytes,6,opt,name=confirmed_refund_id,json=confirmedRefundId,proto3" json:"confirmed_refund_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *RefundPayment) Reset() {
@@ -1568,6 +1571,13 @@ func (x *RefundPayment) GetPspChargeId() string {
 func (x *RefundPayment) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *RefundPayment) GetConfirmedRefundId() string {
+	if x != nil {
+		return x.ConfirmedRefundId
 	}
 	return ""
 }
@@ -2277,14 +2287,15 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
 	"\bprovider\x18\a \x01(\tR\bprovider\x12%\n" +
 	"\x0einvoice_number\x18\b \x01(\tR\rinvoiceNumber\x120\n" +
-	"\x14customer_external_id\x18\t \x01(\tR\x12customerExternalId\"\xba\x01\n" +
+	"\x14customer_external_id\x18\t \x01(\tR\x12customerExternalId\"\xea\x01\n" +
 	"\rRefundPayment\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12!\n" +
 	"\famount_minor\x18\x02 \x01(\x03R\vamountMinor\x12\x1a\n" +
 	"\bcurrency\x18\x03 \x01(\tR\bcurrency\x12\"\n" +
 	"\rpsp_charge_id\x18\x04 \x01(\tR\vpspChargeId\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"\\\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12.\n" +
+	"\x13confirmed_refund_id\x18\x06 \x01(\tR\x11confirmedRefundId\"\\\n" +
 	"\x12QueryPaymentStatus\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12'\n" +

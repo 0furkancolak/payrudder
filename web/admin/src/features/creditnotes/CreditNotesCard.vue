@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
-import { Plus, RotateCw } from "@lucide/vue";
+import { ClipboardCheck, Plus, RotateCw } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableR
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import { useCreditNotes, useRetryCreditNoteRefund } from "./api";
 import IssueCreditNoteSheet from "./IssueCreditNoteSheet.vue";
+import ResolveRefundSheet, { type FailedRefund } from "./ResolveRefundSheet.vue";
 
 /** Credit notes of a tenant, or of one invoice; with `issuable` a paid invoice can be credited here. */
 const props = defineProps<{ tenantId: string; invoiceId?: string; currency?: string; issuable?: boolean }>();
@@ -34,6 +35,7 @@ const notes = useCreditNotes(
 );
 const retry = useRetryCreditNoteRefund(() => props.tenantId);
 const issueOpen = ref(false);
+const resolving = ref<FailedRefund | null>(null);
 const date = (v?: string | null) => fmt.date(v, "day", "—");
 const list = computed(() => notes.data.value?.credit_notes ?? []);
 type Where = "toCredit" | "refunded" | "refundFailed" | "refundRequested";
@@ -69,7 +71,12 @@ const whereOptions = computed(() => [{ value: "", label: t("billing.creditNotes.
 
 type Note = (typeof list.value)[number];
 const actionsOf = (n: Note) =>
-  n.refund_state === "REFUND_STATE_FAILED" ? [{ key: "retry", label: t("billing.creditNotes.retryRefund"), icon: RotateCw, disabled: retry.isPending.value, onSelect: () => retry.mutate(n.id ?? "") }] : [];
+  n.refund_state === "REFUND_STATE_FAILED"
+    ? [
+        { key: "retry", label: t("billing.creditNotes.retryRefund"), icon: RotateCw, disabled: retry.isPending.value, onSelect: () => retry.mutate(n.id ?? "") },
+        { key: "resolve", label: t("billing.creditNotes.resolve.action"), icon: ClipboardCheck, onSelect: () => (resolving.value = n) },
+      ]
+    : [];
 const current = table.row;
 </script>
 
@@ -141,7 +148,9 @@ const current = table.row;
     </dl>
     <template v-if="current && current.refund_state === 'REFUND_STATE_FAILED'" #footer>
       <Button type="button" variant="outline" :disabled="retry.isPending.value" @click="retry.mutate(current.id ?? '')">{{ t("billing.creditNotes.retryRefund") }}</Button>
+      <Button type="button" variant="outline" data-testid="resolve-open" @click="resolving = current">{{ t("billing.creditNotes.resolve.action") }}</Button>
     </template>
   </DetailSheet>
+  <ResolveRefundSheet v-model:note="resolving" :tenant-id="tenantId" />
   <IssueCreditNoteSheet v-if="issuable" v-model:open="issueOpen" :tenant-id="tenantId" :invoice-id="invoiceId ?? ''" :currency="currency" />
 </template>
