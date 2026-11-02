@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Loader, X } from "@lucide/vue";
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import type { BulkProgress } from "@/shared/lib/bulk";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -14,10 +15,20 @@ import { Button } from "@/shared/ui/button";
  * Keyboard and screen reader: the bar is a landmark (`region`) placed before the table, so its buttons are the next stop for Tab after the header; Escape unticks
  * everything (not while a popover, menu, sheet or dialog is open: that one takes the Escape) and puts the focus back on the header's tick; a polite live region, present even while
  * nothing is ticked, announces the number of rows ticked and when the selection is cleared.
+ *
+ * A long run (more than BULK_PROGRESS_FROM rows) passes `progress`: a bar with "n of N done" and, once there is one, "m not changed", live while it runs. It is a
+ * progressbar for a screen reader and is not announced row by row; the page's note says the result at the end.
  */
-const props = defineProps<{ count: number; total?: number; offer?: boolean; more?: boolean; loading?: boolean }>();
+const props = defineProps<{ count: number; total?: number; offer?: boolean; more?: boolean; loading?: boolean; progress?: BulkProgress }>();
 const emit = defineEmits<{ clear: []; "select-all": [] }>();
 const { t } = useI18n();
+
+const progressText = computed(() => {
+  const p = props.progress;
+  if (!p) return "";
+  const of = t("common.bulk.progress", { n: p.done, total: p.total });
+  return p.failed > 0 ? `${of} · ${t("common.bulk.progressFailed", { failed: p.failed })}` : of;
+});
 
 const root = ref<HTMLElement | null>(null);
 const announcement = ref("");
@@ -65,6 +76,20 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       </Button>
       <div class="flex flex-wrap items-center gap-2"><slot /></div>
       <Button type="button" variant="ghost" size="sm" class="ms-auto" aria-keyshortcuts="Escape" data-testid="bulk-clear" @click="clear"><X class="size-4" aria-hidden="true" />{{ t("common.bulk.clear") }}</Button>
+      <div v-if="progress" class="flex basis-full flex-col gap-1" data-testid="bulk-progress">
+        <div
+          class="bg-background/60 h-1.5 w-full overflow-hidden rounded-full"
+          role="progressbar"
+          :aria-label="t('common.bulk.progressLabel')"
+          aria-valuemin="0"
+          :aria-valuemax="progress.total"
+          :aria-valuenow="progress.done + progress.failed"
+          :aria-valuetext="progressText"
+        >
+          <div class="bg-brand h-full rounded-full transition-[width]" :style="{ width: `${((progress.done + progress.failed) / progress.total) * 100}%` }" />
+        </div>
+        <span class="text-xs" data-testid="bulk-progress-text">{{ progressText }}</span>
+      </div>
     </div>
   </div>
 </template>

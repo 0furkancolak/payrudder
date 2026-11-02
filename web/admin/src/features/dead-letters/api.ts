@@ -1,14 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
 
 export const deadLetterKeys = { all: ["dead-letters"] as const, queue: (q: string) => ["dead-letters", q] as const };
 
-/** The depth of every dead-letter queue, or the messages of one queue when `queue` is set. */
+/**
+ * The depth of every dead-letter queue, or the messages of one queue when `queue` is set. Opening a queue changes the key, and until its answer comes the page keeps
+ * the previous one: without that the list of queues is empty for a moment, the row the sheet belongs to is gone, and the sheet closes as it opens.
+ */
 export function useDeadLetters(queue: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => deadLetterKeys.queue(toValue(queue))),
+    placeholderData: keepPreviousData,
     queryFn: () => {
       const q = toValue(queue);
       return unwrap(api.GET("/admin/v1/dead-letters", { params: { query: q ? { queue: q, limit: PAGE.few } : {} } }));
