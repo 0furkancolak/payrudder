@@ -757,6 +757,8 @@ message HostedPaymentContext {
   string customer_name = 10;
   string description = 11;
   string environment = 12;
+  // The external id of the customer the invoice is out to, empty for a guest paying an ad-hoc link. A provider that vets the payer (iyzico) reads the customer record.
+  string customer_external_id = 13;
 }
 
 message GetHostedInvoicePdfUrlRequest {

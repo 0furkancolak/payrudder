@@ -25,6 +25,8 @@ type ChargeRequest struct {
 	PaymentMethod  string `json:"payment_method"`
 	// InvoiceNumber is the number printed on the invoice, for a provider that asks the customer to quote it (a bank transfer). Not sent to mock-psp.
 	InvoiceNumber string `json:"-"`
+	// Buyer is the customer, for a provider that vets the payer (iyzico). Nil for a provider that does not ask. Not sent to mock-psp.
+	Buyer *Buyer `json:"-"`
 }
 
 // ChargeResult is a successful charge.
@@ -39,6 +41,10 @@ type RefundRequest struct {
 	ChargeID       string `json:"charge_id,omitempty"`
 	AmountMinor    int64  `json:"amount_minor"`
 	Currency       string `json:"currency"`
+	// ChargeAmountMinor and ChargedAt are the payment being refunded as the ledger holds it, zero when payments-worker does not know. A provider that can cancel a
+	// payment the day it was taken (no entry on the card statement) reads them: a refund of the whole payment on its day is a cancel. Not sent to mock-psp.
+	ChargeAmountMinor int64     `json:"-"`
+	ChargedAt         time.Time `json:"-"`
 }
 
 // RefundResult is a successful refund.

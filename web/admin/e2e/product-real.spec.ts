@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { verifyAddress } from "./operator";
 import { pickLanguage, pickTheme } from "../e2e-mock/ui";
 
@@ -250,11 +250,19 @@ test.describe("product app, real stack", () => {
     await expect(page.getByRole("heading", { name: "Hosted test" })).toBeVisible();
     await shoot(page, "r7-link");
     await page.getByRole("button", { name: "Continue" }).click();
-    // The invoice is made and goes through its saga first ("being processed"; Continue waits for it on the server, a few seconds at most); then the sandbox offers the mock method.
-    await expect(page.getByRole("button", { name: "Pay (test)" })).toBeVisible({ timeout: 60_000 });
+    // The invoice is made and goes through its saga first ("being processed"). Continue and "Check again" hold the request on the server (20 s) while it is; a slow
+    // runner needs a few rounds, as a payer would click. Then the sandbox offers the mock method.
+    const until = async (target: Locator) => {
+      await expect(async () => {
+        const link = page.getByRole("link", { name: "Check again" });
+        if ((await target.count()) === 0 && (await link.count()) > 0) await link.click();
+        await expect(target.first()).toBeVisible({ timeout: 25_000 });
+      }).toPass({ timeout: 100_000 });
+    };
+    await until(page.getByRole("button", { name: "Pay (test)" }));
     await shoot(page, "r7b-link-pay");
     await page.getByRole("button", { name: "Pay (test)" }).click();
-    await expect(page.getByText("Paid").first()).toBeVisible({ timeout: 60_000 });
+    await until(page.getByText("Paid"));
     await shoot(page, "r7c-link-paid");
 
     await page.goto(portalUrl);

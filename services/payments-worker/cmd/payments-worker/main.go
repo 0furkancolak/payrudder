@@ -341,6 +341,7 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 			return nil, nil, err
 		}
 		plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(conn), Admin: plansv1.NewAdminServiceClient(conn)}
+		h.Customers = plansSync // a charge to a provider that vets the payer carries the customer's own details
 	}
 	var billing webhook.BillingAPI
 	var transferBilling transfercommand.Billing

@@ -1,6 +1,7 @@
 // Package taxid checks the identifiers a customer or a seller is taxed under: the Turkish TCKN (an individual) and VKN (a business), whose last digits are
-// checksums, and the shape of a European VAT id. It decides nothing about tax: whether an id is *required*, whether a wrong one is refused or only warned about,
-// and what an id changes on an invoice are product decisions (docs/plans/05-customer-locale-tax-documents.md).
+// checksums, and a European VAT id (its shape, and the check digits of the countries whose algorithm is public). It decides nothing about tax: whether an id is
+// *required*, whether a wrong one is refused or only warned about, and what an id changes on an invoice are product decisions
+// (docs/plans/05-customer-locale-tax-documents.md).
 package taxid
 
 import (
@@ -82,8 +83,7 @@ func ValidVKN(id string) bool {
 	return (10-sum%10)%10 == int(id[9]-'0')
 }
 
-// euVAT is the shape of the national part of a VAT id, by the prefix VIES uses. It is the shape only: the check digits of the countries that have them are not
-// verified (that is what VIES is for), so a well-formed id may still not exist.
+// euVAT is the shape of a VAT id, by the prefix VIES uses. The shape only: see vatCheck for the check digits, and VIES is what tells whether the number exists.
 var euVAT = map[string]*regexp.Regexp{
 	"AT": regexp.MustCompile(`^ATU\d{8}$`),
 	"BE": regexp.MustCompile(`^BE[01]\d{9}$`),
@@ -115,7 +115,7 @@ var euVAT = map[string]*regexp.Regexp{
 	"XI": regexp.MustCompile(`^XI(\d{9}|\d{12}|GD\d{3}|HA\d{3})$`),
 }
 
-// ValidEUVATShape reports whether id has the shape of a VAT id of the country its two first letters name.
+// ValidEUVATShape reports whether id has the shape of a VAT id of the country its two first letters name (no check digit is looked at: that is ValidEUVAT).
 func ValidEUVATShape(id string) bool {
 	id = Normalize(id)
 	if len(id) < 4 {
@@ -123,6 +123,235 @@ func ValidEUVATShape(id string) bool {
 	}
 	re, ok := euVAT[id[:2]]
 	return ok && re.MatchString(id)
+}
+
+// ValidEUVAT reports whether id is a VAT id: it has the shape of ValidEUVATShape and, for a country whose check digits this package knows (vatCheck), they are
+// right. A country without an algorithm here (SK, XI) is checked for its shape only. Like every check of this package it is local: it says nothing about whether the
+// number exists or belongs to the customer (that is what VIES is for).
+func ValidEUVAT(id string) bool {
+	id = Normalize(id)
+	if !ValidEUVATShape(id) {
+		return false
+	}
+	check, ok := vatCheck[id[:2]]
+	return !ok || check(id[2:])
+}
+
+// vatCheck holds, by VAT prefix, the check-digit algorithm of the national part of an id (the id without its two letters) that has the shape of euVAT. The
+// algorithms are the public ones, ported from and tested against python-stdnum (an independent implementation), and each returns true for a branch it does not check:
+//   - a country that is not here (SK, XI) is shape-only;
+//   - CZ is checked for the 8 digits of a legal entity and the 9 starting with 6, BG for the 9 digits of a legal entity, LV for the codes of legal persons (the first
+//     digit above 3): the numbers made of a person's birth date (CZ 9 and 10 digits, BG 10 digits, LV personal codes) are shape-only.
+var vatCheck = map[string]func(n string) bool{
+	"AT": func(n string) bool { return mod(6-luhnSum(n[1:8]), 10) == digit(n, 8) },
+	"BE": func(n string) bool { return n != "0000000000" && (num(n[:8])+num(n[8:]))%97 == 0 },
+	"BG": func(n string) bool {
+		if len(n) != 9 {
+			return true
+		}
+		c := weighted(n, 1, 2, 3, 4, 5, 6, 7, 8) % 11
+		if c == 10 {
+			c = weighted(n, 3, 4, 5, 6, 7, 8, 9, 10) % 11
+		}
+		return c%10 == digit(n, 8)
+	},
+	"CY": func(n string) bool {
+		s := 0
+		for i := 0; i < 8; i++ {
+			if d := digit(n, i); i%2 == 0 {
+				s += [10]int{1, 0, 5, 7, 9, 13, 15, 17, 19, 21}[d]
+			} else {
+				s += d
+			}
+		}
+		return n[:2] != "12" && n[8] == byte('A'+s%26)
+	},
+	"CZ": func(n string) bool {
+		switch {
+		case len(n) == 8:
+			c := mod(11-weighted(n, 8, 7, 6, 5, 4, 3, 2), 11)
+			if c == 0 {
+				c = 1
+			}
+			return n[0] != '9' && c%10 == digit(n, 7)
+		case len(n) == 9 && n[0] == '6':
+			return mod(8-mod(10-weighted(n[1:], 8, 7, 6, 5, 4, 3, 2)%11, 11), 10) == digit(n, 8)
+		}
+		return true
+	},
+	"DE": func(n string) bool { return n[0] != '0' && mod11x10(n) },
+	"DK": func(n string) bool { return n[0] != '0' && weighted(n, 2, 7, 6, 5, 4, 3, 2, 1)%11 == 0 },
+	"EE": func(n string) bool { return weighted(n, 3, 7, 1, 3, 7, 1, 3, 7, 1)%10 == 0 },
+	"EL": func(n string) bool {
+		s := 0
+		for i := 0; i < 8; i++ {
+			s = s*2 + digit(n, i)
+		}
+		return s*2%11%10 == digit(n, 8)
+	},
+	"ES": esCheck,
+	"FI": func(n string) bool { return weighted(n, 7, 9, 10, 5, 8, 4, 2, 1)%11 == 0 },
+	"FR": frCheck,
+	"HR": mod11x10,
+	"HU": func(n string) bool { return weighted(n, 9, 7, 3, 1, 9, 7, 3, 1)%10 == 0 },
+	"IE": ieCheck,
+	"IT": func(n string) bool {
+		office := num(n[7:10])
+		return num(n[:7]) != 0 && (office >= 1 && office <= 100 || office == 120 || office == 121 || office == 888 || office == 999) && luhnSum(n) == 0
+	},
+	"LT": func(n string) bool {
+		body := n[:len(n)-1]
+		if (len(n) == 9 && n[7] != '1') || (len(n) == 12 && n[10] != '1') {
+			return false
+		}
+		c, c2 := 0, 0
+		for i := range body {
+			c += (1 + i%9) * digit(n, i)
+			c2 += (1 + (i+2)%9) * digit(n, i)
+		}
+		if c %= 11; c == 10 {
+			c = c2
+		}
+		return c%11%10 == digit(n, len(n)-1)
+	},
+	"LU": func(n string) bool { return num(n[:6])%89 == num(n[6:]) },
+	"LV": func(n string) bool { return n[0] <= '3' || mod(weighted(n, 9, 1, 4, 8, 3, 10, 2, 5, 7, 6, 1), 11) == 3 },
+	"MT": func(n string) bool { return n[0] != '0' && weighted(n, 3, 4, 6, 7, 8, 9, 10, 1)%37 == 0 },
+	"NL": func(n string) bool {
+		if num(n[:9]) == 0 || num(n[10:]) == 0 {
+			return false
+		}
+		if mod(weighted(n, 9, 8, 7, 6, 5, 4, 3, 2, -1), 11) == 0 { // the 11-proof of the BSN of a person
+			return true
+		}
+		r := 0 // ISO 7064 mod 97-10 over "NL" + the number with its letters as numbers (N=23, L=21, B=11)
+		for _, c := range "2321" + n[:9] + "11" + n[10:] {
+			r = (r*10 + int(c-'0')) % 97
+		}
+		return r == 1
+	},
+	"PL": func(n string) bool { return mod(weighted(n, 6, 5, 7, 2, 3, 4, 5, 6, 7, -1), 11) == 0 },
+	"PT": func(n string) bool {
+		return n[0] != '0' && mod(11-weighted(n, 9, 8, 7, 6, 5, 4, 3, 2), 11)%10 == digit(n, 8)
+	},
+	"RO": func(n string) bool {
+		if n[0] == '0' {
+			return false
+		}
+		body := strings.Repeat("0", 10-len(n)) + n[:len(n)-1]
+		return 10*weighted(body, 7, 5, 3, 2, 1, 7, 5, 3, 2)%11%10 == digit(n, len(n)-1)
+	},
+	"SE": func(n string) bool { return luhnSum(n[:10]) == 0 },
+	"SI": func(n string) bool {
+		c := 11 - weighted(n, 8, 7, 6, 5, 4, 3, 2)%11
+		return n[0] != '0' && c != 11 && c%10 == digit(n, 7)
+	},
+}
+
+// digit is the value of the i-th character of n, which the shape has made a digit.
+func digit(n string, i int) int { return int(n[i] - '0') }
+
+// num is the value of n, which is all digits.
+func num(n string) int {
+	v := 0
+	for i := range n {
+		v = v*10 + digit(n, i)
+	}
+	return v
+}
+
+// mod is a % m that is never negative.
+func mod(a, m int) int { return (a%m + m) % m }
+
+// weighted is the sum of the digits of n, from the left, times the weights.
+func weighted(n string, w ...int) int {
+	s := 0
+	for i, x := range w {
+		s += x * digit(n, i)
+	}
+	return s
+}
+
+// luhnSum is the Luhn sum of the digits of n modulo 10: 0 for a number whose last digit is its check digit.
+func luhnSum(n string) int {
+	s := 0
+	for i := 0; i < len(n); i++ {
+		d := digit(n, len(n)-1-i)
+		if i%2 == 1 {
+			d *= 2
+			d = d/10 + d%10
+		}
+		s += d
+	}
+	return s % 10
+}
+
+// mod11x10 is the ISO 7064 MOD 11,10 check (DE, HR): the last digit is the check digit.
+func mod11x10(n string) bool {
+	c := 5
+	for i := range n {
+		t := c
+		if t == 0 {
+			t = 10
+		}
+		c = (t*2%11 + digit(n, i)) % 10
+	}
+	return c == 1
+}
+
+// esCheck is the NIF: a DNI (digits and a letter), an NIE (X, Y, Z), a K, L or M number, or the CIF of a company (a Luhn digit or its letter).
+func esCheck(n string) bool {
+	const letters = "TRWAGMYFPDXBNJZSQVHLCKE"
+	switch f := n[0]; {
+	case f >= '0' && f <= '9':
+		return n[8] == letters[num(n[:8])%23]
+	case f == 'X' || f == 'Y' || f == 'Z':
+		return n[8] == letters[num(string('0'+f-'X')+n[1:8])%23]
+	case f == 'K' || f == 'L' || f == 'M':
+		return n[8] == letters[num(n[1:8])%23]
+	case strings.IndexByte("ABCDEFGHJNPQRSUVW", f) >= 0:
+		c := (10 - luhnSum(n[1:8]+"0")) % 10
+		return n[8] == byte('0'+c) || n[8] == "JABCDEFGHI"[c]
+	}
+	return false
+}
+
+// frCheck is the TVA number: a key (two digits, or letters but I and O for the numbers since 2013) and a SIREN, which is a Luhn number unless it starts with 000.
+func frCheck(n string) bool {
+	const alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+	i, j := strings.IndexByte(alphabet, n[0]), strings.IndexByte(alphabet, n[1])
+	siren := n[2:]
+	if i < 0 || j < 0 || (siren[:3] != "000" && luhnSum(siren) != 0) {
+		return false
+	}
+	if i < 10 && j < 10 {
+		return i*10+j == num(siren+"12")%97
+	}
+	c := i*34 + j - 100
+	if i < 10 {
+		c = i*24 + j - 10
+	}
+	return (num(siren)+1+c/11)%11 == c%11
+}
+
+// ieCheck is the Irish number: seven digits and one or two letters, or the old form of a digit, a letter (or + or *) and five digits and a letter. The letters run
+// from W then A to V (no X, Y, Z).
+func ieCheck(n string) bool {
+	const alphabet = "WABCDEFGHIJKLMNOPQRSTUV"
+	for _, c := range n[7:] {
+		if !strings.ContainsRune(alphabet, c) {
+			return false
+		}
+	}
+	body, extra := n[:7], 0
+	if len(n) == 9 {
+		extra = strings.IndexByte(alphabet, n[8])
+	}
+	if !allDigits(body) { // the old form: the first digit moves to the end
+		body = "0" + n[2:7] + n[:1]
+		extra = 0
+	}
+	return n[7] == alphabet[(weighted(body, 8, 7, 6, 5, 4, 3, 2)+9*extra)%23]
 }
 
 // Valid reports whether id is a good identifier of the kind.
@@ -133,20 +362,20 @@ func Valid(kind Kind, id string) bool {
 	case VKN:
 		return ValidVKN(id)
 	case EUVAT:
-		return ValidEUVATShape(id)
+		return ValidEUVAT(id)
 	}
 	return false
 }
 
 // Detect names what an identifier looks like, when it can be told from its shape: 11 digits that pass the TCKN checksum, 10 digits that pass the VKN checksum, a
-// VAT id of a known country. ok is false for anything else (a number that fails both checksums is not guessed at).
+// VAT id of a known country whose check digits, where this package knows them, are right. ok is false for anything else (a number that fails both checksums is not guessed at).
 func Detect(id string) (Kind, bool) {
 	switch {
 	case ValidTCKN(id):
 		return TCKN, true
 	case ValidVKN(id):
 		return VKN, true
-	case ValidEUVATShape(id):
+	case ValidEUVAT(id):
 		return EUVAT, true
 	}
 	return "", false
@@ -167,7 +396,7 @@ const (
 	HintTRAny        Hint = "tr_any"        // a Turkish customer of unknown kind has neither a TCKN nor a VKN
 	HintTRIsTCKN     Hint = "tr_is_tckn"    // a Turkish business was given a TCKN
 	HintTRIsVKN      Hint = "tr_is_vkn"     // a Turkish individual was given a VKN
-	HintEUVAT        Hint = "eu_vat"        // a business in the EU has no VAT id of the shape of its country
+	HintEUVAT        Hint = "eu_vat"        // a business in the EU has no VAT id of the shape of its country, or one whose check digits are wrong
 )
 
 // Check says what is odd about id for a customer in country (ISO 3166-1 alpha-2, any case) of kind ("individual", "business" or empty for unknown). Only Turkey and
@@ -189,7 +418,7 @@ func Check(id, country, kind string) Hint {
 			return HintNone
 		}
 		return HintTRAny
-	case euCountries[c] && kind == "business" && !ValidEUVATShape(id):
+	case euCountries[c] && kind == "business" && !ValidEUVAT(id):
 		return HintEUVAT
 	}
 	return HintNone
@@ -206,7 +435,7 @@ func pick(right, other bool, general, specific Hint) Hint {
 	return general
 }
 
-// Recognised reports whether id passes one of the checks of this package (a TCKN or VKN checksum, the shape of a European VAT id): what the customer's
+// Recognised reports whether id passes one of the checks of this package (a TCKN or VKN checksum, a European VAT id as ValidEUVAT reads it): what the customer's
 // tax_id_validated_at records. It says nothing about whether the number exists.
 func Recognised(id string) bool {
 	_, ok := Detect(id)
