@@ -8,7 +8,13 @@ namespace Payrudder\Resource\Generated;
 
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
+use Payrudder\Internal\Cast;
+use Payrudder\Model\AddDisputeNoteRequest;
+use Payrudder\Model\Dispute;
+use Payrudder\Model\DisputeEvent;
+use Payrudder\Model\ListDisputeEventsResponse;
 use Payrudder\Model\ListDisputesResponse;
+use Payrudder\Model\SetDisputeHandledRequest;
 use Payrudder\RequestOptions;
 
 /**
@@ -29,5 +35,46 @@ final class DisputesResource extends AbstractResource
     public function listDisputes(?string $invoiceId = null, ?string $outcome = null, ?int $limit = null, ?RequestOptions $options = null): ListDisputesResponse
     {
         return ListDisputesResponse::fromArray($this->call('GET', '/v1/disputes', ['invoice_id' => $invoiceId, 'outcome' => $outcome, 'limit' => $limit], null, $options));
+    }
+
+    /**
+     * The notes and marks you made on a dispute, newest first (GET /v1/disputes/{id}/history).
+     *
+     * @param string $id
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function listDisputeHistory(string $id, ?RequestOptions $options = null): ListDisputeEventsResponse
+    {
+        return ListDisputeEventsResponse::fromArray($this->call('GET', '/v1/disputes/' . rawurlencode($id) . '/history', [], null, $options));
+    }
+
+    /**
+     * Write a note on a dispute (POST /v1/disputes/{id}/notes).
+     *
+     * @param string $id
+     * @param AddDisputeNoteRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function addDisputeNote(string $id, AddDisputeNoteRequest|array $body, ?RequestOptions $options = null): DisputeEvent
+    {
+        return DisputeEvent::fromArray($this->call('POST', '/v1/disputes/' . rawurlencode($id) . '/notes', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Mark a dispute as handled in Payrudder, or lift the mark (PUT /v1/disputes/{id}/handled).
+     *
+     * @param string $id
+     * @param SetDisputeHandledRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function setDisputeHandled(string $id, SetDisputeHandledRequest|array $body, ?RequestOptions $options = null): Dispute
+    {
+        return Dispute::fromArray($this->call('PUT', '/v1/disputes/' . rawurlencode($id) . '/handled', [], Cast::body($body), $options));
     }
 }

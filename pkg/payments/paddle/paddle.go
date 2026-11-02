@@ -542,6 +542,15 @@ type adjustmentData struct {
 	Totals        struct {
 		Total string `json:"total"`
 	} `json:"totals"`
+	// PayoutTotals.ChargebackFee is "Chargeback fees incurred for this adjustment", returned only when the action is chargeback or chargeback_warning; its `amount` is "the
+	// chargeback fee converted into the payout currency" (developer.paddle.com/webhooks/adjustments/adjustment-created, read 2026-11-02). Its `original` (the fee in the
+	// original currency) is not read: the documentation gives its shape only as "an object with amount and original", and the amount is enough.
+	PayoutTotals *struct {
+		CurrencyCode  string `json:"currency_code"`
+		ChargebackFee *struct {
+			Amount string `json:"amount"`
+		} `json:"chargeback_fee"`
+	} `json:"payout_totals"`
 }
 
 // disputeOfAdjustment reads the adjustments Paddle makes by itself when a customer disputes a payment (developer.paddle.com/webhooks/adjustments/adjustment-created, read
@@ -579,6 +588,9 @@ func disputeOfAdjustment(n payments.Notification, a adjustmentData) payments.Not
 	}
 	n.Kind, n.ProviderRef, n.Currency, n.AmountMinor = payments.KindDispute, a.TransactionID, a.CurrencyCode, minor(a.Totals.Total)
 	n.Dispute = &payments.DisputeEvent{ID: prefix + a.TransactionID, Status: a.Action + "/" + a.Status, Outcome: outcome, Formal: prefix == "cb_"}
+	if !reversal && a.PayoutTotals != nil && a.PayoutTotals.ChargebackFee != nil && a.PayoutTotals.CurrencyCode != "" {
+		n.Dispute.FeeMinor, n.Dispute.FeeCurrency = minor(a.PayoutTotals.ChargebackFee.Amount), a.PayoutTotals.CurrencyCode
+	}
 	return n
 }
 

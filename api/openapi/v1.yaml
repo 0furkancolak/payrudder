@@ -2522,6 +2522,51 @@ paths:
               schema: { $ref: "#/components/schemas/ListDisputesResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/history:
+    get:
+      operationId: listDisputeHistory
+      summary: The notes and marks you made on a dispute, newest first
+      description: >
+        What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it.
+        `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListDisputeEventsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/notes:
+    post:
+      operationId: addDisputeNote
+      summary: Write a note on a dispute
+      description: >
+        A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and
+        recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddDisputeNoteRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/DisputeEvent" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/handled:
+    put:
+      operationId: setDisputeHandled
+      summary: Mark a dispute as handled in Payrudder, or lift the mark
+      description: >
+        Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in
+        what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SetDisputeHandledRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dispute" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads:
     post:
       operationId: createUploadSession
@@ -7951,7 +7996,7 @@ components:
         truncated: { type: boolean }
     Dispute:
       type: object
-      required: [id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, provider_status, opened_time]
+      required: [id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, provider_status, opened_time, handled, note_count]
       properties:
         id: { type: string, description: "Payrudder's id of the case" }
         provider: { type: string, examples: [stripe] }
@@ -7967,6 +8012,36 @@ components:
         evidence_due_time: { type: string, format: date-time, description: When your evidence is due; absent when the provider does not say }
         opened_time: { type: string, format: date-time }
         closed_time: { type: string, format: date-time, description: Absent while the case is open }
+        fee_minor: { type: string, format: int64, description: "What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee" }
+        fee_currency: { type: string, description: The currency of `fee_minor` }
+        handled: { type: boolean, description: "Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider" }
+        handled_time: { type: string, format: date-time, description: Absent when the case is not marked }
+        handled_by: { type: string, description: "Who marked it; absent when it is not marked and for a viewer of the account" }
+        note_count: { type: integer, format: int64, description: "How many notes you wrote (`GET /v1/disputes/{id}/history`)" }
+    DisputeEvent:
+      type: object
+      required: [id, action, create_time]
+      properties:
+        id: { type: string }
+        action: { type: string, enum: [note, handled, unhandled], description: "A note, the mark that the case was handled, or that mark lifted" }
+        note: { type: string, description: The text of a note; absent for a mark }
+        actor: { type: string, description: "Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account" }
+        create_time: { type: string, format: date-time }
+    ListDisputeEventsResponse:
+      type: object
+      required: [events]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/DisputeEvent" } }
+    AddDisputeNoteRequest:
+      type: object
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    SetDisputeHandledRequest:
+      type: object
+      required: [handled]
+      properties:
+        handled: { type: boolean }
     ListDisputesResponse:
       type: object
       required: [disputes]

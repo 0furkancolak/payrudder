@@ -3328,6 +3328,12 @@
       },
       "refund": {
         "charge_unclear": "Die Rechnung hat mehrere erfolgreiche Abbuchungen, und die Erstattung bestimmt keine davon eindeutig. Erstatten Sie den Kunden beim Zahlungsanbieter und erfassen Sie es dann auf der Gutschrift."
+      },
+      "dispute": {
+        "bad_id": "Das ist keine Dispute-ID.",
+        "not_found": "Der Dispute wurde nicht gefunden.",
+        "note_required": "Schreiben Sie etwas in die Notiz.",
+        "note_too_long": "Eine Notiz darf höchstens 2000 Zeichen lang sein."
       }
     },
     "einvoice": {
@@ -6301,6 +6307,29 @@
     "opened": "Eröffnet",
     "closed": "Geschlossen",
     "reference": "Fall",
-    "case": "Fall"
+    "case": "Fall",
+    "fee": "Gebühr für die Zahlungsanfechtung",
+    "handled": "Erledigt",
+    "handledLabel": "Erledigt",
+    "allHandled": "Alle",
+    "handledYes": "Erledigt",
+    "handledNo": "Nicht erledigt",
+    "due": {
+      "overdue": "überfällig",
+      "soon": "bald fällig"
+    },
+    "notes": {
+      "title": "Notizen",
+      "hint": "Für Sie und Ihre Kolleginnen und Kollegen; Payrudder schickt sie nirgendwohin. Die Nachweise selbst reichen Sie bei Ihrem Zahlungsanbieter ein, nicht hier.",
+      "mark": "Als erledigt markieren",
+      "lift": "Erledigt-Markierung aufheben",
+      "empty": "Noch keine Notizen.",
+      "placeholder": "Notiz zu diesem Fall schreiben",
+      "add": "Notiz hinzufügen",
+      "event": {
+        "handled": "Als erledigt markiert",
+        "unhandled": "Erledigt-Markierung aufgehoben"
+      }
+    }
   }
 }

@@ -38,6 +38,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `contract.version_published` (kind, audience, number, locales; not the text nor its hash, which the log would mask as an opaque run), `contract.settings_changed` (the settings; the locales of the cancel texts but not the texts) | plans-svc `contracts/contracts.go` |
 | `support.status_changed` (an account entry: the ticket belongs to an account, and only support changes the status this way) | plans-svc `support/support.go` |
 | `user.password_reset` (by the person's link; ends every session), `user.sign_in_locked` (the failure that set the lock; the address the failures came from; actor `system`, written best effort: if the entry cannot be written it is logged and the sign-in answers as before) | plans-svc `identity/command` |
+| `dispute.note_added` (the case, the provider's reference, the length of the note, never its text), `dispute.handled`, `dispute.unhandled` (the seller's own mark on a dispute; setting what is set writes nothing) | payments-worker `store/disputes.go` `Disputes.Annotate`, in the transaction of `payment_dispute_events` |
 | `dunning.settings_changed` (the retry delays before and after) | billing-svc `dunning/command` |
 | `invoice_payment.recorded` (method, amount, reference, date; not the free-text note) | billing-svc `payments/command` |
 | `bank_transfer.receipt_recorded` (reference, amount, what is still outstanding; not the note) | payments-worker `store/transfers.go` |

@@ -30,6 +30,12 @@ final class Dispute implements Model
      * @param string|null $evidenceDueTime
      * @param string|null $openedTime
      * @param string|null $closedTime
+     * @param int|null $feeMinor
+     * @param string|null $feeCurrency
+     * @param bool|null $handled
+     * @param string|null $handledTime
+     * @param string|null $handledBy
+     * @param int|null $noteCount
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -46,6 +52,12 @@ final class Dispute implements Model
         public readonly ?string $evidenceDueTime = null,
         public readonly ?string $openedTime = null,
         public readonly ?string $closedTime = null,
+        public readonly ?int $feeMinor = null,
+        public readonly ?string $feeCurrency = null,
+        public readonly ?bool $handled = null,
+        public readonly ?string $handledTime = null,
+        public readonly ?string $handledBy = null,
+        public readonly ?int $noteCount = null,
     ) {}
 
     /**
@@ -68,6 +80,12 @@ final class Dispute implements Model
             evidenceDueTime: Cast::string($data['evidence_due_time'] ?? null),
             openedTime: Cast::string($data['opened_time'] ?? null),
             closedTime: Cast::string($data['closed_time'] ?? null),
+            feeMinor: Cast::int($data['fee_minor'] ?? null),
+            feeCurrency: Cast::string($data['fee_currency'] ?? null),
+            handled: Cast::bool($data['handled'] ?? null),
+            handledTime: Cast::string($data['handled_time'] ?? null),
+            handledBy: Cast::string($data['handled_by'] ?? null),
+            noteCount: Cast::int($data['note_count'] ?? null),
         );
     }
 
@@ -91,6 +109,12 @@ final class Dispute implements Model
             'evidence_due_time' => $this->evidenceDueTime,
             'opened_time' => $this->openedTime,
             'closed_time' => $this->closedTime,
+            'fee_minor' => Cast::int64($this->feeMinor),
+            'fee_currency' => $this->feeCurrency,
+            'handled' => $this->handled,
+            'handled_time' => $this->handledTime,
+            'handled_by' => $this->handledBy,
+            'note_count' => $this->noteCount,
         ]);
     }
 }

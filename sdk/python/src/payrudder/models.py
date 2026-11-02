@@ -2057,6 +2057,8 @@ class _DisputeRequired(TypedDict):
     formal: bool
     provider_status: str
     opened_time: str
+    handled: bool
+    note_count: int
 
 
 class Dispute(_DisputeRequired, total=False):
@@ -2064,10 +2066,37 @@ class Dispute(_DisputeRequired, total=False):
     reason: str
     evidence_due_time: str
     closed_time: str
+    fee_minor: int
+    fee_currency: str
+    handled_time: str
+    handled_by: str
 
 
 class ListDisputesResponse(TypedDict):
     disputes: list[Dispute]
+
+
+class _DisputeEventRequired(TypedDict):
+    id: str
+    action: Literal["note", "handled", "unhandled"]
+    create_time: str
+
+
+class DisputeEvent(_DisputeEventRequired, total=False):
+    note: str
+    actor: str
+
+
+class ListDisputeEventsResponse(TypedDict):
+    events: list[DisputeEvent]
+
+
+class AddDisputeNoteRequest(TypedDict):
+    note: str
+
+
+class SetDisputeHandledRequest(TypedDict):
+    handled: bool
 
 
 class _CreateUploadSessionFileRequired(TypedDict):

@@ -1,4 +1,4 @@
-// Package command changes the payment ledger's data: the reset of a sandbox tenant.
+// Package command changes the payment ledger's data: the reset of a sandbox tenant, and what a seller writes on a dispute.
 package command
 
 import (
@@ -10,6 +10,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // ResetFunc deletes a sandbox tenant's data and reports the rows by table.
@@ -19,6 +20,8 @@ type ResetFunc func(ctx context.Context, tenant uuid.UUID) (map[string]int64, er
 type Deps struct {
 	// Reset deletes a sandbox tenant's attempts, ledger and receipts; nil means the reset is not configured.
 	Reset ResetFunc
+	// Disputes keeps the cases and what the seller did with them.
+	Disputes store.Disputes
 }
 
 // Configured reports whether a sandbox can be reset here.

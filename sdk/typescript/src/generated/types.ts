@@ -68,6 +68,10 @@ export interface AccountingSummary {
   currencies: Array<AccountingCurrency>;
 }
 
+export interface AddDisputeNoteRequest {
+  note: string;
+}
+
 /** A postal address as printed on an invoice. Every part is optional. */
 export interface Address {
   line1: string;
@@ -1244,6 +1248,29 @@ export interface Dispute {
   opened_time: string;
   /** Absent while the case is open */
   closed_time?: string;
+  /** What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee */
+  fee_minor?: Int64;
+  /** The currency of `fee_minor` */
+  fee_currency?: string;
+  /** Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider */
+  handled: boolean;
+  /** Absent when the case is not marked */
+  handled_time?: string;
+  /** Who marked it; absent when it is not marked and for a viewer of the account */
+  handled_by?: string;
+  /** How many notes you wrote (`GET /v1/disputes/{id}/history`) */
+  note_count: Int64;
+}
+
+export interface DisputeEvent {
+  id: string;
+  /** A note, the mark that the case was handled, or that mark lifted */
+  action: "note" | "handled" | "unhandled";
+  /** The text of a note; absent for a mark */
+  note?: string;
+  /** Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account */
+  actor?: string;
+  create_time: string;
 }
 
 export interface DunningSettings {
@@ -2108,6 +2135,10 @@ export interface ListCustomersResponse {
   next_page_token: string;
 }
 
+export interface ListDisputeEventsResponse {
+  events: Array<DisputeEvent>;
+}
+
 export interface ListDisputesQuery {
   /** Only the disputes of this invoice */
   invoice_id?: string;
@@ -2949,6 +2980,10 @@ export interface SetContractWithdrawalStatusRequestParams {
   note?: string;
   /** Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice. */
   refund_amount_minor?: Int64Input;
+}
+
+export interface SetDisputeHandledRequest {
+  handled: boolean;
 }
 
 export interface SetInvoiceLogoRequest {
