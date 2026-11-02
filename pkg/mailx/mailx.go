@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"mime"
 	"mime/quotedprintable"
 	"net"
 	stdmail "net/mail"
@@ -29,6 +31,16 @@ type Message struct {
 	// Tags and Headers are sent by a provider that has them (Resend's `tags` and `headers`); SMTP ignores them.
 	Tags    []Tag
 	Headers map[string]string
+	// Attachments are files that go with the message. SMTP sends them as MIME parts and Resend in its `attachments` array (base64 `content`, the `filename`;
+	// its API reference, read 2026-11-02, caps an e-mail at 40 MB after encoding). Nafru takes Resend's shape; that it accepts attachments is UNVERIFIED.
+	Attachments []Attachment
+}
+
+// Attachment is one file sent with a message.
+type Attachment struct {
+	Filename    string
+	ContentType string
+	Data        []byte
 }
 
 // Tag labels a message at the provider.
@@ -62,19 +74,7 @@ func (s SMTP) Send(ctx context.Context, m Message) (string, error) {
 		timeout = 10 * time.Second
 	}
 	id := messageID(m)
-	boundary := "qb-" + id[:16]
-	var body bytes.Buffer
-	fmt.Fprintf(&body, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: <%s@payrudder.local>\r\nDate: %s\r\nMIME-Version: 1.0\r\n", m.From, m.To, encodeHeader(m.Subject), id,
-		time.Now().UTC().Format(time.RFC1123Z))
-	fmt.Fprintf(&body, "Content-Type: multipart/alternative; boundary=%q\r\n\r\n", boundary)
-	for _, part := range []struct{ typ, text string }{{"text/plain", m.Text}, {"text/html", m.HTML}} {
-		fmt.Fprintf(&body, "--%s\r\nContent-Type: %s; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n", boundary, part.typ)
-		w := quotedprintable.NewWriter(&body)
-		_, _ = w.Write([]byte(part.text))
-		_ = w.Close()
-		body.WriteString("\r\n")
-	}
-	fmt.Fprintf(&body, "--%s--\r\n", boundary)
+	body := mime822(m, id, time.Now().UTC())
 
 	d := net.Dialer{Timeout: timeout}
 	conn, err := d.DialContext(ctx, "tcp", s.Addr)
@@ -107,7 +107,7 @@ func (s SMTP) Send(ctx context.Context, m Message) (string, error) {
 	if err != nil {
 		return "", &NotSentError{fmt.Errorf("DATA: %w", err)}
 	}
-	if _, err := w.Write(body.Bytes()); err != nil {
+	if _, err := w.Write(body); err != nil {
 		return "", fmt.Errorf("mail: write: %w", err)
 	}
 	if err := w.Close(); err != nil {
@@ -115,6 +115,46 @@ func (s SMTP) Send(ctx context.Context, m Message) (string, error) {
 	}
 	_ = c.Quit()
 	return id + "@payrudder.local", nil
+}
+
+// mime822 is the message as it goes over SMTP: the text and the HTML as alternatives, and when there are attachments those two inside a multipart/mixed with one
+// base64 part for each file. The file names are written by mime.FormatMediaType, which quotes or encodes whatever a name holds (a line break cannot get out of it).
+func mime822(m Message, id string, now time.Time) []byte {
+	alt := "qb-" + id[:16]
+	var body bytes.Buffer
+	fmt.Fprintf(&body, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: <%s@payrudder.local>\r\nDate: %s\r\nMIME-Version: 1.0\r\n", m.From, m.To, encodeHeader(m.Subject), id, now.Format(time.RFC1123Z))
+	outer := ""
+	if len(m.Attachments) > 0 {
+		outer = "qm-" + id[:16]
+		fmt.Fprintf(&body, "Content-Type: multipart/mixed; boundary=%q\r\n\r\n--%s\r\n", outer, outer)
+	}
+	fmt.Fprintf(&body, "Content-Type: multipart/alternative; boundary=%q\r\n\r\n", alt)
+	for _, part := range []struct{ typ, text string }{{"text/plain", m.Text}, {"text/html", m.HTML}} {
+		fmt.Fprintf(&body, "--%s\r\nContent-Type: %s; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n", alt, part.typ)
+		w := quotedprintable.NewWriter(&body)
+		_, _ = w.Write([]byte(part.text))
+		_ = w.Close()
+		body.WriteString("\r\n")
+	}
+	fmt.Fprintf(&body, "--%s--\r\n", alt)
+	for _, a := range m.Attachments {
+		typ := a.ContentType
+		if typ == "" {
+			typ = "application/octet-stream"
+		}
+		fmt.Fprintf(&body, "--%s\r\nContent-Type: %s\r\nContent-Disposition: %s\r\nContent-Transfer-Encoding: base64\r\n\r\n", outer,
+			mime.FormatMediaType(typ, map[string]string{"name": a.Filename}), mime.FormatMediaType("attachment", map[string]string{"filename": a.Filename}))
+		enc := base64.StdEncoding.EncodeToString(a.Data)
+		for len(enc) > 76 {
+			body.WriteString(enc[:76] + "\r\n")
+			enc = enc[76:]
+		}
+		body.WriteString(enc + "\r\n")
+	}
+	if outer != "" {
+		fmt.Fprintf(&body, "--%s--\r\n", outer)
+	}
+	return body.Bytes()
 }
 
 func messageID(m Message) string {

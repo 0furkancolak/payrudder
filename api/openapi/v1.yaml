@@ -353,8 +353,12 @@ paths:
     get:
       operationId: getContractSnapshot
       summary: The page the customer accepted, as it was rendered then
-      description: A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
-      parameters: [{ $ref: "#/components/parameters/ID" }]
+      description: |
+        A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+        With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only, in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML page is the only copy.
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: pdf, in: query, required: false, schema: { type: boolean, default: false }, description: "Also draw the page as a PDF" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetContractSnapshotResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -2265,6 +2269,19 @@ paths:
       responses:
         "200": { description: "The accepted page", content: { text/html: { schema: { type: string } } } }
         "404": { description: "Not this customer's acceptance, or the link does not exist", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /c/{token}/agreements/{id}/pdf:
+    get:
+      operationId: portalAgreementPdf
+      summary: The page the customer accepted, as a PDF to keep
+      description: The same stored snapshot drawn as a PDF (text only, ending with the sha256 of the page), as a download. Only an acceptance of this portal's customer opens; any other id is a 404. A text the PDF font cannot draw (Arabic, a name in Chinese) has no PDF; the answer is a 404 page that points to the HTML page.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "The PDF", content: { application/pdf: { schema: { type: string, format: binary } } } }
+        "404": { description: "Not this customer's acceptance, the link does not exist, or the text has no PDF", content: { text/html: { schema: { type: string } } } }
         "429": { description: "Too many requests" }
   /v1/payment-links:
     post:
@@ -11265,6 +11282,8 @@ components:
         html: { type: string }
         sha256: { type: string }
         group_id: { type: string, format: uuid }
+        pdf: { type: string, format: byte, description: "The page as a PDF, base64; only with pdf=true and when the page can be drawn" }
+        pdf_unavailable: { type: boolean, description: "true when pdf=true was asked and the page cannot be drawn in the PDF font" }
     ContractWithdrawal:
       type: object
       required: [id, customer_id, customer_external_id, subscription_id, invoice_id, statement, source, status, receive_time, decide_time, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_time]

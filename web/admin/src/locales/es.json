@@ -5989,7 +5989,17 @@
         "source": "Dónde se aceptó",
         "allSources": "En cualquier lugar"
       },
-      "showMore": "Mostrar más"
+      "showMore": "Mostrar más",
+      "requirements": "Lo que el cliente debe aceptar",
+      "reqOff": "No exiges acuerdos: no se le pide nada a este cliente.",
+      "reqSatisfied": "Todo lo exigido está aceptado",
+      "reqOpen": "Por aceptar: {n}",
+      "reqAccepted": "Aceptado {time}",
+      "reqToAccept": "Por aceptar",
+      "reqConsents": "A un consumidor también se le pide que solicite el inicio inmediato del servicio y que reconozca la pérdida del derecho de desistimiento.",
+      "reqMissing": "No hay texto publicado para: {kinds}. Se rechaza el pago hasta que lo haya.",
+      "downloadPdf": "Descargar PDF",
+      "pdfUnavailable": "No se puede hacer un PDF de esta página: su texto tiene caracteres que la fuente del PDF no puede dibujar. Vea la página en su lugar."
     },
     "record": {
       "title": "Registrar un desistimiento",

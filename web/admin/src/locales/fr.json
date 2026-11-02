@@ -5989,7 +5989,17 @@
         "source": "Où elle a été acceptée",
         "allSources": "Partout"
       },
-      "showMore": "Afficher plus"
+      "showMore": "Afficher plus",
+      "requirements": "Ce que le client doit accepter",
+      "reqOff": "Vous n'exigez aucun accord : rien n'est demandé à ce client.",
+      "reqSatisfied": "Tout ce qui est exigé est accepté",
+      "reqOpen": "Reste à accepter : {n}",
+      "reqAccepted": "Accepté {time}",
+      "reqToAccept": "À accepter",
+      "reqConsents": "Un consommateur doit aussi demander que le service commence immédiatement et reconnaître la perte du droit de rétractation.",
+      "reqMissing": "Aucun texte publié pour : {kinds}. Un paiement est refusé tant qu'il n'y en a pas.",
+      "downloadPdf": "Télécharger le PDF",
+      "pdfUnavailable": "Aucun PDF ne peut être fait de cette page : son texte contient des caractères que la police du PDF ne sait pas dessiner. Affichez plutôt la page."
     },
     "record": {
       "title": "Enregistrer une rétractation",

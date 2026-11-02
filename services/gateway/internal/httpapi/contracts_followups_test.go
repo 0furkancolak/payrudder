@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -410,6 +412,59 @@ func TestThePortalListsWhatTheCustomerAcceptedWithTheStoredPage(t *testing.T) {
 	}
 	if resp, _ := get(t, ts, "/c/no-such-portal/agreements/acc-1"); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("an unknown portal: %d", resp.StatusCode)
+	}
+}
+
+func TestThePortalOffersAPdfCopyOfWhatTheCustomerAcceptedExceptForATextTheFontCannotDraw(t *testing.T) {
+	ts, c, _ := paidCustomerServer(t)
+	arabic := acceptedBy("acc-ar", "privacy", 1)
+	arabic.LocaleServed = "ar"
+	c.accepted = []*plansv1.ContractAcceptance{acceptedBy("acc-1", "tos", 2), arabic}
+	_, page := get(t, ts, "/c/"+portalTok)
+	if !strings.Contains(page, `href="/c/`+portalTok+`/agreements/acc-1/pdf"`) || !strings.Contains(page, "PDF copy") {
+		t.Errorf("the portal offers no PDF of the terms:\n%s", page)
+	}
+	if strings.Contains(page, "acc-ar/pdf") {
+		t.Error("a PDF is offered for an Arabic text, which the font cannot draw")
+	}
+
+	c.snapshots = nil
+	resp, body := get(t, ts, "/c/"+portalTok+"/agreements/acc-1/pdf")
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/pdf" || !strings.HasPrefix(body, "%PDF-") || resp.Header.Get("Cache-Control") != "no-store" ||
+		!strings.Contains(resp.Header.Get("Content-Disposition"), `attachment; filename="agreement-abc123def456.pdf"`) || resp.Header.Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("the PDF: %d %v\n%q", resp.StatusCode, resp.Header, body)
+	}
+	if len(c.snapshots) != 1 || !c.snapshots[0].GetIncludePdf() {
+		t.Errorf("the PDF was not asked of the record: %+v", c.snapshots)
+	}
+	// The stored page itself is not made to draw a PDF nobody asked for.
+	c.snapshots = nil
+	get(t, ts, "/c/"+portalTok+"/agreements/acc-1")
+	if len(c.snapshots) != 1 || c.snapshots[0].GetIncludePdf() {
+		t.Errorf("the page asked for a PDF: %+v", c.snapshots)
+	}
+	// A text with no PDF, an acceptance of someone else and a portal that does not exist are not-found pages, never a PDF.
+	for name, path := range map[string]string{"a text with no PDF": "/c/" + portalTok + "/agreements/acc-ar/pdf", "another customer's": "/c/" + portalTok + "/agreements/acc-someone-else/pdf", "no such portal": "/c/no-such-portal/agreements/acc-1/pdf"} {
+		resp, body := get(t, ts, path)
+		if resp.StatusCode != http.StatusNotFound || resp.Header.Get("Content-Type") == "application/pdf" || strings.HasPrefix(body, "%PDF") {
+			t.Errorf("%s: %d %s", name, resp.StatusCode, resp.Header.Get("Content-Type"))
+		}
+	}
+}
+
+func TestTheSellerGetsThePdfOfASnapshotOnlyWhenItAsksForIt(t *testing.T) {
+	ts, _ := newTestServer(t)
+	_, plain := do(t, ts, http.MethodGet, "/v1/contract-acceptances/acc-1/snapshot", "live-key", "")
+	if plain["pdf"] != "" || plain["pdf_unavailable"] != false || plain["sha256"] == nil {
+		t.Errorf("without pdf=true: %v", plain)
+	}
+	resp, withPdf := do(t, ts, http.MethodGet, "/v1/contract-acceptances/acc-1/snapshot?pdf=true", "live-key", "")
+	raw, err := base64.StdEncoding.DecodeString(fmt.Sprint(withPdf["pdf"]))
+	if resp.StatusCode != http.StatusOK || err != nil || !strings.HasPrefix(string(raw), "%PDF-") {
+		t.Errorf("with pdf=true: %d %v %v", resp.StatusCode, withPdf, err)
+	}
+	if _, none := do(t, ts, http.MethodGet, "/v1/contract-acceptances/acc-ar/snapshot?pdf=true", "live-key", ""); none["pdf"] != "" || none["pdf_unavailable"] != true {
+		t.Errorf("a text with no PDF: %v", none)
 	}
 }
 

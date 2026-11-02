@@ -5989,7 +5989,17 @@
         "source": "Where it was accepted",
         "allSources": "Anywhere"
       },
-      "showMore": "Show more"
+      "showMore": "Show more",
+      "requirements": "What the customer has to accept",
+      "reqOff": "You do not require agreements: nothing is asked of this customer.",
+      "reqSatisfied": "Everything required is accepted",
+      "reqOpen": "Still to accept: {n}",
+      "reqAccepted": "Accepted {time}",
+      "reqToAccept": "To accept",
+      "reqConsents": "A consumer is also asked to ask for the service to start at once and to acknowledge losing the right of withdrawal.",
+      "reqMissing": "No text is published for: {kinds}. A payment is refused until one is.",
+      "downloadPdf": "Download PDF",
+      "pdfUnavailable": "No PDF can be made of this page: its text has characters the PDF font cannot draw. View the page instead."
     },
     "record": {
       "title": "Record a withdrawal",

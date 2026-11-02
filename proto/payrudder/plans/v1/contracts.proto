@@ -299,11 +299,17 @@ message ListContractAcceptancesResponse {
 message GetContractSnapshotRequest {
   // The acceptance id, or any acceptance of the group (the page covers the whole group).
   string acceptance_id = 1;
+  // Also draw the page as a PDF (the customer's copy). The PDF is read from the stored page and ends with its sha256.
+  bool include_pdf = 2;
 }
 message GetContractSnapshotResponse {
   string html = 1;
   string sha256 = 2;
   string group_id = 3;
+  // The page as a PDF, set when include_pdf was asked and the page can be drawn.
+  bytes pdf = 4;
+  // True when include_pdf was asked and the page cannot be drawn in the embedded font (Arabic, or a character the font has no glyph for): the HTML page is then the only copy.
+  bool pdf_unavailable = 5;
 }
 
 message ContractWithdrawal {
