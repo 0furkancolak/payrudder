@@ -82,6 +82,39 @@ func (q *Queries) CountDiscrepancies(ctx context.Context, arg CountDiscrepancies
 	return items, nil
 }
 
+const countOpenLiveDiscrepancies = `-- name: CountOpenLiveDiscrepancies :many
+SELECT kind, count(*)::bigint AS n FROM reconciliation_discrepancies
+WHERE status = 'open' AND environment = 'live'
+GROUP BY kind ORDER BY kind
+`
+
+type CountOpenLiveDiscrepanciesRow struct {
+	Kind string
+	N    int64
+}
+
+// The live discrepancies waiting for an operator (open, not explained or resolved), by kind, for the metric reconciliation_discrepancies_open. It names no tenant: it counts
+// the pooled database, or the schema of the one tenant a cell holds.
+func (q *Queries) CountOpenLiveDiscrepancies(ctx context.Context) ([]CountOpenLiveDiscrepanciesRow, error) {
+	rows, err := q.db.Query(ctx, countOpenLiveDiscrepancies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountOpenLiveDiscrepanciesRow{}
+	for rows.Next() {
+		var i CountOpenLiveDiscrepanciesRow
+		if err := rows.Scan(&i.Kind, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const explainDiscrepancy = `-- name: ExplainDiscrepancy :exec
 UPDATE reconciliation_discrepancies SET status = 'explained', note = $1, owner = $2, resolution = '', resolved_at = NULL, updated_at = now()
 WHERE tenant_id = $3 AND id = $4
