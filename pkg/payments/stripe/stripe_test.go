@@ -58,7 +58,6 @@ func (f *fake) client(t *testing.T) *Client {
 func TestNewValidatesTheSettings(t *testing.T) {
 	for name, s := range map[string]Settings{
 		"no key":      {WebhookSecret: secret},
-		"no secret":   {APIKey: key},
 		"a pub key":   {APIKey: "pk_test_abc", WebhookSecret: secret},
 		"bare prefix": {APIKey: "sk_test_", WebhookSecret: secret},
 		"bad url":     {APIKey: key, WebhookSecret: secret, BaseURL: "not a url"},
@@ -469,5 +468,100 @@ func TestEventsThatAreDeliberatelyIgnored(t *testing.T) {
 	body := `{"id":"evt_y","type":"checkout.session.completed","data":{"object":{"payment_status":"no_payment_required","metadata":{"payrudder_key":"k"}}}}`
 	if n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now)); err != nil || n.Kind != payments.KindIgnored {
 		t.Errorf("no_payment_required: %+v %v", n, err)
+	}
+}
+
+// Stripe's advice_code do_not_try_again is the only thing its documentation marks as "do not retry" (docs.stripe.com/declines/card.md): it makes a decline final, on a
+// refused charge, on a PaymentIntent a status query finds. Every other advice, and every decline code (stolen_card, fraudulent...), leaves it retryable.
+func TestDoNotTryAgainMakesADeclineFinal(t *testing.T) {
+	ctx := context.Background()
+	req := payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "inv-1", AmountMinor: 1000, Currency: "EUR", PaymentMethod: "pm_card"}
+	for _, c := range []struct {
+		name, body string
+		final      bool
+	}{
+		{"do not try again", `{"error":{"type":"card_error","code":"card_declined","decline_code":"generic_decline","advice_code":"do_not_try_again"}}`, true},
+		{"try again later", `{"error":{"type":"card_error","code":"card_declined","decline_code":"generic_decline","advice_code":"try_again_later"}}`, false},
+		{"confirm card data", `{"error":{"type":"card_error","code":"card_declined","decline_code":"incorrect_cvc","advice_code":"confirm_card_data"}}`, false},
+		{"no advice, a stolen card", `{"error":{"type":"card_error","code":"card_declined","decline_code":"stolen_card"}}`, false},
+	} {
+		_, err := newFake(t, 402, c.body).client(t).Charge(ctx, req)
+		var d *payments.DeclinedError
+		if !errors.As(err, &d) || d.Final != c.final {
+			t.Errorf("%s: %v, want a decline with Final=%v", c.name, err, c.final)
+		}
+	}
+
+	// A PaymentIntent that comes back declined from a confirm (200 with requires_payment_method) and from a status query carries it in last_payment_error.
+	pi := `{"id":"pi_9","status":"requires_payment_method","last_payment_error":{"code":"card_declined","decline_code":"generic_decline","advice_code":"do_not_try_again"}}`
+	_, err := newFake(t, 200, pi).client(t).Charge(ctx, req)
+	var d *payments.DeclinedError
+	if !errors.As(err, &d) || !d.Final || d.Code != "generic_decline" {
+		t.Errorf("charge answered with a declined intent: %v", err)
+	}
+	st, err := newFake(t, 200, `{"data":[`+pi+`]}`).client(t).Status(ctx, "k")
+	if err != nil || st.State != payments.StateDeclined || !st.Final {
+		t.Errorf("status: %+v %v", st, err)
+	}
+	st, err = newFake(t, 200, `{"data":[{"id":"pi_9","status":"requires_payment_method","last_payment_error":{"decline_code":"generic_decline","advice_code":"try_again_later"}}]}`).client(t).Status(ctx, "k")
+	if err != nil || st.State != payments.StateDeclined || st.Final {
+		t.Errorf("status with another advice: %+v %v", st, err)
+	}
+}
+
+// The webhook endpoint is created at Stripe: its address, exactly the events the adapter handles, the API version the adapter reads, and a key that repeats for the same
+// request; the signing secret Stripe shows only then is handed back.
+func TestRegisterWebhookCreatesTheEndpointAndReturnsTheSecret(t *testing.T) {
+	f := newFake(t, 200, `{"id":"we_1","object":"webhook_endpoint","secret":"whsec_new","enabled_events":["payment_intent.succeeded"],"status":"enabled"}`)
+	c, err := New(Settings{APIKey: key, BaseURL: f.srv.URL}, 0) // connected before any endpoint exists: no signing secret yet
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep, err := c.RegisterWebhook(context.Background(), payments.WebhookRegistration{URL: "https://pay.example.com/webhooks/stripe/t/live"})
+	if err != nil || ep.ID != "we_1" || ep.Secret != "whsec_new" {
+		t.Fatalf("register: %+v %v", ep, err)
+	}
+	if f.last.Method != http.MethodPost || f.last.URL.Path != "/v1/webhook_endpoints" || f.last.Header.Get("Stripe-Version") != APIVersion {
+		t.Errorf("request: %s %s %v", f.last.Method, f.last.URL.Path, f.last.Header)
+	}
+	if f.form.Get("url") != "https://pay.example.com/webhooks/stripe/t/live" || f.form.Get("api_version") != APIVersion {
+		t.Errorf("form: %v", f.form)
+	}
+	var sent []string
+	for i := range WebhookEvents {
+		sent = append(sent, f.form.Get("enabled_events["+string(rune('0'+i))+"]"))
+	}
+	if strings.Join(sent, ",") != strings.Join(WebhookEvents, ",") || f.form.Get("connect") != "" {
+		t.Errorf("events sent %v, want exactly %v and no connect endpoint", sent, WebhookEvents)
+	}
+	first := f.last.Header.Get("Idempotency-Key")
+	if _, err := c.RegisterWebhook(context.Background(), payments.WebhookRegistration{URL: "https://pay.example.com/webhooks/stripe/t/live"}); err != nil || f.last.Header.Get("Idempotency-Key") != first || first == "" {
+		t.Errorf("the same request must repeat its key: %q then %q (%v)", first, f.last.Header.Get("Idempotency-Key"), err)
+	}
+	if _, err := c.RegisterWebhook(context.Background(), payments.WebhookRegistration{URL: "https://pay.example.com/webhooks/stripe/t/sandbox"}); err != nil || f.last.Header.Get("Idempotency-Key") == first {
+		t.Errorf("another address must not reuse the key")
+	}
+	for _, bad := range []string{"", "http://pay.example.com/hook", "not a url", "https://"} {
+		if _, err := c.RegisterWebhook(context.Background(), payments.WebhookRegistration{URL: bad}); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	// An answer without the secret is no registration (it could never be verified).
+	if _, err := newFake(t, 200, `{"id":"we_2"}`).client(t).RegisterWebhook(context.Background(), payments.WebhookRegistration{URL: "https://pay.example.com/h"}); err == nil {
+		t.Error("an endpoint without a secret was accepted")
+	}
+}
+
+// An account connected before its webhook endpoint exists believes no notification: an empty secret must never verify anything (an HMAC with an empty key is forgeable).
+func TestWithoutASigningSecretNothingIsBelieved(t *testing.T) {
+	c, err := New(Settings{APIKey: key}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := []byte(`{"id":"evt_1","type":"payment_intent.succeeded","created":1,"data":{"object":{"id":"pi_1"}}}`)
+	h := http.Header{}
+	h.Set("Stripe-Signature", SignatureHeader("", time.Now(), body)) // signed with the empty key
+	if _, err := c.ConfirmNotification(context.Background(), body, h); !errors.Is(err, payments.ErrUnverified) {
+		t.Fatalf("a body signed with an empty key: %v, want ErrUnverified", err)
 	}
 }

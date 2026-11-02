@@ -49,8 +49,9 @@ const APIVersion = "2026-09-30.endive"
 type Settings struct {
 	// APIKey is a secret or restricted key: sk_live_..., sk_test_..., rk_live_... or rk_test_.... Its prefix says whether the account is live or test.
 	APIKey string `json:"api_key"`
-	// WebhookSecret is the signing secret (whsec_...) of the webhook endpoint Stripe sends to Payrudder's webhook URL.
-	WebhookSecret string `json:"webhook_secret"`
+	// WebhookSecret is the signing secret (whsec_...) of the webhook endpoint Stripe sends to Payrudder's webhook URL. It can be left out when the account is connected
+	// and filled in by RegisterWebhook, which creates the endpoint and stores the secret Stripe shows then; until it is there no notification is believed.
+	WebhookSecret string `json:"webhook_secret,omitempty"`
 	// BaseURL defaults to Stripe's API host. Another host is for tests and is refused when a person connects the account themselves.
 	BaseURL string `json:"base_url,omitempty"`
 	// WebhookTolerance is how old a signed webhook may be, in seconds. Default 300, Stripe's own default.
@@ -72,8 +73,8 @@ type Client struct {
 
 // New returns a client with the given per-request timeout (default 10 s).
 func New(s Settings, timeout time.Duration) (*Client, error) {
-	if s.APIKey == "" || s.WebhookSecret == "" {
-		return nil, errors.New("stripe: api_key and webhook_secret are required")
+	if s.APIKey == "" {
+		return nil, errors.New("stripe: api_key is required")
 	}
 	if !validKey(s.APIKey) {
 		return nil, errors.New("stripe: api_key must be a secret or restricted key (sk_live_, sk_test_, rk_live_ or rk_test_)")
@@ -176,6 +177,7 @@ type apiError struct {
 		Type        string `json:"type"`
 		Code        string `json:"code"`
 		DeclineCode string `json:"decline_code"`
+		AdviceCode  string `json:"advice_code"`
 		Message     string `json:"message"`
 	} `json:"error"`
 }
@@ -251,7 +253,7 @@ func (c *Client) refusal(resp *http.Response, raw []byte) error {
 		if code == "" {
 			code = "card_declined"
 		}
-		return &payments.DeclinedError{Code: normalizeDecline(code)}
+		return &payments.DeclinedError{Code: normalizeDecline(code), Final: doNotRetry(e.Error.AdviceCode)}
 	}
 	switch retry := resp.Header.Get("Stripe-Should-Retry"); {
 	case retry == "false":
@@ -264,6 +266,13 @@ func (c *Client) refusal(resp *http.Response, raw []byte) error {
 	}
 	return &Error{Status: resp.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message}
 }
+
+// doNotRetry reads Stripe's advice on a declined card payment. Of the three advice codes only do_not_try_again says not to retry: "The card was declined and you
+// shouldn't use it again for the same transaction" (docs.stripe.com/declines/card.md, read 2026-11-02); try_again_later and confirm_card_data do not. The decline
+// codes themselves never say it: even stolen_card, lost_card and fraudulent only say what not to tell the customer (docs.stripe.com/declines/codes.md), so no decline code
+// is classified here. UNVERIFIED: that "the same transaction" covers a later dunning attempt of the same invoice (Payrudder treats it so), and that Stripe sends the
+// advice at all for an off-session charge; no account has been used.
+func doNotRetry(advice string) bool { return advice == "do_not_try_again" }
 
 // normalizeDecline gives one code to "the customer must come back and authenticate": authentication_required, and authentication_not_handled, the decline an
 // issuer gives when the customer tried to go on without it (docs.stripe.com/declines/codes, read 2026-11-02). The Stripe-vocabulary codes otherwise pass as they are.
@@ -307,7 +316,13 @@ type paymentIntent struct {
 	LastPaymentError *struct {
 		Code        string `json:"code"`
 		DeclineCode string `json:"decline_code"`
+		AdviceCode  string `json:"advice_code"`
 	} `json:"last_payment_error"`
+}
+
+// final reports Stripe's advice not to try the payment again (last_payment_error.advice_code, docs.stripe.com/api/payment_intents/object.md, read 2026-11-02).
+func (p paymentIntent) final() bool {
+	return p.LastPaymentError != nil && doNotRetry(p.LastPaymentError.AdviceCode)
 }
 
 func (p paymentIntent) declineCode() string {
@@ -363,7 +378,7 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 	case "requires_action":
 		return payments.ChargeResult{}, &payments.DeclinedError{Code: "authentication_required"}
 	default: // requires_payment_method, requires_confirmation, canceled
-		return payments.ChargeResult{}, &payments.DeclinedError{Code: pi.declineCode()}
+		return payments.ChargeResult{}, &payments.DeclinedError{Code: pi.declineCode(), Final: pi.final()}
 	}
 }
 
@@ -420,7 +435,7 @@ func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult,
 	case "succeeded":
 		return payments.StatusResult{State: payments.StateSucceeded, ChargeID: pi.ID}, nil
 	case "requires_payment_method", "canceled":
-		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: pi.declineCode()}, nil
+		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: pi.declineCode(), Final: pi.final()}, nil
 	case "requires_action":
 		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: "authentication_required"}, nil
 	}
@@ -472,6 +487,44 @@ func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutI
 	return payments.Checkout{URL: out.URL, Ref: out.ID}, nil
 }
 
+// WebhookEvents are the event types the adapter turns into notifications (ConfirmNotification); the endpoint RegisterWebhook creates is enabled for exactly these.
+var WebhookEvents = []string{
+	"payment_intent.succeeded", "payment_intent.payment_failed",
+	"checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed",
+	"refund.updated", "refund.failed",
+}
+
+// RegisterWebhook creates the webhook endpoint at Stripe (POST /v1/webhook_endpoints, docs.stripe.com/api/webhook_endpoints/create, read 2026-11-02): enabled for
+// WebhookEvents and generating its events with the API version the adapter reads (api_version, one of the documented values), so a payload is shaped as
+// ConfirmNotification expects whatever the account's own default is. The endpoint is an account endpoint (connect defaults to false) and sends full objects
+// ("snapshot"): the call has no parameter for the thin payloads of event destinations. The signing secret is "populated" in this answer (the page says
+// nothing of a later retrieval, so it is taken now). The Idempotency-Key derives from the address, the events and the version: a repeated click inside Stripe's
+// 24 hours gets the first answer instead of a second endpoint; after that a second call creates a second endpoint, and the old one is deleted at Stripe.
+// UNVERIFIED: the permission a restricted key needs for it; behaviour against a real account.
+func (c *Client) RegisterWebhook(ctx context.Context, r payments.WebhookRegistration) (payments.WebhookEndpoint, error) {
+	u, err := url.Parse(r.URL)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return payments.WebhookEndpoint{}, errors.New("stripe: the webhook address must be an https:// URL")
+	}
+	form := url.Values{"url": {r.URL}, "api_version": {c.s.APIVersion}, "description": {"Payrudder"}}
+	for i, e := range WebhookEvents {
+		form.Set("enabled_events["+strconv.Itoa(i)+"]", e)
+	}
+	sum := sha256.Sum256([]byte(r.URL + "|" + c.s.APIVersion + "|" + strings.Join(WebhookEvents, ",")))
+	var out struct {
+		ID            string   `json:"id"`
+		Secret        string   `json:"secret"`
+		EnabledEvents []string `json:"enabled_events"`
+	}
+	if err := c.do(ctx, http.MethodPost, "/v1/webhook_endpoints", form, "payrudder-webhook-"+hex.EncodeToString(sum[:16]), &out); err != nil {
+		return payments.WebhookEndpoint{}, err
+	}
+	if out.ID == "" || out.Secret == "" {
+		return payments.WebhookEndpoint{}, errors.New("stripe: the webhook endpoint came back without an id or a signing secret")
+	}
+	return payments.WebhookEndpoint{ID: out.ID, Secret: out.Secret, Events: out.EnabledEvents}, nil
+}
+
 // SignatureHeader builds a Stripe-Signature header value for body at time ts (what Stripe does when it sends). Used to test and to simulate.
 func SignatureHeader(secret string, ts time.Time, body []byte) string {
 	unix := strconv.FormatInt(ts.Unix(), 10)
@@ -489,6 +542,9 @@ func sign(secret, ts string, body []byte) string {
 var ErrBadSignature = fmt.Errorf("stripe: bad webhook signature: %w", payments.ErrUnverified)
 
 func (c *Client) verify(body []byte, header http.Header) error {
+	if c.s.WebhookSecret == "" {
+		return fmt.Errorf("%w: this account has no webhook secret yet: register the webhook endpoint", ErrBadSignature)
+	}
 	ts, sigs := "", []string(nil)
 	for _, part := range strings.Split(header.Get("Stripe-Signature"), ",") {
 		k, v, ok := strings.Cut(strings.TrimSpace(part), "=")
@@ -626,4 +682,5 @@ var (
 	_ payments.HealthChecker           = (*Client)(nil)
 	_ payments.KeyModer                = (*Client)(nil)
 	_ payments.LiveModer               = (*Client)(nil)
+	_ payments.WebhookRegistrar        = (*Client)(nil)
 )

@@ -1844,8 +1844,11 @@ func (x *PaymentSucceeded) GetPspChargeId() string {
 }
 
 type PaymentDeclined struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	DeclineCode   string                 `protobuf:"bytes,1,opt,name=decline_code,json=declineCode,proto3" json:"decline_code,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	DeclineCode string                 `protobuf:"bytes,1,opt,name=decline_code,json=declineCode,proto3" json:"decline_code,omitempty"`
+	// The provider said the payment must not be tried again with this payment method (Stripe's advice_code do_not_try_again): dunning stops at once and the invoice is
+	// left for the customer to pay another way. False says nothing about whether a retry would work.
+	Final         bool `protobuf:"varint,2,opt,name=final,proto3" json:"final,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1885,6 +1888,13 @@ func (x *PaymentDeclined) GetDeclineCode() string {
 		return x.DeclineCode
 	}
 	return ""
+}
+
+func (x *PaymentDeclined) GetFinal() bool {
+	if x != nil {
+		return x.Final
+	}
+	return false
 }
 
 type PaymentErrored struct {
@@ -2001,10 +2011,12 @@ func (x *PaymentRefunded) GetPspRefundId() string {
 }
 
 type PaymentStatus struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	State         PaymentStatus_State    `protobuf:"varint,1,opt,name=state,proto3,enum=payrudder.commands.v1.PaymentStatus_State" json:"state,omitempty"`
-	PspChargeId   string                 `protobuf:"bytes,2,opt,name=psp_charge_id,json=pspChargeId,proto3" json:"psp_charge_id,omitempty"`
-	DeclineCode   string                 `protobuf:"bytes,3,opt,name=decline_code,json=declineCode,proto3" json:"decline_code,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	State       PaymentStatus_State    `protobuf:"varint,1,opt,name=state,proto3,enum=payrudder.commands.v1.PaymentStatus_State" json:"state,omitempty"`
+	PspChargeId string                 `protobuf:"bytes,2,opt,name=psp_charge_id,json=pspChargeId,proto3" json:"psp_charge_id,omitempty"`
+	DeclineCode string                 `protobuf:"bytes,3,opt,name=decline_code,json=declineCode,proto3" json:"decline_code,omitempty"`
+	// With STATE_DECLINED: as PaymentDeclined.final.
+	Final         bool `protobuf:"varint,4,opt,name=final,proto3" json:"final,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2058,6 +2070,13 @@ func (x *PaymentStatus) GetDeclineCode() string {
 		return x.DeclineCode
 	}
 	return ""
+}
+
+func (x *PaymentStatus) GetFinal() bool {
+	if x != nil {
+		return x.Final
+	}
+	return false
 }
 
 type NotificationSent struct {
@@ -2287,20 +2306,22 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\x12\x1b\n" +
 	"\terror_key\x18\x02 \x01(\tR\berrorKey\"6\n" +
 	"\x10PaymentSucceeded\x12\"\n" +
-	"\rpsp_charge_id\x18\x01 \x01(\tR\vpspChargeId\"4\n" +
+	"\rpsp_charge_id\x18\x01 \x01(\tR\vpspChargeId\"J\n" +
 	"\x0fPaymentDeclined\x12!\n" +
-	"\fdecline_code\x18\x01 \x01(\tR\vdeclineCode\"y\n" +
+	"\fdecline_code\x18\x01 \x01(\tR\vdeclineCode\x12\x14\n" +
+	"\x05final\x18\x02 \x01(\bR\x05final\"y\n" +
 	"\x0ePaymentErrored\x12\x1c\n" +
 	"\tretryable\x18\x01 \x01(\bR\tretryable\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1b\n" +
 	"\terror_key\x18\x04 \x01(\tR\berrorKey\"5\n" +
 	"\x0fPaymentRefunded\x12\"\n" +
-	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\x89\x02\n" +
+	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\x9f\x02\n" +
 	"\rPaymentStatus\x12@\n" +
 	"\x05state\x18\x01 \x01(\x0e2*.payrudder.commands.v1.PaymentStatus.StateR\x05state\x12\"\n" +
 	"\rpsp_charge_id\x18\x02 \x01(\tR\vpspChargeId\x12!\n" +
-	"\fdecline_code\x18\x03 \x01(\tR\vdeclineCode\"o\n" +
+	"\fdecline_code\x18\x03 \x01(\tR\vdeclineCode\x12\x14\n" +
+	"\x05final\x18\x04 \x01(\bR\x05final\"o\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fSTATE_NOT_FOUND\x10\x01\x12\x13\n" +

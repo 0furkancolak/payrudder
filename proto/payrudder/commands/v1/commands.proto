@@ -230,6 +230,9 @@ message PaymentSucceeded {
 
 message PaymentDeclined {
   string decline_code = 1;
+  // The provider said the payment must not be tried again with this payment method (Stripe's advice_code do_not_try_again): dunning stops at once and the invoice is
+  // left for the customer to pay another way. False says nothing about whether a retry would work.
+  bool final = 2;
 }
 
 message PaymentErrored {
@@ -257,6 +260,8 @@ message PaymentStatus {
   State state = 1;
   string psp_charge_id = 2;
   string decline_code = 3;
+  // With STATE_DECLINED: as PaymentDeclined.final.
+  bool final = 4;
 }
 
 message NotificationSent {

@@ -3832,8 +3832,8 @@ paths:
       tags: [Product]
       summary: Connect the sandbox environment to a payment provider's test mode (the owner only)
       description: >
-        The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id), as for the live connection, with the
-        provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The
+        The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; Stripe: api_key, a test key, and
+        webhook_secret unless the endpoint is made through `.../webhook`), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The
         provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable),
         a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format
         (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it;
@@ -3842,7 +3842,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
       requestBody:
         required: true
         content:
@@ -3862,12 +3862,52 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
       responses:
         "204": { description: Removed }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/go-live/providers/{provider}/webhook:
+    post:
+      operationId: appRegisterLiveProviderWebhook
+      tags: [Product]
+      summary: Have the provider create the webhook endpoint of a live account (the owner only)
+      description: >
+        For a provider whose API can create it (Stripe): Payrudder asks the provider to send its notifications to this app's address
+        (`/webhooks/{provider}/{tenant}/live` on the public URL) for exactly the events it handles, and stores the signing secret the provider shows then in the
+        account, sealed; the secret is never in the answer. The request has no body and decides no address. A repeated request inside a day makes no second endpoint;
+        a later one makes another, and the first is deleted at the provider. 409 payments.provider.not_supported for a provider without this.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$' } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderWebhookEndpoint" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/sandbox/providers/{provider}/webhook:
+    post:
+      operationId: appRegisterSandboxProviderWebhook
+      tags: [Product]
+      summary: Have the provider create the webhook endpoint of the sandbox account (the owner only)
+      description: As for the live account, with the address `/webhooks/{provider}/{tenant}/sandbox` and the provider's test mode.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderWebhookEndpoint" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/integrations/e-invoice:
     get:
       operationId: appGetEInvoiceIntegration
@@ -4829,7 +4869,7 @@ paths:
         suits plan versions: a new version is new prices. Needs a provider whose adapter has a catalogue (Paddle).
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       requestBody:
         required: true
@@ -4854,7 +4894,7 @@ paths:
       summary: What Payrudder has created at the provider (products, prices, discounts)
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
         "200":
@@ -4874,7 +4914,7 @@ paths:
       summary: Make sure the customer exists at the provider, with an address for their country
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: external_id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
@@ -4895,7 +4935,7 @@ paths:
       summary: A page where the customer manages payment methods and sees invoices at the provider
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: external_id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
@@ -4913,7 +4953,7 @@ paths:
       description: Needs the plan version's price in the catalogue (sync it first). The provider applies a change at once; a change for the end of the period is refused.
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       requestBody:
@@ -4938,7 +4978,7 @@ paths:
         A payment that fails prevents the change.
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       requestBody:
@@ -4959,7 +4999,7 @@ paths:
       summary: Pause a subscription the provider runs, now or at the end of the paid period
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       requestBody:
@@ -4981,7 +5021,7 @@ paths:
       summary: Resume a paused subscription now (the provider starts a new billing period and charges it)
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
@@ -4998,7 +5038,7 @@ paths:
       summary: A page where the customer updates the payment method of a subscription the provider runs
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
@@ -5015,7 +5055,7 @@ paths:
       summary: Create a coupon at the provider
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       requestBody:
         required: true
@@ -5036,7 +5076,7 @@ paths:
       summary: The invoice document the provider issued for a transaction
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
         - { name: ref, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
@@ -8040,6 +8080,11 @@ components:
       type: object
     TenantProviderWebhookRequest:
       type: object
+    ProviderWebhookEndpoint:
+      type: object
+      required: [endpoint_id]
+      properties:
+        endpoint_id: { type: string, description: "The provider's id of the endpoint it created (we_... at Stripe). The signing secret is stored, never returned." }
     ListProviderSubscriptionsResponse:
       type: object
       required: [subscriptions]

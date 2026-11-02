@@ -36,6 +36,7 @@ func (s *Server) routes() []Route {
 		s.auditRoutes(),
 		s.sandboxRoutes(),
 		s.sandboxProviderRoutes(),
+		s.providerWebhookRoutes(),
 		s.memberRoutes(),
 		s.geoRoutes(),
 		s.operatorProviderRoutes(),

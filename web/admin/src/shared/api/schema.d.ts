@@ -4412,12 +4412,52 @@ export interface paths {
         get?: never;
         /**
          * Connect the sandbox environment to a payment provider's test mode (the owner only)
-         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; Stripe: api_key, a test key, and webhook_secret unless the endpoint is made through `.../webhook`), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
          */
         put: operations["appConnectSandboxProvider"];
         post?: never;
         /** Remove the sandbox environment's account at a payment provider (the owner only) */
         delete: operations["appRemoveSandboxProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/providers/{provider}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have the provider create the webhook endpoint of a live account (the owner only)
+         * @description For a provider whose API can create it (Stripe): Payrudder asks the provider to send its notifications to this app's address (`/webhooks/{provider}/{tenant}/live` on the public URL) for exactly the events it handles, and stores the signing secret the provider shows then in the account, sealed; the secret is never in the answer. The request has no body and decides no address. A repeated request inside a day makes no second endpoint; a later one makes another, and the first is deleted at the provider. 409 payments.provider.not_supported for a provider without this.
+         */
+        post: operations["appRegisterLiveProviderWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/sandbox/providers/{provider}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have the provider create the webhook endpoint of the sandbox account (the owner only)
+         * @description As for the live account, with the address `/webhooks/{provider}/{tenant}/sandbox` and the provider's test mode.
+         */
+        post: operations["appRegisterSandboxProviderWebhook"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -8758,6 +8798,10 @@ export interface components {
         };
         ProviderWebhookRequest: Record<string, never>;
         TenantProviderWebhookRequest: Record<string, never>;
+        ProviderWebhookEndpoint: {
+            /** @description The provider's id of the endpoint it created (we_... at Stripe). The signing secret is stored, never returned. */
+            endpoint_id: string;
+        };
         ListProviderSubscriptionsResponse: {
             subscriptions: components["schemas"]["ListProviderSubscriptionsSubscription"][];
         };
@@ -20393,7 +20437,7 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -20432,7 +20476,7 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -20448,6 +20492,64 @@ export interface operations {
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    appRegisterLiveProviderWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appRegisterSandboxProviderWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle" | "stripe";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
         };
     };
     appGetEInvoiceIntegration: {
@@ -22107,7 +22209,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22142,7 +22244,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22173,7 +22275,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 external_id: string;
             };
             cookie?: never;
@@ -22205,7 +22307,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 external_id: string;
             };
             cookie?: never;
@@ -22237,7 +22339,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22273,7 +22375,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22314,7 +22416,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22348,7 +22450,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22378,7 +22480,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22410,7 +22512,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22445,7 +22547,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 ref: string;
             };
             cookie?: never;

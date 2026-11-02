@@ -4347,7 +4347,7 @@
           "iyzico": "Canlı iyzico üye iş yeri anahtarlarınızı girin. Saklanmadan önce iyzico ile doğrulanır.",
           "paddle": "Canlı Paddle anahtarlarınızı ve webhook sırrınızı girin. Saklanmadan önce Paddle ile doğrulanır.",
           "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur.",
-          "stripe": "Canlı Stripe gizli anahtarınızı ve webhook uç noktasının imza sırrını girin. Anahtar saklanmadan önce Stripe ile doğrulanır."
+          "stripe": "Canlı Stripe gizli anahtarınızı girin. Saklanmadan önce Stripe ile denenir. Sonra webhook uç noktasını Payrudder'ın oluşturmasını sağlayın ya da kendi oluşturduğunuz uç noktanın imza sırrını yapıştırın."
         },
         "envNote": "Bu işlem canlı ortamı bağlar. Sandbox yerleşik simülatörle çalışmaya devam eder.",
         "testOk": "Sağlayıcı bu anahtarları kabul ediyor.",
@@ -4363,12 +4363,21 @@
         "sandboxIntro": {
           "iyzico": "iyzico sandbox hesabınızın anahtarlarını girin. Saklanmadan önce iyzico'nun test sunucusunda doğrulanır.",
           "paddle": "Paddle sandbox hesabınızın anahtarlarını ve webhook gizli anahtarını girin. Saklanmadan önce Paddle sandbox'ında doğrulanır.",
-          "banktransfer": "Banka havalesinin test modu yoktur: sandbox yerleşik simülatörü kullanır."
+          "banktransfer": "Banka havalesinin test modu yoktur: sandbox yerleşik simülatörü kullanır.",
+          "stripe": "Stripe hesabınızın test modu gizli anahtarını girin (sk_test_ veya rk_test_ ile başlar). Saklanmadan önce Stripe ile denenir ve test anahtarı olmalıdır."
         },
         "sandboxEnvNote": "Bu, sandbox ortamını sağlayıcının test moduna bağlar. Ödeme yöntemi sağlayıcının kendi jetonu olan bir sandbox çekimi buraya gider; pm_sandbox_ senaryoları simülatörde kalır. Canlı anahtarlar reddedilir ve canlı ortama dokunulmaz.",
         "sandboxKeys": {
           "iyzico": "iyzico sandbox panelinin anahtarlarını kullanın (API anahtarı sandbox- ile başlar).",
-          "paddle": "Paddle sandbox hesabınızın bir anahtarını kullanın (pdl_sdbx_ ile başlar)."
+          "paddle": "Paddle sandbox hesabınızın bir anahtarını kullanın (pdl_sdbx_ ile başlar).",
+          "stripe": "Stripe hesabınızın test modu anahtarını kullanın (sk_test_ veya rk_test_ ile başlar)."
+        },
+        "webhook": {
+          "title": "Webhook uç noktası",
+          "hint": "Stripe ödemeleri ve iadeleri Payrudder'a bir webhook uç noktası üzerinden bildirir. Payrudder uç noktayı (işlediği olaylar için) Stripe'a oluşturtup imza sırrını saklayabilir; elle bir şey kopyalanmaz. Yeniden oluşturmak Stripe'ta bir uç nokta daha ekler; eskisini orada silin.",
+          "register": "Webhook uç noktasını oluştur",
+          "registering": "Oluşturuluyor...",
+          "done": "Stripe uç noktayı oluşturdu ve Payrudder imza sırrını saklıyor."
         }
       },
       "help": {
@@ -4385,7 +4394,7 @@
         },
         "stripe": {
           "api_key": "Stripe panelinde Geliştiriciler, API anahtarları bölümünde kısıtlı ya da gizli bir canlı anahtar oluşturun (sk_live_ veya rk_live_ ile başlar).",
-          "webhook_secret": "Geliştiriciler, Webhook'lar bölümünde Payrudder'da gösterilen adrese; payment_intent, checkout.session ve refund olayları için bir uç nokta ekleyin ve imza sırrını kopyalayın (whsec_ ile başlar)."
+          "webhook_secret": "Boş bırakın ve bağlandıktan sonra \"Webhook uç noktasını oluştur\" düğmesini kullanın: Payrudder Stripe'tan uç noktayı oluşturmasını ister ve imza sırrını saklar. Ya da Developers, Webhooks altında Payrudder'da gösterilen adrese payment_intent, checkout.session ve refund olayları için kendiniz bir uç nokta ekleyip imza sırrını (whsec_ ile başlar) yapıştırın."
         }
       },
       "sandbox": {
