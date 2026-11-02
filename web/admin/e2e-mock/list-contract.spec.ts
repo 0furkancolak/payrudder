@@ -73,6 +73,12 @@ const paymentsPage = () =>
   );
 const providersPage = () => all(get(`/admin/v1/tenants/${TENANT}/provider-accounts`, { accounts: [] }), get(`/admin/v1/tenants/${TENANT}/provider-subscriptions`, { subscriptions: [] }));
 
+const lot = (id: string, source: string, remaining: string, created: number, expires: number) => ({ id, source, remaining, credits: remaining, create_time: day(created), expire_time: day(expires) });
+const entry = (id: string, kind: string, amount: string, reason: string, created: number) => ({ id, lot_id: "l1", kind, source: "manual", amount, reason, create_time: day(created) });
+/** What the credits page asks besides the list under test. */
+const creditsPage = () => all(get("/v1/customers", { customers: [customer("cus_1")] }), get("/v1/credit-packs", { packs: [] }), get("/v1/customers/cus_1", customer("cus_1")));
+const customer = (id: string) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, billing_currency: "TRY", create_time: day(1) });
+const ticket = (id: string, number: number, subject: string, last: number) => ({ id, number, account_id: "a", account_name: "Ada Labs", app_id: "", app_name: "", opened_by: "u1", opened_by_name: "Ada", subject, category: "question", priority: "normal", status: "open", assignee: "", create_time: day(1), update_time: day(last), last_message_time: day(last), last_author: "customer", first_response_due: day(last), first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false });
 const CASES: ListCase[] = [
   {
     name: "subscriptions",
@@ -324,6 +330,46 @@ const CASES: ListCase[] = [
     rows: ["cus_mid", "cus_old", "cus_new"],
     sort: { value: "oldest", order: ["cus_old", "cus_mid", "cus_new"] },
     filter: { chip: "Status", option: "Accepted", keep: ["cus_old"] },
+    url: "",
+  },
+  // --- credits: the balance of one customer, in two tabs
+  {
+    name: "credit lots of a customer",
+    path: "/credits?customer=cus_1",
+    mock: all(creditsPage(), get("/v1/customers/cus_1/credits", { balance: "666", lots: [lot("l1", "promo", "111", 5, 25), lot("l2", "manual", "222", 6, 22), lot("l3", "purchase", "333", 7, 28)] })),
+    scope: (page) => page.getByTestId("credits-balance"),
+    // The rows show how much is left of each lot.
+    rows: ["111", "222", "333"],
+    sort: { value: "expires_asc", order: ["222", "111", "333"] },
+    filter: { chip: "Source", option: "Manual", keep: ["222"] },
+    url: "lots-",
+  },
+  {
+    name: "credit ledger of a customer",
+    path: "/credits?customer=cus_1&view=ledger",
+    mock: all(creditsPage(), get("/v1/customers/cus_1/credits/ledger", { entries: [entry("e1", "grant", "100", "alpha reason", 5), entry("e2", "consume", "-900", "bravo reason", 6), entry("e3", "grant", "400", "charlie reason", 7)], next_page_token: "" })),
+    scope: (page) => page.getByTestId("credits-ledger"),
+    rows: ["alpha reason", "bravo reason", "charlie reason"],
+    sort: { value: "amount_desc", order: ["charlie reason", "alpha reason", "bravo reason"] },
+    filter: { chip: "Type", option: "Spent", keep: ["bravo reason"] },
+    url: "ledger-",
+  },
+  {
+    name: "usage: customers tab",
+    path: "/usage?tab=customers",
+    mock: (gw) => gw.on(usageReads),
+    rows: ["Busy Co", "Near Ltd", "Idle Inc"],
+    sort: { value: "name_desc", order: ["Near Ltd", "Idle Inc", "Busy Co"] },
+    filter: { chip: "Usage", option: "Without usage", keep: ["Idle Inc"] },
+    url: "customers-",
+  },
+  {
+    name: "support tickets (person)",
+    person: true,
+    path: "/app/support",
+    mock: get("/app/v1/support/tickets", { tickets: [ticket("t1", 1001, "Webhook is late", 12), ticket("t2", 1002, "Invoice question", 3), ticket("t3", 1003, "Payment failed", 20)] }),
+    rows: ["Webhook is late", "Invoice question", "Payment failed"],
+    sort: { value: "oldest", order: ["Invoice question", "Webhook is late", "Payment failed"] },
     url: "",
   },
 ];
