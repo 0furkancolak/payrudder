@@ -31,7 +31,7 @@ This is the trace the plan asked for (2026-11-02, from the code). *Key* means th
 | iyzico webhooks without a tenant in the URL (`/webhooks/{provider}`) | key, **gap** | The tenant is found from the charge's idempotency key, but which of several iyzico accounts holds the secret that signs it is not known: iyzico with several accounts cannot be told apart. |
 | bank transfer | base, **single** | Refused as a further account (`payments.account.single_only`): its details are printed on invoices. |
 | plans-svc `routing_rules.provider` | key | **Defect found and fixed here:** the column refused the tilde (`CHECK ... ^[a-z][a-z0-9_-]{0,31}$`), so a rule naming a labelled account could not be saved (an internal error). |
-| plans-svc `subscriptions.provider`, `provider_migrations.to_provider`, `domain.ValidProviderName` | key | Same defect, same fix (migration `00008_labelled_accounts`): a subscription could not be sold through a labelled account. |
+| plans-svc `subscriptions.provider`, `provider_migrations.to_provider`, `domain.ValidProviderName` | key | Same defect, same fix (migration `00009_labelled_accounts`): a subscription could not be sold through a labelled account. |
 | plans-svc subscription reports (`group_by=provider`) | key | `paddle` and `paddle~eu` are two rows. Deliberate for now: they are two accounts. |
 | billing-svc invoices and payment links (`provider` columns, no check) | key | Stored as written. Hosted pages and payment links offer methods through payments-worker's `invoice-methods`, which asks the account list; a labelled account's methods have **not** been run end to end. |
 | gateway `go-live/providers`, `go-live/routing`, `integrations/e-invoice*` | key | The account list, the default and the routing speak keys. |
