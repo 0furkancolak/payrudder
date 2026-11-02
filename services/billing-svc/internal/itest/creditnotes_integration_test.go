@@ -103,7 +103,8 @@ func testCreditNotes(t *testing.T) {
 		!strings.Contains(ev.Summary, first.GetNumber()) || !strings.Contains(string(ev.Detail), `"amount_minor": 300`) || !strings.Contains(string(ev.Detail), `"refund": false`) {
 		t.Errorf("the first note's entry = %+v (detail %s)", ev, ev.Detail)
 	}
-	if _, err := shared.sql.Exec(context.Background(), `DELETE FROM audit_events`); err == nil {
+	// Naming the tenant routes the statement to where its rows are (its schema in a cell, in cells mode); without it the statement would find the pooled table empty.
+	if _, err := shared.sql.Exec(context.Background(), `DELETE FROM audit_events WHERE tenant_id = $1`, e.tid); err == nil {
 		t.Error("audit entries can be deleted")
 	}
 
