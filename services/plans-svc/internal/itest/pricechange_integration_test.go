@@ -3,11 +3,11 @@
 package itest
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -75,7 +75,8 @@ func testPriceChange(t *testing.T) {
 	facts := func() int {
 		t.Helper()
 		var n int
-		if err := e.system.QueryRow(context.Background(), `SELECT count(*) FROM outbox WHERE topic = 'subscription.price-change.v1'`).Scan(&n); err != nil {
+		// The tenant's outbox is where the tenant is: the pooled table, or its schema in cells mode.
+		if err := e.scan(ctx, live.GetId(), `SELECT count(*) FROM outbox WHERE tenant_id = $1 AND topic = 'subscription.price-change.v1'`, []any{uuid.MustParse(live.GetId())}, &n); err != nil {
 			t.Fatal(err)
 		}
 		return n
