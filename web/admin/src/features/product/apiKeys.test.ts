@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission } from "./apiKeys";
+import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission } from "./apiKeys";
 
 describe("key roles", () => {
   it("a new key starts on a role that can only read", () => {
@@ -7,12 +7,22 @@ describe("key roles", () => {
     expect((permissionsOfRole(DEFAULT_KEY_ROLE) ?? []).every((p) => p.endsWith(":read"))).toBe(true);
   });
 
-  it("the admin role holds every permission and read_only every read", () => {
+  it("the admin role holds every permission and read_only every read except the audit log's", () => {
     expect(permissionsOfRole("admin")).toEqual(ALL_PERMISSIONS);
     const ro = permissionsOfRole("read_only") ?? [];
     expect(ro.length).toBeGreaterThan(0);
     expect(ro.every((p) => p.endsWith(":read"))).toBe(true);
-    expect(ALL_PERMISSIONS.filter((p) => p.endsWith(":read"))).toEqual(ro);
+    expect(ALL_PERMISSIONS.filter((p) => p.endsWith(":read") && p !== "audit:read")).toEqual(ro);
+  });
+
+  it("audit:read is a permission of the admin role and of a custom key, and the read_only role (the default) does not hold it", () => {
+    expect(ALL_PERMISSIONS).toContain("audit:read");
+    expect(KEY_RESOURCES.find((r) => r.resource === "audit")).toEqual({ resource: "audit", read: "audit:read" });
+    expect(permissionsOfRole("admin")).toContain("audit:read");
+    expect(permissionsOfRole("read_only")).not.toContain("audit:read");
+    expect(permissionsOfRole(DEFAULT_KEY_ROLE)).not.toContain("audit:read");
+    for (const r of ["billing", "ingest_only"] as const) expect(permissionsOfRole(r)).not.toContain("audit:read");
+    expect(keyRequest("custom", new Set<KeyPermission>(["audit:read"]))).toEqual({ role: "custom", permissions: ["audit:read"] });
   });
 
   it("ingest_only sends events and nothing else, and custom has no fixed set", () => {

@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	accountscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/accounts/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
@@ -60,6 +61,8 @@ type Commands struct {
 	pepper []byte
 	// guard refuses apps, invitations and keys beyond the account's plan (WithGuard); nil with SaaS off.
 	guard Guard
+	// box seals the authenticator secrets of two-factor sign-in (WithBox); nil: nobody can set it up.
+	box *secretbox.Box
 }
 
 // WithPepper sets the server secret that keys the hash of one-time sign-in codes. It is read from the service's environment, never from the database, so a
@@ -149,6 +152,9 @@ type Opened struct {
 	Memberships []*plansv1.Membership
 	Token       string
 	ExpireTime  time.Time
+	// Challenge is set instead of the session when the person has two-factor sign-in on: the proof of the first step, for VerifyTwoFactor.
+	Challenge       string
+	ChallengeExpire time.Time
 }
 
 // SignUp creates the user, the account and the owner membership in one transaction and mails a verification link. It opens no session and answers the same
@@ -263,9 +269,13 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 	user = tried
 	var out Opened
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
 		var err error
-		out, err = c.openSession(ctx, sqlc.New(tx), user)
-		return err
+		if out, err = c.openOrChallenge(ctx, q, user); err != nil || out.Challenge == "" {
+			return err
+		}
+		// The password was right: the try TryPassword counted is given back, and the second step counts its own.
+		return q.RefundPasswordTry(ctx, sqlc.RefundPasswordTryParams{ID: user.ID, MaxFailures: MaxFailures})
 	})
 	if err != nil {
 		return Opened{}, convert.Err(err, "session")

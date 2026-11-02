@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -210,8 +212,11 @@ func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRe
 			return status.Error(codes.Internal, "token generation failed")
 		}
 		token = plain
-		inv, err = c.placeInvite(ctx, tx, newInvite{account: aid, inviter: uid, email: email, role: req.GetRole(), tokenHash: hash, expires: c.now().Add(InviteTTL)})
-		return err
+		if inv, err = c.placeInvite(ctx, tx, newInvite{account: aid, inviter: uid, email: email, role: req.GetRole(), tokenHash: hash, expires: c.now().Add(InviteTTL)}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{AccountID: aid, Action: "member.invited", TargetType: "invitation", TargetID: inv.ID.String(),
+			Summary: "invited " + email + " as " + req.GetRole(), Detail: map[string]any{"email": email, "role": req.GetRole()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "invitation")
@@ -413,8 +418,15 @@ func (c *Commands) UpdateMemberRole(ctx context.Context, req *plansv1.UpdateMemb
 				return err
 			}
 		}
-		_, err = q.SetMemberRole(ctx, sqlc.SetMemberRoleParams{AccountID: aid, UserID: target, Role: req.GetRole()})
-		return err
+		if _, err = q.SetMemberRole(ctx, sqlc.SetMemberRoleParams{AccountID: aid, UserID: target, Role: req.GetRole()}); err != nil {
+			return err
+		}
+		who, err := q.GetUser(ctx, target)
+		if err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{AccountID: aid, Action: "member.role_changed", TargetType: "user", TargetID: target.String(),
+			Summary: fmt.Sprintf("changed the role of %s from %s to %s", who.Email, current, req.GetRole()), Detail: map[string]any{"email": who.Email, "from": current, "to": req.GetRole()}})
 	})
 	if err != nil {
 		return "", convert.Err(err, "member")
@@ -443,8 +455,15 @@ func (c *Commands) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberRe
 				return err
 			}
 		}
-		_, err = q.DeleteMember(ctx, sqlc.DeleteMemberParams{AccountID: aid, UserID: target})
-		return err
+		who, err := q.GetUser(ctx, target)
+		if err != nil {
+			return err
+		}
+		if _, err = q.DeleteMember(ctx, sqlc.DeleteMemberParams{AccountID: aid, UserID: target}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{AccountID: aid, Action: "member.removed", TargetType: "user", TargetID: target.String(),
+			Summary: fmt.Sprintf("removed %s (%s)", who.Email, current), Detail: map[string]any{"email": who.Email, "role": current, "left": target == uid}})
 	})
 	if err != nil {
 		return convert.Err(err, "member")
@@ -522,7 +541,8 @@ func (c *Commands) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvi
 			return err
 		}
 		out = Opened{User: query.User(u), Memberships: ms, Token: session, ExpireTime: expires}
-		return nil
+		return audit.Record(ctx, tx, audit.Event{AccountID: inv.AccountID, By: &audit.Actor{Type: audit.ActorUser, ID: u.ID.String(), Email: u.Email}, Action: "member.joined",
+			TargetType: "user", TargetID: u.ID.String(), Summary: u.Email + " joined as " + inv.Role, Detail: map[string]any{"email": u.Email, "role": inv.Role}})
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 		return Opened{}, signInRequired()
@@ -570,6 +590,10 @@ func (c *Commands) AcceptInvitationAsUser(ctx context.Context, req *plansv1.Acce
 		}
 		if _, err := q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: inv.AccountID, UserID: uid}); errors.Is(err, pgx.ErrNoRows) {
 			if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: inv.AccountID, UserID: uid, Role: inv.Role}); err != nil {
+				return err
+			}
+			if err := audit.Record(ctx, tx, audit.Event{AccountID: inv.AccountID, By: &audit.Actor{Type: audit.ActorUser, ID: uid.String(), Email: u.Email}, Action: "member.joined",
+				TargetType: "user", TargetID: uid.String(), Summary: u.Email + " joined as " + inv.Role, Detail: map[string]any{"email": u.Email, "role": inv.Role}}); err != nil {
 				return err
 			}
 		} else if err != nil {

@@ -78,6 +78,7 @@ import type {
   ExportAccountingCouponsCsvQuery,
   ExportAccountingCsvQuery,
   ExportAffiliateJournalQuery,
+  ExportAuditEventsQuery,
   GetAccountingSummaryQuery,
   GetAffiliateBalancesQuery,
   GetAffiliateBalancesResponse,
@@ -123,6 +124,8 @@ import type {
   ListAffiliatesResponse,
   ListAssetsQuery,
   ListAssetsResponse,
+  ListAuditEventsQuery,
+  ListAuditEventsResponse,
   ListContractAcceptancesResponse,
   ListContractVersionsQuery,
   ListContractVersionsResponse,
@@ -594,6 +597,32 @@ export class AssetsResource {
   }
 }
 
+export class AuditEventsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The audit log of the tenant, newest first
+   *
+   * Who did what and when, for the actions that change money or access: API keys created, rotated and revoked; members invited, changed and removed; plan versions published; webhook endpoints created, changed, deleted and their secrets rolled; customers blocked and unblocked; credit notes and refunds; the operator's invoice actions; payment provider accounts connected, replaced, removed and made the default; the tenant's status and settings. Each entry has the actor (a person, an API key, the operator or the system), the target, a one-line summary with no secret in it, a small `detail` object, the address and the request id. The log is append-only: the database refuses any change to an entry. It is read from several services and merged; when one does not answer, `incomplete` is true and `unavailable_sources` names it. Needs the permission `audit:read` (an admin key has it; the `read_only` role does not). A person who is a viewer of the account may not read it.
+   *
+   * `GET /v1/audit-events`
+   */
+  listAuditEvents(query?: ListAuditEventsQuery, options?: RequestOptions): Promise<ListAuditEventsResponse> {
+    return this.t.request<ListAuditEventsResponse>({ method: "GET", path: `/v1/audit-events`, query, response: "json" }, options);
+  }
+
+  /**
+   * The audit log as CSV (the newest 5000 entries of the filter)
+   *
+   * The same filter as `listAuditEvents`, one line per entry with the columns id, create_time, tenant_id, account_id, actor_type, actor_id, actor_email, action, target_type, target_id, summary, detail (JSON), before_hash, after_hash, source_ip, request_id. A cell that starts with `=`, `+`, `-` or `@` gets a leading `'`, so a spreadsheet does not run it. An export that cannot read every service fails with `503 audit.unavailable` rather than leave entries out. Needs `audit:read`.
+   *
+   * `GET /v1/audit-events/export`
+   */
+  exportAuditEvents(query?: ExportAuditEventsQuery, options?: RequestOptions): Promise<string> {
+    return this.t.request<string>({ method: "GET", path: `/v1/audit-events/export`, query, response: "text" }, options);
+  }
+}
+
 export class ContractAcceptancesResource {
   constructor(private readonly t: Transport) {}
 
@@ -941,7 +970,10 @@ export class CustomersResource {
    * a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
    * yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
    * stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
-   * (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
+   * (the end of a block by itself sends none). Usage ingestion is not affected, and entitlements are unless you set `suspend_service`: then every entitlement
+   * check of this customer answers `allowed: false` and `suspended: true` (the limits and the counted usage are untouched, and the events you send are still
+   * accepted and counted) until you lift the block or it ends by itself. The service is suspended only when the block is new: a block already in force is kept
+   * as it is, so lift it first to change it.
    *
    * `POST /v1/customers/{external_id}/block`
    */

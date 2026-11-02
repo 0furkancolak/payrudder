@@ -6,6 +6,12 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +19,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/health"
 )
 
@@ -117,5 +124,92 @@ func TestGroupDrainsGRPCOnCancel(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the group did not stop after the context was cancelled")
+	}
+}
+
+// errorServer counts the reports that reach a fake Sentry-compatible server and returns its DSN.
+func errorServer(t *testing.T) (dsn string, reports *atomic.Int32) {
+	t.Helper()
+	reports = new(atomic.Int32)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/7/envelope/" {
+			reports.Add(1)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return "http://key@" + strings.TrimPrefix(srv.URL, "http://") + "/7", reports
+}
+
+func TestRunReportsAPanicOfTheMainGoroutineAndPanicsAgain(t *testing.T) {
+	dsn, reports := errorServer(t)
+	t.Setenv("PAYRUDDER_SERVICE_NAME", "apptest")
+	t.Setenv("PAYRUDDER_OTLP_ENDPOINT", "")
+	t.Setenv("PAYRUDDER_ERROR_TRACKING_URL", dsn)
+	t.Cleanup(func() { errtrack.Install(nil) })
+
+	var again any
+	func() {
+		defer func() { again = recover() }()
+		_ = Run[testConfig](nil, func(context.Context, *testConfig, *Runtime) error {
+			if !errtrack.Default().Enabled() {
+				t.Error("the tracker is not installed while the service runs")
+			}
+			panic("main goroutine died")
+		})
+	}()
+	if again != "main goroutine died" {
+		t.Errorf("the process must still die of the panic, recovered %v", again)
+	}
+	if n := reports.Load(); n != 1 {
+		t.Errorf("%d reports for one panic, want exactly 1", n)
+	}
+}
+
+func TestRunWithoutOrWithABadErrorTrackingURLRunsAnyway(t *testing.T) {
+	t.Setenv("PAYRUDDER_SERVICE_NAME", "apptest")
+	t.Setenv("PAYRUDDER_OTLP_ENDPOINT", "")
+	t.Cleanup(func() { errtrack.Install(nil) })
+	for name, url := range map[string]string{"unset": "", "bad": "not a dsn"} {
+		t.Setenv("PAYRUDDER_ERROR_TRACKING_URL", url)
+		ran := false
+		err := Run[testConfig](nil, func(context.Context, *testConfig, *Runtime) error {
+			ran = true
+			if errtrack.Default().Enabled() {
+				t.Errorf("%s: error tracking is on", name)
+			}
+			return nil
+		})
+		if err != nil || !ran {
+			t.Errorf("%s: err = %v, ran = %v: the error reporting must never stop a service from starting", name, err, ran)
+		}
+	}
+}
+
+// TestGroupGoPanicHelper is the child of TestGroupGoReportsAPanicBeforeTheProcessDies: a panic in a worker kills the process, which a test cannot survive.
+func TestGroupGoPanicHelper(t *testing.T) {
+	dsn := os.Getenv("APPTEST_DSN")
+	if dsn == "" {
+		t.Skip("only runs as the child of TestGroupGoReportsAPanicBeforeTheProcessDies")
+	}
+	tr, err := errtrack.New(errtrack.Options{DSN: dsn, Service: "child"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	errtrack.Install(tr)
+	g := NewGroup(context.Background(), slog.New(slog.NewTextHandler(io.Discard, nil)), freeAddr(t), health.New(health.NewRegistry(), time.Second))
+	g.Go(func() error { panic("worker died") })
+	_ = g.Wait()
+}
+
+func TestGroupGoReportsAPanicBeforeTheProcessDies(t *testing.T) {
+	dsn, reports := errorServer(t)
+	cmd := exec.Command(os.Args[0], "-test.run=^TestGroupGoPanicHelper$")
+	cmd.Env = append(os.Environ(), "APPTEST_DSN="+dsn)
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "worker died") {
+		t.Fatalf("the child should die of the panic: err %v, output %s", err, out)
+	}
+	if n := reports.Load(); n != 1 {
+		t.Errorf("%d reports, want 1", n)
 	}
 }

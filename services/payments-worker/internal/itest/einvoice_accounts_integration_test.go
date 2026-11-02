@@ -212,6 +212,26 @@ func TestEInvoiceAccountsRouteByCountry(t *testing.T) {
 	if all["connected"] != 3 || all["routing_changed"] != 1 || all["default_set"] != 1 || all["removed"] != 2 {
 		t.Errorf("events by action: %v", all)
 	}
+	// The same changes are in the platform's audit log (pkg/audit), in their own transaction, and no setting is.
+	rows, err := cdb.At(tenant).Query(ctx, `SELECT action || '/' || count(*) FROM audit_events WHERE tenant_id = $1 AND action LIKE 'einvoice_account.%' GROUP BY action ORDER BY action`, tenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logged []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		logged = append(logged, s)
+	}
+	rows.Close()
+	if want := "einvoice_account.connected/3 einvoice_account.default_changed/1 einvoice_account.removed/2 einvoice_account.routing_changed/1"; strings.Join(logged, " ") != want {
+		t.Errorf("audit_events = %v, want %s", logged, want)
+	}
+	if n, err := cdb.CountAll(ctx, `SELECT count(*) FROM audit_events WHERE summary LIKE '%whsec_%' OR detail::text LIKE '%whsec_%' OR detail::text LIKE '%sk_secret_value%'`); err != nil || n != 0 {
+		t.Errorf("a setting is in the audit log: %d, %v", n, err)
+	}
 	if code, body := do("GET", "/admin/tenants/"+tenant.String()+"/provider-account-events?kind=payment", ""); code != 200 || strings.Contains(body, "webhook") {
 		t.Errorf("payment events = %d %s", code, body)
 	}

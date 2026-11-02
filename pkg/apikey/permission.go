@@ -35,6 +35,7 @@ const (
 	PermSandboxWrite       = "sandbox:write"
 	PermContractsRead      = "contracts:read"
 	PermContractsWrite     = "contracts:write"
+	PermAuditRead          = "audit:read"
 )
 
 // Permissions lists every permission, in the order the console shows them.
@@ -54,12 +55,13 @@ var Permissions = []string{
 	PermAssetsRead, PermAssetsWrite,
 	PermSandboxWrite,
 	PermContractsRead, PermContractsWrite,
+	PermAuditRead,
 }
 
 // Key roles. A role other than custom is a fixed set of permissions.
 const (
 	RoleAdmin      = "admin"       // everything
-	RoleReadOnly   = "read_only"   // every :read
+	RoleReadOnly   = "read_only"   // every :read except audit:read
 	RoleIngestOnly = "ingest_only" // events:write only
 	RoleBilling    = "billing"     // customers, subscriptions, credits and invoices, the catalogue and usage to read
 	RoleCustom     = "custom"      // the permissions chosen
@@ -78,7 +80,8 @@ func RolePermissions(role string) (perms []string, ok bool) {
 		return slices.Clone(Permissions), true
 	case RoleReadOnly:
 		for _, p := range Permissions {
-			if strings.HasSuffix(p, ":read") {
+			// The audit log names people and addresses: a key reads it only when it is given audit:read on purpose (admin and custom).
+			if strings.HasSuffix(p, ":read") && p != PermAuditRead {
 				perms = append(perms, p)
 			}
 		}
@@ -207,6 +210,8 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return PermReportsRead, true
 	case "accounting", "expenses", "expense-inbox", "expense-rules":
 		return rw("accounting")
+	case "audit-events":
+		return PermAuditRead, true
 	case "webhook-endpoints", "webhook-deliveries":
 		return rw("webhooks")
 	case "affiliates":

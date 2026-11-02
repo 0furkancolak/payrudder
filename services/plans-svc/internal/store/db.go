@@ -20,9 +20,14 @@ func New(appDB pgxx.Beginner) *DB { return &DB{pool: appDB} }
 
 // Tx runs fn in the caller's tenant transaction.
 func (d *DB) Tx(ctx context.Context, fn func(q *sqlc.Queries) error) error {
+	return d.TxWith(ctx, func(q *sqlc.Queries, _ pgx.Tx) error { return fn(q) })
+}
+
+// TxWith is Tx for a command that also writes the audit log: fn gets the transaction itself too, which audit.Record takes, so the entry and the change commit together.
+func (d *DB) TxWith(ctx context.Context, fn func(q *sqlc.Queries, tx pgx.Tx) error) error {
 	t, err := tenant.Require(ctx)
 	if err != nil {
 		return err
 	}
-	return pgxx.InTenantTx(ctx, d.pool, t.ID, func(tx pgx.Tx) error { return fn(sqlc.New(tx)) })
+	return pgxx.InTenantTx(ctx, d.pool, t.ID, func(tx pgx.Tx) error { return fn(sqlc.New(tx), tx) })
 }

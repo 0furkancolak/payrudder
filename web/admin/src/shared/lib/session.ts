@@ -61,6 +61,18 @@ export function onSessionLost(listener: Listener): () => void {
   return () => lostListeners.delete(listener);
 }
 
+const setupListeners = new Set<Listener>();
+
+/** Called when the gateway refuses a request because an organisation the person owns requires two-factor sign-in and they have not set it up (403 identity.two_factor.setup_required). */
+export function onSetupRequired(listener: Listener): () => void {
+  setupListeners.add(listener);
+  return () => setupListeners.delete(listener);
+}
+
+export function setupRequired(): void {
+  for (const l of setupListeners) l();
+}
+
 /** Forgets a session the gateway no longer accepts and tells the app, once. */
 export function sessionLost(): void {
   if (person.value === null) return;
@@ -69,7 +81,7 @@ export function sessionLost(): void {
 }
 
 /** The paths of the operator console. A person the server calls an operator reaches them; nobody else does (the server decides on every request). */
-export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters|organisations)(\/|$)/;
+export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters|organisations|audit)(\/|$)/;
 
 /**
  * Whether the page being looked at belongs to the operator console and the signed-in person may use it. An operator is also a person with an organisation of

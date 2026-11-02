@@ -682,7 +682,11 @@
           "blocked": "Bloqueado",
           "unblocked": "Levantado"
         },
-        "by": "por {actor}"
+        "by": "por {actor}",
+        "suspend": "Suspender también su servicio",
+        "suspendHint": "Las comprobaciones de derechos de este cliente responden «no permitido» en cada medidor hasta que se levante el bloqueo o termine. El uso que envíe se sigue aceptando y contando.",
+        "bannerSuspended": "Servicio suspendido: las comprobaciones de derechos responden «no permitido».",
+        "suspended": "Servicio suspendido"
       }
     },
     "packages": {
@@ -3083,7 +3087,8 @@
         "bad_body": "El cuerpo de la solicitud debe ser un JSON válido.",
         "bad_environment": "El entorno debe ser sandbox o live.",
         "bad_tenant": "El identificador de la cuenta no es válido.",
-        "too_large": "La solicitud es demasiado grande."
+        "too_large": "La solicitud es demasiado grande.",
+        "bad_audit_filter": "El filtro del registro de auditoría no es válido."
       },
       "subscription": {
         "cannot_cancel": "Este proveedor no puede cancelar una suscripción desde aquí.",
@@ -3246,6 +3251,16 @@
         "country_required": "Elija el país de la empresa.",
         "address_required": "Introduzca la calle y la ciudad.",
         "tax_id_required": "Para las facturas en este país se necesita una identificación fiscal."
+      },
+      "two_factor": {
+        "invalid": "Código incorrecto o caducado.",
+        "bad_code": "Código incorrecto. Escriba los seis dígitos que muestra ahora la aplicación de autenticación, o un código de recuperación.",
+        "already_enabled": "El inicio de sesión en dos pasos ya está activado.",
+        "not_enabled": "El inicio de sesión en dos pasos no está activado.",
+        "no_setup": "Inicie primero la configuración: escanee el código y luego confírmelo.",
+        "not_configured": "Este despliegue aún no puede ofrecer el inicio de sesión en dos pasos: no tiene clave de secretos.",
+        "required_by_organisation": "Una organización de la que es propietario exige el inicio de sesión en dos pasos, por lo que no puede desactivarlo.",
+        "setup_required": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo primero en la página de seguridad."
       }
     },
     "gateway": {
@@ -3515,6 +3530,18 @@
       "tickets": {
         "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
       }
+    },
+    "audit": {
+      "unavailable": "No se pudo leer el registro de auditoría de todos los servicios. Inténtelo de nuevo.",
+      "page_token": {
+        "invalid": "Esa página del registro ya no es válida. Recargue la lista."
+      },
+      "filter": {
+        "bad_tenant": "El id del inquilino no es válido.",
+        "bad_account": "El id de la cuenta no es válido.",
+        "bad_time": "Las fechas no son válidas, o el inicio es posterior al final.",
+        "bad_page_size": "El tamaño de página debe estar entre 1 y 200."
+      }
     }
   },
   "product": {
@@ -3528,7 +3555,8 @@
     },
     "nav": {
       "home": "Inicio",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "security": "Seguridad"
     },
     "hero": {
       "title": "Todos los pagos de todas sus aplicaciones, en un solo lugar tranquilo."
@@ -3783,7 +3811,8 @@
         "settings": "Ajustes (impuestos, enrutamiento, correo)",
         "assets": "Archivos",
         "contracts": "Acuerdos (textos y ajustes)",
-        "sandbox": "Herramientas de sandbox"
+        "sandbox": "Herramientas de sandbox",
+        "audit": "Registro de auditoría"
       },
       "permissionCount": "{n} de {total} permisos",
       "customNeedsOne": "Elige al menos un permiso.",
@@ -3908,7 +3937,9 @@
       "rename": "Nombre de la cuenta",
       "save": "Guardar el nombre",
       "noneTitle": "No perteneces a ninguna cuenta",
-      "noneBody": "Saliste de tu última cuenta o te quitaron de ella. Pide a un propietario que te invite de nuevo, o regístrate con otra dirección."
+      "noneBody": "Saliste de tu última cuenta o te quitaron de ella. Pide a un propietario que te invite de nuevo, o regístrate con otra dirección.",
+      "requireTwoFactor": "Exigir el inicio de sesión en dos pasos a los propietarios",
+      "requireTwoFactorHint": "Los propietarios que no hayan configurado el inicio de sesión en dos pasos permanecen en la página de seguridad hasta que lo hagan. Desactivado por defecto."
     },
     "invite": {
       "title": "Estás invitado",
@@ -4513,6 +4544,78 @@
         "sandbox": "Cambiar a Sandbox",
         "live": "Cambiar a Producción"
       }
+    },
+    "security": {
+      "title": "Seguridad",
+      "intro": "Cómo inicia sesión y cómo protegerlo.",
+      "setupRequired": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo a continuación: hasta entonces no hay nada más disponible en la consola."
+    },
+    "twoFactor": {
+      "title": "Inicio de sesión en dos pasos",
+      "on": "Activado",
+      "off": "Desactivado",
+      "offBody": "Después de su contraseña, el código por correo o Google, el inicio de sesión pide también un código de seis dígitos de una aplicación de autenticación. Quien conozca su contraseña seguirá sin poder entrar.",
+      "onBody": "El inicio de sesión pide un código de seis dígitos de su aplicación de autenticación después de su contraseña, el código por correo o Google.",
+      "since": "Activado el",
+      "codesLeft": "Códigos de recuperación restantes",
+      "codesLow": "Solo quedan {n} códigos de recuperación. Genere otros nuevos antes de que se acaben: si pierde el teléfono, son la única forma de volver a entrar.",
+      "turnOn": "Activar",
+      "turnOff": "Desactivar",
+      "regenerate": "Generar nuevos códigos de recuperación",
+      "requiredNote": "Una organización de la que es propietario exige el inicio de sesión en dos pasos, por lo que no se puede desactivar.",
+      "disableTitle": "¿Desactivar el inicio de sesión en dos pasos?",
+      "disableBody": "Introduzca un código actual de su aplicación de autenticación, o un código de recuperación. Su cuenta quedará protegida solo por su método de inicio de sesión.",
+      "regenerateTitle": "¿Generar nuevos códigos de recuperación?",
+      "regenerateBody": "Introduzca un código actual de su aplicación de autenticación, o un código de recuperación. Los códigos de recuperación anteriores dejan de funcionar.",
+      "regeneratedBody": "Sustituyen a sus códigos de recuperación anteriores. Solo se muestran ahora.",
+      "prompt": {
+        "label": "Código",
+        "hint": "Seis dígitos de la aplicación, o un código de recuperación."
+      },
+      "setup": {
+        "scan": {
+          "title": "Escanee el código",
+          "body": "Abra una aplicación de autenticación en su teléfono y escanee este código."
+        },
+        "code": {
+          "title": "Introduzca el código",
+          "body": "Escriba los seis dígitos que muestra ahora la aplicación, para comprobar que está configurada."
+        },
+        "codes": {
+          "title": "Guarde sus códigos de recuperación",
+          "body": "El inicio de sesión en dos pasos ya está activado."
+        },
+        "qrLabel": "Código QR para su aplicación de autenticación",
+        "cantScan": "¿No puede escanear? Escriba esta clave en la aplicación.",
+        "secretLabel": "Clave secreta",
+        "copySecret": "Copiar",
+        "next": "Siguiente",
+        "back": "Atrás",
+        "turnOn": "Activar"
+      },
+      "codes": {
+        "body": "Cada código funciona una sola vez. Si pierde el teléfono, un código de recuperación es la única forma de iniciar sesión. Solo se muestran ahora.",
+        "list": "Códigos de recuperación",
+        "download": "Descargar como .txt",
+        "copy": "Copiar",
+        "saved": "He guardado estos códigos",
+        "done": "Hecho"
+      },
+      "file": {
+        "title": "Códigos de recuperación de Payrudder para {email}, {date}",
+        "note": "Cada código funciona una sola vez. Guarde este archivo en un lugar seguro y privado."
+      },
+      "step": {
+        "title": "Verificación en dos pasos",
+        "intro": "Abra su aplicación de autenticación e introduzca el código de seis dígitos que muestra.",
+        "recoveryIntro": "Introduzca uno de sus códigos de recuperación. Cada uno funciona una sola vez.",
+        "submit": "Verificar",
+        "recoveryLabel": "Código de recuperación",
+        "recoveryHint": "Letras y dígitos, los guiones son opcionales.",
+        "useRecovery": "Usar un código de recuperación",
+        "useApp": "Usar la aplicación de autenticación",
+        "restart": "Empezar de nuevo"
+      }
     }
   },
   "shell": {
@@ -4582,7 +4685,9 @@
       "support": "Ayuda",
       "supportInbox": "Bandeja de soporte",
       "connect": "Conectar su app",
-      "contracts": "Contratos"
+      "contracts": "Contratos",
+      "audit": "Registro de auditoría",
+      "auditLog": "Registro de auditoría"
     },
     "noApps": "Aún no hay aplicaciones",
     "newApp": "Nueva aplicación"
@@ -4972,6 +5077,9 @@
         "agreementsTitle": "Acuerdos",
         "settings": "Elija qué acuerdos deben aceptar los clientes y cuánto tiempo se conservan su dirección y su navegador.",
         "settingsTitle": "Ajustes"
+      },
+      "audit": {
+        "intro": "Cada cambio en claves, miembros, precios, webhooks, clientes, reembolsos y cuentas de proveedores queda registrado aquí. Las entradas no se pueden modificar ni eliminar."
       }
     }
   },
@@ -5562,6 +5670,118 @@
       "received": "Cuándo le llegó (opcional)",
       "receivedHint": "Déjelo vacío para ahora.",
       "submit": "Registrar desistimiento"
+    }
+  },
+  "audit": {
+    "title": "Registro de auditoría",
+    "intro": "Quién hizo qué y cuándo: claves, miembros, precios, webhooks, clientes, reembolsos y cuentas de proveedores. Las entradas no se pueden modificar ni eliminar.",
+    "adminIntro": "El registro de auditoría de todos los inquilinos, del más reciente al más antiguo. Filtre por inquilino para ver uno.",
+    "empty": "Todavía no se ha registrado nada.",
+    "export": "Exportar CSV",
+    "loadMore": "Cargar más",
+    "incomplete": "Pueden faltar algunas entradas. Estas partes del registro no respondieron: {sources}. Inténtelo de nuevo en un momento.",
+    "sources": {
+      "plans": "claves, miembros, planes, clientes y webhooks",
+      "billing": "facturas y notas de crédito",
+      "payments": "cuentas de proveedores de pago"
+    },
+    "filters": {
+      "area": "Área",
+      "anyArea": "Cualquier área",
+      "actor": "Autor: correo o id",
+      "tenant": "Id del inquilino"
+    },
+    "columns": {
+      "time": "Hora",
+      "actor": "Autor",
+      "action": "Acción",
+      "summary": "Resumen",
+      "target": "Objetivo"
+    },
+    "fields": {
+      "summary": "Resumen",
+      "time": "Hora",
+      "actor": "Autor",
+      "actorId": "Id del autor",
+      "target": "Objetivo",
+      "targetId": "Id del objetivo",
+      "ip": "IP de origen",
+      "request": "Id de la solicitud",
+      "tenant": "Id del inquilino",
+      "account": "Id de la cuenta",
+      "before": "Hash anterior",
+      "after": "Hash posterior",
+      "detail": "Detalle"
+    },
+    "actorTypes": {
+      "user": "Persona",
+      "api_key": "Clave API",
+      "operator": "Operador",
+      "system": "Sistema"
+    },
+    "areas": {
+      "api_key": "Claves API",
+      "member": "Miembros",
+      "plan": "Planes",
+      "webhook_endpoint": "Endpoints de webhook",
+      "customer": "Clientes",
+      "credit_note": "Notas de crédito",
+      "invoice": "Facturas",
+      "provider_account": "Cuentas de proveedores",
+      "tenant": "Ajustes y estado del inquilino",
+      "two_factor": "Inicio de sesión en dos pasos",
+      "sign_in": "Inicio de sesión",
+      "account": "Organización"
+    },
+    "actions": {
+      "api_key": {
+        "created": "Clave API creada",
+        "rotated": "Clave API rotada",
+        "revoked": "Clave API revocada",
+        "expiring": "Clave API a punto de terminar"
+      },
+      "member": {
+        "invited": "Miembro invitado",
+        "joined": "Miembro incorporado",
+        "role_changed": "Rol de un miembro cambiado",
+        "removed": "Miembro eliminado"
+      },
+      "plan": {
+        "created": "Plan creado",
+        "version_published": "Versión de plan publicada"
+      },
+      "webhook_endpoint": {
+        "created": "Endpoint de webhook creado",
+        "updated": "Endpoint de webhook modificado",
+        "deleted": "Endpoint de webhook eliminado",
+        "secret_rotated": "Secreto de webhook renovado"
+      },
+      "customer": {
+        "blocked": "Cliente bloqueado",
+        "unblocked": "Cliente desbloqueado"
+      },
+      "credit_note": {
+        "issued": "Nota de crédito emitida",
+        "refunded": "Nota de crédito reembolsada",
+        "refund_failed": "Reembolso fallido",
+        "refund_retried": "Reembolso reintentado"
+      },
+      "provider_account": {
+        "connected": "Cuenta de proveedor conectada",
+        "replaced": "Cuenta de proveedor reemplazada",
+        "removed": "Cuenta de proveedor eliminada",
+        "default_changed": "Proveedor predeterminado cambiado"
+      },
+      "tenant": {
+        "status_requested": "Cambio de estado solicitado",
+        "status_changed": "Estado cambiado",
+        "settings_updated": "Ajustes cambiados"
+      },
+      "two_factor": {
+        "enabled": "Inicio de sesión en dos pasos activado",
+        "disabled": "Inicio de sesión en dos pasos desactivado",
+        "recovery_codes_regenerated": "Códigos de recuperación regenerados"
+      }
     }
   }
 }

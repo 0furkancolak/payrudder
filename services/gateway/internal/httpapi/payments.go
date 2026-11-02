@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
@@ -34,6 +35,7 @@ func (s *Server) paymentsForward(path func(*http.Request) string, tweak func(*ht
 				pr.Out.Header.Set("X-Internal-Token", s.d.PaymentsToken)
 			}
 			pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
+			audit.SetHeaders(pr.In.Context(), pr.Out.Header)
 			if who := operatorFrom(pr.In.Context()); who != "" {
 				pr.Out.Header.Set(actorHeader, who) // a signed-in operator is who the receipt is recorded for, not whom the request claims
 			}

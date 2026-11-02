@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
@@ -192,6 +193,7 @@ func settle(ctx, stop context.Context, d amqp.Delivery, queue string, h Handler,
 		if r := recover(); r != nil {
 			// Requeue rather than dead-letter: the quorum queue's delivery limit (5) dead-letters a command that keeps
 			// crashing its handler, which is how a crash loop ends.
+			errtrack.CapturePanic(ctx, r, errtrack.Tag("queue", queue))
 			log.Error("handler panic, requeueing the delivery", "queue", queue, "panic", r)
 			requeue(stop, d)
 		}

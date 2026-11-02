@@ -16,7 +16,7 @@ import (
 
 // Kept are the tables with tenant rows that a reset leaves alone: the tenant's configuration. The invoice inbox (its address, the vendor rules and the mail
 // received on it) is the tenant's own setup, not something its customers made: the address keeps working, and billing_system may not delete from it.
-var Kept = []string{"credit_packs", "credit_settings", "dunning_settings", "expense_inboxes", "expense_inbox_items", "expense_rules"}
+var Kept = []string{"audit_events", "credit_packs", "credit_settings", "dunning_settings", "expense_inboxes", "expense_inbox_items", "expense_rules"}
 
 type step struct {
 	table string

@@ -37,6 +37,24 @@ func (q *Queries) ClearPassword(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const confirmTotp = `-- name: ConfirmTotp :execrows
+UPDATE user_totp SET confirmed_at = now(), last_step = $1 WHERE user_id = $2 AND confirmed_at IS NULL
+`
+
+type ConfirmTotpParams struct {
+	Step   int64
+	UserID uuid.UUID
+}
+
+// Turning it on: the step of the code that proved it is spent.
+func (q *Queries) ConfirmTotp(ctx context.Context, arg ConfirmTotpParams) (int64, error) {
+	result, err := q.db.Exec(ctx, confirmTotp, arg.Step, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const consumeLoginCode = `-- name: ConsumeLoginCode :one
 UPDATE login_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now() RETURNING id
 `
@@ -117,6 +135,29 @@ func (q *Queries) CountRecentLoginCodes(ctx context.Context, arg CountRecentLogi
 	return count, err
 }
 
+const countRecoveryCodes = `-- name: CountRecoveryCodes :one
+SELECT count(*) FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL
+`
+
+func (q *Queries) CountRecoveryCodes(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecoveryCodes, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteLoginChallenge = `-- name: DeleteLoginChallenge :execrows
+DELETE FROM login_challenges WHERE id = $1
+`
+
+func (q *Queries) DeleteLoginChallenge(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteLoginChallenge, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteMember = `-- name: DeleteMember :execrows
 DELETE FROM account_members WHERE account_id = $1 AND user_id = $2
 `
@@ -132,6 +173,24 @@ func (q *Queries) DeleteMember(ctx context.Context, arg DeleteMemberParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteRecoveryCodes = `-- name: DeleteRecoveryCodes :exec
+DELETE FROM user_recovery_codes WHERE user_id = $1
+`
+
+func (q *Queries) DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRecoveryCodes, userID)
+	return err
+}
+
+const deleteStaleLoginChallenges = `-- name: DeleteStaleLoginChallenges :exec
+DELETE FROM login_challenges WHERE user_id = $1 AND expires_at <= now()
+`
+
+func (q *Queries) DeleteStaleLoginChallenges(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteStaleLoginChallenges, userID)
+	return err
 }
 
 const deleteStaleLoginCodes = `-- name: DeleteStaleLoginCodes :exec
@@ -159,6 +218,18 @@ DELETE FROM user_tokens WHERE user_id = $1 AND (expires_at < now() - interval '1
 func (q *Queries) DeleteStaleUserTokens(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteStaleUserTokens, userID)
 	return err
+}
+
+const deleteTotp = `-- name: DeleteTotp :execrows
+DELETE FROM user_totp WHERE user_id = $1
+`
+
+func (q *Queries) DeleteTotp(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTotp, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const ensureUserOnboarding = `-- name: EnsureUserOnboarding :exec
@@ -367,7 +438,7 @@ func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (s
 }
 
 const getMembership = `-- name: GetMembership :one
-SELECT m.role, a.name AS account_name, a.created_at
+SELECT m.role, a.name AS account_name, a.created_at, a.require_two_factor
 FROM account_members m JOIN accounts a ON a.id = m.account_id
 WHERE m.account_id = $1 AND m.user_id = $2 AND m.role <> 'affiliate'
 `
@@ -378,16 +449,22 @@ type GetMembershipParams struct {
 }
 
 type GetMembershipRow struct {
-	Role        string
-	AccountName string
-	CreatedAt   time.Time
+	Role             string
+	AccountName      string
+	CreatedAt        time.Time
+	RequireTwoFactor bool
 }
 
 // An affiliate (phase 47) is a member of the account only so that the console knows to show the partner portal: every account-wide read leaves the role out.
 func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
 	row := q.db.QueryRow(ctx, getMembership, arg.AccountID, arg.UserID)
 	var i GetMembershipRow
-	err := row.Scan(&i.Role, &i.AccountName, &i.CreatedAt)
+	err := row.Scan(
+		&i.Role,
+		&i.AccountName,
+		&i.CreatedAt,
+		&i.RequireTwoFactor,
+	)
 	return i, err
 }
 
@@ -515,6 +592,26 @@ func (q *Queries) GetTenantForUser(ctx context.Context, arg GetTenantForUserPara
 	return i, err
 }
 
+const getTwoFactorState = `-- name: GetTwoFactorState :one
+SELECT
+  (SELECT t.confirmed_at FROM user_totp t WHERE t.user_id = $1) AS confirmed_at,
+  EXISTS (SELECT 1 FROM account_members m JOIN accounts a ON a.id = m.account_id
+          WHERE m.user_id = $1 AND m.role = 'owner' AND a.require_two_factor) AS owner_requires
+`
+
+type GetTwoFactorStateRow struct {
+	ConfirmedAt   *time.Time
+	OwnerRequires bool
+}
+
+// What a session needs to know about the second factor: whether the user has it, and whether an account they own requires it.
+func (q *Queries) GetTwoFactorState(ctx context.Context, userID uuid.UUID) (GetTwoFactorStateRow, error) {
+	row := q.db.QueryRow(ctx, getTwoFactorState, userID)
+	var i GetTwoFactorStateRow
+	err := row.Scan(&i.ConfirmedAt, &i.OwnerRequires)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at FROM users WHERE id = $1
 `
@@ -574,6 +671,24 @@ func (q *Queries) GetUserOnboarding(ctx context.Context, userID uuid.UUID) (User
 		&i.Wizard,
 		&i.SeenTours,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserTotp = `-- name: GetUserTotp :one
+SELECT user_id, secret_enc, confirmed_at, last_step, created_at FROM user_totp WHERE user_id = $1
+`
+
+// Two-factor sign-in (plan 22, G9). The secret is sealed; a pending setup (confirmed_at NULL) is replaced by the next setup, a confirmed one never is.
+func (q *Queries) GetUserTotp(ctx context.Context, userID uuid.UUID) (UserTotp, error) {
+	row := q.db.QueryRow(ctx, getUserTotp, userID)
+	var i UserTotp
+	err := row.Scan(
+		&i.UserID,
+		&i.SecretEnc,
+		&i.ConfirmedAt,
+		&i.LastStep,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -642,6 +757,28 @@ func (q *Queries) InsertInvite(ctx context.Context, arg InsertInviteParams) (Acc
 	return i, err
 }
 
+const insertLoginChallenge = `-- name: InsertLoginChallenge :exec
+INSERT INTO login_challenges (id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)
+`
+
+type InsertLoginChallengeParams struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash []byte
+	ExpiresAt time.Time
+}
+
+// A sign-in whose first step passed, waiting for the second.
+func (q *Queries) InsertLoginChallenge(ctx context.Context, arg InsertLoginChallengeParams) error {
+	_, err := q.db.Exec(ctx, insertLoginChallenge,
+		arg.ID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const insertLoginCode = `-- name: InsertLoginCode :exec
 INSERT INTO login_codes (id, email, salt, code_hash, expires_at) VALUES ($1, $2, $3, $4, now() + $5::interval)
 `
@@ -678,6 +815,21 @@ type InsertMemberParams struct {
 
 func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) error {
 	_, err := q.db.Exec(ctx, insertMember, arg.AccountID, arg.UserID, arg.Role)
+	return err
+}
+
+const insertRecoveryCode = `-- name: InsertRecoveryCode :exec
+INSERT INTO user_recovery_codes (id, user_id, code_hash) VALUES ($1, $2, $3)
+`
+
+type InsertRecoveryCodeParams struct {
+	ID       uuid.UUID
+	UserID   uuid.UUID
+	CodeHash []byte
+}
+
+func (q *Queries) InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error {
+	_, err := q.db.Exec(ctx, insertRecoveryCode, arg.ID, arg.UserID, arg.CodeHash)
 	return err
 }
 
@@ -1164,6 +1316,24 @@ func (q *Queries) RefreshInvite(ctx context.Context, arg RefreshInviteParams) (A
 	return i, err
 }
 
+const refundPasswordTry = `-- name: RefundPasswordTry :exec
+UPDATE users SET
+  failed_logins = GREATEST(failed_logins - 1, 0),
+  locked_until = CASE WHEN GREATEST(failed_logins - 1, 0) >= $1::int THEN locked_until ELSE NULL END
+WHERE id = $2
+`
+
+type RefundPasswordTryParams struct {
+	MaxFailures int32
+	ID          uuid.UUID
+}
+
+// The password was right and the second step is still to come: the try TryPassword counted is given back (the second step counts its own).
+func (q *Queries) RefundPasswordTry(ctx context.Context, arg RefundPasswordTryParams) error {
+	_, err := q.db.Exec(ctx, refundPasswordTry, arg.MaxFailures, arg.ID)
+	return err
+}
+
 const renameAccount = `-- name: RenameAccount :execrows
 UPDATE accounts SET name = $1 WHERE id = $2
 `
@@ -1179,6 +1349,16 @@ func (q *Queries) RenameAccount(ctx context.Context, arg RenameAccountParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const resetLoginFailures = `-- name: ResetLoginFailures :exec
+UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1
+`
+
+// A correct code of a signed-in person ends the failures counted against their lock (RecordSuccessfulLogin also stamps a sign-in, which this is not).
+func (q *Queries) ResetLoginFailures(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetLoginFailures, id)
+	return err
 }
 
 const revokeInvite = `-- name: RevokeInvite :execrows
@@ -1239,6 +1419,22 @@ func (q *Queries) SaveUserOnboarding(ctx context.Context, arg SaveUserOnboarding
 		arg.UserID,
 	)
 	return err
+}
+
+const setAccountRequireTwoFactor = `-- name: SetAccountRequireTwoFactor :one
+UPDATE accounts SET require_two_factor = $1 WHERE id = $2 RETURNING require_two_factor
+`
+
+type SetAccountRequireTwoFactorParams struct {
+	Required bool
+	ID       uuid.UUID
+}
+
+func (q *Queries) SetAccountRequireTwoFactor(ctx context.Context, arg SetAccountRequireTwoFactorParams) (bool, error) {
+	row := q.db.QueryRow(ctx, setAccountRequireTwoFactor, arg.Required, arg.ID)
+	var require_two_factor bool
+	err := row.Scan(&require_two_factor)
+	return require_two_factor, err
 }
 
 const setDisplayNameIfEmpty = `-- name: SetDisplayNameIfEmpty :exec
@@ -1344,6 +1540,30 @@ func (q *Queries) TouchTakenNotice(ctx context.Context, id uuid.UUID) (uuid.UUID
 	return id_2, err
 }
 
+const tryLoginChallenge = `-- name: TryLoginChallenge :one
+UPDATE login_challenges SET attempts = attempts + 1
+WHERE token_hash = $1 AND expires_at > now() AND attempts < $2::int
+RETURNING id, user_id
+`
+
+type TryLoginChallengeParams struct {
+	TokenHash   []byte
+	MaxAttempts int32
+}
+
+type TryLoginChallengeRow struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+// A try is counted before the code is looked at; the fifth wrong one burns the challenge.
+func (q *Queries) TryLoginChallenge(ctx context.Context, arg TryLoginChallengeParams) (TryLoginChallengeRow, error) {
+	row := q.db.QueryRow(ctx, tryLoginChallenge, arg.TokenHash, arg.MaxAttempts)
+	var i TryLoginChallengeRow
+	err := row.Scan(&i.ID, &i.UserID)
+	return i, err
+}
+
 const tryLoginCode = `-- name: TryLoginCode :one
 UPDATE login_codes SET attempts = attempts + 1
 WHERE id = (SELECT c.id FROM login_codes c WHERE c.email = $1 AND c.used_at IS NULL AND c.expires_at > now() AND c.attempts < $2::int ORDER BY c.created_at DESC LIMIT 1)
@@ -1414,4 +1634,95 @@ func (q *Queries) TryPassword(ctx context.Context, arg TryPasswordParams) (User,
 		&i.TakenNoticeAt,
 	)
 	return i, err
+}
+
+const tryTwoFactor = `-- name: TryTwoFactor :one
+UPDATE users SET
+  failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
+  locked_until = CASE
+    WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END) >= $1::int THEN now() + $2::interval
+    ELSE NULL
+  END
+WHERE id = $3 AND (locked_until IS NULL OR locked_until <= now())
+RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+`
+
+type TryTwoFactorParams struct {
+	MaxFailures int32
+	LockFor     pgtype.Interval
+	ID          uuid.UUID
+}
+
+// A try at the second factor counts against the lock of the account exactly like a wrong password (TryPassword), and a locked account is refused.
+func (q *Queries) TryTwoFactor(ctx context.Context, arg TryTwoFactorParams) (User, error) {
+	row := q.db.QueryRow(ctx, tryTwoFactor, arg.MaxFailures, arg.LockFor, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.FailedLogins,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.EmailVerifiedAt,
+		&i.Locale,
+		&i.TakenNoticeAt,
+	)
+	return i, err
+}
+
+const upsertPendingTotp = `-- name: UpsertPendingTotp :execrows
+INSERT INTO user_totp (user_id, secret_enc) VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE SET secret_enc = EXCLUDED.secret_enc, last_step = 0, created_at = now()
+WHERE user_totp.confirmed_at IS NULL
+`
+
+type UpsertPendingTotpParams struct {
+	UserID    uuid.UUID
+	SecretEnc []byte
+}
+
+func (q *Queries) UpsertPendingTotp(ctx context.Context, arg UpsertPendingTotpParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertPendingTotp, arg.UserID, arg.SecretEnc)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const useRecoveryCode = `-- name: UseRecoveryCode :execrows
+UPDATE user_recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL
+`
+
+type UseRecoveryCodeParams struct {
+	UserID   uuid.UUID
+	CodeHash []byte
+}
+
+func (q *Queries) UseRecoveryCode(ctx context.Context, arg UseRecoveryCodeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, useRecoveryCode, arg.UserID, arg.CodeHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const useTotpStep = `-- name: UseTotpStep :execrows
+UPDATE user_totp SET last_step = $1 WHERE user_id = $2 AND confirmed_at IS NOT NULL AND last_step < $1
+`
+
+type UseTotpStepParams struct {
+	Step   int64
+	UserID uuid.UUID
+}
+
+// A code works once: the step it matched must be later than the last one accepted. One atomic UPDATE, so two requests with the same code cannot both pass.
+func (q *Queries) UseTotpStep(ctx context.Context, arg UseTotpStepParams) (int64, error) {
+	result, err := q.db.Exec(ctx, useTotpStep, arg.Step, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

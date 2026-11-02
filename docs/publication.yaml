@@ -34,6 +34,7 @@ files:
   17-platform-direction.md: { audience: internal, status: historical }
   18-sdks.md: { audience: public, status: pre-release }
   19-contracts.md: { audience: public, status: preview }
+  audit-log-and-two-factor.md: { audience: internal, status: preview }
   benchmarks.md: { audience: internal, status: stable }
   capacity.md: { audience: internal, status: preview }
   error-keys.md: { audience: public, status: stable }

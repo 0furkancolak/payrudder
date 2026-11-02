@@ -313,6 +313,30 @@ export interface AttributeCustomerResponse {
   reason: string;
 }
 
+export interface AuditEvent {
+  id: string;
+  /** Empty for an entry that belongs to no tenant */
+  tenant_id: string;
+  /** Set for an entry that is an account's and no tenant's (its members) */
+  account_id: string;
+  actor_type: "user" | "api_key" | "operator" | "system";
+  actor_id: string;
+  actor_email: string;
+  /** <area>.<what>, for example api_key.created */
+  action: string;
+  target_type: string;
+  target_id: string;
+  /** One line for a person; secrets are masked */
+  summary: string;
+  /** A small JSON object of what changed, as text; it holds no secret */
+  detail_json: string;
+  before_hash: string;
+  after_hash: string;
+  source_ip: string;
+  request_id: string;
+  create_time: string | null;
+}
+
 export interface BillingRun {
   tenant_id: string;
   period_id: string;
@@ -331,6 +355,8 @@ export interface BlockCustomerRequest {
   category?: CustomerBlockCategory;
   /** When the block ends by itself; must be in the future. Absent: until you lift it. */
   blocked_until?: string;
+  /** Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false. */
+  suspend_service?: boolean;
 }
 
 export interface CancelSubscriptionQuery {
@@ -1109,6 +1135,8 @@ export interface Customer {
   block_category: string;
   /** When the block ends by itself; absent: until it is lifted. */
   blocked_until?: string | null;
+  /** The block also suspends the customer's service: every entitlement check answers allowed false. Read it with block_time and blocked_until, it holds only while the block does. */
+  service_suspended: boolean;
   /** The customer's mobile number as E.164 (+905321234567); empty when none. */
   phone: string;
   /** When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised. */
@@ -1127,6 +1155,8 @@ export interface CustomerBlockEvent {
   category: string;
   reason: string;
   blocked_until?: string | null;
+  /** On a block: whether it also suspended the customer's service */
+  suspend_service: boolean;
   /** A person's address, key:<api key id>, or operator */
   actor: string;
   create_time: string;
@@ -1252,7 +1282,7 @@ export interface EntitlementStatus {
   /** Exact decimal; null when unlimited */
   limit: string | null;
   unlimited: boolean;
-  /** unlimited, used < limit, or a soft or notify limit */
+  /** (unlimited, used < limit, or a soft or notify limit) and not suspended */
   allowed: boolean;
   as_of: string | null;
   /** What the limit counts over; month for a meter without a limit */
@@ -1266,6 +1296,8 @@ export interface EntitlementStatus {
   over_limit: boolean;
   /** The limit is the customer's own override, not its package's */
   overridden: boolean;
+  /** You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with or without a limit. Usage is still accepted and counted. */
+  suspended: boolean;
 }
 
 export interface EntitlementTerms {
@@ -1424,6 +1456,19 @@ export interface ExportAffiliateJournalQuery {
   payout_id?: string;
   currency?: string;
   from?: string;
+  to?: string;
+}
+
+export interface ExportAuditEventsQuery {
+  /** Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+  action?: string;
+  /** An actor id (user id, API key id) or an e-mail address */
+  actor?: string;
+  target_type?: string;
+  target_id?: string;
+  /** Inclusive, RFC 3339 */
+  from?: string;
+  /** Exclusive, RFC 3339 */
   to?: string;
 }
 
@@ -1852,6 +1897,29 @@ export interface ListAssetsQuery {
 export interface ListAssetsResponse {
   assets: Array<Asset>;
   next_page_token: string;
+}
+
+export interface ListAuditEventsQuery {
+  /** Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+  action?: string;
+  /** An actor id (user id, API key id) or an e-mail address */
+  actor?: string;
+  target_type?: string;
+  target_id?: string;
+  /** Inclusive, RFC 3339 */
+  from?: string;
+  /** Exclusive, RFC 3339 */
+  to?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListAuditEventsResponse {
+  events: Array<AuditEvent>;
+  next_page_token: string;
+  /** A service that keeps part of the log did not answer: the page may lack its entries */
+  incomplete: boolean;
+  unavailable_sources: Array<"plans" | "billing" | "payments">;
 }
 
 export interface ListContractAcceptancesResponse {

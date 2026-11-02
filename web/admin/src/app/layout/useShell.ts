@@ -66,6 +66,11 @@ function createShell() {
     return resolveScope({ ...(pathApp ? { pathApp } : {}), ...(appInSearch(search.value) ? { addressApp: appInSearch(search.value) as string } : {}), apps: apps.data.value?.apps, last: lastApp() });
   });
   const scopeApp = computed(() => (scope.value && scope.value !== ALL_APPS ? apps.data.value?.apps?.find((a) => a.id === scope.value) : undefined));
+  /** The person's role in the account of the selected app (unknown until the apps and the profile have arrived, and with the scope "all apps"). */
+  const role = computed(() => {
+    const account = scopeApp.value?.account_id;
+    return account ? me.data.value?.memberships?.find((m) => m.account_id === account)?.role : undefined;
+  });
 
   /** The environment the person's pages show: a tenant page's own, else the address', else where the app (or the organisation) opens. */
   const env = computed<Environment | undefined>(() => {
@@ -89,6 +94,7 @@ function createShell() {
       operator: isOperator.value,
       partner: partner.value,
       saas: saas.value,
+      ...(role.value === "viewer" ? { viewer: true } : {}),
       ...(sc ? { scope: sc } : {}),
       ...(appId ? { appId } : {}),
       ...(env.value ? { env: env.value } : {}),
@@ -128,7 +134,7 @@ function createShell() {
     return list;
   });
 
-  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant, scope, scopeApp, env, allInPath, inOperatorArea };
+  return { path, search, context, sections, current, crumbs, apps, me, appName, orgName, located, tenant, scope, scopeApp, env, allInPath, inOperatorArea };
 }
 
 export type Shell = ReturnType<typeof createShell>;

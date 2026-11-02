@@ -3,6 +3,7 @@
 package itest
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 )
@@ -241,5 +243,79 @@ func testTenantStatusApproval(t *testing.T) {
 	}
 	if requests != 3 {
 		t.Errorf("%d requests in the history, want 3 (the first, the repeat of the same operator and the one after the other changes): %v", requests, h)
+	}
+}
+
+// The owners of an account hear of it when the operator suspends, freezes, bans or reinstates their live app: every owner with a proven address, in their own
+// language, naming the app; nobody else (an owner whose address is not proven, an administrator), nothing when the status does not change or when an inactive tenant
+// is activated, and nothing of the operator's category or reason.
+func testTenantStatusMails(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	ada := e.verified(t, "status-ada@example.com", "Status Co")
+	if _, err := e.system.Exec(ctx, `UPDATE users SET locale = 'tr' WHERE id = $1::uuid`, ada.id); err != nil {
+		t.Fatal(err)
+	}
+	bob := e.verified(t, "status-bob@example.com", "Bob Co")
+	cy := e.signUp(t, "status-cy@example.com", "Cy Co") // never verifies the address
+	for _, m := range []struct{ user, role string }{{bob.id, "owner"}, {cy.GetUser().GetId(), "owner"}} {
+		if _, err := e.system.Exec(ctx, `INSERT INTO account_members (account_id, user_id, role) VALUES ($1::uuid, $2::uuid, $3)`, ada.account, m.user, m.role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dee := e.verified(t, "status-dee@example.com", "Dee Co")
+	if _, err := e.system.Exec(ctx, `INSERT INTO account_members (account_id, user_id, role) VALUES ($1::uuid, $2::uuid, 'admin')`, ada.account, dee.id); err != nil {
+		t.Fatal(err)
+	}
+	created, err := e.ident.CreateMyApp(ctx, &plansv1.CreateMyAppRequest{UserId: ada.id, AccountId: ada.account, Name: "Shop", Currency: "TRY", Timezone: "Europe/Istanbul"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenantID, app := envOf(created.GetApp(), plansv1.Environment_ENVIRONMENT_LIVE).GetId(), created.GetApp().GetName()
+	mails := func(kind usermail.Kind, to string) int { return len(e.mail.to(kind, to)) }
+	total := func() int {
+		n := 0
+		for _, k := range []usermail.Kind{usermail.KindTenantSuspended, usermail.KindTenantFrozen, usermail.KindTenantBanned, usermail.KindTenantReinstated} {
+			for _, to := range []string{ada.email, bob.email, "status-cy@example.com", dee.email} {
+				n += mails(k, to)
+			}
+		}
+		return n
+	}
+	set := func(to plansv1.TenantStatus) {
+		t.Helper()
+		if _, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: tenantID, Status: to, Category: "fraud", Reason: "stolen cards, see case 12", Actor: "boss@example.com"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	e.activate(t, tenantID)
+	if total() != 0 {
+		t.Fatal("activating an inactive tenant is not a reinstatement: nobody is mailed")
+	}
+	for _, step := range []struct {
+		to   plansv1.TenantStatus
+		kind usermail.Kind
+	}{{sSuspended, usermail.KindTenantSuspended}, {sFrozen, usermail.KindTenantFrozen}, {sBanned, usermail.KindTenantBanned}, {sActive, usermail.KindTenantReinstated}} {
+		before := total()
+		set(step.to)
+		if got := e.mail.to(step.kind, ada.email); len(got) != 1 || got[0].Locale != "tr" || got[0].App != app || got[0].Account != "Status Co" || got[0].Link != testAppURL+"/app/support" {
+			t.Fatalf("%s: mail to the owner = %+v (want one, in Turkish, naming %q)", step.kind, got, app)
+		}
+		if mails(step.kind, bob.email) != 1 || mails(step.kind, "status-cy@example.com") != 0 || mails(step.kind, dee.email) != 0 {
+			t.Errorf("%s: a second owner gets it, an owner whose address is not proven and an administrator do not", step.kind)
+		}
+		if total() != before+2 {
+			t.Errorf("%s: %d mails sent, want 2 (one per owner with a proven address)", step.kind, total()-before)
+		}
+		if m := e.mail.to(step.kind, ada.email)[0]; m.Subject != "" || m.Status != "" || m.Ticket != "" {
+			t.Errorf("%s: the mail carries more than the app and the account: %+v", step.kind, m)
+		}
+	}
+	// A call that leaves the status as it is mails nobody.
+	before := total()
+	set(sActive)
+	if total() != before {
+		t.Error("reinstating an app that is in service sent a mail")
 	}
 }

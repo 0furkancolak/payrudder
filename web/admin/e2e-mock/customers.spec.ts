@@ -176,8 +176,8 @@ test.describe("customer block", () => {
       if (!m || c.method !== "POST") return undefined;
       if (m[1] === "cus_2" && m[2] === "block") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "no" } } };
       if (m[2] === "block") {
-        blocked.set(m[1]!, { block_time: "2026-10-28T10:00:00Z", block_reason: c.body?.reason ?? "", block_category: c.body?.category ?? "", blocked_until: c.body?.blocked_until ?? null });
-        events.unshift({ id: `e${events.length}`, action: "blocked", category: c.body?.category ?? "", reason: c.body?.reason ?? "", actor: "ada@example.com", create_time: "2026-10-28T10:00:00Z" });
+        blocked.set(m[1]!, { block_time: "2026-10-28T10:00:00Z", block_reason: c.body?.reason ?? "", block_category: c.body?.category ?? "", blocked_until: c.body?.blocked_until ?? null, service_suspended: c.body?.suspend_service === true });
+        events.unshift({ id: `e${events.length}`, action: "blocked", category: c.body?.category ?? "", reason: c.body?.reason ?? "", suspend_service: c.body?.suspend_service === true, actor: "ada@example.com", create_time: "2026-10-28T10:00:00Z" });
       } else {
         blocked.delete(m[1]!);
         events.unshift({ id: `e${events.length}`, action: "unblocked", category: "", reason: "", actor: "ada@example.com", create_time: "2026-10-28T11:00:00Z" });
@@ -195,10 +195,11 @@ test.describe("customer block", () => {
     await page.getByTestId("block-category").selectOption("fraud");
     await page.getByTestId("block-note").fill("stolen card");
     await page.getByTestId("block-until").fill("2099-01-01");
+    await page.getByTestId("block-suspend").click();
     await page.getByTestId("block-submit").click();
     await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toBeVisible();
     expect(gw.called("POST", "/v1/customers/cus_1/block")).toHaveLength(1);
-    expect(gw.called("POST", "/v1/customers/cus_1/block")[0]?.body).toMatchObject({ reason: "stolen card", category: "fraud" });
+    expect(gw.called("POST", "/v1/customers/cus_1/block")[0]?.body).toMatchObject({ reason: "stolen card", category: "fraud", suspend_service: true });
     expect(String(gw.called("POST", "/v1/customers/cus_1/block")[0]?.body?.blocked_until)).toMatch(/^2099-01-01T|^2098-12-31T/);
 
     // The sheet says why and until when, keeps the history, and lifts the block.
@@ -207,8 +208,10 @@ test.describe("customer block", () => {
     await expect(banner).toContainText("Blocked since");
     await expect(banner).toContainText("Fraud");
     await expect(banner).toContainText("stolen card");
+    await expect(page.getByTestId("customer-suspended")).toContainText("Service suspended");
     await page.getByTestId("customer-tab-details").click();
     await expect(page.getByTestId("customer-block-event")).toHaveCount(1);
+    await expect(page.getByTestId("customer-block-event")).toContainText("Service suspended");
     await expect(page.getByTestId("customer-block-history")).toContainText("ada@example.com");
     await page.getByTestId("customer-unblock").click();
     await expect(banner).toHaveCount(0);

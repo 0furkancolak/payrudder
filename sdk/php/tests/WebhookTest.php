@@ -144,11 +144,12 @@ final class WebhookTest extends TestCase
         self::assertSame('4.5', $low->balance);
         self::assertNull($low->customerExternalId);
 
-        $blocked = WebhookEvent::fromJson('{"id":"3","type":"customer.blocked","data":{"customer_id":"c1","customer_external_id":"cus_1","category":"fraud","reason":"stolen card","blocked_until":"2027-01-01T00:00:00Z"}}')
+        $blocked = WebhookEvent::fromJson('{"id":"3","type":"customer.blocked","data":{"customer_id":"c1","customer_external_id":"cus_1","category":"fraud","reason":"stolen card","blocked_until":"2027-01-01T00:00:00Z","suspend_service":true}}')
             ->dataAs(CustomerBlockEventData::class);
         self::assertSame('cus_1', $blocked->customerExternalId);
         self::assertSame('fraud', $blocked->category);
         self::assertSame('2027-01-01T00:00:00Z', $blocked->blockedUntil);
+        self::assertTrue($blocked->suspendService);
 
         $price = WebhookEvent::fromJson('{"id":"4","type":"price_change.scheduled","data":{"price_change":{"id":"p1","plan_code":"basic","from_version":1,"to_version":2,"scheduled":3},"scheduled":3,"skipped":1}}')
             ->dataAs(PriceChangeScheduledEventData::class);

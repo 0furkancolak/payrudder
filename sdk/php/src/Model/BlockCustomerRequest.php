@@ -19,11 +19,13 @@ final class BlockCustomerRequest implements RequestBody
      * @param string|null $reason
      * @param CustomerBlockCategory|string|null $category
      * @param string|null $blockedUntil
+     * @param bool|null $suspendService
      */
     public function __construct(
         public readonly ?string $reason = null,
         public readonly CustomerBlockCategory|string|null $category = null,
         public readonly ?string $blockedUntil = null,
+        public readonly ?bool $suspendService = null,
     ) {}
 
     /**
@@ -35,6 +37,7 @@ final class BlockCustomerRequest implements RequestBody
             'reason' => $this->reason,
             'category' => Cast::wire($this->category),
             'blocked_until' => $this->blockedUntil,
+            'suspend_service' => $this->suspendService,
         ]);
     }
 }

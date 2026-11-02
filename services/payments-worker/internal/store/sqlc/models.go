@@ -11,6 +11,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type AuditEvent struct {
+	ID         uuid.UUID
+	TenantID   *uuid.UUID
+	AccountID  *uuid.UUID
+	ActorType  string
+	ActorID    string
+	ActorEmail string
+	Action     string
+	TargetType string
+	TargetID   string
+	Summary    string
+	Detail     json.RawMessage
+	BeforeHash string
+	AfterHash  string
+	SourceIp   string
+	RequestID  string
+	CreatedAt  time.Time
+}
+
 type EinvoiceAccount struct {
 	TenantID    uuid.UUID
 	Environment string

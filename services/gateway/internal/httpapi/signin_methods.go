@@ -145,7 +145,8 @@ func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	s.respondSignedIn(w, r, &plansv1.SignInResponse{User: resp.GetUser(), Memberships: resp.GetMemberships(), Token: resp.GetToken(), ExpireTime: resp.GetExpireTime()}, nil)
+	s.signedInOrChallenge(w, r, &plansv1.SignInResponse{User: resp.GetUser(), Memberships: resp.GetMemberships(), Token: resp.GetToken(), ExpireTime: resp.GetExpireTime(),
+		Challenge: resp.GetChallenge(), ChallengeExpireTime: resp.GetChallengeExpireTime()}, nil)
 }
 
 // ---- Google ----
@@ -289,6 +290,10 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setLoginCookie(w, "", -1)
+	if resp.GetChallenge() != "" {
+		s.challengeRedirect(w, r, resp.GetChallenge(), resp.GetChallengeExpireTime().AsTime())
+		return
+	}
 	frag := url.Values{"token": {resp.GetToken()}, "expires": {resp.GetExpireTime().AsTime().Format(time.RFC3339)}}
 	http.Redirect(w, r, s.d.AppURL+"/signin/complete#"+frag.Encode(), http.StatusFound)
 }

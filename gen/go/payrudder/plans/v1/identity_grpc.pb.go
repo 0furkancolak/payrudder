@@ -19,48 +19,55 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_SignUp_FullMethodName                 = "/payrudder.plans.v1.IdentityService/SignUp"
-	IdentityService_SignIn_FullMethodName                 = "/payrudder.plans.v1.IdentityService/SignIn"
-	IdentityService_SignOut_FullMethodName                = "/payrudder.plans.v1.IdentityService/SignOut"
-	IdentityService_GetSession_FullMethodName             = "/payrudder.plans.v1.IdentityService/GetSession"
-	IdentityService_VerifyEmail_FullMethodName            = "/payrudder.plans.v1.IdentityService/VerifyEmail"
-	IdentityService_ResendVerification_FullMethodName     = "/payrudder.plans.v1.IdentityService/ResendVerification"
-	IdentityService_RequestPasswordReset_FullMethodName   = "/payrudder.plans.v1.IdentityService/RequestPasswordReset"
-	IdentityService_ResetPassword_FullMethodName          = "/payrudder.plans.v1.IdentityService/ResetPassword"
-	IdentityService_RequestLoginCode_FullMethodName       = "/payrudder.plans.v1.IdentityService/RequestLoginCode"
-	IdentityService_VerifyLoginCode_FullMethodName        = "/payrudder.plans.v1.IdentityService/VerifyLoginCode"
-	IdentityService_SignInWithIdentity_FullMethodName     = "/payrudder.plans.v1.IdentityService/SignInWithIdentity"
-	IdentityService_GetMyAccount_FullMethodName           = "/payrudder.plans.v1.IdentityService/GetMyAccount"
-	IdentityService_CreateMyAccount_FullMethodName        = "/payrudder.plans.v1.IdentityService/CreateMyAccount"
-	IdentityService_RenameMyAccount_FullMethodName        = "/payrudder.plans.v1.IdentityService/RenameMyAccount"
-	IdentityService_InviteMember_FullMethodName           = "/payrudder.plans.v1.IdentityService/InviteMember"
-	IdentityService_ListInvitations_FullMethodName        = "/payrudder.plans.v1.IdentityService/ListInvitations"
-	IdentityService_RevokeInvitation_FullMethodName       = "/payrudder.plans.v1.IdentityService/RevokeInvitation"
-	IdentityService_ResendInvitation_FullMethodName       = "/payrudder.plans.v1.IdentityService/ResendInvitation"
-	IdentityService_UpdateMemberRole_FullMethodName       = "/payrudder.plans.v1.IdentityService/UpdateMemberRole"
-	IdentityService_RemoveMember_FullMethodName           = "/payrudder.plans.v1.IdentityService/RemoveMember"
-	IdentityService_LookupInvitation_FullMethodName       = "/payrudder.plans.v1.IdentityService/LookupInvitation"
-	IdentityService_AcceptInvitation_FullMethodName       = "/payrudder.plans.v1.IdentityService/AcceptInvitation"
-	IdentityService_AcceptInvitationAsUser_FullMethodName = "/payrudder.plans.v1.IdentityService/AcceptInvitationAsUser"
-	IdentityService_CreateMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/CreateMyApp"
-	IdentityService_ListMyApps_FullMethodName             = "/payrudder.plans.v1.IdentityService/ListMyApps"
-	IdentityService_GetMyApp_FullMethodName               = "/payrudder.plans.v1.IdentityService/GetMyApp"
-	IdentityService_RenameMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/RenameMyApp"
-	IdentityService_DeleteMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
-	IdentityService_ResolveMyTenant_FullMethodName        = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
-	IdentityService_CreateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/CreateMyApiKey"
-	IdentityService_ListMyApiKeys_FullMethodName          = "/payrudder.plans.v1.IdentityService/ListMyApiKeys"
-	IdentityService_RevokeMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/RevokeMyApiKey"
-	IdentityService_RotateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/RotateMyApiKey"
-	IdentityService_GetMyGoLive_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyGoLive"
-	IdentityService_ActivateMyApp_FullMethodName          = "/payrudder.plans.v1.IdentityService/ActivateMyApp"
-	IdentityService_UpdateMyBillingProfile_FullMethodName = "/payrudder.plans.v1.IdentityService/UpdateMyBillingProfile"
-	IdentityService_AcceptMyTerms_FullMethodName          = "/payrudder.plans.v1.IdentityService/AcceptMyTerms"
-	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
-	IdentityService_ResetMySandbox_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
-	IdentityService_GetMySandboxReset_FullMethodName      = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
-	IdentityService_GetMyOnboarding_FullMethodName        = "/payrudder.plans.v1.IdentityService/GetMyOnboarding"
-	IdentityService_UpdateMyOnboarding_FullMethodName     = "/payrudder.plans.v1.IdentityService/UpdateMyOnboarding"
+	IdentityService_SignUp_FullMethodName                  = "/payrudder.plans.v1.IdentityService/SignUp"
+	IdentityService_SignIn_FullMethodName                  = "/payrudder.plans.v1.IdentityService/SignIn"
+	IdentityService_SignOut_FullMethodName                 = "/payrudder.plans.v1.IdentityService/SignOut"
+	IdentityService_GetSession_FullMethodName              = "/payrudder.plans.v1.IdentityService/GetSession"
+	IdentityService_VerifyEmail_FullMethodName             = "/payrudder.plans.v1.IdentityService/VerifyEmail"
+	IdentityService_ResendVerification_FullMethodName      = "/payrudder.plans.v1.IdentityService/ResendVerification"
+	IdentityService_RequestPasswordReset_FullMethodName    = "/payrudder.plans.v1.IdentityService/RequestPasswordReset"
+	IdentityService_ResetPassword_FullMethodName           = "/payrudder.plans.v1.IdentityService/ResetPassword"
+	IdentityService_RequestLoginCode_FullMethodName        = "/payrudder.plans.v1.IdentityService/RequestLoginCode"
+	IdentityService_VerifyLoginCode_FullMethodName         = "/payrudder.plans.v1.IdentityService/VerifyLoginCode"
+	IdentityService_SignInWithIdentity_FullMethodName      = "/payrudder.plans.v1.IdentityService/SignInWithIdentity"
+	IdentityService_VerifyTwoFactor_FullMethodName         = "/payrudder.plans.v1.IdentityService/VerifyTwoFactor"
+	IdentityService_GetTwoFactor_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetTwoFactor"
+	IdentityService_SetupTwoFactor_FullMethodName          = "/payrudder.plans.v1.IdentityService/SetupTwoFactor"
+	IdentityService_ConfirmTwoFactor_FullMethodName        = "/payrudder.plans.v1.IdentityService/ConfirmTwoFactor"
+	IdentityService_DisableTwoFactor_FullMethodName        = "/payrudder.plans.v1.IdentityService/DisableTwoFactor"
+	IdentityService_RegenerateRecoveryCodes_FullMethodName = "/payrudder.plans.v1.IdentityService/RegenerateRecoveryCodes"
+	IdentityService_SetAccountSecurity_FullMethodName      = "/payrudder.plans.v1.IdentityService/SetAccountSecurity"
+	IdentityService_GetMyAccount_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyAccount"
+	IdentityService_CreateMyAccount_FullMethodName         = "/payrudder.plans.v1.IdentityService/CreateMyAccount"
+	IdentityService_RenameMyAccount_FullMethodName         = "/payrudder.plans.v1.IdentityService/RenameMyAccount"
+	IdentityService_InviteMember_FullMethodName            = "/payrudder.plans.v1.IdentityService/InviteMember"
+	IdentityService_ListInvitations_FullMethodName         = "/payrudder.plans.v1.IdentityService/ListInvitations"
+	IdentityService_RevokeInvitation_FullMethodName        = "/payrudder.plans.v1.IdentityService/RevokeInvitation"
+	IdentityService_ResendInvitation_FullMethodName        = "/payrudder.plans.v1.IdentityService/ResendInvitation"
+	IdentityService_UpdateMemberRole_FullMethodName        = "/payrudder.plans.v1.IdentityService/UpdateMemberRole"
+	IdentityService_RemoveMember_FullMethodName            = "/payrudder.plans.v1.IdentityService/RemoveMember"
+	IdentityService_LookupInvitation_FullMethodName        = "/payrudder.plans.v1.IdentityService/LookupInvitation"
+	IdentityService_AcceptInvitation_FullMethodName        = "/payrudder.plans.v1.IdentityService/AcceptInvitation"
+	IdentityService_AcceptInvitationAsUser_FullMethodName  = "/payrudder.plans.v1.IdentityService/AcceptInvitationAsUser"
+	IdentityService_CreateMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/CreateMyApp"
+	IdentityService_ListMyApps_FullMethodName              = "/payrudder.plans.v1.IdentityService/ListMyApps"
+	IdentityService_GetMyApp_FullMethodName                = "/payrudder.plans.v1.IdentityService/GetMyApp"
+	IdentityService_RenameMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/RenameMyApp"
+	IdentityService_DeleteMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
+	IdentityService_ResolveMyTenant_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
+	IdentityService_CreateMyApiKey_FullMethodName          = "/payrudder.plans.v1.IdentityService/CreateMyApiKey"
+	IdentityService_ListMyApiKeys_FullMethodName           = "/payrudder.plans.v1.IdentityService/ListMyApiKeys"
+	IdentityService_RevokeMyApiKey_FullMethodName          = "/payrudder.plans.v1.IdentityService/RevokeMyApiKey"
+	IdentityService_RotateMyApiKey_FullMethodName          = "/payrudder.plans.v1.IdentityService/RotateMyApiKey"
+	IdentityService_GetMyGoLive_FullMethodName             = "/payrudder.plans.v1.IdentityService/GetMyGoLive"
+	IdentityService_ActivateMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/ActivateMyApp"
+	IdentityService_UpdateMyBillingProfile_FullMethodName  = "/payrudder.plans.v1.IdentityService/UpdateMyBillingProfile"
+	IdentityService_AcceptMyTerms_FullMethodName           = "/payrudder.plans.v1.IdentityService/AcceptMyTerms"
+	IdentityService_PromoteMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
+	IdentityService_ResetMySandbox_FullMethodName          = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
+	IdentityService_GetMySandboxReset_FullMethodName       = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
+	IdentityService_GetMyOnboarding_FullMethodName         = "/payrudder.plans.v1.IdentityService/GetMyOnboarding"
+	IdentityService_UpdateMyOnboarding_FullMethodName      = "/payrudder.plans.v1.IdentityService/UpdateMyOnboarding"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -97,6 +104,22 @@ type IdentityServiceClient interface {
 	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInWithIdentityResponse, error)
+	// VerifyTwoFactor is the second step of a sign-in for a person who has two-factor sign-in on: it takes the challenge SignIn, VerifyLoginCode or SignInWithIdentity
+	// returned and a code of the authenticator app (RFC 6238) or an unused recovery code, and opens the session. A try counts against the lock of the account like a
+	// wrong password; a challenge allows five. Every failure is the same error.
+	VerifyTwoFactor(ctx context.Context, in *VerifyTwoFactorRequest, opts ...grpc.CallOption) (*VerifyTwoFactorResponse, error)
+	// GetTwoFactor says whether the user has two-factor sign-in on.
+	GetTwoFactor(ctx context.Context, in *GetTwoFactorRequest, opts ...grpc.CallOption) (*GetTwoFactorResponse, error)
+	// SetupTwoFactor makes a secret and returns it with the otpauth address for a QR code. Two-factor sign-in stays off until ConfirmTwoFactor proves a code.
+	SetupTwoFactor(ctx context.Context, in *SetupTwoFactorRequest, opts ...grpc.CallOption) (*SetupTwoFactorResponse, error)
+	// ConfirmTwoFactor turns two-factor sign-in on with the first code and returns ten single-use recovery codes, once.
+	ConfirmTwoFactor(ctx context.Context, in *ConfirmTwoFactorRequest, opts ...grpc.CallOption) (*ConfirmTwoFactorResponse, error)
+	// DisableTwoFactor turns it off; it needs a code, and is refused while an account the user owns requires it.
+	DisableTwoFactor(ctx context.Context, in *DisableTwoFactorRequest, opts ...grpc.CallOption) (*DisableTwoFactorResponse, error)
+	// RegenerateRecoveryCodes replaces the recovery codes; it needs a code.
+	RegenerateRecoveryCodes(ctx context.Context, in *RegenerateRecoveryCodesRequest, opts ...grpc.CallOption) (*RegenerateRecoveryCodesResponse, error)
+	// SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
+	SetAccountSecurity(ctx context.Context, in *SetAccountSecurityRequest, opts ...grpc.CallOption) (*SetAccountSecurityResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
 	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
 	CreateMyAccount(ctx context.Context, in *CreateMyAccountRequest, opts ...grpc.CallOption) (*CreateMyAccountResponse, error)
@@ -276,6 +299,76 @@ func (c *identityServiceClient) SignInWithIdentity(ctx context.Context, in *Sign
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SignInWithIdentityResponse)
 	err := c.cc.Invoke(ctx, IdentityService_SignInWithIdentity_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) VerifyTwoFactor(ctx context.Context, in *VerifyTwoFactorRequest, opts ...grpc.CallOption) (*VerifyTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_VerifyTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) GetTwoFactor(ctx context.Context, in *GetTwoFactorRequest, opts ...grpc.CallOption) (*GetTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) SetupTwoFactor(ctx context.Context, in *SetupTwoFactorRequest, opts ...grpc.CallOption) (*SetupTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetupTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_SetupTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ConfirmTwoFactor(ctx context.Context, in *ConfirmTwoFactorRequest, opts ...grpc.CallOption) (*ConfirmTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ConfirmTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) DisableTwoFactor(ctx context.Context, in *DisableTwoFactorRequest, opts ...grpc.CallOption) (*DisableTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisableTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_DisableTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RegenerateRecoveryCodes(ctx context.Context, in *RegenerateRecoveryCodesRequest, opts ...grpc.CallOption) (*RegenerateRecoveryCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegenerateRecoveryCodesResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RegenerateRecoveryCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) SetAccountSecurity(ctx context.Context, in *SetAccountSecurityRequest, opts ...grpc.CallOption) (*SetAccountSecurityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetAccountSecurityResponse)
+	err := c.cc.Invoke(ctx, IdentityService_SetAccountSecurity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -626,6 +719,22 @@ type IdentityServiceServer interface {
 	// SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInWithIdentityResponse, error)
+	// VerifyTwoFactor is the second step of a sign-in for a person who has two-factor sign-in on: it takes the challenge SignIn, VerifyLoginCode or SignInWithIdentity
+	// returned and a code of the authenticator app (RFC 6238) or an unused recovery code, and opens the session. A try counts against the lock of the account like a
+	// wrong password; a challenge allows five. Every failure is the same error.
+	VerifyTwoFactor(context.Context, *VerifyTwoFactorRequest) (*VerifyTwoFactorResponse, error)
+	// GetTwoFactor says whether the user has two-factor sign-in on.
+	GetTwoFactor(context.Context, *GetTwoFactorRequest) (*GetTwoFactorResponse, error)
+	// SetupTwoFactor makes a secret and returns it with the otpauth address for a QR code. Two-factor sign-in stays off until ConfirmTwoFactor proves a code.
+	SetupTwoFactor(context.Context, *SetupTwoFactorRequest) (*SetupTwoFactorResponse, error)
+	// ConfirmTwoFactor turns two-factor sign-in on with the first code and returns ten single-use recovery codes, once.
+	ConfirmTwoFactor(context.Context, *ConfirmTwoFactorRequest) (*ConfirmTwoFactorResponse, error)
+	// DisableTwoFactor turns it off; it needs a code, and is refused while an account the user owns requires it.
+	DisableTwoFactor(context.Context, *DisableTwoFactorRequest) (*DisableTwoFactorResponse, error)
+	// RegenerateRecoveryCodes replaces the recovery codes; it needs a code.
+	RegenerateRecoveryCodes(context.Context, *RegenerateRecoveryCodesRequest) (*RegenerateRecoveryCodesResponse, error)
+	// SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
+	SetAccountSecurity(context.Context, *SetAccountSecurityRequest) (*SetAccountSecurityResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
 	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
 	CreateMyAccount(context.Context, *CreateMyAccountRequest) (*CreateMyAccountResponse, error)
@@ -733,6 +842,27 @@ func (UnimplementedIdentityServiceServer) VerifyLoginCode(context.Context, *Veri
 }
 func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInWithIdentityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SignInWithIdentity not implemented")
+}
+func (UnimplementedIdentityServiceServer) VerifyTwoFactor(context.Context, *VerifyTwoFactorRequest) (*VerifyTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyTwoFactor not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetTwoFactor(context.Context, *GetTwoFactorRequest) (*GetTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTwoFactor not implemented")
+}
+func (UnimplementedIdentityServiceServer) SetupTwoFactor(context.Context, *SetupTwoFactorRequest) (*SetupTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetupTwoFactor not implemented")
+}
+func (UnimplementedIdentityServiceServer) ConfirmTwoFactor(context.Context, *ConfirmTwoFactorRequest) (*ConfirmTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfirmTwoFactor not implemented")
+}
+func (UnimplementedIdentityServiceServer) DisableTwoFactor(context.Context, *DisableTwoFactorRequest) (*DisableTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisableTwoFactor not implemented")
+}
+func (UnimplementedIdentityServiceServer) RegenerateRecoveryCodes(context.Context, *RegenerateRecoveryCodesRequest) (*RegenerateRecoveryCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegenerateRecoveryCodes not implemented")
+}
+func (UnimplementedIdentityServiceServer) SetAccountSecurity(context.Context, *SetAccountSecurityRequest) (*SetAccountSecurityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAccountSecurity not implemented")
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
@@ -1042,6 +1172,132 @@ func _IdentityService_SignInWithIdentity_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityServiceServer).SignInWithIdentity(ctx, req.(*SignInWithIdentityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_VerifyTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).VerifyTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_VerifyTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).VerifyTwoFactor(ctx, req.(*VerifyTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_GetTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetTwoFactor(ctx, req.(*GetTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_SetupTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetupTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SetupTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SetupTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SetupTwoFactor(ctx, req.(*SetupTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ConfirmTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ConfirmTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ConfirmTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ConfirmTwoFactor(ctx, req.(*ConfirmTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_DisableTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).DisableTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_DisableTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).DisableTwoFactor(ctx, req.(*DisableTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RegenerateRecoveryCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegenerateRecoveryCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RegenerateRecoveryCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RegenerateRecoveryCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RegenerateRecoveryCodes(ctx, req.(*RegenerateRecoveryCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_SetAccountSecurity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAccountSecurityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SetAccountSecurity(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SetAccountSecurity_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SetAccountSecurity(ctx, req.(*SetAccountSecurityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1654,6 +1910,34 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SignInWithIdentity",
 			Handler:    _IdentityService_SignInWithIdentity_Handler,
+		},
+		{
+			MethodName: "VerifyTwoFactor",
+			Handler:    _IdentityService_VerifyTwoFactor_Handler,
+		},
+		{
+			MethodName: "GetTwoFactor",
+			Handler:    _IdentityService_GetTwoFactor_Handler,
+		},
+		{
+			MethodName: "SetupTwoFactor",
+			Handler:    _IdentityService_SetupTwoFactor_Handler,
+		},
+		{
+			MethodName: "ConfirmTwoFactor",
+			Handler:    _IdentityService_ConfirmTwoFactor_Handler,
+		},
+		{
+			MethodName: "DisableTwoFactor",
+			Handler:    _IdentityService_DisableTwoFactor_Handler,
+		},
+		{
+			MethodName: "RegenerateRecoveryCodes",
+			Handler:    _IdentityService_RegenerateRecoveryCodes_Handler,
+		},
+		{
+			MethodName: "SetAccountSecurity",
+			Handler:    _IdentityService_SetAccountSecurity_Handler,
 		},
 		{
 			MethodName: "GetMyAccount",

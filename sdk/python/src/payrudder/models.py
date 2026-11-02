@@ -67,6 +67,7 @@ class _CustomerRequired(TypedDict):
     customer_type: str
     block_reason: str
     block_category: str
+    service_suspended: bool
     phone: str
     tax_id_warning: str
 
@@ -132,6 +133,7 @@ class BlockCustomerRequest(TypedDict, total=False):
     reason: str
     category: CustomerBlockCategory
     blocked_until: str | datetime
+    suspend_service: bool
 
 
 class _CustomerBlockEventRequired(TypedDict):
@@ -139,6 +141,7 @@ class _CustomerBlockEventRequired(TypedDict):
     action: Literal["blocked", "unblocked"]
     category: str
     reason: str
+    suspend_service: bool
     actor: str
     create_time: str
 
@@ -473,6 +476,7 @@ class EntitlementStatus(TypedDict):
     mode: Literal["hard", "soft", "notify"]
     over_limit: bool
     overridden: bool
+    suspended: bool
 
 
 class ListEntitlementsResponse(TypedDict):
@@ -1875,6 +1879,32 @@ class CustomerPayment(TypedDict):
 class ListCustomerPaymentsResponse(TypedDict):
     invoices: list[Invoice]
     payments: list[CustomerPayment]
+
+
+class AuditEvent(TypedDict):
+    id: str
+    tenant_id: str
+    account_id: str
+    actor_type: Literal["user", "api_key", "operator", "system"]
+    actor_id: str
+    actor_email: str
+    action: str
+    target_type: str
+    target_id: str
+    summary: str
+    detail_json: str
+    before_hash: str
+    after_hash: str
+    source_ip: str
+    request_id: str
+    create_time: str | None
+
+
+class ListAuditEventsResponse(TypedDict):
+    events: list[AuditEvent]
+    next_page_token: str
+    incomplete: bool
+    unavailable_sources: list[Literal["plans", "billing", "payments"]]
 
 
 class Payment(TypedDict):

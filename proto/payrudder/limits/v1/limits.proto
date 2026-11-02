@@ -34,7 +34,7 @@ message LimitStatus {
   uint32 quantity_scale = 8;
   // No entitlement, or an entitlement with limit 0.
   bool unlimited = 9;
-  // unlimited || used < limit || mode is "soft" or "notify".
+  // (unlimited || used < limit || mode is "soft" or "notify") && !suspended.
   bool allowed = 10;
   // Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
   google.protobuf.Timestamp as_of = 11;
@@ -50,6 +50,9 @@ message LimitStatus {
   bool over_limit = 16;
   // The limit is the customer's own override, not its plan version's.
   bool overridden = 17;
+  // The seller has suspended this customer's service (a block with suspend_service): allowed is false on every meter, whatever the limit and the usage. Usage is
+  // still ingested and counted.
+  bool suspended = 18;
 }
 
 message CheckEntitlementResponse {
