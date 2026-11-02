@@ -95,3 +95,7 @@ Defaults (not agreed): exact versions of the top-level dependencies, no `compose
 Verified locally: `npm ci`, `tsc`, `next build` and the smoke test for Next.js (Node 24); `composer update` (Docker `composer:2`), `php -l` and the smoke test for Laravel on PHP 8.5, and the app answering `/healthz`, a refused signature and a refused body on PHP 8.4 (Docker). **Not run:** either workflow on GitHub; either template against a real gateway or a real key; Laravel on PHP 8.3 (the lowest it allows); Next.js on Node 22.
 
 Not done: Rails and other frameworks, a job against the compose stack, publishing the SDKs.
+
+## Progress (2026-11-02), branch `feat/cli-dx-3` (CLI)
+
+The command line also creates what a product is built from: `payrudder webhooks create`, `meters create`, `subscriptions create` and `plans publish -f version.json`, so the quick start can be done from a terminal with no console. Details, defaults (the publish file is checked before sending, the three calls without an idempotency key or a unique key are not retried) and what was not verified are in [22](22-platform-audit-and-roadmap.md) G16. Still not in the CLI: coupons, changing or deleting, listing meters and plans.

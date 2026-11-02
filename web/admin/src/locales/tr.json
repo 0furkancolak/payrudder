@@ -1515,6 +1515,7 @@
       },
       "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir.",
       "loadMore": "Daha fazla göster",
+      "notConnected": "Bu kurulumda posta kaydı ve engellenen adresler listesi bağlı değil; bu yüzden burada bir şey gösterilemiyor.",
       "suppressions": {
         "title": "Posta göndermediğimiz adresler",
         "hint": "Postası kalıcı olarak geri dönen, şikâyet alan veya operatörün buraya koyduğu bir adres burada görünür. Yeniden posta göndermeyi seçene kadar, ne olursa olsun, bu adrese posta gönderilmez.",

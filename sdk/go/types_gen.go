@@ -1947,12 +1947,18 @@ type ListInvoicesResponse struct {
 type ListMailMessagesResponse struct {
 	Messages      []MailMessage `json:"messages"`
 	NextPageToken string        `json:"next_page_token"`
+	// False when this deployment's gateway is not connected to the notifier (the log is then empty because nothing
+	// was asked, not because no mail was sent).
+	Connected bool `json:"connected"`
 }
 
 // ListMailSuppressionsResponse is the response of ListMailSuppressions.
 type ListMailSuppressionsResponse struct {
 	Suppressions  []MailSuppression `json:"suppressions"`
 	NextPageToken string            `json:"next_page_token"`
+	// False when this deployment's gateway is not connected to the notifier (the list is then empty because nothing
+	// was asked, not because nothing is suppressed).
+	Connected bool `json:"connected"`
 }
 
 // ListMetersResponse is the response of ListMeters.

@@ -281,6 +281,13 @@ groups:
         labels: { severity: page, service: postgres }
         annotations:
           summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
+      # The object buckets (invoice PDFs, assets), copied by deploy/backup/object-backup.sh. A stack that does not run it has no such metric and raises nothing.
+      - alert: ObjectBackupStale
+        expr: time() - max(payrudder_objects_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: warn, service: minio }
+        annotations:
+          summary: "the object buckets have not been copied to the backup for over 26 hours"
       - alert: PostgresDown
         expr: pg_up == 0
         for: 1m
