@@ -6137,7 +6137,10 @@
       "user": "Contraseñas e inicio de sesión",
       "two_factor": "Inicio de sesión en dos pasos",
       "sign_in": "Inicio de sesión",
-      "account": "Organización"
+      "account": "Organización",
+      "subscription": "Suscripciones",
+      "reconciliation": "Conciliación",
+      "audit": "Conservación del registro"
     },
     "actions": {
       "api_key": {
@@ -6164,7 +6167,11 @@
       },
       "customer": {
         "blocked": "Cliente bloqueado",
-        "unblocked": "Cliente desbloqueado"
+        "unblocked": "Cliente desbloqueado",
+        "contact_changed": "Datos de contacto del cliente modificados",
+        "address_changed": "Dirección del cliente modificada",
+        "tax_changed": "Datos fiscales del cliente modificados",
+        "payment_method_changed": "Método de pago del cliente modificado"
       },
       "credit_note": {
         "issued": "Nota de crédito emitida",
@@ -6239,6 +6246,18 @@
         "recovery_codes_replaced": "Códigos de recuperación regenerados",
         "recovery_code_used": "Código de recuperación usado",
         "reset_by_operator": "Inicio de sesión en dos pasos restablecido por el soporte"
+      },
+      "subscription": {
+        "coupon_applied": "Cupón aplicado a una suscripción",
+        "coupon_removed": "Cupón retirado de una suscripción"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Diferencia de conciliación explicada",
+        "discrepancy_resolved": "Diferencia de conciliación resuelta",
+        "discrepancy_assigned": "Diferencia de conciliación asignada"
+      },
+      "audit": {
+        "pruned": "Entradas más antiguas del registro eliminadas"
       }
     }
   }

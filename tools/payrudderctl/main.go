@@ -2,7 +2,7 @@
 //
 //	payrudderctl seed --currency TRY --timezone Europe/Istanbul --grace 24h
 //
-// dlq, cells and secrets are the exceptions: dlq talks to RabbitMQ directly, cells to plans-svc and the databases, secrets to the databases of one service. replay and rerate work through the gateway like any other command.
+// dlq, cells, secrets and audit are the exceptions: dlq talks to RabbitMQ directly, cells to plans-svc and the databases, secrets and audit to the databases of one service. replay and rerate work through the gateway like any other command.
 package main
 
 import (
@@ -32,6 +32,8 @@ func main() {
 		err = cellsCmd(os.Args[2:])
 	case "secrets":
 		err = secretsCmd(os.Args[2:])
+	case "audit":
+		err = auditCmd(os.Args[2:])
 	case "demo":
 		err = demo(os.Args[2:])
 	case "replay":
@@ -69,6 +71,7 @@ commands:
   rename  --name "Acme Billing" [--apply]: list (or make) the changes that rename the product through the whole repository
   dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)
   secrets reseal --service plans|payments [--dry-run]: seal the stored secrets again with the current key (replacing the secrets key, step 3); run it with the service's environment
+  audit   verify [--heads] | prune --older-than 8760h [--apply]: check the hash chain of a service's audit log, or delete its oldest entries (the log is kept forever unless prune is run); run it with the service's environment
   cells   jobs | doctor | migrate | move | abort | retired: tenants in cells (schema per tenant, ADR 0018); talks to plans-svc and the databases directly, from inside the network`)
 }
 

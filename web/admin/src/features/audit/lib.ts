@@ -6,7 +6,7 @@ export type AuditEvent = components["schemas"]["AuditEvent"];
 export type ActorType = AuditEvent["actor_type"];
 
 /** The areas of the log (the part of an action before its dot), in the order the filter lists them. */
-export const AUDIT_AREAS = ["api_key", "member", "plan", "webhook_endpoint", "customer", "credit_note", "invoice", "provider_account", "tenant", "price_change", "coupon", "promotion_code", "routing_rules", "tax_rates", "mail_settings", "mail_integration", "go_live", "contract", "support", "dunning", "invoice_payment", "bank_transfer", "user", "two_factor", "sign_in", "account"] as const;
+export const AUDIT_AREAS = ["api_key", "member", "plan", "webhook_endpoint", "customer", "credit_note", "invoice", "provider_account", "tenant", "price_change", "coupon", "promotion_code", "routing_rules", "tax_rates", "mail_settings", "mail_integration", "go_live", "contract", "support", "dunning", "invoice_payment", "bank_transfer", "subscription", "reconciliation", "audit", "user", "two_factor", "sign_in", "account"] as const;
 
 export const ACTOR_TYPES: readonly ActorType[] = ["user", "api_key", "operator", "system"];
 
@@ -19,7 +19,8 @@ export const KNOWN_ACTIONS: readonly string[] = [
   "member.invited", "member.joined", "member.role_changed", "member.removed",
   "plan.created", "plan.version_published",
   "webhook_endpoint.created", "webhook_endpoint.updated", "webhook_endpoint.deleted", "webhook_endpoint.secret_rotated",
-  "customer.blocked", "customer.unblocked",
+  "customer.blocked", "customer.unblocked", "customer.contact_changed", "customer.address_changed", "customer.tax_changed", "customer.payment_method_changed",
+  "subscription.coupon_applied", "subscription.coupon_removed",
   "credit_note.issued", "credit_note.refunded", "credit_note.refund_failed", "credit_note.refund_retried",
   "provider_account.connected", "provider_account.replaced", "provider_account.removed", "provider_account.default_changed",
   "tenant.status_requested", "tenant.status_changed", "tenant.settings_updated",
@@ -30,6 +31,7 @@ export const KNOWN_ACTIONS: readonly string[] = [
   "go_live.billing_profile_saved", "go_live.terms_accepted", "go_live.activated",
   "contract.version_published", "contract.settings_changed", "support.status_changed", "dunning.settings_changed",
   "invoice_payment.recorded", "bank_transfer.receipt_recorded", "user.password_reset", "user.sign_in_locked",
+  "reconciliation.discrepancy_explained", "reconciliation.discrepancy_resolved", "reconciliation.discrepancy_assigned", "audit.pruned",
 ];
 
 /** The i18n key of an action's label, or null when the console has none for it (show the action itself). */

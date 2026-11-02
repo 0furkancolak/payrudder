@@ -6137,7 +6137,10 @@
       "user": "Parola ve oturum açma",
       "two_factor": "İki adımlı giriş",
       "sign_in": "Giriş",
-      "account": "Kuruluş"
+      "account": "Kuruluş",
+      "subscription": "Abonelikler",
+      "reconciliation": "Mutabakat",
+      "audit": "Kayıt saklama"
     },
     "actions": {
       "api_key": {
@@ -6164,7 +6167,11 @@
       },
       "customer": {
         "blocked": "Müşteri engellendi",
-        "unblocked": "Müşterinin engeli kaldırıldı"
+        "unblocked": "Müşterinin engeli kaldırıldı",
+        "contact_changed": "Müşteri iletişim bilgileri değişti",
+        "address_changed": "Müşteri adresi değişti",
+        "tax_changed": "Müşteri vergi bilgileri değişti",
+        "payment_method_changed": "Müşterinin ödeme yöntemi değişti"
       },
       "credit_note": {
         "issued": "Alacak dekontu düzenlendi",
@@ -6239,6 +6246,18 @@
         "recovery_codes_replaced": "Kurtarma kodları yeniden oluşturuldu",
         "recovery_code_used": "Kurtarma kodu kullanıldı",
         "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
+      },
+      "subscription": {
+        "coupon_applied": "Aboneliğe kupon eklendi",
+        "coupon_removed": "Abonelikten kupon kaldırıldı"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Mutabakat farkı açıklandı",
+        "discrepancy_resolved": "Mutabakat farkı çözüldü",
+        "discrepancy_assigned": "Mutabakat farkı atandı"
+      },
+      "audit": {
+        "pruned": "En eski kayıtlar silindi"
       }
     }
   }
