@@ -10,7 +10,7 @@ afterEach(() => {
   while (open.length) open.pop()?.close();
 });
 
-async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPersonalData?: boolean; audit?: (r: AuditRecord) => void } = {}) {
+async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPersonalData?: boolean; audit?: (r: AuditRecord) => void; ratePerMinute?: number } = {}) {
   const seen: { path: string; auth: string | null }[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     seen.push({ path: new URL(String(input)).pathname, auth: new Headers(init.headers).get("Authorization") });
@@ -34,7 +34,7 @@ describe("streamable HTTP", () => {
   it("serves the tools to a client that sends its API key, and calls the API with that key", async () => {
     const { connect, seen } = await start({ allowPersonalData: true });
     const client = await connect("qk_test_alpha_secret1");
-    expect((await client.listTools()).tools).toHaveLength(25);
+    expect((await client.listTools()).tools).toHaveLength(30);
     const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
     expect(JSON.stringify(r.content)).toContain("<untrusted>Ada</untrusted>");
     expect(seen).toEqual([{ path: "/v1/customers/cus_1", auth: "Bearer qk_test_alpha_secret1" }]);
@@ -76,8 +76,8 @@ describe("streamable HTTP", () => {
   });
 
   it("offers the write tools only when the server was started with writes", async () => {
-    expect((await (await (await start()).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(25);
-    expect((await (await (await start({ allowWrites: true })).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(27);
+    expect((await (await (await start()).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(30);
+    expect((await (await (await start({ allowWrites: true })).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(32);
   });
 
   it("refuses a request without a key, with something that is not a key, and asks for a bearer token", async () => {
@@ -109,5 +109,35 @@ describe("the audit log over HTTP", () => {
     await b.callTool({ name: "list_meters", arguments: {} });
     expect(records.map((r) => [r.tool, r.key, r.transport]).sort()).toEqual([["get_customer", "qk_test_alpha", "http"], ["list_meters", "qk_live_beta", "http"]]);
     expect(JSON.stringify(records)).not.toMatch(/SECRET/);
+  });
+});
+
+describe("the limit per key over HTTP", () => {
+  const call = (c: Awaited<ReturnType<Awaited<ReturnType<typeof start>>["connect"]>>) => c.callTool({ name: "list_meters", arguments: {} });
+
+  it("is the key's own: one key that has used its share is refused while another is not, and the API is not called for the refused", async () => {
+    const { connect, seen } = await start({ ratePerMinute: 6 }); // a burst of one
+    const [a, b] = [await connect("qk_test_a_1111"), await connect("qk_test_b_2222")];
+    expect((await call(a)).isError).toBeFalsy();
+    const refused = await call(a);
+    expect(refused.isError).toBe(true);
+    expect(JSON.stringify(refused.content)).toContain("mcp.rate_limited");
+    expect((await call(b)).isError).toBeFalsy();
+    expect(seen.map((s) => s.auth)).toEqual(["Bearer qk_test_a_1111", "Bearer qk_test_b_2222"]);
+  });
+
+  it("counts across requests (the server keeps no session), and a caller who only knows a key's public prefix cannot spend its share", async () => {
+    const { connect, seen } = await start({ ratePerMinute: 6 });
+    expect((await call(await connect("qk_test_a_1111"))).isError).toBeFalsy();
+    expect((await call(await connect("qk_test_a_9999"))).isError).toBeFalsy(); // another key with the same prefix has a share of its own
+    expect((await call(await connect("qk_test_a_1111"))).isError).toBe(true); // a new connection of the first key: still over
+    expect(seen).toHaveLength(2);
+  });
+
+  it("has no limit unless it was given one", async () => {
+    const { connect, seen } = await start();
+    const a = await connect("qk_test_a_1111");
+    for (let i = 0; i < 15; i++) expect((await call(a)).isError).toBeFalsy();
+    expect(seen).toHaveLength(15);
   });
 });

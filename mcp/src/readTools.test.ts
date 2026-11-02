@@ -35,9 +35,9 @@ describe("the read tools are the allow-listed operations of the OpenAPI file", (
     expect(READ_TOOL_SPECS.map((t) => t.operationId)).toEqual(Object.keys(READ_TOOLS));
     // Written out on purpose: a tool an assistant can call is a decision, so adding or dropping one must change this list (and the risk table in README.md).
     expect(READ_TOOL_SPECS.map((t) => t.name).sort()).toEqual([
-      "get_credit_balance", "get_credit_note", "get_customer", "get_customer_usage", "get_dunning_report", "get_entitlement", "get_invoice", "get_meter", "get_plan_version", "get_revenue_report", "get_subscription",
-      "get_subscription_report", "get_tax_rates", "get_upcoming_invoice", "list_coupons", "list_credit_ledger", "list_credit_notes", "list_customer_payments", "list_customers", "list_entitlements",
-      "list_invoices", "list_meters", "list_payments", "list_plans", "list_subscriptions",
+      "get_accounting_summary", "get_credit_balance", "get_credit_note", "get_credit_settings", "get_customer", "get_customer_usage", "get_dunning_report", "get_dunning_settings", "get_entitlement", "get_invoice",
+      "get_meter", "get_plan_version", "get_revenue_report", "get_routing_rules", "get_subscription", "get_subscription_report", "get_tax_rates", "get_top_customers", "get_upcoming_invoice", "list_coupons",
+      "list_credit_ledger", "list_credit_notes", "list_customer_payments", "list_customers", "list_entitlements", "list_invoices", "list_meters", "list_payments", "list_plans", "list_subscriptions",
     ]);
     for (const t of READ_TOOL_SPECS) {
       const o = operation(t.operationId);
