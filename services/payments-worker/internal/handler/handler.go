@@ -667,10 +667,13 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	if reply != nil {
 		return reply, nil
 	}
+	if id := rf.GetConfirmedRefundId(); id != "" {
+		return h.recordConfirmedRefund(ctx, run, prov, invoiceID, rf, id)
+	}
 	caps := capabilities(prov)
 	if !caps.Refunds {
 		// The credit note then shows the refund as failed, with this reason: the money goes back outside Payrudder (for a bank transfer, by a transfer back).
-		return errored(CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder"), nil
+		return errored(CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder, then record it on the credit note (Resolve refund)"), nil
 	}
 	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindRefund, run.env, prov.Name(), rf.GetIdempotencyKey(), rf)
 	if err != nil {
@@ -687,6 +690,20 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	}
 	h.record(ctx, refundEntry(run, prov, invoiceID, rf, res.RefundID))
 	return refundedReply(res.RefundID), nil
+}
+
+// recordConfirmedRefund answers a refund an operator confirmed was made (billing's ResolveCreditNoteRefund), at the provider or outside Payrudder (which is how a provider without
+// a refund API, or a bank transfer, is refunded). The provider is not asked. The fact goes into the ledger under the key the refund was asked under, so that guardRefund answers any
+// later resend from it; unlike after a provider call, a ledger write that fails fails the command, which the queue delivers again: nothing has moved that a resend could repeat.
+func (h *Handler) recordConfirmedRefund(ctx context.Context, run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, refundID string) (*commandsv1.ReplyEnvelope, error) {
+	if h.Ledger.DB != nil {
+		e := refundEntry(run, prov, invoice, rf, refundID)
+		e.Source, e.Detail = store.SourceManual, "confirmed by an operator"
+		if _, err := h.Ledger.Append(ctx, e); err != nil {
+			return nil, err
+		}
+	}
+	return refundedReply(refundID), nil
 }
 
 func refundEntry(run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, ref string) store.LedgerEntry {
@@ -732,7 +749,7 @@ func (h *Handler) guardRefund(ctx context.Context, run commandRun, prov payments
 	if unknown {
 		refundUnknown.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", prov.Name())))
 		return errored(CodeRefundUnknown, fmt.Sprintf("%s was asked for this refund before and nothing records how it went, so it is not asked again: %s does not dedupe by key and could refund twice. "+
-			"Check the refund at %s; if the customer was not paid back, refund outside Payrudder", prov.Name(), prov.Name(), prov.Name())), nil
+			"Check the refund at %s, then resolve it on the credit note (Resolve refund): record it as made with the provider's reference, or ask for it again", prov.Name(), prov.Name(), prov.Name())), nil
 	}
 	return nil, nil
 }

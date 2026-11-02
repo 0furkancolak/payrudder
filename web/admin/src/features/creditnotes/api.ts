@@ -43,3 +43,26 @@ export function useRetryCreditNoteRefund(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: creditNoteKeys.all(toValue(tenantId)) }),
   });
 }
+
+/**
+ * Settles a refund that failed with what the operator found out at the provider: it was made (its reference is recorded) or it was not (it is asked again under
+ * a new key). The way out of an unknown outcome, which is never asked of the provider again under the same key.
+ */
+export function useResolveCreditNoteRefund(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { creditNoteId: string; refunded: boolean; providerRefundId?: string; note?: string }) =>
+      unwrap(
+        api.POST("/admin/v1/credit-notes/{id}/resolve-refund", {
+          params: { path: { id: v.creditNoteId } },
+          body: {
+            tenant_id: toValue(tenantId),
+            resolution: v.refunded ? "REFUND_RESOLUTION_REFUNDED" : "REFUND_RESOLUTION_NOT_REFUNDED",
+            ...(v.refunded ? { provider_refund_id: v.providerRefundId } : {}),
+            ...(v.note ? { note: v.note } : {}),
+          },
+        }),
+      ),
+    onSuccess: () => queries.invalidateQueries({ queryKey: creditNoteKeys.all(toValue(tenantId)) }),
+  });
+}

@@ -275,6 +275,7 @@ func (s *Server) operatorAdminRoutes() []Route {
 		{"POST", "/admin/v1/invoices/{id}/payments", AccessOperator, "", s.adminRecordInvoicePayment},
 		{"POST", "/admin/v1/invoices/{id}/credit-notes", AccessOperator, "", s.adminCreateCreditNote},
 		{"POST", "/admin/v1/credit-notes/{id}/retry-refund", AccessOperator, "", s.adminRetryCreditNoteRefund},
+		{"POST", "/admin/v1/credit-notes/{id}/resolve-refund", AccessOperator, "", s.adminResolveCreditNoteRefund},
 		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices", AccessOperator, "", s.adminListEInvoices},
 		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}", AccessOperator, "", s.adminGetEInvoice},
 		{"GET", "/admin/v1/tenants/{tenant_id}/e-invoices/{id}/files/{kind}", AccessOperator, "", s.adminGetEInvoiceFile},

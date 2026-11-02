@@ -21,7 +21,10 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
-const maxReasonLen = 500
+const (
+	maxReasonLen   = 500
+	maxRefundIDLen = 200
+)
 
 // Config is what the commands run on.
 type Config struct {
@@ -89,6 +92,34 @@ func (c *Commands) RetryRefund(ctx context.Context, tenantID, creditNoteID uuid.
 		return nil, errkey.New(codes.NotFound, "billing.credit_note.not_found", "credit note not found")
 	case errors.Is(err, model.ErrRefundNotFailed):
 		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.refund_not_failed", err.Error())
+	case err != nil:
+		return nil, apierr.Internal(ctx, err)
+	}
+	return cn, nil
+}
+
+// ResolveRefund settles a refund that failed with what the operator found out at the provider: resolution is model.ResolutionRefunded (refundID is the provider's reference
+// of the refund, or the bank's of a transfer back) or model.ResolutionNotRefunded (the refund is asked again under a new idempotency key). note is what they checked.
+func (c *Commands) ResolveRefund(ctx context.Context, tenantID, creditNoteID uuid.UUID, resolution, refundID, note string) (*model.CreditNote, error) {
+	refundID, note = strings.TrimSpace(refundID), strings.TrimSpace(note)
+	switch {
+	case resolution != model.ResolutionRefunded && resolution != model.ResolutionNotRefunded:
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_resolution", "resolution is refunded or not_refunded")
+	case resolution == model.ResolutionRefunded && (refundID == "" || utf8.RuneCountInString(refundID) > maxRefundIDLen || strings.ContainsAny(refundID, "\n\r\t\x00")):
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_refund_id", "provider_refund_id is required when the refund was made: one line of at most 200 characters")
+	case resolution == model.ResolutionNotRefunded && refundID != "":
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_refund_id", "provider_refund_id is only for a refund that was made")
+	case utf8.RuneCountInString(note) > maxReasonLen:
+		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.note_too_long", "note is at most 500 characters")
+	}
+	cn, err := c.resolveRefund(ctx, tenantID, creditNoteID, resolution, refundID, note)
+	switch {
+	case errors.Is(err, model.ErrNoteNotFound):
+		return nil, errkey.New(codes.NotFound, "billing.credit_note.not_found", "credit note not found")
+	case errors.Is(err, model.ErrRefundNotFailed):
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.refund_not_failed", err.Error())
+	case errors.Is(err, model.ErrNoRefund):
+		return nil, errkey.New(codes.FailedPrecondition, "billing.credit_note.nothing_to_refund", err.Error())
 	case err != nil:
 		return nil, apierr.Internal(ctx, err)
 	}

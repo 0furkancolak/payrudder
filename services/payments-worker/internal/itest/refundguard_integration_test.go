@@ -226,6 +226,43 @@ func TestRefundResendNeverRefundsTwice(t *testing.T) {
 				}
 			})
 
+			t.Run("an operator's confirmation is recorded under the key and ends the unknown outcome without asking the provider", func(t *testing.T) {
+				r := scenario(t, "down")
+				if reply, err := send(h, r, uuid.New(), r.key); err == nil || reply != nil {
+					t.Fatalf("a 500 from the provider: %v, %v; the command must be retried", reply, err)
+				}
+				fake.set("ok")
+				parked, err := send(h, r, uuid.New(), r.key)
+				wantUnknown(t, parked, err)
+				// billing's ResolveCreditNoteRefund after the operator found the refund at the provider: the same key, the reference they read there.
+				confirm := func(command uuid.UUID, h *handler.Handler) (*commandsv1.ReplyEnvelope, error) {
+					return h.Handle(ctx, &commandsv1.CommandEnvelope{CommandId: command.String(), TenantId: r.tenant.String(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+						Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{InvoiceId: r.invoice.String(), PspChargeId: p.charge,
+							AmountMinor: 1116, Currency: "USD", IdempotencyKey: r.key, ConfirmedRefundId: "manual_ref_1"}}})
+				}
+				asked := fake.asked()
+				// A ledger that cannot be written fails the command (it is delivered again): unlike after a provider call, nothing has moved that a repeat could repeat.
+				if reply, err := confirm(uuid.New(), hNoLedger); err == nil || reply != nil {
+					t.Fatalf("a confirmation whose ledger write failed = %v, %v; want an error", reply, err)
+				}
+				for range 2 { // a redelivery writes the fact once
+					if reply, err := confirm(uuid.New(), h); err != nil || reply.GetPaymentRefunded().GetPspRefundId() != "manual_ref_1" {
+						t.Fatalf("confirmation = %v, %v; want the refund manual_ref_1", reply, err)
+					}
+				}
+				if ref, ok, err := ledger.RefundFact(ctx, r.tenant, r.invoice, r.key); err != nil || !ok || ref != "manual_ref_1" {
+					t.Errorf("ledger = %q, %v, %v; the confirmation must be a fact under the refund's key", ref, ok, err)
+				}
+				// Any later resend of the refund under that key is now answered from the ledger, not parked again.
+				resent, err := send(h, r, uuid.New(), r.key)
+				if err != nil || resent.GetPaymentRefunded().GetPspRefundId() != "manual_ref_1" {
+					t.Fatalf("a resend after the confirmation = %v, %v; want manual_ref_1", resent, err)
+				}
+				if fake.asked() != asked {
+					t.Fatalf("the provider was asked %d more time(s) after the operator's confirmation, want none", fake.asked()-asked)
+				}
+			})
+
 			t.Run("a crash between the provider call and the reply leaves an unknown outcome, never repeated", func(t *testing.T) {
 				r := scenario(t, "ok")
 				if _, err := attempts.Start(ctx, uuid.New(), r.tenant, r.invoice, store.KindRefund, "live", p.name, r.key, nil); err != nil {

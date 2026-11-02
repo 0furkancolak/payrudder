@@ -167,7 +167,11 @@ func Succeed(cmd *commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	case *commandsv1.CommandEnvelope_ChargePayment:
 		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: "ch_" + cmd.GetCommandId()}}}
 	case *commandsv1.CommandEnvelope_RefundPayment:
-		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: "re_" + cmd.GetCommandId()}}}
+		ref := "re_" + cmd.GetCommandId()
+		if id := c.RefundPayment.GetConfirmedRefundId(); id != "" { // an operator's confirmation: the real worker records and answers it
+			ref = id
+		}
+		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: ref}}}
 	case *commandsv1.CommandEnvelope_QueryPaymentStatus:
 		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{
 			State: commandsv1.PaymentStatus_STATE_SUCCEEDED, PspChargeId: "ch_found"}}}

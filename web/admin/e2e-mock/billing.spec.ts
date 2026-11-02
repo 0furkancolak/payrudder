@@ -775,9 +775,74 @@ test.describe("credit notes", () => {
     const row = page.getByRole("row", { name: /CN-2026-000001/ });
     await expect(row).toContainText("Refund failed");
     await expect(row).toContainText("card closed");
-    await row.getByRole("button", { name: "Retry refund" }).click();
+    await rowAction(row, "Retry refund");
     await expect.poll(() => gw.called("POST", "/admin/v1/credit-notes/cn1/retry-refund").length).toBe(1);
     expect(gw.called("POST", "/admin/v1/credit-notes/cn1/retry-refund")[0]?.body).toEqual({ tenant_id: TENANT });
+    await expect(row).toContainText("Refund requested");
+  });
+
+  // A refund whose outcome is unknown is never asked of the provider again under the same key: the operator checks there and says what they found.
+  const unknownRefund = {
+    id: "cn1", number: "CN-2026-000001", invoice_number: "INV-2026-000001", customer_external_id: "cus_1", currency: "USD", total_minor: "1000",
+    disposition: "CREDIT_NOTE_DISPOSITION_REFUND", refund_state: "REFUND_STATE_FAILED", refund_error: "REFUND_OUTCOME_UNKNOWN: iyzico was asked for this refund before", create_time: "2026-10-20T10:00:00Z",
+  };
+
+  test("a refund whose outcome is unknown is recorded as made, with the provider's reference", async ({ page }) => {
+    const notes: Record<string, unknown>[] = [{ ...unknownRefund }];
+    const gw = common("paid", notes).on((c) => {
+      if (c.method === "POST" && c.path === "/admin/v1/credit-notes/cn1/resolve-refund") {
+        notes[0] = { ...notes[0], refund_state: "REFUND_STATE_REFUNDED", refund_error: "" };
+        return { body: notes[0] };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/invoices?invoice=inv1");
+    const row = page.getByRole("row", { name: /CN-2026-000001/ });
+    await expect(row).toContainText("REFUND_OUTCOME_UNKNOWN");
+    await rowAction(row, "Resolve refund");
+    const form = page.getByRole("form", { name: "resolve refund" });
+    await expect(form).toContainText("iyzico was asked for this refund before");
+    // The reference is required when the refund was made: nothing is sent without it.
+    await page.getByTestId("resolve-submit").click();
+    expect(gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund")).toHaveLength(0);
+    await form.getByLabel("Refund reference").fill("  ref_8841 ");
+    await form.getByLabel("What you checked").fill("seen in the iyzico dashboard");
+    await page.getByTestId("resolve-submit").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("ref_8841");
+    await confirmDialog(page);
+    await expect.poll(() => gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund").length).toBe(1);
+    expect(gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund")[0]?.body).toEqual({
+      tenant_id: TENANT, resolution: "REFUND_RESOLUTION_REFUNDED", provider_refund_id: "ref_8841", note: "seen in the iyzico dashboard",
+    });
+    await expect(row).toContainText("Refunded to the card");
+  });
+
+  test("a refund that was not made is asked again only after the operator confirms", async ({ page }) => {
+    const notes: Record<string, unknown>[] = [{ ...unknownRefund }];
+    const gw = common("paid", notes).on((c) => {
+      if (c.method === "POST" && c.path === "/admin/v1/credit-notes/cn1/resolve-refund") {
+        notes[0] = { ...notes[0], refund_state: "REFUND_STATE_REQUESTED", refund_error: "" };
+        return { body: notes[0] };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/invoices?invoice=inv1");
+    const row = page.getByRole("row", { name: /CN-2026-000001/ });
+    await rowAction(row, "Resolve refund");
+    const form = page.getByRole("form", { name: "resolve refund" });
+    await form.getByText("Not paid back").click();
+    await expect(form.getByLabel("Refund reference")).toHaveCount(0);
+    await page.getByTestId("resolve-submit").click();
+    // Saying no to the question sends nothing; the refund could be paid twice if the first one went through.
+    await expect(page.getByTestId("confirm-dialog")).toContainText("the customer is paid twice");
+    await confirmDialog(page, "no");
+    expect(gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund")).toHaveLength(0);
+    await page.getByTestId("resolve-submit").click();
+    await confirmDialog(page);
+    await expect.poll(() => gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund").length).toBe(1);
+    expect(gw.called("POST", "/admin/v1/credit-notes/cn1/resolve-refund")[0]?.body).toEqual({ tenant_id: TENANT, resolution: "REFUND_RESOLUTION_NOT_REFUNDED" });
     await expect(row).toContainText("Refund requested");
   });
 

@@ -249,35 +249,40 @@ type SettleInput struct {
 }
 
 // SettleInvoicePayment moves the saga of an invoice to paid because a provider confirmed a payment made on a hosted page. It reports false when the invoice is not
-// waiting for one (already paid, voided): the payment then is a discrepancy for the operator. A payment of another amount or currency is refused: it does not pay
-// this invoice.
-func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in SettleInput) (bool, error) {
-	var applied bool
-	err := d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
+// waiting for one (already paid, voided): the payment then is a discrepancy for the operator, unless repeat is true, which says that this very payment (provider and
+// reference) is what settled the invoice before, so the repeat is no second payment. A payment of another amount or currency is refused: it does not pay this invoice.
+func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in SettleInput) (applied, repeat bool, err error) {
+	cause := "settle:" + in.Provider + ":" + in.ProviderRef
+	err = d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		inv, err := q.GetInvoiceTotals(ctx, sqlc.GetInvoiceTotalsParams{TenantID: tenantID, ID: in.InvoiceID})
 		if err != nil {
 			return err
 		}
-		if inv.Status == invmodel.StatusPaid || inv.Status == invmodel.StatusVoid {
+		sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: in.InvoiceID})
+		closed := inv.Status == invmodel.StatusPaid || inv.Status == invmodel.StatusVoid
+		if errors.Is(err, pgx.ErrNoRows) && closed {
 			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if closed {
+			repeat, err = q.SagaEventCauseExists(ctx, sqlc.SagaEventCauseExistsParams{TenantID: tenantID, SagaID: sagaID, Cause: cause})
+			return err
 		}
 		if inv.TotalMinor != in.AmountMinor || inv.Currency != in.Currency {
 			return errkey.New(codes.FailedPrecondition, "billing.payment.amount_mismatch", "the payment is not for the amount of the invoice")
 		}
-		sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: in.InvoiceID})
-		if err != nil {
-			return err
-		}
-		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, sagamodel.EvProviderSettled, "settle:"+in.Provider+":"+in.ProviderRef, nil)
+		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, sagamodel.EvProviderSettled, cause, nil)
 		applied = out.Applied
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
+		return false, false, errkey.New(codes.NotFound, "billing.invoice.not_found", "invoice not found")
 	}
 	if err != nil {
-		return false, apierr.Wrap(ctx, err)
+		return false, false, apierr.Wrap(ctx, err)
 	}
-	return applied, nil
+	return applied, repeat, nil
 }

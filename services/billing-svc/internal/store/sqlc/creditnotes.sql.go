@@ -410,7 +410,7 @@ func (q *Queries) ListCreditNotes(ctx context.Context, arg ListCreditNotesParams
 }
 
 const listRefundsAwaitingReply = `-- name: ListRefundsAwaitingReply :many
-SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.tax_minor, c.refund_attempt, c.refund_run_from, c.refund_generation,
+SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.tax_minor, c.refund_attempt, c.refund_run_from, c.refund_generation, COALESCE(c.refund_ref, '')::text AS refund_ref,
        COALESCE(i.snapshot->>'environment', 'live')::text AS environment
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
 WHERE c.refund_state = 'requested' AND c.refund_requested_at <= $1::timestamptz
@@ -427,6 +427,7 @@ type ListRefundsAwaitingReplyRow struct {
 	RefundAttempt    int32
 	RefundRunFrom    int32
 	RefundGeneration int32
+	RefundRef        string
 	Environment      string
 }
 
@@ -449,6 +450,7 @@ func (q *Queries) ListRefundsAwaitingReply(ctx context.Context, requestedBefore 
 			&i.RefundAttempt,
 			&i.RefundRunFrom,
 			&i.RefundGeneration,
+			&i.RefundRef,
 			&i.Environment,
 		); err != nil {
 			return nil, err
@@ -748,8 +750,9 @@ func (q *Queries) MarkRefundRefunded(ctx context.Context, arg MarkRefundRefunded
 
 const markRefundRequested = `-- name: MarkRefundRequested :exec
 UPDATE credit_notes SET refund_state = 'requested', refund_attempt = $1, refund_command_id = $2::uuid,
-       refund_requested_at = $3::timestamptz, refund_error = NULL, refund_run_from = $4, refund_generation = $5
-WHERE tenant_id = $6 AND id = $7
+       refund_requested_at = $3::timestamptz, refund_error = NULL, refund_run_from = $4, refund_generation = $5,
+       refund_ref = NULLIF($6::text, '')
+WHERE tenant_id = $7 AND id = $8
 `
 
 type MarkRefundRequestedParams struct {
@@ -758,10 +761,12 @@ type MarkRefundRequestedParams struct {
 	RefundRequestedAt time.Time
 	RefundRunFrom     int32
 	RefundGeneration  int32
+	RefundRef         string
 	TenantID          uuid.UUID
 	ID                uuid.UUID
 }
 
+// refund_ref is set while a refund is requested only when an operator confirmed it was made (the worker records it; the resend carries it).
 func (q *Queries) MarkRefundRequested(ctx context.Context, arg MarkRefundRequestedParams) error {
 	_, err := q.db.Exec(ctx, markRefundRequested,
 		arg.RefundAttempt,
@@ -769,6 +774,7 @@ func (q *Queries) MarkRefundRequested(ctx context.Context, arg MarkRefundRequest
 		arg.RefundRequestedAt,
 		arg.RefundRunFrom,
 		arg.RefundGeneration,
+		arg.RefundRef,
 		arg.TenantID,
 		arg.ID,
 	)
