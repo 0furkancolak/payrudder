@@ -179,6 +179,28 @@ Everything about real provider behaviour (repeat refunds, late-committed charges
 - **Order:** phases 0 and 1 run before plans 09-12, 14, 15 and 17-21 and in parallel with 02-05 (different files); 13's remaining work and 16 are part of phases 1.
 - **Defaults (not agreed):** RPO 15 min, RTO 1 h; alert receiver webhook/Mailpit locally; the 2FA method is TOTP with recovery codes first.
 
+## Security review (2026-11-02): gateway findings
+
+A review of the gateway found nine problems. Each is fixed with a test that failed first; the groups are separate pull requests. **Defaults below are "default (not agreed)".** Status per item (the branch and PR that fixed it):
+
+1. **HIGH, a leaked checkout key refunds cards: fixed (`fix/security-gateway-withdrawal-operator`).** `PUT /v1/contract-withdrawals/{id}/status` and `POST /v1/contract-withdrawals/{id}/refund` needed only `customers:write` but make a credit note with `refund_to_card`. Now `pkg/apikey.RequiredPermission` asks `invoices:write` of the refund route, and the status handler asks it for `accepted` while the setting `withdrawal_refund` is `full` (or unreadable: fail closed), before anything is decided; recording a withdrawal, rejecting, and accepting with the setting `none` stay `customers:write`. Console sessions carry no key permissions and are unchanged. Tests: `pkg/apikey` `TestRequiredPermission`, gateway `TestAKeyThatOnlyWritesCustomersCannotRefundAWithdrawal`. Overturns the default in [21](21-contracts.md#the-follow-ups-third-pr-featcontracts-followups).
+
+2. **MEDIUM, no two-factor rule for operators: fixed (`fix/security-gateway-withdrawal-operator`).** `operatorAllowed` now applies `requireSecondFactorSetup` (an operator who owns an account that requires two-factor sign-in and has not set it up is refused on `/admin/v1/*` with `identity.two_factor.setup_required`), and the new setting `PAYRUDDER_OPERATOR_REQUIRE_2FA` makes every operator session need it (the gateway marks the user `two_factor_setup_required`, so `/auth/me` sends the console to the security page). **Default (not agreed): on unless `PAYRUDDER_ENV` is `local`, `ci` or `kind`.** A compose or Helm install on a real host runs as `local`/`kind` and must set it. The machine token is not a person and is not asked. Tests: gateway `TestAnOperatorWhoMustSetUpTwoFactorReachesNoOperatorRoute`, `TestTheDeploymentCanRequireTwoFactorOfEveryOperator`, `cmd/gateway` `TestOperatorTwoFactorSetting`. The refusal reuses the error key of owners, whose console text says "an organisation you own"; the console redirects before showing it.
+
+3. **MEDIUM, unauthenticated load on plans-svc: open (own PR).**
+
+4. **MEDIUM, per-address limits keyed on the full IPv6 string: open (own PR).**
+
+5. **MEDIUM, an API key with no role and no scope resolves to admin: open (own PR).**
+
+6. **LOW, raw gRPC messages reach API callers: open (own PR).**
+
+7. **LOW, the inbound-invoice secret in the URL: open (own PR).**
+
+8. **LOW, notifier requests are signed over the body only: open (own PR).**
+
+9. **LOW, no uniqueness guard for a hosted withdrawal; the customer's words unlimited: open (own PR).**
+
 ## Status (2026-11-01, branch `feat/db-immutability`: G3, G10, G11, G13)
 
 **G3 database immutability: built.** Migrations `billing-svc/00003_immutable_finance.sql` (public and `tenant/`) and `payments-worker/00002_immutable_ledger.sql` (`tenant/00003`). (1) `invoices_frozen`: an invoice that is not a draft keeps `subtotal_minor`, `total_minor`, `currency`, `customer_id`, `period_id`, `kind`, `plan_version_id`, `number`, `created_at`, `finalized_at` and its `snapshot` except `payment_method`, and cannot go back to `draft`. The six legitimate updates of the Review addendum all pass: `SetInvoiceTotals` and `OpenInvoice` run while the invoice is a draft; `SetInvoiceStatus`, `SetInvoicePDFKeyBySaga`, `SetInvoicePaymentMethod` and `SetInvoicePromotion` touch only columns that are not frozen. (2) `DELETE` is refused (`P0001`, hint `financial_row_delete`) on `invoices`, `invoice_lines`, `credit_notes`, `invoice_payments`, `credit_ledger`, `credit_applications`, `saga_events` (billing) and `payment_ledger`, `manual_receipts` (payments-worker) unless the transaction names the tenant in `payrudder.sandbox_reset` or `payrudder.tenant_move`.
