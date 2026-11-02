@@ -44,6 +44,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("LabelledAccounts", testLabelledAccounts)
 	t.Run("CustomerBlock", testCustomerBlock)
 	t.Run("CustomerBlockDetails", testCustomerBlockDetails)
+	t.Run("CustomerBlockSweep", testCustomerBlockSweep)
 	t.Run("TenantStatus", testTenantStatus)
 	t.Run("TenantStatusApproval", testTenantStatusApproval)
 	t.Run("TenantStatusMails", testTenantStatusMails)
