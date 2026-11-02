@@ -548,6 +548,7 @@ type product struct {
 	plans       *productPlans
 	billing     *productBilling
 	limiter     *fakeLimiter
+	contracts   *fakeContracts
 }
 
 // newProduct starts the gateway with the fakes above and a fake payments-worker that answers ledger requests with `ledger` (nil: unreachable).
@@ -567,6 +568,8 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 	fs := &fakeSupport{}
 	plansv1.RegisterSupportServiceServer(gs, fs)
 	lastSupport = fs
+	p.contracts = newFakeContracts()
+	plansv1.RegisterContractServiceServer(gs, p.contracts)
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -578,7 +581,7 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	deps := Deps{Identity: plansv1.NewIdentityServiceClient(cc), Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
-		Webhooks: plansv1.NewWebhookServiceClient(cc), Support: plansv1.NewSupportServiceClient(cc), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Auth: fakeAuth{}, Limiter: p.limiter,
+		Webhooks: plansv1.NewWebhookServiceClient(cc), Support: plansv1.NewSupportServiceClient(cc), Contracts: plansv1.NewContractServiceClient(cc), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Auth: fakeAuth{}, Limiter: p.limiter,
 		OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	if ledger != nil {
 		pw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

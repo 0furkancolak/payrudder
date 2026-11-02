@@ -3,13 +3,13 @@ package httpapi
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -39,13 +39,19 @@ func (s *Server) contractRoutes() []Route {
 	}
 }
 
-// contractAuthor is who is recorded as the author of a version or the decider of a withdrawal: the person the console says (X-Payrudder-Actor), else the key.
+// contractAuthor is who is recorded as the author of a version or the decider of a withdrawal, from who the gateway authenticated and never from what the client says:
+// a tenant's API key is "api-key:<id>" (whatever X-Payrudder-Actor it sends: anybody holding a key could put another person's name there), a signed-in person is their
+// verified address, a signed-in operator theirs, and the machine token the actor it declares in X-Payrudder-Actor (a shared credential: a script says who it is) or
+// "operator" (authenticate and sessionActAs decide it, in the principal's Actor).
 func contractAuthor(r *http.Request) string {
-	if a := strings.TrimSpace(r.Header.Get("X-Payrudder-Actor")); a != "" {
-		return truncateRunes(a, 200)
-	}
-	if ti, ok := tenant.FromContext(r.Context()); ok && ti.APIKeyID != "" {
-		return "key " + ti.APIKeyID
+	a := principalFrom(r.Context()).Actor
+	switch a.Type {
+	case audit.ActorAPIKey:
+		return "api-key:" + a.ID
+	case audit.ActorUser:
+		return truncateRunes(normalizeEmail(a.Email), 200)
+	case audit.ActorOperator:
+		return truncateRunes(a.ID, 200)
 	}
 	return ""
 }

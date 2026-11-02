@@ -89,6 +89,7 @@ Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route tha
    The 60 s TTL only bounds how stale the cache can get if the delete fails.
 5. Set gRPC metadata `x-payrudder-tenant-id`, `x-payrudder-environment`, `x-payrudder-timezone`, `x-payrudder-api-key-id`, `x-request-id`. Downstream services
    trust this metadata only from the gateway (network policy in K8s. mTLS is out of scope).
+6. **Who is recorded for a change is who was authenticated, not what the client writes.** The principal carries an `Actor` (an API key is `api-key` with its id, a signed-in person their verified address, a signed-in operator theirs); the `X-Payrudder-Actor` header is believed only on the machine token (a shared credential: a script says who it is, cut to 120 characters, else `operator`). The author of a contract version and the decider of a withdrawal (`contractAuthor`) follow it: `api-key:<id>`, the person's address, the operator's address or the machine token's declared actor; the header and the `author` / `decided_by` of a body are ignored for everybody else (security review, 2026-11-02; before it an API key could put any name there, and a console session was recorded with no author).
 
 ## Rate limiting
 
