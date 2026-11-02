@@ -310,7 +310,22 @@
       "by": "por {actor}",
       "approvedBy": "aprobado por {actor}",
       "choose": "Elige un estado",
-      "applyNone": "Establecer estado"
+      "applyNone": "Establecer estado",
+      "filters": "Filtrar el historial",
+      "filterTo": "Cambiado a",
+      "filterKind": "Tipo",
+      "kinds": {
+        "changed": "Cambios",
+        "requested": "En espera de un segundo operador"
+      },
+      "shown": "{shown} de {total} cambios",
+      "noMatch": "Ningún cambio coincide con estos filtros."
+    },
+    "hold": {
+      "suspended": "{app} está suspendida: sus claves de API se han detenido, las páginas y enlaces de pago no aceptan pagos, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "frozen": "{app} está congelada: puede leer todo, pero no se puede cambiar nada. Las llamadas de API que escriben se rechazan, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "banned": "{app} está vetada: sus claves de API se han detenido y no se cobra, envía ni transmite nada. Solo un operador puede levantar un veto.",
+      "write": "Escribir a soporte"
     }
   },
   "invoice": {
@@ -4168,9 +4183,9 @@
       "pageIntro": "El entorno live empieza apagado: sin claves live, sin webhooks live, sin cobros reales. Completa la lista y luego enciéndelo.",
       "intro": "Tu entorno live aún no está activo. Completa estos pasos para encenderlo.",
       "liveNow": "Tu entorno live está activo.",
-      "suspended": "Tu entorno live está suspendido. Contacta con soporte para restablecerlo.",
+      "suspended": "Tu entorno live está detenido (suspendido, congelado o vetado). Contacta con soporte para restablecerlo.",
       "stateActive": "Activo",
-      "stateSuspended": "Suspendido",
+      "stateSuspended": "Detenido",
       "count": "{done} de {total} hechos",
       "noLive": "Esta instalación no tiene entorno live.",
       "done": "hecho",

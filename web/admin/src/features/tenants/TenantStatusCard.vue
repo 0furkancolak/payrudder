@@ -6,6 +6,7 @@ import { askConfirm } from "@/shared/lib/confirm";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -35,6 +36,30 @@ const live = computed(() => tenant.data.value?.environment === "ENVIRONMENT_LIVE
 /** Only a live tenant that is in service (or was put out of it) can be moved here. */
 const editable = computed(() => live.value && current.value !== "" && current.value !== "inactive");
 const targets = computed<TenantStatusWord[]>(() => (["active", "suspended", "frozen", "banned"] as const).filter((w) => w !== current.value));
+
+/**
+ * The history filters. The server sends the latest 100 changes, so they narrow that list in the browser, and apply on their button like every filter of the console.
+ * The status is where the tenant went; the kind separates changes from bans still waiting for a second operator.
+ */
+const toFilter = ref<string[]>([]);
+const categoryFilter = ref<string[]>([]);
+const kindFilter = ref<string[]>([]);
+const allEvents = computed(() => events.data.value?.events ?? []);
+const shown = computed(() =>
+  allEvents.value.filter(
+    (e) =>
+      (toFilter.value.length === 0 || toFilter.value.includes(wordOf(e.to_status))) &&
+      (categoryFilter.value.length === 0 || categoryFilter.value.includes(e.category ?? "")) &&
+      (kindFilter.value.length === 0 || kindFilter.value.includes(e.kind ?? "")),
+  ),
+);
+const filtered = computed(() => toFilter.value.length + categoryFilter.value.length + kindFilter.value.length > 0);
+const toOptions = computed(() => (["active", "suspended", "frozen", "banned"] as const).map((w) => ({ value: w, label: t(`tenant.status.names.${w}`) })));
+const categoryOptions = computed(() => STATUS_CATEGORIES.map((c) => ({ value: c, label: t(`tenant.status.categories.${c}`) })));
+const kindOptions = computed(() => [
+  { value: "changed", label: t("tenant.status.kinds.changed") },
+  { value: "requested", label: t("tenant.status.kinds.requested") },
+]);
 
 const to = ref<TenantStatusWord | "">("");
 const category = ref<StatusCategory | "">("");
@@ -93,9 +118,18 @@ async function apply() {
     <section :aria-label="t('tenant.status.history')" data-testid="tenant-status-history">
       <h3 class="m-0 mb-2 text-sm font-semibold">{{ t("tenant.status.history") }}</h3>
       <Skeleton v-if="events.isPending.value" class="h-5 w-40" />
-      <p v-else-if="(events.data.value?.events ?? []).length === 0" class="text-muted-foreground m-0 text-sm">{{ t("tenant.status.historyEmpty") }}</p>
-      <ul v-else class="divide-border/70 m-0 flex list-none flex-col divide-y p-0 text-sm">
-        <li v-for="e in events.data.value?.events" :key="e.id" class="flex flex-col gap-0.5 py-2" data-testid="tenant-status-event">
+      <p v-else-if="allEvents.length === 0" class="text-muted-foreground m-0 text-sm">{{ t("tenant.status.historyEmpty") }}</p>
+      <template v-else>
+        <div class="mb-2 flex flex-wrap items-center gap-2" role="group" :aria-label="t('tenant.status.filters')" data-testid="tenant-status-filters">
+          <FilterSelect v-model="toFilter" multiple :label="t('tenant.status.filterTo')" :options="toOptions" />
+          <FilterSelect v-model="categoryFilter" multiple :label="t('tenant.status.category')" :options="categoryOptions" />
+          <FilterSelect v-model="kindFilter" multiple :label="t('tenant.status.filterKind')" :options="kindOptions" />
+          <span v-if="filtered" class="text-muted-foreground text-xs" role="status" data-testid="tenant-status-count">{{ t("tenant.status.shown", { shown: shown.length, total: allEvents.length }) }}</span>
+        </div>
+        <p v-if="shown.length === 0" class="text-muted-foreground m-0 text-sm" data-testid="tenant-status-nomatch">{{ t("tenant.status.noMatch") }}</p>
+      </template>
+      <ul v-if="shown.length > 0" class="divide-border/70 m-0 flex list-none flex-col divide-y p-0 text-sm">
+        <li v-for="e in shown" :key="e.id" class="flex flex-col gap-0.5 py-2" data-testid="tenant-status-event">
           <span class="font-medium">
             <template v-if="e.kind === 'requested'">{{ t("tenant.status.requested", { to: t(`tenant.status.names.${wordOf(e.to_status) || 'active'}`) }) }}</template>
             <template v-else>{{ t("tenant.status.changed", { from: t(`tenant.status.names.${wordOf(e.from_status) || 'active'}`), to: t(`tenant.status.names.${wordOf(e.to_status) || 'active'}`) }) }}</template>
