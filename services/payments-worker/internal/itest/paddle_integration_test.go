@@ -476,7 +476,7 @@ func TestChargeNamesItsProvider(t *testing.T) {
 	if err := accounts.Put(ctx, tenant, "paddle", "live", []byte(`{"api_key":"pdl_secret","base_url":"`+paddleAPI.srv.URL+`","webhook_secret":"s","usage_product_id":"pro_u"}`), false); err != nil {
 		t.Fatal(err)
 	}
-	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+iyzicoAPI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","email":"b@example.com"}}`), true); err != nil {
+	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+iyzicoAPI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","gsm_number":"+905550000000","email":"b@example.com"}}`), true); err != nil {
 		t.Fatal(err)
 	}
 	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://unused", 0), Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool},
@@ -525,7 +525,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 	if err := accounts.Put(ctx, tenant, "paddle", "live", []byte(`{"api_key":"pdl_secret","base_url":"`+fakeP.srv.URL+`","webhook_secret":"`+secret+`","usage_product_id":"pro_u"}`), false); err != nil {
 		t.Fatal(err)
 	}
-	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+fakeI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","email":"b@example.com"}}`), true); err != nil {
+	if err := accounts.Put(ctx, tenant, "iyzico", "live", []byte(`{"api_key":"a","secret_key":"s","base_url":"`+fakeI.srv.URL+`","buyer":{"name":"A","surname":"B","identity_number":"1","address":"x","city":"c","country":"t","zip_code":"1","ip":"1.1.1.1","gsm_number":"+905550000000","email":"b@example.com"}}`), true); err != nil {
 		t.Fatal(err)
 	}
 	call := func(method, path, body string, hdr http.Header) (int, string) {

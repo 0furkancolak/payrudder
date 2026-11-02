@@ -123,7 +123,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		return resp.StatusCode, string(b)
 	}
-	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`
 	accountPath := "/admin/tenants/" + tenant.String() + "/provider-accounts/iyzico"
 
 	t.Run("the operator endpoints need the internal token", func(t *testing.T) {
@@ -413,7 +413,7 @@ func TestSeveralAccountsAtOneProvider(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		return resp.StatusCode, string(b)
 	}
-	settings := `{"api_key":"api","secret_key":"K","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	settings := `{"api_key":"api","secret_key":"K","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`
 	path := func(key string) string { return "/admin/tenants/" + tenant.String() + "/provider-accounts/" + key }
 
 	if code, body := do("PUT", path("iyzico")+"?environment=live&default=true", settings); code != 200 {
