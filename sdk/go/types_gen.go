@@ -1360,7 +1360,8 @@ type Dispute struct {
 	Handled bool `json:"handled"`
 	// Absent when the case is not marked
 	HandledTime time.Time `json:"handled_time,omitempty"`
-	// Who marked it; absent when it is not marked and for a viewer of the account
+	// Who marked it; absent when it is not marked, for a viewer of the account, and for an API key that holds no
+	// audit:read (the read_only and billing roles)
 	HandledBy string `json:"handled_by,omitempty"`
 	// How many notes you wrote (`GET /v1/disputes/{id}/history`)
 	NoteCount Int64 `json:"note_count"`
