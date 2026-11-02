@@ -190,6 +190,8 @@ type Seller struct {
 	Name        string
 	LogoKey     string
 	Environment string
+	// TimeZone is the tenant's IANA time zone, which dates the days of a page that has no invoice snapshot to read it from.
+	TimeZone string
 }
 
 // SellerLookup finds the seller of a tenant (an ad-hoc link before its first use has no invoice to read it from).
@@ -231,17 +233,19 @@ type Page struct {
 	Invoice *invoices.Invoice
 	Adhoc   *Adhoc
 	// Meta of the invoice.
-	Snapshot             sagamodel.Snapshot
-	SagaState            string
-	SagaID               uuid.UUID
-	Provider             string
-	Country              string
-	CustomerID           uuid.UUID
-	ExpiresAt            time.Time
-	SellerName           string
-	CustomerName         string
-	CustomerLocale       string
-	CustomerType         string
+	Snapshot       sagamodel.Snapshot
+	SagaState      string
+	SagaID         uuid.UUID
+	Provider       string
+	Country        string
+	CustomerID     uuid.UUID
+	ExpiresAt      time.Time
+	SellerName     string
+	CustomerName   string
+	CustomerLocale string
+	CustomerType   string
+	// TimeZone is the seller's time zone as the invoice froze it (the tenant's own for an ad-hoc link before its first use); empty is UTC.
+	TimeZone             string
 	CurrencyExponent     int32
 	SellerAddressLines   []string
 	CustomerAddressLines []string
@@ -275,7 +279,7 @@ func (d Deps) adhoc(ctx context.Context, s *Scope) (*Page, error) {
 	if err != nil {
 		return nil, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 	}
-	p := &Page{Kind: "adhoc", ExpiresAt: s.ExpiresAt, SellerName: seller.Name, Environment: seller.Environment, LogoAvailable: seller.LogoKey != "" && d.PDFs != nil,
+	p := &Page{Kind: "adhoc", ExpiresAt: s.ExpiresAt, SellerName: seller.Name, Environment: seller.Environment, TimeZone: seller.TimeZone, LogoAvailable: seller.LogoKey != "" && d.PDFs != nil,
 		Adhoc: &Adhoc{AmountMinor: *r.AmountMinor, Currency: *r.Currency, CurrencyExponent: exp, Consumed: r.SingleUse && r.PaidCount > 0}}
 	if r.PromotionCode != nil {
 		p.Adhoc.PromotionCode = *r.PromotionCode
@@ -329,7 +333,7 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 	p.SellerName, p.CustomerName, p.CurrencyExponent = snap.TenantName, snap.CustomerName, int32(snap.CurrencyExponent) //nolint:gosec // 0..3
 	p.SellerAddressLines, p.CustomerAddressLines = snap.SellerAddress, snap.CustomerAddress
 	p.Environment = snap.Environment
-	p.CustomerLocale, p.CustomerType = snap.CustomerLocale, snap.CustomerType
+	p.CustomerLocale, p.CustomerType, p.TimeZone = snap.CustomerLocale, snap.CustomerType, snap.TimeZone
 	if p.Country == "" {
 		p.Country = snap.Country
 	}
@@ -406,10 +410,12 @@ type PortalInvoice struct {
 type PortalPage struct {
 	CustomerName   string
 	CustomerLocale string
-	SellerName     string
-	LogoAvailable  bool
-	Environment    string
-	Invoices       []PortalInvoice
+	// TimeZone is the seller's: as the latest invoice froze it, else the tenant's own. Empty is UTC.
+	TimeZone      string
+	SellerName    string
+	LogoAvailable bool
+	Environment   string
+	Invoices      []PortalInvoice
 	// Credits (phase 36): the spendable balance with its lots, the packs on sale, and whether this portal link can start a purchase.
 	CreditBalance int64
 	CreditLots    []sqlc.ListCreditLotsRow
@@ -469,7 +475,7 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 		}
 	}
 	out.CustomerName, out.SellerName, out.Environment = snap.CustomerName, snap.TenantName, snap.Environment
-	out.CustomerLocale = snap.CustomerLocale
+	out.CustomerLocale, out.TimeZone = snap.CustomerLocale, snap.TimeZone
 	logoKey := snap.LogoObjectKey
 	if out.SellerName == "" || out.Environment == "" {
 		seller, err := d.Seller(ctx, s.TenantID)
@@ -477,6 +483,9 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 			return nil, errkey.New(codes.Unavailable, "billing.hosted.seller_unavailable", "seller lookup unavailable")
 		}
 		out.SellerName, out.Environment, logoKey = seller.Name, seller.Environment, seller.LogoKey
+		if out.TimeZone == "" {
+			out.TimeZone = seller.TimeZone
+		}
 	}
 	out.LogoAvailable = logoKey != "" && d.PDFs != nil
 	return out, nil

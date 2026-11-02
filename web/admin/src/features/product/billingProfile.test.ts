@@ -71,6 +71,7 @@ describe("the request body", () => {
     expect(profileBody(complete({ legalName: " Shop GmbH ", taxId: "de 123456789", country: "de", line1: " Hauptstr. 1 ", postalCode: "", taxOffice: " " }))).toEqual({
       legal: { legal_name: "Shop GmbH", tax_id: "DE123456789" },
       address: { line1: "Hauptstr. 1", city: "Berlin", country: "DE" },
+      default_language: "en",
     });
   });
 
@@ -80,3 +81,18 @@ describe("the request body", () => {
     expect(fromTenant(undefined)).toEqual(emptyProfile());
   });
 });
+
+describe("the default language of the documents", () => {
+  it("is English until one is chosen, and is the tenant's when there is one", () => {
+    expect(emptyProfile().defaultLanguage).toBe("en");
+    expect(fromTenant({ default_language: "tr" }).defaultLanguage).toBe("tr");
+    expect(fromTenant({ default_language: "" }).defaultLanguage).toBe("en");
+    expect(fromTenant({ default_language: "xx" }).defaultLanguage).toBe("en");
+  });
+
+  it("is sent with the profile", () => {
+    expect(profileBody(complete({ defaultLanguage: "de" })).default_language).toBe("de");
+    expect(fromTenant({ ...profileBody(complete({ defaultLanguage: "fr" })) }).defaultLanguage).toBe("fr");
+  });
+});
+

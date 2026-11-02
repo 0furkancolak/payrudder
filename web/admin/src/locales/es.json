@@ -4211,7 +4211,9 @@
         "problems": {
           "required": "Obligatorio.",
           "taxIdFormat": "De 5 a 20 letras y dígitos."
-        }
+        },
+        "defaultLanguage": "Idioma de las facturas y los correos",
+        "defaultLanguageHint": "Se usa para un cliente sin idioma propio, en el PDF de la factura y en los correos. El idioma que se fija en el cliente siempre tiene prioridad."
       },
       "provider": {
         "title": "Proveedor de pagos",

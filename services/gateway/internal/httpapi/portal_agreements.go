@@ -48,7 +48,7 @@ func (s *Server) portalAgreements(ctx context.Context, v *portalView, resp *bill
 		}
 		seen[a.GetKind()] = true
 		v.Agreements = append(v.Agreements, portalAgreementRow{Label: kindLabel(lang, a.GetKind()), Number: v.F.Amount(int64(a.GetVersionNumber()), 0),
-			Date: v.F.Date(a.GetAcceptTime().AsTime().UTC()), Href: "/c/" + token + "/agreements/" + a.GetId() + q})
+			Date: v.Day(a.GetAcceptTime().AsTime()), Href: "/c/" + token + "/agreements/" + a.GetId() + q})
 	}
 	if len(list.GetAcceptances()) == 0 {
 		return // nobody who never accepted is asked to accept "again"; a first acceptance happens where they pay

@@ -17,7 +17,9 @@ func tenantIn(country string) *plansv1.Tenant {
 func TestSnapshotFreezesTheDocumentFacts(t *testing.T) {
 	cu := &plansv1.Customer{Name: "Ada", Email: "ada@example.com", Locale: "de", CustomerType: "business", TaxId: "DE136695976", TaxOffice: "Berlin",
 		Address: &plansv1.Address{City: "Berlin", Country: "DE"}}
-	snap := SnapshotOf{Tenant: tenantIn("TR"), Customer: cu, Currency: "TRY", CurrencyExponent: 2}.Snapshot()
+	tn := tenantIn("TR")
+	tn.DefaultLanguage = "tr"
+	snap := SnapshotOf{Tenant: tn, Customer: cu, Currency: "TRY", CurrencyExponent: 2}.Snapshot()
 	got := [...]string{snap.CustomerLocale, snap.CustomerType, snap.DefaultLocale, snap.SellerTaxID, snap.SellerTaxOffice, snap.SellerCountry, snap.CustomerTaxID, snap.CustomerTaxOffice, snap.CustomerCountry}
 	want := [...]string{"de", "business", "tr", "1234567890", "Kadikoy", "TR", "DE136695976", "Berlin", "DE"}
 	if got != want {
@@ -37,12 +39,17 @@ func TestSnapshotFreezesTheDocumentFacts(t *testing.T) {
 	}
 }
 
-func TestDefaultLocaleIsTheLanguageOfTheSellersCountry(t *testing.T) {
-	for country, want := range map[string]string{"TR": "tr", "DE": "de", "AT": "de", "FR": "fr", "ES": "es", "GB": "", "US": "", "SA": "", "": ""} {
+// The language of a customer who has none comes from the tenant's own setting (docs/plans/05), never from the country of its address.
+func TestDefaultLocaleIsTheTenantsDefaultLanguage(t *testing.T) {
+	for _, tc := range []struct{ country, language, want string }{
+		{"TR", "tr", "tr"}, {"TR", "", ""}, {"TR", "en", "en"}, {"DE", "de", "de"}, {"GB", "fr", "fr"}, {"", "", ""},
+	} {
+		tn := tenantIn(tc.country)
+		tn.DefaultLanguage = tc.language
 		var s sagamodel.Snapshot
-		DocumentSnapshot(&s, tenantIn(country), nil)
-		if s.DefaultLocale != want {
-			t.Errorf("seller in %q: default locale %q, want %q", country, s.DefaultLocale, want)
+		DocumentSnapshot(&s, tn, nil)
+		if s.DefaultLocale != tc.want {
+			t.Errorf("seller in %q with language %q: default locale %q, want %q", tc.country, tc.language, s.DefaultLocale, tc.want)
 		}
 	}
 }

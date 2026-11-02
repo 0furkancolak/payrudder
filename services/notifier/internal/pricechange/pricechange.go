@@ -3,6 +3,7 @@
 package pricechange
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
@@ -99,9 +101,10 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err != nil {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
+	locale := cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage())
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
 		Key: ev.GetEventId(), Kind: "price_change", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(),
-		Data:    withLocale(mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone()), cust.GetCustomer().GetLocale()),
+		Data:    withLocale(mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), locale), locale),
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
@@ -117,18 +120,19 @@ func withLocale(d map[string]string, locale string) map[string]string {
 }
 
 // mailData is what the template reads. The date is written in the tenant's time zone (UTC when it has none, or one this host does not know), which is the calendar
-// its customers live by; the amount is the renewal fee in the subscription's currency.
-func mailData(ev *eventsv1.PriceChangeScheduled, customerName, tenantName, zone string) map[string]string {
+// its customers live by; the amount is the renewal fee in the subscription's currency. Both are written in the language of the mail (pkg/localefmt).
+func mailData(ev *eventsv1.PriceChangeScheduled, customerName, tenantName, zone, locale string) map[string]string {
 	loc := time.UTC
 	if l, err := time.LoadLocation(zone); err == nil && zone != "" {
 		loc = l
 	}
+	f := localefmt.For(locale)
 	exp := 2
 	if cur, ok := money.LookupCurrency(ev.GetCurrency()); ok {
 		exp = cur.Exponent
 	}
 	return map[string]string{
 		"customer_name": customerName, "tenant_name": tenantName, "plan_code": ev.GetPlanCode(),
-		"effective_date": ev.GetEffectiveAt().AsTime().In(loc).Format("2 Jan 2006"), "new_renewal": money.FormatMinorGrouped(ev.GetNewRenewalMinor(), exp) + " " + ev.GetCurrency(),
+		"effective_date": f.Date(ev.GetEffectiveAt().AsTime().In(loc)), "new_renewal": f.Money(ev.GetNewRenewalMinor(), exp, ev.GetCurrency()),
 	}
 }

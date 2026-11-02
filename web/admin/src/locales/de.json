@@ -4211,7 +4211,9 @@
         "problems": {
           "required": "Pflichtfeld.",
           "taxIdFormat": "5 bis 20 Buchstaben und Ziffern."
-        }
+        },
+        "defaultLanguage": "Sprache der Rechnungen und E-Mails",
+        "defaultLanguageHint": "Wird für einen Kunden ohne eigene Sprache im Rechnungs-PDF und in den E-Mails verwendet. Die am Kunden eingestellte Sprache hat immer Vorrang."
       },
       "provider": {
         "title": "Zahlungsanbieter",

@@ -393,7 +393,7 @@ func TestNotifier(t *testing.T) {
 		waitMail(t, mp.APIURL, email, 1)
 		time.Sleep(2 * time.Second)
 		got := mailbox(t, mp.APIURL, email)
-		if len(got) != 1 || got[0].Subject != "Your pro trial ends on 6 Nov 2026" {
+		if len(got) != 1 || got[0].Subject != "Your pro trial ends on 6 November 2026" {
 			t.Fatalf("mailbox = %+v, want exactly one reminder", got)
 		}
 		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
@@ -471,7 +471,7 @@ func TestNotifier(t *testing.T) {
 		waitMail(t, mp.APIURL, email, 1)
 		time.Sleep(2 * time.Second)
 		got := mailbox(t, mp.APIURL, email)
-		if len(got) != 1 || got[0].Subject != "basic fiyatınız 5 Dec 2026 tarihinde değişiyor" {
+		if len(got) != 1 || got[0].Subject != "basic fiyatınız 5 Aralık 2026 tarihinde değişiyor" {
 			t.Fatalf("mailbox = %+v, want exactly one notice in Turkish", got)
 		}
 		cl, _ := kgo.NewClient(kgo.SeedBrokers(brokers), kgo.ConsumeTopics(dlq), kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()))

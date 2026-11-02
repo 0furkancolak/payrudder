@@ -3,6 +3,7 @@ package httpapi
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // Numbers and dates on the public pages follow the language of the page (pkg/localefmt, the same table as the invoice PDF), not one fixed style.
@@ -28,6 +29,45 @@ func TestHostedPagesWriteNumbersAndDatesInThePagesLanguage(t *testing.T) {
 		}
 		if strings.Contains(page, "2026-10-01") {
 			t.Errorf("%s: an ISO date is still on the page", c.lang)
+		}
+	}
+}
+
+// The days on a page are the days of the seller's calendar (docs/plans/05): an invoice issued at 22:30 UTC on 31 December is the first of January for a seller in Istanbul,
+// and its service period runs to the midnight there. An invoice that froze no zone is dated by UTC, as every page was.
+func TestHostedPagesWriteDaysInTheSellersTimeZone(t *testing.T) {
+	ts, _ := newTestServer(t)
+	_, page := get(t, ts, "/i/"+zoneToken)
+	for _, want := range []string{">1 January 2027<", "1 December 2026 – 1 January 2027"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the invoice of an Istanbul seller lacks %q", want)
+		}
+	}
+	_, page = get(t, ts, "/i/"+noZoneToken)
+	for _, want := range []string{">31 December 2026<", "30 November 2026 – 31 December 2026"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the invoice without a zone lacks %q", want)
+		}
+	}
+}
+
+// The portal lists its days in the seller's zone too.
+func TestPortalWritesDaysInTheSellersTimeZone(t *testing.T) {
+	ts, _ := newTestServer(t)
+	_, page := get(t, ts, "/c/"+portalZoneTok)
+	if !strings.Contains(page, "1 January 2027") || strings.Contains(page, "31 December 2026") {
+		t.Errorf("the portal of an Istanbul seller: %s", page)
+	}
+}
+
+// pageBase.Day follows its zone; a name that does not load is UTC.
+func TestPageBaseDayFollowsItsZone(t *testing.T) {
+	at := time.Date(2026, 12, 31, 22, 30, 0, 0, time.UTC)
+	for zone, want := range map[string]string{"Europe/Istanbul": "1 January 2027", "Pacific/Honolulu": "31 December 2026", "": "31 December 2026", "Not/AZone": "31 December 2026"} {
+		b := newBase("en")
+		b.Zone = zoneOf(zone)
+		if got := b.Day(at); got != want {
+			t.Errorf("zone %q: %s, want %s", zone, got, want)
 		}
 	}
 }

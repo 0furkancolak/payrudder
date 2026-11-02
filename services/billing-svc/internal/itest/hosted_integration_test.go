@@ -38,7 +38,7 @@ func testHostedInvoiceLinks(t *testing.T) {
 	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',1500,'Base fee')`, e.tid, paid); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace"}'::jsonb, status = 'paid' WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace","time_zone":"Europe/Istanbul"}'::jsonb, status = 'paid' WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
 		t.Fatal(err)
 	}
 
@@ -78,6 +78,10 @@ func testHostedInvoiceLinks(t *testing.T) {
 	if got.GetInvoice().GetNumber() != "INV-2026-000201" || got.GetInvoice().GetTotalMinor() != 1500 || len(got.GetInvoice().GetLines()) != 1 ||
 		got.GetSellerName() != "Acme Ltd" || got.GetCustomerName() != "Ada Lovelace" {
 		t.Fatalf("hosted invoice = %v", got)
+	}
+	// The page dates its days by the seller's calendar, which the invoice froze (docs/plans/05).
+	if got.GetTimeZone() != "Europe/Istanbul" {
+		t.Errorf("time zone = %q, want the one frozen with the invoice", got.GetTimeZone())
 	}
 	if got.GetPdfAvailable() || got.GetInvoice().GetPdfObjectKey() != "" {
 		t.Errorf("no PDF yet, and its storage key is never shown: %v", got)

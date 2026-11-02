@@ -4211,7 +4211,9 @@
         "problems": {
           "required": "Zorunlu.",
           "taxIdFormat": "5 ile 20 arasında harf ve rakam."
-        }
+        },
+        "defaultLanguage": "Fatura ve e-posta dili",
+        "defaultLanguageHint": "Kendi dili olmayan müşteri için fatura PDF'inde ve e-postalarda kullanılır. Müşteride ayarlanmış kendi dili her zaman önceliklidir."
       },
       "provider": {
         "title": "Ödeme sağlayıcısı",

@@ -1207,6 +1207,8 @@ type Tenant struct {
 	ActivateTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=activate_time,json=activateTime,proto3" json:"activate_time,omitempty"`
 	// When the owner accepted the terms of service; empty until then.
 	TermsAcceptTime *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=terms_accept_time,json=termsAcceptTime,proto3" json:"terms_accept_time,omitempty"`
+	// The language of the tenant's documents and mails for a customer who has none of their own (en, tr, de, fr, es or ar). Empty is English.
+	DefaultLanguage string `protobuf:"bytes,19,opt,name=default_language,json=defaultLanguage,proto3" json:"default_language,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1365,6 +1367,13 @@ func (x *Tenant) GetTermsAcceptTime() *timestamppb.Timestamp {
 		return x.TermsAcceptTime
 	}
 	return nil
+}
+
+func (x *Tenant) GetDefaultLanguage() string {
+	if x != nil {
+		return x.DefaultLanguage
+	}
+	return ""
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.
@@ -3587,7 +3596,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\atenants\x18\x05 \x03(\v2\x1a.payrudder.plans.v1.TenantR\atenants\x12;\n" +
 	"\vcreate_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12=\n" +
-	"\farchive_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\varchiveTime\"\xde\x06\n" +
+	"\farchive_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\varchiveTime\"\x89\a\n" +
 	"\x06Tenant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -3610,7 +3619,8 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"eInvoiceOn\x128\n" +
 	"\x06status\x18\x10 \x01(\x0e2 .payrudder.plans.v1.TenantStatusR\x06status\x12?\n" +
 	"\ractivate_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\factivateTime\x12F\n" +
-	"\x11terms_accept_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0ftermsAcceptTime\"\xcd\x05\n" +
+	"\x11terms_accept_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0ftermsAcceptTime\x12)\n" +
+	"\x10default_language\x18\x13 \x01(\tR\x0fdefaultLanguage\"\xcd\x05\n" +
 	"\x06ApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +

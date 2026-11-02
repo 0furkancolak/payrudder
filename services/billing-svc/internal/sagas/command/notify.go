@@ -1,19 +1,23 @@
 package command
 
 import (
+	"cmp"
 	"fmt"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
-	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 )
 
-// mailData is what every mail about an invoice carries.
+// mailData is what every mail about an invoice carries. The amount and the period are written the way the mail's language writes them (pkg/localefmt, the table the
+// invoice PDF and the hosted pages read): the customer's own language, else the tenant's default one, else English.
 func mailData(s *saga) map[string]string {
+	locale := cmp.Or(s.Snap.CustomerLocale, s.Snap.DefaultLocale)
+	f := localefmt.For(locale)
 	return map[string]string{
-		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": s.PeriodID, "amount": quantity.FormatUnits(s.TotalMinor, s.Snap.CurrencyExponent),
-		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName, "locale": s.Snap.CustomerLocale,
+		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": f.Period(s.PeriodID), "amount": f.Amount(s.TotalMinor, s.Snap.CurrencyExponent),
+		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName, "locale": locale,
 		env.Sandbox.String(): fmt.Sprint(s.Snap.Environment == env.Sandbox.String()),
 	}
 }

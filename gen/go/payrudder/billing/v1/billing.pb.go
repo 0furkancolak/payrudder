@@ -4768,8 +4768,10 @@ type GetHostedInvoiceResponse struct {
 	// The customer's language (en, tr, de, fr, es, ar) and kind (individual, business) as frozen with the invoice; empty when the customer has none.
 	CustomerLocale string `protobuf:"bytes,17,opt,name=customer_locale,json=customerLocale,proto3" json:"customer_locale,omitempty"`
 	CustomerType   string `protobuf:"bytes,18,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The seller's IANA time zone as frozen with the invoice: the calendar the page's days are written in. Empty for an invoice made before it was frozen: UTC.
+	TimeZone      string `protobuf:"bytes,19,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetHostedInvoiceResponse) Reset() {
@@ -4924,6 +4926,13 @@ func (x *GetHostedInvoiceResponse) GetCustomerLocale() string {
 func (x *GetHostedInvoiceResponse) GetCustomerType() string {
 	if x != nil {
 		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *GetHostedInvoiceResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
 	}
 	return ""
 }
@@ -6868,8 +6877,10 @@ type GetPortalResponse struct {
 	CanBuyCredits bool                `protobuf:"varint,12,opt,name=can_buy_credits,json=canBuyCredits,proto3" json:"can_buy_credits,omitempty"`
 	// The customer's language, as frozen with their latest invoice.
 	CustomerLocale string `protobuf:"bytes,13,opt,name=customer_locale,json=customerLocale,proto3" json:"customer_locale,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The seller's IANA time zone (frozen with the latest invoice, else the tenant's own): the calendar the page's days are written in. Empty: UTC.
+	TimeZone      string `protobuf:"bytes,14,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPortalResponse) Reset() {
@@ -6989,6 +7000,13 @@ func (x *GetPortalResponse) GetCanBuyCredits() bool {
 func (x *GetPortalResponse) GetCustomerLocale() string {
 	if x != nil {
 		return x.CustomerLocale
+	}
+	return ""
+}
+
+func (x *GetPortalResponse) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
 	}
 	return ""
 }
@@ -13027,7 +13045,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fportal_token\x18\x02 \x01(\tR\vportalToken\x12\x1d\n" +
 	"\n" +
-	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\"\xdc\x06\n" +
+	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\"\xf9\x06\n" +
 	"\x18GetHostedInvoiceResponse\x127\n" +
 	"\ainvoice\x18\x01 \x01(\v2\x1d.payrudder.billing.v1.InvoiceR\ainvoice\x12\x1f\n" +
 	"\vseller_name\x18\x02 \x01(\tR\n" +
@@ -13049,7 +13067,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x05adhoc\x18\x0f \x01(\v2!.payrudder.billing.v1.HostedAdhocR\x05adhoc\x12a\n" +
 	"\x14payment_instructions\x18\x10 \x01(\v2..payrudder.billing.v1.BankTransferInstructionsR\x13paymentInstructions\x12'\n" +
 	"\x0fcustomer_locale\x18\x11 \x01(\tR\x0ecustomerLocale\x12#\n" +
-	"\rcustomer_type\x18\x12 \x01(\tR\fcustomerType\"\xa2\x01\n" +
+	"\rcustomer_type\x18\x12 \x01(\tR\fcustomerType\x12\x1b\n" +
+	"\ttime_zone\x18\x13 \x01(\tR\btimeZone\"\xa2\x01\n" +
 	"\x18BankTransferInstructions\x12\x1b\n" +
 	"\tbank_name\x18\x01 \x01(\tR\bbankName\x12%\n" +
 	"\x0eaccount_holder\x18\x02 \x01(\tR\raccountHolder\x12\x12\n" +
@@ -13213,7 +13232,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"issue_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tissueTime\x12\x12\n" +
 	"\x04kind\x18\n" +
 	" \x01(\tR\x04kind\x12#\n" +
-	"\rpdf_available\x18\v \x01(\bR\fpdfAvailable\"\xe9\x04\n" +
+	"\rpdf_available\x18\v \x01(\bR\fpdfAvailable\"\x86\x05\n" +
 	"\x11GetPortalResponse\x12#\n" +
 	"\rcustomer_name\x18\x01 \x01(\tR\fcustomerName\x12\x1f\n" +
 	"\vseller_name\x18\x02 \x01(\tR\n" +
@@ -13232,7 +13251,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"creditLots\x12I\n" +
 	"\fcredit_packs\x18\v \x03(\v2&.payrudder.billing.v1.PortalCreditPackR\vcreditPacks\x12&\n" +
 	"\x0fcan_buy_credits\x18\f \x01(\bR\rcanBuyCredits\x12'\n" +
-	"\x0fcustomer_locale\x18\r \x01(\tR\x0ecustomerLocale\"B\n" +
+	"\x0fcustomer_locale\x18\r \x01(\tR\x0ecustomerLocale\x12\x1b\n" +
+	"\ttime_zone\x18\x0e \x01(\tR\btimeZone\"B\n" +
 	"\x1dGetPortalSubscriptionsRequest\x12!\n" +
 	"\fportal_token\x18\x01 \x01(\tR\vportalToken\"p\n" +
 	"\x1eGetPortalSubscriptionsResponse\x12N\n" +

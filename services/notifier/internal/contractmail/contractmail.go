@@ -7,6 +7,7 @@
 package contractmail
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
@@ -117,7 +119,7 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	}
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
 		Key: ev.GetEventId(), Kind: "contract", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(),
-		Data:    MailData(ev.GetAcceptedAt().AsTime(), cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), cust.GetCustomer().GetLocale(), snap),
+		Data:    MailData(ev.GetAcceptedAt().AsTime(), cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage()), snap),
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
@@ -134,7 +136,7 @@ func MailData(acceptedAt time.Time, customerName, tenantName, zone, locale strin
 		loc = l
 	}
 	return map[string]string{
-		"customer_name": customerName, "tenant_name": tenantName, "locale": locale, "accepted_at": acceptedAt.In(loc).Format("2 Jan 2006, 15:04 MST"),
+		"customer_name": customerName, "tenant_name": tenantName, "locale": locale, "accepted_at": localefmt.For(locale).Date(acceptedAt.In(loc)) + ", " + acceptedAt.In(loc).Format("15:04 MST"),
 		"snapshot_html": bodyOf(snap.GetHtml()), "snapshot_sha256": snap.GetSha256(),
 	}
 }

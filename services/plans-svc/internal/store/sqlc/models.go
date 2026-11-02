@@ -761,6 +761,7 @@ type Tenant struct {
 	Cell               string
 	Region             string
 	PlacementStatus    string
+	DefaultLanguage    string
 }
 
 type TenantMailIntegration struct {

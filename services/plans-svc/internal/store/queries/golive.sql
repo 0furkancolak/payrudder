@@ -17,7 +17,7 @@ SELECT EXISTS (SELECT 1 FROM plan_versions WHERE tenant_id = $1) AS published;
 
 -- The seller's legal and billing profile, set by the owner. Both documents are replaced whole: the form always sends all of it.
 -- name: UpdateTenantBillingProfile :one
-UPDATE tenants SET address = @address::jsonb, legal = @legal::jsonb WHERE id = @id RETURNING *;
+UPDATE tenants SET address = @address::jsonb, legal = @legal::jsonb, default_language = COALESCE(sqlc.narg(default_language)::text, default_language) WHERE id = @id RETURNING *;
 
 -- What an owner did on the way to going live; one row per change, never updated.
 -- name: InsertGoLiveAudit :exec

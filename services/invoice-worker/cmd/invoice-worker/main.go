@@ -9,6 +9,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images (the issue date is the seller's)
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/invoice-worker/internal/handler"
 )
