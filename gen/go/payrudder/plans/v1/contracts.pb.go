@@ -636,8 +636,19 @@ type ContractSettings struct {
 	// Kinds that have a published version.
 	PublishedKinds []string               `protobuf:"bytes,4,rep,name=published_kinds,json=publishedKinds,proto3" json:"published_kinds,omitempty"`
 	UpdateTime     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// What accepting a withdrawal does about the money: full asks billing for a refund of the invoice (a credit note that returns it to the card), none leaves the refund
+	// to the seller. Either way the seller decides the withdrawal; nothing is refunded before that. Default full.
+	WithdrawalRefund string `protobuf:"bytes,6,opt,name=withdrawal_refund,json=withdrawalRefund,proto3" json:"withdrawal_refund,omitempty"`
+	// How many days before each renewal of a subscription (fixed fee in advance) whose customer accepted agreements the customer is mailed the renewal notice. 0 switches
+	// it off. Default 7, at most 60.
+	RenewalNoticeDays int32 `protobuf:"varint,7,opt,name=renewal_notice_days,json=renewalNoticeDays,proto3" json:"renewal_notice_days,omitempty"`
+	// Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice.
+	RenewalCancelTexts map[string]string `protobuf:"bytes,8,rep,name=renewal_cancel_texts,json=renewalCancelTexts,proto3" json:"renewal_cancel_texts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Customers (consumers) can withdraw from a contract on the hosted pages ("withdraw from contract here", then "confirm withdrawal") and are sent an acknowledgement. Only
+	// while contracts are enforced. Default on.
+	WithdrawalFunction bool `protobuf:"varint,9,opt,name=withdrawal_function,json=withdrawalFunction,proto3" json:"withdrawal_function,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ContractSettings) Reset() {
@@ -705,6 +716,34 @@ func (x *ContractSettings) GetUpdateTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ContractSettings) GetWithdrawalRefund() string {
+	if x != nil {
+		return x.WithdrawalRefund
+	}
+	return ""
+}
+
+func (x *ContractSettings) GetRenewalNoticeDays() int32 {
+	if x != nil {
+		return x.RenewalNoticeDays
+	}
+	return 0
+}
+
+func (x *ContractSettings) GetRenewalCancelTexts() map[string]string {
+	if x != nil {
+		return x.RenewalCancelTexts
+	}
+	return nil
+}
+
+func (x *ContractSettings) GetWithdrawalFunction() bool {
+	if x != nil {
+		return x.WithdrawalFunction
+	}
+	return false
+}
+
 type GetContractSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -747,8 +786,16 @@ type SetContractSettingsRequest struct {
 	ImmediateStart bool                   `protobuf:"varint,2,opt,name=immediate_start,json=immediateStart,proto3" json:"immediate_start,omitempty"`
 	// 0 keeps the current value.
 	RetentionMonths int32 `protobuf:"varint,3,opt,name=retention_months,json=retentionMonths,proto3" json:"retention_months,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Empty keeps the current value; full or none.
+	WithdrawalRefund string `protobuf:"bytes,4,opt,name=withdrawal_refund,json=withdrawalRefund,proto3" json:"withdrawal_refund,omitempty"`
+	// Absent keeps the current value; 0 switches the notice off.
+	RenewalNoticeDays *int32 `protobuf:"varint,5,opt,name=renewal_notice_days,json=renewalNoticeDays,proto3,oneof" json:"renewal_notice_days,omitempty"`
+	// A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text.
+	RenewalCancelTexts map[string]string `protobuf:"bytes,6,rep,name=renewal_cancel_texts,json=renewalCancelTexts,proto3" json:"renewal_cancel_texts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Absent keeps the current value.
+	WithdrawalFunction *bool `protobuf:"varint,7,opt,name=withdrawal_function,json=withdrawalFunction,proto3,oneof" json:"withdrawal_function,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SetContractSettingsRequest) Reset() {
@@ -800,6 +847,34 @@ func (x *SetContractSettingsRequest) GetRetentionMonths() int32 {
 		return x.RetentionMonths
 	}
 	return 0
+}
+
+func (x *SetContractSettingsRequest) GetWithdrawalRefund() string {
+	if x != nil {
+		return x.WithdrawalRefund
+	}
+	return ""
+}
+
+func (x *SetContractSettingsRequest) GetRenewalNoticeDays() int32 {
+	if x != nil && x.RenewalNoticeDays != nil {
+		return *x.RenewalNoticeDays
+	}
+	return 0
+}
+
+func (x *SetContractSettingsRequest) GetRenewalCancelTexts() map[string]string {
+	if x != nil {
+		return x.RenewalCancelTexts
+	}
+	return nil
+}
+
+func (x *SetContractSettingsRequest) GetWithdrawalFunction() bool {
+	if x != nil && x.WithdrawalFunction != nil {
+		return *x.WithdrawalFunction
+	}
+	return false
 }
 
 // ContractOrder is what the customer is about to buy, for the variables of the texts.
@@ -1913,11 +1988,18 @@ type ContractWithdrawal struct {
 	// api, console or hosted.
 	Source string `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
 	// received, accepted, rejected or refunded.
-	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
-	ReceiveTime   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=receive_time,json=receiveTime,proto3" json:"receive_time,omitempty"`
-	DecideTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=decide_time,json=decideTime,proto3" json:"decide_time,omitempty"`
-	DecidedBy     string                 `protobuf:"bytes,11,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
-	DecisionNote  string                 `protobuf:"bytes,12,opt,name=decision_note,json=decisionNote,proto3" json:"decision_note,omitempty"`
+	Status       string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	ReceiveTime  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=receive_time,json=receiveTime,proto3" json:"receive_time,omitempty"`
+	DecideTime   *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=decide_time,json=decideTime,proto3" json:"decide_time,omitempty"`
+	DecidedBy    string                 `protobuf:"bytes,11,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
+	DecisionNote string                 `protobuf:"bytes,12,opt,name=decision_note,json=decisionNote,proto3" json:"decision_note,omitempty"`
+	// The credit note billing made to refund the invoice, once one was requested.
+	CreditNoteId string `protobuf:"bytes,13,opt,name=credit_note_id,json=creditNoteId,proto3" json:"credit_note_id,omitempty"`
+	// none (nothing asked of billing), requesting (being asked), requested (a credit note exists; its own refund_state tells whether the card got the money), outside (the money
+	// cannot go back through Payrudder, a bank transfer for instance: the seller refunds it by hand) or failed (billing refused or did not answer: ask again).
+	RefundState   string                 `protobuf:"bytes,14,opt,name=refund_state,json=refundState,proto3" json:"refund_state,omitempty"`
+	RefundNote    string                 `protobuf:"bytes,15,opt,name=refund_note,json=refundNote,proto3" json:"refund_note,omitempty"`
+	RefundTime    *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=refund_time,json=refundTime,proto3" json:"refund_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2036,6 +2118,34 @@ func (x *ContractWithdrawal) GetDecisionNote() string {
 	return ""
 }
 
+func (x *ContractWithdrawal) GetCreditNoteId() string {
+	if x != nil {
+		return x.CreditNoteId
+	}
+	return ""
+}
+
+func (x *ContractWithdrawal) GetRefundState() string {
+	if x != nil {
+		return x.RefundState
+	}
+	return ""
+}
+
+func (x *ContractWithdrawal) GetRefundNote() string {
+	if x != nil {
+		return x.RefundNote
+	}
+	return ""
+}
+
+func (x *ContractWithdrawal) GetRefundTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RefundTime
+	}
+	return nil
+}
+
 type CreateContractWithdrawalRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	CustomerExternalId string                 `protobuf:"bytes,1,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
@@ -2044,7 +2154,9 @@ type CreateContractWithdrawalRequest struct {
 	Statement          string                 `protobuf:"bytes,4,opt,name=statement,proto3" json:"statement,omitempty"`
 	Source             string                 `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	// When the customer's statement reached the seller; empty: now.
-	ReceiveTime   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=receive_time,json=receiveTime,proto3" json:"receive_time,omitempty"`
+	ReceiveTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=receive_time,json=receiveTime,proto3" json:"receive_time,omitempty"`
+	// Payrudder's id of the customer, for the hosted pages that know it (customer_external_id is used when this is empty).
+	CustomerId    string `protobuf:"bytes,7,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2119,6 +2231,13 @@ func (x *CreateContractWithdrawalRequest) GetReceiveTime() *timestamppb.Timestam
 		return x.ReceiveTime
 	}
 	return nil
+}
+
+func (x *CreateContractWithdrawalRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
 }
 
 type ListContractWithdrawalsRequest struct {
@@ -2221,11 +2340,14 @@ type SetContractWithdrawalStatusRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// accepted, rejected or refunded.
-	Status        string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Note          string `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
-	DecidedBy     string `protobuf:"bytes,4,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Status    string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Note      string `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`
+	DecidedBy string `protobuf:"bytes,4,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
+	// Accepting only, and read by the gateway, not by plans-svc: the amount to refund when the settings ask for a refund, in minor units; 0 is whatever is left of the invoice
+	// (a seller who owes the customer only part of it, because the service already ran, names the amount).
+	RefundAmountMinor int64 `protobuf:"varint,5,opt,name=refund_amount_minor,json=refundAmountMinor,proto3" json:"refund_amount_minor,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SetContractWithdrawalStatusRequest) Reset() {
@@ -2286,6 +2408,280 @@ func (x *SetContractWithdrawalStatusRequest) GetDecidedBy() string {
 	return ""
 }
 
+func (x *SetContractWithdrawalStatusRequest) GetRefundAmountMinor() int64 {
+	if x != nil {
+		return x.RefundAmountMinor
+	}
+	return 0
+}
+
+// RequestContractWithdrawalRefundRequest is the body of POST /v1/contract-withdrawals/{id}/refund: ask for the refund of an accepted withdrawal (when the settings are none, or
+// the first request failed).
+type RequestContractWithdrawalRefundRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 0 is whatever is left of the invoice.
+	AmountMinor   int64 `protobuf:"varint,2,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestContractWithdrawalRefundRequest) Reset() {
+	*x = RequestContractWithdrawalRefundRequest{}
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestContractWithdrawalRefundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestContractWithdrawalRefundRequest) ProtoMessage() {}
+
+func (x *RequestContractWithdrawalRefundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestContractWithdrawalRefundRequest.ProtoReflect.Descriptor instead.
+func (*RequestContractWithdrawalRefundRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *RequestContractWithdrawalRefundRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RequestContractWithdrawalRefundRequest) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+type ClaimContractWithdrawalRefundRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimContractWithdrawalRefundRequest) Reset() {
+	*x = ClaimContractWithdrawalRefundRequest{}
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimContractWithdrawalRefundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimContractWithdrawalRefundRequest) ProtoMessage() {}
+
+func (x *ClaimContractWithdrawalRefundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimContractWithdrawalRefundRequest.ProtoReflect.Descriptor instead.
+func (*ClaimContractWithdrawalRefundRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ClaimContractWithdrawalRefundRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// ClaimContractWithdrawalRefundResponse is the withdrawal as it stands once the caller owns the request. A withdrawal that is not accepted, has no invoice, or whose refund
+// is under way (or done) is refused with plans.contract.refund_not_possible.
+type ClaimContractWithdrawalRefundResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Withdrawal *ContractWithdrawal    `protobuf:"bytes,1,opt,name=withdrawal,proto3" json:"withdrawal,omitempty"`
+	// The claim took over a request that was left standing (the caller died before it recorded an answer): look for a credit note already made for it before making one.
+	Reclaimed     bool `protobuf:"varint,2,opt,name=reclaimed,proto3" json:"reclaimed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimContractWithdrawalRefundResponse) Reset() {
+	*x = ClaimContractWithdrawalRefundResponse{}
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimContractWithdrawalRefundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimContractWithdrawalRefundResponse) ProtoMessage() {}
+
+func (x *ClaimContractWithdrawalRefundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimContractWithdrawalRefundResponse.ProtoReflect.Descriptor instead.
+func (*ClaimContractWithdrawalRefundResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ClaimContractWithdrawalRefundResponse) GetWithdrawal() *ContractWithdrawal {
+	if x != nil {
+		return x.Withdrawal
+	}
+	return nil
+}
+
+func (x *ClaimContractWithdrawalRefundResponse) GetReclaimed() bool {
+	if x != nil {
+		return x.Reclaimed
+	}
+	return false
+}
+
+type RecordContractWithdrawalRefundRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// none, requested, outside or failed.
+	State         string `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	CreditNoteId  string `protobuf:"bytes,3,opt,name=credit_note_id,json=creditNoteId,proto3" json:"credit_note_id,omitempty"`
+	Note          string `protobuf:"bytes,4,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordContractWithdrawalRefundRequest) Reset() {
+	*x = RecordContractWithdrawalRefundRequest{}
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordContractWithdrawalRefundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordContractWithdrawalRefundRequest) ProtoMessage() {}
+
+func (x *RecordContractWithdrawalRefundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordContractWithdrawalRefundRequest.ProtoReflect.Descriptor instead.
+func (*RecordContractWithdrawalRefundRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *RecordContractWithdrawalRefundRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RecordContractWithdrawalRefundRequest) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *RecordContractWithdrawalRefundRequest) GetCreditNoteId() string {
+	if x != nil {
+		return x.CreditNoteId
+	}
+	return ""
+}
+
+func (x *RecordContractWithdrawalRefundRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type RecordContractWithdrawalRefundResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Withdrawal    *ContractWithdrawal    `protobuf:"bytes,1,opt,name=withdrawal,proto3" json:"withdrawal,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordContractWithdrawalRefundResponse) Reset() {
+	*x = RecordContractWithdrawalRefundResponse{}
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordContractWithdrawalRefundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordContractWithdrawalRefundResponse) ProtoMessage() {}
+
+func (x *RecordContractWithdrawalRefundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordContractWithdrawalRefundResponse.ProtoReflect.Descriptor instead.
+func (*RecordContractWithdrawalRefundResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *RecordContractWithdrawalRefundResponse) GetWithdrawal() *ContractWithdrawal {
+	if x != nil {
+		return x.Withdrawal
+	}
+	return nil
+}
+
 type PublishContractVersionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       *ContractVersion       `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
@@ -2295,7 +2691,7 @@ type PublishContractVersionResponse struct {
 
 func (x *PublishContractVersionResponse) Reset() {
 	*x = PublishContractVersionResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[29]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2307,7 +2703,7 @@ func (x *PublishContractVersionResponse) String() string {
 func (*PublishContractVersionResponse) ProtoMessage() {}
 
 func (x *PublishContractVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[29]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2320,7 +2716,7 @@ func (x *PublishContractVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishContractVersionResponse.ProtoReflect.Descriptor instead.
 func (*PublishContractVersionResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{29}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *PublishContractVersionResponse) GetVersion() *ContractVersion {
@@ -2339,7 +2735,7 @@ type GetContractVersionResponse struct {
 
 func (x *GetContractVersionResponse) Reset() {
 	*x = GetContractVersionResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[30]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2351,7 +2747,7 @@ func (x *GetContractVersionResponse) String() string {
 func (*GetContractVersionResponse) ProtoMessage() {}
 
 func (x *GetContractVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[30]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2364,7 +2760,7 @@ func (x *GetContractVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetContractVersionResponse.ProtoReflect.Descriptor instead.
 func (*GetContractVersionResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{30}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetContractVersionResponse) GetVersion() *ContractVersion {
@@ -2383,7 +2779,7 @@ type GetContractSettingsResponse struct {
 
 func (x *GetContractSettingsResponse) Reset() {
 	*x = GetContractSettingsResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[31]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2395,7 +2791,7 @@ func (x *GetContractSettingsResponse) String() string {
 func (*GetContractSettingsResponse) ProtoMessage() {}
 
 func (x *GetContractSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[31]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2408,7 +2804,7 @@ func (x *GetContractSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetContractSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetContractSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{31}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetContractSettingsResponse) GetSettings() *ContractSettings {
@@ -2427,7 +2823,7 @@ type SetContractSettingsResponse struct {
 
 func (x *SetContractSettingsResponse) Reset() {
 	*x = SetContractSettingsResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[32]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2439,7 +2835,7 @@ func (x *SetContractSettingsResponse) String() string {
 func (*SetContractSettingsResponse) ProtoMessage() {}
 
 func (x *SetContractSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[32]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2452,7 +2848,7 @@ func (x *SetContractSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetContractSettingsResponse.ProtoReflect.Descriptor instead.
 func (*SetContractSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{32}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SetContractSettingsResponse) GetSettings() *ContractSettings {
@@ -2471,7 +2867,7 @@ type CreateContractWithdrawalResponse struct {
 
 func (x *CreateContractWithdrawalResponse) Reset() {
 	*x = CreateContractWithdrawalResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[33]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2483,7 +2879,7 @@ func (x *CreateContractWithdrawalResponse) String() string {
 func (*CreateContractWithdrawalResponse) ProtoMessage() {}
 
 func (x *CreateContractWithdrawalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[33]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2496,7 +2892,7 @@ func (x *CreateContractWithdrawalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContractWithdrawalResponse.ProtoReflect.Descriptor instead.
 func (*CreateContractWithdrawalResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{33}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *CreateContractWithdrawalResponse) GetWithdrawal() *ContractWithdrawal {
@@ -2515,7 +2911,7 @@ type SetContractWithdrawalStatusResponse struct {
 
 func (x *SetContractWithdrawalStatusResponse) Reset() {
 	*x = SetContractWithdrawalStatusResponse{}
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[34]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2923,7 @@ func (x *SetContractWithdrawalStatusResponse) String() string {
 func (*SetContractWithdrawalStatusResponse) ProtoMessage() {}
 
 func (x *SetContractWithdrawalStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[34]
+	mi := &file_payrudder_plans_v1_contracts_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2936,7 @@ func (x *SetContractWithdrawalStatusResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SetContractWithdrawalStatusResponse.ProtoReflect.Descriptor instead.
 func (*SetContractWithdrawalStatusResponse) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{34}
+	return file_payrudder_plans_v1_contracts_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SetContractWithdrawalStatusResponse) GetWithdrawal() *ContractWithdrawal {
@@ -2604,19 +3000,35 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"\baudience\x18\x03 \x01(\tR\baudience\"H\n" +
 	"\x1aGetContractStarterResponse\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12\x16\n" +
-	"\x06locale\x18\x02 \x01(\tR\x06locale\"\xf3\x01\n" +
+	"\x06locale\x18\x02 \x01(\tR\x06locale\"\xb8\x04\n" +
 	"\x10ContractSettings\x12%\n" +
 	"\x0erequired_kinds\x18\x01 \x03(\tR\rrequiredKinds\x12'\n" +
 	"\x0fimmediate_start\x18\x02 \x01(\bR\x0eimmediateStart\x12)\n" +
 	"\x10retention_months\x18\x03 \x01(\x05R\x0fretentionMonths\x12'\n" +
 	"\x0fpublished_kinds\x18\x04 \x03(\tR\x0epublishedKinds\x12;\n" +
 	"\vupdate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"updateTime\"\x1c\n" +
-	"\x1aGetContractSettingsRequest\"\x97\x01\n" +
+	"updateTime\x12+\n" +
+	"\x11withdrawal_refund\x18\x06 \x01(\tR\x10withdrawalRefund\x12.\n" +
+	"\x13renewal_notice_days\x18\a \x01(\x05R\x11renewalNoticeDays\x12n\n" +
+	"\x14renewal_cancel_texts\x18\b \x03(\v2<.payrudder.plans.v1.ContractSettings.RenewalCancelTextsEntryR\x12renewalCancelTexts\x12/\n" +
+	"\x13withdrawal_function\x18\t \x01(\bR\x12withdrawalFunction\x1aE\n" +
+	"\x17RenewalCancelTextsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1c\n" +
+	"\x1aGetContractSettingsRequest\"\xa0\x04\n" +
 	"\x1aSetContractSettingsRequest\x12%\n" +
 	"\x0erequired_kinds\x18\x01 \x03(\tR\rrequiredKinds\x12'\n" +
 	"\x0fimmediate_start\x18\x02 \x01(\bR\x0eimmediateStart\x12)\n" +
-	"\x10retention_months\x18\x03 \x01(\x05R\x0fretentionMonths\"c\n" +
+	"\x10retention_months\x18\x03 \x01(\x05R\x0fretentionMonths\x12+\n" +
+	"\x11withdrawal_refund\x18\x04 \x01(\tR\x10withdrawalRefund\x123\n" +
+	"\x13renewal_notice_days\x18\x05 \x01(\x05H\x00R\x11renewalNoticeDays\x88\x01\x01\x12x\n" +
+	"\x14renewal_cancel_texts\x18\x06 \x03(\v2F.payrudder.plans.v1.SetContractSettingsRequest.RenewalCancelTextsEntryR\x12renewalCancelTexts\x124\n" +
+	"\x13withdrawal_function\x18\a \x01(\bH\x01R\x12withdrawalFunction\x88\x01\x01\x1aE\n" +
+	"\x17RenewalCancelTextsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x16\n" +
+	"\x14_renewal_notice_daysB\x16\n" +
+	"\x14_withdrawal_function\"c\n" +
 	"\rContractOrder\x12 \n" +
 	"\vdescription\x18\x01 \x01(\tR\vdescription\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\tR\x05total\x12\x1a\n" +
@@ -2736,7 +3148,7 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"\x1bGetContractSnapshotResponse\x12\x12\n" +
 	"\x04html\x18\x01 \x01(\tR\x04html\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x19\n" +
-	"\bgroup_id\x18\x03 \x01(\tR\agroupId\"\xcd\x03\n" +
+	"\bgroup_id\x18\x03 \x01(\tR\agroupId\"\xf4\x04\n" +
 	"\x12ContractWithdrawal\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -2754,7 +3166,13 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"decideTime\x12\x1d\n" +
 	"\n" +
 	"decided_by\x18\v \x01(\tR\tdecidedBy\x12#\n" +
-	"\rdecision_note\x18\f \x01(\tR\fdecisionNote\"\x90\x02\n" +
+	"\rdecision_note\x18\f \x01(\tR\fdecisionNote\x12$\n" +
+	"\x0ecredit_note_id\x18\r \x01(\tR\fcreditNoteId\x12!\n" +
+	"\frefund_state\x18\x0e \x01(\tR\vrefundState\x12\x1f\n" +
+	"\vrefund_note\x18\x0f \x01(\tR\n" +
+	"refundNote\x12;\n" +
+	"\vrefund_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"refundTime\"\xb1\x02\n" +
 	"\x1fCreateContractWithdrawalRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12'\n" +
 	"\x0fsubscription_id\x18\x02 \x01(\tR\x0esubscriptionId\x12\x1d\n" +
@@ -2762,18 +3180,40 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\x12\x1c\n" +
 	"\tstatement\x18\x04 \x01(\tR\tstatement\x12\x16\n" +
 	"\x06source\x18\x05 \x01(\tR\x06source\x12=\n" +
-	"\freceive_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vreceiveTime\"j\n" +
+	"\freceive_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vreceiveTime\x12\x1f\n" +
+	"\vcustomer_id\x18\a \x01(\tR\n" +
+	"customerId\"j\n" +
 	"\x1eListContractWithdrawalsRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\"k\n" +
 	"\x1fListContractWithdrawalsResponse\x12H\n" +
-	"\vwithdrawals\x18\x01 \x03(\v2&.payrudder.plans.v1.ContractWithdrawalR\vwithdrawals\"\x7f\n" +
+	"\vwithdrawals\x18\x01 \x03(\v2&.payrudder.plans.v1.ContractWithdrawalR\vwithdrawals\"\xaf\x01\n" +
 	"\"SetContractWithdrawalStatusRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x12\n" +
 	"\x04note\x18\x03 \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
-	"decided_by\x18\x04 \x01(\tR\tdecidedBy\"_\n" +
+	"decided_by\x18\x04 \x01(\tR\tdecidedBy\x12.\n" +
+	"\x13refund_amount_minor\x18\x05 \x01(\x03R\x11refundAmountMinor\"[\n" +
+	"&RequestContractWithdrawalRefundRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\famount_minor\x18\x02 \x01(\x03R\vamountMinor\"6\n" +
+	"$ClaimContractWithdrawalRefundRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x8d\x01\n" +
+	"%ClaimContractWithdrawalRefundResponse\x12F\n" +
+	"\n" +
+	"withdrawal\x18\x01 \x01(\v2&.payrudder.plans.v1.ContractWithdrawalR\n" +
+	"withdrawal\x12\x1c\n" +
+	"\treclaimed\x18\x02 \x01(\bR\treclaimed\"\x87\x01\n" +
+	"%RecordContractWithdrawalRefundRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x12$\n" +
+	"\x0ecredit_note_id\x18\x03 \x01(\tR\fcreditNoteId\x12\x12\n" +
+	"\x04note\x18\x04 \x01(\tR\x04note\"p\n" +
+	"&RecordContractWithdrawalRefundResponse\x12F\n" +
+	"\n" +
+	"withdrawal\x18\x01 \x01(\v2&.payrudder.plans.v1.ContractWithdrawalR\n" +
+	"withdrawal\"_\n" +
 	"\x1ePublishContractVersionResponse\x12=\n" +
 	"\aversion\x18\x01 \x01(\v2#.payrudder.plans.v1.ContractVersionR\aversion\"[\n" +
 	"\x1aGetContractVersionResponse\x12=\n" +
@@ -2789,7 +3229,7 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"#SetContractWithdrawalStatusResponse\x12F\n" +
 	"\n" +
 	"withdrawal\x18\x01 \x01(\v2&.payrudder.plans.v1.ContractWithdrawalR\n" +
-	"withdrawal2\xfb\r\n" +
+	"withdrawal2\xac\x10\n" +
 	"\x0fContractService\x12\x7f\n" +
 	"\x16PublishContractVersion\x121.payrudder.plans.v1.PublishContractVersionRequest\x1a2.payrudder.plans.v1.PublishContractVersionResponse\x12y\n" +
 	"\x14ListContractVersions\x12/.payrudder.plans.v1.ListContractVersionsRequest\x1a0.payrudder.plans.v1.ListContractVersionsResponse\x12s\n" +
@@ -2804,7 +3244,9 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"\x13GetContractSnapshot\x12..payrudder.plans.v1.GetContractSnapshotRequest\x1a/.payrudder.plans.v1.GetContractSnapshotResponse\x12\x85\x01\n" +
 	"\x18CreateContractWithdrawal\x123.payrudder.plans.v1.CreateContractWithdrawalRequest\x1a4.payrudder.plans.v1.CreateContractWithdrawalResponse\x12\x82\x01\n" +
 	"\x17ListContractWithdrawals\x122.payrudder.plans.v1.ListContractWithdrawalsRequest\x1a3.payrudder.plans.v1.ListContractWithdrawalsResponse\x12\x8e\x01\n" +
-	"\x1bSetContractWithdrawalStatus\x126.payrudder.plans.v1.SetContractWithdrawalStatusRequest\x1a7.payrudder.plans.v1.SetContractWithdrawalStatusResponseB\xd7\x01\n" +
+	"\x1bSetContractWithdrawalStatus\x126.payrudder.plans.v1.SetContractWithdrawalStatusRequest\x1a7.payrudder.plans.v1.SetContractWithdrawalStatusResponse\x12\x94\x01\n" +
+	"\x1dClaimContractWithdrawalRefund\x128.payrudder.plans.v1.ClaimContractWithdrawalRefundRequest\x1a9.payrudder.plans.v1.ClaimContractWithdrawalRefundResponse\x12\x97\x01\n" +
+	"\x1eRecordContractWithdrawalRefund\x129.payrudder.plans.v1.RecordContractWithdrawalRefundRequest\x1a:.payrudder.plans.v1.RecordContractWithdrawalRefundResponseB\xd7\x01\n" +
 	"\x16com.payrudder.plans.v1B\x0eContractsProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
 
 var (
@@ -2819,109 +3261,125 @@ func file_payrudder_plans_v1_contracts_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_contracts_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_contracts_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_payrudder_plans_v1_contracts_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_payrudder_plans_v1_contracts_proto_goTypes = []any{
-	(*ContractVersion)(nil),                     // 0: payrudder.plans.v1.ContractVersion
-	(*PublishContractVersionRequest)(nil),       // 1: payrudder.plans.v1.PublishContractVersionRequest
-	(*ListContractVersionsRequest)(nil),         // 2: payrudder.plans.v1.ListContractVersionsRequest
-	(*ListContractVersionsResponse)(nil),        // 3: payrudder.plans.v1.ListContractVersionsResponse
-	(*GetContractVersionRequest)(nil),           // 4: payrudder.plans.v1.GetContractVersionRequest
-	(*PreviewContractRequest)(nil),              // 5: payrudder.plans.v1.PreviewContractRequest
-	(*PreviewContractResponse)(nil),             // 6: payrudder.plans.v1.PreviewContractResponse
-	(*GetContractStarterRequest)(nil),           // 7: payrudder.plans.v1.GetContractStarterRequest
-	(*GetContractStarterResponse)(nil),          // 8: payrudder.plans.v1.GetContractStarterResponse
-	(*ContractSettings)(nil),                    // 9: payrudder.plans.v1.ContractSettings
-	(*GetContractSettingsRequest)(nil),          // 10: payrudder.plans.v1.GetContractSettingsRequest
-	(*SetContractSettingsRequest)(nil),          // 11: payrudder.plans.v1.SetContractSettingsRequest
-	(*ContractOrder)(nil),                       // 12: payrudder.plans.v1.ContractOrder
-	(*GetContractRequirementsRequest)(nil),      // 13: payrudder.plans.v1.GetContractRequirementsRequest
-	(*ContractRequirement)(nil),                 // 14: payrudder.plans.v1.ContractRequirement
-	(*GetContractRequirementsResponse)(nil),     // 15: payrudder.plans.v1.GetContractRequirementsResponse
-	(*ContractAcceptanceItem)(nil),              // 16: payrudder.plans.v1.ContractAcceptanceItem
-	(*RecordContractAcceptanceRequest)(nil),     // 17: payrudder.plans.v1.RecordContractAcceptanceRequest
-	(*ContractAcceptance)(nil),                  // 18: payrudder.plans.v1.ContractAcceptance
-	(*RecordContractAcceptanceResponse)(nil),    // 19: payrudder.plans.v1.RecordContractAcceptanceResponse
-	(*ListContractAcceptancesRequest)(nil),      // 20: payrudder.plans.v1.ListContractAcceptancesRequest
-	(*ListContractAcceptancesResponse)(nil),     // 21: payrudder.plans.v1.ListContractAcceptancesResponse
-	(*GetContractSnapshotRequest)(nil),          // 22: payrudder.plans.v1.GetContractSnapshotRequest
-	(*GetContractSnapshotResponse)(nil),         // 23: payrudder.plans.v1.GetContractSnapshotResponse
-	(*ContractWithdrawal)(nil),                  // 24: payrudder.plans.v1.ContractWithdrawal
-	(*CreateContractWithdrawalRequest)(nil),     // 25: payrudder.plans.v1.CreateContractWithdrawalRequest
-	(*ListContractWithdrawalsRequest)(nil),      // 26: payrudder.plans.v1.ListContractWithdrawalsRequest
-	(*ListContractWithdrawalsResponse)(nil),     // 27: payrudder.plans.v1.ListContractWithdrawalsResponse
-	(*SetContractWithdrawalStatusRequest)(nil),  // 28: payrudder.plans.v1.SetContractWithdrawalStatusRequest
-	(*PublishContractVersionResponse)(nil),      // 29: payrudder.plans.v1.PublishContractVersionResponse
-	(*GetContractVersionResponse)(nil),          // 30: payrudder.plans.v1.GetContractVersionResponse
-	(*GetContractSettingsResponse)(nil),         // 31: payrudder.plans.v1.GetContractSettingsResponse
-	(*SetContractSettingsResponse)(nil),         // 32: payrudder.plans.v1.SetContractSettingsResponse
-	(*CreateContractWithdrawalResponse)(nil),    // 33: payrudder.plans.v1.CreateContractWithdrawalResponse
-	(*SetContractWithdrawalStatusResponse)(nil), // 34: payrudder.plans.v1.SetContractWithdrawalStatusResponse
-	nil,                           // 35: payrudder.plans.v1.ContractVersion.BodiesEntry
-	nil,                           // 36: payrudder.plans.v1.PublishContractVersionRequest.BodiesEntry
-	nil,                           // 37: payrudder.plans.v1.ContractAcceptance.ObservedEntry
-	nil,                           // 38: payrudder.plans.v1.ContractAcceptance.VariablesEntry
-	(*timestamppb.Timestamp)(nil), // 39: google.protobuf.Timestamp
+	(*ContractVersion)(nil),                        // 0: payrudder.plans.v1.ContractVersion
+	(*PublishContractVersionRequest)(nil),          // 1: payrudder.plans.v1.PublishContractVersionRequest
+	(*ListContractVersionsRequest)(nil),            // 2: payrudder.plans.v1.ListContractVersionsRequest
+	(*ListContractVersionsResponse)(nil),           // 3: payrudder.plans.v1.ListContractVersionsResponse
+	(*GetContractVersionRequest)(nil),              // 4: payrudder.plans.v1.GetContractVersionRequest
+	(*PreviewContractRequest)(nil),                 // 5: payrudder.plans.v1.PreviewContractRequest
+	(*PreviewContractResponse)(nil),                // 6: payrudder.plans.v1.PreviewContractResponse
+	(*GetContractStarterRequest)(nil),              // 7: payrudder.plans.v1.GetContractStarterRequest
+	(*GetContractStarterResponse)(nil),             // 8: payrudder.plans.v1.GetContractStarterResponse
+	(*ContractSettings)(nil),                       // 9: payrudder.plans.v1.ContractSettings
+	(*GetContractSettingsRequest)(nil),             // 10: payrudder.plans.v1.GetContractSettingsRequest
+	(*SetContractSettingsRequest)(nil),             // 11: payrudder.plans.v1.SetContractSettingsRequest
+	(*ContractOrder)(nil),                          // 12: payrudder.plans.v1.ContractOrder
+	(*GetContractRequirementsRequest)(nil),         // 13: payrudder.plans.v1.GetContractRequirementsRequest
+	(*ContractRequirement)(nil),                    // 14: payrudder.plans.v1.ContractRequirement
+	(*GetContractRequirementsResponse)(nil),        // 15: payrudder.plans.v1.GetContractRequirementsResponse
+	(*ContractAcceptanceItem)(nil),                 // 16: payrudder.plans.v1.ContractAcceptanceItem
+	(*RecordContractAcceptanceRequest)(nil),        // 17: payrudder.plans.v1.RecordContractAcceptanceRequest
+	(*ContractAcceptance)(nil),                     // 18: payrudder.plans.v1.ContractAcceptance
+	(*RecordContractAcceptanceResponse)(nil),       // 19: payrudder.plans.v1.RecordContractAcceptanceResponse
+	(*ListContractAcceptancesRequest)(nil),         // 20: payrudder.plans.v1.ListContractAcceptancesRequest
+	(*ListContractAcceptancesResponse)(nil),        // 21: payrudder.plans.v1.ListContractAcceptancesResponse
+	(*GetContractSnapshotRequest)(nil),             // 22: payrudder.plans.v1.GetContractSnapshotRequest
+	(*GetContractSnapshotResponse)(nil),            // 23: payrudder.plans.v1.GetContractSnapshotResponse
+	(*ContractWithdrawal)(nil),                     // 24: payrudder.plans.v1.ContractWithdrawal
+	(*CreateContractWithdrawalRequest)(nil),        // 25: payrudder.plans.v1.CreateContractWithdrawalRequest
+	(*ListContractWithdrawalsRequest)(nil),         // 26: payrudder.plans.v1.ListContractWithdrawalsRequest
+	(*ListContractWithdrawalsResponse)(nil),        // 27: payrudder.plans.v1.ListContractWithdrawalsResponse
+	(*SetContractWithdrawalStatusRequest)(nil),     // 28: payrudder.plans.v1.SetContractWithdrawalStatusRequest
+	(*RequestContractWithdrawalRefundRequest)(nil), // 29: payrudder.plans.v1.RequestContractWithdrawalRefundRequest
+	(*ClaimContractWithdrawalRefundRequest)(nil),   // 30: payrudder.plans.v1.ClaimContractWithdrawalRefundRequest
+	(*ClaimContractWithdrawalRefundResponse)(nil),  // 31: payrudder.plans.v1.ClaimContractWithdrawalRefundResponse
+	(*RecordContractWithdrawalRefundRequest)(nil),  // 32: payrudder.plans.v1.RecordContractWithdrawalRefundRequest
+	(*RecordContractWithdrawalRefundResponse)(nil), // 33: payrudder.plans.v1.RecordContractWithdrawalRefundResponse
+	(*PublishContractVersionResponse)(nil),         // 34: payrudder.plans.v1.PublishContractVersionResponse
+	(*GetContractVersionResponse)(nil),             // 35: payrudder.plans.v1.GetContractVersionResponse
+	(*GetContractSettingsResponse)(nil),            // 36: payrudder.plans.v1.GetContractSettingsResponse
+	(*SetContractSettingsResponse)(nil),            // 37: payrudder.plans.v1.SetContractSettingsResponse
+	(*CreateContractWithdrawalResponse)(nil),       // 38: payrudder.plans.v1.CreateContractWithdrawalResponse
+	(*SetContractWithdrawalStatusResponse)(nil),    // 39: payrudder.plans.v1.SetContractWithdrawalStatusResponse
+	nil,                           // 40: payrudder.plans.v1.ContractVersion.BodiesEntry
+	nil,                           // 41: payrudder.plans.v1.PublishContractVersionRequest.BodiesEntry
+	nil,                           // 42: payrudder.plans.v1.ContractSettings.RenewalCancelTextsEntry
+	nil,                           // 43: payrudder.plans.v1.SetContractSettingsRequest.RenewalCancelTextsEntry
+	nil,                           // 44: payrudder.plans.v1.ContractAcceptance.ObservedEntry
+	nil,                           // 45: payrudder.plans.v1.ContractAcceptance.VariablesEntry
+	(*timestamppb.Timestamp)(nil), // 46: google.protobuf.Timestamp
 }
 var file_payrudder_plans_v1_contracts_proto_depIdxs = []int32{
-	35, // 0: payrudder.plans.v1.ContractVersion.bodies:type_name -> payrudder.plans.v1.ContractVersion.BodiesEntry
-	39, // 1: payrudder.plans.v1.ContractVersion.create_time:type_name -> google.protobuf.Timestamp
-	36, // 2: payrudder.plans.v1.PublishContractVersionRequest.bodies:type_name -> payrudder.plans.v1.PublishContractVersionRequest.BodiesEntry
+	40, // 0: payrudder.plans.v1.ContractVersion.bodies:type_name -> payrudder.plans.v1.ContractVersion.BodiesEntry
+	46, // 1: payrudder.plans.v1.ContractVersion.create_time:type_name -> google.protobuf.Timestamp
+	41, // 2: payrudder.plans.v1.PublishContractVersionRequest.bodies:type_name -> payrudder.plans.v1.PublishContractVersionRequest.BodiesEntry
 	0,  // 3: payrudder.plans.v1.ListContractVersionsResponse.versions:type_name -> payrudder.plans.v1.ContractVersion
-	39, // 4: payrudder.plans.v1.ContractSettings.update_time:type_name -> google.protobuf.Timestamp
-	12, // 5: payrudder.plans.v1.GetContractRequirementsRequest.order:type_name -> payrudder.plans.v1.ContractOrder
-	39, // 6: payrudder.plans.v1.ContractRequirement.accept_time:type_name -> google.protobuf.Timestamp
-	14, // 7: payrudder.plans.v1.GetContractRequirementsResponse.requirements:type_name -> payrudder.plans.v1.ContractRequirement
-	16, // 8: payrudder.plans.v1.RecordContractAcceptanceRequest.items:type_name -> payrudder.plans.v1.ContractAcceptanceItem
-	39, // 9: payrudder.plans.v1.RecordContractAcceptanceRequest.accept_time:type_name -> google.protobuf.Timestamp
-	12, // 10: payrudder.plans.v1.RecordContractAcceptanceRequest.order:type_name -> payrudder.plans.v1.ContractOrder
-	37, // 11: payrudder.plans.v1.ContractAcceptance.observed:type_name -> payrudder.plans.v1.ContractAcceptance.ObservedEntry
-	38, // 12: payrudder.plans.v1.ContractAcceptance.variables:type_name -> payrudder.plans.v1.ContractAcceptance.VariablesEntry
-	39, // 13: payrudder.plans.v1.ContractAcceptance.accept_time:type_name -> google.protobuf.Timestamp
-	18, // 14: payrudder.plans.v1.RecordContractAcceptanceResponse.acceptances:type_name -> payrudder.plans.v1.ContractAcceptance
-	18, // 15: payrudder.plans.v1.ListContractAcceptancesResponse.acceptances:type_name -> payrudder.plans.v1.ContractAcceptance
-	39, // 16: payrudder.plans.v1.ContractWithdrawal.receive_time:type_name -> google.protobuf.Timestamp
-	39, // 17: payrudder.plans.v1.ContractWithdrawal.decide_time:type_name -> google.protobuf.Timestamp
-	39, // 18: payrudder.plans.v1.CreateContractWithdrawalRequest.receive_time:type_name -> google.protobuf.Timestamp
-	24, // 19: payrudder.plans.v1.ListContractWithdrawalsResponse.withdrawals:type_name -> payrudder.plans.v1.ContractWithdrawal
-	0,  // 20: payrudder.plans.v1.PublishContractVersionResponse.version:type_name -> payrudder.plans.v1.ContractVersion
-	0,  // 21: payrudder.plans.v1.GetContractVersionResponse.version:type_name -> payrudder.plans.v1.ContractVersion
-	9,  // 22: payrudder.plans.v1.GetContractSettingsResponse.settings:type_name -> payrudder.plans.v1.ContractSettings
-	9,  // 23: payrudder.plans.v1.SetContractSettingsResponse.settings:type_name -> payrudder.plans.v1.ContractSettings
-	24, // 24: payrudder.plans.v1.CreateContractWithdrawalResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
-	24, // 25: payrudder.plans.v1.SetContractWithdrawalStatusResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
-	1,  // 26: payrudder.plans.v1.ContractService.PublishContractVersion:input_type -> payrudder.plans.v1.PublishContractVersionRequest
-	2,  // 27: payrudder.plans.v1.ContractService.ListContractVersions:input_type -> payrudder.plans.v1.ListContractVersionsRequest
-	4,  // 28: payrudder.plans.v1.ContractService.GetContractVersion:input_type -> payrudder.plans.v1.GetContractVersionRequest
-	5,  // 29: payrudder.plans.v1.ContractService.PreviewContract:input_type -> payrudder.plans.v1.PreviewContractRequest
-	7,  // 30: payrudder.plans.v1.ContractService.GetContractStarter:input_type -> payrudder.plans.v1.GetContractStarterRequest
-	10, // 31: payrudder.plans.v1.ContractService.GetContractSettings:input_type -> payrudder.plans.v1.GetContractSettingsRequest
-	11, // 32: payrudder.plans.v1.ContractService.SetContractSettings:input_type -> payrudder.plans.v1.SetContractSettingsRequest
-	13, // 33: payrudder.plans.v1.ContractService.GetContractRequirements:input_type -> payrudder.plans.v1.GetContractRequirementsRequest
-	17, // 34: payrudder.plans.v1.ContractService.RecordContractAcceptance:input_type -> payrudder.plans.v1.RecordContractAcceptanceRequest
-	20, // 35: payrudder.plans.v1.ContractService.ListContractAcceptances:input_type -> payrudder.plans.v1.ListContractAcceptancesRequest
-	22, // 36: payrudder.plans.v1.ContractService.GetContractSnapshot:input_type -> payrudder.plans.v1.GetContractSnapshotRequest
-	25, // 37: payrudder.plans.v1.ContractService.CreateContractWithdrawal:input_type -> payrudder.plans.v1.CreateContractWithdrawalRequest
-	26, // 38: payrudder.plans.v1.ContractService.ListContractWithdrawals:input_type -> payrudder.plans.v1.ListContractWithdrawalsRequest
-	28, // 39: payrudder.plans.v1.ContractService.SetContractWithdrawalStatus:input_type -> payrudder.plans.v1.SetContractWithdrawalStatusRequest
-	29, // 40: payrudder.plans.v1.ContractService.PublishContractVersion:output_type -> payrudder.plans.v1.PublishContractVersionResponse
-	3,  // 41: payrudder.plans.v1.ContractService.ListContractVersions:output_type -> payrudder.plans.v1.ListContractVersionsResponse
-	30, // 42: payrudder.plans.v1.ContractService.GetContractVersion:output_type -> payrudder.plans.v1.GetContractVersionResponse
-	6,  // 43: payrudder.plans.v1.ContractService.PreviewContract:output_type -> payrudder.plans.v1.PreviewContractResponse
-	8,  // 44: payrudder.plans.v1.ContractService.GetContractStarter:output_type -> payrudder.plans.v1.GetContractStarterResponse
-	31, // 45: payrudder.plans.v1.ContractService.GetContractSettings:output_type -> payrudder.plans.v1.GetContractSettingsResponse
-	32, // 46: payrudder.plans.v1.ContractService.SetContractSettings:output_type -> payrudder.plans.v1.SetContractSettingsResponse
-	15, // 47: payrudder.plans.v1.ContractService.GetContractRequirements:output_type -> payrudder.plans.v1.GetContractRequirementsResponse
-	19, // 48: payrudder.plans.v1.ContractService.RecordContractAcceptance:output_type -> payrudder.plans.v1.RecordContractAcceptanceResponse
-	21, // 49: payrudder.plans.v1.ContractService.ListContractAcceptances:output_type -> payrudder.plans.v1.ListContractAcceptancesResponse
-	23, // 50: payrudder.plans.v1.ContractService.GetContractSnapshot:output_type -> payrudder.plans.v1.GetContractSnapshotResponse
-	33, // 51: payrudder.plans.v1.ContractService.CreateContractWithdrawal:output_type -> payrudder.plans.v1.CreateContractWithdrawalResponse
-	27, // 52: payrudder.plans.v1.ContractService.ListContractWithdrawals:output_type -> payrudder.plans.v1.ListContractWithdrawalsResponse
-	34, // 53: payrudder.plans.v1.ContractService.SetContractWithdrawalStatus:output_type -> payrudder.plans.v1.SetContractWithdrawalStatusResponse
-	40, // [40:54] is the sub-list for method output_type
-	26, // [26:40] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	46, // 4: payrudder.plans.v1.ContractSettings.update_time:type_name -> google.protobuf.Timestamp
+	42, // 5: payrudder.plans.v1.ContractSettings.renewal_cancel_texts:type_name -> payrudder.plans.v1.ContractSettings.RenewalCancelTextsEntry
+	43, // 6: payrudder.plans.v1.SetContractSettingsRequest.renewal_cancel_texts:type_name -> payrudder.plans.v1.SetContractSettingsRequest.RenewalCancelTextsEntry
+	12, // 7: payrudder.plans.v1.GetContractRequirementsRequest.order:type_name -> payrudder.plans.v1.ContractOrder
+	46, // 8: payrudder.plans.v1.ContractRequirement.accept_time:type_name -> google.protobuf.Timestamp
+	14, // 9: payrudder.plans.v1.GetContractRequirementsResponse.requirements:type_name -> payrudder.plans.v1.ContractRequirement
+	16, // 10: payrudder.plans.v1.RecordContractAcceptanceRequest.items:type_name -> payrudder.plans.v1.ContractAcceptanceItem
+	46, // 11: payrudder.plans.v1.RecordContractAcceptanceRequest.accept_time:type_name -> google.protobuf.Timestamp
+	12, // 12: payrudder.plans.v1.RecordContractAcceptanceRequest.order:type_name -> payrudder.plans.v1.ContractOrder
+	44, // 13: payrudder.plans.v1.ContractAcceptance.observed:type_name -> payrudder.plans.v1.ContractAcceptance.ObservedEntry
+	45, // 14: payrudder.plans.v1.ContractAcceptance.variables:type_name -> payrudder.plans.v1.ContractAcceptance.VariablesEntry
+	46, // 15: payrudder.plans.v1.ContractAcceptance.accept_time:type_name -> google.protobuf.Timestamp
+	18, // 16: payrudder.plans.v1.RecordContractAcceptanceResponse.acceptances:type_name -> payrudder.plans.v1.ContractAcceptance
+	18, // 17: payrudder.plans.v1.ListContractAcceptancesResponse.acceptances:type_name -> payrudder.plans.v1.ContractAcceptance
+	46, // 18: payrudder.plans.v1.ContractWithdrawal.receive_time:type_name -> google.protobuf.Timestamp
+	46, // 19: payrudder.plans.v1.ContractWithdrawal.decide_time:type_name -> google.protobuf.Timestamp
+	46, // 20: payrudder.plans.v1.ContractWithdrawal.refund_time:type_name -> google.protobuf.Timestamp
+	46, // 21: payrudder.plans.v1.CreateContractWithdrawalRequest.receive_time:type_name -> google.protobuf.Timestamp
+	24, // 22: payrudder.plans.v1.ListContractWithdrawalsResponse.withdrawals:type_name -> payrudder.plans.v1.ContractWithdrawal
+	24, // 23: payrudder.plans.v1.ClaimContractWithdrawalRefundResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
+	24, // 24: payrudder.plans.v1.RecordContractWithdrawalRefundResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
+	0,  // 25: payrudder.plans.v1.PublishContractVersionResponse.version:type_name -> payrudder.plans.v1.ContractVersion
+	0,  // 26: payrudder.plans.v1.GetContractVersionResponse.version:type_name -> payrudder.plans.v1.ContractVersion
+	9,  // 27: payrudder.plans.v1.GetContractSettingsResponse.settings:type_name -> payrudder.plans.v1.ContractSettings
+	9,  // 28: payrudder.plans.v1.SetContractSettingsResponse.settings:type_name -> payrudder.plans.v1.ContractSettings
+	24, // 29: payrudder.plans.v1.CreateContractWithdrawalResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
+	24, // 30: payrudder.plans.v1.SetContractWithdrawalStatusResponse.withdrawal:type_name -> payrudder.plans.v1.ContractWithdrawal
+	1,  // 31: payrudder.plans.v1.ContractService.PublishContractVersion:input_type -> payrudder.plans.v1.PublishContractVersionRequest
+	2,  // 32: payrudder.plans.v1.ContractService.ListContractVersions:input_type -> payrudder.plans.v1.ListContractVersionsRequest
+	4,  // 33: payrudder.plans.v1.ContractService.GetContractVersion:input_type -> payrudder.plans.v1.GetContractVersionRequest
+	5,  // 34: payrudder.plans.v1.ContractService.PreviewContract:input_type -> payrudder.plans.v1.PreviewContractRequest
+	7,  // 35: payrudder.plans.v1.ContractService.GetContractStarter:input_type -> payrudder.plans.v1.GetContractStarterRequest
+	10, // 36: payrudder.plans.v1.ContractService.GetContractSettings:input_type -> payrudder.plans.v1.GetContractSettingsRequest
+	11, // 37: payrudder.plans.v1.ContractService.SetContractSettings:input_type -> payrudder.plans.v1.SetContractSettingsRequest
+	13, // 38: payrudder.plans.v1.ContractService.GetContractRequirements:input_type -> payrudder.plans.v1.GetContractRequirementsRequest
+	17, // 39: payrudder.plans.v1.ContractService.RecordContractAcceptance:input_type -> payrudder.plans.v1.RecordContractAcceptanceRequest
+	20, // 40: payrudder.plans.v1.ContractService.ListContractAcceptances:input_type -> payrudder.plans.v1.ListContractAcceptancesRequest
+	22, // 41: payrudder.plans.v1.ContractService.GetContractSnapshot:input_type -> payrudder.plans.v1.GetContractSnapshotRequest
+	25, // 42: payrudder.plans.v1.ContractService.CreateContractWithdrawal:input_type -> payrudder.plans.v1.CreateContractWithdrawalRequest
+	26, // 43: payrudder.plans.v1.ContractService.ListContractWithdrawals:input_type -> payrudder.plans.v1.ListContractWithdrawalsRequest
+	28, // 44: payrudder.plans.v1.ContractService.SetContractWithdrawalStatus:input_type -> payrudder.plans.v1.SetContractWithdrawalStatusRequest
+	30, // 45: payrudder.plans.v1.ContractService.ClaimContractWithdrawalRefund:input_type -> payrudder.plans.v1.ClaimContractWithdrawalRefundRequest
+	32, // 46: payrudder.plans.v1.ContractService.RecordContractWithdrawalRefund:input_type -> payrudder.plans.v1.RecordContractWithdrawalRefundRequest
+	34, // 47: payrudder.plans.v1.ContractService.PublishContractVersion:output_type -> payrudder.plans.v1.PublishContractVersionResponse
+	3,  // 48: payrudder.plans.v1.ContractService.ListContractVersions:output_type -> payrudder.plans.v1.ListContractVersionsResponse
+	35, // 49: payrudder.plans.v1.ContractService.GetContractVersion:output_type -> payrudder.plans.v1.GetContractVersionResponse
+	6,  // 50: payrudder.plans.v1.ContractService.PreviewContract:output_type -> payrudder.plans.v1.PreviewContractResponse
+	8,  // 51: payrudder.plans.v1.ContractService.GetContractStarter:output_type -> payrudder.plans.v1.GetContractStarterResponse
+	36, // 52: payrudder.plans.v1.ContractService.GetContractSettings:output_type -> payrudder.plans.v1.GetContractSettingsResponse
+	37, // 53: payrudder.plans.v1.ContractService.SetContractSettings:output_type -> payrudder.plans.v1.SetContractSettingsResponse
+	15, // 54: payrudder.plans.v1.ContractService.GetContractRequirements:output_type -> payrudder.plans.v1.GetContractRequirementsResponse
+	19, // 55: payrudder.plans.v1.ContractService.RecordContractAcceptance:output_type -> payrudder.plans.v1.RecordContractAcceptanceResponse
+	21, // 56: payrudder.plans.v1.ContractService.ListContractAcceptances:output_type -> payrudder.plans.v1.ListContractAcceptancesResponse
+	23, // 57: payrudder.plans.v1.ContractService.GetContractSnapshot:output_type -> payrudder.plans.v1.GetContractSnapshotResponse
+	38, // 58: payrudder.plans.v1.ContractService.CreateContractWithdrawal:output_type -> payrudder.plans.v1.CreateContractWithdrawalResponse
+	27, // 59: payrudder.plans.v1.ContractService.ListContractWithdrawals:output_type -> payrudder.plans.v1.ListContractWithdrawalsResponse
+	39, // 60: payrudder.plans.v1.ContractService.SetContractWithdrawalStatus:output_type -> payrudder.plans.v1.SetContractWithdrawalStatusResponse
+	31, // 61: payrudder.plans.v1.ContractService.ClaimContractWithdrawalRefund:output_type -> payrudder.plans.v1.ClaimContractWithdrawalRefundResponse
+	33, // 62: payrudder.plans.v1.ContractService.RecordContractWithdrawalRefund:output_type -> payrudder.plans.v1.RecordContractWithdrawalRefundResponse
+	47, // [47:63] is the sub-list for method output_type
+	31, // [31:47] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_contracts_proto_init() }
@@ -2929,13 +3387,14 @@ func file_payrudder_plans_v1_contracts_proto_init() {
 	if File_payrudder_plans_v1_contracts_proto != nil {
 		return
 	}
+	file_payrudder_plans_v1_contracts_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_contracts_proto_rawDesc), len(file_payrudder_plans_v1_contracts_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   39,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

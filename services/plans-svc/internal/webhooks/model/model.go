@@ -44,6 +44,7 @@ const (
 	ContractAccepted            = "contract.accepted"
 	ContractVersionPublished    = "contract.version_published"
 	ContractWithdrawalRequested = "contract.withdrawal_requested"
+	ContractWithdrawalDecided   = "contract.withdrawal_decided"
 )
 
 // Types lists every event type, in the order the documentation gives them.
@@ -56,7 +57,7 @@ var Types = []string{
 	CreditsPurchased, CreditsLow,
 	CustomerBlocked, CustomerUnblocked,
 	PriceChangeScheduled,
-	ContractAccepted, ContractVersionPublished, ContractWithdrawalRequested,
+	ContractAccepted, ContractVersionPublished, ContractWithdrawalRequested, ContractWithdrawalDecided,
 }
 
 // Known reports whether t is an event type (ping is sent only on request and cannot be subscribed to).

@@ -366,6 +366,18 @@ func (q *Queries) ResetContractAcceptances(ctx context.Context, tenantID uuid.UU
 	return result.RowsAffected(), nil
 }
 
+const resetContractRenewalNotices = `-- name: ResetContractRenewalNotices :execrows
+DELETE FROM contract_renewal_notices WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetContractRenewalNotices(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetContractRenewalNotices, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetContractSnapshots = `-- name: ResetContractSnapshots :execrows
 DELETE FROM contract_snapshots WHERE tenant_id = $1
 `

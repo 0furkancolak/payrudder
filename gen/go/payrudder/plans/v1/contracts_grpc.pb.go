@@ -19,20 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ContractService_PublishContractVersion_FullMethodName      = "/payrudder.plans.v1.ContractService/PublishContractVersion"
-	ContractService_ListContractVersions_FullMethodName        = "/payrudder.plans.v1.ContractService/ListContractVersions"
-	ContractService_GetContractVersion_FullMethodName          = "/payrudder.plans.v1.ContractService/GetContractVersion"
-	ContractService_PreviewContract_FullMethodName             = "/payrudder.plans.v1.ContractService/PreviewContract"
-	ContractService_GetContractStarter_FullMethodName          = "/payrudder.plans.v1.ContractService/GetContractStarter"
-	ContractService_GetContractSettings_FullMethodName         = "/payrudder.plans.v1.ContractService/GetContractSettings"
-	ContractService_SetContractSettings_FullMethodName         = "/payrudder.plans.v1.ContractService/SetContractSettings"
-	ContractService_GetContractRequirements_FullMethodName     = "/payrudder.plans.v1.ContractService/GetContractRequirements"
-	ContractService_RecordContractAcceptance_FullMethodName    = "/payrudder.plans.v1.ContractService/RecordContractAcceptance"
-	ContractService_ListContractAcceptances_FullMethodName     = "/payrudder.plans.v1.ContractService/ListContractAcceptances"
-	ContractService_GetContractSnapshot_FullMethodName         = "/payrudder.plans.v1.ContractService/GetContractSnapshot"
-	ContractService_CreateContractWithdrawal_FullMethodName    = "/payrudder.plans.v1.ContractService/CreateContractWithdrawal"
-	ContractService_ListContractWithdrawals_FullMethodName     = "/payrudder.plans.v1.ContractService/ListContractWithdrawals"
-	ContractService_SetContractWithdrawalStatus_FullMethodName = "/payrudder.plans.v1.ContractService/SetContractWithdrawalStatus"
+	ContractService_PublishContractVersion_FullMethodName         = "/payrudder.plans.v1.ContractService/PublishContractVersion"
+	ContractService_ListContractVersions_FullMethodName           = "/payrudder.plans.v1.ContractService/ListContractVersions"
+	ContractService_GetContractVersion_FullMethodName             = "/payrudder.plans.v1.ContractService/GetContractVersion"
+	ContractService_PreviewContract_FullMethodName                = "/payrudder.plans.v1.ContractService/PreviewContract"
+	ContractService_GetContractStarter_FullMethodName             = "/payrudder.plans.v1.ContractService/GetContractStarter"
+	ContractService_GetContractSettings_FullMethodName            = "/payrudder.plans.v1.ContractService/GetContractSettings"
+	ContractService_SetContractSettings_FullMethodName            = "/payrudder.plans.v1.ContractService/SetContractSettings"
+	ContractService_GetContractRequirements_FullMethodName        = "/payrudder.plans.v1.ContractService/GetContractRequirements"
+	ContractService_RecordContractAcceptance_FullMethodName       = "/payrudder.plans.v1.ContractService/RecordContractAcceptance"
+	ContractService_ListContractAcceptances_FullMethodName        = "/payrudder.plans.v1.ContractService/ListContractAcceptances"
+	ContractService_GetContractSnapshot_FullMethodName            = "/payrudder.plans.v1.ContractService/GetContractSnapshot"
+	ContractService_CreateContractWithdrawal_FullMethodName       = "/payrudder.plans.v1.ContractService/CreateContractWithdrawal"
+	ContractService_ListContractWithdrawals_FullMethodName        = "/payrudder.plans.v1.ContractService/ListContractWithdrawals"
+	ContractService_SetContractWithdrawalStatus_FullMethodName    = "/payrudder.plans.v1.ContractService/SetContractWithdrawalStatus"
+	ContractService_ClaimContractWithdrawalRefund_FullMethodName  = "/payrudder.plans.v1.ContractService/ClaimContractWithdrawalRefund"
+	ContractService_RecordContractWithdrawalRefund_FullMethodName = "/payrudder.plans.v1.ContractService/RecordContractWithdrawalRefund"
 )
 
 // ContractServiceClient is the client API for ContractService service.
@@ -70,6 +72,10 @@ type ContractServiceClient interface {
 	CreateContractWithdrawal(ctx context.Context, in *CreateContractWithdrawalRequest, opts ...grpc.CallOption) (*CreateContractWithdrawalResponse, error)
 	ListContractWithdrawals(ctx context.Context, in *ListContractWithdrawalsRequest, opts ...grpc.CallOption) (*ListContractWithdrawalsResponse, error)
 	SetContractWithdrawalStatus(ctx context.Context, in *SetContractWithdrawalStatusRequest, opts ...grpc.CallOption) (*SetContractWithdrawalStatusResponse, error)
+	// ClaimContractWithdrawalRefund and RecordContractWithdrawalRefund are the two halves of routing a withdrawal to a refund. The gateway claims the withdrawal (one caller
+	// at a time), asks billing for the credit note, and records the outcome; plans-svc never calls billing itself.
+	ClaimContractWithdrawalRefund(ctx context.Context, in *ClaimContractWithdrawalRefundRequest, opts ...grpc.CallOption) (*ClaimContractWithdrawalRefundResponse, error)
+	RecordContractWithdrawalRefund(ctx context.Context, in *RecordContractWithdrawalRefundRequest, opts ...grpc.CallOption) (*RecordContractWithdrawalRefundResponse, error)
 }
 
 type contractServiceClient struct {
@@ -220,6 +226,26 @@ func (c *contractServiceClient) SetContractWithdrawalStatus(ctx context.Context,
 	return out, nil
 }
 
+func (c *contractServiceClient) ClaimContractWithdrawalRefund(ctx context.Context, in *ClaimContractWithdrawalRefundRequest, opts ...grpc.CallOption) (*ClaimContractWithdrawalRefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimContractWithdrawalRefundResponse)
+	err := c.cc.Invoke(ctx, ContractService_ClaimContractWithdrawalRefund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contractServiceClient) RecordContractWithdrawalRefund(ctx context.Context, in *RecordContractWithdrawalRefundRequest, opts ...grpc.CallOption) (*RecordContractWithdrawalRefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordContractWithdrawalRefundResponse)
+	err := c.cc.Invoke(ctx, ContractService_RecordContractWithdrawalRefund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContractServiceServer is the server API for ContractService service.
 // All implementations must embed UnimplementedContractServiceServer
 // for forward compatibility.
@@ -255,6 +281,10 @@ type ContractServiceServer interface {
 	CreateContractWithdrawal(context.Context, *CreateContractWithdrawalRequest) (*CreateContractWithdrawalResponse, error)
 	ListContractWithdrawals(context.Context, *ListContractWithdrawalsRequest) (*ListContractWithdrawalsResponse, error)
 	SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*SetContractWithdrawalStatusResponse, error)
+	// ClaimContractWithdrawalRefund and RecordContractWithdrawalRefund are the two halves of routing a withdrawal to a refund. The gateway claims the withdrawal (one caller
+	// at a time), asks billing for the credit note, and records the outcome; plans-svc never calls billing itself.
+	ClaimContractWithdrawalRefund(context.Context, *ClaimContractWithdrawalRefundRequest) (*ClaimContractWithdrawalRefundResponse, error)
+	RecordContractWithdrawalRefund(context.Context, *RecordContractWithdrawalRefundRequest) (*RecordContractWithdrawalRefundResponse, error)
 	mustEmbedUnimplementedContractServiceServer()
 }
 
@@ -306,6 +336,12 @@ func (UnimplementedContractServiceServer) ListContractWithdrawals(context.Contex
 }
 func (UnimplementedContractServiceServer) SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*SetContractWithdrawalStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetContractWithdrawalStatus not implemented")
+}
+func (UnimplementedContractServiceServer) ClaimContractWithdrawalRefund(context.Context, *ClaimContractWithdrawalRefundRequest) (*ClaimContractWithdrawalRefundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimContractWithdrawalRefund not implemented")
+}
+func (UnimplementedContractServiceServer) RecordContractWithdrawalRefund(context.Context, *RecordContractWithdrawalRefundRequest) (*RecordContractWithdrawalRefundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordContractWithdrawalRefund not implemented")
 }
 func (UnimplementedContractServiceServer) mustEmbedUnimplementedContractServiceServer() {}
 func (UnimplementedContractServiceServer) testEmbeddedByValue()                         {}
@@ -580,6 +616,42 @@ func _ContractService_SetContractWithdrawalStatus_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContractService_ClaimContractWithdrawalRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimContractWithdrawalRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContractServiceServer).ClaimContractWithdrawalRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContractService_ClaimContractWithdrawalRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContractServiceServer).ClaimContractWithdrawalRefund(ctx, req.(*ClaimContractWithdrawalRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContractService_RecordContractWithdrawalRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordContractWithdrawalRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContractServiceServer).RecordContractWithdrawalRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContractService_RecordContractWithdrawalRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContractServiceServer).RecordContractWithdrawalRefund(ctx, req.(*RecordContractWithdrawalRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContractService_ServiceDesc is the grpc.ServiceDesc for ContractService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -642,6 +714,14 @@ var ContractService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetContractWithdrawalStatus",
 			Handler:    _ContractService_SetContractWithdrawalStatus_Handler,
+		},
+		{
+			MethodName: "ClaimContractWithdrawalRefund",
+			Handler:    _ContractService_ClaimContractWithdrawalRefund_Handler,
+		},
+		{
+			MethodName: "RecordContractWithdrawalRefund",
+			Handler:    _ContractService_RecordContractWithdrawalRefund_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
