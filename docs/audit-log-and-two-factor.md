@@ -48,7 +48,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 
 ### The hash chain and retention
 
-Every entry carries the hash of the one before it, so an entry that was **changed**, **taken out of the middle**, **put in** or **put in another order** is found by a program that recomputes the hashes. Three columns, written by the database and not by `audit.Record` (migrations `plans 00023`, `billing 00009`, `payments 00009`, and the tenant twins):
+Every entry carries the hash of the one before it, so an entry that was **changed**, **taken out of the middle**, **put in** or **put in another order** is found by a program that recomputes the hashes. Three columns, written by the database and not by `audit.Record` (migrations `plans 00025`, `billing 00013`, `payments 00012`, and the tenant twins):
 
 | Column | Meaning |
 |---|---|
