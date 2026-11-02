@@ -97,3 +97,53 @@ func TestHandleRefusesWhatIsNotAnEInvoiceCommand(t *testing.T) {
 		t.Errorf("unknown action: %v", err)
 	}
 }
+
+// The buyer's type reaches the document, and decides how an e-arşiv buyer without a tax id is identified: an individual (or an unknown type, as before the type
+// existed) is the placeholder consumer; a business is refused and never given the placeholder, with the sandbox following the same rule.
+func TestBuyerIdentityFollowsTheCustomerType(t *testing.T) {
+	doc := func(kind, taxID string, typ pkg.DocumentType) pkg.Document {
+		c := command()
+		c.Document.CustomerType = kind
+		c.Document.Buyer.TaxId = taxID
+		d := Document(c, false)
+		d.Type = typ
+		return d
+	}
+	if got := doc("business", "", pkg.TypeEArsiv).Buyer.CustomerType; got != "business" {
+		t.Fatalf("the buyer's type = %q, want business", got)
+	}
+	for _, c := range []struct {
+		name, kind, taxID string
+		typ               pkg.DocumentType
+		refused           bool
+		wantID            string
+	}{
+		{"individual without an id: the consumer placeholder", "individual", "", pkg.TypeEArsiv, false, consumerTaxID},
+		{"unknown type without an id: the placeholder, as before", "", "", pkg.TypeEArsiv, false, consumerTaxID},
+		{"business without an id: refused", "business", "", pkg.TypeEArsiv, true, ""},
+		{"business with an id: identified by it", "business", "9876543210", pkg.TypeEArsiv, false, "9876543210"},
+		{"individual with an id: identified by it", "individual", "10000000146", pkg.TypeEArsiv, false, "10000000146"},
+		{"e-fatura is not touched (the UBL builder demands the id)", "business", "", pkg.TypeEFatura, false, ""},
+		{"Peppol is not touched", "business", "", pkg.TypePeppol, false, ""},
+	} {
+		d := doc(c.kind, c.taxID, c.typ)
+		msg := IdentifyBuyer(&d)
+		if (msg != "") != c.refused || d.Buyer.TaxID != c.wantID {
+			t.Errorf("%s: refusal %q, tax id %q", c.name, msg, d.Buyer.TaxID)
+		}
+		if c.refused && msg == "" {
+			t.Errorf("%s: no message", c.name)
+		}
+	}
+	// The sandbox fills in what a sandbox tenant never entered, but not the identity of a business.
+	biz := doc("business", "", pkg.TypeEArsiv)
+	ApplySandboxDefaults(&biz)
+	if biz.Buyer.TaxID != "" {
+		t.Errorf("a sandbox business buyer got the consumer id %q", biz.Buyer.TaxID)
+	}
+	person := doc("individual", "", pkg.TypeEArsiv)
+	ApplySandboxDefaults(&person)
+	if person.Buyer.TaxID != consumerTaxID {
+		t.Errorf("a sandbox individual buyer got %q", person.Buyer.TaxID)
+	}
+}

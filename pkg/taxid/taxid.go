@@ -151,3 +151,64 @@ func Detect(id string) (Kind, bool) {
 	}
 	return "", false
 }
+
+// euCountries are the ISO countries whose VAT ids euVAT knows (Greece is EL in a VAT id and GR as a country).
+var euCountries = map[string]bool{"AT": true, "BE": true, "BG": true, "CY": true, "CZ": true, "DE": true, "DK": true, "EE": true, "GR": true, "ES": true, "FI": true, "FR": true, "HR": true,
+	"HU": true, "IE": true, "IT": true, "LT": true, "LU": true, "LV": true, "MT": true, "NL": true, "PL": true, "PT": true, "RO": true, "SE": true, "SI": true, "SK": true}
+
+// Hint is what is odd about a customer's tax id, as the key of a hint the console words under `taxid.hint.*`. It is a warning, never a refusal (the owner's default
+// in docs/plans/05-customer-locale-tax-documents.md); the empty Hint says nothing.
+type Hint string
+
+const (
+	HintNone         Hint = ""
+	HintTRIndividual Hint = "tr_individual" // a Turkish individual's id is not a TCKN
+	HintTRBusiness   Hint = "tr_business"   // a Turkish business's id is not a VKN
+	HintTRAny        Hint = "tr_any"        // a Turkish customer of unknown kind has neither a TCKN nor a VKN
+	HintTRIsTCKN     Hint = "tr_is_tckn"    // a Turkish business was given a TCKN
+	HintTRIsVKN      Hint = "tr_is_vkn"     // a Turkish individual was given a VKN
+	HintEUVAT        Hint = "eu_vat"        // a business in the EU has no VAT id of the shape of its country
+)
+
+// Check says what is odd about id for a customer in country (ISO 3166-1 alpha-2, any case) of kind ("individual", "business" or empty for unknown). Only Turkey and
+// the countries of euVAT are checked, and the EU only for a business: for anyone else every id is fine. The same rules, with the same keys, as taxIdHint in the console
+// (web/admin/src/shared/lib/taxid.ts).
+func Check(id, country, kind string) Hint {
+	id = Normalize(id)
+	if id == "" {
+		return HintNone
+	}
+	c := strings.ToUpper(country)
+	switch {
+	case c == "TR" && kind == "individual":
+		return pick(ValidTCKN(id), ValidVKN(id), HintTRIndividual, HintTRIsVKN)
+	case c == "TR" && kind == "business":
+		return pick(ValidVKN(id), ValidTCKN(id), HintTRBusiness, HintTRIsTCKN)
+	case c == "TR":
+		if ValidTCKN(id) || ValidVKN(id) {
+			return HintNone
+		}
+		return HintTRAny
+	case euCountries[c] && kind == "business" && !ValidEUVATShape(id):
+		return HintEUVAT
+	}
+	return HintNone
+}
+
+// pick is HintNone when the id is the right kind, the specific hint when it is the other Turkish kind, else the general one.
+func pick(right, other bool, general, specific Hint) Hint {
+	switch {
+	case right:
+		return HintNone
+	case other:
+		return specific
+	}
+	return general
+}
+
+// Recognised reports whether id passes one of the checks of this package (a TCKN or VKN checksum, the shape of a European VAT id): what the customer's
+// tax_id_validated_at records. It says nothing about whether the number exists.
+func Recognised(id string) bool {
+	_, ok := Detect(id)
+	return ok
+}

@@ -11,6 +11,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/phone"
 )
 
 // MaxGrace is the largest grace period a tenant may choose.
@@ -187,20 +188,23 @@ var (
 	CustomerTypes   = []string{"individual", "business"}
 )
 
-// customerProfile checks the language and the kind of a customer, which Create and SetContact take the same way.
-func customerProfile(v *Violations, locale, kind string) {
+// customerProfile checks the language, the kind and the phone number of a customer, which Create and SetContact take the same way.
+func customerProfile(v *Violations, locale, kind, number string) {
 	if locale != "" && !slices.Contains(CustomerLocales, locale) {
 		v.Add("locale", "one of "+strings.Join(CustomerLocales, ", ")+", or empty")
 	}
 	if kind != "" && !slices.Contains(CustomerTypes, kind) {
 		v.Add("customer_type", "individual or business, or empty")
 	}
+	if _, ok := phone.Normalize(number); !ok {
+		v.Add("phone", "an international number such as +905321234567, or empty")
+	}
 }
 
-// ValidateCustomerContact checks the name, e-mail, language and kind of SetCustomerContact with the rules CreateCustomer applies.
-func ValidateCustomerContact(name, email, locale, kind string) error {
+// ValidateCustomerContact checks the name, e-mail, language, kind and phone of SetCustomerContact with the rules CreateCustomer applies.
+func ValidateCustomerContact(name, email, locale, kind, number string) error {
 	var v Violations
-	customerProfile(&v, locale, kind)
+	customerProfile(&v, locale, kind, number)
 	if strings.TrimSpace(name) == "" || len(name) > 200 {
 		v.Add("name", "required, at most 200 characters")
 	}
@@ -222,7 +226,7 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 	if addr, err := mail.ParseAddress(req.GetEmail()); err != nil || addr.Address != req.GetEmail() {
 		v.Add("email", "must be a plain e-mail address")
 	}
-	customerProfile(&v, req.GetLocale(), req.GetCustomerType())
+	customerProfile(&v, req.GetLocale(), req.GetCustomerType(), req.GetPhone())
 	if err := ValidatePaymentMethod(environment, req.GetPaymentMethod()); err != nil {
 		v.Add("payment_method", err.Error())
 	}

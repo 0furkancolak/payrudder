@@ -154,6 +154,8 @@ message CreateCustomerRequest {
   // The language of the customer's mails and pages, and whether it is a person or a business; both optional (see Customer).
   string locale = 10;
   string customer_type = 11;
+  // The customer's mobile number; any spelling of an international number is accepted and stored as E.164 (see Customer.phone). Optional.
+  string phone = 12;
 }
 
 message CreateCustomerResponse {
@@ -213,6 +215,9 @@ message SetCustomerContactRequest {
   string email = 3;
   string locale = 4;
   string customer_type = 5;
+  // Replaces the number (any spelling of an international number; stored as E.164). Unset keeps the one the customer has, like locale and customer_type; an empty
+  // string clears it.
+  optional string phone = 6;
 }
 
 message SetCustomerContactResponse {

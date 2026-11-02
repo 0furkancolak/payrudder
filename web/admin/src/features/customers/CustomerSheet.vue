@@ -211,6 +211,10 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <dt class="text-muted-foreground">{{ t("billing.customers.email") }}</dt>
             <dd class="m-0 break-all">{{ maskEmail(customer.email) || "—" }}</dd>
           </div>
+          <div v-if="customer.phone" class="grid gap-1 py-2.5 sm:grid-cols-[10rem_1fr] sm:gap-4">
+            <dt class="text-muted-foreground">{{ t("billing.customers.profile.phone") }}</dt>
+            <dd class="m-0 break-all" dir="ltr" data-testid="customer-phone">{{ customer.phone }}</dd>
+          </div>
           <div class="grid gap-1 py-2.5 sm:grid-cols-[10rem_1fr] sm:gap-4">
             <dt class="text-muted-foreground">{{ t("billing.customers.country") }}</dt>
             <dd class="m-0">{{ customer.country ? `${flagOf(customer.country)} ${country}` : "—" }}</dd>
@@ -235,6 +239,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <dd class="m-0 flex items-start justify-between gap-3">
               <span class="flex flex-col gap-0.5 break-words">
                 <span>{{ tax || "—" }}</span>
+                <span v-if="customer.tax_id_warning" class="text-warning text-xs" data-testid="customer-tax-warning">{{ t("einvoice.customer.warned") }}</span>
                 <span v-if="customer.e_invoice_registered" class="text-muted-foreground text-xs">{{ t("einvoice.customer.registered") }}</span>
               </span>
               <Button size="xs" variant="ghost" :aria-label="t('einvoice.customer.edit')" @click="emit('editTax')"><Pencil aria-hidden="true" /></Button>

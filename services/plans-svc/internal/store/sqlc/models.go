@@ -348,6 +348,8 @@ type Customer struct {
 	BlockReason        string
 	BlockCategory      string
 	BlockedUntil       *time.Time
+	Phone              string
+	TaxIDValidatedAt   *time.Time
 }
 
 type CustomerBlockEvent struct {

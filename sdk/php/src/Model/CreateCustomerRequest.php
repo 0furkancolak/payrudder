@@ -26,6 +26,7 @@ final class CreateCustomerRequest implements RequestBody
      * @param AddressInput|null $address
      * @param CreateCustomerRequestLocale|string|null $locale
      * @param CreateCustomerRequestCustomerType|string|null $customerType
+     * @param string|null $phone
      * @param string|null $referralCode
      * @param string|null $referralTouchTime
      */
@@ -39,6 +40,7 @@ final class CreateCustomerRequest implements RequestBody
         public readonly ?AddressInput $address = null,
         public readonly CreateCustomerRequestLocale|string|null $locale = null,
         public readonly CreateCustomerRequestCustomerType|string|null $customerType = null,
+        public readonly ?string $phone = null,
         public readonly ?string $referralCode = null,
         public readonly ?string $referralTouchTime = null,
     ) {}
@@ -58,6 +60,7 @@ final class CreateCustomerRequest implements RequestBody
             'address' => Cast::wire($this->address),
             'locale' => Cast::wire($this->locale),
             'customer_type' => Cast::wire($this->customerType),
+            'phone' => $this->phone,
             'referral_code' => $this->referralCode,
             'referral_touch_time' => $this->referralTouchTime,
         ]);

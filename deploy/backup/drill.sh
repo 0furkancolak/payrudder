@@ -87,7 +87,7 @@ echo "  T = $T UTC"
 sleep 2
 
 step "the incident after T: every invoice deleted, more payments, marker drill-after-T"
-sql billing_db "DELETE FROM invoice_lines; DELETE FROM invoices" >/dev/null
+sql billing_db "SET session_replication_role = replica; DELETE FROM invoice_lines; DELETE FROM invoices" >/dev/null
 pg psql -X -q -v ON_ERROR_STOP=1 -v lo=31 -v hi=35 -d payments_db -f /scripts/testdata/seed-payments.sql
 sql postgres "INSERT INTO payrudder_pitr_markers (note) VALUES ('drill-after-T')" >/dev/null
 archived="$(sql postgres 'SELECT archived_count FROM pg_stat_archiver')"

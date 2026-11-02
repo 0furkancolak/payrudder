@@ -1,6 +1,6 @@
-// Package render draws an invoice PDF from the snapshot a RenderInvoicePdf command carries. The output is deterministic:
-// the same snapshot yields the same bytes (fixed fonts, no wall-clock in the content or the document info), which is what
-// makes re-rendering after a redelivery harmless.
+// Package render draws an invoice PDF from the snapshot a RenderInvoicePdf command carries, in the customer's language (en, tr, de, fr, es; layouts.go) with numbers,
+// money and dates written the way that language writes them (locale.go) and an embedded Noto Sans (fonts.go). The output is deterministic: the same snapshot yields the
+// same bytes (fixed fonts, no wall-clock in the content or the document info), which is what makes re-rendering after a redelivery harmless.
 package render
 
 import (
@@ -8,24 +8,25 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-pdf/fpdf"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/taxid"
 )
 
 // Layout of the page. Lengths are millimetres, font sizes points.
 const (
-	fontFamily = "Helvetica"
+	fontFamily = "NotoSans"
 	pageMargin = 18.0
 
 	// Table columns: description, quantity, amount. The totals labels span the first two.
-	colDescription = 110.0
-	colQuantity    = 30.0
-	colAmount      = 32.0
+	colDescription = 100.0
+	colQuantity    = 32.0
+	colAmount      = 40.0
 	colLabelSpan   = colDescription + colQuantity
 
 	sizeTitle = 22
@@ -57,31 +58,6 @@ type Options struct {
 // ErrInvalid means the snapshot cannot be rendered; retrying will not help.
 var ErrInvalid = errors.New("render: invalid invoice snapshot")
 
-// money formats minor units in the currency's exponent: 1116 USD → "11.16 USD".
-func money(minor int64, exp int, currency string) string {
-	return quantity.FormatUnits(minor, exp) + " " + currency
-}
-
-// latin1 maps text to what the core PDF fonts can draw (ISO-8859-1 as cp1252). The em dash becomes "-", control
-// characters other than newline become a space and every rune above U+00FF becomes '?': the Turkish letters ğ, ş and ı
-// are printed as '?' because the core fonts have no glyph for them (printing them needs an embedded UTF-8 font).
-func latin1(tr func(string) string, s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		switch {
-		case r == '—':
-			b.WriteString("-")
-		case r < 0x20 && r != '\n':
-			b.WriteRune(' ')
-		case r > 0xFF:
-			b.WriteRune('?')
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return tr(b.String())
-}
-
 // groupIBAN writes an IBAN in blocks of four, the way bank documents print it.
 func groupIBAN(iban string) string {
 	var b strings.Builder
@@ -95,22 +71,22 @@ func groupIBAN(iban string) string {
 }
 
 // paymentInstructions prints where to send the money and what to write on the transfer, for an invoice paid by bank transfer.
-func paymentInstructions(pdf *fpdf.Fpdf, t func(string) string, in *commandsv1.PaymentInstructions) {
+func paymentInstructions(pdf *fpdf.Fpdf, l *layout, in *commandsv1.PaymentInstructions) {
 	pdf.Ln(8)
 	pdf.SetFont(fontFamily, "B", sizeBody)
-	pdf.CellFormat(0, rowBody, "Pay by bank transfer", "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, l.t(kPayByTransfer), "", 1, "L", false, 0, "")
 	pdf.SetFont(fontFamily, "", sizeTable)
-	rows := [][2]string{{"Bank", in.GetBankName()}, {"Account holder", in.GetAccountHolder()}, {"IBAN", groupIBAN(in.GetIban())}, {"BIC / SWIFT", in.GetBic()},
-		{"Payment reference", in.GetReference()}}
+	rows := [][2]string{{l.t(kBank), in.GetBankName()}, {l.t(kAccountHolder), in.GetAccountHolder()}, {l.t(kIBAN), groupIBAN(in.GetIban())}, {l.t(kBIC), in.GetBic()},
+		{l.t(kPaymentRef), in.GetReference()}}
 	for _, r := range rows {
 		if r[1] == "" {
 			continue
 		}
-		pdf.CellFormat(40, rowBody, r[0], "", 0, "L", false, 0, "")
-		pdf.CellFormat(0, rowBody, t(r[1]), "", 1, "L", false, 0, "")
+		pdf.CellFormat(45, rowBody, r[0], "", 0, "L", false, 0, "")
+		pdf.CellFormat(0, rowBody, printable(r[1]), "", 1, "L", false, 0, "")
 	}
-	pdf.SetFont(fontFamily, "I", sizeNote)
-	pdf.CellFormat(0, rowBody, "Please write the payment reference on your transfer so that we can match it to this invoice.", "", 1, "L", false, 0, "")
+	pdf.SetFont(fontFamily, "", sizeNote)
+	pdf.MultiCell(0, rowBody, l.t(kTransferNote), "", "L", false)
 }
 
 // PDF renders the invoice.
@@ -119,6 +95,7 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 		return nil, fmt.Errorf("%w: id, number, currency and exponent are required", ErrInvalid)
 	}
 	exp := int(inv.GetCurrencyExponent())
+	l, requested := choose(inv.GetLocale(), inv.GetDefaultLocale())
 	pdf := fpdf.New("P", "mm", pageSize(o.PageSize), "")
 	pdf.SetCompression(false)
 	pdf.SetCatalogSort(true)
@@ -128,28 +105,35 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	}
 	pdf.SetCreationDate(issued)
 	pdf.SetModificationDate(issued)
-	pdf.SetTitle("Invoice "+inv.GetNumber(), false)
-	pdf.SetAuthor(inv.GetTenantName(), false)
+	pdf.SetTitle(printable(l.t(kInvoice)+" "+inv.GetNumber()), true)
+	pdf.SetAuthor(printable(inv.GetTenantName()), true)
+	// The language that was asked for and the layout that was drawn are both kept, because they differ for an Arabic customer.
+	pdf.SetKeywords("locale="+requested+" layout="+l.code, true)
+	pdf.AddUTF8FontFromBytes(fontFamily, "", notoRegular)
+	pdf.AddUTF8FontFromBytes(fontFamily, "B", notoBold)
 	pdf.SetMargins(pageMargin, pageMargin, pageMargin)
 	pdf.SetAutoPageBreak(true, pageMargin)
 	pdf.AddPage()
-	tr := pdf.UnicodeTranslatorFromDescriptor("")
-	t := func(s string) string { return latin1(tr, s) }
 
 	if o.Sandbox {
-		drawWatermark(pdf)
+		drawWatermark(pdf, l.t(kSandbox))
 	}
 	drawLogo(pdf, o.Logo)
-	drawHeader(pdf, t, inv, issued)
-	drawParty(pdf, t, "From", inv.GetTenantName(), inv.GetSellerAddressLines())
+	drawHeader(pdf, l, inv, issued)
+	drawParty(pdf, l.t(kFrom), inv.GetTenantName(), inv.GetSellerAddressLines(), taxLines(l, inv.GetSellerTaxId(), inv.GetSellerTaxOffice()))
 	pdf.Ln(2)
-	drawParty(pdf, t, "Bill to", inv.GetCustomerName(), inv.GetCustomerAddressLines())
-	pdf.CellFormat(0, rowBody, t(inv.GetCustomerEmail()), "", 1, "L", false, 0, "")
+	drawParty(pdf, l.t(kBillTo), inv.GetCustomerName(), inv.GetCustomerAddressLines(), taxLines(l, inv.GetCustomerTaxId(), inv.GetCustomerTaxOffice()))
+	pdf.CellFormat(0, rowBody, printable(inv.GetCustomerEmail()), "", 1, "L", false, 0, "")
 	pdf.Ln(8)
-	drawLines(pdf, t, inv, exp)
-	drawTotals(pdf, t, inv, exp)
+	drawLines(pdf, l, inv, exp)
+	drawTotals(pdf, l, inv, exp)
 	if in := inv.GetPaymentInstructions(); in.GetIban() != "" {
-		paymentInstructions(pdf, t, in)
+		paymentInstructions(pdf, l, in)
+	}
+	if eDocumentIssuedSeparately(inv) {
+		pdf.Ln(6)
+		pdf.SetFont(fontFamily, "", sizeNote)
+		pdf.MultiCell(0, rowBody, l.t(kEDocumentNote), "", "L", false)
 	}
 
 	var out bytes.Buffer
@@ -157,6 +141,36 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return out.Bytes(), nil
+}
+
+// eDocumentIssuedSeparately: a Turkish seller whose tenant e-invoices has its legal e-Fatura or e-Arşiv document made by the integrator after this PDF, with a number
+// this PDF cannot know, so the PDF says so. The wording is UNVERIFIED (no accountant has read it). Other countries print no such line: Peppol and the EU have no
+// wording in this renderer (docs/plans/05-customer-locale-tax-documents.md).
+func eDocumentIssuedSeparately(inv *commandsv1.InvoiceSnapshot) bool {
+	on := inv.GetEInvoiceOn()
+	return inv.GetSellerCountry() == "TR" && (on == "finalized" || on == "paid")
+}
+
+// taxLines are the lines that identify a party for the tax: the id, labelled by what it is (a Turkish VKN or TCKN, a European VAT id, else a plain tax id), and the tax
+// office when there is one. Nothing is printed for a party without either.
+func taxLines(l *layout, id, office string) []string {
+	var out []string
+	if id != "" {
+		label := kTaxID
+		switch k, _ := taxid.Detect(id); k {
+		case taxid.TCKN:
+			label = kTCKN
+		case taxid.VKN:
+			label = kVKN
+		case taxid.EUVAT:
+			label = kVATID
+		}
+		out = append(out, l.t(label)+": "+id)
+	}
+	if office != "" {
+		out = append(out, l.t(kTaxOffice)+": "+office)
+	}
+	return out
 }
 
 // pageSize maps an Options page size to a fpdf one; anything but "Letter" is A4.
@@ -168,7 +182,6 @@ func pageSize(s string) string {
 }
 
 const (
-	watermarkText   = "SANDBOX - not a real invoice"
 	watermarkAngle  = 40.0 // degrees, counter-clockwise
 	watermarkMargin = 12.0 // mm kept free around the rotated text
 	watermarkMaxPt  = 60.0
@@ -189,23 +202,23 @@ func watermarkFit(w1, pageW, pageH float64) (size, halfW, halfH float64) {
 }
 
 // watermarkPlacement is the font size (points), the text width (mm) and the page centre the watermark is drawn with.
-func watermarkPlacement(pdf *fpdf.Fpdf) (size, width, cx, cy float64) {
+func watermarkPlacement(pdf *fpdf.Fpdf, text string) (size, width, cx, cy float64) {
 	pageW, pageH := pdf.GetPageSize()
 	pdf.SetFont(fontFamily, "B", 10)
-	w1 := pdf.GetStringWidth(watermarkText) / 10
+	w1 := pdf.GetStringWidth(text) / 10
 	size, _, _ = watermarkFit(w1, pageW, pageH)
 	pdf.SetFont(fontFamily, "B", size)
-	return size, pdf.GetStringWidth(watermarkText), pageW / 2, pageH / 2
+	return size, pdf.GetStringWidth(text), pageW / 2, pageH / 2
 }
 
 // drawWatermark draws the sandbox mark centred on the page, rotated and scaled so that all of it is inside the page, on A4 and on Letter alike.
-func drawWatermark(pdf *fpdf.Fpdf) {
-	size, w, cx, cy := watermarkPlacement(pdf)
+func drawWatermark(pdf *fpdf.Fpdf, text string) {
+	size, w, cx, cy := watermarkPlacement(pdf, text)
 	pdf.SetTextColor(235, 200, 200)
 	pdf.TransformBegin()
 	pdf.TransformRotate(watermarkAngle, cx, cy)
 	// The baseline sits at the text's vertical middle, so the box is centred on the page.
-	pdf.Text(cx-w/2, cy+size*25.4/72*0.75/2, watermarkText)
+	pdf.Text(cx-w/2, cy+size*25.4/72*0.75/2, text)
 	pdf.TransformEnd()
 	pdf.SetTextColor(0, 0, 0)
 }
@@ -226,51 +239,64 @@ func drawLogo(pdf *fpdf.Fpdf, logo []byte) {
 	}
 }
 
-func drawHeader(pdf *fpdf.Fpdf, t func(string) string, inv *commandsv1.InvoiceSnapshot, issued time.Time) {
+func drawHeader(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, issued time.Time) {
 	pdf.SetFont(fontFamily, "B", sizeTitle)
-	pdf.CellFormat(0, rowTitle, "INVOICE", "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowTitle, l.t(kInvoice), "", 1, "L", false, 0, "")
 	pdf.SetFont(fontFamily, "", sizeBody)
-	pdf.CellFormat(0, rowBody, t("Number: "+inv.GetNumber()), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, rowBody, t("Period: "+inv.GetPeriodId()), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, rowBody, t("Issued: "+issued.Format("2006-01-02")), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(l.t(kNumber)+": "+inv.GetNumber()), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(l.t(kPeriod)+": "+l.period(inv.GetPeriodId())), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(l.t(kIssued)+": "+l.date(issued)), "", 1, "L", false, 0, "")
 	pdf.Ln(4)
 }
 
-// drawParty prints a titled block: the name and the address lines.
-func drawParty(pdf *fpdf.Fpdf, t func(string) string, title, name string, address []string) {
+// drawParty prints a titled block: the name, the address lines and the lines that identify the party for the tax.
+func drawParty(pdf *fpdf.Fpdf, title, name string, address, tax []string) {
 	pdf.SetFont(fontFamily, "B", sizeBody)
 	pdf.CellFormat(0, rowBody, title, "", 1, "L", false, 0, "")
 	pdf.SetFont(fontFamily, "", sizeBody)
-	pdf.CellFormat(0, rowBody, t(name), "", 1, "L", false, 0, "")
-	for _, l := range address {
-		pdf.CellFormat(0, rowAddress, t(l), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(name), "", 1, "L", false, 0, "")
+	for _, l := range slices.Concat(address, tax) {
+		pdf.CellFormat(0, rowAddress, printable(l), "", 1, "L", false, 0, "")
 	}
 }
 
-func drawLines(pdf *fpdf.Fpdf, t func(string) string, inv *commandsv1.InvoiceSnapshot, exp int) {
+// fit shortens s with an ellipsis to the width w (mm) in the current font, so that a long description does not run into the next column.
+func fit(pdf *fpdf.Fpdf, s string, w float64) string {
+	const margins = 2.0 // the cell margin on both sides
+	if pdf.GetStringWidth(s) <= w-margins {
+		return s
+	}
+	r := []rune(s)
+	for len(r) > 0 && pdf.GetStringWidth(string(r)+"…") > w-margins {
+		r = r[:len(r)-1]
+	}
+	return string(r) + "…"
+}
+
+func drawLines(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, exp int) {
 	pdf.SetFont(fontFamily, "B", sizeTable)
 	pdf.SetFillColor(240, 240, 240)
-	pdf.CellFormat(colDescription, rowTable, "Description", "B", 0, "L", true, 0, "")
-	pdf.CellFormat(colQuantity, rowTable, "Quantity", "B", 0, "R", true, 0, "")
-	pdf.CellFormat(colAmount, rowTable, "Amount", "B", 1, "R", true, 0, "")
+	pdf.CellFormat(colDescription, rowTable, l.t(kDescription), "B", 0, "L", true, 0, "")
+	pdf.CellFormat(colQuantity, rowTable, l.t(kQuantity), "B", 0, "R", true, 0, "")
+	pdf.CellFormat(colAmount, rowTable, l.t(kAmount), "B", 1, "R", true, 0, "")
 	pdf.SetFont(fontFamily, "", sizeTable)
-	for _, l := range inv.GetLines() {
+	for _, ln := range inv.GetLines() {
 		qty := ""
-		if l.GetQuantity() != "" {
-			qty = strings.TrimSpace(l.GetQuantity() + " " + l.GetUnitLabel())
+		if ln.GetQuantity() != "" {
+			qty = strings.TrimSpace(l.number(ln.GetQuantity()) + " " + ln.GetUnitLabel())
 		}
-		pdf.CellFormat(colDescription, rowTable, t(l.GetDescription()), "", 0, "L", false, 0, "")
-		pdf.CellFormat(colQuantity, rowTable, t(qty), "", 0, "R", false, 0, "")
-		pdf.CellFormat(colAmount, rowTable, t(money(l.GetAmountMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+		pdf.CellFormat(colDescription, rowTable, fit(pdf, printable(ln.GetDescription()), colDescription), "", 0, "L", false, 0, "")
+		pdf.CellFormat(colQuantity, rowTable, fit(pdf, printable(qty), colQuantity), "", 0, "R", false, 0, "")
+		pdf.CellFormat(colAmount, rowTable, printable(l.money(ln.GetAmountMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
 	}
 }
 
-func drawTotals(pdf *fpdf.Fpdf, t func(string) string, inv *commandsv1.InvoiceSnapshot, exp int) {
+func drawTotals(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, exp int) {
 	pdf.Ln(4)
 	pdf.SetFont(fontFamily, "", sizeTable)
-	pdf.CellFormat(colLabelSpan, rowTable, "Subtotal", "T", 0, "R", false, 0, "")
-	pdf.CellFormat(colAmount, rowTable, t(money(inv.GetSubtotalMinor(), exp, inv.GetCurrency())), "T", 1, "R", false, 0, "")
+	pdf.CellFormat(colLabelSpan, rowTable, l.t(kSubtotal), "T", 0, "R", false, 0, "")
+	pdf.CellFormat(colAmount, rowTable, printable(l.money(inv.GetSubtotalMinor(), exp, inv.GetCurrency())), "T", 1, "R", false, 0, "")
 	pdf.SetFont(fontFamily, "B", sizeTotal)
-	pdf.CellFormat(colLabelSpan, rowTotal, "Total", "", 0, "R", false, 0, "")
-	pdf.CellFormat(colAmount, rowTotal, t(money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+	pdf.CellFormat(colLabelSpan, rowTotal, l.t(kTotal), "", 0, "R", false, 0, "")
+	pdf.CellFormat(colAmount, rowTotal, printable(l.money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
 }

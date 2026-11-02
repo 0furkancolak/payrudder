@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { cleanAddress } from "@/shared/lib/address";
+import { normalizePhone } from "@/shared/lib/phone";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
@@ -28,6 +29,8 @@ const setContact = useSetCustomerContact(() => props.tenantId);
 const editContact = ref<CustomerContact>({ name: "", email: "" });
 const editLocale = ref("");
 const editKind = ref("");
+const editPhone = ref("");
+const phoneBad = computed(() => normalizePhone(editPhone.value) === null);
 const contactId = computed(() => contactOf.value?.external_id ?? "");
 const contactOpen = computed({ get: () => contactOf.value !== null, set: (v) => !v && (contactOf.value = null) });
 watch(contactOf, (c) => {
@@ -35,10 +38,24 @@ watch(contactOf, (c) => {
   editContact.value = { name: c.name ?? "", email: c.email ?? "" };
   editLocale.value = c.locale ?? "";
   editKind.value = c.customer_type ?? "";
+  editPhone.value = c.phone ?? "";
   setContact.reset();
 });
 function saveContact() {
-  setContact.mutate({ externalId: contactId.value, contact: { name: editContact.value.name.trim(), email: editContact.value.email.trim(), locale: (editLocale.value || undefined) as ApiLocale | undefined, customer_type: (editKind.value || undefined) as CustomerKind | undefined } }, { onSuccess: () => (contactOf.value = null) });
+  if (phoneBad.value) return;
+  setContact.mutate(
+    {
+      externalId: contactId.value,
+      contact: {
+        name: editContact.value.name.trim(),
+        email: editContact.value.email.trim(),
+        locale: (editLocale.value || undefined) as ApiLocale | undefined,
+        customer_type: (editKind.value || undefined) as CustomerKind | undefined,
+        phone: normalizePhone(editPhone.value) ?? "", // empty clears the number
+      },
+    },
+    { onSuccess: () => (contactOf.value = null) },
+  );
 }
 
 const setAddress = useSetCustomerAddress(() => props.tenantId);
@@ -86,13 +103,13 @@ function saveTax() {
         <form id="edit-contact" class="grid gap-3" @submit.prevent="saveContact">
           <Input v-model="editContact.name" required maxlength="200" :aria-label="t('billing.customers.contact.name')" :placeholder="t('billing.customers.contact.name')" />
           <Input v-model="editContact.email" required type="email" :aria-label="t('billing.customers.contact.email')" :placeholder="t('billing.customers.contact.email')" />
-          <CustomerProfileFields v-model:locale="editLocale" v-model:kind="editKind" id-prefix="edit-contact" />
+          <CustomerProfileFields v-model:locale="editLocale" v-model:kind="editKind" v-model:phone="editPhone" id-prefix="edit-contact" />
           <ErrorText :error="setContact.error.value" />
         </form>
       </SheetBody>
       <SheetFooter>
         <Button type="button" variant="ghost" @click="contactOf = null">{{ t("billing.customers.address.cancel") }}</Button>
-        <Button type="submit" form="edit-contact" :disabled="setContact.isPending.value">{{ t("billing.customers.contact.save") }}</Button>
+        <Button type="submit" form="edit-contact" :disabled="setContact.isPending.value || phoneBad">{{ t("billing.customers.contact.save") }}</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>

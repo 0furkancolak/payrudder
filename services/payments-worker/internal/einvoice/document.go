@@ -55,6 +55,7 @@ func Document(cmd *commandsv1.IssueEInvoice, sandbox bool) einvoice.Document {
 	if d.Buyer.Email == "" {
 		d.Buyer.Email = snap.GetCustomerEmail()
 	}
+	d.Buyer.CustomerType = snap.GetCustomerType()
 	for i, l := range snap.GetLines() {
 		k, amount := lineKind(l.GetKind(), l.GetAmountMinor())
 		d.Lines = append(d.Lines, einvoice.Line{No: i + 1, Kind: k, Description: l.GetDescription(), Quantity: l.GetQuantity(), UnitLabel: l.GetUnitLabel(), AmountMinor: amount})
@@ -76,8 +77,8 @@ func ApplySandboxDefaults(d *einvoice.Document) {
 	if d.Buyer.Country == "" {
 		d.Buyer.Country = d.Seller.Country
 	}
-	if d.Buyer.TaxID == "" && d.Buyer.Country == "TR" {
-		d.Buyer.TaxID = consumerTaxID
+	if d.Buyer.TaxID == "" && d.Buyer.Country == "TR" && d.Buyer.CustomerType != customerBusiness {
+		d.Buyer.TaxID = consumerTaxID // a business is never given it: IdentifyBuyer refuses it
 	}
 	if d.Seller.Name == "" {
 		d.Seller.Name = "Sandbox seller"
@@ -85,6 +86,25 @@ func ApplySandboxDefaults(d *einvoice.Document) {
 	if d.Buyer.Name == "" {
 		d.Buyer.Name = "Sandbox buyer"
 	}
+}
+
+// customerBusiness is the customer type of a taxpayer; "individual" and unknown are the other cases (docs/plans/05-customer-locale-tax-documents.md).
+const customerBusiness = "business"
+
+// IdentifyBuyer says how the buyer of an e-arşiv document is identified. A buyer with a tax id is identified by it, whatever its type. Without one, an individual (or a
+// customer whose type nobody entered, as before the type existed) is the placeholder consumer id that e-arşiv allows for a buyer without a tax id. A business is a
+// taxpayer: it is never given the consumer placeholder, so the document is refused with a message that names the missing field and the seller can enter the customer's tax id
+// and retry. UNVERIFIED: that the tax office must also be present for a business (it is sent as entered, empty when there is none); whether GİB or the integrators reject a
+// business under the placeholder is not read from a source here, the refusal is the cautious reading.
+func IdentifyBuyer(d *einvoice.Document) (refusal string) {
+	if d.Type != einvoice.TypeEArsiv || d.Buyer.TaxID != "" {
+		return ""
+	}
+	if d.Buyer.CustomerType == customerBusiness {
+		return "buyer.tax_id: a business customer is identified by its tax id and has none"
+	}
+	d.Buyer.TaxID = consumerTaxID
+	return ""
 }
 
 // ChooseType decides the legal channel. Turkey: e-fatura for a registered buyer, e-arşiv otherwise; elsewhere Peppol.

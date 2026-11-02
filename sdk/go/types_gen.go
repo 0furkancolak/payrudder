@@ -729,6 +729,9 @@ type CreateCustomerRequest struct {
 	Locale string `json:"locale,omitempty"`
 	// A person or a taxpayer. One of: individual, business.
 	CustomerType string `json:"customer_type,omitempty"`
+	// The customer's mobile number in international form, e.g. +90 532 123 45 67 or 0090 532 123 45 67; stored as
+	// E.164 (+905321234567). A number without the + or 00 prefix is refused: it cannot be read without a country.
+	Phone string `json:"phone,omitempty"`
 	// The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute
 	// does not fail the creation.
 	ReferralCode string `json:"referral_code,omitempty"`
@@ -1116,6 +1119,17 @@ type Customer struct {
 	BlockCategory string `json:"block_category"`
 	// When the block ends by itself; absent: until it is lifted.
 	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+	// The customer's mobile number as E.164 (+905321234567); empty when none.
+	Phone string `json:"phone"`
+	// When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a
+	// registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised.
+	TaxIDValidatedAt *time.Time `json:"tax_id_validated_at,omitempty"`
+	// One of tr_individual, tr_business, tr_any, tr_is_tckn, tr_is_vkn, eu_vat, or empty. A hint, never a refusal:
+	// the id does not look like the kind of number this customer should have (tr_individual: not a TCKN;
+	// tr_business: not a VKN; tr_any: neither; tr_is_tckn: a business was given a TCKN; tr_is_vkn: an individual
+	// was given a VKN; eu_vat: a business in the EU has no VAT id of its country's shape). Worked out from the
+	// stored id, country and customer_type, so it follows a change of any of them. Empty: nothing to say.
+	TaxIDWarning string `json:"tax_id_warning"`
 }
 
 // CustomerBlockEvent is an object of the API; see components.schemas.CustomerBlockEvent in api/openapi/v1.yaml.
@@ -1136,11 +1150,14 @@ type CustomerBlockEvent struct {
 type CustomerContact struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
-	// The language of the customer's mails, receipts and payment pages; omit to clear it. One of: en, tr, de, fr,
+	// The language of the customer's mails, receipts and payment pages; omit to keep it. One of: en, tr, de, fr,
 	// es, ar.
 	Locale string `json:"locale,omitempty"`
-	// A person or a taxpayer; omit to clear it. One of: individual, business.
+	// A person or a taxpayer; omit to keep it. One of: individual, business.
 	CustomerType string `json:"customer_type,omitempty"`
+	// The customer's mobile number in international form (+90 532 123 45 67 or 0090 532 123 45 67), stored as
+	// E.164. Omit to keep the stored number; send an empty string to clear it.
+	Phone string `json:"phone,omitempty"`
 }
 
 // CustomerPayment is an object of the API; see components.schemas.CustomerPayment in api/openapi/v1.yaml.
