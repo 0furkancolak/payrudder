@@ -105,6 +105,8 @@ export const STRUCTURAL = [
   "included", "limit", "package_size", "unit_price", "up_to", "used", "window_id", "invoice_number", "period", "month", "state",
   // The app an environment belongs to (an id) and how exact a ranking is (an enum): made by the API.
   "app_id", "precision",
+  // The money and counts of the revenue and subscription reports (int64 minor units and counts, sent as text): made by the API.
+  "billed_minor", "collected_minor", "credited_minor", "outstanding_minor", "refunded_minor", "mrr_minor", "churned",
 ];
 
 /**
