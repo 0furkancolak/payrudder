@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { acceptance, contractsGateway, SNAPSHOT_HTML, STARTER_EN, version, withdrawal } from "./contracts";
+import { acceptance, contractsGateway, invoice, SNAPSHOT_HTML, STARTER_EN, version, withdrawal } from "./contracts";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { appWithLive, APP, liveGateway, LIVE, productGateway, signInAsAda } from "./product";
 import { pickFilters } from "./ui";
@@ -350,6 +350,76 @@ test.describe("withdrawals", () => {
   });
 });
 
+test.describe("withdrawals: the invoice, the amount and the result of the card refund", () => {
+  const BIG = [invoice("inv_a", "cus_1", "4900")];
+
+  test("accepting shows the invoice, an amount that is not valid or is more than the invoice blocks it, a smaller one is sent in minor units, and empty sends none", async ({ page }) => {
+    const { gw } = await open(page, { withdrawals: [withdrawal("wa", "cus_1", "received", "Refund part", { invoice_id: "inv_a" }), withdrawal("wb", "cus_1", "received", "Refund all", { invoice_id: "inv_a" })], invoices: BIG }, "/contracts?tab=withdrawals");
+    await page.getByTestId("withdrawal-accepted-wa").click();
+    await expect(page.getByTestId("withdrawal-invoice-line")).toContainText("INV-inv_a");
+    await expect(page.getByTestId("withdrawal-invoice-line")).toContainText("$49.00");
+    const confirm = page.getByTestId("withdrawal-confirm");
+    await page.getByTestId("withdrawal-amount").fill("50");
+    await expect(page.getByTestId("withdrawal-dialog")).toContainText("That is more than the invoice.");
+    await expect(confirm).toBeDisabled();
+    await page.getByTestId("withdrawal-amount").fill("abc");
+    await expect(page.getByTestId("withdrawal-dialog")).toContainText("Type an amount in this currency");
+    await expect(confirm).toBeDisabled();
+    await page.getByTestId("withdrawal-amount").fill("12.50");
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect.poll(() => gw.called("PUT", "/v1/contract-withdrawals/wa/status").length).toBe(1);
+    expect(gw.called("PUT", "/v1/contract-withdrawals/wa/status")[0]?.body).toEqual({ status: "accepted", note: "", refund_amount_minor: "1250" });
+
+    // Left empty, everything that is left of the invoice is refunded: the console names no amount.
+    await page.getByTestId("withdrawal-accepted-wb").click();
+    await expect(page.getByTestId("withdrawal-amount")).toHaveValue("");
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect.poll(() => gw.called("PUT", "/v1/contract-withdrawals/wb/status").length).toBe(1);
+    expect(gw.called("PUT", "/v1/contract-withdrawals/wb/status")[0]?.body).toEqual({ status: "accepted", note: "" });
+  });
+
+  test("with the setting none the dialog does not ask for an amount, and asking for the refund later does", async ({ page }) => {
+    const { gw } = await open(
+      page,
+      {
+        withdrawals: [withdrawal("wi", "cus_1", "received", "Refund me", { invoice_id: "inv_a" })],
+        invoices: BIG,
+        settings: { required_kinds: [], immediate_start: false, retention_months: 36, withdrawal_refund: "none", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true },
+      },
+      "/contracts?tab=withdrawals",
+    );
+    await page.getByTestId("withdrawal-accepted-wi").click();
+    await expect(page.getByTestId("withdrawal-amount")).toHaveCount(0);
+    await page.getByTestId("withdrawal-confirm").click();
+    await page.getByTestId("withdrawal-refund-wi").click();
+    await page.getByTestId("withdrawal-amount").fill("10");
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect.poll(() => gw.called("POST", "/v1/contract-withdrawals/wi/refund").length).toBe(1);
+    expect(gw.called("POST", "/v1/contract-withdrawals/wi/refund")[0]?.body).toEqual({ amount_minor: "1000" });
+  });
+
+  test("the result of the card refund is on the row: refunded, or failed with the reason and where to retry it, and neither can be asked for again", async ({ page }) => {
+    await open(
+      page,
+      {
+        withdrawals: [
+          withdrawal("wr", "cus_1", "accepted", "Done", { invoice_id: "inv_a", refund_state: "refunded", credit_note_id: "cn-1", decide_time: "2026-10-19T09:00:00Z" }),
+          withdrawal("wf", "cus_2", "accepted", "Declined", { invoice_id: "inv_a", refund_state: "refund_failed", refund_note: "psp_declined: the card is closed", credit_note_id: "cn-2", decide_time: "2026-10-19T09:00:00Z" }),
+        ],
+      },
+      "/contracts?tab=withdrawals",
+    );
+    await expect(page.getByTestId("withdrawal-wr").getByTestId("withdrawal-refund-state")).toHaveText("Refunded");
+    await expect(page.getByTestId("withdrawal-wf").getByTestId("withdrawal-refund-state")).toHaveText("Card refund failed");
+    await expect(page.getByTestId("withdrawal-wf")).toContainText("psp_declined: the card is closed");
+    await expect(page.getByTestId("withdrawal-wf").getByTestId("withdrawal-refund-retry-hint")).toContainText("do not ask for a second one");
+    await expect(page.getByTestId("withdrawal-wr").getByTestId("withdrawal-refund-retry-hint")).toHaveCount(0);
+    await expect(page.getByTestId("withdrawal-refund-wr")).toHaveCount(0);
+    await expect(page.getByTestId("withdrawal-refund-wf")).toHaveCount(0);
+  });
+});
+
 test.describe("a customer's sheet", () => {
   const customers = [{ id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-10-01T10:00:00Z" }];
   const log = () => [
@@ -358,7 +428,7 @@ test.describe("a customer's sheet", () => {
     acceptance("a3", "g-old", "tos", "2026-09-01T10:00:00Z", { source: "api", context_kind: "api", ip: "", user_agent: "", observed: { ip: false, user_agent: false, time: false, text: false } }),
   ];
 
-  async function openSheet(page: import("@playwright/test").Page) {
+  async function openSheet(page: import("@playwright/test").Page, extra: Parameters<typeof contractsGateway>[1] = {}) {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.method !== "GET") return undefined;
       if (c.path === "/v1/customers") return { body: { customers } };
@@ -368,7 +438,7 @@ test.describe("a customer's sheet", () => {
       if (/^\/v1\/customers\/cus_1\/credits$/.test(c.path)) return { body: { balance: "0", lots: [] } };
       return undefined;
     });
-    const contracts = contractsGateway(gw, { acceptances: log(), withdrawals: [withdrawal("w9", "cus_1", "received", "Mail from the customer", { source: "api" })] });
+    const contracts = contractsGateway(gw, { acceptances: log(), withdrawals: [withdrawal("w9", "cus_1", "received", "Mail from the customer", { source: "api" })], ...extra });
     await gw.install(page);
     await openTenantPage(page, "/customers");
     await page.getByTestId("customer-cus_1").click();
@@ -434,6 +504,53 @@ test.describe("a customer's sheet", () => {
     expect(sent).toEqual({ statement: "I withdraw from the contract, see my mail", source: "console", receive_time: await page.evaluate(() => new Date("2026-10-20T09:30").toISOString()) });
     await expect(page.getByTestId("customer-withdrawal").first()).toContainText("I withdraw from the contract, see my mail");
     await expect(page.getByTestId("customer-withdrawal").first()).toContainText("Recorded in the console");
+    // No invoice was chosen, so none is sent: the seller refunds by hand.
+    expect(sent).not.toHaveProperty("invoice_id");
+  });
+
+  test("a withdrawal can name the invoice the customer withdraws from, chosen among their paid invoices", async ({ page }) => {
+    const { gw } = await openSheet(page, { invoices: [invoice("inv_a", "cus_1", "4900"), invoice("inv_b", "cus_1", "1500", { number: "INV-B", finalize_time: "2026-09-01T10:00:00Z" }), invoice("inv_x", "cus_2", "999")] });
+    await page.getByTestId("withdrawal-record").click();
+    const select = page.getByTestId("withdrawal-invoice");
+    await expect(select.locator("option")).toHaveCount(3);
+    await expect(select.locator("option").nth(1)).toContainText("INV-inv_a");
+    await expect(select.locator("option").nth(1)).toContainText("$49.00");
+    await select.selectOption("inv_b");
+    await page.getByTestId("withdrawal-statement").fill("Cancel my order");
+    await page.getByTestId("withdrawal-record-submit").click();
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/contract-withdrawals").length).toBe(1);
+    expect(gw.called("POST", "/v1/customers/cus_1/contract-withdrawals")[0]?.body).toMatchObject({ statement: "Cancel my order", source: "console", invoice_id: "inv_b" });
+  });
+
+  test("the log is read a page at a time and narrowed by kind and by where it was accepted", async ({ page }) => {
+    // 25 checkout moments, one version each: the terms and the privacy notice alternate, and the seller's API reported every sixth (all of them terms), newest first.
+    const many = Array.from({ length: 25 }, (_, i) =>
+      acceptance(`a${String(i).padStart(2, "0")}`, `g${String(i).padStart(2, "0")}`, i % 2 === 0 ? "tos" : "privacy", new Date(Date.UTC(2026, 9, 25 - i, 10)).toISOString(), { source: i % 6 === 0 ? "api" : "hosted" }),
+    );
+    const { gw } = await openSheet(page, { acceptances: many });
+    const groups = page.getByTestId("acceptance-group");
+    await expect(groups).toHaveCount(20);
+    await expect(page.getByTestId("acceptance-more")).toBeVisible();
+    expect(gw.called("GET", "/v1/customers/cus_1/contract-acceptances")[0]?.query.get("page_size")).toBe("20");
+    await page.getByTestId("acceptance-more").click();
+    await expect(groups).toHaveCount(25);
+    await expect(page.getByTestId("acceptance-more")).toHaveCount(0);
+
+    // A filter asks the server again from the first page; the paging starts over.
+    await page.getByTestId("acceptance-filter-kind").selectOption("tos");
+    await expect(groups).toHaveCount(13);
+    await expect(groups.first().getByTestId("acceptance-item")).toContainText("Terms of service");
+    const last = gw.called("GET", "/v1/customers/cus_1/contract-acceptances").at(-1);
+    expect(last?.query.get("kind")).toBe("tos");
+    expect(last?.query.get("page_token")).toBeNull();
+    await page.getByTestId("acceptance-filter-source").selectOption("api");
+    await expect(groups).toHaveCount(5);
+    expect(gw.called("GET", "/v1/customers/cus_1/contract-acceptances").at(-1)?.query.get("source")).toBe("api");
+    await page.getByTestId("acceptance-filter-kind").selectOption("privacy");
+    await expect(page.getByTestId("acceptances-empty")).toContainText("Nothing matches these filters.");
+    // Clearing brings back the pages already read.
+    await page.getByTestId("acceptance-filter-clear").click();
+    await expect(groups).toHaveCount(25);
   });
 });
 

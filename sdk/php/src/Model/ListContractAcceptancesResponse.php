@@ -16,9 +16,11 @@ final class ListContractAcceptancesResponse implements Model
 {
     /**
      * @param list<ContractAcceptance>|null $acceptances
+     * @param string|null $nextPageToken
      */
     public function __construct(
         public readonly ?array $acceptances = null,
+        public readonly ?string $nextPageToken = null,
     ) {}
 
     /**
@@ -28,6 +30,7 @@ final class ListContractAcceptancesResponse implements Model
     {
         return new static(
             acceptances: Cast::models(ContractAcceptance::class, $data['acceptances'] ?? null),
+            nextPageToken: Cast::string($data['next_page_token'] ?? null),
         );
     }
 
@@ -38,6 +41,7 @@ final class ListContractAcceptancesResponse implements Model
     {
         return Cast::compact([
             'acceptances' => Cast::wire($this->acceptances),
+            'next_page_token' => $this->nextPageToken,
         ]);
     }
 }

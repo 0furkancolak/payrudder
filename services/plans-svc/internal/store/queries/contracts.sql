@@ -58,10 +58,15 @@ SELECT kind, audience, max(version_number)::int AS number, COALESCE(max(version_
 FROM contract_acceptances WHERE tenant_id = app_tenant_id() AND customer_id IS NULL AND context_ref = @context_ref
 GROUP BY kind, audience;
 
+-- The acceptance log of one customer, newest first, a page at a time (keyset on accepted_at, id) with optional filters; the Go side passes the whole time range when none is asked for.
 -- name: ListCustomerContractAcceptances :many
 SELECT a.*, c.external_id AS customer_external_id FROM contract_acceptances a LEFT JOIN customers c ON c.tenant_id = a.tenant_id AND c.id = a.customer_id
 WHERE a.tenant_id = app_tenant_id() AND a.customer_id = @customer_id
-ORDER BY a.accepted_at DESC, a.kind;
+  AND (@kind::text = '' OR a.kind = @kind) AND (@source::text = '' OR a.source = @source)
+  AND (@version_id::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR a.version_id = @version_id)
+  AND a.accepted_at >= @from_time::timestamptz AND a.accepted_at < @to_time::timestamptz
+  AND (a.accepted_at, a.id) < (@after_time::timestamptz, @after_id::uuid)
+ORDER BY a.accepted_at DESC, a.id DESC LIMIT @page_size;
 
 -- name: GetContractAcceptance :one
 SELECT * FROM contract_acceptances WHERE tenant_id = app_tenant_id() AND id = $1;
@@ -98,6 +103,12 @@ ORDER BY w.received_at DESC, w.id DESC LIMIT 200;
 -- name: SetContractWithdrawalRefund :one
 UPDATE contract_withdrawals SET refund_state = @state, credit_note_id = @credit_note_id, refund_note = @note, refund_at = @now
 WHERE tenant_id = app_tenant_id() AND id = @id RETURNING *;
+
+-- What the provider did with the refund of a withdrawal's credit note (billing's credit_note.refunded / credit_note.refund_failed events). Only the states in @from_states move, so a
+-- repeated event, or one that arrives after a later one, changes nothing.
+-- name: SettleContractWithdrawalRefund :execrows
+UPDATE contract_withdrawals SET refund_state = @state, refund_note = @note, refund_at = @now
+WHERE tenant_id = app_tenant_id() AND credit_note_id = @credit_note_id AND refund_state = ANY(@from_states::text[]);
 
 -- name: GetContractWithdrawalCustomer :one
 SELECT w.*, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id

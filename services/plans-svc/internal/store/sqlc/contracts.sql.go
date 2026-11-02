@@ -756,8 +756,24 @@ func (q *Queries) ListContractWithdrawals(ctx context.Context, arg ListContractW
 const listCustomerContractAcceptances = `-- name: ListCustomerContractAcceptances :many
 SELECT a.tenant_id, a.id, a.group_id, a.customer_id, a.version_id, a.kind, a.audience, a.version_number, a.version_sha256, a.locale_requested, a.locale_served, a.body_sha256, a.context_kind, a.context_ref, a.source, a.observed, a.checkbox_text, a.immediate_start_consent, a.immediate_start_text, a.withdrawal_waiver_acknowledged, a.withdrawal_waiver_text, a.variables, a.snapshot_sha256, a.ip, a.user_agent, a.accepted_at, c.external_id AS customer_external_id FROM contract_acceptances a LEFT JOIN customers c ON c.tenant_id = a.tenant_id AND c.id = a.customer_id
 WHERE a.tenant_id = app_tenant_id() AND a.customer_id = $1
-ORDER BY a.accepted_at DESC, a.kind
+  AND ($2::text = '' OR a.kind = $2) AND ($3::text = '' OR a.source = $3)
+  AND ($4::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR a.version_id = $4)
+  AND a.accepted_at >= $5::timestamptz AND a.accepted_at < $6::timestamptz
+  AND (a.accepted_at, a.id) < ($7::timestamptz, $8::uuid)
+ORDER BY a.accepted_at DESC, a.id DESC LIMIT $9
 `
+
+type ListCustomerContractAcceptancesParams struct {
+	CustomerID *uuid.UUID
+	Kind       string
+	Source     string
+	VersionID  uuid.UUID
+	FromTime   time.Time
+	ToTime     time.Time
+	AfterTime  time.Time
+	AfterID    uuid.UUID
+	PageSize   int32
+}
 
 type ListCustomerContractAcceptancesRow struct {
 	TenantID                     uuid.UUID
@@ -789,8 +805,19 @@ type ListCustomerContractAcceptancesRow struct {
 	CustomerExternalID           *string
 }
 
-func (q *Queries) ListCustomerContractAcceptances(ctx context.Context, customerID *uuid.UUID) ([]ListCustomerContractAcceptancesRow, error) {
-	rows, err := q.db.Query(ctx, listCustomerContractAcceptances, customerID)
+// The acceptance log of one customer, newest first, a page at a time (keyset on accepted_at, id) with optional filters; the Go side passes the whole time range when none is asked for.
+func (q *Queries) ListCustomerContractAcceptances(ctx context.Context, arg ListCustomerContractAcceptancesParams) ([]ListCustomerContractAcceptancesRow, error) {
+	rows, err := q.db.Query(ctx, listCustomerContractAcceptances,
+		arg.CustomerID,
+		arg.Kind,
+		arg.Source,
+		arg.VersionID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.AfterTime,
+		arg.AfterID,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -940,6 +967,35 @@ func (q *Queries) SetContractWithdrawalRefund(ctx context.Context, arg SetContra
 		&i.RefundAt,
 	)
 	return i, err
+}
+
+const settleContractWithdrawalRefund = `-- name: SettleContractWithdrawalRefund :execrows
+UPDATE contract_withdrawals SET refund_state = $1, refund_note = $2, refund_at = $3
+WHERE tenant_id = app_tenant_id() AND credit_note_id = $4 AND refund_state = ANY($5::text[])
+`
+
+type SettleContractWithdrawalRefundParams struct {
+	State        string
+	Note         string
+	Now          *time.Time
+	CreditNoteID *uuid.UUID
+	FromStates   []string
+}
+
+// What the provider did with the refund of a withdrawal's credit note (billing's credit_note.refunded / credit_note.refund_failed events). Only the states in @from_states move, so a
+// repeated event, or one that arrives after a later one, changes nothing.
+func (q *Queries) SettleContractWithdrawalRefund(ctx context.Context, arg SettleContractWithdrawalRefundParams) (int64, error) {
+	result, err := q.db.Exec(ctx, settleContractWithdrawalRefund,
+		arg.State,
+		arg.Note,
+		arg.Now,
+		arg.CreditNoteID,
+		arg.FromStates,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertContractSettings = `-- name: UpsertContractSettings :one

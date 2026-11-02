@@ -3,6 +3,9 @@ package httpapi
 import (
 	"net/http"
 	"strings"
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -116,8 +119,27 @@ func (s *Server) contractRequirements(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
+// listContractAcceptances is GET /v1/customers/{external_id}/contract-acceptances?kind=&source=&version_id=&from=&to=&page_size=&page_token=: the customer's acceptance log,
+// newest first, a page at a time; from is inclusive and to exclusive (RFC 3339).
 func (s *Server) listContractAcceptances(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Contracts.ListContractAcceptances(r.Context(), &plansv1.ListContractAcceptancesRequest{CustomerExternalId: r.PathValue("external_id")})
+	size, token, ok := pageParams(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	req := &plansv1.ListContractAcceptancesRequest{CustomerExternalId: r.PathValue("external_id"), Kind: q.Get("kind"), Source: q.Get("source"), VersionId: q.Get("version_id"),
+		PageSize: size, PageToken: token}
+	for name, dst := range map[string]**timestamppb.Timestamp{"from": &req.FromTime, "to": &req.ToTime} {
+		if v := q.Get(name); v != "" {
+			t, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				writeError(w, r, invalid(name, "must be an RFC 3339 time"))
+				return
+			}
+			*dst = timestamppb.New(t)
+		}
+	}
+	resp, err := s.d.Contracts.ListContractAcceptances(r.Context(), req)
 	noStore(w)
 	respond(w, r, http.StatusOK, resp, err)
 }
