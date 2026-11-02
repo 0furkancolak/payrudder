@@ -294,7 +294,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Region:         region,
 		Saas:           saas,
 		Mail:           mail,
-		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
+		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL, AuthFailures: authn.Failures(),
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),

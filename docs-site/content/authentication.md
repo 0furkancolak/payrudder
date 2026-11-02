@@ -40,6 +40,7 @@ Rotating a key (in the console, or `POST /app/v1/apps/{id}/api-keys/{key_id}/rot
 | `403` | `gateway.auth.tenant_read_only` | the environment is frozen: reads still work, anything else is refused |
 | `421` | `gateway.region.wrong` | only on a deployment with regional gateways: the environment is served from another region. `X-Payrudder-Region` names it and, when the deployment knows it, `X-Payrudder-Region-Url` is the address of that region's gateway. Nothing was done with the request; send it there |
 | `429` | `gateway.rate_limit.exceeded` | too many requests; wait the number of seconds in `Retry-After` and try again |
+| `429` | `identity.auth.rate_limited` | the address you call from has had many keys or tokens refused in the last minute (30): it is turned away before any key is looked up, whatever it sends, until the minute passes. Check for a script that still uses a revoked or mistyped key; an IPv6 address counts as its whole /64 |
 
 Rate limits depend on the tier of the account and are counted per class of route; usage events are counted **per event**, not per request, so batching does not get around them. See [Errors](errors.html) for the error format.
 

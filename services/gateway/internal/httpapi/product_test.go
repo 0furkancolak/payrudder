@@ -66,6 +66,7 @@ type fakeIdentity struct {
 	twoFactorResets []*plansv1.ResetUserTwoFactorRequest
 	keys            map[string]string
 	signIns         int
+	getSessions     int // GetSession calls
 
 	mem            memberCalls
 	apps           appManageCalls
@@ -229,6 +230,7 @@ func (f *fakeIdentity) SignOut(_ context.Context, req *plansv1.SignOutRequest) (
 func (f *fakeIdentity) GetSession(_ context.Context, req *plansv1.GetSessionRequest) (*plansv1.GetSessionResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.getSessions++
 	u, ok := tokenUsers[req.GetToken()]
 	if !ok || f.revoked[req.GetToken()] {
 		return nil, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in again")
@@ -608,7 +610,16 @@ func newProduct(t *testing.T, ledger func() []map[string]any, tweak func(*Deps))
 
 func (p *product) call(t *testing.T, method, path, token, tenantID, body string) (*http.Response, map[string]any) {
 	t.Helper()
+	return p.callFrom(t, "", method, path, token, tenantID, body)
+}
+
+// callFrom is call from the client address xff (the gateway believes X-Forwarded-For from a loopback peer when the test server sets TrustForwardedFor).
+func (p *product) callFrom(t *testing.T, xff, method, path, token, tenantID, body string) (*http.Response, map[string]any) {
+	t.Helper()
 	req, _ := http.NewRequest(method, p.ts.URL+path, strings.NewReader(body))
+	if xff != "" {
+		req.Header.Set("X-Forwarded-For", xff)
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}

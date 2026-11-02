@@ -49,7 +49,7 @@ func clientIP(r *http.Request) string {
 }
 
 func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.limits.pages.allow(s.clientAddr(r), s.now()) {
+	if s.limits.pages.allow(s.limitAddr(r), s.now()) {
 		return true
 	}
 	rejectRateLimited(w)
@@ -58,7 +58,7 @@ func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
 
 // hostedPayAllowed is hostedAllowed for the POSTs that start a payment: they also count against the stricter limit.
 func (s *Server) hostedPayAllowed(w http.ResponseWriter, r *http.Request) bool {
-	addr, now := s.clientAddr(r), s.now()
+	addr, now := s.limitAddr(r), s.now()
 	if s.limits.pages.allow(addr, now) && s.limits.pays.allowN(addr, now, hostedPaysPerMinute) {
 		return true
 	}

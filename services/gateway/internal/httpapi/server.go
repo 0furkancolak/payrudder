@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -43,6 +44,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/negcache"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -123,6 +125,9 @@ type Deps struct {
 	AppURL string
 	// Region pins this gateway to one region (PAYRUDDER_REGION); nil serves every tenant.
 	Region *Region
+	// AuthFailures is the counter gateway_auth_failures (internal/auth registers it for API keys); the gateway adds the session tokens it refuses and the requests it
+	// turns away for their address's earlier failures. Nil: not counted.
+	AuthFailures metric.Int64Counter
 }
 
 // Server is the HTTP handler.
@@ -136,11 +141,13 @@ type Server struct {
 	now func() time.Time
 	// saasEdge remembers the SaaS answers the ingest edge needs.
 	saasEdge *saasEdge
+	// badSessions remembers session tokens plans-svc did not know, for a short while (internal/negcache).
+	badSessions *negcache.Cache
 }
 
 // New builds the router.
 func New(d Deps) *Server {
-	s := &Server{d: d, now: time.Now, saasEdge: newSaasEdge()}
+	s := &Server{d: d, now: time.Now, saasEdge: newSaasEdge(), badSessions: negcache.New(negcache.DefaultTTL, negcache.DefaultMax)}
 	mux := http.NewServeMux()
 	for _, rt := range s.routes() {
 		// otelhttp per route: the span is named after the route pattern ("POST /v1/customers"), which a global
@@ -203,10 +210,14 @@ func (s *Server) wrap(rt Route) http.Handler {
 // authorize checks the caller of a route the way its Access says and returns the context the handler runs in, carrying who they are. It writes the refusal
 // itself and reports false.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
-	switch rt.Access {
-	case AccessPublic:
+	if rt.Access == AccessPublic {
 		// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
 		return r.Context(), true
+	}
+	if s.authThrottled(w, r) {
+		return nil, false
+	}
+	switch rt.Access {
 	case AccessSession:
 		return s.authorizeSession(w, r, rt, span)
 	case AccessOperator:
@@ -349,6 +360,7 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	case errors.Is(err, auth.ErrSuspended):
 		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
+		s.authFailed(r, "")
 		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
 	p.Actor = audit.Actor{Type: audit.ActorAPIKey, ID: p.Tenant.APIKeyID}
@@ -423,6 +435,9 @@ func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err e
 		return true, "", nil
 	}
 	if !strings.HasPrefix(bearerToken(r), sessionPrefix) {
+		if bearerToken(r) != "" {
+			s.authFailed(r, "operator_token")
+		}
 		return false, "", nil
 	}
 	sess, err := s.session(r)
