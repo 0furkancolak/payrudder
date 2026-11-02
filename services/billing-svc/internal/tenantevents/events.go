@@ -24,6 +24,8 @@ const (
 	EventPaymentLinkCreated     = "payment_link.created"
 	EventPaymentLinkPaid        = "payment_link.paid"
 	EventPaymentLinkExpired     = "payment_link.expired"
+	// EventPaymentDisputed is a customer questioning a payment with their bank, and each later step of the case (data.outcome says where it stands).
+	EventPaymentDisputed = "payment.disputed"
 )
 
 // InvoiceData is the data of an invoice event; amounts are strings like in the REST API.

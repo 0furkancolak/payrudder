@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı",
       "settlement_missing": "Ödendi, sağlayıcı mutabakatında yok",
       "settlement_mismatch": "Mutabık tutar farklı",
-      "fee_mismatch": "Sağlayıcı komisyonu farklı"
+      "fee_mismatch": "Sağlayıcı komisyonu farklı",
+      "payment_disputed": "Ödemeye itiraz, karara bağlanmadı"
     },
     "ledgerKind": {
       "charge": "tahsilat",
@@ -225,6 +226,16 @@
       "not_reported": "Ödendi, bildirilmedi",
       "pending_payout": "Bildirildi, ödeme bekliyor",
       "settled": "Mutabık"
+    },
+    "disputeReason": {
+      "fraudulent": "Sahtecilik iddiası",
+      "general": "Genel",
+      "product_not_received": "Ürün alınmadı",
+      "product_unacceptable": "Ürün kabul edilemez",
+      "subscription_canceled": "Abonelik iptal edildi",
+      "duplicate": "Mükerrer ödeme",
+      "unrecognized": "Tanınmayan işlem",
+      "credit_not_processed": "İade işlenmedi"
     }
   },
   "tenants": {
@@ -1239,16 +1250,18 @@
         "badRate": "Yüzde değil: 0 ile 100 arası, en fazla iki ondalık."
       },
       "dunning": {
-        "title": "Ödeme yeniden denemeleri",
+        "title": "Ödeme yeniden denemeleri ve chargeback'ler",
         "hint": "Bir tahsilat reddedilirse Payrudder aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
         "defaults": "Hiç ayarlamadınız: standart gecikmeler gösteriliyor.",
         "retry": "{n}. deneme",
         "delay": "{n}. denemeden önceki saat",
         "add": "Deneme ekle",
-        "save": "Denemeleri kaydet",
-        "saved": "Denemeler kaydedildi.",
+        "save": "Ayarları kaydet",
+        "saved": "Ayarlar kaydedildi.",
         "none": "Deneme yok: reddedilen tahsilattan hemen vazgeçilir.",
-        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır."
+        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır.",
+        "blockOnChargeback": "Chargeback açıldığında müşteriyi engelle",
+        "blockOnChargebackHint": "Müşteriyi chargeback kategorisiyle engeller: yeni satın alma olmaz ve açık bir fatura artık ödenemez. Kendiliğinden kalkmaz; müşteri sayfasından siz kaldırırsınız. Bilgi talebi engellemez."
       },
       "promotions": {
         "title": "Promosyonlar",
@@ -6296,5 +6309,43 @@
         "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
       }
     }
+  },
+  "disputes": {
+    "tab": "İtirazlar",
+    "tabsLabel": "Ödemeler ve itirazlar",
+    "tabs": {
+      "payments": "Ödemeler",
+      "disputes": "İtirazlar"
+    },
+    "title": "İtirazlar",
+    "hint": "Müşterinin bu ödeme için bankasında açtığı vakalar. Bunları ödeme sağlayıcınızda yanıtlayın; Payrudder her birinin durumunu gösterir.",
+    "empty": "İtiraz yok. Bir müşteri bankasında bir ödemeye itiraz ettiğinde vaka burada görünür.",
+    "outcomeLabel": "Sonuç",
+    "allOutcomes": "Tüm sonuçlar",
+    "kindLabel": "Tür",
+    "allKinds": "Tüm türler",
+    "outcome": {
+      "open": "Açık",
+      "won": "Kazanıldı",
+      "lost": "Kaybedildi"
+    },
+    "kind": {
+      "chargeback": "Geri ödeme itirazı (chargeback)",
+      "inquiry": "Bilgi talebi"
+    },
+    "means": {
+      "openChargeback": "Müşterinin bankası bu ödemeyi iade ettirdi: sağlayıcı karar verene kadar parayı geri çekti. Kanıtlarınızı aşağıdaki tarihe kadar gönderin.",
+      "openInquiry": "Müşterinin bankası bu ödemeyi soruyor. Para geri çekilmedi; chargeback'e dönüşmemesi için sağlayıcının talebini yanıtlayın.",
+      "wonChargeback": "Lehinize sonuçlandı: para size geri döndü.",
+      "wonInquiry": "Chargeback'e dönüşmeden kapandı: bir şey kaybedilmedi.",
+      "lost": "Kart sahibi kazandı: para onda kalıyor."
+    },
+    "provider": "Sağlayıcı",
+    "reason": "Gerekçe",
+    "evidenceDue": "Kanıt son tarihi",
+    "opened": "Açıldı",
+    "closed": "Kapandı",
+    "reference": "Vaka",
+    "case": "Vaka"
   }
 }

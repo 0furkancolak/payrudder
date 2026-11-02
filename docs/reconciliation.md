@@ -6,11 +6,15 @@ Plan 22 G7. Built 2026-11-02 on `feat/reconciliation-health`. Everything below r
 
 Three things that should agree and do not always:
 
-1. **Billing and the ledger.** An invoice billing calls paid should have one successful charge of its total in the payment ledger. Five kinds: `paid_without_charge`, `amount_mismatch`, `duplicate_charge`, `charge_without_paid`, `conflicting_outcomes` (as before: `reconciliation/query`).
+1. **Billing and the ledger.** An invoice billing calls paid should have one successful charge of its total in the payment ledger. Six kinds, the sixth being a case a customer opened with their bank (`payment_disputed`, below): `paid_without_charge`, `amount_mismatch`, `duplicate_charge`, `charge_without_paid`, `conflicting_outcomes` (as before: `reconciliation/query`).
 2. **The ledger and the provider's settlement.** A payment that succeeded is the ledger's word. The money is the tenant's once the provider settles it, minus its fee. Three kinds, when settlement lines are known (below): `settlement_missing`, `settlement_mismatch`, `fee_mismatch`.
 3. **The fee and what the tenant's contract says it should be**, when an operator entered a fee rule.
 
 `GET /admin/v1/tenants/{id}/reconciliation?period=2026-10` is still the comparison alone: it computes and keeps nothing.
+
+### Disputes (`payment_disputed`)
+
+A customer who questions a payment with their bank opens a case (Stripe's `charge.dispute.*`, Paddle's chargeback adjustments; [provider health](provider-health.md) is unrelated). Each step is written to the ledger as a row of kind `dispute` (`pending` while open, `succeeded` when the seller won or it never became a chargeback, `declined` when the cardholder won; the reference is the provider's id of the case), the case is kept as it stands in `payment_disputes` (migration `00011`, tenant `00012`), billing announces the step (the `payment.disputed` webhook and an audit entry, once per step) and, when the seller turned it on (`PUT /v1/dunning-settings` `block_on_chargeback`, default off), blocks the customer with category `chargeback` when a *formal* dispute opens. The reconciliation raises a `payment_disputed` discrepancy for every case **still open**, in the period it was opened in, with the invoice, the disputed amount (`ledger_minor`) and "chargeback" or "inquiry" and the provider's status in the detail; a case that ends clears it by the usual rule (found no more: resolved as `cleared`). A *lost* case is not raised: the ledger and `GET /v1/disputes` say so, and what to do about the invoice (a credit note, a write-off) is the seller's. Defaults, not agreed: open cases only; the period of opening; no automatic unblock when a case is won.
 
 ## The queue
 

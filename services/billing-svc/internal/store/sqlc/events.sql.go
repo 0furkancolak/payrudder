@@ -56,7 +56,7 @@ func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) erro
 	return err
 }
 
-const insertTenantEvent = `-- name: InsertTenantEvent :exec
+const insertTenantEvent = `-- name: InsertTenantEvent :execrows
 INSERT INTO tenant_event_outbox (tenant_id, event_id, type, data, occurred_at) VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT DO NOTHING
 `
@@ -69,15 +69,18 @@ type InsertTenantEventParams struct {
 	OccurredAt time.Time
 }
 
-func (q *Queries) InsertTenantEvent(ctx context.Context, arg InsertTenantEventParams) error {
-	_, err := q.db.Exec(ctx, insertTenantEvent,
+func (q *Queries) InsertTenantEvent(ctx context.Context, arg InsertTenantEventParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertTenantEvent,
 		arg.TenantID,
 		arg.EventID,
 		arg.Type,
 		arg.Data,
 		arg.OccurredAt,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listTenantEvents = `-- name: ListTenantEvents :many

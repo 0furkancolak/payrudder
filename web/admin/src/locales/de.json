@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst",
       "settlement_missing": "Bezahlt, nicht in der Abrechnung des Anbieters",
       "settlement_mismatch": "Abgerechneter Betrag weicht ab",
-      "fee_mismatch": "Anbietergebühr weicht ab"
+      "fee_mismatch": "Anbietergebühr weicht ab",
+      "payment_disputed": "Zahlung bestritten, offen"
     },
     "ledgerKind": {
       "charge": "Abbuchung",
@@ -225,6 +226,16 @@
       "not_reported": "Bezahlt, nicht gemeldet",
       "pending_payout": "Gemeldet, Auszahlung offen",
       "settled": "Abgerechnet"
+    },
+    "disputeReason": {
+      "fraudulent": "Betrug behauptet",
+      "general": "Allgemein",
+      "product_not_received": "Produkt nicht erhalten",
+      "product_unacceptable": "Produkt mangelhaft",
+      "subscription_canceled": "Abonnement gekündigt",
+      "duplicate": "Doppelte Zahlung",
+      "unrecognized": "Nicht erkannt",
+      "credit_not_processed": "Gutschrift nicht verbucht"
     }
   },
   "tenants": {
@@ -1239,16 +1250,18 @@
         "badRate": "Kein Prozentsatz: 0 bis 100 mit höchstens zwei Dezimalstellen."
       },
       "dunning": {
-        "title": "Zahlungswiederholungen",
+        "title": "Zahlungsversuche und Rückbuchungen",
         "hint": "Wird eine Abbuchung abgelehnt, versucht Payrudder es nach jeder Wartezeit erneut und stuft die Rechnung danach als uneinbringlich ein. Die Zeiten sind in Stunden (in einem Sandbox-Konto in Minuten).",
         "defaults": "Nichts eingestellt: Es werden die Standardzeiten angezeigt.",
         "retry": "Versuch {n}",
         "delay": "Stunden vor Versuch {n}",
         "add": "Versuch hinzufügen",
-        "save": "Versuche speichern",
-        "saved": "Versuche gespeichert.",
+        "save": "Einstellungen speichern",
+        "saved": "Einstellungen gespeichert.",
         "none": "Keine Wiederholungen: Eine abgelehnte Abbuchung wird sofort aufgegeben.",
-        "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720."
+        "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720.",
+        "blockOnChargeback": "Kunden sperren, wenn eine Rückbuchung eröffnet wird",
+        "blockOnChargebackHint": "Sperrt ihn mit der Kategorie Rückbuchung: keine neuen Käufe, und eine offene Rechnung kann nicht mehr bezahlt werden. Die Sperre endet nie von selbst; Sie heben sie beim Kunden auf. Eine Anfrage sperrt nicht."
       },
       "promotions": {
         "title": "Aktionen",
@@ -6296,5 +6309,43 @@
         "reset_by_operator": "Zwei-Faktor-Anmeldung vom Support zurückgesetzt"
       }
     }
+  },
+  "disputes": {
+    "tab": "Streitfälle",
+    "tabsLabel": "Zahlungen und Streitfälle",
+    "tabs": {
+      "payments": "Zahlungen",
+      "disputes": "Streitfälle"
+    },
+    "title": "Streitfälle",
+    "hint": "Fälle, die der Kunde bei seiner Bank zu dieser Zahlung eröffnet hat. Beantworten Sie sie bei Ihrem Zahlungsanbieter; Payrudder zeigt, wo jeder steht.",
+    "empty": "Keine Streitfälle. Ein Fall erscheint hier, sobald ein Kunde eine Zahlung bei seiner Bank infrage stellt.",
+    "outcomeLabel": "Ergebnis",
+    "allOutcomes": "Alle Ergebnisse",
+    "kindLabel": "Art",
+    "allKinds": "Alle Arten",
+    "outcome": {
+      "open": "Offen",
+      "won": "Gewonnen",
+      "lost": "Verloren"
+    },
+    "kind": {
+      "chargeback": "Rückbuchung",
+      "inquiry": "Anfrage"
+    },
+    "means": {
+      "openChargeback": "Die Bank des Kunden hat diese Zahlung zurückgebucht: Der Anbieter hat das Geld zurückgeholt, bis er entscheidet. Senden Sie Ihre Nachweise bis zum unten genannten Datum.",
+      "openInquiry": "Die Bank des Kunden fragt zu dieser Zahlung nach. Es wurde kein Geld zurückgeholt; beantworten Sie die Anfrage des Anbieters, damit daraus keine Rückbuchung wird.",
+      "wonChargeback": "Zu Ihren Gunsten entschieden: Das Geld ist wieder bei Ihnen.",
+      "wonInquiry": "Geschlossen, ohne zur Rückbuchung zu werden: Es ging nichts verloren.",
+      "lost": "Der Karteninhaber hat gewonnen: Das Geld bleibt bei ihm."
+    },
+    "provider": "Anbieter",
+    "reason": "Grund",
+    "evidenceDue": "Nachweise fällig",
+    "opened": "Eröffnet",
+    "closed": "Geschlossen",
+    "reference": "Fall",
+    "case": "Fall"
   }
 }

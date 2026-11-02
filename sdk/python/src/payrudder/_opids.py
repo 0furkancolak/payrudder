@@ -166,6 +166,7 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "listAuditEvents": ("audit_events", "list_audit_events", "GET /v1/audit-events"),
     "exportAuditEvents": ("audit_events", "export_audit_events", "GET /v1/audit-events/export"),
     "listPayments": ("payments", "list_payments", "GET /v1/payments"),
+    "listDisputes": ("disputes", "list_disputes", "GET /v1/disputes"),
     "createUploadSession": ("assets", "create_upload_session", "POST /v1/assets/uploads"),
     "abortUploadSession": ("assets", "abort_upload_session", "DELETE /v1/assets/uploads/{session}"),
     "getUploadFile": ("assets", "get_upload_file", "GET /v1/assets/uploads/{session}/files/{asset}"),

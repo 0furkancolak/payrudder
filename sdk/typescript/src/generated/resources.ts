@@ -148,6 +148,8 @@ import type {
   ListCustomerPaymentsResponse,
   ListCustomersQuery,
   ListCustomersResponse,
+  ListDisputesQuery,
+  ListDisputesResponse,
   ListEInvoicesQuery,
   ListEntitlementOverridesResponse,
   ListEntitlementsQuery,
@@ -1279,6 +1281,21 @@ export class CustomersResource {
    */
   listCustomerPayments(externalId: string, query?: ListCustomerPaymentsQuery, options?: RequestOptions): Promise<ListCustomerPaymentsResponse> {
     return this.t.request<ListCustomerPaymentsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/payments`, query, response: "json" }, options);
+  }
+}
+
+export class DisputesResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The cases customers opened with their banks about a payment, newest first
+   *
+   * A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it: `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won. Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live account. `503` when the payment service does not answer.
+   *
+   * `GET /v1/disputes`
+   */
+  listDisputes(query?: ListDisputesQuery, options?: RequestOptions): Promise<ListDisputesResponse> {
+    return this.t.request<ListDisputesResponse>({ method: "GET", path: `/v1/disputes`, query, response: "json" }, options);
   }
 }
 

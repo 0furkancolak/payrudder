@@ -49,6 +49,8 @@ type services struct {
 	Credits *CreditsService
 	// Customers groups the customers operations.
 	Customers *CustomersService
+	// Disputes groups the disputes operations.
+	Disputes *DisputesService
 	// DunningSettings groups the dunning settings operations.
 	DunningSettings *DunningSettingsService
 	// EInvoices groups the einvoices operations.
@@ -118,6 +120,7 @@ func (s *services) initServices(c *Client) {
 	s.CreditPacks = (*CreditPacksService)(&service{c: c})
 	s.Credits = (*CreditsService)(&service{c: c})
 	s.Customers = (*CustomersService)(&service{c: c})
+	s.Disputes = (*DisputesService)(&service{c: c})
 	s.DunningSettings = (*DunningSettingsService)(&service{c: c})
 	s.EInvoices = (*EInvoicesService)(&service{c: c})
 	s.Events = (*EventsService)(&service{c: c})
@@ -1651,6 +1654,25 @@ func (s *CustomersService) GetUpcomingInvoice(ctx context.Context, externalID st
 func (s *CustomersService) GetCustomerUsage(ctx context.Context, externalID string, params *GetCustomerUsageParams, opts ...RequestOption) (*GetCustomerUsageResponse, error) {
 	var out GetCustomerUsageResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/usage", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DisputesService is the disputes namespace of the API.
+type DisputesService service
+
+// ListDisputes: The cases customers opened with their banks about a payment, newest first (GET /v1/disputes).
+//
+// A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it:
+// `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it
+// decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won.
+// Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make
+// has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live
+// account. `503` when the payment service does not answer.
+func (s *DisputesService) ListDisputes(ctx context.Context, params *ListDisputesParams, opts ...RequestOption) (*ListDisputesResponse, error) {
+	var out ListDisputesResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/disputes", query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

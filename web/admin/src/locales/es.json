@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Éxito y fallo registrados a la vez",
       "settlement_missing": "Pagado, no está en la liquidación del proveedor",
       "settlement_mismatch": "El importe liquidado difiere",
-      "fee_mismatch": "La comisión del proveedor difiere"
+      "fee_mismatch": "La comisión del proveedor difiere",
+      "payment_disputed": "Pago disputado, sin resolver"
     },
     "ledgerKind": {
       "charge": "cobro",
@@ -225,6 +226,16 @@
       "not_reported": "Pagado, no informado",
       "pending_payout": "Informado, pendiente de pago",
       "settled": "Liquidado"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraude alegado",
+      "general": "General",
+      "product_not_received": "Producto no recibido",
+      "product_unacceptable": "Producto inaceptable",
+      "subscription_canceled": "Suscripción cancelada",
+      "duplicate": "Pago duplicado",
+      "unrecognized": "No reconocido",
+      "credit_not_processed": "Abono no procesado"
     }
   },
   "tenants": {
@@ -1239,16 +1250,18 @@
         "badRate": "No es un porcentaje: de 0 a 100 con como mucho dos decimales."
       },
       "dunning": {
-        "title": "Reintentos de pago",
+        "title": "Reintentos de pago y contracargos",
         "hint": "Cuando se rechaza un cobro, Payrudder lo reintenta tras cada espera de abajo y después da la factura por incobrable. Las esperas son en horas (en minutos en una cuenta sandbox).",
         "defaults": "No has configurado nada: se muestran las esperas estándar.",
         "retry": "Reintento {n}",
         "delay": "Horas antes del reintento {n}",
         "add": "Añadir un reintento",
-        "save": "Guardar reintentos",
-        "saved": "Reintentos guardados.",
+        "save": "Guardar ajustes",
+        "saved": "Ajustes guardados.",
         "none": "Sin reintentos: un cobro rechazado se abandona de inmediato.",
-        "bad": "Cada espera es un número entero de 1 a 720."
+        "bad": "Cada espera es un número entero de 1 a 720.",
+        "blockOnChargeback": "Bloquear al cliente cuando se abre un contracargo",
+        "blockOnChargebackHint": "Lo bloquea con la categoría contracargo: no podrá hacer compras nuevas y ya no podrá pagar una factura abierta. El bloqueo nunca se levanta solo; usted lo levanta en el cliente. Una consulta no bloquea."
       },
       "promotions": {
         "title": "Promociones",
@@ -6296,5 +6309,43 @@
         "reset_by_operator": "Inicio de sesión en dos pasos restablecido por el soporte"
       }
     }
+  },
+  "disputes": {
+    "tab": "Disputas",
+    "tabsLabel": "Pagos y disputas",
+    "tabs": {
+      "payments": "Pagos",
+      "disputes": "Disputas"
+    },
+    "title": "Disputas",
+    "hint": "Casos que el cliente abrió en su banco sobre este pago. Respóndalos en su proveedor de pagos; Payrudder muestra en qué punto está cada uno.",
+    "empty": "No hay disputas. Un caso aparece aquí cuando un cliente cuestiona un pago en su banco.",
+    "outcomeLabel": "Resultado",
+    "allOutcomes": "Todos los resultados",
+    "kindLabel": "Tipo",
+    "allKinds": "Todos los tipos",
+    "outcome": {
+      "open": "Abierta",
+      "won": "Ganada",
+      "lost": "Perdida"
+    },
+    "kind": {
+      "chargeback": "Contracargo",
+      "inquiry": "Consulta"
+    },
+    "means": {
+      "openChargeback": "El banco del cliente revirtió este pago: el proveedor retiró el dinero hasta que decida. Envíe sus pruebas antes de la fecha indicada abajo.",
+      "openInquiry": "El banco del cliente pregunta por este pago. No se ha retirado dinero; responda a la solicitud del proveedor para que no se convierta en un contracargo.",
+      "wonChargeback": "Resuelta a su favor: el dinero ha vuelto a usted.",
+      "wonInquiry": "Cerrada sin convertirse en contracargo: no se perdió nada.",
+      "lost": "Ganó el titular de la tarjeta: el dinero se queda con él."
+    },
+    "provider": "Proveedor",
+    "reason": "Motivo",
+    "evidenceDue": "Pruebas hasta",
+    "opened": "Abierta",
+    "closed": "Cerrada",
+    "reference": "Caso",
+    "case": "Caso"
   }
 }

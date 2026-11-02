@@ -616,11 +616,79 @@ func (c *Client) savedMethod(ctx context.Context, n payments.Notification, custo
 	return n, nil
 }
 
+// disputeOutcome reads a Dispute's status (docs.stripe.com/api/disputes/object, read 2026-11-02). warning_* are inquiries: no money is taken back, and Stripe closes an
+// unanswered one after 120 days with warning_closed (docs.stripe.com/disputes/how-disputes-work). prevented is "a dispute that was prevented from becoming a formal
+// chargeback". ok is false for a status this code does not know: the event is ignored rather than guessed at.
+func disputeOutcome(status string) (outcome payments.DisputeOutcome, formal, ok bool) {
+	switch status {
+	case "needs_response", "under_review", "appeal_needs_response", "appeal_under_review":
+		return payments.DisputeOpen, true, true
+	case "warning_needs_response", "warning_under_review":
+		return payments.DisputeOpen, false, true
+	case "won":
+		return payments.DisputeWon, true, true
+	case "lost":
+		return payments.DisputeLost, true, true
+	case "warning_closed", "prevented":
+		return payments.DisputeWon, false, true
+	}
+	return "", false, false
+}
+
+// dispute turns the five dispute events (charge.dispute.created, .updated, .closed, .funds_withdrawn, .funds_reinstated: docs.stripe.com/api/events/types) into one
+// notification about the case as the object says it now. Which payment it is about is the PaymentIntent, the reference the ledger holds for a Stripe charge: the
+// dispute names it, or, when "payment_intent" is null, the Charge does and is retrieved ("If payment_intent is null, retrieve the Charge and use its payment_intent
+// field", docs.stripe.com/billing/subscriptions/webhooks, read 2026-11-02). A charge with no PaymentIntent is not one of ours: the event is ignored.
+func (c *Client) dispute(ctx context.Context, n payments.Notification, object json.RawMessage) (payments.Notification, error) {
+	var d struct {
+		ID              string  `json:"id"`
+		Status          string  `json:"status"`
+		Reason          string  `json:"reason"`
+		Amount          int64   `json:"amount"`
+		Currency        string  `json:"currency"`
+		Charge          string  `json:"charge"`
+		PaymentIntent   *string `json:"payment_intent"`
+		EvidenceDetails struct {
+			DueBy int64 `json:"due_by"`
+		} `json:"evidence_details"`
+	}
+	if err := json.Unmarshal(object, &d); err != nil {
+		return n, fmt.Errorf("stripe: dispute: %w", err)
+	}
+	outcome, formal, ok := disputeOutcome(d.Status)
+	if !ok || d.ID == "" {
+		return n, nil
+	}
+	pi := ""
+	if d.PaymentIntent != nil {
+		pi = *d.PaymentIntent
+	}
+	if pi == "" && d.Charge != "" {
+		var ch struct {
+			PaymentIntent string `json:"payment_intent"`
+		}
+		if err := c.do(ctx, http.MethodGet, "/v1/charges/"+url.PathEscape(d.Charge), nil, "", &ch); err != nil {
+			return n, err
+		}
+		pi = ch.PaymentIntent
+	}
+	if pi == "" {
+		return n, nil
+	}
+	ev := &payments.DisputeEvent{ID: d.ID, Status: d.Status, Outcome: outcome, Formal: formal, Reason: d.Reason}
+	if d.EvidenceDetails.DueBy > 0 {
+		ev.EvidenceDue = time.Unix(d.EvidenceDetails.DueBy, 0).UTC()
+	}
+	n.Kind, n.ProviderRef, n.Currency, n.AmountMinor, n.Dispute = payments.KindDispute, pi, strings.ToUpper(d.Currency), d.Amount, ev
+	return n, nil
+}
+
 // WebhookEvents are the event types the adapter turns into notifications (ConfirmNotification); the endpoint RegisterWebhook creates is enabled for exactly these.
 var WebhookEvents = []string{
 	"payment_intent.succeeded", "payment_intent.payment_failed",
 	"checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed",
 	"refund.updated", "refund.failed",
+	"charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed", "charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated",
 }
 
 // RegisterWebhook creates the webhook endpoint at Stripe (POST /v1/webhook_endpoints, docs.stripe.com/api/webhook_endpoints/create, read 2026-11-02): enabled for
@@ -784,6 +852,8 @@ func (c *Client) ConfirmNotification(ctx context.Context, body []byte, header ht
 		}
 		n.Kind, n.ProviderRef, n.Currency, n.AmountMinor = payments.KindCharge, s.PaymentIntent, strings.ToUpper(s.Currency), s.AmountTotal
 		n.Ref.IdempotencyKey = s.Metadata["payrudder_key"]
+	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed", "charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
+		return c.dispute(ctx, n, e.Data.Object)
 	case "refund.updated", "refund.failed":
 		var r struct {
 			ID       string            `json:"id"`

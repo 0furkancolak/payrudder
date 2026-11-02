@@ -123,3 +123,12 @@ Defaults the implementer chose (**default, not agreed**):
 2. **The dunning sweep applies the same gate to the retry of a declined charge** (row 9 above): a customer blocked for fraud or a chargeback is no longer dunned. A block for another reason leaves what is invoiced payable and dunned as before.
 
 Tests: model `TestFirstChargeHeldByThePaymentGate` (the table, every guard context incl. `Held`); billing `TheFirstChargeIsHeldByThePaymentGate` (held, Retry while the gate says no, the sweep while it says no, released as the first charge, void; fails without the change: checked once by making the gate unasked), `DunningWaitsForATenantOnHold`. **Not verified here:** the customer lookup in the gate against a real plans-svc under load (one `GetCustomer` per first charge and per due retry); the rollout order (an older billing-svc does not know the state PAYMENT_HELD: roll billing-svc out before the first freeze).
+
+## Leftover built (2026-11-02, branch `feat/payments-disputes`): a chargeback blocks the customer, if the seller says so
+
+Defaults the implementer chose (**default, not agreed**):
+
+1. **`block_on_chargeback`** in the dunning settings (`PUT /v1/dunning-settings`, default off; a request that does not name it keeps it): when a *formal* dispute opens (not an inquiry, not a later step of the case) billing asks plans-svc to block the customer with category `chargeback` (the reason names the provider and the case; `suspend_service` off). Blocking a blocked customer keeps the first block; **nothing lifts it when the case is won**. With the block on the customer, open invoices are refused on the hosted pages (row 6) and held / not dunned (rows 9 and 9b).
+2. **Not built:** a notice to the customer of the block, an automatic unblock, a block category per provider reason.
+
+Tests: billing `PaymentDisputesAreAnnouncedOncePerStepAndBlockWhenAsked` (off by default, on blocks once for the formal dispute that opens, an inquiry / a win / a loss never block, the setting is kept by a request that does not name it). The dispute itself: [reconciliation.md](../reconciliation.md#disputes-payment_disputed) and the Stripe matrix, finding 13.

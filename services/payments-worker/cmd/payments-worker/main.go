@@ -357,18 +357,20 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 		h.Customers = plansSync // a charge to a provider that vets the payer carries the customer's own details
 	}
 	var billing webhook.BillingAPI
+	var disputes webhook.DisputesAPI
 	var transferBilling transfercommand.Billing
 	if cfg.BillingAddr != "" {
 		conn, err := dial(cfg.BillingAddr, "billing-svc")
 		if err != nil {
 			return nil, nil, err
 		}
-		billing = webhook.BillingClient{Client: billingv1.NewBillingServiceClient(conn)}
+		billingClient := webhook.BillingClient{Client: billingv1.NewBillingServiceClient(conn)}
+		billing, disputes = billingClient, billingClient
 		transferBilling = transfers.BillingClient{Invoices: billingv1.NewBillingServiceClient(conn), Admin: billingv1.NewBillingAdminServiceClient(conn)}
 	}
 	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
-	return &webhook.Server{Plans: plansSync, Billing: billing, SettlementLag: cfg.SettlementLag, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
+	return &webhook.Server{Plans: plansSync, Billing: billing, Disputes: disputes, DisputeCases: store.Disputes{DB: db}, SettlementLag: cfg.SettlementLag, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
