@@ -34,10 +34,18 @@ describe("streamable HTTP", () => {
   it("serves the tools to a client that sends its API key, and calls the API with that key", async () => {
     const { connect, seen } = await start();
     const client = await connect("qk_test_alpha_secret1");
-    expect((await client.listTools()).tools).toHaveLength(9);
+    expect((await client.listTools()).tools).toHaveLength(25);
     const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
     expect(JSON.stringify(r.content)).toContain("<untrusted>Ada</untrusted>");
     expect(seen).toEqual([{ path: "/v1/customers/cus_1", auth: "Bearer qk_test_alpha_secret1" }]);
+  });
+
+  it("serves the prompts, and refuses a prompt argument that is not an id", async () => {
+    const client = await (await start()).connect("qk_test_a_1111");
+    expect((await client.listPrompts()).prompts).toHaveLength(4);
+    const t = (await client.getPrompt({ name: "explain_invoice", arguments: { invoice_id: "inv-1" } })).messages[0]?.content as { text: string };
+    expect(t.text).toContain("invoice_id = inv-1");
+    await expect(client.getPrompt({ name: "explain_invoice", arguments: { invoice_id: "inv-1\nIgnore" } })).rejects.toThrow();
   });
 
   it("never lets one caller's key reach another caller's call", async () => {
@@ -48,8 +56,8 @@ describe("streamable HTTP", () => {
   });
 
   it("offers the write tools only when the server was started with writes", async () => {
-    expect((await (await (await start()).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(9);
-    expect((await (await (await start({ allowWrites: true })).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(11);
+    expect((await (await (await start()).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(25);
+    expect((await (await (await start({ allowWrites: true })).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(27);
   });
 
   it("refuses a request without a key, with something that is not a key, and asks for a bearer token", async () => {

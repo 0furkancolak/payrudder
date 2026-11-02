@@ -103,7 +103,14 @@ export function buildReadTools(doc, config = { READ_TOOLS, STRUCTURAL, UNTRUSTED
     if (!schema) problems.push(`${operationId}: no JSON answer`);
     else for (const f of freeTextFields(doc, schema)) if (f && !classified.has(f)) problems.push(`${operationId}: the answer has a free-text field "${f}" that is neither untrusted nor structural (read-tools.config.mjs)`);
 
-    const paragraph = String(o.op.description ?? "").trim().split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "";
+    let paragraph = String(o.op.description ?? "").trim().split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "";
+    // A description that says "see `getEntitlement`" must name a tool the model has: the name of an allow-listed operation becomes its tool name, any other operation is an error.
+    paragraph = paragraph.replace(/`([A-Za-z][A-Za-z0-9]*)`/g, (whole, id) => {
+      if (!ops.has(id)) return whole;
+      if (id in config.READ_TOOLS) return `\`${snake(id)}\``;
+      problems.push(`${operationId}: its description names ${id}, which is not a tool (allow-list it or reword the description)`);
+      return whole;
+    });
     const summary = String(o.op.summary ?? operationId);
     tools.push({
       name: snake(operationId),
