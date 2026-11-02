@@ -34,6 +34,8 @@ const (
 	KindCode Kind = "code"
 	// KindTicketNew tells an operator that an account opened a support ticket.
 	KindTicketNew Kind = "ticket_new"
+	// KindTicketCustomerReply tells the operators that the person answered the operator on a ticket (plan 12): one mail when the ticket was waiting for them.
+	KindTicketCustomerReply Kind = "ticket_customer_reply"
 	// KindTicketReply tells the person who opened a ticket that the operator answered it.
 	KindTicketReply Kind = "ticket_reply"
 	// KindTicketStatus tells the person who opened a ticket that its status changed (the operator solved or closed it, or it closed by itself).

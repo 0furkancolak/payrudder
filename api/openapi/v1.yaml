@@ -4556,6 +4556,7 @@ paths:
         - { name: assignee, in: query, schema: { type: string } }
         - { name: search, in: query, schema: { type: string }, description: Matches the subject and the ticket number }
         - { name: sla_breached, in: query, schema: { type: boolean }, description: Only tickets whose first answer is overdue }
+        - { name: tag, in: query, schema: { type: string }, description: Only tickets that carry this tag }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketList" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4571,7 +4572,7 @@ paths:
     patch:
       operationId: updateSupportTicket
       tags: [Support]
-      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
+      summary: Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -4596,6 +4597,73 @@ paths:
       responses:
         "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketResult" } } } }
         "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/support/unread:
+    get:
+      operationId: appSupportUnread
+      tags: [Support]
+      summary: How many of the person's tickets have an answer or a status change they have not read (the badge on the help page's link)
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportUnread" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/report:
+    get:
+      operationId: getSupportReport
+      tags: [Support]
+      summary: The queue and the first-answer times of the last 30 days (operator)
+      description: What waits for the operator and how much of it is past its first-answer deadline, every ticket by status, the waiting ones by priority, and for the tickets opened in the window how many were answered, how many in time, and how long the first answer took (median and average, wall-clock seconds).
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportReport" } } } }
+  /admin/v1/support/operators:
+    get:
+      operationId: listSupportOperators
+      tags: [Support]
+      summary: The addresses a ticket can be assigned to (operator)
+      description: The platform's operator addresses (`PAYRUDDER_OPERATOR_EMAILS`), with the name of the user who has one.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportOperatorList" } } } }
+  /admin/v1/support/canned-replies:
+    get:
+      operationId: listSupportCannedReplies
+      tags: [Support]
+      summary: The operators' canned replies, by title (operator)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyList" } } } }
+    post:
+      operationId: createSupportCannedReply
+      tags: [Support]
+      summary: Make a canned reply (operator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportCannedReplyInput" }
+      responses:
+        "201": { description: Made, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/canned-replies/{id}:
+    put:
+      operationId: updateSupportCannedReply
+      tags: [Support]
+      summary: Change a canned reply (operator)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportCannedReplyInput" }
+      responses:
+        "200": { description: Changed, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteSupportCannedReply
+      tags: [Support]
+      summary: Delete a canned reply (operator)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts:
     get:
@@ -6072,7 +6140,7 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
-      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread]
+      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread, tags]
       properties:
         id: { type: string, format: uuid }
         number: { type: integer, format: int64, description: "The short number shown as #1042" }
@@ -6097,13 +6165,14 @@ components:
         solve_time: { type: string, format: date-time, nullable: true }
         message_count: { type: integer }
         unread: { type: boolean, description: "True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account" }
+        tags: { type: array, items: { type: string }, description: "The operator's own labels, at most five. Always empty in what the person's calls return" }
     SupportEvent:
       type: object
       required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
-      description: One change of a ticket's status, priority or assignee. The history is append-only.
+      description: One change of a ticket's status, priority, assignee or tags. The history is append-only.
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [status, priority, assignee] }
+        kind: { type: string, enum: [status, priority, assignee, tags], description: A change of tags has the list joined by commas in from_value and to_value }
         actor_kind: { type: string, enum: [customer, operator, system], description: "system is the job that closes a ticket that waited for the person for 7 days" }
         actor_name: { type: string }
         from_value: { type: string }
@@ -6156,12 +6225,74 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [solved, open] }
+    SupportUnread:
+      type: object
+      required: [unread]
+      properties:
+        unread: { type: integer }
+    SupportCount:
+      type: object
+      required: [value, count]
+      properties:
+        value: { type: string }
+        count: { type: integer }
+    SupportReport:
+      type: object
+      required: [waiting, breached, by_status, by_priority, window_days, opened, answered, answered_on_time, median_first_answer_seconds, average_first_answer_seconds]
+      properties:
+        waiting: { type: integer, description: Tickets waiting for the operator (open) }
+        breached: { type: integer, description: Of those, the ones with no first answer past their deadline }
+        by_status: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: Every ticket by status }
+        by_priority: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: The tickets still waiting (open or pending) by priority }
+        window_days: { type: integer }
+        opened: { type: integer, description: Tickets opened in the window }
+        answered: { type: integer, description: Of those, the ones with a first answer }
+        answered_on_time: { type: integer, description: Of those, the ones answered by their deadline }
+        median_first_answer_seconds: { type: integer, format: int64, description: "Wall-clock seconds from opening to the first public answer; 0 when none was answered" }
+        average_first_answer_seconds: { type: integer, format: int64 }
+    SupportOperator:
+      type: object
+      required: [email, name]
+      properties:
+        email: { type: string }
+        name: { type: string, description: The name of the user with that address; empty when nobody has signed up with it }
+    SupportOperatorList:
+      type: object
+      required: [operators]
+      properties:
+        operators: { type: array, items: { $ref: "#/components/schemas/SupportOperator" } }
+    SupportCannedReply:
+      type: object
+      required: [id, title, body, updated_by, update_time]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        updated_by: { type: string }
+        update_time: { type: string, format: date-time }
+    SupportCannedReplyList:
+      type: object
+      required: [replies]
+      properties:
+        replies: { type: array, items: { $ref: "#/components/schemas/SupportCannedReply" } }
+    SupportCannedReplyResult:
+      type: object
+      required: [reply]
+      properties:
+        reply: { $ref: "#/components/schemas/SupportCannedReply" }
+    SupportCannedReplyInput:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        body: { type: string, minLength: 1, maxLength: 10000 }
     SupportUpdateRequest:
       type: object
       properties:
         status: { type: string, enum: [open, pending, solved, closed] }
         priority: { type: string, enum: [low, normal, high, urgent] }
-        assignee: { type: string, maxLength: 100 }
+        assignee: { type: string, maxLength: 100, description: "One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed" }
+        tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30, pattern: "^[a-z0-9][a-z0-9-]*$" }, description: "With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once" }
     SupportOperatorReplyRequest:
       type: object
       required: [body]

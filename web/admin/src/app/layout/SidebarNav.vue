@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
+import { useMyUnread, useSupportReport } from "@/features/support/api";
+import { isOperator } from "@/shared/lib/session";
 import { cn } from "@/shared/lib/utils";
 import type { NavItem, NavSection } from "./nav";
 
@@ -11,6 +13,15 @@ import type { NavItem, NavSection } from "./nav";
 const props = defineProps<{ sections: NavSection[]; current: NavItem | undefined; collapsed?: boolean; label: string }>();
 const emit = defineEmits<{ navigate: [] }>();
 const { t } = useI18n();
+
+/**
+ * The count beside a link: the tickets the person has news on (the help page's link), or the tickets waiting for the operator (the inbox's). Each is asked only where
+ * its link is in the list, and again every minute and after any change in the help desk; a count that cannot be had shows nothing.
+ */
+const has = (key: string) => props.sections.some((s) => s.items.some((it) => it.key === key));
+const unread = useMyUnread(() => has("support"));
+const waiting = useSupportReport(() => has("supportInbox") && isOperator.value);
+const badge = (key: string): number => (key === "support" ? (unread.data.value ?? 0) : key === "supportInbox" ? (waiting.data.value?.waiting ?? 0) : 0);
 
 const isCurrent = (it: NavItem) => props.current?.key === it.key && props.current?.to === it.to;
 
@@ -42,6 +53,13 @@ function row(it: NavItem): string {
             <span v-if="isCurrent(it)" class="bg-rail-primary absolute inset-y-2 start-0 w-1 rounded-full" aria-hidden="true" />
             <component :is="it.icon" class="size-[1.15rem] shrink-0" aria-hidden="true" />
             <span :class="collapsed ? 'sr-only' : 'truncate'">{{ t(`shell.items.${it.label}`) }}</span>
+            <span
+              v-if="badge(it.key) > 0"
+              :class="collapsed ? 'bg-rail-primary absolute end-1.5 top-1.5 size-2 rounded-full' : 'bg-rail-primary text-neutral-900 ms-auto min-w-5 rounded-full px-1.5 text-center text-[0.7rem] leading-5 font-semibold tabular-nums'"
+              :data-testid="`nav-badge-${it.key}`"
+              :title="t(it.key === 'support' ? 'support.badge.unread' : 'support.badge.waiting', { n: badge(it.key) })"
+              ><span :class="collapsed ? 'sr-only' : ''">{{ badge(it.key) }}</span></span
+            >
           </Link>
         </li>
       </ul>

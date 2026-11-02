@@ -42,8 +42,9 @@ func (s *Service) openerMail(ctx context.Context, q *sqlc.Queries, id uuid.UUID,
 	return []usermail.Mail{{Kind: kind, To: r.OpenerEmail, Locale: r.OpenerLocale, Link: s.link("/app/support", id), Ticket: number(r.Number), Subject: r.Subject, Status: r.Status}}, nil
 }
 
-// operatorMails is the notice of a new ticket, one mail to each operator address, in the language of the operator's user (English for an address without one).
-func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UUID) ([]usermail.Mail, error) {
+// operatorMails is the notice of a new ticket (KindTicketNew) or of the person's answer on one (KindTicketCustomerReply): one mail to each operator address, in the
+// language of the operator's user (English for an address without one).
+func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UUID, kind usermail.Kind) ([]usermail.Mail, error) {
 	if s.cfg.Mail == nil || len(s.cfg.Operators) == 0 {
 		return nil, nil
 	}
@@ -61,7 +62,7 @@ func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UU
 	}
 	out := make([]usermail.Mail, len(s.cfg.Operators))
 	for i, to := range s.cfg.Operators {
-		out[i] = usermail.Mail{Kind: usermail.KindTicketNew, To: to, Locale: locale[to], Link: s.link("/support", id), Account: r.AccountName, Ticket: number(r.Number), Subject: r.Subject, Priority: r.Priority}
+		out[i] = usermail.Mail{Kind: kind, To: to, Locale: locale[to], Link: s.link("/support", id), Account: r.AccountName, Ticket: number(r.Number), Subject: r.Subject, Priority: r.Priority}
 	}
 	return out, nil
 }
