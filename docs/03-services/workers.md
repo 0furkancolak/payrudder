@@ -168,6 +168,14 @@ Phase 29 adds `banktransfer`: its charge calls nothing and answers `PaymentError
 window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/invoices/{invoice}/transfer`, `POST …/transfer/receipts` (idempotent per bank reference) and `POST …/transfer/reject` confirm or give up on a transfer.
 `PAYMENTS_TRANSFER_WINDOW_DAYS` (14) is the window when the tenant's account sets none. See phase 29.
 
+Plan 22 G7 adds the reconciliation workflow ([`docs/reconciliation.md`](../reconciliation.md)): a queue of kept discrepancies with an owner, a note and a history, a schedule
+(`PAYMENTS_RECONCILE_INTERVAL`, 6h, 0 turns it off; needs `PAYRUDDER_BILLING_ADDR`), settlement lines (read from Stripe's balance transactions and payouts, or imported as CSV)
+that tell "paid" from "settled", and the lag after which a payment the provider never reported is a finding (`PAYMENTS_SETTLEMENT_LAG`, 7d).
+
+Plan 22 G8 adds [`docs/provider-health.md`](../provider-health.md): a circuit breaker per provider account (`PAYMENTS_BREAKER_FAILURES` 5, `PAYMENTS_BREAKER_OPEN_FOR` 30s) that
+makes new charges fail fast while the provider is down, a periodic health check of every account (`PAYMENTS_HEALTH_INTERVAL` 5m, 0 turns it off; `PAYMENTS_HEALTH_TIMEOUT` 10s),
+and a failover to a second configured account that happens only when the first provider definitely did not process the charge, never after a timeout.
+
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
 and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See phase 15.
 

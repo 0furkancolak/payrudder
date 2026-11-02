@@ -37,6 +37,10 @@ SELECT count(*) FROM (
   SELECT 1 FROM payment_ledger l WHERE l.tenant_id = $1 AND l.environment <> 'sandbox'
   UNION ALL
   SELECT 1 FROM payment_attempts a WHERE a.tenant_id = $1 AND a.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM reconciliation_discrepancies d WHERE d.tenant_id = $1 AND d.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM settlement_lines s WHERE s.tenant_id = $1 AND s.environment <> 'sandbox'
 ) live
 `
 
@@ -106,6 +110,54 @@ DELETE FROM provider_subscriptions WHERE tenant_id = $1
 
 func (q *Queries) ResetProviderSubscriptions(ctx context.Context, tenantID uuid.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, resetProviderSubscriptions, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetReconciliationDiscrepancies = `-- name: ResetReconciliationDiscrepancies :execrows
+DELETE FROM reconciliation_discrepancies WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetReconciliationDiscrepancies(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetReconciliationDiscrepancies, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetReconciliationEvents = `-- name: ResetReconciliationEvents :execrows
+DELETE FROM reconciliation_events WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetReconciliationEvents(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetReconciliationEvents, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetReconciliationRuns = `-- name: ResetReconciliationRuns :execrows
+DELETE FROM reconciliation_runs WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetReconciliationRuns(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetReconciliationRuns, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetSettlementLines = `-- name: ResetSettlementLines :execrows
+DELETE FROM settlement_lines WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetSettlementLines(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetSettlementLines, tenantID)
 	if err != nil {
 		return 0, err
 	}

@@ -946,7 +946,22 @@ test.describe("providers", () => {
 });
 
 test.describe("payments", () => {
-  test("the ledger is listed and a reconciliation names what does not agree", async ({ page }) => {
+  const seen = { first_seen_at: "2026-10-20T10:00:00Z", last_seen_at: "2026-10-21T10:00:00Z", environment: "live", period: "2026-10" };
+  const queue = (extra: Record<string, unknown>[] = []) => ({
+    discrepancies: [
+      { id: 1, kind: "paid_without_charge", invoice_id: "inv-1", number: "INV-2026-000001", currency: "TRY", billed_minor: 500, status: "open", ...seen },
+      { id: 2, kind: "amount_mismatch", invoice_id: "inv-2", number: "INV-2026-000002", provider: "iyzico", provider_ref: "P2", currency: "TRY", billed_minor: 700, ledger_minor: 650, status: "explained", owner: "ayse", note: "fee", ...seen },
+      ...extra,
+    ],
+    counts: [
+      { status: "open", kind: "paid_without_charge", n: 1 },
+      { status: "explained", kind: "amount_mismatch", n: 1 },
+    ],
+    next_page_token: "",
+    last_run: { environment: "live", period: "2026-10", started_by: "schedule", actor: "system", result: "ok", found: 2, opened: 0, reopened: 0, cleared: 0, finished_at: "2026-10-21T10:00:00Z" },
+  });
+
+  test("the ledger is listed and the review queue keeps what a run found", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === `/admin/v1/tenants/${TENANT}/ledger`) {
         return {
@@ -957,48 +972,131 @@ test.describe("payments", () => {
           },
         };
       }
-      if (c.path === `/admin/v1/tenants/${TENANT}/reconciliation`) {
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies`) return { body: queue() };
+      if (c.method === "POST" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/runs`) return { body: { period: "2026-10", paid_invoices: 3, successful_charges: 2, found: 2, opened: 1, reopened: 0, cleared: 0, discrepancy_counts: {} } };
+      if (c.path === `/admin/v1/tenants/${TENANT}/settlement/payments`) return { body: { period: c.query.get("period"), payments: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payments");
+    const entry = page.getByRole("row", { name: /iyzico/ }).filter({ hasText: "P1" });
+    await expect(entry).toContainText("11.16");
+    await expect(entry).toContainText("succeeded");
+
+    // The queue loads what needs a person (open and explained), says when the schedule last ran, and counts by status.
+    expect(gw.called("GET", `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies`)[0]?.query.get("status")).toBe("open,explained");
+    await expect(page.getByTestId("last-run")).toContainText("schedule");
+    await expect(page.getByLabel("Discrepancies by status")).toContainText("Open: 1");
+    const mismatch = page.getByRole("row", { name: /INV-2026-000002/ });
+    await expect(mismatch).toContainText("6.50");
+    await expect(mismatch).toContainText("Explained");
+    await expect(mismatch).toContainText("ayse");
+
+    const form = page.getByRole("form", { name: "Reconcile with the ledger" });
+    await form.getByLabel("Period (YYYY-MM)").fill("2026-10");
+    await form.getByRole("button", { name: "Reconcile" }).click();
+    await expect(page.getByTestId("run-result")).toContainText("2 found, 1 new");
+    const run = gw.called("POST", `/admin/v1/tenants/${TENANT}/reconciliation/runs`)[0];
+    expect(run?.query.get("environment")).toBe("live");
+    expect(run?.body).toEqual({ period: "2026-10" });
+  });
+
+  test("a discrepancy is explained with a note, and many are resolved together after a question", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `/admin/v1/tenants/${TENANT}/ledger`) return { body: { entries: [] } };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies`) return { body: queue() };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies/1`) return { body: { discrepancy: queue().discrepancies[0], events: [{ id: 1, action: "detected", actor: "system", to_status: "open", created_at: "2026-10-20T10:00:00Z" }] } };
+      if (c.method === "POST" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies/2/resolve`) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "payments.reconcile.bad_resolution", message: "no" } } };
+      if (c.method === "POST" && /\/reconciliation\/discrepancies\/\d+\/(explain|resolve)$/.test(c.path)) return { body: { discrepancy: queue().discrepancies[0] } };
+      if (c.path === `/admin/v1/tenants/${TENANT}/settlement/payments`) return { body: { period: "2026-10", payments: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payments");
+
+    // A row's own action opens the form: a note is required before the button works.
+    await page.getByRole("row", { name: /INV-2026-000001/ }).getByRole("button", { name: "More actions" }).click();
+    await page.getByRole("menuitem", { name: "Explain" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("button", { name: "Explain" })).toBeDisabled();
+    await dialog.getByLabel("Note").fill("waiting for the provider's report");
+    await dialog.getByRole("button", { name: "Explain" }).click();
+    expect(gw.called("POST", `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies/1/explain`)[0]?.body).toEqual({ note: "waiting for the provider's report" });
+
+    // Both rows ticked: resolve them with one resolution; it asks first, and the one the server refuses is named and stays ticked.
+    await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+    await page.getByRole("button", { name: "Resolve selected" }).click();
+    const form = page.getByRole("dialog");
+    await expect(form.getByRole("combobox", { name: "Resolution" }).locator("option")).not.toContainText(["Ledger fact written"]);
+    await form.getByLabel("Note").fill("checked at the provider");
+    await form.getByRole("button", { name: "Resolve" }).click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("Resolve 2 discrepancies?");
+    await page.getByTestId("confirm-accept").click();
+    await expect(page.getByTestId("bulk-note")).toContainText("1 done, 1 not changed");
+    const bodies = gw.called("POST", /\/reconciliation\/discrepancies\/\d+\/resolve$/);
+    expect(bodies.map((b) => b.path.split("/").at(-2))).toEqual(["1", "2"]);
+    expect(bodies[0]?.body).toEqual({ resolution: "credit_note", note: "checked at the provider" });
+  });
+
+  test("a discrepancy opens with its history, and a clean queue says so", async ({ page }) => {
+    let empty = false;
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `/admin/v1/tenants/${TENANT}/ledger`) return { body: { entries: [] } };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies`) return { body: empty ? { discrepancies: [], counts: [], next_page_token: "" } : queue() };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies/1`) {
+        return { body: { discrepancy: queue().discrepancies[0], events: [{ id: 1, action: "detected", actor: "system", to_status: "open", created_at: "2026-10-20T10:00:00Z" }] } };
+      }
+      if (c.path === `/admin/v1/tenants/${TENANT}/settlement/payments`) return { body: { period: "2026-10", payments: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payments");
+    await page.getByRole("row", { name: /INV-2026-000001/ }).click();
+    await expect(page.getByTestId("discrepancy-events")).toContainText("Found");
+    await expect(page.getByTestId("discrepancy-events")).toContainText("system");
+    await page.keyboard.press("Escape");
+    empty = true;
+    await page.reload();
+    await expect(page.getByText("Nothing to review.")).toBeVisible();
+    await expect(page.getByText("Nothing in the ledger yet.")).toBeVisible();
+  });
+
+  test("a period's payments are paid, reported or settled, and a report is imported as a file", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === `/admin/v1/tenants/${TENANT}/ledger`) return { body: { entries: [] } };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/reconciliation/discrepancies`) return { body: queue() };
+      if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/settlement/payments`) {
         return {
           body: {
             period: c.query.get("period"),
-            paid_invoices: 3,
-            successful_charges: 2,
-            discrepancy_counts: { paid_without_charge: 1, amount_mismatch: 1 },
-            discrepancies: [
-              { kind: "paid_without_charge", invoice_id: "inv-1", number: "INV-2026-000001", currency: "TRY", billed_minor: 500 },
-              { kind: "amount_mismatch", invoice_id: "inv-2", number: "INV-2026-000002", provider: "iyzico", provider_ref: "P2", currency: "TRY", billed_minor: 700, ledger_minor: 650 },
+            payments: [
+              { invoice_id: "inv-a", number: "INV-A", provider: "stripe", provider_ref: "pi_a", currency: "USD", amount_minor: 1000, paid_at: "2026-10-03T09:00:00Z", state: "settled", settlement_currency: "USD", fee_minor: 59, expected_fee_minor: 59, settled_at: "2026-10-12T00:00:00Z", settlement_batch: "po_1" },
+              { invoice_id: "inv-b", number: "INV-B", provider: "stripe", provider_ref: "pi_b", currency: "USD", amount_minor: 500, paid_at: "2026-10-04T09:00:00Z", state: "pending_payout" },
+              { invoice_id: "inv-c", number: "INV-C", provider: "stripe", provider_ref: "pi_c", currency: "USD", amount_minor: 700, paid_at: "2026-10-05T09:00:00Z", state: "not_reported" },
             ],
           },
         };
       }
+      if (c.method === "POST" && c.path === `/admin/v1/tenants/${TENANT}/settlement/import`) return { body: { lines: 3, changed: 2 } };
       return undefined;
     });
     await gw.install(page);
     await openTenantPage(page, "/payments");
-    const entry = page.getByRole("row", { name: /iyzico/ });
-    await expect(entry).toContainText("11.16");
-    await expect(entry).toContainText("succeeded");
-    const form = page.getByRole("form", { name: "Reconcile with the ledger" });
-    await form.getByLabel("Period (YYYY-MM)").fill("2026-10");
-    await form.getByRole("button", { name: "Reconcile" }).click();
-    const result = page.getByRole("region", { name: "reconciliation result" });
-    await expect(result).toContainText("3 paid invoice(s) and 2 successful charge(s)");
-    await expect(result.getByText("Paid, no charge in the ledger: 1")).toBeVisible();
-    await expect(result.getByRole("row", { name: /INV-2026-000002/ })).toContainText("6.50");
-    expect(gw.called("GET", `/admin/v1/tenants/${TENANT}/reconciliation`)[0]?.query.get("period")).toBe("2026-10");
-  });
+    await expect(page.getByLabel("Payments by settlement state")).toContainText("Settled: 1");
+    const settled = page.getByRole("row", { name: /INV-A/ });
+    await expect(settled).toContainText("Settled");
+    await expect(settled).toContainText("po_1");
+    await expect(settled).toContainText("expected");
+    await expect(page.getByRole("row", { name: /INV-B/ })).toContainText("Reported, awaiting payout");
+    await expect(page.getByRole("row", { name: /INV-C/ })).toContainText("Paid, not reported");
 
-  test("a clean reconciliation says so", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on((c) => {
-      if (c.path === `/admin/v1/tenants/${TENANT}/ledger`) return { body: { entries: [] } };
-      if (c.path === `/admin/v1/tenants/${TENANT}/reconciliation`) return { body: { period: "2026-10", paid_invoices: 0, successful_charges: 0, discrepancy_counts: {}, discrepancies: [] } };
-      return undefined;
-    });
-    await gw.install(page);
-    await openTenantPage(page, "/payments");
-    await page.getByRole("form", { name: "Reconcile with the ledger" }).getByRole("button", { name: "Reconcile" }).click();
-    await expect(page.getByText("The invoices and the ledger agree.")).toBeVisible();
-    await expect(page.getByText("Nothing in the ledger yet.")).toBeVisible();
+    await page.getByLabel("Report (CSV)").setInputFiles({ name: "stripe.csv", mimeType: "text/csv", buffer: Buffer.from("reference,payment_ref,currency,gross,occurred_on\nl1,pi_a,USD,10.00,2026-10-03\n") });
+    await page.getByLabel("Provider (account key)").fill("stripe");
+    await page.getByRole("button", { name: "Import report" }).click();
+    await expect(page.getByTestId("import-result")).toContainText("3 line(s) read, 2 new or changed");
+    const imp = gw.called("POST", `/admin/v1/tenants/${TENANT}/settlement/import`)[0];
+    expect(imp?.query.get("environment")).toBe("live");
+    expect(imp?.query.get("provider")).toBe("stripe");
   });
 });
 

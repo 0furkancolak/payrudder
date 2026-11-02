@@ -1,47 +1,38 @@
 <script setup lang="ts">
-import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { ArrowUpRight } from "@lucide/vue";
 
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
-import { ym } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
-import { amount, amountHigh, amountLow, nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
-import { ErrorText } from "@/shared/ui/error-text";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { ErrorState } from "@/shared/ui/error-state";
-import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
-import { Input } from "@/shared/ui/input";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { PaymentContext } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
-import { useLedger, useReconcile } from "./api";
+import { useLedger } from "./api";
+import ReconcileQueue from "./ReconcileQueue.vue";
+import SettlementCard from "./SettlementCard.vue";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
 const tenantId = useRouteTenantId();
 const ledger = useLedger(tenantId);
-const reconcile = useReconcile(tenantId);
 
-const now = new Date();
-const period = ref(ym(now));
-const result = computed(() => reconcile.data.value);
-const kinds = computed(() => Object.entries(result.value?.discrepancy_counts ?? {}));
 const when = (v?: string) => fmt.date(v, "short");
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const distinct = (pick: (e: Entry) => string | undefined) => [...new Set((ledger.data.value?.entries ?? []).map((e) => pick(e) ?? "").filter(Boolean))];
@@ -88,16 +79,6 @@ useOpenParam("payment", () => !ledger.isPending.value, (id) => {
   }
 });
 const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) }];
-
-// --- the discrepancies a reconciliation found
-type Discrepancy = NonNullable<NonNullable<typeof reconcile.data.value>["discrepancies"]>[number];
-const issues = useTableState<Discrepancy>(() => result.value?.discrepancies ?? [], {
-  searchFields: (d) => [d.number, d.invoice_id, d.provider, d.provider_ref, d.detail],
-  sorts: () => [amountHigh(t, (d) => amount(d.billed_minor)), amountLow(t, (d) => amount(d.billed_minor)), nameAsc(t, (d) => d.provider), nameDesc(t, (d) => d.provider)],
-  filters: { kind: (d, v) => d.kind === v },
-});
-const issueKind = computed({ get: () => issues.filters.value.kind ?? [], set: (v: string[]) => (issues.filters.value.kind = v) });
-const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ value: k, label: label(t, te, "discrepancy", k) }))]);
 </script>
 
 <template>
@@ -149,57 +130,9 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
     <PaymentContext v-if="current?.invoice_id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.invoice_id" class="mt-6" />
   </DetailSheet>
 
-  <Card class="mb-6">
-    <div>
-      <h2 class="text-lg font-semibold">{{ t("billing.payments.reconcile") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("billing.payments.reconcileHint") }}</p>
-    </div>
-    <form class="flex flex-wrap items-center gap-2" role="form" :aria-label="t('billing.payments.reconcile')" @submit.prevent="reconcile.mutate(period)">
-      <Input v-model="period" class="w-40" :aria-label="t('billing.payments.period')" placeholder="2026-10" pattern="\d{4}-(0[1-9]|1[0-2])" required />
-      <Button type="submit" :disabled="reconcile.isPending.value">{{ t("billing.payments.run") }}</Button>
-    </form>
-    <ErrorText :error="reconcile.error.value" />
-    <div v-if="result" class="grid gap-3" role="region" :aria-label="t('billing.payments.reconcileResult')">
-      <p class="text-sm">{{ t("billing.payments.summary", { paid: result.paid_invoices ?? 0, charges: result.successful_charges ?? 0 }) }}</p>
-      <p v-if="kinds.length === 0" class="bg-success/10 text-success rounded-2xl px-4 py-3 text-sm" role="status">{{ t("billing.payments.agree") }}</p>
-      <ul v-else class="flex flex-wrap gap-2">
-        <li v-for="[kind, n] in kinds" :key="kind"><Badge variant="destructive">{{ label(t, te, "discrepancy", kind) }}: {{ n }}</Badge></li>
-      </ul>
-      <div v-if="(result.discrepancies ?? []).length > 0" class="-mx-3 border-t pt-3">
-        <DataToolbar v-model:search="issues.search.value" :active="issues.active.value" @clear="issues.clear()">
-          <FilterSelect v-model="issueKind" multiple :label="t('billing.payments.kind')" :options="issueKinds" />
-          <SortSelect v-if="issues.sorts.value.length > 0" v-model="issues.sort.value" :options="issues.sorts.value" />
-        </DataToolbar>
-        <Table>
-          <TableHeader>
-            <TableRow class="hover:bg-transparent">
-              <TableHead>{{ t("billing.payments.invoice") }}</TableHead>
-              <TableHead>{{ t("billing.payments.kind") }}</TableHead>
-              <TableHead>{{ t("billing.payments.provider") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.payments.billed") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.payments.ledgerAmount") }}</TableHead>
-              <TableHead>{{ t("billing.payments.detail") }}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="(d, i) in issues.items.value" :key="i">
-              <TableCell>
-                <PeekInvoice v-if="d.invoice_id" :id="d.invoice_id" :tenant-id="tenantId" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</PeekInvoice>
-              </TableCell>
-              <TableCell>{{ label(t, te, "discrepancy", d.kind) }}</TableCell>
-              <TableCell>{{ label(t, te, "provider", d.provider) }} <span class="mono text-xs">{{ d.provider_ref }}</span></TableCell>
-              <TableCell class="text-end tabular-nums">{{ d.billed_minor ? formatMinor(String(d.billed_minor), d.currency, locale) : "" }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ d.ledger_minor ? formatMinor(String(d.ledger_minor), d.currency, locale) : "" }}</TableCell>
-              <TableCell class="text-muted-foreground">{{ d.detail }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <TableEmpty v-if="issues.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
-        <DataPagination v-model:page="issues.page.value" v-model:size="issues.size.value" :pages="issues.pages.value" :total="issues.total.value" />
-      </div>
-      <p v-if="result.truncated" class="text-muted-foreground text-xs">{{ t("billing.payments.truncated") }}</p>
-    </div>
-  </Card>
+  <ReconcileQueue :tenant-id="tenantId" />
+
+  <SettlementCard :tenant-id="tenantId" />
 
   <CreditNotesCard :tenant-id="tenantId" />
 </template>

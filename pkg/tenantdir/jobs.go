@@ -70,6 +70,8 @@ var Jobs = []Job{
 	{"payments-worker", "command worker", true, "internal/handler, internal/store"},
 	{"payments-worker", "provider webhook server", true, "internal/webhook"},
 	{"payments-worker", "transfers and sandbox reset", true, "internal/store, internal/sandboxreset"},
+	{"payments-worker", "provider account health monitor", true, "internal/health, internal/store/health.go"},
+	{"payments-worker", "scheduled reconciliation", true, "internal/reconciliation/schedule, internal/store/reconciliation.go"},
 }
 
 // Unconverted lists the jobs that are not converted yet, in the order of Jobs.

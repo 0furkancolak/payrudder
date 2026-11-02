@@ -124,7 +124,10 @@
       "amount_mismatch": "El importe difiere",
       "duplicate_charge": "Cobrada más de una vez",
       "charge_without_paid": "Cobrada, factura sin pagar",
-      "conflicting_outcomes": "Éxito y fallo registrados a la vez"
+      "conflicting_outcomes": "Éxito y fallo registrados a la vez",
+      "settlement_missing": "Pagado, no está en la liquidación del proveedor",
+      "settlement_mismatch": "El importe liquidado difiere",
+      "fee_mismatch": "La comisión del proveedor difiere"
     },
     "ledgerKind": {
       "charge": "cobro",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Transferencia bancaria",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Abierta",
+      "explained": "Explicada",
+      "resolved": "Resuelta"
+    },
+    "discrepancyEvent": {
+      "detected": "Encontrada",
+      "reopened": "Reabierta",
+      "cleared": "Despejada por una ejecución posterior",
+      "assigned": "Asignada",
+      "explained": "Explicada",
+      "resolved": "Resuelta"
+    },
+    "resolution": {
+      "ledger_fact": "Apunte escrito en el libro",
+      "credit_note": "Nota de crédito emitida",
+      "refunded_at_provider": "Reembolsado en el proveedor",
+      "corrected_in_billing": "Corregido en facturación",
+      "not_an_error": "No es un error",
+      "other": "Otra",
+      "cleared": "Ya no se encuentra"
+    },
+    "settlementState": {
+      "not_reported": "Pagado, no informado",
+      "pending_payout": "Informado, pendiente de pago",
+      "settled": "Liquidado"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "El límite debe ser una cantidad con como mucho {n} decimales.",
         "thresholds": "Las alertas son hasta 10 porcentajes crecientes entre 1 y 1000."
       }
+    },
+    "reconcile": {
+      "title": "Cola de revisión",
+      "hint": "Lo que encontró la comparación, guardado: quién lo lleva, qué se dijo y cómo terminó. La programación la ejecuta para cada inquilino que recibió un pago real; resolver una diferencia no la hace desaparecer, y una ejecución posterior que la sigue encontrando la reabre.",
+      "show": "Mostrar",
+      "view": {
+        "review": "Por revisar",
+        "resolved": "Resueltas",
+        "all": "Todas"
+      },
+      "period": "Periodo",
+      "owner": "Responsable",
+      "note": "Nota",
+      "noteHint": "Lo que averiguó y lo que se hizo. Obligatoria.",
+      "resolution": "Resolución",
+      "settled": "Liquidado",
+      "firstSeen": "Vista por primera vez",
+      "lastSeen": "Vista por última vez",
+      "history": "Historial",
+      "assign": "Asignar",
+      "explain": "Explicar",
+      "resolve": "Resolver",
+      "resolveSelected": "Resolver la selección",
+      "explainHint": "Mantenerla en la cola con el motivo. Para una diferencia conocida que está en espera.",
+      "resolveHint": "Terminarla. No cambia nada en el proveedor ni en una factura; la resolución dice qué se hizo en otro sitio.",
+      "factHint": "Escribe en el libro de pagos un cobro correcto por el importe de la factura, para el proveedor y la referencia que indique. Compruebe antes el pago en el proveedor.",
+      "confirmTitle": "¿Resolver {n} diferencias?",
+      "confirmBody": "Todas se resuelven con la misma resolución y nota, y cada una recibe su propia entrada en el historial.",
+      "counts": "Diferencias por estado",
+      "ran": "Periodo {period}: {found} encontradas, {opened} nuevas, {reopened} reabiertas, {cleared} despejadas.",
+      "lastRun": "Última ejecución {when} por {by} para {period}: {found} encontradas.",
+      "neverRun": "Aún no hay ejecuciones. Ejecute un periodo o espere a la programación.",
+      "by": {
+        "schedule": "la programación",
+        "operator": "el operador"
+      },
+      "nothingToReview": "Nada que revisar.",
+      "nothing": "No hay nada aquí.",
+      "more": "Se muestran las {n} más recientes. Acote la vista para ver las demás."
+    },
+    "settlement": {
+      "title": "Pagado y liquidado",
+      "hint": "Un pago correcto es la palabra del libro de pagos. El dinero es del inquilino cuando el proveedor lo liquida, menos su comisión. Estos son los pagos del periodo con lo que el proveedor, o un informe importado, dice de cada uno.",
+      "provider": "Proveedor (clave de cuenta)",
+      "providerHint": "Para un informe sin columna de proveedor",
+      "file": "Informe (CSV)",
+      "import": "Importar informe",
+      "imported": "{lines} línea(s) leídas, {changed} nuevas o modificadas.",
+      "counts": "Pagos por estado de liquidación",
+      "paidOn": "Pagado",
+      "fee": "Comisión del proveedor",
+      "expected": "esperada {fee}",
+      "batch": "Pago / lote",
+      "empty": "No hay pagos correctos del proveedor en este periodo."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Este proveedor de pago no se conoce."
       },
       "reconcile": {
-        "bad_period": "El período debe tener el formato 2026-10."
+        "bad_period": "El período debe tener el formato 2026-10.",
+        "bad_filter": "Un valor del filtro no es de los que esta lista conoce.",
+        "bad_ledger_fact": "Un apunte en el libro necesita el proveedor y su referencia del pago, y solo resuelve una factura pagada que falta en el libro.",
+        "bad_resolution": "Elija una de las resoluciones indicadas.",
+        "not_found": "Esa diferencia no existe.",
+        "note_required": "Diga lo que averiguó: la nota es obligatoria.",
+        "resolved": "Está resuelta. Una ejecución que la vuelva a encontrar la reabre.",
+        "too_long": "Ese texto es demasiado largo.",
+        "too_many": "Elija entre 1 y 100 diferencias."
       },
       "request": {
         "bad_body": "El cuerpo de la solicitud debe ser un JSON válido.",
@@ -3014,6 +3106,16 @@
         "provider_not_configured": "No hay ningún proveedor de pago configurado para esta cuenta.",
         "rejected": "El proveedor de pago rechazó la solicitud.",
         "timeout": "El proveedor de pago no respondió a tiempo."
+      },
+      "settlement": {
+        "bad_csv": "No se importó el informe: una línea es incorrecta y no se guardó nada.",
+        "bad_fee_rule": "La regla de comisión no es válida: revise el proveedor, la moneda y la tasa.",
+        "bad_since": "El inicio debe estar en el pasado y como máximo 400 días atrás.",
+        "fee_rule_not_found": "No existe esa regla de comisión."
+      },
+      "failover": {
+        "bad_target": "Una conmutación por error necesita dos cuentas distintas que existan en el entorno; una transferencia bancaria no puede participar.",
+        "not_found": "No hay ninguna conmutación por error definida para esa cuenta."
       }
     },
     "einvoice": {

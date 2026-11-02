@@ -14,6 +14,15 @@ DELETE FROM provider_events WHERE tenant_id = $1;
 -- name: ResetEInvoiceIssuances :execrows
 DELETE FROM einvoice_issuances WHERE tenant_id = $1;
 
+-- name: ResetReconciliationEvents :execrows
+DELETE FROM reconciliation_events WHERE tenant_id = $1;
+-- name: ResetReconciliationRuns :execrows
+DELETE FROM reconciliation_runs WHERE tenant_id = $1;
+-- name: ResetReconciliationDiscrepancies :execrows
+DELETE FROM reconciliation_discrepancies WHERE tenant_id = $1;
+-- name: ResetSettlementLines :execrows
+DELETE FROM settlement_lines WHERE tenant_id = $1;
+
 -- The ledger and the receipts refuse every DELETE (migration 00002) unless the transaction names the tenant as being reset. ResetLiveRowCount is asked first, before
 -- ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no row of the live environment is ever deleted.
 -- name: ResetLiveRowCount :one
@@ -21,6 +30,10 @@ SELECT count(*) FROM (
   SELECT 1 FROM payment_ledger l WHERE l.tenant_id = $1 AND l.environment <> 'sandbox'
   UNION ALL
   SELECT 1 FROM payment_attempts a WHERE a.tenant_id = $1 AND a.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM reconciliation_discrepancies d WHERE d.tenant_id = $1 AND d.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM settlement_lines s WHERE s.tenant_id = $1 AND s.environment <> 'sandbox'
 ) live;
 -- name: ResetBegin :exec
 SELECT set_config('payrudder.sandbox_reset', $1, true);
