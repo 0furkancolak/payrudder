@@ -187,3 +187,104 @@ func TestEveryDeclineWordHasASentenceInEveryLanguage(t *testing.T) {
 		}
 	}
 }
+
+// The saved card may be paid in instalments when the account enables them and the provider quotes them: the page shows the quote as a plain radio group (the page runs no
+// script), the single payment chosen, and the choice goes to the worker with the pay request, only for the saved card.
+func TestTheSavedCardIsOfferedInInstalmentsAsARadioGroupAndTheChoiceGoesToTheWorker(t *testing.T) {
+	f := &fakeWorker{methods: []map[string]string{{"id": "stored_card", "kind": "stored_card", "provider": "iyzico"}, {"id": "checkout", "kind": "checkout", "provider": "iyzico"}},
+		splits: []map[string]any{{"count": 3, "each_minor": 1700, "total_minor": 5100}, {"count": 6, "each_minor": 880, "total_minor": 5280}},
+		pay:    map[string]any{"kind": "html", "html": "<form></form>"}}
+	ts := withWorker(t, f, false)
+	for lang, want := range map[string]string{
+		"en": "3 instalments of 17.00 (51.00 in all)", "tr": "3 taksit × 17,00 (toplam 51,00)", "de": "3 Raten zu je 17,00 (51,00 insgesamt)", "fr": "3 fois 17,00 (51,00 au total)",
+		"es": "3 cuotas de 17,00 (51,00 en total)", "ar": "3 أقساط بقيمة",
+	} {
+		_, page := get(t, ts, "/i/"+tokOpenLive+"?lang="+lang)
+		if !strings.Contains(page, `type="radio" name="installments" value="3"`) || !strings.Contains(page, `name="installments" value="6"`) || !strings.Contains(page, `name="installments" value="1" checked`) {
+			t.Errorf("%s: the radio group of the instalments is not there:\n%s", lang, page)
+		}
+		if !strings.Contains(page, want) {
+			t.Errorf("%s: the page lacks %q", lang, want)
+		}
+	}
+	// The group sits in the saved card's own form, and the checkout's form has none.
+	_, page := get(t, ts, "/i/"+tokOpenLive)
+	storedForm := page[strings.Index(page, `value="stored_card"`):]
+	storedForm = storedForm[:strings.Index(storedForm, "</form>")]
+	if !strings.Contains(storedForm, `name="installments"`) || strings.Count(page, "data-installments") != 1 {
+		t.Errorf("the group is not in the saved card's form, or is more than once:\n%s", page)
+	}
+	// No script: the page's policy still lets nothing run, and the page has no script of its own.
+	if strings.Contains(page, "<script") {
+		t.Error("the instalment choice needs a script")
+	}
+	// The choice goes to the worker: for the saved card as a number, for another method not at all, and a number that is no count is none.
+	asked := func(form url.Values) any {
+		t.Helper()
+		send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokOpenLive+"/pay", form, nil)
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		return f.bodies[len(f.bodies)-1]["installments"]
+	}
+	if got := asked(url.Values{"method": {"stored_card"}, "installments": {"6"}}); got != float64(6) {
+		t.Errorf("6 instalments: the worker was told %v", got)
+	}
+	for name, form := range map[string]url.Values{
+		"one payment":      {"method": {"stored_card"}, "installments": {"1"}},
+		"a checkout":       {"method": {"checkout"}, "installments": {"6"}},
+		"nonsense":         {"method": {"stored_card"}, "installments": {"six"}},
+		"more than twelve": {"method": {"stored_card"}, "installments": {"13"}},
+		"negative":         {"method": {"stored_card"}, "installments": {"-3"}},
+		"nothing at all":   {"method": {"stored_card"}},
+	} {
+		if got := asked(form); got != float64(0) {
+			t.Errorf("%s: the worker was told %v, want 0", name, got)
+		}
+	}
+	// With no quote (the account enables none, or the provider did not answer) the page is what it was: no group.
+	f.splits = nil
+	if _, plain := get(t, ts, "/i/"+tokOpenLive); strings.Contains(plain, `name="installments"`) {
+		t.Error("an instalment choice is shown with no quote")
+	}
+	// The worker is told the amount the invoice asks, to quote for it.
+	if calls := strings.Join(f.callList(), "|"); !strings.Contains(calls, "amount_minor=5000") {
+		t.Errorf("the quote is asked for no amount: %v", calls)
+	}
+}
+
+// The tenant lists and deletes the stored cards of its own customer; the tenant is the key's, the customer the path's, and payments-worker (which reads the customer's
+// payment method to know whose cards they are) answers.
+func TestTheStoredCardsOfACustomerAreListedAndDeletedForTheKeysOwnTenant(t *testing.T) {
+	f := &fakeWorker{}
+	ts := withWorker(t, f, false)
+	resp, out := do(t, ts, http.MethodGet, "/v1/customers/ada%2Fx/cards", "live-key", "")
+	cards, _ := out["cards"].([]any)
+	if resp.StatusCode != http.StatusOK || out["provider"] != "iyzico" || len(cards) != 1 {
+		t.Fatalf("list = %d %v", resp.StatusCode, out)
+	}
+	resp, out = do(t, ts, http.MethodDelete, "/v1/customers/ada/cards/ct1", "live-key", "")
+	if resp.StatusCode != http.StatusOK || out["deleted"] != true || out["was_in_use"] != true {
+		t.Fatalf("delete = %d %v", resp.StatusCode, out)
+	}
+	calls := f.callList()
+	if got := calls[len(calls)-2]; got != "GET /admin/tenants/"+liveTenantID+"/customers/ada%2Fx/cards" {
+		t.Errorf("the list asked %q: the tenant is the key's, the customer escaped", got)
+	}
+	if got := calls[len(calls)-1]; got != "DELETE /admin/tenants/"+liveTenantID+"/customers/ada/cards/ct1" {
+		t.Errorf("the delete asked %q", got)
+	}
+	if tok := f.tokens[len(f.tokens)-1]; tok != "internal-secret" {
+		t.Errorf("payments-worker was not asked with the internal token: %q", tok)
+	}
+	// No key, no cards; a key that may read customers lists but may not delete (customers:write).
+	if resp, _ := do(t, ts, http.MethodGet, "/v1/customers/ada/cards", "", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("no key = %d", resp.StatusCode)
+	}
+	n := len(f.callList())
+	if resp, _ := do(t, ts, http.MethodDelete, "/v1/customers/ada/cards/ct1", "read-key", ""); resp.StatusCode != http.StatusForbidden || len(f.callList()) != n {
+		t.Errorf("a read-only key deleted a card: %d", resp.StatusCode)
+	}
+	if resp, _ := do(t, ts, http.MethodGet, "/v1/customers/ada/cards", "read-key", ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("a read-only key lists the cards: %d", resp.StatusCode)
+	}
+}

@@ -31,6 +31,17 @@ describe("connecting a live provider yourself", () => {
     });
   });
 
+  it("takes the instalment counts of iyzico as a sorted list of numbers, nothing else, and leaves them out when empty", () => {
+    const counts = (v: string) => buildProviderSettings("iyzico", iyzicoValues({ enabled_installments: v }));
+    expect(counts("6, 1 3,3")).toMatchObject({ ok: true, settings: { enabled_installments: [1, 3, 6] } });
+    expect(counts("12")).toMatchObject({ ok: true, settings: { enabled_installments: [12] } });
+    const none = counts("  ");
+    expect(none.ok && "enabled_installments" in none.settings).toBe(false);
+    // A count iyzico's pages do not list, a word, a zero or a decimal is refused (the server refuses it too).
+    for (const bad of ["4", "1,5", "three", "0", "2.5", "1;7"]) expect(counts(bad)).toEqual({ ok: false, errors: { enabled_installments: "badFormat" } });
+    for (const other of ["paddle", "stripe"] as const) expect(PROVIDER_FIELDS[other].map((f) => f.path)).not.toContain("enabled_installments");
+  });
+
   it("names every missing field, trimmed values only", () => {
     const r = buildProviderSettings("iyzico", iyzicoValues({ api_key: "  ", "buyer.city": "" }));
     expect(r).toEqual({ ok: false, errors: { api_key: "required", "buyer.city": "required" } });

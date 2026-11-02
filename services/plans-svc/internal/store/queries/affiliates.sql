@@ -105,6 +105,16 @@ SELECT a.tenant_id, a.id, a.code, a.status AS affiliate_status, p.status AS prog
 FROM affiliates a JOIN affiliate_programs p ON p.tenant_id = a.tenant_id
 WHERE upper(a.code) = upper(@code::text);
 
+-- name: SystemLandingTrusted :one
+-- system. Whether a visitor of the public link may be redirected straight to the program's landing page: the tenant is live and active, and an owner of its account has
+-- verified their e-mail address. Read from the pooled database, which has a row for every tenant, also one whose affiliates live in a cell.
+SELECT EXISTS (
+  SELECT 1 FROM tenants t
+  JOIN account_members m ON m.account_id = t.account_id AND m.role = 'owner'
+  JOIN users u ON u.id = m.user_id AND u.email_verified_at IS NOT NULL
+  WHERE t.id = @tenant_id AND t.environment = 'live' AND t.status = 'active'
+)::boolean AS trusted;
+
 -- name: SystemCountClick :execrows
 -- system. One more visit today, unless the affiliate's daily cap is reached (no row is touched then).
 INSERT INTO affiliate_clicks_daily AS d (tenant_id, affiliate_id, day, clicks) VALUES (@tenant_id, @affiliate_id, @day, 1)

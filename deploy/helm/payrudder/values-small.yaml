@@ -2,7 +2,7 @@
 # Ingress or load balancer. Pair it with a secrets file (values-secrets.example.yaml) and your image registry:
 #   make k8s-install REGISTRY=ghcr.io/you/ TAG=dev SECRETS=my-secrets.yaml
 global:
-  environment: kind
+  environment: production    # a real cluster: auth.otpPepper and the other secrets must be your own (values-secrets.example.yaml); a development environment is local, ci or kind
   topologySpread: false
 defaults:
   replicas: 1

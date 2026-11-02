@@ -20,6 +20,8 @@ export interface Call {
   query: URLSearchParams;
   headers: Record<string, string>;
   body: Record<string, unknown> | null;
+  /** The request body as text, for a body that is not JSON (a multipart upload: the file names are in it). */
+  text?: string;
 }
 
 /** An answer: a JSON body, or `raw` bytes with their own content type (a file). */
@@ -144,7 +146,7 @@ export class MockGateway {
       } catch {
         body = null;
       }
-      const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
+      const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body, text: body ? undefined : (req.postData() ?? undefined) };
       this.calls.push(call);
       for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, this.supportCountsHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);

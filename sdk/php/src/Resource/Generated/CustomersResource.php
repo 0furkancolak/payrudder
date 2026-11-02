@@ -27,8 +27,10 @@ use Payrudder\Model\CreditLedgerEntry;
 use Payrudder\Model\CreditLedgerPage;
 use Payrudder\Model\CreditResult;
 use Payrudder\Model\Customer;
+use Payrudder\Model\CustomerCards;
 use Payrudder\Model\CustomerContact;
 use Payrudder\Model\CustomerTax;
+use Payrudder\Model\DeletedCustomerCard;
 use Payrudder\Model\EntitlementOverride;
 use Payrudder\Model\EntitlementStatus;
 use Payrudder\Model\EntitlementTerms;
@@ -142,6 +144,33 @@ final class CustomersResource extends AbstractResource
     public function setPaymentMethod(string $externalId, SetPaymentMethodRequest|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/payment-method', [], Cast::body($body), $options));
+    }
+
+    /**
+     * The cards the payment provider holds for the customer (GET /v1/customers/{external_id}/cards).
+     *
+     * @param string $externalId
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function listCustomerCards(string $externalId, ?RequestOptions $options = null): CustomerCards
+    {
+        return CustomerCards::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/cards', [], null, $options));
+    }
+
+    /**
+     * Delete one of the customer's stored cards at the provider (DELETE /v1/customers/{external_id}/cards/{token}).
+     *
+     * @param string $externalId
+     * @param string $token
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function deleteCustomerCard(string $externalId, string $token, ?RequestOptions $options = null): DeletedCustomerCard
+    {
+        return DeletedCustomerCard::fromArray($this->call('DELETE', '/v1/customers/' . rawurlencode($externalId) . '/cards/' . rawurlencode($token), [], null, $options));
     }
 
     /**

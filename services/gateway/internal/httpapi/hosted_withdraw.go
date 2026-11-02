@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -273,14 +274,32 @@ func withdrawEmailLine(l map[string]string, email string) string {
 	return l["withdraw_email"] + " " + maskEmail(email)
 }
 
-// chosen reads the form: the name, the contract (one of the paid invoices of the person, never an id the form made up) and their own words.
+// oneLine is s as a single line: every run of white space and control characters (a line break, a tab, NEL, the line and paragraph separators) becomes one space, and the
+// characters that make text read in another order than it is stored (the bidirectional embeddings, overrides and isolates) are dropped. What a person types into a field
+// that is recorded as one line of evidence cannot then start a line of its own ("Your name: Someone Else"), or hide behind a reversal. A zero-width joiner or non-joiner stays:
+// Persian and Arabic words need them.
+func oneLine(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 0x202A && r <= 0x202E, r >= 0x2066 && r <= 0x2069:
+			return -1
+		case unicode.IsControl(r), r == 0x2028, r == 0x2029:
+			return ' '
+		}
+		return r
+	}, s)
+	return strings.Join(strings.Fields(s), " ")
+}
+
+// chosen reads the form: the name, the contract (one of the paid invoices of the person, never an id the form made up) and their own words, each as one line (oneLine) cut
+// to 200 and 1000 characters.
 func (subj *withdrawSubject) chosen(form url.Values, b pageBase) (name string, inv withdrawChoice, words string, ok bool) {
-	name, words = strings.TrimSpace(form.Get("name")), strings.TrimSpace(form.Get("words"))
+	name, words = oneLine(form.Get("name")), oneLine(form.Get("words"))
 	if len([]rune(name)) > 200 {
-		name = string([]rune(name)[:200])
+		name = strings.TrimSpace(string([]rune(name)[:200]))
 	}
 	if len([]rune(words)) > 1000 {
-		words = string([]rune(words)[:1000])
+		words = strings.TrimSpace(string([]rune(words)[:1000]))
 	}
 	for _, i := range subj.invoices {
 		if i.ID == form.Get("contract") {
@@ -367,6 +386,11 @@ func (s *Server) withdrawConfirm(portal bool) http.HandlerFunc {
 		}
 		resp, err := s.d.Contracts.CreateContractWithdrawal(octx, &plansv1.CreateContractWithdrawalRequest{CustomerId: subj.customerID, InvoiceId: inv.ID, Source: "hosted",
 			Statement: statementOf(l, name, inv.Label, subj.email, words)})
+		if status.Code(err) == codes.AlreadyExists {
+			// plans-svc keeps one open hosted withdrawal for an invoice: a second press of the button that raced the first one found the check above empty and lost the insert.
+			s.message(w, r, http.StatusOK, lang, l["withdraw_done"], l["withdraw_again"], back)
+			return
+		}
 		if err != nil {
 			code := http.StatusServiceUnavailable
 			if status.Code(err) == codes.InvalidArgument {

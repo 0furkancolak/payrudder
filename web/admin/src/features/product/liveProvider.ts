@@ -26,7 +26,12 @@ export interface ProviderField {
   prefill?: "email" | "legalName" | "taxId" | "line1" | "city" | "country" | "postalCode";
   /** A pattern the value must match (checked after trimming). */
   pattern?: RegExp;
+  /** The value is a list of whole numbers typed with commas or spaces ("1, 3, 6"), each one of these; it goes into the settings as an array of numbers. */
+  counts?: readonly number[];
 }
+
+/** The instalment counts iyzico's payment pages list (pkg/payments/iyzico installmentCounts): the account's `enabled_installments` may hold these and nothing else. */
+export const INSTALLMENT_COUNTS: readonly number[] = [1, 2, 3, 6, 9, 12];
 
 const BUYER: ProviderField[] = [
   { path: "buyer.name" },
@@ -43,7 +48,7 @@ const BUYER: ProviderField[] = [
 
 /** The fields of a provider whose settings are typed fields. Bank transfer has a form of its own (the operator's BankTransferForm). */
 export const PROVIDER_FIELDS: Record<FieldedProvider, readonly ProviderField[]> = {
-  iyzico: [{ path: "api_key", secret: true }, { path: "secret_key", secret: true }, ...BUYER],
+  iyzico: [{ path: "api_key", secret: true }, { path: "secret_key", secret: true }, ...BUYER, { path: "enabled_installments", optional: true, counts: INSTALLMENT_COUNTS }],
   paddle: [{ path: "api_key", secret: true }, { path: "webhook_secret", secret: true }, { path: "usage_product_id", pattern: /^pro_[A-Za-z0-9]+$/ }],
   stripe: [{ path: "api_key", secret: true, pattern: /^[sr]k_(live|test)_[A-Za-z0-9]+$/ }, { path: "webhook_secret", secret: true, optional: true, pattern: /^whsec_[A-Za-z0-9]+$/ }],
 };
@@ -65,10 +70,19 @@ export function buildProviderSettings(provider: FieldedProvider, values: Record<
       errors[f.path] = "badFormat";
       continue;
     }
+    let value: unknown = v;
+    if (f.counts) {
+      const list = v.split(/[\s,;]+/).filter((x) => x !== "").map(Number);
+      if (list.some((n) => !f.counts?.includes(n))) {
+        errors[f.path] = "badFormat";
+        continue;
+      }
+      value = [...new Set(list)].sort((a, b) => a - b);
+    }
     const parts = f.path.split(".");
     let node = settings;
     for (const p of parts.slice(0, -1)) node = (node[p] ??= {}) as Record<string, unknown>;
-    node[parts[parts.length - 1] as string] = v;
+    node[parts[parts.length - 1] as string] = value;
   }
   return Object.keys(errors).length === 0 ? { ok: true, settings } : { ok: false, errors };
 }

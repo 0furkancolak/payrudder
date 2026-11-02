@@ -54,6 +54,7 @@ import (
 	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/returns"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/storedcards"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions"
 	subscriptionscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/command"
 	subscriptionsquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/query"
@@ -165,6 +166,7 @@ func (s *Server) modules() []RouteRegistrar {
 		&migrations.Handler{Log: s.Log, Deps: s.migrationDeps()},
 		&catalogue.Handler{Log: s.Log, Resolver: s.Resolver, Deps: cataloguecommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
 		&customers.Handler{Log: s.Log, Resolver: s.Resolver, Deps: customerscommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
+		&storedcards.Handler{Accounts: s.Accounts, Resolver: s.Resolver, Customers: s.Plans, Log: s.Log},
 		&subscriptions.Handler{Log: s.Log, Resolver: s.Resolver, Query: subscriptionQuery,
 			Command: subscriptionscommand.Deps{Query: subscriptionQuery, Syncer: s.Plans, Resolver: s.Resolver, Log: s.Log}},
 	}
