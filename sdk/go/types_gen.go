@@ -257,7 +257,8 @@ type AffiliateProgram struct {
 	// Coupon a referred customer gets on their next checkout
 	ReferredCouponCode string `json:"referred_coupon_code"`
 	DailyClickCap      int    `json:"daily_click_cap"`
-	// Where /r/<code> sends the visitor; empty shows a plain page
+	// Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP
+	// address, localhost or a name without a dot), no user name or password
 	LandingURL string `json:"landing_url"`
 	// A partner who applies is active at once
 	AutoApprove bool       `json:"auto_approve"`
@@ -286,7 +287,8 @@ type AffiliateProgramInput struct {
 	// Coupon a referred customer gets on their next checkout
 	ReferredCouponCode string `json:"referred_coupon_code,omitempty"`
 	DailyClickCap      *int   `json:"daily_click_cap,omitempty"`
-	// Where /r/<code> sends the visitor; empty shows a plain page
+	// Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP
+	// address, localhost or a name without a dot), no user name or password
 	LandingURL string `json:"landing_url,omitempty"`
 	// A partner who applies is active at once
 	AutoApprove *bool      `json:"auto_approve,omitempty"`

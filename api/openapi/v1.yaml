@@ -1917,14 +1917,14 @@ paths:
     get:
       operationId: affiliateLink
       summary: "A partner's public link (public)"
-      description: "Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address."
+      description: "Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The redirect is made only when the program's tenant is live and active and an owner of its account has verified their e-mail address; for any other tenant (a sandbox, say) a page names the destination host and offers a link, so the link is not an open redirect. An address with a user name, an IP address, localhost or another scheme is never redirected to. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address."
       security: []
       parameters:
         - { name: code, in: path, required: true, schema: { type: string } }
         - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
       responses:
-        "200": { description: "A thank-you page, when the program has no landing page", content: { text/html: { schema: { type: string } } } }
-        "302": { description: "Redirect to the program's landing page, with the cookie set" }
+        "200": { description: "A thank-you page, when the program has no landing page; or, when the tenant is not vouched for, a page that names the landing page's host with a link", content: { text/html: { schema: { type: string } } } }
+        "302": { description: "Redirect to the program's landing page, with the cookie set (live, active tenant with a verified owner only)" }
         "404": { description: "No such partner", content: { text/html: { schema: { type: string } } } }
         "429": { description: "Too many requests" }
   /privacy:
@@ -9886,7 +9886,7 @@ components:
         min_payout_minor: { type: string, format: int64 }
         referred_coupon_code: { type: string, description: "Coupon a referred customer gets on their next checkout" }
         daily_click_cap: { type: integer, minimum: 1, maximum: 100000, default: 1000 }
-        landing_url: { type: string, description: "Where /r/<code> sends the visitor; empty shows a plain page" }
+        landing_url: { type: string, description: "Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password" }
         auto_approve: { type: boolean, description: "A partner who applies is active at once" }
         create_time: { type: string, format: date-time, readOnly: true, nullable: true }
         update_time: { type: string, format: date-time, readOnly: true, nullable: true }
@@ -9906,7 +9906,7 @@ components:
         min_payout_minor: { type: string, format: int64 }
         referred_coupon_code: { type: string, description: "Coupon a referred customer gets on their next checkout" }
         daily_click_cap: { type: integer, minimum: 1, maximum: 100000, default: 1000 }
-        landing_url: { type: string, description: "Where /r/<code> sends the visitor; empty shows a plain page" }
+        landing_url: { type: string, description: "Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password" }
         auto_approve: { type: boolean, description: "A partner who applies is active at once" }
         create_time: { type: string, format: date-time, readOnly: true }
         update_time: { type: string, format: date-time, readOnly: true }
