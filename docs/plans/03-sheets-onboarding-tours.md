@@ -5,7 +5,7 @@ List 1: (5) onboarding has needless forcing: steps must be skippable ("atla"); (
 
 ## Where we are
 - #238: tour marked seen at start (`startTourOnce`), "Skip this step" in the old five-step wizard, Usage → `Activity` icon, sheet URL change uses `resetScroll: false`, Combobox scrolls only its list, invoice mentions and payment links open as sheets over the page (`PeekInvoice`).
-- **#243 (another session) then rewrote onboarding into three screens and changed empty states / page headers.** The skip button and its test were part of the older wizard; the current state of 5, 6 and 13 after #243 has not been re-verified. The mock e2e for onboarding fails on main.
+- **#243 (another session) then rewrote onboarding into three screens and changed empty states / page headers.** The skip button and its test were part of the older wizard; the current state of 5, 6 and 13 after #243 has not been re-verified. ~~The mock e2e for onboarding fails on main.~~ It was red when this was written (plan 01 fixed the eleven failing mock tests in #246 and #259); `onboarding.spec.ts` passes in CI now.
 
 ## Gaps
 - Skipping was added to the old wizard only; the new three-screen onboarding must be checked against "nothing forced".
@@ -50,7 +50,7 @@ Conflict with the other session working on the same files (#243 area): coordinat
 
 **Tour:** the "seen" states are in `docs/13-admin-ui.md` as a table, each row with its unit test.
 
-**Still open in this plan:** a peekable payment sheet; reproduction of all five complaints against the real stack (needs the compose stack and a person's eyes: not done here); scroll-lock owned by the Sheet component and nested-sheet/back-forward tests; Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced".
+**Still open in this plan:** ~~a peekable payment sheet~~ (done, see the status below); reproduction of all five complaints against the real stack (done by `e2e/complaints-real.spec.ts`, which passed in CI's end-to-end job on its first run, 2026-11-02, see the last status; a person's eyes and a real phone are still not); scroll-lock owned by the Sheet component and nested-sheet/back-forward tests; Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced".
 
 **Onboarding, read against "nothing is forced" (2026-10-29, by reading the code, not the real stack):** the wizard has three screens (welcome, app, done). "Skip for now" (`onb-skip`) is shown on every screen except the last, which ends with "Finish"; the only required fields (organisation and app name) block "Create", not skipping; a person who skipped resumes from the checklist on the home. Covered by `e2e-mock/onboarding.spec.ts`.
 
@@ -70,7 +70,7 @@ Done, with tests (`docs/13-admin-ui.md`, "Peeks and the page's scroll"):
 
 Default (not agreed): the lock is `overflow: hidden` on `<html>` with the scrollbar's width kept as padding, not `position: fixed` on the body. iOS Safari ignores some `overflow: hidden` on the root in older versions: **not verified on a phone**.
 
-**Still open:** reproduction of the five complaints against the real stack (needs the compose stack and a person's eyes); Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced" on the real stack; the browser's own back and forward (the address of the sheets is `replace`d, so the browser's history has none of them: "back" and "forward" are the strip's).
+**Still open:** ~~reproduction of the five complaints against the real stack~~ (the real-stack spec exists and passed in CI, see the last status; a person's eyes are still needed); Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced" on the real stack; the browser's own back and forward (the address of the sheets is `replace`d, so the browser's history has none of them: "back" and "forward" are the strip's).
 
 ## Status (2026-11-02, branch `feat/console-bulk-more`)
 
@@ -84,4 +84,4 @@ Done in `web/admin` (no Go code). The five complaints of the request are each a 
 | (9) a sheet scrolls the page to the top; the lists in a sheet | `complaints.spec.ts`: customers, subscriptions, invoices and the payment ledger at 1280 and 375 px: on open, on a wheel over the sheet and on close the page stays within the header's own change of height (12 px); `sheet-selects.spec.ts`: the searchable lists of the six sheets that have one (new customer, subscription, payment link, credit pack, expense, the person's new app) open, take the arrows and Enter, Escape closes the list and not the sheet, the page does not move, the scroll is locked once (the root, never the body as well) and given back on close; `sheet-lock.spec.ts`, `sheet-scroll.spec.ts` | nothing wrong. The sheets of a package, coupon, webhook endpoint and meter have native selects and suggestions only. Two things looked like bugs and were the test's own doing: a real click scrolls the page up to a header button first, and a wheel scrolls smoothly (a read in the middle of it is not "the page moved"). |
 | (13) sheets that leave for another page | `complaints.spec.ts`: an invoice's, a customer's and a subscription's sheet hold no link to another page of the console except one that says it is a page (`...-open-page`); `peek-*.spec.ts` | nothing wrong |
 
-**Still open:** reproducing the five complaints against the real stack (the new real-stack spec is the way, once it has run), iOS Safari's handling of `overflow: hidden` on the root (not tried), the browser's own back and forward with sheets (the strip's are tested), and a screen reader's reading of the wizard and the tour. Sheets that hold a multi-value searchable list: none exists today (the multi-select Combobox is used in filters and the components playground, whose tests drive it).
+**Still open:** ~~reproducing the five complaints against the real stack~~ (`e2e/complaints-real.spec.ts` has run: its three tests, a fresh sign-up through the real wizard, the server's own record of a tour and a second browser, passed on their first CI run on 2026-11-02, in the end-to-end job, which is also the only place they run), iOS Safari's handling of `overflow: hidden` on the root (not tried), the browser's own back and forward with sheets (the strip's are tested), and a screen reader's reading of the wizard and the tour. Sheets that hold a multi-value searchable list: none exists today (the multi-select Combobox is used in filters and the components playground, whose tests drive it).

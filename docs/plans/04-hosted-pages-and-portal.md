@@ -5,7 +5,7 @@ List 1 (10): the customer payment pages (e.g. `/c/MJ-KPFG…`) are still not mod
 
 ## Where we are
 - #239: the server-rendered Go templates (`services/gateway/internal/httpapi/hosted_*.go`) got a split layout (seller and amount on a coloured side, the work on a calm pane), stacked full-width pay buttons, mobile and print rules. Checked with two screenshots (1440 and 390 px).
-- The portal page (`/c/<token>`) shows invoices and payment methods. It does **not** show the subscription, the card on file, upcoming invoice, or let the customer update the card or cancel (billing-svc does not return them).
+- The portal page (`/c/<token>`) shows **invoices, payments and credits** (balance, lots, packs to buy; [hosted-pages.md](../hosted-pages.md) is the inventory) and, since the status below, a read-only summary of the subscription. It does **not** show payment methods (the card on file), an upcoming invoice (the estimate exists in the API since plan 22 G14; showing it to a customer is the owner's call), or let the customer update the card or cancel.
 
 ## Gaps
 - The look was approximated from one screenshot; no comparison with Stripe Checkout / Customer Portal and Paddle's overlay and portal at the detail level (typography scale, spacing, states, error handling, 3-D Secure, wallet buttons, trust marks, success and failure pages, expired and paid states).

@@ -9,9 +9,9 @@ List 2 (11): customers can be **banned** and similar.
 #252: `customers.blocked_at` / `block_reason`; `POST /v1/customers/{id}/block|unblock` (API, four SDKs); a blocked customer gets **no new subscription** (`plans.customer.blocked`, FAILED_PRECONDITION); existing subscriptions run on; the customer list shows a Blocked badge and offers block/lift and a bulk action.
 
 ## Gaps
-- **Enforcement is one place** (subscription creation). Not enforced: hosted checkout and payment links for that customer, ad-hoc payment links, credit pack purchases, plan changes and upgrades of existing subscriptions, usage ingestion (a banned customer may still send events and use entitlements), portal access, coupon redemption, new API-created invoices or credit grants.
+- ~~**Enforcement is one place** (subscription creation).~~ One gate, `pkg/paymentgate`, now decides every path that starts a payment or grants access (the matrix below): hosted checkout, payment links, credit packs, plan changes and price-change scheduling, and entitlement checks when the block suspends the service. **Deliberately not refused:** usage ingestion (a banned customer's events are still counted; the seller's service has to ask before it serves).
 - "Ban" has several meanings that were not separated: (1) **block new purchases**, (2) **suspend service** (entitlements deny, limits-svc returns not allowed), (3) **end everything** (cancel subscriptions, void open invoices), (4) **blocklist** (email/tax id/card fingerprint so the same person cannot come back under another id), (5) fraud flag with reasons. Only (1) exists.
-- No reason categories, no audit trail (who blocked, when, from where) beyond the row, no webhook event (`customer.blocked`) for the seller's systems, no notification to the customer, no expiry ("blocked until"), no appeal.
+- ~~No reason categories, no audit trail, no webhook event (`customer.blocked`), no expiry ("blocked until").~~ Built: categories, `customer_block_events` and `audit_events`, `customer.blocked` / `customer.unblocked`, `blocked_until` with a sweep that clears a block that ran out. **Still not there:** a notice to the customer and an appeal.
 - The operator cannot block across tenants (platform-wide fraud list).
 
 ## Research first
