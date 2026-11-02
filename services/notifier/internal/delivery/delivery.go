@@ -67,7 +67,7 @@ type Mailer struct {
 	// Tenants, when set, is asked whether the tenant is in service; a tenant on hold (suspended, frozen, banned) sends no customer mail (see Permitted).
 	Tenants tenantinfo.Source
 	// Providers, when set, is asked before a live send whether the tenant connected its own e-mail provider; its mail then goes through it, from its own
-	// address. Sandbox mail never does (ADR 0011).
+	// address, through the account its routing names for the mail's language (Data["locale"]). Sandbox mail never does (ADR 0011).
 	Providers Providers
 	// Suppress, when set, is asked before a live send whether the address is on the tenant's suppression list.
 	Suppress Suppressions
@@ -120,7 +120,7 @@ func (m *Mailer) Deliver(ctx context.Context, d Delivery) (string, error) {
 		sender = m.Sandbox
 	}
 	if !d.Sandbox && m.Providers != nil && d.TenantID != uuid.Nil {
-		p, perr := m.Providers.For(ctx, d.TenantID)
+		p, perr := m.Providers.For(ctx, d.TenantID, d.Data["locale"])
 		if perr != nil {
 			// Not knowing the tenant's choice is not a reason to send through the other sender: the claim is released and the mail retried.
 			m.release(ctx, d.Key)

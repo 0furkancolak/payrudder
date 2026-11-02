@@ -5,14 +5,17 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "@/features/mail/api";
 import { useApp, useMe } from "@/features/product/api";
+import { ACCOUNT_LABEL } from "@/features/providers/connections";
 import { tenantOf } from "@/shared/lib/environment";
 import { firstError } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Switch } from "@/shared/ui/switch";
+import { mailAccounts } from "./accounts";
 import { useMailActions, useMailIntegration } from "./api";
 import { NAFRU_EMAIL_URL } from "./brands";
 import MailIdentity from "./MailIdentity.vue";
@@ -21,10 +24,16 @@ import { builtInMailState, ownMailState } from "./status";
 /**
  * The side sheet of the e-mail integrations. "Payrudder mail" is the built-in sender: there is nothing to connect, and the sheet holds the switches of which
  * kinds of mail are sent. "Nafru Email" is the tenant's own provider: a base URL, an API key and the address the mail comes from. The key is checked at the
- * provider before it is stored, is typed once and is never shown again; once it is connected, the live mail of the app goes through it. The sandbox's mail
- * always goes to the sandbox inbox.
+ * provider before it is stored, is typed once and is never shown again; once it is connected, the live mail of the app goes through it. An app holds several
+ * accounts: a further one is named with a label and may be made the default (the e-invoice sheet does the same). The sandbox's mail always goes to the sandbox inbox.
  */
-const props = defineProps<{ kind: "payrudderMail" | "nafru" | ""; appId: string; isOwner: boolean }>();
+const props = defineProps<{
+  kind: "payrudderMail" | "nafru" | "";
+  appId: string;
+  isOwner: boolean;
+  /** The key of the account the sheet manages ("nafru~eu"); empty to add one. */
+  account?: string;
+}>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
 
@@ -49,16 +58,26 @@ const apiKey = ref("");
 const from = ref("");
 const to = ref("");
 const connection = computed(() => mail.data.value);
-const own = computed(() => ownMailState(connection.value));
+const accountList = computed(() => mailAccounts(connection.value));
+/** The account being managed, or none when the sheet adds one. */
+const stored = computed(() => accountList.value.find((a) => props.account !== undefined && props.account !== "" && a.account === props.account));
+const own = computed(() => (stored.value ? ownMailState({ connected: true, integration: stored.value }) : "none"));
 const builtIn = computed(() => builtInMailState(connection.value));
-const stored = computed(() => connection.value?.integration);
 const tested = computed(() => actions.test.data.value);
+const label = ref("");
+const makeDefault = ref(false);
+const adding = computed(() => !stored.value);
+/** A further account must be told apart from the primary one by a label. */
+const labelRequired = computed(() => adding.value && accountList.value.length > 0);
+const labelProblem = computed(() => adding.value && (label.value.trim() === "" ? labelRequired.value : !ACCOUNT_LABEL.test(label.value.trim())));
+const offerDefault = computed(() => adding.value && accountList.value.length > 0);
 
 watch(
   () => [open.value, props.kind] as const,
   ([isOpen]) => {
     if (!isOpen) return;
-    baseUrl.value = apiKey.value = "";
+    baseUrl.value = apiKey.value = label.value = "";
+    makeDefault.value = false;
     from.value = "";
     to.value = me.data.value?.user?.email ?? "";
     actions.save.reset();
@@ -79,9 +98,9 @@ watch(
 );
 
 function submit() {
-  if (props.kind !== "nafru" || !props.isOwner) return;
+  if (props.kind !== "nafru" || !props.isOwner || labelProblem.value) return;
   actions.save.mutate(
-    { baseUrl: baseUrl.value.trim(), apiKey: apiKey.value.trim(), from: from.value.trim() },
+    { baseUrl: baseUrl.value.trim(), apiKey: apiKey.value.trim(), from: from.value.trim(), label: adding.value ? label.value.trim() : (stored.value?.label ?? ""), makeDefault: makeDefault.value },
     {
       onSuccess: () => {
         apiKey.value = "";
@@ -93,7 +112,7 @@ function submit() {
 }
 async function removeNow() {
   if (!(await askConfirm({ body: t("product.integrations.mail.confirmRemove") }))) return;
-  actions.remove.mutate(undefined, { onSuccess: () => (open.value = false) });
+  actions.remove.mutate(stored.value?.account ?? "", { onSuccess: () => (open.value = false) });
 }
 const failure = computed(() => firstError(actions.save, actions.remove, actions.test, mail));
 </script>
@@ -138,6 +157,7 @@ const failure = computed(() => firstError(actions.save, actions.remove, actions.
             <div class="min-w-0">
               <StatusPill :tone="own === 'working' ? 'success' : 'danger'">{{ t(`product.integrations.state.${own}`) }}</StatusPill>
               <p class="text-muted-foreground mt-1 text-xs">{{ t("product.integrations.mail.keyLine", { hint: stored?.key_hint ?? "", from: stored?.from ?? "" }) }}</p>
+              <p v-if="stored?.label" class="text-muted-foreground mt-1 text-xs" data-testid="mail-account-label">{{ t("product.integrations.einvoice.accountLabel", { label: stored.label }) }}</p>
               <p v-if="stored?.check_problem" class="text-destructive mt-1 text-xs">{{ t(`product.integrations.testFailed.${stored.check_problem}`) }}</p>
               <p v-if="tested" class="mt-1 text-xs" role="status" data-testid="integration-test-result" :class="tested.ok ? 'text-success' : 'text-destructive'">
                 {{ tested.ok ? t("product.integrations.mail.testOk", { to }) : t(`product.integrations.testFailed.${tested.problem || "refused"}`) }}
@@ -149,13 +169,20 @@ const failure = computed(() => firstError(actions.save, actions.remove, actions.
               <label class="text-sm" for="mail-test-to">{{ t("product.integrations.mail.testTo") }}</label>
               <Input id="mail-test-to" v-model="to" type="email" data-testid="mail-test-to" />
             </div>
-            <Button variant="outline" :disabled="actions.test.isPending.value || to.trim() === ''" data-testid="integration-test" @click="actions.test.mutate(to.trim())">{{ actions.test.isPending.value ? t("product.integrations.testing") : t("product.integrations.mail.sendTest") }}</Button>
+            <Button variant="outline" :disabled="actions.test.isPending.value || to.trim() === ''" data-testid="integration-test" @click="actions.test.mutate({ to: to.trim(), account: stored?.account ?? '' })">{{ actions.test.isPending.value ? t("product.integrations.testing") : t("product.integrations.mail.sendTest") }}</Button>
           </div>
 
           <MailIdentity v-if="own !== 'none'" :app-id="appId" />
 
           <form id="mail-sheet-form" class="grid gap-3" novalidate autocomplete="off" :aria-label="t('product.integrations.connectTitle', { name: 'Nafru Email' })" @submit.prevent="submit">
             <p class="text-muted-foreground text-xs">{{ own !== "none" ? t("product.integrations.replaceNote") : t("product.integrations.secretsOnce") }}</p>
+            <div v-if="adding" class="grid gap-1">
+              <label class="text-sm" for="mail-label">{{ t("product.providers.account.label") }}<span v-if="!labelRequired" class="text-muted-foreground"> ({{ t("product.integrations.optional") }})</span></label>
+              <Input id="mail-label" v-model="label" class="mono" spellcheck="false" autocomplete="off" :aria-invalid="labelProblem" data-testid="mail-label" />
+              <p class="text-muted-foreground text-xs">{{ t("product.providers.account.labelHelp") }}</p>
+              <p v-if="labelProblem" class="text-destructive text-xs" role="alert">{{ t("product.providers.account.labelBad") }}</p>
+            </div>
+            <label v-if="offerDefault" class="flex items-center gap-2 text-sm"><Checkbox v-model="makeDefault" :aria-label="t('product.providers.account.makeDefault')" data-testid="mail-default" />{{ t("product.integrations.accounts.makeDefaultHint") }}</label>
             <div class="grid gap-1">
               <label class="text-sm" for="mail-base">{{ t("product.integrations.mail.fields.base_url") }}</label>
               <Input id="mail-base" v-model="baseUrl" type="url" spellcheck="false" placeholder="https://" data-testid="mail-base-url" />
@@ -176,7 +203,7 @@ const failure = computed(() => firstError(actions.save, actions.remove, actions.
         <SheetFooter>
           <Button v-if="isOwner && own !== 'none'" variant="ghost" class="text-destructive me-auto" type="button" :disabled="actions.remove.isPending.value" data-testid="integration-disconnect" @click="removeNow">{{ t("product.integrations.disconnect") }}</Button>
           <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
-          <Button type="submit" form="mail-sheet-form" :disabled="!isOwner || actions.save.isPending.value" data-testid="integration-connect">{{ actions.save.isPending.value ? t("product.integrations.checking") : t("product.integrations.mail.checkAndConnect") }}</Button>
+          <Button type="submit" form="mail-sheet-form" :disabled="!isOwner || actions.save.isPending.value || labelProblem" data-testid="integration-connect">{{ actions.save.isPending.value ? t("product.integrations.checking") : t("product.integrations.mail.checkAndConnect") }}</Button>
         </SheetFooter>
       </template>
     </SheetContent>

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { accountEntries, auditActor, canFailover, eInvoiceAccounts, eInvoiceTaker, failoverTargets, healthState, healthTone } from "./accounts";
+import { accountEntries, auditActor, canFailover, eInvoiceAccounts, eInvoiceTaker, failoverTargets, healthState, healthTone, mailAccounts, mailTaker } from "./accounts";
 
 const nilvera = { account: "nilvera", provider: "nilvera", label: "", mode: "production", is_default: true };
 const nilveraTr = { account: "nilvera~tr", provider: "nilvera", label: "tr", mode: "test", is_default: false };
+const nafru = { account: "nafru", provider: "nafru", label: "", is_default: true };
+const nafruEu = { account: "nafru~eu", provider: "nafru", label: "eu", is_default: false };
 
 describe("the accounts of an app as one list", () => {
   it("holds payment accounts, e-invoice accounts and the e-mail sender in use, in that order", () => {
@@ -22,6 +24,19 @@ describe("the accounts of an app as one list", () => {
     const own = accountEntries({ payments: [], eInvoice: [], mail: { connected: true, integration: { check_problem: "refused" } } });
     expect(own.find((r) => r.id === "mail:builtin")).toMatchObject({ state: "unused", isDefault: false });
     expect(own.find((r) => r.id === "mail:nafru")).toMatchObject({ state: "problem", isDefault: true });
+  });
+  it("lists every own e-mail account with its label and default, and the built-in sender is in use only while there is none", () => {
+    const rows = accountEntries({ payments: [], eInvoice: [], mail: { connected: true, integration: nafru, accounts: [nafru, { ...nafruEu, check_problem: "refused" }] } });
+    expect(rows.map((r) => r.id)).toEqual(["mail:nafru", "mail:nafru~eu", "mail:builtin"]);
+    expect(rows.find((r) => r.id === "mail:nafru~eu")).toMatchObject({ kind: "mail", key: "nafru~eu", provider: "nafru", label: "eu", isDefault: false, state: "problem" });
+    expect(rows.find((r) => r.id === "mail:nafru")).toMatchObject({ key: "nafru", isDefault: true, state: "working" });
+    expect(rows.find((r) => r.id === "mail:builtin")).toMatchObject({ key: "", state: "unused", isDefault: false });
+  });
+  it("reads a gateway that only knows the default e-mail account as one account", () => {
+    expect(mailAccounts({ connected: true, integration: { provider: "nafru", from: "a@b.c" } })).toEqual([{ provider: "nafru", from: "a@b.c", account: "nafru", is_default: true }]);
+    expect(mailAccounts({ connected: false, integration: null })).toEqual([]);
+    expect(mailAccounts(undefined)).toEqual([]);
+    expect(mailAccounts({ connected: true, integration: nafru, accounts: [nafru, nafruEu] })).toHaveLength(2);
   });
   it("reads a gateway that only knows the default as one account", () => {
     expect(eInvoiceAccounts({ account: { provider: "nilvera", mode: "production" } })).toEqual([{ provider: "nilvera", mode: "production", account: "nilvera", is_default: true }]);
@@ -43,6 +58,23 @@ describe("which e-invoice account takes a buyer", () => {
     expect(eInvoiceTaker([nilvera], rules, "DE")).toEqual({ account: "nilvera", via: "default" });
     expect(eInvoiceTaker([{ ...nilveraTr }], [], "FR")).toEqual({ account: null, via: "none" });
     expect(eInvoiceTaker([], rules, "DE")).toEqual({ account: null, via: "none" });
+  });
+});
+
+describe("which e-mail account sends a mail", () => {
+  const rules = [{ language: "de", account: "nafru~eu" }];
+  it("is the account a rule names for the language of the mail, else the default", () => {
+    expect(mailTaker([nafru, nafruEu], rules, "de")).toEqual({ account: "nafru~eu", via: "rule" });
+    expect(mailTaker([nafru, nafruEu], rules, "tr")).toEqual({ account: "nafru", via: "default" });
+  });
+  it("takes a mail with no language as English, like the notifier", () => {
+    expect(mailTaker([nafru, nafruEu], [{ language: "en", account: "nafru~eu" }], "")).toEqual({ account: "nafru~eu", via: "rule" });
+    expect(mailTaker([nafru, nafruEu], rules, "")).toEqual({ account: "nafru", via: "default" });
+  });
+  it("ignores a rule whose account is gone, and is the built-in sender with no account", () => {
+    expect(mailTaker([nafru], rules, "de")).toEqual({ account: "nafru", via: "default" });
+    expect(mailTaker([], rules, "de")).toEqual({ account: null, via: "builtin" });
+    expect(mailTaker([{ ...nafruEu }], [], "fr")).toEqual({ account: "nafru~eu", via: "default" }); // no account is marked, the first stands in
   });
 });
 

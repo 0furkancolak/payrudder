@@ -1,4 +1,4 @@
-// Package command connects, tests and removes the tenant's own e-mail provider.
+// Package command connects, tests and removes the tenant's own e-mail provider accounts, moves the default and sets which account sends the mail of which language.
 package command
 
 import (
@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	stdmail "net/mail"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -69,6 +72,9 @@ func (c *Commands) validate(req *plansv1.PutMailIntegrationRequest) error {
 	if req.GetProvider() != ProviderNafru {
 		v.Add("provider", "must be nafru")
 	}
+	if !payments.ValidAccountLabel(req.GetLabel()) {
+		v.Add("label", "must be lower-case letters, digits and dashes, up to 31 characters")
+	}
 	if err := safehttp.ValidateURL(req.GetBaseUrl(), c.allowPrivate); err != nil {
 		v.Add("base_url", err.Error())
 	}
@@ -90,7 +96,8 @@ func problem(err error) string {
 	return ProblemUnreachable
 }
 
-// Put checks the key at the provider and stores the connection, replacing a previous one. A key the provider refuses is not stored.
+// Put checks the key at the provider and stores the account, replacing one with the same key. A key the provider refuses is not stored. The first account of a
+// tenant is its default, and so is one saved with make_default; saving an existing account keeps its place.
 func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationRequest) (*plansv1.MailIntegration, error) {
 	if c.box == nil {
 		return nil, errkey.New(codes.FailedPrecondition, "plans.mail_integration.not_configured", "e-mail providers are not configured on this deployment (PAYRUDDER_SECRETS_KEY)")
@@ -116,7 +123,8 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 		}
 		return nil, errkey.New(codes.Unavailable, "plans.mail_integration.unreachable", "the provider could not be reached")
 	}
-	sealed, err := c.box.Seal([]byte(key), mailqry.AAD(t.ID.String()))
+	account := payments.AccountKey(req.GetProvider(), req.GetLabel())
+	sealed, err := c.box.Seal([]byte(key), mailqry.AAD(t.ID.String(), account))
 	if err != nil {
 		return nil, errkey.New(codes.Internal, "plans.mail_integration.seal_failed", "the key could not be stored")
 	}
@@ -126,14 +134,28 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 	}
 	var out *plansv1.MailIntegration
 	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
-		r, err := q.UpsertMailIntegration(ctx, sqlc.UpsertMailIntegrationParams{Provider: req.GetProvider(), BaseUrl: strings.TrimRight(req.GetBaseUrl(), "/"), ApiKeyEnc: sealed, KeyHint: hint, FromAddress: req.GetFrom()})
+		existing, err := q.ListMailIntegrations(ctx)
+		if err != nil {
+			return err
+		}
+		makeDefault := req.GetMakeDefault() || len(existing) == 0
+		if makeDefault {
+			if err := q.ClearDefaultMailIntegration(ctx); err != nil {
+				return err
+			}
+		}
+		r, err := q.UpsertMailIntegration(ctx, sqlc.UpsertMailIntegrationParams{Provider: account, BaseUrl: strings.TrimRight(req.GetBaseUrl(), "/"), ApiKeyEnc: sealed, KeyHint: hint, FromAddress: req.GetFrom(), IsDefault: makeDefault})
 		if err != nil {
 			return err
 		}
 		out = mailqry.Message(r)
-		// Never the key, nor its hint: the provider, the address of its API and the sender.
-		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.saved", TargetType: "mail_integration", TargetID: req.GetProvider(),
-			Summary: "connected the mail provider " + req.GetProvider(), Detail: map[string]any{"provider": req.GetProvider(), "base_url": r.BaseUrl, "from": req.GetFrom()}})
+		summary := "connected the mail account " + account
+		if slices.ContainsFunc(existing, func(e sqlc.TenantMailIntegration) bool { return e.Provider == account }) {
+			summary = "replaced the mail account " + account
+		}
+		// Never the key, nor its hint: the account, the address of its API and the sender.
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.saved", TargetType: "mail_integration", TargetID: account,
+			Summary: summary, Detail: map[string]any{"account": account, "provider": req.GetProvider(), "base_url": r.BaseUrl, "from": req.GetFrom(), "default": r.IsDefault}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "mail integration")
@@ -141,34 +163,149 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 	return out, nil
 }
 
-// Delete removes the connection: the tenant's mail goes through Payrudder's own sender again.
-func (c *Commands) Delete(ctx context.Context) error {
+// Delete removes the account named by key (the default when empty): if it was the only one, the tenant's mail goes through Payrudder's own sender again. The
+// default cannot be removed while others exist, so a mail never finds accounts and none to use; the rules that name the account go with it.
+func (c *Commands) Delete(ctx context.Context, account string) error {
 	t, err := tenant.Require(ctx)
 	if err != nil {
 		return err
 	}
+	if err := checkAccount(account); err != nil {
+		return err
+	}
 	return convert.Err(c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
-		n, err := q.DeleteMailIntegration(ctx)
+		all, err := q.ListMailIntegrations(ctx)
 		if err != nil {
 			return err
 		}
-		if n == 0 {
-			return errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no e-mail provider is connected")
+		i := slices.IndexFunc(all, func(r sqlc.TenantMailIntegration) bool {
+			return r.Provider == account || (account == "" && r.IsDefault)
+		})
+		if i < 0 {
+			return errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no such e-mail account is connected")
 		}
-		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.removed", TargetType: "mail_integration", Summary: "disconnected the mail provider"})
+		if all[i].IsDefault && len(all) > 1 {
+			return errkey.New(codes.FailedPrecondition, "plans.mail_integration.default_in_use", "this is the default account: make another one the default first")
+		}
+		if _, err := q.DeleteMailIntegration(ctx, all[i].Provider); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.removed", TargetType: "mail_integration", TargetID: all[i].Provider,
+			Summary: "disconnected the mail account " + all[i].Provider, Detail: map[string]any{"account": all[i].Provider}})
 	}), "mail integration")
 }
 
-// Test checks the stored key at the provider and sends one test mail to the address through it. A provider problem is the answer (ok false with its kind), not an
-// error of the call; what was found is stored, so the status shows it.
-func (c *Commands) Test(ctx context.Context, to string) (*plansv1.TestMailIntegrationResponse, error) {
+// checkAccount refuses a request that names an account that is not a key ("" is the default).
+func checkAccount(account string) error {
+	if account == "" || payments.ValidAccountKey(account) && payments.BaseProvider(account) == ProviderNafru {
+		return nil
+	}
+	var v domain.Violations
+	v.Add("account", "an account key such as nafru or nafru~eu")
+	return v.Err()
+}
+
+// SetDefault makes the account named by key the default. The account is not touched, so no key is sent; recorded.
+func (c *Commands) SetDefault(ctx context.Context, account string) error {
+	t, err := tenant.Require(ctx)
+	if err != nil {
+		return err
+	}
+	if account == "" || checkAccount(account) != nil {
+		var v domain.Violations
+		v.Add("account", "an account key such as nafru or nafru~eu")
+		return v.Err()
+	}
+	return convert.Err(c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		cur, err := q.GetDefaultMailIntegration(ctx)
+		if err == nil && cur.Provider == account {
+			return nil
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if _, err := q.GetMailIntegration(ctx, account); errors.Is(err, pgx.ErrNoRows) {
+			return errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no such e-mail account is connected")
+		} else if err != nil {
+			return err
+		}
+		if err := q.ClearDefaultMailIntegration(ctx); err != nil {
+			return err
+		}
+		if _, err := q.SetDefaultMailIntegration(ctx, account); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.default_set", TargetType: "mail_integration", TargetID: account,
+			Summary: "made " + account + " the default mail account", Detail: map[string]any{"account": account, "previous": cur.Provider}})
+	}), "mail integration")
+}
+
+// SetRouting replaces the rules that send the mail of a language through an account. A language may appear once; every account must be connected. An empty list
+// leaves everything to the default. Recorded with the rules.
+func (c *Commands) SetRouting(ctx context.Context, rules []*plansv1.MailRoutingRule) ([]*plansv1.MailRoutingRule, error) {
+	t, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var v domain.Violations
+	seen := map[string]bool{}
+	for i, r := range rules {
+		field := "rules." + strconv.Itoa(i)
+		if !slices.Contains(mailqry.Languages, r.GetLanguage()) {
+			v.Add(field+".language", "must be one of "+strings.Join(mailqry.Languages, ", "))
+		} else if seen[r.GetLanguage()] {
+			v.Add(field+".language", "appears twice")
+		}
+		seen[r.GetLanguage()] = true
+		if r.GetAccount() == "" || checkAccount(r.GetAccount()) != nil {
+			v.Add(field+".account", "an account key such as nafru or nafru~eu")
+		}
+	}
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		have, err := q.ListMailIntegrations(ctx)
+		if err != nil {
+			return err
+		}
+		for _, r := range rules {
+			if !slices.ContainsFunc(have, func(a sqlc.TenantMailIntegration) bool { return a.Provider == r.GetAccount() }) {
+				return errkey.New(codes.InvalidArgument, "plans.mail_integration.unknown_account", "a rule names an account that is not connected: "+r.GetAccount())
+			}
+		}
+		if err := q.DeleteMailRouting(ctx); err != nil {
+			return err
+		}
+		detail := map[string]any{}
+		for _, r := range rules {
+			if err := q.InsertMailRouting(ctx, sqlc.InsertMailRoutingParams{Language: r.GetLanguage(), Account: r.GetAccount()}); err != nil {
+				return err
+			}
+			detail[r.GetLanguage()] = r.GetAccount()
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.routing_changed", TargetType: "mail_integration",
+			Summary: "changed which mail account sends which language", Detail: map[string]any{"rules": detail}})
+	})
+	if err != nil {
+		return nil, convert.Err(err, "mail integration")
+	}
+	return c.qry.Routing(ctx)
+}
+
+// Test checks the stored key of an account (the default when account is empty) at the provider and sends one test mail to the address through it. A provider problem is
+// the answer (ok false with its kind), not an error of the call; what was found is stored, so the status shows it.
+func (c *Commands) Test(ctx context.Context, to, account string) (*plansv1.TestMailIntegrationResponse, error) {
 	addr, err := stdmail.ParseAddress(to)
 	if err != nil || strings.ContainsAny(to, "\r\n") {
 		var v domain.Violations
 		v.Add("to", "must be an e-mail address")
 		return nil, v.Err()
 	}
-	sender, err := c.qry.ResolveSender(ctx)
+	if err := checkAccount(account); err != nil {
+		return nil, err
+	}
+	sender, err := c.qry.Account(ctx, account)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +324,9 @@ func (c *Commands) Test(ctx context.Context, to string) (*plansv1.TestMailIntegr
 	if err != nil {
 		p = problem(err)
 	}
-	if merr := c.db.Tx(ctx, func(q *sqlc.Queries) error { return q.MarkMailIntegrationChecked(ctx, p) }); merr != nil {
+	if merr := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		return q.MarkMailIntegrationChecked(ctx, sqlc.MarkMailIntegrationCheckedParams{Problem: p, Account: sender.Account})
+	}); merr != nil {
 		return nil, convert.Err(merr, "mail integration")
 	}
 	return &plansv1.TestMailIntegrationResponse{Ok: err == nil, Problem: p, MessageId: id}, nil

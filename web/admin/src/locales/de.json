@@ -3151,7 +3151,9 @@
         "unreachable": "Der E-Mail-Anbieter ist nicht erreichbar. Prüfen Sie die Adresse und versuchen Sie es erneut.",
         "not_configured": "E-Mail-Anbieter sind in dieser Installation nicht eingerichtet.",
         "not_connected": "Es ist kein E-Mail-Anbieter verbunden.",
-        "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut."
+        "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+        "default_in_use": "Dies ist das Standard-E-Mail-Konto. Machen Sie zuerst ein anderes Konto zum Standard und entfernen Sie dann dieses.",
+        "unknown_account": "Eine Regel nennt ein E-Mail-Konto, das nicht verbunden ist."
       },
       "saas": {
         "disabled": "Tarife sind in dieser Installation nicht aktiviert.",
@@ -4681,7 +4683,7 @@
         "intro": "Alle Konten dieser App in einer Liste: Zahlungen, E-Rechnung und E-Mail. Jede Art kann mehrere Konten haben, eines ist der Standard, und die Regeln darunter bestimmen, welches Konto welche Kunden übernimmt.",
         "add": "Integration hinzufügen",
         "addIntro": "Wählen Sie, was Sie verbinden: zuerst die Art, dann den Anbieter. Der nächste Schritt fragt die Zugangsdaten ab.",
-        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder einen eigenen E-Mail-Anbieter haben.",
+        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder mehrere E-Mail-Konten bei Nafru Email verbinden. Das erste ist der Standard.",
         "continue": "Weiter",
         "search": "Konten durchsuchen",
         "kind": "Art",
@@ -4703,15 +4705,16 @@
         },
         "tester": {
           "title": "Wer übernimmt diesen Kunden?",
-          "intro": "Geben Sie ein Land und eine Währung ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
+          "intro": "Geben Sie ein Land, eine Währung und die Sprache der E-Mail ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
           "run": "Prüfen",
           "byRule": "{account}, nach Regel {n}",
           "byDefault": "Das Standardkonto, keine Regel passt.",
           "byRuleCountry": "{account}, nach der Regel für {country}",
           "eDefault": "{account}, das Standardkonto",
           "eNone": "Kein Konto: Es ist kein Standard gesetzt und keine Regel nennt dieses Land.",
-          "mailOwn": "Ihr eigener E-Mail-Anbieter",
-          "mailBuiltIn": "Der eingebaute Absender von Payrudder"
+          "mailBuiltIn": "Der eingebaute Absender von Payrudder",
+          "mailByRule": "{account}, nach der Regel für {language}",
+          "mailDefault": "{account}, das Standardkonto"
         },
         "audit": {
           "title": "Wer die Konten geändert hat",
@@ -4727,6 +4730,13 @@
             "default_set": "{actor} hat {account} zum Standard gemacht",
             "routing_changed": "{actor} hat die Routing-Regeln geändert"
           }
+        },
+        "mRouting": {
+          "title": "Welches E-Mail-Konto in welcher Sprache sendet",
+          "intro": "Die Sprache der E-Mail entscheidet (die des Kunden, sonst die Standardsprache der App, sonst Englisch): E-Mails in einer hier genannten Sprache gehen über dieses Konto, alle anderen über das Standardkonto. Die Sprache und nicht das Land, weil sie das Einzige ist, was jede E-Mail über den Empfänger mitbringt.",
+          "language": "Sprache",
+          "duplicate": "Eine Sprache kann nur einmal vorkommen.",
+          "mailLanguage": "Sprache der E-Mail"
         }
       },
       "health": {
@@ -6205,7 +6215,9 @@
       },
       "mail_integration": {
         "saved": "E-Mail-Anbieter verbunden",
-        "removed": "E-Mail-Anbieter getrennt"
+        "removed": "E-Mail-Anbieter getrennt",
+        "default_set": "Standard-E-Mail-Konto geändert",
+        "routing_changed": "E-Mail-Zuordnung geändert"
       },
       "go_live": {
         "billing_profile_saved": "Rechnungsprofil gespeichert",

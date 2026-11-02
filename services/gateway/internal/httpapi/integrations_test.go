@@ -30,7 +30,12 @@ type fakeMailIntegration struct {
 	tenants      []string
 	put          *plansv1.PutMailIntegrationRequest
 	deleted      int
-	tested       string
+	// deletedAccount, tested and testedAccount are what the last delete and test named.
+	deletedAccount string
+	tested         string
+	testedAccount  string
+	defaulted      string
+	rules          []*plansv1.MailRoutingRule
 }
 
 func (f *fakeMailIntegration) saw(ctx context.Context) {
@@ -59,10 +64,11 @@ func (f *fakeMailIntegration) PutMailIntegration(ctx context.Context, in *plansv
 	return &plansv1.PutMailIntegrationResponse{Integration: &plansv1.MailIntegration{Provider: in.GetProvider(), KeyHint: "1234"}}, nil
 }
 
-func (f *fakeMailIntegration) DeleteMailIntegration(ctx context.Context, _ *plansv1.DeleteMailIntegrationRequest, _ ...grpc.CallOption) (*plansv1.DeleteMailIntegrationResponse, error) {
+func (f *fakeMailIntegration) DeleteMailIntegration(ctx context.Context, in *plansv1.DeleteMailIntegrationRequest, _ ...grpc.CallOption) (*plansv1.DeleteMailIntegrationResponse, error) {
 	f.saw(ctx)
 	f.mu.Lock()
 	f.deleted++
+	f.deletedAccount = in.GetAccount()
 	f.mu.Unlock()
 	return &plansv1.DeleteMailIntegrationResponse{}, nil
 }
@@ -70,9 +76,32 @@ func (f *fakeMailIntegration) DeleteMailIntegration(ctx context.Context, _ *plan
 func (f *fakeMailIntegration) TestMailIntegration(ctx context.Context, in *plansv1.TestMailIntegrationRequest, _ ...grpc.CallOption) (*plansv1.TestMailIntegrationResponse, error) {
 	f.saw(ctx)
 	f.mu.Lock()
-	f.tested = in.GetTo()
+	f.tested, f.testedAccount = in.GetTo(), in.GetAccount()
 	f.mu.Unlock()
 	return &plansv1.TestMailIntegrationResponse{Ok: true, MessageId: "em_1"}, nil
+}
+
+func (f *fakeMailIntegration) SetDefaultMailIntegration(ctx context.Context, in *plansv1.SetDefaultMailIntegrationRequest, _ ...grpc.CallOption) (*plansv1.SetDefaultMailIntegrationResponse, error) {
+	f.saw(ctx)
+	f.mu.Lock()
+	f.defaulted = in.GetAccount()
+	f.mu.Unlock()
+	return &plansv1.SetDefaultMailIntegrationResponse{}, nil
+}
+
+func (f *fakeMailIntegration) GetMailRouting(ctx context.Context, _ *plansv1.GetMailRoutingRequest, _ ...grpc.CallOption) (*plansv1.GetMailRoutingResponse, error) {
+	f.saw(ctx)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return &plansv1.GetMailRoutingResponse{Rules: f.rules}, nil
+}
+
+func (f *fakeMailIntegration) PutMailRouting(ctx context.Context, in *plansv1.PutMailRoutingRequest, _ ...grpc.CallOption) (*plansv1.PutMailRoutingResponse, error) {
+	f.saw(ctx)
+	f.mu.Lock()
+	f.rules = in.GetRules()
+	f.mu.Unlock()
+	return &plansv1.PutMailRoutingResponse{Rules: in.GetRules()}, nil
 }
 
 func (f *fakeMailIntegration) ResolveMailSender(context.Context, *plansv1.ResolveMailSenderRequest, ...grpc.CallOption) (*plansv1.ResolveMailSenderResponse, error) {
@@ -125,6 +154,46 @@ func TestMailIntegrationRoutes(t *testing.T) {
 	}
 	if resp, _ := p.call(t, "DELETE", base, tokViewer, "", ""); resp.StatusCode != 403 || mi.deleted != 1 {
 		t.Errorf("delete by a viewer: %d", resp.StatusCode)
+	}
+}
+
+// Several e-mail accounts: a label connects a further one, the default moves without a key, a delete and a test name their account, and the rules that send a language
+// through an account are read by a member and replaced by the owner, always for the app's live tenant.
+func TestMailAccountRoutes(t *testing.T) {
+	mi := &fakeMailIntegration{}
+	p := newProduct(t, nil, func(d *Deps) { d.MailIntegration = mi })
+	base := "/app/v1/apps/" + adaApp + "/integrations/mail"
+
+	body := `{"provider":"nafru","label":"eu","make_default":true,"base_url":"https://api.nafru.example","api_key":"nk_1234","from":"Acme <a@acme.example>"}`
+	if resp, m := p.call(t, "PUT", base, tokAda, "", body); resp.StatusCode != 200 || mi.put.GetLabel() != "eu" || !mi.put.GetMakeDefault() {
+		t.Fatalf("a labelled account: %d %v %v", resp.StatusCode, m, mi.put)
+	}
+	if resp, m := p.call(t, "POST", base+"/default", tokAda, "", `{"account":"nafru~eu"}`); resp.StatusCode != 200 || mi.defaulted != "nafru~eu" || mi.tenants[len(mi.tenants)-1] != adaLive {
+		t.Errorf("default: %d %v (%q for %v)", resp.StatusCode, m, mi.defaulted, mi.tenants)
+	}
+	if resp, m := p.call(t, "POST", base+"/default", tokViewer, "", `{"account":"nafru"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.go_live.owner_only" || mi.defaulted != "nafru~eu" {
+		t.Errorf("default by a viewer: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "POST", base+"/test", tokAda, "", `{"to":"ada@example.com","account":"nafru~eu"}`); resp.StatusCode != 200 || mi.testedAccount != "nafru~eu" {
+		t.Errorf("test names its account: %d %q", resp.StatusCode, mi.testedAccount)
+	}
+	if resp, _ := p.call(t, "DELETE", base+"?account=nafru~eu", tokAda, "", ""); resp.StatusCode != 204 || mi.deletedAccount != "nafru~eu" {
+		t.Errorf("delete names its account: %d %q", resp.StatusCode, mi.deletedAccount)
+	}
+	if resp, m := p.call(t, "DELETE", base+"?account=Nafru~EU", tokAda, "", ""); resp.StatusCode != 400 || mi.deleted != 1 {
+		t.Errorf("a delete of a name that is not an account key reaches nothing: %d %v", resp.StatusCode, m)
+	}
+
+	rules := `{"rules":[{"language":"de","account":"nafru~eu"},{"language":"fr","account":"nafru~eu"}]}`
+	if resp, _ := p.call(t, "PUT", base+"/routing", tokViewer, "", rules); resp.StatusCode != 403 || len(mi.rules) != 0 {
+		t.Errorf("rules by a viewer: %d", resp.StatusCode)
+	}
+	if resp, m := p.call(t, "PUT", base+"/routing", tokAda, "", rules); resp.StatusCode != 200 || len(mi.rules) != 2 || mi.tenants[len(mi.tenants)-1] != adaLive {
+		t.Fatalf("rules: %d %v %v", resp.StatusCode, m, mi.rules)
+	}
+	resp, m := p.call(t, "GET", base+"/routing", tokViewer, "", "")
+	if got, _ := m["rules"].([]any); resp.StatusCode != 200 || len(got) != 2 {
+		t.Errorf("a viewer reads the rules: %d %v", resp.StatusCode, m)
 	}
 }
 

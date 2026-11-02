@@ -191,16 +191,23 @@ test.describe("payment integrations", () => {
 });
 
 interface EInvoiceMock { account: string; provider: string; label: string; mode: string; is_default: boolean }
+interface MailMock { account: string; provider: string; label: string; base_url: string; from: string; key_hint: string; check_problem: string; is_default: boolean; update_time: string; checked_time: string }
 interface AuditMock { id: number; kind: string; account: string; environment: string; action: string; actor: string; is_default: boolean; verified_remote: boolean; created_at: string }
 
 /** What the e-invoice and e-mail integrations of the live environment hold, and what they were sent: several e-invoice accounts, a default, routing by country and the audit trail. */
-function extras(gw: MockGateway, initial: { account?: { provider: string; mode: string } | null; accounts?: EInvoiceMock[]; mail?: Record<string, unknown> | null; events?: AuditMock[] } = {}) {
+function extras(gw: MockGateway, initial: { account?: { provider: string; mode: string } | null; accounts?: EInvoiceMock[]; mails?: MailMock[]; events?: AuditMock[] } = {}) {
   const accounts: EInvoiceMock[] = initial.accounts ?? (initial.account ? [{ account: initial.account.provider, provider: initial.account.provider, label: "", mode: initial.account.mode, is_default: true }] : []);
   const state = {
     accounts,
     rules: [] as { country: string; account: string }[],
     events: initial.events ?? ([] as AuditMock[]),
-    mail: initial.mail ?? null,
+    /** The own e-mail accounts, and the rules that send a language through one. */
+    mails: initial.mails ?? ([] as MailMock[]),
+    mailRules: [] as { language: string; account: string }[],
+    /** The default own e-mail account, or null. */
+    get mail(): MailMock | null {
+      return this.mails.find((a) => a.is_default) ?? null;
+    },
     categories: { invoice_issued: true, payment_receipts: true, payment_failed: true, usage_alerts: true, system: true } as Record<string, boolean>,
     /** The default account, or null. */
     get account(): EInvoiceMock | null {
@@ -255,15 +262,35 @@ function extras(gw: MockGateway, initial: { account?: { provider: string; mode: 
       const page = all.slice(0, size);
       return { body: { events: page, next_page_token: all.length > size ? String(page[page.length - 1]?.id) : "" } };
     }
-    if (c.path === mBase && c.method === "GET") return { body: state.mail ? { connected: true, integration: state.mail } : { connected: false } };
+    if (c.path === mBase && c.method === "GET") return { body: { connected: state.mails.length > 0, integration: state.mail, accounts: [...state.mails].sort((a, b) => Number(b.is_default) - Number(a.is_default)) } };
     if (c.path === mBase && c.method === "PUT") {
       if (c.body?.api_key === "refused") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.mail_integration.refused", message: "refused" } } };
-      state.mail = { provider: "nafru", base_url: c.body?.base_url, from: c.body?.from, key_hint: String(c.body?.api_key ?? "").slice(-4), update_time: "2026-10-21T10:00:00Z", checked_time: "2026-10-21T10:00:00Z", check_problem: "" };
-      return { body: { integration: state.mail } };
+      const label = String(c.body?.label ?? "");
+      const key = label ? `nafru~${label}` : "nafru";
+      const wantsDefault = c.body?.make_default === true || state.mails.length === 0;
+      if (wantsDefault) for (const a of state.mails) a.is_default = false;
+      const existing = state.mails.find((a) => a.account === key);
+      const fields = { base_url: String(c.body?.base_url), from: String(c.body?.from), key_hint: String(c.body?.api_key ?? "").slice(-4), check_problem: "", update_time: "2026-10-21T10:00:00Z", checked_time: "2026-10-21T10:00:00Z" };
+      if (existing) Object.assign(existing, fields, { is_default: existing.is_default || wantsDefault });
+      else state.mails.push({ account: key, provider: "nafru", label, is_default: wantsDefault, ...fields });
+      return { body: { integration: state.mails.find((a) => a.account === key) } };
     }
     if (c.path === mBase && c.method === "DELETE") {
-      state.mail = null;
+      const key = c.query.get("account") || state.mail?.account;
+      const target = state.mails.find((a) => a.account === key);
+      if (target?.is_default && state.mails.length > 1) return { status: 409, body: { error: { code: "FAILED_PRECONDITION", key: "plans.mail_integration.default_in_use", message: "default" } } };
+      state.mails.splice(0, state.mails.length, ...state.mails.filter((a) => a.account !== key));
+      state.mailRules = state.mailRules.filter((r) => r.account !== key);
       return { status: 204, body: {} };
+    }
+    if (c.path === `${mBase}/default` && c.method === "POST") {
+      for (const a of state.mails) a.is_default = a.account === c.body?.account;
+      return { body: {} };
+    }
+    if (c.path === `${mBase}/routing` && c.method === "GET") return { body: { rules: state.mailRules } };
+    if (c.path === `${mBase}/routing` && c.method === "PUT") {
+      state.mailRules = (c.body?.rules as { language: string; account: string }[]) ?? [];
+      return { body: { rules: state.mailRules } };
     }
     if (c.path === `${mBase}/test`) return { body: { ok: true, message_id: "em_1" } };
     if (c.path === `${mBase}/identity` && c.method === "GET") {
@@ -390,7 +417,7 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await sheet.getByTestId("mail-from").fill("Acme Billing <billing@acme.example>");
     await sheet.getByTestId("integration-connect").click();
     await expect(sheet).toContainText("did not accept this key");
-    expect(state.mail).toBeNull();
+    expect(state.mails).toHaveLength(0);
     await sheet.getByTestId("mail-api-key").fill("nk_live_secret_1234");
     await sheet.getByTestId("integration-connect").click();
     expect(gw.called("PUT", `/app/v1/apps/${APP}/integrations/mail`).at(-1)?.body).toEqual({ provider: "nafru", base_url: "https://mail.nafru.example", api_key: "nk_live_secret_1234", from: "Acme Billing <billing@acme.example>" });
@@ -406,7 +433,7 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await sheet.getByTestId("mail-test-to").fill("owner@example.com");
     await sheet.getByTestId("integration-test").click();
     await expect(sheet.getByTestId("integration-test-result")).toContainText("owner@example.com");
-    expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/test`)[0]?.body).toEqual({ to: "owner@example.com" });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/test`)[0]?.body).toEqual({ to: "owner@example.com", account: "nafru" });
     // The sender's identity: what the domain publishes in DNS. Without a selector DKIM is not guessed; with one it is looked up under that name.
     const identity = sheet.getByTestId("mail-identity");
     await identity.getByTestId("mail-identity-check").click();
@@ -799,6 +826,97 @@ test.describe("one list of accounts: payments, e-invoice and e-mail", () => {
     expect(state.rules).toEqual([]);
   });
 
+  const nafru = (label: string, isDefault: boolean): MailMock => ({
+    account: label ? `nafru~${label}` : "nafru", provider: "nafru", label, base_url: "https://mail.nafru.example", from: label ? "Acme <rechnung@acme.eu>" : "Acme <billing@acme.example>", key_hint: "1234", check_problem: "", is_default: isDefault,
+    update_time: "2026-10-21T10:00:00Z", checked_time: "2026-10-21T10:00:00Z",
+  });
+
+  test("a second e-mail account is added under a label, made the default, routed by the language of the mail and removed; the key never comes back", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    const state = extras(gw, { mails: [nafru("", true)] });
+    gw.on((c) => (c.path === `/app/v1/apps/${APP}/go-live/routing/preview` && c.method === "POST" ? { body: { provider: "", rule_index: -1, owner: "provider", can_charge: true } } : undefined));
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+    // The first account is the default and Payrudder's own sender is no longer the one in use.
+    await expect(card.getByTestId("account-default-mail:nafru")).toHaveText("Default");
+    await expect(card.getByTestId("account-state-mail:builtin")).toHaveText("Not in use");
+    await expect(card.getByTestId("account-default-mail:builtin")).toHaveCount(0);
+
+    await card.getByTestId("account-add").click();
+    await page.getByTestId("add-kind").selectOption("mail");
+    await page.getByTestId("add-provider").selectOption("nafru");
+    await page.getByTestId("add-continue").click();
+    const sheet = page.getByTestId("mail-sheet");
+    // Another account at the same provider must be told apart by a label of the server's shape.
+    await sheet.getByTestId("mail-base-url").fill("https://mail.nafru.example");
+    await sheet.getByTestId("mail-api-key").fill("nk_eu_SECRET_5678");
+    await sheet.getByTestId("mail-from").fill("Acme <rechnung@acme.eu>");
+    await expect(sheet.getByTestId("integration-connect")).toBeDisabled();
+    await sheet.getByTestId("mail-label").fill("Europe Office");
+    await expect(sheet.getByRole("alert")).toContainText("lower-case");
+    await sheet.getByTestId("mail-label").fill("eu");
+    await sheet.getByTestId("mail-default").click();
+    await sheet.getByTestId("integration-connect").click();
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/integrations/mail`).at(-1)?.body).toEqual({ provider: "nafru", base_url: "https://mail.nafru.example", api_key: "nk_eu_SECRET_5678", from: "Acme <rechnung@acme.eu>", label: "eu", make_default: true });
+    await expect(card.getByTestId("account-mail:nafru~eu")).toBeVisible();
+    await expect(card.getByTestId("account-default-mail:nafru~eu")).toBeVisible();
+    await expect(card.getByTestId("account-default-mail:nafru")).toHaveCount(0);
+    await expect(page.getByTestId("integration-card-nafru")).toContainText("2 accounts connected");
+    expect(await page.content()).not.toContain("nk_eu_SECRET_5678");
+
+    // The default moves back with one click, without sending any key.
+    await card.getByTestId("account-make-default-mail:nafru").click();
+    await expect(card.getByTestId("account-default-mail:nafru")).toBeVisible();
+    expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/default`)[0]?.body).toEqual({ account: "nafru" });
+
+    // A rule sends a language to an account; each language once.
+    const routing = card.getByTestId("mail-routing-editor");
+    await routing.getByTestId("mail-rule-add").click();
+    await routing.getByTestId("mail-rule-language-0").selectOption("de");
+    await routing.getByTestId("mail-rule-account-0").selectOption("nafru~eu");
+    await routing.getByTestId("mail-rule-add").click();
+    await routing.getByTestId("mail-rule-language-1").selectOption("de");
+    await expect(routing.getByRole("alert")).toContainText("once");
+    await expect(routing.getByTestId("mail-rule-save")).toBeDisabled();
+    await routing.getByTestId("mail-rule-remove-1").click();
+    await routing.getByTestId("mail-rule-save").click();
+    await expect(routing.getByTestId("mail-rule-saved")).toBeVisible();
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/integrations/mail/routing`)[0]?.body).toEqual({ rules: [{ language: "de", account: "nafru~eu" }] });
+
+    // The tester answers for the language of the mail: the rule for German, the default for the rest.
+    const tester = page.getByTestId("routing-tester");
+    await tester.getByTestId("tester-language").selectOption("de");
+    await tester.getByTestId("tester-run").click();
+    await expect(tester.getByTestId("tester-result-mail")).toContainText("Nafru Email (eu), by the rule for Deutsch");
+    await tester.getByTestId("tester-language").selectOption("tr");
+    await tester.getByTestId("tester-run").click();
+    await expect(tester.getByTestId("tester-result-mail")).toContainText("Nafru Email, the default account");
+
+    // The test mail names its account.
+    await card.getByTestId("account-manage-mail:nafru~eu").click();
+    await sheet.getByTestId("mail-test-to").fill("owner@example.com");
+    await sheet.getByTestId("integration-test").click();
+    await expect(sheet.getByTestId("integration-test-result")).toContainText("owner@example.com");
+    expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/test`)[0]?.body).toEqual({ to: "owner@example.com", account: "nafru~eu" });
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+
+    // The default is removed last: the server says so, in words.
+    await card.getByTestId("account-mail:nafru").getByTestId("row-action-remove").click();
+    await confirmDialog(page, "yes");
+    await expect(card).toContainText("Make another account the default first");
+    expect(state.mails).toHaveLength(2);
+    // The other one goes, and the rule that named it goes with it.
+    await card.getByTestId("account-mail:nafru~eu").getByTestId("row-action-remove").click();
+    await confirmDialog(page, "yes");
+    await expect(card.getByTestId("account-mail:nafru~eu")).toHaveCount(0);
+    expect(gw.called("DELETE", `/app/v1/apps/${APP}/integrations/mail`).at(-1)?.query.get("account")).toBe("nafru~eu");
+    expect(state.mailRules).toEqual([]);
+    await expect(routing).toHaveCount(0);
+  });
+
   test("the tester says which payment account, which e-invoice account and which sender takes a customer", async ({ page }) => {
     const { gw, state } = liveGateway(productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] }).gw, {
       accounts: [{ provider: "paddle", default: true, working: true, checked: true }, { provider: "paddle~eu", default: false, working: true, checked: true }],
@@ -826,7 +944,7 @@ test.describe("one list of accounts: payments, e-invoice and e-mail", () => {
 
     const tester = page.getByTestId("routing-tester");
     await tester.getByTestId("tester-country").fill("de");
-    await pickCurrency(tester.getByRole("combobox"), "EUR");
+    await pickCurrency(tester.getByRole("combobox", { name: "Currency" }), "EUR");
     await tester.getByTestId("tester-run").click();
     await expect(tester.getByTestId("tester-result-payment")).toContainText("Paddle (eu), by rule 1");
     await expect(tester.getByTestId("tester-result-einvoice")).toContainText("Nilvera (tr), by the rule for DE");
