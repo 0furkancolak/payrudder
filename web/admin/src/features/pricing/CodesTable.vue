@@ -42,7 +42,7 @@ async function deactivate(code: string) {
         <TableCell class="text-xs max-lg:hidden">{{ codeRules(c, t, locale).join(" · ") || "—" }}</TableCell>
         <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
         <TableCell>
-          <RowActions :actions="c.active ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), icon: Ban, disabled: !canWrite, onSelect: () => deactivate(c.code ?? '') }] : []" :label="`${t('common.moreActions')} ${c.code}`" />
+          <RowActions :actions="c.active && canWrite ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), icon: Ban, onSelect: () => deactivate(c.code ?? '') }] : []" :label="`${t('common.moreActions')} ${c.code}`" />
         </TableCell>
       </TableRow>
     </TableBody>
