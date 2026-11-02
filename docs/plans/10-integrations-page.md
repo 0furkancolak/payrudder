@@ -55,7 +55,7 @@ A data migration on the payment path: needs a rehearsal on a copy and a rollback
 - A legal number is unique within an e-invoice account, not across a tenant's accounts (two accounts number on their own).
 - The default e-invoice account cannot be removed while others exist; the page asks for another default first.
 
-**Fixed (found by the trace):** a routing rule naming a labelled payment account (`paddle~eu`) could not be saved, and a subscription could not be sold through one: `routing_rules.provider`, `subscriptions.provider` and `provider_migrations.to_provider` refused the tilde (plans-svc migration `00009_labelled_accounts` and its tenant twin; `TestPlansSvc/LabelledAccounts` fails without it, with an internal error). #242 had never been run against the database.
+**Fixed (found by the trace):** a routing rule naming a labelled payment account (`paddle~eu`) could not be saved, and a subscription could not be sold through one: `routing_rules.provider`, `subscriptions.provider` and `provider_migrations.to_provider` refused the tilde (plans-svc migration `00010_labelled_accounts` and its tenant twin `00008`; `TestPlansSvc/LabelledAccounts` fails without it, with an internal error). #242 had never been run against the database.
 
 **Built:**
 - payments-worker: several e-invoice accounts per environment (the key in `einvoice_accounts.provider`, a default, `einvoice_routing` by the buyer's country), an issuance records its account and repeats and cancels go through it, `provider_account_events` gains a `kind`, `default_set` and `routing_changed`, and is listed (`GET /admin/tenants/{tenant}/provider-account-events`). Moving the default of a payment account is now recorded too. Migration `00003_integration_accounts` and its tenant twin.
@@ -72,4 +72,4 @@ A data migration on the payment path: needs a rehearsal on a copy and a rollback
 - A document that an integrator refused for good stays with the account it began with; if the account was the wrong one, moving it needs a reset of its issuance row (not built).
 - E-invoice accounts have no standing health check: a row says what its last test said. Routing "fallback when an account is unhealthy" is not built.
 - The audit view covers the live environment's accounts; the sandbox's test-mode accounts are another tenant and are not in it.
-- Migrations `payments-worker 00003` and `plans-svc 00009` were rehearsed on empty databases (the integration tests and the tenant-schema parity tests), **not on a copy of real data**; the plan's own risk about the payment path stands for the plan 22 `account_id` move, not for this change (no payment table changed).
+- Migrations `payments-worker 00003` and `plans-svc 00010` were rehearsed on empty databases (the integration tests and the tenant-schema parity tests), **not on a copy of real data**; the plan's own risk about the payment path stands for the plan 22 `account_id` move, not for this change (no payment table changed).
