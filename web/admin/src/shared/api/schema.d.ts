@@ -8063,9 +8063,9 @@ export interface components {
             description: string;
             /**
              * Format: date-time
-             * @description The service period the line covers
+             * @description The service period the line covers, nullable: true
              */
-            service_from: string | null;
+            service_from: string;
             /** Format: date-time */
             service_to: string | null;
         };
@@ -8169,10 +8169,7 @@ export interface components {
         RecordInvoicePaymentResult: {
             payment: components["schemas"]["InvoicePayment"] | null;
             duplicate: boolean;
-            /**
-             * Format: int64
-             * @description The sum of the payments recorded by hand
-             */
+            /** @description The sum of the payments recorded by hand, format: int64 */
             paid_minor: string;
             /** Format: int64 */
             outstanding_minor: string;
@@ -8189,10 +8186,7 @@ export interface components {
             reference: string;
         };
         TransferReceipt: {
-            /**
-             * Format: int64
-             * @description The ledger row
-             */
+            /** @description The ledger row, format: int64 */
             id: number;
             /** Format: int64 */
             amount_minor: number;
@@ -8246,15 +8240,9 @@ export interface components {
             meter_code: string;
             /** @example 2026-11 */
             period_id: string;
-            /**
-             * @description Exact decimal with the meter's scale
-             * @example 10.500
-             */
+            /** @description Exact decimal with the meter's scale, examples: ["10.500"] */
             used: string;
-            /**
-             * @description Exact decimal; null when unlimited
-             * @example 10.500
-             */
+            /** @description Exact decimal; null when unlimited, examples: ["10.500"] */
             limit: string | null;
             unlimited: boolean;
             /** @description (unlimited, used < limit, or a soft or notify limit) and not suspended */
@@ -8377,9 +8365,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description When the mail last went out
+             * @description When the mail last went out, nullable: true
              */
-            send_time: string | null;
+            send_time: string;
             /** Format: date-time */
             expire_time: string | null;
         };
@@ -9299,34 +9287,19 @@ export interface components {
             currency: string;
             /** Format: int64 */
             invoices: string;
-            /**
-             * Format: int64
-             * @description Finalized invoices that are not void
-             */
+            /** @description Finalized invoices that are not void, format: int64 */
             billed_minor: string;
-            /**
-             * Format: int64
-             * @description Paid
-             */
+            /** @description Paid, format: int64 */
             collected_minor: string;
-            /**
-             * Format: int64
-             * @description Invoices that were refunded
-             */
+            /** @description Invoices that were refunded, format: int64 */
             refunded_minor: string;
-            /**
-             * Format: int64
-             * @description Open
-             */
+            /** @description Open, format: int64 */
             outstanding_minor: string;
             /** Format: int64 */
             uncollectible_minor: string;
             /** Format: int64 */
             void_minor: string;
-            /**
-             * Format: int64
-             * @description Credit notes issued against these invoices
-             */
+            /** @description Credit notes issued against these invoices, format: int64 */
             credited_minor: string;
         };
         GetDunningReportResponse: {
@@ -9375,19 +9348,13 @@ export interface components {
             paused: string;
             /** Format: int64 */
             past_due: string;
-            /**
-             * Format: int64
-             * @description Fixed fees per month of active and past due subscriptions
-             */
+            /** @description Fixed fees per month of active and past due subscriptions, format: int64 */
             mrr_minor: string;
             /** Format: int64 */
             new_subscriptions: string;
             /** Format: int64 */
             new_mrr_minor: string;
-            /**
-             * Format: int64
-             * @description Ended with no successor; a plan change or provider migration is not churn
-             */
+            /** @description Ended with no successor; a plan change or provider migration is not churn, format: int64 */
             churned: string;
             /** Format: int64 */
             churned_mrr_minor: string;
@@ -10119,7 +10086,7 @@ export interface components {
             connected: boolean;
             /** @description The default account. */
             integration: components["schemas"]["MailIntegration"] | null;
-            /** @description Every account */
+            /** @description Every account, the default first. */
             accounts: components["schemas"]["MailIntegration"][];
         };
         AppPutMailIntegrationRequest: {
@@ -10151,7 +10118,7 @@ export interface components {
             status: "ok" | "weak" | "missing" | "invalid" | "unchecked" | "error";
             /** @description hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked */
             detail?: string;
-            /** @description The record that was found */
+            /** @description The record that was found, clipped. */
             record?: string;
             selector?: string;
         };
@@ -10356,10 +10323,7 @@ export interface components {
         CreateProviderCheckoutRequest: {
             /** @example paddle */
             provider: string;
-            /**
-             * @description The provider's id of what is sold
-             * @example pri_01
-             */
+            /** @description The provider's id of what is sold, examples: [pri_01] */
             price_ref: string;
             quantity?: number;
             /**
@@ -12192,10 +12156,7 @@ export interface components {
              * @description The commission; negative on a reversal row
              */
             amount_minor: string;
-            /**
-             * Format: int64
-             * @description How much of the commission has been taken back
-             */
+            /** @description How much of the commission has been taken back, format: int64 */
             reversed_minor: string;
             /** @enum {string} */
             status: "pending" | "approved" | "paid" | "reversed";
@@ -12232,15 +12193,9 @@ export interface components {
             to_date: string;
             /** Format: int64 */
             clicks: string;
-            /**
-             * Format: int64
-             * @description Customers attributed in the period
-             */
+            /** @description Customers attributed in the period, format: int64 */
             referrals: string;
-            /**
-             * Format: int64
-             * @description Customers with a commission earned in the period
-             */
+            /** @description Customers with a commission earned in the period, format: int64 */
             paying_customers: string;
             commissions: {
                 currency: string;
@@ -13830,9 +13785,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description Set when a void or a full refund reversed it
+             * @description Set when a void or a full refund reversed it, nullable: true
              */
-            reverse_time: string | null;
+            reverse_time: string;
         };
         PromotionQuoteRequest: {
             code?: string;
@@ -13840,10 +13795,7 @@ export interface components {
             customer_external_id?: string;
             /** @enum {string} */
             target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
-            /**
-             * Format: int64
-             * @description The price before the discount
-             */
+            /** @description The price before the discount, format: int64 */
             amount_minor?: string;
             currency: string;
             /** @description The credit pack id, for codes restricted to some packs */
@@ -13914,10 +13866,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor: string;
             /**
              * Format: int64
@@ -13953,10 +13902,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor?: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor?: string;
             /**
              * Format: int64
@@ -13984,10 +13930,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor: string;
             /**
              * Format: int64
@@ -14190,9 +14133,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description Set once the app was deleted (archived); only the operator API lists such an app.
+             * @description Set once the app was deleted (archived); only the operator API lists such an app., nullable: true
              */
-            archive_time: string | null;
+            archive_time: string;
         };
         /**
          * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
@@ -14527,9 +14470,9 @@ export interface components {
             update_time: string | null;
             /**
              * Format: date-time
-             * @description When the provider last accepted the key
+             * @description When the provider last accepted the key, nullable: true
              */
-            checked_time: string | null;
+            checked_time: string;
             /** @enum {string} */
             check_problem: "" | "unreachable" | "refused";
         };
@@ -14557,14 +14500,14 @@ export interface components {
             permissions: components["schemas"]["ApiKeyPermission"][];
             /**
              * Format: date-time
-             * @description Kept to within a few minutes.
+             * @description Kept to within a few minutes., nullable: true
              */
-            last_used_time: string | null;
+            last_used_time: string;
             /**
              * Format: date-time
-             * @description The key stops working at this time although it is not revoked (the old key of a rotation).
+             * @description The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true
              */
-            expire_time: string | null;
+            expire_time: string;
         };
     };
     responses: {

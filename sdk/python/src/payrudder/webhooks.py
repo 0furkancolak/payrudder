@@ -229,7 +229,8 @@ class _WebhookPriceChangeRequired(TypedDict):
 class WebhookPriceChange(_WebhookPriceChangeRequired, total=False):
     """A price change in an event: as the API returns it, without the fields at their zero value. Times are RFC 3339.
 
-    ``effective_time`` is the first date a customer's price changes and ``effective_from`` (when present) the date the seller chose it to start from; ``state`` is ``open`` or ``withdrawn``;
+    ``effective_time`` is the first date a customer's price changes and ``effective_from`` (when present) the date the
+    seller chose it to start from; ``state`` is ``open`` or ``withdrawn``;
     ``scheduled``, ``applied``, ``withdrawn`` and ``skipped`` count the subscriptions waiting, moved, withdrawn and left
     out.
     """
