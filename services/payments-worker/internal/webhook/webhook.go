@@ -71,6 +71,8 @@ type Server struct {
 	Subscriptions store.Subscriptions
 	// Objects remembers what was created at a provider (products, prices, customers, discounts).
 	Objects store.Objects
+	// Methods remembers the time of the newest saved-payment-method notification applied to a customer.
+	Methods store.PaymentMethods
 	Log     *slog.Logger
 	// Token guards /admin. Empty disables the admin endpoints entirely.
 	Token string
@@ -523,8 +525,23 @@ func (s *Server) recordPaymentMethod(ctx context.Context, tenant uuid.UUID, prov
 		s.Log.WarnContext(ctx, "payment method saved but plans-svc is not configured", "provider", provider, "tenant", tenant)
 		return nil
 	}
+	// Newest wins: a notification the provider repeats after a newer one was applied must not bring the older card back. The time is the provider's own (`OccurredAt`); one
+	// that does not date its events has nothing to compare, and its notifications apply in the order they arrive. Two notifications in the same second are applied as they arrive.
+	if !n.OccurredAt.IsZero() {
+		applied, ok, err := s.Methods.AppliedAt(ctx, tenant, provider, env, pm.ExternalID)
+		if err != nil {
+			return err
+		}
+		if ok && applied.After(n.OccurredAt) {
+			s.Log.InfoContext(ctx, "payment method notification is older than the one applied; ignored", "provider", provider, "tenant", tenant, "at", n.OccurredAt, "applied", applied)
+			return nil
+		}
+	}
 	if err := s.Plans.SetCustomerPaymentMethod(ctx, tenant, pm.ExternalID, pm.Token); err != nil {
 		return fmt.Errorf("set the payment method with plans-svc: %w", err)
+	}
+	if !n.OccurredAt.IsZero() {
+		return s.Methods.MarkApplied(ctx, tenant, provider, env, pm.ExternalID, n.OccurredAt)
 	}
 	return nil
 }

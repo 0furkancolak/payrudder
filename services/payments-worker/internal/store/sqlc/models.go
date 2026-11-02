@@ -160,6 +160,15 @@ type PaymentLedger struct {
 	OccurredAt     time.Time
 }
 
+type PaymentMethodApplied struct {
+	TenantID    uuid.UUID
+	Provider    string
+	Environment string
+	CustomerRef string
+	OccurredAt  time.Time
+	UpdatedAt   time.Time
+}
+
 type ProviderAccount struct {
 	TenantID    uuid.UUID
 	Provider    string

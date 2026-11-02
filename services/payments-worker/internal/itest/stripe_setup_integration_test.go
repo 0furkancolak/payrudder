@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -49,6 +50,10 @@ func TestStripeSavedCardBecomesTheCustomersPaymentMethod(t *testing.T) {
 			_, _ = io.WriteString(w, `{"id":"cs_1","url":"https://checkout.stripe.com/c/pay/cs_1"}`)
 		case "GET /v1/setup_intents/seti_1":
 			_, _ = io.WriteString(w, `{"status":"succeeded","payment_method":"pm_card","customer":"cus_77"}`)
+		case "GET /v1/setup_intents/seti_2":
+			_, _ = io.WriteString(w, `{"status":"succeeded","payment_method":"pm_new","customer":"cus_77"}`)
+		case "GET /v1/setup_intents/seti_0":
+			_, _ = io.WriteString(w, `{"status":"succeeded","payment_method":"pm_old","customer":"cus_77"}`)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -75,7 +80,7 @@ func TestStripeSavedCardBecomesTheCustomersPaymentMethod(t *testing.T) {
 	plans := &recPlans{currency: "EUR", customers: map[string]*plansv1.Customer{"user-42": {Id: "cccccccc-0000-0000-0000-000000000042", ExternalId: "user-42", Name: "Ada", Email: "ada@example.com"}}}
 	objects := store.Objects{DB: pool}
 	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
-		Ledger: store.Ledger{DB: pool}, Subscriptions: store.Subscriptions{DB: pool}, Objects: objects, Log: log, Token: "internal", Plans: plans}).Handler())
+		Ledger: store.Ledger{DB: pool}, Subscriptions: store.Subscriptions{DB: pool}, Objects: objects, Methods: store.PaymentMethods{DB: pool}, Log: log, Token: "internal", Plans: plans}).Handler())
 	defer api.Close()
 
 	tenant := uuid.New()
@@ -95,9 +100,9 @@ func TestStripeSavedCardBecomesTheCustomersPaymentMethod(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		return resp.StatusCode, string(b)
 	}
-	hook := func(id, session string) int {
+	hookAt := func(id, session string, created int) int {
 		t.Helper()
-		body := `{"id":"` + id + `","type":"checkout.session.completed","created":1790000000,"data":{"object":` + session + `}}`
+		body := `{"id":"` + id + `","type":"checkout.session.completed","created":` + strconv.Itoa(created) + `,"data":{"object":` + session + `}}`
 		req, _ := http.NewRequest("POST", api.URL+"/webhooks/stripe/"+tenant.String()+"/live", strings.NewReader(body))
 		req.Header.Set("Stripe-Signature", stripe.SignatureHeader(secret, time.Now(), []byte(body)))
 		resp, err := http.DefaultClient.Do(req)
@@ -107,6 +112,7 @@ func TestStripeSavedCardBecomesTheCustomersPaymentMethod(t *testing.T) {
 		resp.Body.Close()
 		return resp.StatusCode
 	}
+	hook := func(id, session string) int { return hookAt(id, session, 1790000000) }
 	method := func() string {
 		plans.mu.Lock()
 		defer plans.mu.Unlock()
@@ -161,6 +167,13 @@ func TestStripeSavedCardBecomesTheCustomersPaymentMethod(t *testing.T) {
 	plans.mu.Unlock()
 	if code := hook("evt_saved", ours); code != http.StatusOK || method() != "changed-by-the-tenant" {
 		t.Errorf("a duplicate: %d, method %q", code, method())
+	}
+	// Newest wins: a later card is applied, and a notification Stripe sends late for an earlier card does not bring it back (its answer is still 200: nothing to retry).
+	if code := hookAt("evt_newer", strings.Replace(ours, "seti_1", "seti_2", 1), 1790000100); code != http.StatusOK || method() != "cus_77:pm_new" {
+		t.Fatalf("a later card: %d, method %q, want cus_77:pm_new", code, method())
+	}
+	if code := hookAt("evt_older", strings.Replace(ours, "seti_1", "seti_0", 1), 1789999000); code != http.StatusOK || method() != "cus_77:pm_new" {
+		t.Errorf("an earlier card arriving late: %d, method %q, want cus_77:pm_new kept", code, method())
 	}
 	// Unsigned, it is not believed.
 	req, _ := http.NewRequest("POST", api.URL+"/webhooks/stripe/"+tenant.String()+"/live", strings.NewReader(`{"id":"evt_forged","type":"checkout.session.completed","data":{"object":`+ours+`}}`))

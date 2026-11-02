@@ -732,6 +732,10 @@ CREATE TABLE provider_account_health (
 CREATE TABLE provider_failover (      -- absent = no failover (the default); one hop; a timeout never fails over whatever is set here
   tenant_id uuid NOT NULL, environment text NOT NULL, provider text NOT NULL, failover_to text NOT NULL CHECK (failover_to <> provider), updated_by text NOT NULL, PRIMARY KEY (tenant_id, environment, provider)
 );
+-- Saved-payment-method notifications (plan 22 payments review (f), migration 00016 / tenant 00017): the provider's time of the newest one applied to a customer; an older one that arrives later is ignored. Time only.
+CREATE TABLE payment_method_applied (
+  tenant_id uuid NOT NULL, provider text NOT NULL, environment text NOT NULL, customer_ref text NOT NULL, occurred_at timestamptz NOT NULL, PRIMARY KEY (tenant_id, provider, environment, customer_ref)
+);
 
 -- notifier_db
 CREATE TABLE sent_notifications (

@@ -17,7 +17,7 @@ import (
 var (
 	Tables = []string{"manual_receipts", "payment_ledger", "payment_dispute_events", "payment_disputes", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances",
 		"reconciliation_events", "reconciliation_runs", "reconciliation_discrepancies", "settlement_lines"}
-	Kept = []string{"audit_events", "provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts", "einvoice_routing", "fee_rules", "provider_account_health", "provider_failover"}
+	Kept = []string{"audit_events", "provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts", "einvoice_routing", "fee_rules", "provider_account_health", "provider_failover", "payment_method_applied"}
 )
 
 // Resetter deletes on the system role, which sees every tenant of the pooled database, so each statement names the tenant. When cells are on (ADR 0018) it is
