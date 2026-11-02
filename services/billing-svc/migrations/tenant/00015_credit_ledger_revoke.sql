@@ -1,4 +1,4 @@
--- The twin of ../00014_credit_ledger_revoke.sql for the tables that have a tenant_id.
+-- The twin of ../00015_credit_ledger_revoke.sql for the tables that have a tenant_id.
 -- The credits of a credit-pack invoice that was voided or credited are taken back (docs/plans/22, review finding 4). The ledger stays append-only: a take-back is a row of
 -- its own kind, "revoke", with a negative amount (a lot is never edited in place except for its remaining credits, as for a consume). A customer who had already spent the
 -- credits has nothing left to take: that revoke is a row of amount 0, whose reason says how many credits could not be taken back, so the shortfall is on record and the
