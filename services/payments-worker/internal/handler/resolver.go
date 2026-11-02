@@ -3,12 +3,14 @@ package handler
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
@@ -20,11 +22,26 @@ type Resolver struct {
 
 	mu    sync.Mutex
 	cache map[string]cached
+	// accounts remembers whose account each adapter in the cache was built for, so that a charge made through an adapter can be counted against that account's
+	// circuit breaker and recorded under its key.
+	accounts map[payments.Provider]health.Ref
 }
 
 type cached struct {
 	updated  time.Time
 	provider payments.Provider
+}
+
+// Account returns the account an adapter was built for by Named (or Default), if it is one of them.
+func (r *Resolver) Account(p payments.PaymentProvider) (health.Ref, bool) {
+	prov, ok := p.(payments.Provider)
+	if !ok || !reflect.TypeOf(prov).Comparable() {
+		return health.Ref{}, false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ref, ok := r.accounts[prov]
+	return ref, ok
 }
 
 // Named returns the adapter for a tenant's account at a provider.
@@ -48,9 +65,15 @@ func (r *Resolver) Named(ctx context.Context, tenant uuid.UUID, provider, env st
 		return nil, fmt.Errorf("provider account %s/%s: %w", provider, env, err)
 	}
 	if r.cache == nil {
-		r.cache = map[string]cached{}
+		r.cache, r.accounts = map[string]cached{}, map[payments.Provider]health.Ref{}
+	}
+	if old, ok := r.cache[key]; ok && reflect.TypeOf(old.provider).Comparable() {
+		delete(r.accounts, old.provider) // the account changed: its old adapter is no one's now
 	}
 	r.cache[key] = cached{updated: updated, provider: p}
+	if reflect.TypeOf(p).Comparable() { // an adapter is a pointer; one that is not cannot be a map key and has no breaker
+		r.accounts[p] = health.Ref{Tenant: tenant, Provider: provider, Environment: env}
+	}
 	return p, nil
 }
 

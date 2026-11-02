@@ -1892,6 +1892,7 @@ const (
 	HostedInvoiceService_QuoteLinkPromotion_FullMethodName     = "/payrudder.billing.v1.HostedInvoiceService/QuoteLinkPromotion"
 	HostedInvoiceService_RequestHostedPayment_FullMethodName   = "/payrudder.billing.v1.HostedInvoiceService/RequestHostedPayment"
 	HostedInvoiceService_GetPortal_FullMethodName              = "/payrudder.billing.v1.HostedInvoiceService/GetPortal"
+	HostedInvoiceService_GetPortalSubscriptions_FullMethodName = "/payrudder.billing.v1.HostedInvoiceService/GetPortalSubscriptions"
 	HostedInvoiceService_StartPortalPurchase_FullMethodName    = "/payrudder.billing.v1.HostedInvoiceService/StartPortalPurchase"
 )
 
@@ -1915,6 +1916,9 @@ type HostedInvoiceServiceClient interface {
 	RequestHostedPayment(ctx context.Context, in *RequestHostedPaymentRequest, opts ...grpc.CallOption) (*RequestHostedPaymentResponse, error)
 	// GetPortal returns a customer's page: who they are and their invoices.
 	GetPortal(ctx context.Context, in *GetPortalRequest, opts ...grpc.CallOption) (*GetPortalResponse, error)
+	// GetPortalSubscriptions returns the customer's current subscriptions for the portal's read-only summary. The portal asks for it beside GetPortal and shows the page
+	// without the section when it fails, so plans-svc being down does not take the page down. Nothing in it can be changed from the portal.
+	GetPortalSubscriptions(ctx context.Context, in *GetPortalSubscriptionsRequest, opts ...grpc.CallOption) (*GetPortalSubscriptionsResponse, error)
 	// StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
 	// token of the invoice link the customer pays on.
 	StartPortalPurchase(ctx context.Context, in *StartPortalPurchaseRequest, opts ...grpc.CallOption) (*StartPortalPurchaseResponse, error)
@@ -1998,6 +2002,16 @@ func (c *hostedInvoiceServiceClient) GetPortal(ctx context.Context, in *GetPorta
 	return out, nil
 }
 
+func (c *hostedInvoiceServiceClient) GetPortalSubscriptions(ctx context.Context, in *GetPortalSubscriptionsRequest, opts ...grpc.CallOption) (*GetPortalSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPortalSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, HostedInvoiceService_GetPortalSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *hostedInvoiceServiceClient) StartPortalPurchase(ctx context.Context, in *StartPortalPurchaseRequest, opts ...grpc.CallOption) (*StartPortalPurchaseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartPortalPurchaseResponse)
@@ -2028,6 +2042,9 @@ type HostedInvoiceServiceServer interface {
 	RequestHostedPayment(context.Context, *RequestHostedPaymentRequest) (*RequestHostedPaymentResponse, error)
 	// GetPortal returns a customer's page: who they are and their invoices.
 	GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error)
+	// GetPortalSubscriptions returns the customer's current subscriptions for the portal's read-only summary. The portal asks for it beside GetPortal and shows the page
+	// without the section when it fails, so plans-svc being down does not take the page down. Nothing in it can be changed from the portal.
+	GetPortalSubscriptions(context.Context, *GetPortalSubscriptionsRequest) (*GetPortalSubscriptionsResponse, error)
 	// StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
 	// token of the invoice link the customer pays on.
 	StartPortalPurchase(context.Context, *StartPortalPurchaseRequest) (*StartPortalPurchaseResponse, error)
@@ -2061,6 +2078,9 @@ func (UnimplementedHostedInvoiceServiceServer) RequestHostedPayment(context.Cont
 }
 func (UnimplementedHostedInvoiceServiceServer) GetPortal(context.Context, *GetPortalRequest) (*GetPortalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPortal not implemented")
+}
+func (UnimplementedHostedInvoiceServiceServer) GetPortalSubscriptions(context.Context, *GetPortalSubscriptionsRequest) (*GetPortalSubscriptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPortalSubscriptions not implemented")
 }
 func (UnimplementedHostedInvoiceServiceServer) StartPortalPurchase(context.Context, *StartPortalPurchaseRequest) (*StartPortalPurchaseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartPortalPurchase not implemented")
@@ -2212,6 +2232,24 @@ func _HostedInvoiceService_GetPortal_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostedInvoiceService_GetPortalSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPortalSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostedInvoiceServiceServer).GetPortalSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostedInvoiceService_GetPortalSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostedInvoiceServiceServer).GetPortalSubscriptions(ctx, req.(*GetPortalSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HostedInvoiceService_StartPortalPurchase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartPortalPurchaseRequest)
 	if err := dec(in); err != nil {
@@ -2264,6 +2302,10 @@ var HostedInvoiceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPortal",
 			Handler:    _HostedInvoiceService_GetPortal_Handler,
+		},
+		{
+			MethodName: "GetPortalSubscriptions",
+			Handler:    _HostedInvoiceService_GetPortalSubscriptions_Handler,
 		},
 		{
 			MethodName: "StartPortalPurchase",

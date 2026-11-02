@@ -24,7 +24,7 @@ export const READ_TOOLS = {
  */
 export const UNTRUSTED = [
   "name", "email", "description", "note", "block_reason", "line1", "line2", "city", "region", "postal_code", "tax_id", "tax_office", "unit_label", "reference",
-  "recorded_by", "category", "coupon_code", "values",
+  "recorded_by", "category", "coupon_code", "values", "phone", "tax_id_warning",
 ];
 
 /**

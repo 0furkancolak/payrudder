@@ -89,6 +89,9 @@ func paymentInstructions(pdf *fpdf.Fpdf, l *layout, in *commandsv1.PaymentInstru
 	pdf.MultiCell(0, rowBody, l.t(kTransferNote), "", "L", false)
 }
 
+// SandboxMarker is the /Subject of every sandbox invoice, in plain ASCII.
+const SandboxMarker = "payrudder-sandbox"
+
 // PDF renders the invoice.
 func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	if inv.GetInvoiceId() == "" || inv.GetNumber() == "" || inv.GetCurrency() == "" || inv.GetCurrencyExponent() < 0 || inv.GetCurrencyExponent() > 3 {
@@ -116,6 +119,8 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	pdf.AddPage()
 
 	if o.Sandbox {
+		// The drawn mark is glyph ids of the embedded font, so nothing can find it by its text in the bytes; /Subject is a plain ASCII string (SandboxMarker) that a script can.
+		pdf.SetSubject(SandboxMarker, false)
 		drawWatermark(pdf, l.t(kSandbox))
 	}
 	drawLogo(pdf, o.Logo)
@@ -244,8 +249,8 @@ func drawHeader(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, issu
 	pdf.CellFormat(0, rowTitle, l.t(kInvoice), "", 1, "L", false, 0, "")
 	pdf.SetFont(fontFamily, "", sizeBody)
 	pdf.CellFormat(0, rowBody, printable(l.t(kNumber)+": "+inv.GetNumber()), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, rowBody, printable(l.t(kPeriod)+": "+l.period(inv.GetPeriodId())), "", 1, "L", false, 0, "")
-	pdf.CellFormat(0, rowBody, printable(l.t(kIssued)+": "+l.date(issued)), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(l.t(kPeriod)+": "+l.Period(inv.GetPeriodId())), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, rowBody, printable(l.t(kIssued)+": "+l.Date(issued)), "", 1, "L", false, 0, "")
 	pdf.Ln(4)
 }
 
@@ -283,11 +288,11 @@ func drawLines(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, exp i
 	for _, ln := range inv.GetLines() {
 		qty := ""
 		if ln.GetQuantity() != "" {
-			qty = strings.TrimSpace(l.number(ln.GetQuantity()) + " " + ln.GetUnitLabel())
+			qty = strings.TrimSpace(l.Number(ln.GetQuantity()) + " " + ln.GetUnitLabel())
 		}
 		pdf.CellFormat(colDescription, rowTable, fit(pdf, printable(ln.GetDescription()), colDescription), "", 0, "L", false, 0, "")
 		pdf.CellFormat(colQuantity, rowTable, fit(pdf, printable(qty), colQuantity), "", 0, "R", false, 0, "")
-		pdf.CellFormat(colAmount, rowTable, printable(l.money(ln.GetAmountMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+		pdf.CellFormat(colAmount, rowTable, printable(l.Money(ln.GetAmountMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
 	}
 }
 
@@ -295,8 +300,8 @@ func drawTotals(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, exp 
 	pdf.Ln(4)
 	pdf.SetFont(fontFamily, "", sizeTable)
 	pdf.CellFormat(colLabelSpan, rowTable, l.t(kSubtotal), "T", 0, "R", false, 0, "")
-	pdf.CellFormat(colAmount, rowTable, printable(l.money(inv.GetSubtotalMinor(), exp, inv.GetCurrency())), "T", 1, "R", false, 0, "")
+	pdf.CellFormat(colAmount, rowTable, printable(l.Money(inv.GetSubtotalMinor(), exp, inv.GetCurrency())), "T", 1, "R", false, 0, "")
 	pdf.SetFont(fontFamily, "B", sizeTotal)
 	pdf.CellFormat(colLabelSpan, rowTotal, l.t(kTotal), "", 0, "R", false, 0, "")
-	pdf.CellFormat(colAmount, rowTotal, printable(l.money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+	pdf.CellFormat(colAmount, rowTotal, printable(l.Money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
 }

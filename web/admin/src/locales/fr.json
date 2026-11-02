@@ -124,7 +124,10 @@
       "amount_mismatch": "Montant différent",
       "duplicate_charge": "Débitée plusieurs fois",
       "charge_without_paid": "Débitée, facture non payée",
-      "conflicting_outcomes": "Succès et échec enregistrés"
+      "conflicting_outcomes": "Succès et échec enregistrés",
+      "settlement_missing": "Payé, absent du règlement du fournisseur",
+      "settlement_mismatch": "Le montant réglé diffère",
+      "fee_mismatch": "Les frais du fournisseur diffèrent"
     },
     "ledgerKind": {
       "charge": "débit",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Virement bancaire",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Ouvert",
+      "explained": "Expliqué",
+      "resolved": "Résolu"
+    },
+    "discrepancyEvent": {
+      "detected": "Trouvé",
+      "reopened": "Rouvert",
+      "cleared": "Effacé par une exécution ultérieure",
+      "assigned": "Assigné",
+      "explained": "Expliqué",
+      "resolved": "Résolu"
+    },
+    "resolution": {
+      "ledger_fact": "Écriture ajoutée au grand livre",
+      "credit_note": "Avoir émis",
+      "refunded_at_provider": "Remboursé chez le fournisseur",
+      "corrected_in_billing": "Corrigé dans la facturation",
+      "not_an_error": "Pas une erreur",
+      "other": "Autre",
+      "cleared": "Plus trouvé"
+    },
+    "settlementState": {
+      "not_reported": "Payé, non déclaré",
+      "pending_payout": "Déclaré, virement en attente",
+      "settled": "Réglé"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "La limite doit être une quantité avec au plus {n} décimales.",
         "thresholds": "Les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000."
       }
+    },
+    "reconcile": {
+      "title": "File de revue",
+      "hint": "Ce que la comparaison a trouvé, conservé : qui en est responsable, ce qui en a été dit et comment cela s'est terminé. La planification la lance pour chaque locataire ayant reçu un paiement réel ; résoudre un écart ne le fait pas disparaître, et une exécution ultérieure qui le trouve encore le rouvre.",
+      "show": "Afficher",
+      "view": {
+        "review": "À revoir",
+        "resolved": "Résolus",
+        "all": "Tous"
+      },
+      "period": "Période",
+      "owner": "Responsable",
+      "note": "Note",
+      "noteHint": "Ce que vous avez découvert et ce qui a été fait. Obligatoire.",
+      "resolution": "Résolution",
+      "settled": "Réglé",
+      "firstSeen": "Vu pour la première fois",
+      "lastSeen": "Vu pour la dernière fois",
+      "history": "Historique",
+      "assign": "Assigner",
+      "explain": "Expliquer",
+      "resolve": "Résoudre",
+      "resolveSelected": "Résoudre la sélection",
+      "explainHint": "La garder dans la file avec la raison. Pour un écart connu qui attend.",
+      "resolveHint": "La terminer. Rien ne change chez le fournisseur ni dans une facture ; la résolution dit ce qui a été fait ailleurs.",
+      "factHint": "Écrit dans le grand livre des paiements un débit réussi du montant de la facture, pour le fournisseur et la référence indiqués. Vérifiez d'abord le paiement chez le fournisseur.",
+      "confirmTitle": "Résoudre {n} écarts ?",
+      "confirmBody": "Chacun est résolu avec la même résolution et la même note, et reçoit sa propre entrée d'historique.",
+      "counts": "Écarts par statut",
+      "ran": "Période {period} : {found} trouvés, {opened} nouveaux, {reopened} rouverts, {cleared} effacés.",
+      "lastRun": "Dernière exécution {when} par {by} pour {period} : {found} trouvés.",
+      "neverRun": "Aucune exécution pour l'instant. Lancez une période ou attendez la planification.",
+      "by": {
+        "schedule": "la planification",
+        "operator": "l'opérateur"
+      },
+      "nothingToReview": "Rien à revoir.",
+      "nothing": "Rien ici.",
+      "more": "Les {n} plus récents sont affichés. Restreignez la vue pour voir les autres."
+    },
+    "settlement": {
+      "title": "Payé et réglé",
+      "hint": "Un paiement réussi est la parole du grand livre. L'argent revient au locataire une fois que le fournisseur l'a réglé, moins ses frais. Voici les paiements de la période avec ce que le fournisseur, ou un rapport importé, dit de chacun.",
+      "provider": "Fournisseur (clé de compte)",
+      "providerHint": "Pour un rapport sans colonne fournisseur",
+      "file": "Rapport (CSV)",
+      "import": "Importer le rapport",
+      "imported": "{lines} ligne(s) lues, {changed} nouvelles ou modifiées.",
+      "counts": "Paiements par état de règlement",
+      "paidOn": "Payé",
+      "fee": "Frais du fournisseur",
+      "expected": "attendu {fee}",
+      "batch": "Virement / lot",
+      "empty": "Aucun paiement réussi du fournisseur sur cette période."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Ce prestataire de paiement est inconnu."
       },
       "reconcile": {
-        "bad_period": "La période doit ressembler à 2026-10."
+        "bad_period": "La période doit ressembler à 2026-10.",
+        "bad_filter": "Une valeur de filtre n'est pas connue de cette liste.",
+        "bad_ledger_fact": "Une écriture de grand livre demande le fournisseur et sa référence du paiement, et ne résout qu'une facture payée absente du grand livre.",
+        "bad_resolution": "Choisissez l'une des résolutions proposées.",
+        "not_found": "Cet écart n'existe pas.",
+        "note_required": "Dites ce que vous avez découvert : une note est obligatoire.",
+        "resolved": "Il est résolu. Une exécution qui le retrouve le rouvre.",
+        "too_long": "Ce texte est trop long.",
+        "too_many": "Choisissez entre 1 et 100 écarts."
       },
       "request": {
         "bad_body": "Le corps de la requête doit être un JSON valide.",
@@ -3015,10 +3107,21 @@
         "provider_not_configured": "Aucun prestataire de paiement n'est configuré pour ce compte.",
         "rejected": "Le prestataire de paiement a rejeté la demande.",
         "timeout": "Le prestataire de paiement n'a pas répondu à temps."
+      },
+      "settlement": {
+        "bad_csv": "Le rapport n'a pas été importé : une ligne est erronée et rien n'a été conservé.",
+        "bad_fee_rule": "La règle de frais n'est pas valide : vérifiez le fournisseur, la devise et le taux.",
+        "bad_since": "Le début doit être dans le passé, au plus 400 jours en arrière.",
+        "fee_rule_not_found": "Cette règle de frais n'existe pas."
+      },
+      "failover": {
+        "bad_target": "Un basculement demande deux comptes différents qui existent dans l'environnement ; un virement bancaire ne peut pas y participer.",
+        "not_found": "Aucun basculement n'est défini pour ce compte."
       }
     },
     "einvoice": {
       "account": {
+        "default_in_use": "C'est le compte de facture électronique par défaut. Faites d'abord d'un autre compte le compte par défaut, puis retirez celui-ci.",
         "invalid": "Les paramètres du compte de facturation électronique ne sont pas valides pour ce fournisseur.",
         "missing": "Ce tenant n'a pas de compte de facturation électronique pour cet environnement. Configurez-en un d'abord.",
         "sandbox_mock_only": "Un environnement sandbox ne peut utiliser que le fournisseur factice de facturation électronique."
@@ -3040,6 +3143,10 @@
       "provider": {
         "rejected": "Le fournisseur de facturation électronique a rejeté le document.",
         "unavailable": "Le fournisseur de facturation électronique est injoignable pour le moment. Une nouvelle tentative aura lieu."
+      },
+      "routing": {
+        "invalid": "Les règles de routage ne sont pas valides : chaque pays est un code à deux lettres, listé une seule fois, et chaque compte est un compte connecté.",
+        "unknown_account": "Une règle de routage nomme un compte de facture électronique qui n'est pas connecté."
       },
       "seller": {
         "incomplete": "Les données de l'entreprise du vendeur sont incomplètes : ajoutez la raison sociale et le numéro fiscal dans les réglages de facturation électronique."
@@ -3177,6 +3284,9 @@
         "ledger_unreachable": "Le grand livre des paiements est inaccessible pour le moment. Réessayez dans un instant.",
         "not_configured": "Les prestataires de paiement ne sont pas configurés sur ce déploiement.",
         "unreachable": "Le service de paiement est inaccessible pour le moment. Réessayez dans un instant."
+      },
+      "region": {
+        "wrong": "Cet environnement est servi depuis une autre région. Envoyez la requête à la passerelle de sa région (voir les en-têtes X-Payrudder-Region et X-Payrudder-Region-Url)."
       },
       "rate_limit": {
         "exceeded": "Trop de requêtes de ce type. Patientez un instant puis réessayez."
@@ -4307,7 +4417,6 @@
           "webhook": "Chaque document électronique est envoyé, signé, à l'adresse de votre propre intégrateur. Saisissez son adresse et le secret avec lequel il vérifie la signature."
         },
         "envNote": "Cela connecte l'environnement live. La sandbox continue d'utiliser le simulateur intégré.",
-        "replaces": "Un environnement a un seul intégrateur. Connecter celui-ci remplace celui qui est connecté : {current}.",
         "mode": "Mode",
         "modes": {
           "test": "Mode test",
@@ -4324,7 +4433,9 @@
           "credentials": "L'intégrateur accepte ces identifiants.",
           "configuration": "Les réglages sont valides. Seul un vrai document prouve le reste."
         },
-        "confirmRemove": "Déconnecter {name} ? Les nouvelles factures de l'environnement live ne seront plus envoyées comme documents électroniques."
+        "confirmRemove": "Déconnecter {name} ? Les nouvelles factures de l'environnement live ne seront plus envoyées comme documents électroniques.",
+        "accountsLine": "{count} comptes connectés.",
+        "accountLabel": "Libellé du compte : {label}"
       },
       "mail": {
         "builtInTitle": "Courrier Payrudder",
@@ -4349,6 +4460,59 @@
         "checkAndConnect": "Vérifier et connecter",
         "confirmRemove": "Déconnecter votre propre fournisseur d'e-mail ? Les e-mails live repartent de Payrudder.",
         "templatesNote": "Envie de votre propre style ? Dans Nafru Email, ajoutez Payrudder sous Applications et modifiez les modèles là-bas. Chaque e-mail porte son nom dans l'étiquette payrudder_template, pour que le bon modèle s'applique."
+      },
+      "accounts": {
+        "title": "Comptes",
+        "intro": "Tous les comptes de cette application dans une seule liste : paiements, facture électronique et e-mail. Chaque type peut avoir plusieurs comptes, l'un d'eux est le compte par défaut, et les règles ci-dessous disent quel compte prend quels clients.",
+        "add": "Ajouter une intégration",
+        "addIntro": "Choisissez ce que vous connectez : d'abord le type, puis le fournisseur. L'étape suivante demande ses identifiants.",
+        "mailNote": "Une application peut avoir son propre fournisseur d'e-mail en plus de l'expéditeur intégré de Payrudder.",
+        "continue": "Continuer",
+        "search": "Rechercher des comptes",
+        "kind": "Type",
+        "status": "Statut",
+        "provider": "Fournisseur",
+        "kinds": {
+          "payment": "Paiements",
+          "einvoice": "Facture électronique",
+          "mail": "E-mail"
+        },
+        "inUse": "Utilisé",
+        "makeDefaultHint": "Faire de ce compte le compte par défaut",
+        "remove": "Retirer",
+        "confirmRemove": "Retirer {name} ? Rien de ce qui a déjà été émis ou encaissé ne change.",
+        "eRouting": {
+          "title": "Quel compte de facture électronique émet quels documents",
+          "intro": "Le pays de l'acheteur décide : le document d'un acheteur d'un pays listé ici est émis par ce compte, tous les autres par le compte par défaut. Un document déjà commencé garde son compte.",
+          "duplicate": "Un pays ne peut être listé qu'une fois."
+        },
+        "tester": {
+          "title": "Qui prend ce client ?",
+          "intro": "Saisissez un pays et une devise pour voir quel compte de paiement facturerait le client, quel compte de facture électronique émettrait ses documents et quel expéditeur lui écrirait. Rien n'est créé.",
+          "run": "Vérifier",
+          "byRule": "{account}, selon la règle {n}",
+          "byDefault": "Le compte par défaut, aucune règle ne correspond.",
+          "byRuleCountry": "{account}, selon la règle pour {country}",
+          "eDefault": "{account}, le compte par défaut",
+          "eNone": "Aucun compte : aucun compte par défaut n'est défini et aucune règle ne nomme ce pays.",
+          "mailOwn": "Votre propre fournisseur d'e-mail",
+          "mailBuiltIn": "L'expéditeur intégré de Payrudder"
+        },
+        "audit": {
+          "title": "Qui a modifié les comptes",
+          "intro": "Connexions, changements de compte par défaut et de routage des comptes de paiement et de facture électronique, du plus récent au plus ancien. Les identifiants ne sont jamais enregistrés.",
+          "empty": "Rien n'a encore changé.",
+          "more": "Afficher les plus anciens",
+          "support": "Support Payrudder",
+          "verified": "Accepté par le fournisseur",
+          "actions": {
+            "connected": "{actor} a connecté {account}",
+            "replaced": "{actor} a remplacé les identifiants de {account}",
+            "removed": "{actor} a retiré {account}",
+            "default_set": "{actor} a fait de {account} le compte par défaut",
+            "routing_changed": "{actor} a modifié les règles de routage"
+          }
+        }
       }
     },
     "envSwitch": {
@@ -5039,6 +5203,7 @@
     "trialDays": "{n} jours gratuits au départ",
     "resource": {
       "events": "Événements",
+      "mails": "E-mails",
       "apps": "Applications",
       "members": "Membres",
       "api_keys": "Clés d'API"

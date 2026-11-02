@@ -36,13 +36,18 @@ files:
   19-contracts.md: { audience: public, status: preview }
   audit-log-and-two-factor.md: { audience: internal, status: preview }
   benchmarks.md: { audience: internal, status: stable }
+  capacity.md: { audience: internal, status: preview }
   error-keys.md: { audience: public, status: stable }
+  email-template-contract.md: { audience: internal, status: preview }
   geo-data.md: { audience: internal, status: stable }
   hosted-pages.md: { audience: internal, status: preview }
   iyzico-compatibility-matrix.md: { audience: internal, status: preview }
   paddle-compatibility-matrix.md: { audience: internal, status: preview }
   stripe-compatibility-matrix.md: { audience: internal, status: preview }
   payment-provider-contract.md: { audience: internal, status: preview }
+  provider-health.md: { audience: internal, status: preview }
+  reconciliation.md: { audience: internal, status: preview }
+  einvoice-integrator-contract.md: { audience: internal, status: preview }
   roadmap-owner-list.md: { audience: internal, status: historical }
   ui-test-report.md: { audience: internal, status: historical }
 

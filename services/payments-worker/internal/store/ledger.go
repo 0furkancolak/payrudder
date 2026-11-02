@@ -141,6 +141,7 @@ func (l Ledger) RefundFact(ctx context.Context, tenant, invoice uuid.UUID, key s
 type Charge struct {
 	InvoiceID, Provider, ProviderRef, Currency string
 	AmountMinor                                int64
+	OccurredAt                                 time.Time
 }
 
 // SuccessfulCharges returns the tenant's successful charges that belong to an invoice.
@@ -153,7 +154,7 @@ func (l Ledger) SuccessfulCharges(ctx context.Context, tenant uuid.UUID) ([]Char
 	}
 	var out []Charge
 	for _, r := range rows {
-		out = append(out, Charge{InvoiceID: r.InvoiceID, Provider: r.Provider, ProviderRef: r.ProviderRef, Currency: r.Currency, AmountMinor: r.AmountMinor})
+		out = append(out, Charge{InvoiceID: r.InvoiceID, Provider: r.Provider, ProviderRef: r.ProviderRef, Currency: r.Currency, AmountMinor: r.AmountMinor, OccurredAt: r.OccurredAt})
 	}
 	return out, nil
 }

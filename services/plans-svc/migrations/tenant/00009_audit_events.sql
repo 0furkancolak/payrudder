@@ -3,7 +3,7 @@
 -- (address, request id) and when. The app role and the system role may only add rows; a trigger refuses UPDATE and DELETE for everybody, the owner included. The
 -- one DELETE it lets through is the copy of a tenant between the pooled database and a cell (payrudder.tenant_move, as for the financial tables).
 -- tenant_id is NULL for an event that belongs to no tenant (a sign-in, a member of an account); account_id is set for an event that is an account's, not a tenant's.
--- The twin of ../00003_audit_events.sql for the tables that have a tenant_id.
+-- The twin of ../00011_audit_events.sql for the tables that have a tenant_id.
 
 -- +goose Up
 CREATE TABLE audit_events (
@@ -31,7 +31,7 @@ CREATE INDEX audit_events_by_action ON audit_events (action, created_at DESC, id
 
 -- +goose StatementBegin
 CREATE FUNCTION audit_events_append_only() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 BEGIN
   IF TG_OP = 'DELETE' AND current_setting('payrudder.tenant_move', true) = OLD.tenant_id::text THEN
     RETURN OLD;
@@ -41,10 +41,12 @@ END $$;
 -- +goose StatementEnd
 CREATE TRIGGER audit_events_append_only BEFORE UPDATE OR DELETE ON audit_events FOR EACH ROW EXECUTE FUNCTION audit_events_append_only();
 
--- payments_db has no row-level security by design (see 00001_init.sql): only payments_system writes, payments_app only reads.
+ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON audit_events USING (tenant_id = app_tenant_id()) WITH CHECK (tenant_id = app_tenant_id());
+GRANT SELECT, INSERT ON audit_events TO plans_app;
 -- DELETE is for the copy of a tenant between databases only; the trigger refuses any other.
-GRANT SELECT, INSERT, DELETE ON audit_events TO payments_system;
-GRANT SELECT ON audit_events TO payments_app;
+GRANT SELECT, INSERT, DELETE ON audit_events TO plans_system;
 
 -- +goose Down
 DROP TABLE audit_events;

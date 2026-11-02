@@ -1,0 +1,1 @@
+{"type":"bounced","message_id":"fake-1","recipient":"Ada@Example.com","bounce_type":"hard","occurred_at":"2026-11-03T10:15:00Z","detail":"550 5.1.1 The email account that you tried to reach does not exist"}

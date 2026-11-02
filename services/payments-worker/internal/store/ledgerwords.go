@@ -16,6 +16,8 @@ const (
 	SourceCommand = "command"
 	SourceWebhook = "webhook"
 	SourceManual  = "manual"
+	// SourceReconciliation is a fact an operator wrote while resolving a discrepancy (reconciliation.Resolve), with the discrepancy and who in its detail.
+	SourceReconciliation = "reconciliation"
 )
 
 // Statuses of an e-invoice issuance (einvoice_issuances).

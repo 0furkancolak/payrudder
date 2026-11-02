@@ -57,6 +57,22 @@ func (q *Queries) CancelEInvoiceIssuance(ctx context.Context, arg CancelEInvoice
 	return err
 }
 
+const clearDefaultEInvoiceAccounts = `-- name: ClearDefaultEInvoiceAccounts :exec
+UPDATE einvoice_accounts SET is_default = false
+WHERE tenant_id = $1 AND environment = $2 AND is_default AND provider <> $3
+`
+
+type ClearDefaultEInvoiceAccountsParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+}
+
+func (q *Queries) ClearDefaultEInvoiceAccounts(ctx context.Context, arg ClearDefaultEInvoiceAccountsParams) error {
+	_, err := q.db.Exec(ctx, clearDefaultEInvoiceAccounts, arg.TenantID, arg.Environment, arg.Provider)
+	return err
+}
+
 const completeEInvoiceIssuance = `-- name: CompleteEInvoiceIssuance :exec
 UPDATE einvoice_issuances
 SET status = 'issued', legal_number = $1, external_id = $2, xml_key = $3, pdf_key = $4, updated_at = now()
@@ -84,46 +100,110 @@ func (q *Queries) CompleteEInvoiceIssuance(ctx context.Context, arg CompleteEInv
 	return err
 }
 
+const countEInvoiceAccounts = `-- name: CountEInvoiceAccounts :one
+SELECT count(*) FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2
+`
+
+type CountEInvoiceAccountsParams struct {
+	TenantID    uuid.UUID
+	Environment string
+}
+
+func (q *Queries) CountEInvoiceAccounts(ctx context.Context, arg CountEInvoiceAccountsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countEInvoiceAccounts, arg.TenantID, arg.Environment)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteEInvoiceAccount = `-- name: DeleteEInvoiceAccount :execrows
-DELETE FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2
+DELETE FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2 AND provider = $3
 `
 
 type DeleteEInvoiceAccountParams struct {
 	TenantID    uuid.UUID
 	Environment string
+	Provider    string
 }
 
 func (q *Queries) DeleteEInvoiceAccount(ctx context.Context, arg DeleteEInvoiceAccountParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteEInvoiceAccount, arg.TenantID, arg.Environment)
+	result, err := q.db.Exec(ctx, deleteEInvoiceAccount, arg.TenantID, arg.Environment, arg.Provider)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
+const deleteEInvoiceRouting = `-- name: DeleteEInvoiceRouting :exec
+DELETE FROM einvoice_routing WHERE tenant_id = $1 AND environment = $2
+`
+
+type DeleteEInvoiceRoutingParams struct {
+	TenantID    uuid.UUID
+	Environment string
+}
+
+func (q *Queries) DeleteEInvoiceRouting(ctx context.Context, arg DeleteEInvoiceRoutingParams) error {
+	_, err := q.db.Exec(ctx, deleteEInvoiceRouting, arg.TenantID, arg.Environment)
+	return err
+}
+
+const getDefaultEInvoiceAccount = `-- name: GetDefaultEInvoiceAccount :one
+SELECT provider, mode, settings_enc, is_default, updated_at FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2 AND is_default
+`
+
+type GetDefaultEInvoiceAccountParams struct {
+	TenantID    uuid.UUID
+	Environment string
+}
+
+type GetDefaultEInvoiceAccountRow struct {
+	Provider    string
+	Mode        string
+	SettingsEnc []byte
+	IsDefault   bool
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) GetDefaultEInvoiceAccount(ctx context.Context, arg GetDefaultEInvoiceAccountParams) (GetDefaultEInvoiceAccountRow, error) {
+	row := q.db.QueryRow(ctx, getDefaultEInvoiceAccount, arg.TenantID, arg.Environment)
+	var i GetDefaultEInvoiceAccountRow
+	err := row.Scan(
+		&i.Provider,
+		&i.Mode,
+		&i.SettingsEnc,
+		&i.IsDefault,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getEInvoiceAccount = `-- name: GetEInvoiceAccount :one
-SELECT provider, mode, settings_enc, updated_at FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2
+SELECT provider, mode, settings_enc, is_default, updated_at FROM einvoice_accounts WHERE tenant_id = $1 AND environment = $2 AND provider = $3
 `
 
 type GetEInvoiceAccountParams struct {
 	TenantID    uuid.UUID
 	Environment string
+	Provider    string
 }
 
 type GetEInvoiceAccountRow struct {
 	Provider    string
 	Mode        string
 	SettingsEnc []byte
+	IsDefault   bool
 	UpdatedAt   time.Time
 }
 
 func (q *Queries) GetEInvoiceAccount(ctx context.Context, arg GetEInvoiceAccountParams) (GetEInvoiceAccountRow, error) {
-	row := q.db.QueryRow(ctx, getEInvoiceAccount, arg.TenantID, arg.Environment)
+	row := q.db.QueryRow(ctx, getEInvoiceAccount, arg.TenantID, arg.Environment, arg.Provider)
 	var i GetEInvoiceAccountRow
 	err := row.Scan(
 		&i.Provider,
 		&i.Mode,
 		&i.SettingsEnc,
+		&i.IsDefault,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -173,14 +253,53 @@ func (q *Queries) GetEInvoiceIssuance(ctx context.Context, arg GetEInvoiceIssuan
 	return i, err
 }
 
+const getEInvoiceRoute = `-- name: GetEInvoiceRoute :one
+SELECT account FROM einvoice_routing WHERE tenant_id = $1 AND environment = $2 AND country = $3
+`
+
+type GetEInvoiceRouteParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	Country     string
+}
+
+func (q *Queries) GetEInvoiceRoute(ctx context.Context, arg GetEInvoiceRouteParams) (string, error) {
+	row := q.db.QueryRow(ctx, getEInvoiceRoute, arg.TenantID, arg.Environment, arg.Country)
+	var account string
+	err := row.Scan(&account)
+	return account, err
+}
+
+const insertEInvoiceRoute = `-- name: InsertEInvoiceRoute :exec
+INSERT INTO einvoice_routing (tenant_id, environment, country, account) VALUES ($1, $2, $3, $4)
+`
+
+type InsertEInvoiceRouteParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	Country     string
+	Account     string
+}
+
+func (q *Queries) InsertEInvoiceRoute(ctx context.Context, arg InsertEInvoiceRouteParams) error {
+	_, err := q.db.Exec(ctx, insertEInvoiceRoute,
+		arg.TenantID,
+		arg.Environment,
+		arg.Country,
+		arg.Account,
+	)
+	return err
+}
+
 const listEInvoiceAccounts = `-- name: ListEInvoiceAccounts :many
-SELECT environment, provider, mode, updated_at FROM einvoice_accounts WHERE tenant_id = $1 ORDER BY environment
+SELECT environment, provider, mode, is_default, updated_at FROM einvoice_accounts WHERE tenant_id = $1 ORDER BY environment, provider
 `
 
 type ListEInvoiceAccountsRow struct {
 	Environment string
 	Provider    string
 	Mode        string
+	IsDefault   bool
 	UpdatedAt   time.Time
 }
 
@@ -197,6 +316,7 @@ func (q *Queries) ListEInvoiceAccounts(ctx context.Context, tenantID uuid.UUID) 
 			&i.Environment,
 			&i.Provider,
 			&i.Mode,
+			&i.IsDefault,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -209,11 +329,64 @@ func (q *Queries) ListEInvoiceAccounts(ctx context.Context, tenantID uuid.UUID) 
 	return items, nil
 }
 
+const listEInvoiceRouting = `-- name: ListEInvoiceRouting :many
+SELECT country::text AS country, account FROM einvoice_routing WHERE tenant_id = $1 AND environment = $2 ORDER BY country
+`
+
+type ListEInvoiceRoutingParams struct {
+	TenantID    uuid.UUID
+	Environment string
+}
+
+type ListEInvoiceRoutingRow struct {
+	Country string
+	Account string
+}
+
+func (q *Queries) ListEInvoiceRouting(ctx context.Context, arg ListEInvoiceRoutingParams) ([]ListEInvoiceRoutingRow, error) {
+	rows, err := q.db.Query(ctx, listEInvoiceRouting, arg.TenantID, arg.Environment)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListEInvoiceRoutingRow{}
+	for rows.Next() {
+		var i ListEInvoiceRoutingRow
+		if err := rows.Scan(&i.Country, &i.Account); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markEInvoiceAccountDefault = `-- name: MarkEInvoiceAccountDefault :execrows
+UPDATE einvoice_accounts SET is_default = true, updated_at = now()
+WHERE tenant_id = $1 AND environment = $2 AND provider = $3
+`
+
+type MarkEInvoiceAccountDefaultParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+}
+
+func (q *Queries) MarkEInvoiceAccountDefault(ctx context.Context, arg MarkEInvoiceAccountDefaultParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markEInvoiceAccountDefault, arg.TenantID, arg.Environment, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const upsertEInvoiceAccount = `-- name: UpsertEInvoiceAccount :exec
-INSERT INTO einvoice_accounts (tenant_id, environment, provider, mode, settings_enc)
-VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (tenant_id, environment) DO UPDATE
-SET provider = EXCLUDED.provider, mode = EXCLUDED.mode, settings_enc = EXCLUDED.settings_enc, updated_at = now()
+INSERT INTO einvoice_accounts (tenant_id, environment, provider, mode, settings_enc, is_default)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (tenant_id, environment, provider) DO UPDATE
+SET mode = EXCLUDED.mode, settings_enc = EXCLUDED.settings_enc, is_default = einvoice_accounts.is_default OR EXCLUDED.is_default, updated_at = now()
 `
 
 type UpsertEInvoiceAccountParams struct {
@@ -222,6 +395,7 @@ type UpsertEInvoiceAccountParams struct {
 	Provider    string
 	Mode        string
 	SettingsEnc []byte
+	IsDefault   bool
 }
 
 func (q *Queries) UpsertEInvoiceAccount(ctx context.Context, arg UpsertEInvoiceAccountParams) error {
@@ -231,6 +405,7 @@ func (q *Queries) UpsertEInvoiceAccount(ctx context.Context, arg UpsertEInvoiceA
 		arg.Provider,
 		arg.Mode,
 		arg.SettingsEnc,
+		arg.IsDefault,
 	)
 	return err
 }

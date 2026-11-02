@@ -97,6 +97,10 @@ defaults:
 # db: roles to build DSNs for ("app" and "system" at runtime, "migrator" for the pre-install Job).
 # uses: secret-backed settings the service needs (rabbitmq, s3, clickhouse, operatorToken).
 # allowFrom: the only workloads whose pods may open the service's port (NetworkPolicy).
+# hpa: scale on CPU (a request-driven service: the gateway, ingest-svc). keda: scale a consumer on its backlog, with a KEDA ScaledObject (needs KEDA installed in the
+# cluster; docs/runbooks/scaling.md). Both are off. A service uses one of them, never both. With either on, the Deployment no longer sets replicas: the autoscaler owns it
+# (`replicas` is then the minimum of an hpa; a keda block has its own min and max). triggers are KEDA triggers verbatim, templated with this chart's values; the numbers
+# below are first guesses, NOT measured on a cluster. A Kafka consumer cannot use more replicas than its topic has partitions (usage.events.v1: 12).
 services:
   gateway:
     kind: http
@@ -157,7 +161,7 @@ services:
     replicas: 1
     hpa: { enabled: false, max: 4, cpu: 70 }
     db: { role: ingest, name: ingest_db, app: true, system: true }
-    allowFrom: [gateway, billing-svc, plans-svc]
+    allowFrom: [gateway, billing-svc, plans-svc, notifier]   # notifier: meters the mails it sends into the platform tenant (ADR 0024)
     env:
       PAYRUDDER_GRPC_ADDR: ":7002"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
@@ -168,6 +172,13 @@ services:
     metricsPort: 9103
     migrate: true
     db: { role: aggregator, name: aggregator_db, app: true, system: true }
+    keda:
+      enabled: false
+      min: 2
+      max: 12                # usage.events.v1 has 12 partitions
+      triggers:
+        - type: kafka
+          metadata: { bootstrapServers: "{{ .Values.global.kafkaBrokers }}", consumerGroup: aggregator, topic: usage.events.v1, lagThreshold: "5000", activationLagThreshold: "100", offsetResetPolicy: earliest }
     allowFrom: [gateway, billing-svc, limits-svc, plans-svc]
     resources:
       requests: { cpu: 25m, memory: 32Mi }
@@ -180,7 +191,14 @@ services:
     kind: grpc
     port: 7004
     metricsPort: 9104
-    allowFrom: [gateway]
+    keda:
+      enabled: false
+      min: 2
+      max: 12
+      triggers:
+        - type: kafka
+          metadata: { bootstrapServers: "{{ .Values.global.kafkaBrokers }}", consumerGroup: limits, topic: usage.events.v1, lagThreshold: "5000", activationLagThreshold: "100", offsetResetPolicy: earliest }
+    allowFrom: [gateway, notifier]   # notifier: asks a plan's mails allowance
     env:
       PAYRUDDER_GRPC_ADDR: ":7004"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
@@ -237,6 +255,15 @@ services:
   invoice-worker:
     kind: worker
     metricsPort: 9107
+    keda:
+      enabled: false
+      min: 1
+      max: 6
+      triggers:
+        - type: rabbitmq
+          # hostFromEnv reads the AMQP URL from the pod's PAYRUDDER_RABBITMQ_URL, which this chart sets with envFrom (a Secret). KEDA's RabbitMQ scaler page does not say that
+          # envFrom is read (only "an environment variable on the scale target"): UNVERIFIED on a cluster. If it is not, give the scaler `host` with a TriggerAuthentication.
+          metadata: { hostFromEnv: PAYRUDDER_RABBITMQ_URL, queueName: invoice.render, mode: QueueLength, value: "50" }
     uses: [rabbitmq, s3]
     env:
       S3_BUCKET: "{{ .Values.s3.invoicesBucket }}"
@@ -247,6 +274,13 @@ services:
     metricsPort: 9108
     migrate: true
     uses: [rabbitmq, paymentsSecrets, s3]   # s3: the UBL and PDF of e-invoices (phase 30), in the invoices bucket
+    keda:
+      enabled: false
+      min: 1
+      max: 4
+      triggers:
+        - type: rabbitmq
+          metadata: { hostFromEnv: PAYRUDDER_RABBITMQ_URL, queueName: payment.charge, mode: QueueLength, value: "50" }
     db: { role: payments, name: payments_db, system: true }
     allowFrom: [gateway, plans-svc]
     env:
@@ -267,6 +301,8 @@ services:
     env:
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
       NAFRU_BASE_URL: "{{ .Values.nafru.baseURL }}"
       NAFRU_API_KEY: "{{ .Values.nafru.apiKey }}"

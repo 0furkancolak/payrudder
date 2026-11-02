@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -189,6 +190,27 @@ func (f fakeAll) GetPlanVersion(_ context.Context, in *plansv1.GetPlanVersionReq
 		return nil, status.Error(codes.NotFound, "plan version not found")
 	}
 	return &plansv1.GetPlanVersionResponse{PlanVersion: pv}, nil
+}
+
+// ListSubscriptions is the portal's summary reading a customer's subscriptions. The subscriptions of this world carry what rating reads; plans-svc would also say they are
+// active, in USD, and on which plan.
+func (f fakeAll) ListSubscriptions(_ context.Context, in *plansv1.ListSubscriptionsRequest, _ ...grpc.CallOption) (*plansv1.ListSubscriptionsResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	out := &plansv1.ListSubscriptionsResponse{}
+	for _, s := range f.w.subs {
+		if s.GetCustomerExternalId() != in.GetCustomerExternalId() {
+			continue
+		}
+		c := proto.Clone(s).(*plansv1.Subscription)
+		c.State, c.Currency, c.PlanCode, c.Interval = plansv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE, "USD", f.w.versions[c.GetPlanVersionId()].GetPlanCode(), plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
+		out.Subscriptions = append(out.Subscriptions, c)
+	}
+	return out, nil
+}
+
+func (f fakeAll) ListPlans(context.Context, *plansv1.ListPlansRequest, ...grpc.CallOption) (*plansv1.ListPlansResponse, error) {
+	return &plansv1.ListPlansResponse{Plans: []*plansv1.Plan{{Code: "pro", Name: "Pro plan"}}}, nil
 }
 
 func (f fakeAll) ListSubscriptionsForPeriod(context.Context, *plansv1.ListSubscriptionsForPeriodRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[plansv1.ListSubscriptionsForPeriodResponse], error) {
@@ -443,7 +465,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	e.notes = creditnotecmd.New(creditnotecmd.Config{DB: shared.system, Engine: e.eng, Now: clk.Now, Log: testkit.Logger()})
 	e.fees = feecmd.New(feecmd.Config{DB: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, PageSize: 2, Log: testkit.Logger()})
 	e.rerating = reratecmd.New(reratecmd.Config{DB: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, Log: testkit.Logger()})
-	e.hosted = hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: shared.system, Inputs: in, Invoices: e.inv, Engine: e.eng, Affiliates: f, Now: clk.Now, Log: testkit.Logger()})
+	e.hosted = hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: shared.system, Inputs: in, Invoices: e.inv, Engine: e.eng, Affiliates: f, Subscriptions: f, Now: clk.Now, Log: testkit.Logger()})
 	e.relay = tenantevents.NewRelay(shared.system, e.events, testkit.Logger())
 	placeTenant(t, tid)
 	e.mgr, err = runcmd.NewManager(runcmd.Config{

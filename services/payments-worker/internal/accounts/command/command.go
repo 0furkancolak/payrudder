@@ -99,8 +99,8 @@ func PutAccount(ctx context.Context, d Deps, in Put) error {
 }
 
 // SetDefaultAccount makes a stored account the default of the environment. Bank details follow the default (see syncBankTransfer).
-func SetDefaultAccount(ctx context.Context, d Deps, tenant uuid.UUID, provider, environment string) error {
-	found, err := d.Accounts.SetDefault(ctx, tenant, provider, environment)
+func SetDefaultAccount(ctx context.Context, d Deps, tenant uuid.UUID, provider, environment, actor string) error {
+	found, err := d.Accounts.SetDefault(ctx, tenant, provider, environment, store.Audit{Actor: actor})
 	if err != nil {
 		return fmt.Errorf("provider account default failed: %w", err)
 	}

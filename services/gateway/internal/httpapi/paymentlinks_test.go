@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -202,6 +203,25 @@ func (fakeBilling) GetPortal(_ context.Context, req *billingv1.GetPortalRequest)
 			{Id: "pack-1", Name: "Starter <b>pack</b>", Credits: 10000, PriceMinor: 500, Currency: "USD", CurrencyExponent: 2, ValidityDays: 30},
 			{Id: "pack-2", Name: "Team", Credits: 100000, PriceMinor: 4000, Currency: "USD", CurrencyExponent: 2},
 		}}, nil
+}
+
+// portalSubsDown makes the fake billing-svc fail the portal's subscription summary.
+var portalSubsDown atomic.Bool
+
+func (fakeBilling) GetPortalSubscriptions(_ context.Context, req *billingv1.GetPortalSubscriptionsRequest) (*billingv1.GetPortalSubscriptionsResponse, error) {
+	if req.GetPortalToken() != portalTok {
+		return nil, status.Error(codes.NotFound, "no such link")
+	}
+	if portalSubsDown.Load() {
+		return nil, status.Error(codes.Unavailable, "plans is down")
+	}
+	return &billingv1.GetPortalSubscriptionsResponse{Subscriptions: []*billingv1.PortalSubscription{
+		{Id: "s1", PlanCode: "pro", PlanName: "Pro <i>plan</i>", State: "trialing", Interval: "month", Quantity: 3, PriceKnown: true, PriceMinor: 8700, Currency: "USD", CurrencyExponent: 2,
+			TrialEndTime: timestamppb.New(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)), NextRenewalTime: timestamppb.New(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC))},
+		{Id: "s2", PlanCode: "team", PlanName: "Team", State: "active", Interval: "year", Quantity: 1, PriceKnown: true, PriceMinor: 1234500, Currency: "EUR", CurrencyExponent: 2,
+			CancelAtPeriodEnd: true, EndTime: timestamppb.New(time.Date(2026, 11, 30, 0, 0, 0, 0, time.UTC)), ProviderManaged: true},
+		{Id: "s3", PlanCode: "gone", PlanName: "gone", State: "past_due", Interval: "month", ScheduledPlanName: "Basic", ScheduledTime: timestamppb.New(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))},
+	}}, nil
 }
 
 // fakeWorker is a payments-worker: it records what it is asked and answers from tables.
@@ -421,7 +441,8 @@ func TestAdhocLinkPage(t *testing.T) {
 	if strings.Contains(page, "<b>day</b>") {
 		t.Error("the description was printed unescaped")
 	}
-	if csp := resp.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "form-action 'self' https:") || !strings.Contains(csp, "img-src 'self'") || !strings.Contains(csp, "default-src 'none'") {
+	// The ad-hoc page posts to itself only and shows no logo, so its policy has no img-src and no https form target.
+	if csp := resp.Header.Get("Content-Security-Policy"); csp != "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" {
 		t.Errorf("csp = %q", csp)
 	}
 	if _, used := get(t, ts, "/i/"+tokAdhocUsed); !strings.Contains(used, "already been used") || strings.Contains(used, "/start") {
@@ -453,8 +474,8 @@ func TestPayWithMockInSandbox(t *testing.T) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if strings.Contains(page, `http-equiv="refresh"`) {
-		t.Error("an open invoice must not refresh itself")
+	if strings.Contains(page, "check-again") {
+		t.Error("an open invoice has nothing to check again")
 	}
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokOpenSandbox+"/pay", url.Values{"method": {"mock"}}, nil)
 	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox {
@@ -560,11 +581,12 @@ func TestLivePaymentMethodsAndCheckout(t *testing.T) {
 	}
 }
 
-func TestPaymentStateDecidesTheRefresh(t *testing.T) {
+// A page that reloads itself fails WCAG 2.2.1 (axe: meta-refresh), so the processing page asks the customer to check again instead.
+func TestPaymentStateDecidesTheCheckAgainLink(t *testing.T) {
 	f := &fakeWorker{}
 	ts := withWorker(t, f, false)
 	_, page := get(t, ts, "/i/"+tokProcessing)
-	if !strings.Contains(page, `<meta http-equiv="refresh" content="5">`) || !strings.Contains(page, "Payment processing") || strings.Contains(page, "<button") {
+	if !strings.Contains(page, `id="check-again" href="/i/`+tokProcessing+`"`) || strings.Contains(page, "http-equiv") || !strings.Contains(page, "Payment processing") || strings.Contains(page, "<button") {
 		t.Errorf("processing page:\n%s", page)
 	}
 	// Open at billing, a pending row in the ledger: processing. A declined latest row: failed, and it can be paid again.
@@ -572,25 +594,25 @@ func TestPaymentStateDecidesTheRefresh(t *testing.T) {
 	f.methods = []map[string]string{{"id": "checkout", "kind": "checkout", "provider": "paddle"}}
 	f.rows = []map[string]any{{"id": 7, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "pending", "amount_minor": 5000, "currency": "USD", "occurred_at": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)}}
 	f.mu.Unlock()
-	if _, page := get(t, ts, "/i/"+tokOpenLive); !strings.Contains(page, `http-equiv="refresh"`) || !strings.Contains(page, "Payment processing") {
+	if _, page := get(t, ts, "/i/"+tokOpenLive); !strings.Contains(page, "check-again") || !strings.Contains(page, "Payment processing") {
 		t.Error("a pending ledger row means processing")
 	}
 	f.mu.Lock()
 	f.rows = append(f.rows, map[string]any{"id": 8, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "declined", "amount_minor": 5000, "currency": "USD", "occurred_at": "2026-10-03T10:05:00Z"})
 	f.mu.Unlock()
 	_, page = get(t, ts, "/i/"+tokOpenLive)
-	if strings.Contains(page, `http-equiv="refresh"`) || !strings.Contains(page, "Payment failed") || !strings.Contains(page, "You can try again") || !strings.Contains(page, `value="checkout"`) {
+	if strings.Contains(page, "check-again") || !strings.Contains(page, "Payment failed") || !strings.Contains(page, "You can try again") || !strings.Contains(page, `value="checkout"`) {
 		t.Errorf("failed page:\n%s", page)
 	}
 	// An abandoned checkout (a pending row nothing ever closed) does not keep the page on "processing": the buttons come back.
 	f.mu.Lock()
 	f.rows = []map[string]any{{"id": 9, "invoice_id": "inv-open", "provider": "paddle", "kind": "charge", "status": "pending", "amount_minor": 5000, "currency": "USD", "occurred_at": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)}}
 	f.mu.Unlock()
-	if _, page := get(t, ts, "/i/"+tokOpenLive); strings.Contains(page, `http-equiv="refresh"`) || strings.Contains(page, "Payment processing") || !strings.Contains(page, `value="checkout"`) {
+	if _, page := get(t, ts, "/i/"+tokOpenLive); strings.Contains(page, "check-again") || strings.Contains(page, "Payment processing") || !strings.Contains(page, `value="checkout"`) {
 		t.Errorf("an abandoned checkout page:\n%s", page)
 	}
 	// The ledger never overrides a paid invoice.
-	if _, paid := get(t, ts, "/i/"+goodToken); strings.Contains(paid, `http-equiv="refresh"`) || !strings.Contains(paid, "Paid") {
+	if _, paid := get(t, ts, "/i/"+goodToken); strings.Contains(paid, "check-again") || !strings.Contains(paid, "Paid") {
 		t.Error("a paid invoice stays paid")
 	}
 }
@@ -719,7 +741,7 @@ func TestPortalPages(t *testing.T) {
 		t.Fatalf("portal = %d", resp.StatusCode)
 	}
 	for _, want := range []string{"Your invoices and payments", "Ada", "Acme &lt;Ltd&gt;", "INV-2026-000009", "INV-2026-000003", "50.00 USD", `href="/c/` + portalTok + `/invoices/inv-open"`, "Pay this invoice",
-		"Refund", "Payment", "-5.00 USD", "15.00 USD", "paddle", "Succeeded", `src="/c/` + portalTok + `/logo"`, "2026-09-09"} {
+		"Refund", "Payment", "-5.00 USD", "15.00 USD", "paddle", "Succeeded", `src="/c/` + portalTok + `/logo"`, "9 September 2026"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("portal lacks %q", want)
 		}

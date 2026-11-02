@@ -26,7 +26,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `tenant.status_changed`, `tenant.status_requested`, `tenant.settings_updated` (field names only) | plans-svc `tenants/command` (next to `tenant_status_events`) |
 | `credit_note.issued` (with `refund` in the detail), `credit_note.refund_retried` | billing-svc `creditnotes/command` |
 | `invoice.void`, `invoice.retry` (the operator's saga actions) | billing-svc `sagas/command/operator.go` |
-| `provider_account.connected`, `.replaced`, `.removed`, `.default_changed` | payments-worker `store/accounts.go` (next to `provider_account_events`) |
+| `provider_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.failover_set`, `.failover_cleared`; `einvoice_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.routing_changed` | payments-worker `store/accounts.go`, `store/health.go`, `store/einvoice.go` (next to `provider_account_events`) |
 | `two_factor.enabled`, `.disabled`, `.recovery_codes_replaced`, `.recovery_code_used`, `account.two_factor_policy_changed` | plans-svc `identity/command/twofactor.go` |
 
 **Not recorded yet** (each is a hook of a few lines at the command that owns it): price changes scheduled (`changes`), coupon and promotion changes, routing rules and tax rates, dunning settings, mail integration, e-invoice accounts, offline invoice payments and bank-transfer receipts, the operator's payment-ledger actions, the go-live profile and terms (they have `go_live_audit`), an app archived, password changes and resets, sign-ins themselves and failed attempts. A refund's *outcome* (the provider answered) is not an entry; the request is.

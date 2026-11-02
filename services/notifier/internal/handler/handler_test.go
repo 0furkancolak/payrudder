@@ -10,9 +10,12 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/mailx/fakenafru"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 )
 
 type stubSwitch struct{ off map[string]bool }
@@ -68,5 +71,36 @@ func TestNotificationOfATenantOnHoldIsSuppressed(t *testing.T) {
 	}
 	if !reply.GetNotificationSent().GetSuppressed() {
 		t.Fatalf("reply = %v, want suppressed", reply)
+	}
+}
+
+type claimOnly struct{ released bool }
+
+func (c *claimOnly) Claim(context.Context, string, *uuid.UUID, uuid.UUID, string, string, string) (store.Claim, string, error) {
+	return store.Claimed, "", nil
+}
+func (c *claimOnly) MarkSent(context.Context, string, string) error { return nil }
+func (c *claimOnly) Release(context.Context, string) error          { c.released = true; return nil }
+
+type everyoneSuppressed struct{}
+
+func (everyoneSuppressed) IsSuppressed(context.Context, uuid.UUID, string) (bool, error) {
+	return true, nil
+}
+
+// A command to mail a suppressed address is answered as done and suppressed, like one for a switched-off category, so the saga goes on; nothing is sent.
+func TestNotificationToASuppressedAddressIsAnsweredSuppressed(t *testing.T) {
+	f := fakenafru.New()
+	defer f.Close()
+	notes := &claimOnly{}
+	h := &Handler{Mailer: &delivery.Mailer{Default: mailx.Nafru{Resend: mailx.Resend{BaseURL: f.URL, APIKey: "k"}}, From: "a@b.test", Notes: notes, Suppress: everyoneSuppressed{}}}
+	cmd := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: uuid.NewString(), Command: &commandsv1.CommandEnvelope_SendNotification{
+		SendNotification: &commandsv1.SendNotification{To: "gone@example.com", Template: "invoice_paid.v1"}}}
+	reply, err := h.Handle(context.Background(), cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reply.GetNotificationSent(); !got.GetSuppressed() || got.GetMessageId() != "" || len(f.Sent()) != 0 || !notes.released {
+		t.Fatalf("reply = %v, sent %d, claim released %v", reply, len(f.Sent()), notes.released)
 	}
 }

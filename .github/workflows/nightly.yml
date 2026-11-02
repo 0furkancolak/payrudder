@@ -98,3 +98,35 @@ jobs:
           if-no-files-found: ignore
       - if: always()
         run: make down
+
+  # Cells mode (ADR 0018) and the transaction-mode pooler (docs/runbooks/scaling.md). ITEST_CELLS=1 puts every tenant of a service's integration suite in a cell database;
+  # ITEST_POOLER=1 also puts a PgBouncer in transaction mode in front of the databases (the app role goes through it, the system and migrator roles stay direct). The pkg
+  # row runs the move, doctor and residency tests across two Postgres containers and the pooler's own behaviour (pkg/cells, which skip without ITEST_POOLER). Neither switch
+  # is set in the pull request's integration job: these suites start several containers each. Every cell is its own job so that one failure does not hide the others.
+  cells:
+    name: cells${{ matrix.pooler && ' behind PgBouncer' || '' }} (${{ matrix.target.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        pooler: ["", "1"]
+        target:
+          - { name: pkg, dir: pkg, packages: "./cells ./pgxx" }
+          - { name: ingest-svc, dir: services/ingest-svc, packages: "./internal/itest" }
+          - { name: payments-worker, dir: services/payments-worker, packages: "./internal/itest" }
+          - { name: plans-svc, dir: services/plans-svc, packages: "./internal/itest" }
+          - { name: aggregator, dir: services/aggregator, packages: "./internal/itest ./internal/replay ./internal/usage/query" }
+          - { name: billing-svc, dir: services/billing-svc, packages: "./internal/itest" }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: go test (ITEST_CELLS=1${{ matrix.pooler && ', ITEST_POOLER=1' || '' }})
+        working-directory: ${{ matrix.target.dir }}
+        env:
+          ITEST_CELLS: "1"
+          ITEST_POOLER: ${{ matrix.pooler }}
+        run: go test -count=1 -p 1 -timeout 100m -tags integration ${{ matrix.target.packages }}

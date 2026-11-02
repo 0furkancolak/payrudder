@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/0furkancolak/payrudder/pkg/config"
@@ -29,5 +30,35 @@ func TestParseProxies(t *testing.T) {
 func TestConfigDefaults(t *testing.T) {
 	if err := config.CheckDefaults[Config](defaults); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// PAYRUDDER_REGION is off by default; set, it needs a region name, and the addresses of the other regions' gateways have to be http(s) addresses.
+func TestRegionSettings(t *testing.T) {
+	load := func(kv ...string) (Config, error) {
+		env := map[string]string{"PAYRUDDER_SERVICE_NAME": "gateway", "PAYRUDDER_OPERATOR_TOKEN": strings.Repeat("t", 32)}
+		for i := 0; i < len(kv); i += 2 {
+			env[kv[i]] = kv[i+1]
+		}
+		return config.LoadFrom[Config](env, defaults)
+	}
+	c, err := load()
+	if err != nil || c.Region != "" || len(c.RegionURLs) != 0 {
+		t.Fatalf("defaults: %+v %v", c, err)
+	}
+	c, err = load("PAYRUDDER_REGION", "us", "PAYRUDDER_REGION_URLS", "eu=https://eu.api.example.com,us=https://us.api.example.com")
+	if err != nil || c.Region != "us" || c.RegionURLs["eu"] != "https://eu.api.example.com" || len(c.RegionURLs) != 2 {
+		t.Fatalf("a region and its addresses: %+v %v", c, err)
+	}
+	for _, kv := range [][]string{
+		{"PAYRUDDER_REGION", "EU"},
+		{"PAYRUDDER_REGION", "-eu"},
+		{"PAYRUDDER_REGION_URLS", "eu=api.example.com"},
+		{"PAYRUDDER_REGION_URLS", "EU=https://eu.api.example.com"},
+		{"PAYRUDDER_REGION_URLS", "eu=ftp://eu.api.example.com"},
+	} {
+		if _, err := load(kv...); err == nil {
+			t.Errorf("accepted %v", kv)
+		}
 	}
 }

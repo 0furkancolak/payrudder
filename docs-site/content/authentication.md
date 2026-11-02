@@ -38,6 +38,7 @@ Rotating a key (in the console, or `POST /app/v1/apps/{id}/api-keys/{key_id}/rot
 | `403` | `gateway.auth.permission_denied` | the key's role lacks the permission the route needs |
 | `403` | `gateway.auth.tenant_not_active` | the environment is not active: a live environment that has not gone live yet, or one that is suspended or banned |
 | `403` | `gateway.auth.tenant_read_only` | the environment is frozen: reads still work, anything else is refused |
+| `421` | `gateway.region.wrong` | only on a deployment with regional gateways: the environment is served from another region. `X-Payrudder-Region` names it and, when the deployment knows it, `X-Payrudder-Region-Url` is the address of that region's gateway. Nothing was done with the request; send it there |
 | `429` | `gateway.rate_limit.exceeded` | too many requests; wait the number of seconds in `Retry-After` and try again |
 
 Rate limits depend on the tier of the account and are counted per class of route; usage events are counted **per event**, not per request, so batching does not get around them. See [Errors](errors.html) for the error format.

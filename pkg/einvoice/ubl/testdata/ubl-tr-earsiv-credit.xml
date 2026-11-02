@@ -22,6 +22,7 @@
     <cac:InvoiceDocumentReference>
       <cbc:ID>ABC2026000000042</cbc:ID>
       <cbc:IssueDate>2026-04-01</cbc:IssueDate>
+      <cbc:DocumentTypeCode>IADE</cbc:DocumentTypeCode>
     </cac:InvoiceDocumentReference>
   </cac:BillingReference>
   <cac:AdditionalDocumentReference>
@@ -29,6 +30,27 @@
     <cbc:IssueDate>2026-04-09</cbc:IssueDate>
     <cbc:DocumentTypeCode>SendingType</cbc:DocumentTypeCode>
   </cac:AdditionalDocumentReference>
+  <cac:Signature>
+    <cbc:ID schemeID="VKN_TCKN">1234567890</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="VKN">1234567890</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PostalAddress>
+        <cbc:StreetName>Bağdat Cad. 1</cbc:StreetName>
+        <cbc:CitySubdivisionName>Kadıköy</cbc:CitySubdivisionName>
+        <cbc:CityName>İstanbul</cbc:CityName>
+        <cac:Country>
+          <cbc:Name>Türkiye</cbc:Name>
+        </cac:Country>
+      </cac:PostalAddress>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>#Signature</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
   <cac:AccountingSupplierParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -45,6 +67,7 @@
       </cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>Bağdat Cad. 1</cbc:StreetName>
+        <cbc:CitySubdivisionName>Kadıköy</cbc:CitySubdivisionName>
         <cbc:CityName>İstanbul</cbc:CityName>
         <cbc:PostalZone>34700</cbc:PostalZone>
         <cac:Country>
@@ -74,6 +97,9 @@
         <cbc:Name>Ayşe Yılmaz</cbc:Name>
       </cac:PartyName>
       <cac:PostalAddress>
+        <cbc:StreetName>Kızılay Sk. 2</cbc:StreetName>
+        <cbc:CitySubdivisionName>Çankaya</cbc:CitySubdivisionName>
+        <cbc:CityName>Ankara</cbc:CityName>
         <cac:Country>
           <cbc:IdentificationCode>TR</cbc:IdentificationCode>
           <cbc:Name>Türkiye</cbc:Name>
@@ -87,6 +113,10 @@
       <cac:PartyLegalEntity>
         <cbc:RegistrationName>Ayşe Yılmaz</cbc:RegistrationName>
       </cac:PartyLegalEntity>
+      <cac:Person>
+        <cbc:FirstName>Ayşe</cbc:FirstName>
+        <cbc:FamilyName>Yılmaz</cbc:FamilyName>
+      </cac:Person>
     </cac:Party>
   </cac:AccountingCustomerParty>
   <cac:TaxTotal>

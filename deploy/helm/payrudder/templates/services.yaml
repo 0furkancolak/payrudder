@@ -12,7 +12,10 @@ metadata:
   labels:
     {{- include "payrudder.labels" $ctx | nindent 4 }}
 spec:
-  {{- if not (and $svc.hpa $svc.hpa.enabled) }}
+  {{- if and $svc.hpa $svc.hpa.enabled $svc.keda $svc.keda.enabled }}
+  {{- fail (printf "service %s: hpa and keda are both enabled: KEDA creates its own HorizontalPodAutoscaler, use one of them" $name) }}
+  {{- end }}
+  {{- if not (or (and $svc.hpa $svc.hpa.enabled) (and $svc.keda $svc.keda.enabled)) }}
   replicas: {{ $replicas }}
   {{- end }}
   revisionHistoryLimit: 3
@@ -121,6 +124,23 @@ spec:
   selector:
     matchLabels:
       {{- include "payrudder.selector" $ctx | nindent 6 }}
+{{- end }}
+{{- if and $svc.keda $svc.keda.enabled }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "payrudder.labels" $ctx | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ $name }} }
+  minReplicaCount: {{ $svc.keda.min }}
+  maxReplicaCount: {{ $svc.keda.max }}
+  pollingInterval: {{ default 15 $svc.keda.pollingInterval }}
+  cooldownPeriod: {{ default 300 $svc.keda.cooldownPeriod }}
+  triggers:
+    {{- tpl (toYaml $svc.keda.triggers) $ | nindent 4 }}
 {{- end }}
 {{- if and $svc.hpa $svc.hpa.enabled }}
 ---

@@ -49,17 +49,22 @@ type Party struct {
 	TradeRegistryNo string
 	Street          string
 	AdditionalLine  string
-	City            string
-	Region          string
-	PostalCode      string
-	Country         string
-	Email           string
+	// District is Turkey's ilçe; UBL-TR's XSD requires it in every address. Payrudder's customer data does not carry one yet.
+	District   string
+	City       string
+	Region     string
+	PostalCode string
+	Country    string
+	Email      string
 	// EInvoiceRegistered: the party is registered for e-fatura (a buyer's flag).
 	EInvoiceRegistered bool
 	// Alias is the party's e-fatura mailbox label (urn:mail:…) when the integrator needs one.
 	Alias string
 	// CustomerType is "individual" or "business" for a buyer, as the customer is recorded; empty when unknown (and for a seller).
 	CustomerType string
+	// EndpointScheme and EndpointID are the party's Peppol participant identifier: the code of the Electronic Address Scheme (for example "0088" for a GLN)
+	// and the identifier under it. Peppol documents need both parties' (PEPPOL-EN16931-R010, R020); Payrudder does not collect them yet.
+	EndpointScheme, EndpointID string
 }
 
 // LineKind says how a line adds to the document.

@@ -18,14 +18,17 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/einvoice/ubl"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/strx"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
-// Accounts gives the sealed settings of a tenant's integrator account (store.EInvoiceAccounts).
+// Accounts gives the opened settings of a tenant's integrator accounts (store.EInvoiceAccounts): the one that takes the documents of a buyer's country, or one
+// by its key.
 type Accounts interface {
-	Settings(ctx context.Context, tenant uuid.UUID, env string) (provider string, settings []byte, err error)
+	Resolve(ctx context.Context, tenant uuid.UUID, env, country string) (store.EInvoiceAccount, error)
+	Get(ctx context.Context, tenant uuid.UUID, env, key string) (store.EInvoiceAccount, error)
 }
 
 // Issuances is the idempotency record of documents (store.EInvoiceIssuances).
@@ -119,30 +122,41 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	return nil, fmt.Errorf("%w: unknown action %q", workerx.ErrPoison, c.GetAction())
 }
 
-// provider resolves the adapter for a tenant and environment: sandbox (and demo) always the mock, live the tenant's sealed account.
-// A non-nil reply is the answer when there is none.
-func (h *Handler) provider(ctx context.Context, tenantID uuid.UUID, environment string) (pkg.Provider, string, *commandsv1.ReplyEnvelope, error) {
+// provider resolves the adapter for a tenant and environment: sandbox (and demo) always the mock, live the tenant's sealed account. The account is the one
+// routing names for the buyer's country, else the default; a document already started is looked up by the key it was issued through (account, when set), so a
+// cancel never goes through another integrator than the issue did. A non-nil reply is the answer when there is none. The name returned is the account's key.
+func (h *Handler) provider(ctx context.Context, tenantID uuid.UUID, environment, country, account string) (pkg.Provider, string, *commandsv1.ReplyEnvelope, error) {
 	if environment == env.Sandbox.String() || h.Demo {
 		return h.mockProvider(), mock.Name, nil, nil
 	}
 	if h.Accounts == nil {
 		return nil, "", failed(KeyAccountMissing, "e-invoice accounts are disabled on this deployment (PAYRUDDER_SECRETS_KEY)", false), nil
 	}
-	name, settings, err := h.Accounts.Settings(ctx, tenantID, env.Live.String())
+	var acc store.EInvoiceAccount
+	var err error
+	if account != "" {
+		acc, err = h.Accounts.Get(ctx, tenantID, env.Live.String(), account)
+	} else {
+		acc, err = h.Accounts.Resolve(ctx, tenantID, env.Live.String(), country)
+	}
 	if errors.Is(err, store.ErrNoAccount) {
-		return nil, "", failed(KeyAccountMissing, "no e-invoice account is configured for the live environment", false), nil
+		if account != "" {
+			return nil, "", failed(KeyAccountInvalid, "the e-invoice account the document was issued through is no longer connected", false), nil
+		}
+		return nil, "", failed(KeyAccountMissing, "no e-invoice account is configured for the live environment (or none is the default)", false), nil
 	}
 	if err != nil {
 		return nil, "", nil, err
 	}
-	if name == mock.Name {
+	base := payments.BaseProvider(acc.Key)
+	if base == mock.Name {
 		return nil, "", failed(KeyAccountInvalid, "the mock provider is not allowed in the live environment", false), nil
 	}
-	p, err := h.Registry.Build(name, settings)
+	p, err := h.Registry.Build(base, acc.Settings)
 	if err != nil {
 		return nil, "", failed(KeyAccountInvalid, "the e-invoice account cannot be used: "+err.Error(), false), nil
 	}
-	return p, name, nil, nil
+	return p, acc.Key, nil, nil
 }
 
 // classify turns a provider error into a failed reply: a refusal waits for the operator, anything else is retried with backoff by billing-svc.
@@ -163,11 +177,17 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 		return issued(prior), nil // answered before; the integrator is not asked again
 	}
 
-	prov, name, reply, err := h.provider(ctx, tenantID, env)
+	d := Document(c, sandbox)
+	// A repeat of a document that was begun goes through the account it was begun with, whatever routing says now: the integrator may already hold it, and a
+	// second integrator must never issue a second legal document under the same UUID.
+	account := ""
+	if found {
+		account = prior.Provider
+	}
+	prov, name, reply, err := h.provider(ctx, tenantID, env, d.Buyer.Country, account)
 	if reply != nil || err != nil {
 		return reply, err
 	}
-	d := Document(c, sandbox)
 	if sandbox || h.Demo {
 		ApplySandboxDefaults(&d)
 	}
@@ -335,12 +355,9 @@ func (h *Handler) cancel(ctx context.Context, c *commandsv1.IssueEInvoice, docID
 	case rec.Status == store.IssuanceCancelled:
 		return cancelledReply(), nil
 	}
-	prov, name, reply, err := h.provider(ctx, tenantID, env)
+	prov, name, reply, err := h.provider(ctx, tenantID, env, "", rec.Provider)
 	if reply != nil || err != nil {
 		return reply, err
-	}
-	if name != rec.Provider {
-		return failed(KeyAccountInvalid, "the e-invoice account is not the one the document was issued through", false), nil
 	}
 	if !prov.Capabilities().CanCancel {
 		return failed(KeyCancel, name+" cannot cancel documents", false), nil

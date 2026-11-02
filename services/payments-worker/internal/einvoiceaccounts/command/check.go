@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -26,18 +27,22 @@ type Check struct {
 // probeTaxID is asked about when the caller names none: any well-formed tax number does, the answer is not used.
 const probeTaxID = "1111111111"
 
-// CheckAccount tests the stored account of the environment: it opens the settings, builds the adapter and, for an integrator that can look up a registered
-// business (einvoice.BuyerChecker), asks it about taxID, which needs valid credentials. Nothing is issued and nothing is stored. A problem is the answer, not an
-// error of the call; an account that does not exist is a 404.
-func CheckAccount(ctx context.Context, d Deps, tenant uuid.UUID, environment, taxID string) (Check, error) {
-	provider, settings, err := d.Accounts.Settings(ctx, tenant, environment)
+// CheckAccount tests a stored account of the environment (the only one when none is named): it opens the settings, builds the adapter and, for an integrator that
+// can look up a registered business (einvoice.BuyerChecker), asks it about taxID, which needs valid credentials. Nothing is issued and nothing is stored. A problem
+// is the answer, not an error of the call; an account that does not exist is a 404.
+func CheckAccount(ctx context.Context, d Deps, tenant uuid.UUID, environment, key, taxID string) (Check, error) {
+	key, err := accountKey(ctx, d, tenant, environment, key)
+	if err != nil {
+		return Check{}, err
+	}
+	acc, err := d.Accounts.Get(ctx, tenant, environment, key)
 	if errors.Is(err, store.ErrNoAccount) {
 		return Check{}, refuse.New(http.StatusNotFound, "einvoice.account.missing", "no such account")
 	}
 	if err != nil {
 		return Check{}, fmt.Errorf("open the e-invoice account: %w", err)
 	}
-	p, err := d.Registry.Build(provider, settings)
+	p, err := d.Registry.Build(payments.BaseProvider(acc.Key), acc.Settings)
 	if err != nil {
 		return Check{OK: false, Checked: "configuration", Problem: "refused"}, nil
 	}

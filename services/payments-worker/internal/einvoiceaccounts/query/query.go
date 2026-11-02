@@ -21,3 +21,15 @@ func List(ctx context.Context, accounts store.EInvoiceAccounts, tenant uuid.UUID
 	}
 	return list, nil
 }
+
+// Routing is the routing rules of an environment, by country.
+func Routing(ctx context.Context, accounts store.EInvoiceAccounts, tenant uuid.UUID, environment string) ([]store.EInvoiceRoute, error) {
+	rules, err := accounts.Routing(ctx, tenant, environment)
+	if err != nil {
+		return nil, fmt.Errorf("list e-invoice routing: %w", err)
+	}
+	if rules == nil {
+		rules = []store.EInvoiceRoute{}
+	}
+	return rules, nil
+}

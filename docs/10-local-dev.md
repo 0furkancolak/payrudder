@@ -87,6 +87,12 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | loki | internal only (Grafana queries it; Vector ships logs to it) |
 | grafana | 42300 (anonymous admin locally, dashboards provisioned) |
 
+### Connection pooler (`profile: pooler`)
+
+| Service | Ports |
+|---|---|
+| pgbouncer | 42433 (PgBouncer 1.25, transaction mode, in front of `postgres`). `make up-pooler` also points the app role of plans, ingest, aggregator, billing and assets at it (`compose.pooler.yaml`); the system and migrator roles stay on `postgres:5432`. Why, and what breaks otherwise: [scaling runbook](runbooks/scaling.md#connection-pooling-pgbouncer-transaction-mode). |
+
 ### Payrudder services (`profile: app`)
 
 | Service | gRPC | HTTP | Metrics/health |

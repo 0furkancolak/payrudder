@@ -32,6 +32,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [15-billing-lifecycle.md](15-billing-lifecycle.md) | Yearly plans, fees in advance, upgrades and downgrades, the Paddle catalogue and API, credit notes, coupons and tax |
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |
 | [payment-provider-contract.md](payment-provider-contract.md) | What a payment provider adapter must do, the conformance suite it passes, and the compatibility matrices of [Paddle](paddle-compatibility-matrix.md), [iyzico](iyzico-compatibility-matrix.md) and [Stripe](stripe-compatibility-matrix.md) |
+| [einvoice-integrator-contract.md](einvoice-integrator-contract.md) | What an e-invoice integrator adapter must do, the conformance suite and the fake integrators it runs against, and how the generated UBL is checked against the EN 16931, Peppol BIS 3 and UBL-TR rules |
 
 ## Service specifications
 

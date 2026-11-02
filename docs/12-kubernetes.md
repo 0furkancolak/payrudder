@@ -47,6 +47,7 @@ Each service reads its container memory limit and tells the Go runtime to collec
 |---|---|
 | `payrudder/values.yaml` | The defaults: every address is a value (`global.kafkaBrokers`, `global.redisURL`, `postgres.host`, `rabbitmq.host`, `s3.endpoint`, `smtp.addr`, `clickhouse.addr`). |
 | `values-kind.yaml` / `values-kind-min.yaml` | kind: replicas, HPAs on the gateway and ingest-svc, the NodePorts for the host. |
+| `values-keda.yaml` | Layer over any profile: KEDA `ScaledObject`s for aggregator and limits-svc (Kafka lag) and invoice-worker and payments-worker (queue length). Off otherwise; KEDA must be installed; the thresholds are unmeasured ([scaling runbook](runbooks/scaling.md#autoscaling)). |
 | `values-sandbox.yaml` | Sandbox-only install ([ADR 0011](adr/0011-sandbox-environment.md)): `PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox` (a live account is refused), `PAYMENTS_LIVE_PROVIDER` empty, receipts to Mailpit. Install it in its own namespace: `helm install payrudder deploy/helm/payrudder -n payrudder-sandbox -f deploy/helm/payrudder/values-sandbox.yaml`. |
 | `payrudder-infra/values-ha.yaml` | Three Redpanda brokers (topics at RF 3) and three RabbitMQ nodes (quorum queues). |
 
@@ -68,7 +69,7 @@ Each service reads its container memory limit and tells the Go runtime to collec
   on kind. `make netpol-test` proves it on a running cluster: a pod with the gateway's labels connects, an unlabelled pod and a pod in another
   namespace do not. kindnet enforces policies; infrastructure pods are not restricted.
 - **HPA and PDB**: the gateway and ingest-svc scale on CPU (`values-kind.yaml`); every service with more than one replica gets a PodDisruptionBudget
-  (`maxUnavailable: 1`). The consumers are capped by their partition counts and are not autoscaled.
+  (`maxUnavailable: 1`). The consumers are capped by their partition counts and are not autoscaled unless `values-keda.yaml` is layered on (off by default, never run on a cluster: [scaling runbook](runbooks/scaling.md#autoscaling)).
 - **Rolling updates** use `maxUnavailable: 0, maxSurge: 1`; a changed Secret or setting rolls the pods through a checksum annotation.
   A rollout must not lose requests, and gRPC behind a headless Service makes that harder than it looks: the clients hold the pod addresses they
   resolved, CoreDNS caches the answer for 30 s, and grpc-go re-resolves only after a connection fails. So a terminating pod keeps serving for
@@ -81,7 +82,7 @@ Each service reads its container memory limit and tells the Go runtime to collec
 - `tests/helm` renders both charts with `bin/helm` and asserts the safety properties: the sandbox profile has no live provider and allows only sandbox,
   external S3 has no MinIO, the NetworkPolicies name the right callers, migrations are hooks and their role never reaches a running pod, probes,
   resources, PDBs and HPAs exist, role passwords are URL-escaped, and the copies of shared files in the infra chart match their sources.
-- CI runs `make helm-lint` (`helm lint` + `kubeconform` for every values file), `ct lint`, those render tests, and a `kind` job that does the
+- CI runs `make helm-lint` (`helm lint` + `kubeconform` for every values file; the KEDA `ScaledObject` kind has no schema there and is skipped, `tests/helm` checks it), `ct lint`, those render tests, and a `kind` job that does the
   three-worker install and runs `netpol-test` and `e2e-kind`.
 
 ## Not covered

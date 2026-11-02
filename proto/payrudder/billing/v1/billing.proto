@@ -115,6 +115,9 @@ service HostedInvoiceService {
   rpc RequestHostedPayment(RequestHostedPaymentRequest) returns (RequestHostedPaymentResponse);
   // GetPortal returns a customer's page: who they are and their invoices.
   rpc GetPortal(GetPortalRequest) returns (GetPortalResponse);
+  // GetPortalSubscriptions returns the customer's current subscriptions for the portal's read-only summary. The portal asks for it beside GetPortal and shows the page
+  // without the section when it fails, so plans-svc being down does not take the page down. Nothing in it can be changed from the portal.
+  rpc GetPortalSubscriptions(GetPortalSubscriptionsRequest) returns (GetPortalSubscriptionsResponse);
   // StartPortalPurchase starts the purchase of a credit pack from a customer's portal: it makes (or finds) the credit-pack link and its invoice and returns the
   // token of the invoice link the customer pays on.
   rpc StartPortalPurchase(StartPortalPurchaseRequest) returns (StartPortalPurchaseResponse);
@@ -895,6 +898,43 @@ message GetPortalResponse {
   bool can_buy_credits = 12;
   // The customer's language, as frozen with their latest invoice.
   string customer_locale = 13;
+}
+message GetPortalSubscriptionsRequest { string portal_token = 1; }
+message GetPortalSubscriptionsResponse {
+  // Trialing, active, past due and paused subscriptions, newest first; a cancelled one is not listed. Empty for a portal link made before the tenant knew the customer by an
+  // external id.
+  repeated PortalSubscription subscriptions = 1;
+}
+// PortalSubscription is what a customer reads about a subscription of theirs.
+message PortalSubscription {
+  string id = 1;
+  string plan_code = 2;
+  // The plan's display name; the code when the plan has none or plans-svc did not list it.
+  string plan_name = 3;
+  // trialing, active, past_due or paused.
+  string state = 4;
+  // month or year.
+  string interval = 5;
+  int32 quantity = 6;
+  // The fixed fee of one period: the plan version's fee for the interval and currency, times the quantity. Usage, a coupon and tax are not in it. price_known is false
+  // when the plan version has no fee for the interval and currency.
+  bool price_known = 7;
+  int64 price_minor = 8;
+  string currency = 9;
+  int32 currency_exponent = 10;
+  // Unset while the subscription is not in a trial.
+  google.protobuf.Timestamp trial_end_time = 11;
+  // When the next period starts and its fee is due, when plans-svc says so exactly: the end of a trial, or the date a waiting plan change takes effect. Unset otherwise,
+  // for a plain active subscription too: plans-svc does not expose its next fee date (docs/hosted-pages.md).
+  google.protobuf.Timestamp next_renewal_time = 12;
+  // The subscription ends at the end of its current period (cancel_at_period_end) on this date.
+  bool cancel_at_period_end = 13;
+  google.protobuf.Timestamp end_time = 14;
+  // A change of plan waiting for the end of the paid period: the plan's name and the date.
+  string scheduled_plan_name = 15;
+  google.protobuf.Timestamp scheduled_time = 16;
+  // A payment provider renews it and takes its payments; the dates above are not Payrudder's to give.
+  bool provider_managed = 17;
 }
 message PortalCreditLot {
   int64 granted = 1;

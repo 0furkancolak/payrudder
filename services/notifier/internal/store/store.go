@@ -1,4 +1,4 @@
-// Package store is notifier's dedup record: sent_notifications and the limit consumer's Kafka offsets.
+// Package store is notifier's dedup record: sent_notifications, the suppression list and the Kafka offsets of the consumers.
 package store
 
 import (
@@ -47,14 +47,19 @@ func (n Notifications) stale() time.Duration {
 
 // Claim takes the right to send the email with the dedup key. The row is inserted before sending, so a crash between the
 // SMTP acceptance and MarkSent leaves SENDING (re-sent after Stale) rather than a lost record.
-func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UUID, kind, template, recipient string) (Claim, string, error) {
+// The tenant is recorded so that a bounce, which names only the provider's message id, can be traced back to the tenant it was sent for (uuid.Nil: none).
+func (n Notifications) Claim(ctx context.Context, key string, commandID *uuid.UUID, tenantID uuid.UUID, kind, template, recipient string) (Claim, string, error) {
 	tx, err := n.DB.Begin(ctx)
 	if err != nil {
 		return 0, "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := sqlc.New(tx)
-	inserted, err := q.ClaimNotification(ctx, sqlc.ClaimNotificationParams{DedupKey: key, CommandID: commandID, Kind: kind, Template: template, Recipient: recipient})
+	var tid *uuid.UUID
+	if tenantID != uuid.Nil {
+		tid = &tenantID
+	}
+	inserted, err := q.ClaimNotification(ctx, sqlc.ClaimNotificationParams{DedupKey: key, CommandID: commandID, Kind: kind, Template: template, Recipient: recipient, TenantID: tid})
 	if err != nil {
 		return 0, "", err
 	}
@@ -86,6 +91,21 @@ func (n Notifications) MarkSent(ctx context.Context, key, messageID string) erro
 // Release deletes a claim whose email was certainly not sent, so the next delivery starts clean.
 func (n Notifications) Release(ctx context.Context, key string) error {
 	return sqlc.New(n.DB).ReleaseNotification(ctx, key)
+}
+
+// ByMessageID finds the sent mail a provider's message id belongs to: the tenant it was sent for (uuid.Nil when it had none) and the address it went to.
+func (n Notifications) ByMessageID(ctx context.Context, messageID string) (tenantID uuid.UUID, recipient string, found bool, err error) {
+	row, err := sqlc.New(n.DB).NotificationByMessageID(ctx, &messageID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, "", false, nil
+	}
+	if err != nil {
+		return uuid.Nil, "", false, err
+	}
+	if row.TenantID != nil {
+		tenantID = *row.TenantID
+	}
+	return tenantID, row.Recipient, true, nil
 }
 
 // Lookup implements workerx.Inbox: a command whose email was sent gets its NotificationSent again.
