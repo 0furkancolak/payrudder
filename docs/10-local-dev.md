@@ -154,8 +154,9 @@ PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: p
 | `make up` / `make down` | Compose `infra` + `obs` + `app` profiles up/down |
 | `make up-infra` | Only infrastructure (run services from your IDE) |
 | `make up-pitr` | Point-in-time recovery for the local Postgres: WAL archiving, a sidecar that ships it to MinIO and a daily base backup (recreates the postgres container, the data stays; [runbook](runbooks/backup-restore.md)) |
-| `make backup-drill` | Restore to a chosen minute on a throwaway stack, check the data, measure the RTO (about 5 minutes, Docker) |
-| `make test-backup-scripts` | The backup, restore and verify scripts against a throwaway Postgres; the Helm copies match |
+| `make backup-drill` | Restore to a chosen minute on a throwaway stack, check the data, the migrations version and the service roles, measure the RTO (about 5 minutes, Docker) |
+| `make test-backup-scripts` | The backup, restore, verify and migrations-version scripts against a throwaway Postgres; the Helm copies match |
+| `make test-store-backups` | `object-backup.sh` (mc mirror, restore, verify) against a throwaway MinIO and `clickhouse-backup.sh` (BACKUP and RESTORE to MinIO) against a throwaway ClickHouse (about 2 minutes, Docker) |
 | `make alert-test` | Fire a test page and warning at the running Alertmanager; the mail lands in Mailpit |
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |
