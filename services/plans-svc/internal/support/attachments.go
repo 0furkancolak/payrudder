@@ -56,7 +56,7 @@ func callerOf(ctx context.Context, userID string) (*uuid.UUID, error) {
 	return &u, nil
 }
 
-// attachable checks that the caller may add a file to the message and returns the ticket's account: the person must belong to the account and have written the
+// attachable checks that the caller may add a file to the message and returns the ticket's account: the person must belong to the account (not as a viewer) and have written the
 // message (not another member's, not the operator's), the operator may attach to the operator's own messages (notes included), and a closed ticket takes none.
 func attachable(ctx context.Context, q *sqlc.Queries, user *uuid.UUID, ticketID, messageID uuid.UUID) (uuid.UUID, error) {
 	m, err := q.SupportMessageForAttachment(ctx, sqlc.SupportMessageForAttachmentParams{ID: messageID, TicketID: ticketID})
@@ -67,7 +67,7 @@ func attachable(ctx context.Context, q *sqlc.Queries, user *uuid.UUID, ticketID,
 		return uuid.Nil, err
 	}
 	if user != nil {
-		if err := member(ctx, q, *user, m.AccountID); err != nil {
+		if err := writer(ctx, q, *user, m.AccountID); err != nil {
 			return uuid.Nil, err
 		}
 		if m.AuthorKind != "customer" || m.AuthorUserID == nil || *m.AuthorUserID != *user {
@@ -205,7 +205,7 @@ func (s *Service) GetSupportAttachment(ctx context.Context, req *plansv1.GetSupp
 	}
 	if user != nil {
 		// The same answer for a file that is not there, one of an internal note, and one of another account.
-		if err := member(ctx, q, *user, a.AccountID); err != nil || a.Internal {
+		if _, err := member(ctx, q, *user, a.AccountID); err != nil || a.Internal {
 			return nil, attachmentNotFound()
 		}
 	}

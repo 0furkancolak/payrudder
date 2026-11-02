@@ -23,6 +23,13 @@ export interface HttpOptions {
   audit?: Audit;
   /** Tool calls a minute for each key (ratelimit.ts); 0 or unset is no limit. */
   ratePerMinute?: number;
+  /**
+   * PAYRUDDER_MCP_EDGE_SECRET, the gateway's PAYRUDDER_TRUSTED_PROXY_SECRET. The gateway counts the keys it refuses by the address they come from, and every caller of this server
+   * comes from the server's: one flood of junk keys would lock all of them out. With the secret the caller's address goes along (X-Forwarded-For, X-Edge-Auth) and is the one counted.
+   */
+  edgeSecret?: string;
+  /** PAYRUDDER_MCP_TRUST_FORWARDED_FOR=1: a proxy in front of this server writes the caller's address as the last X-Forwarded-For entry; otherwise the connection's address is used. */
+  trustForwardedFor?: boolean;
   /** Injected in tests. */
   fetch?: typeof fetch;
 }
@@ -58,6 +65,12 @@ function readBody(req: IncomingMessage): Promise<unknown> {
   });
 }
 
+/** The address of whoever made the request: the connection's, or with a proxy in front the last entry the proxy wrote in X-Forwarded-For (an earlier one is the client's own claim). */
+function callerAddress(req: IncomingMessage, behindProxy: boolean): string {
+  const forwarded = behindProxy ? String(req.headers["x-forwarded-for"] ?? "").split(",").pop()?.trim() : "";
+  return forwarded || req.socket.remoteAddress || "";
+}
+
 export function createHttpServer(o: HttpOptions): Server {
   const limit = createRateLimit(o.ratePerMinute ?? 0);
   return listen(async (req, res) => {
@@ -70,7 +83,7 @@ export function createHttpServer(o: HttpOptions): Server {
       const refusal = liveRefusal(key, o.allowLive ?? false);
       if (refusal) return reply(res, 403, refusal);
       const body = await readBody(req);
-      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, allowPersonalData: o.allowPersonalData ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}), ...(limit ? { rateLimit: () => limit.take(limitKeyOf(key)) } : {}) });
+      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}), ...(o.edgeSecret ? { forward: { address: callerAddress(req, o.trustForwardedFor ?? false), secret: o.edgeSecret } } : {}) }), allowWrites: o.allowWrites ?? false, allowPersonalData: o.allowPersonalData ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}), ...(limit ? { rateLimit: () => limit.take(limitKeyOf(key)) } : {}) });
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         void transport.close();

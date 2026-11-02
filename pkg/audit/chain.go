@@ -80,12 +80,18 @@ func Schemas(ctx context.Context, q Queryer) ([]string, error) {
 // before it in its chain by one and names its hash, and a chain starts at 1 (or after the entries retention deleted: an audit.pruned entry of the chain names the last of them, by number and, in before_hash, by hash).
 // It reports every problem it finds, in the order of the chains and their entries; an error is a failure to read.
 func Verify(ctx context.Context, q Queryer, schema string) (Report, error) {
+	return verify(ctx, q, schema, "")
+}
+
+// verify is Verify for the one chain only names (a tenant id, or the nil chain), or for every chain when only is empty.
+func verify(ctx context.Context, q Queryer, schema, only string) (Report, error) {
 	rep := Report{Schema: schema}
 	table := pgx.Identifier{schema, "audit_events"}.Sanitize()
 	fn := pgx.Identifier{schema, "audit_events_hash"}.Sanitize()
-	rows, err := q.Query(ctx, `SELECT e.id::text, coalesce(e.tenant_id::text, '`+nilChain+`'), e.seq, e.prev_hash, e.row_hash, `+fn+`(e), e.action,
+	tenantOf := `coalesce(e.tenant_id::text, '` + nilChain + `')`
+	rows, err := q.Query(ctx, `SELECT e.id::text, `+tenantOf+`, e.seq, e.prev_hash, e.row_hash, `+fn+`(e), e.action,
 			coalesce(e.detail->>'through_seq', ''), e.before_hash
-		FROM `+table+` e ORDER BY coalesce(e.tenant_id::text, '`+nilChain+`'), e.seq`)
+		FROM `+table+` e WHERE $1 = '' OR `+tenantOf+` = $1 ORDER BY `+tenantOf+`, e.seq`, only)
 	if err != nil {
 		return rep, err
 	}
@@ -168,7 +174,8 @@ type PruneResult struct {
 // Prune is the retention of the log: it deletes, in each chain of the schema, the entries from the beginning up to the first one that is not older than cutoff (a prefix:
 // the chain stays a chain), and appends to the chain the entry audit.pruned, which names the last entry deleted and its hash, so that Verify accepts the chain starting
 // after it and nothing else. It never deletes a whole chain: the newest entry stays. With dry it deletes nothing and says what it would. Run it with the system role
-// of the database; each chain is one transaction under the chain's own lock. only names the chains to prune (a tenant id, or "none"); no name means every chain.
+// of the database; each chain is one transaction under the chain's own lock, and a chain is verified first, inside it: a chain with any problem is not pruned (it is an
+// error that names the first problem, and the chains before it have been pruned). only names the chains to prune (a tenant id, or "none"); no name means every chain.
 func Prune(ctx context.Context, begin func(ctx context.Context) (pgx.Tx, error), schema string, cutoff time.Time, dry bool, only ...string) ([]PruneResult, error) {
 	table := pgx.Identifier{schema, "audit_events"}.Sanitize()
 	var chains []string
@@ -221,6 +228,15 @@ func pruneChain(ctx context.Context, begin func(ctx context.Context) (pgx.Tx, er
 	}
 	if _, err := tx.Exec(ctx, `SELECT `+lock+`($1::uuid)`, tenantArg); err != nil {
 		return res, err
+	}
+	// What is deleted is what was checked, under the same lock: the pruned entry anchors on the stored hash of the last entry it deletes, so a change inside the prefix that
+	// was not caught here would be gone with the prefix and Verify would never find it.
+	rep, err := verify(ctx, tx, schema, chain)
+	if err != nil {
+		return res, err
+	}
+	if !rep.OK() {
+		return res, fmt.Errorf("the chain does not verify (%d problem(s), the first: %s): nothing was deleted, because the entries to delete are the evidence; find out why with `payrudderctl audit verify` and prune after that", len(rep.Problems), rep.Problems[0])
 	}
 	const inChain = `coalesce(tenant_id::text, '` + nilChain + `') = $1`
 	// The prefix ends before the first entry that is not older than the cutoff (or before the newest entry, which always stays): created_at is the start of the writing

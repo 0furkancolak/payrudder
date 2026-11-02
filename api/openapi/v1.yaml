@@ -8458,7 +8458,7 @@ components:
         fee_currency: { type: string, description: The currency of `fee_minor` }
         handled: { type: boolean, description: "Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider" }
         handled_time: { type: string, format: date-time, description: Absent when the case is not marked }
-        handled_by: { type: string, description: "Who marked it; absent when it is not marked and for a viewer of the account" }
+        handled_by: { type: string, description: "Who marked it; absent when it is not marked, for a viewer of the account, and for an API key that holds no audit:read (the read_only and billing roles)" }
         note_count: { type: integer, format: int64, description: "How many notes you wrote (`GET /v1/disputes/{id}/history`)" }
     DisputeEvent:
       type: object

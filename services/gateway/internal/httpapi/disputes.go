@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
@@ -65,7 +67,17 @@ type workerDispute struct {
 	NoteCount   int64        `json:"note_count"`
 }
 
-// view is the case as the tenant API says it. Who marked it is the seller's colleagues' business: a viewer of the account is not told, as in the audit log.
+// showsWho says whether the caller is told who in the account did something (who marked a case, who wrote a note): the audit log's rule. A signed-in person is, unless
+// they are only a viewer of the account; an API key is by what it holds: audit:read, which the read_only and billing roles do not (MemberRole is empty for a key).
+func showsWho(ctx context.Context) bool {
+	p := principalFrom(ctx)
+	if p.Role != "" {
+		return apikey.Allows(p.Permissions, apikey.PermAuditRead)
+	}
+	return p.MemberRole != "viewer"
+}
+
+// view is the case as the tenant API says it. Who marked it is the seller's colleagues' business: a viewer (see showsWho) is not told, as in the audit log.
 func (d workerDispute) view(viewer bool) disputeView {
 	amount, _ := d.AmountMinor.Int64()
 	v := disputeView{ID: d.ID.String(), Provider: d.Provider, DisputeID: d.DisputeID, PaymentRef: d.PaymentRef, InvoiceID: d.InvoiceID, AmountMinor: itoa(amount),
@@ -121,7 +133,7 @@ func (s *Server) listDisputes(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.ledger_unreachable", "the payment ledger is not reachable"))
 		return
 	}
-	viewer := principalFrom(r.Context()).MemberRole == "viewer"
+	viewer := !showsWho(r.Context())
 	views := make([]disputeView, 0, len(out.Disputes))
 	for _, d := range out.Disputes {
 		views = append(views, d.view(viewer))
@@ -202,7 +214,7 @@ func (s *Server) listDisputeHistory(w http.ResponseWriter, r *http.Request) {
 		s.relayRefusal(w, r, code, body, err)
 		return
 	}
-	viewer := principalFrom(r.Context()).MemberRole == "viewer"
+	viewer := !showsWho(r.Context())
 	events := make([]disputeEventView, 0, len(out.Events))
 	for _, e := range out.Events {
 		events = append(events, e.view(viewer))

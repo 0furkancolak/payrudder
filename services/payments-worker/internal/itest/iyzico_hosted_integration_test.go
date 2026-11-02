@@ -418,9 +418,20 @@ func TestIyzicoHostedPaymentsThroughTheWorker(t *testing.T) {
 		if len(sent) != deletes+1 || sent[len(sent)-1]["cardUserKey"] != "ck" || sent[len(sent)-1]["cardToken"] != "ct2" {
 			t.Errorf("iyzico was asked %v", sent)
 		}
+		// A deletion is an entry of the audit log (who, which customer, which card by its last four digits, whether it was the one in use), not only a line of the log.
+		var target, summary, detail string
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT target_id, summary, detail::text FROM audit_events WHERE tenant_id = $1 AND action = 'stored_card.deleted'`, tenant).Scan(&target, &summary, &detail); err != nil {
+			t.Fatalf("no audit entry for the deleted card: %v", err)
+		}
+		if target != "ext-1" || !strings.Contains(detail, `"last4": "4242"`) || !strings.Contains(detail, `"was_in_use": false`) || strings.Contains(detail+summary, "ct2") {
+			t.Errorf("the audit entry = %q %q %s", target, summary, detail)
+		}
 		// The card the customer's invoices are charged with says so, and the customer's payment method is left to the seller.
 		if code, out := call("DELETE", cards+"/ct", ""); code != 200 || out["was_in_use"] != true {
 			t.Errorf("delete the card in use = %d %v", code, out)
+		}
+		if n, err := cdb.CountAll(ctx, `SELECT count(*) FROM audit_events WHERE tenant_id = $1 AND action = 'stored_card.deleted'`, tenant); err != nil || n != 2 {
+			t.Errorf("%d audit entries for 2 deleted cards, %v", n, err)
 		}
 	})
 }
