@@ -23,7 +23,22 @@ const subscriptions = [
 
 function customerGateway() {
   return baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "POST" && c.path === "/v1/events/corrections") {
+      const first = (c.body?.corrections as { corrects: string }[])[0];
+      return { status: 202, body: { results: [first?.corrects === "evt-404" ? { status: "rejected", error_code: "CORRECTION_UNKNOWN_EVENT", error_message: "no" } : { status: "accepted", event_id: "01CORR" }] } };
+    }
     if (c.method !== "GET" && !(c.method === "POST" && c.path === "/v1/subscriptions")) return undefined;    if (c.path === "/v1/customers") return { body: { customers } };
+    if (c.path === "/v1/meters") {
+      return {
+        body: {
+          meters: [
+            { code: "api_calls", aggregation: "AGGREGATION_SUM", value_property: "", filter: {}, quantity_scale: 0, unit_label: "calls", category: "", version: 1 },
+            { code: "peak_seats", aggregation: "AGGREGATION_MAX", value_property: "", filter: {}, quantity_scale: 0, unit_label: "seats", category: "", version: 1 },
+            { code: "eu_calls", aggregation: "AGGREGATION_SUM", value_property: "", filter: { region: { values: ["eu"] } }, quantity_scale: 0, unit_label: "calls", category: "", version: 1 },
+          ],
+        },
+      };
+    }
     if (c.path === "/v1/invoices") {
       const who = c.query.get("customer");
       return { body: { invoices: who ? invoices.filter((i) => i.customer_external_id === who) : invoices } };
@@ -33,6 +48,20 @@ function customerGateway() {
     if (c.path === "/v1/subscriptions") return { body: { subscriptions } };
     if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "pro", name: "Pro", latest_version: 2 }] } };
     if (c.path === "/v1/plans/pro/versions/latest") return { body: { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", prices: [], publish_time: "2026-10-05T10:00:00Z" } };
+    const upcoming = /^\/v1\/customers\/(cus_\d)\/upcoming-invoice$/.exec(c.path);
+    if (upcoming && upcoming[1] === "cus_1") {
+      return {
+        body: {
+          estimate: true, customer_external_id: "cus_1", period_id: "2026-10", period_start: "2026-10-01T00:00:00Z", period_end: "2026-11-01T00:00:00Z", currency: "TRY", has_invoice: true,
+          as_of: "2026-10-20T12:00:00Z", subtotal_minor: "9900", tax_minor: "1980", credit_minor: "0", total_minor: "11880",
+          lines: [
+            { line_no: 1, kind: "BASE_FEE", description: "Base fee (monthly) — pro — 2026-10-01 to 2026-11-01", amount_minor: "9900", quantity: "", meter_code: "", origin_period_id: "" },
+            { line_no: 2, kind: "TAX", description: "KDV 20%", amount_minor: "1980", quantity: "", meter_code: "", origin_period_id: "" },
+          ],
+        },
+      };
+    }
+    if (upcoming) return { body: { estimate: true, customer_external_id: upcoming[1], period_id: "2026-10", currency: "EUR", has_invoice: false, lines: [], total_minor: "0", as_of: "2026-10-20T12:00:00Z" } };
     const credits = /^\/v1\/customers\/(cus_\d)\/credits$/.exec(c.path);
     if (credits) return { body: { balance: credits[1] === "cus_1" ? "1200" : "0", lots: [] } };
     if (/^\/v1\/customers\/cus_\d\/credits\/ledger$/.test(c.path)) return { body: { entries: [], next_page_token: "" } };
@@ -245,6 +274,14 @@ test.describe("customer sheet", () => {
     await expect(sheet.getByTestId("customer-credits")).toHaveText("1,200");
     await expect(sheet.getByTestId("customer-active-subscriptions")).toHaveText("1");
 
+    // The estimate of the next invoice comes first, marked as one, with its lines as the invoice will have them.
+    const upcoming = sheet.getByTestId("upcoming-invoice");
+    await expect(upcoming).toContainText("Upcoming invoice");
+    await expect(upcoming).toContainText("Estimate");
+    await expect(upcoming.getByTestId("upcoming-line")).toHaveCount(2);
+    await expect(upcoming).toContainText("KDV 20%");
+    await expect(upcoming.getByTestId("upcoming-total")).toContainText("118.80");
+
     // The overview lists the newest records of each kind; every row links to its own sheet.
     await expect(sheet.getByRole("region", { name: "Subscriptions" })).toContainText("pro v2");
     await expect(sheet.getByRole("region", { name: "Invoices" })).toContainText("INV-2");
@@ -267,8 +304,45 @@ test.describe("customer sheet", () => {
     // The arrows step to the next customer, whose sheet has nothing yet.
     await page.getByTestId("detail-next").click();
     await expect(page.getByTestId("detail-sheet").getByRole("heading", { name: "Grace Hopper" })).toBeVisible();
+    await sheet.getByTestId("customer-tab-overview").click();
+    await expect(sheet.getByTestId("upcoming-none")).toBeVisible();
     await sheet.getByTestId("customer-tab-payments").click();
     await expect(sheet).toContainText("No payments yet.");
+  });
+
+  test("usage is corrected from the sheet: only meters that add are offered, a refusal says why and an accepted correction closes the sheet", async ({ page }) => {
+    const gw = await openCustomers(page);
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-correct-usage").click();
+    const form = page.getByRole("form", { name: "correct usage" });
+    await expect(form.getByLabel("Meter").locator("option")).toHaveText(["Choose a meter", "api_calls"]); // not the maximum, not the filtered one
+
+    // Nothing is sent until the form is whole, and the fields that are not say so.
+    await page.getByTestId("correct-submit").click();
+    await expect(form).toContainText("Choose a meter.");
+    await expect(form).toContainText("Enter the idempotency key of the event.");
+    await expect(form).toContainText("Enter a number, 0 or more.");
+    await expect(form).toContainText("Say why.");
+    expect(gw.called("POST", "/v1/events/corrections")).toHaveLength(0);
+
+    // An event the service does not know is refused with the reason in the reader's words, and the form stays for another try.
+    await form.getByLabel("Meter").selectOption("api_calls");
+    await form.getByLabel("Event key").fill("evt-404");
+    await form.getByLabel("Quantity it should have been").fill("80");
+    await form.getByLabel("Reason").fill("imported twice");
+    await page.getByTestId("correct-submit").click();
+    await expect(page.getByTestId("correct-refusal")).toContainText("No such event is known");
+    await form.getByLabel("Event key").fill("evt-123");
+    await page.getByTestId("correct-submit").click();
+    await expect.poll(() => gw.called("POST", "/v1/events/corrections").length).toBe(2);
+    expect(gw.called("POST", "/v1/events/corrections")[1]?.body).toMatchObject({
+      corrections: [{ corrects: "evt-123", reason: "imported twice", customer_external_id: "cus_1", meter_code: "api_calls", quantity: "80" }],
+    });
+    // The same attempt keeps its key: a retry corrects once. A sheet that closed after success is gone.
+    const keys = gw.called("POST", "/v1/events/corrections").map((c) => (c.body?.corrections as { idempotency_key: string }[])[0]?.idempotency_key);
+    expect(keys[0]).toMatch(/^corr_/);
+    expect(keys[1]).toBe(keys[0]);
+    await expect(form).toHaveCount(0);
   });
 
   test("a subscription is started from the sheet for that customer", async ({ page }) => {

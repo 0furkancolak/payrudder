@@ -49,6 +49,7 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 	return []Route{
 		// Usage events
 		{"POST", "/v1/events", AccessTenant, ratelimit.ClassIngest, s.ingestEvents},
+		{"POST", "/v1/events/corrections", AccessTenant, ratelimit.ClassIngest, s.correctEvents},
 		// Customers
 		{"POST", "/v1/customers", AccessTenant, ratelimit.ClassWrite, s.createCustomer},
 		{"GET", "/v1/customers", AccessTenant, ratelimit.ClassRead, s.listCustomers},
@@ -175,6 +176,7 @@ func (s *Server) billingReadAndSandboxRoutes() []Route {
 		// Invoices
 		{"GET", "/v1/invoices", AccessTenant, ratelimit.ClassRead, s.listInvoices},
 		{"GET", "/v1/invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getInvoice},
+		{"GET", "/v1/customers/{external_id}/upcoming-invoice", AccessTenant, ratelimit.ClassRead, s.getUpcomingInvoice},
 		{"GET", "/v1/credit-notes", AccessTenant, ratelimit.ClassRead, s.listCreditNotes},
 		{"GET", "/v1/credit-notes/{id}", AccessTenant, ratelimit.ClassRead, s.getCreditNote},
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},

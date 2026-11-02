@@ -77,7 +77,9 @@ func (EventResult_Status) EnumDescriptor() ([]byte, []int) {
 type IngestEventsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 1..500 events.
-	Events        []*IncomingEvent `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	Events []*IncomingEvent `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	// Who is calling, for the record of a correction: the signed-in person's address, or "key:<api key id>". The gateway sets it; nothing else reads it.
+	Actor         string `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,6 +121,13 @@ func (x *IngestEventsRequest) GetEvents() []*IncomingEvent {
 	return nil
 }
 
+func (x *IngestEventsRequest) GetActor() string {
+	if x != nil {
+		return x.Actor
+	}
+	return ""
+}
+
 type IncomingEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 1..128 chars of [A-Za-z0-9_.:-]. Required for live keys; sandbox keys may omit it.
@@ -129,7 +138,12 @@ type IncomingEvent struct {
 	Quantity  string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	EventTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=event_time,json=eventTime,proto3" json:"event_time,omitempty"`
 	// At most 32 entries, 4 KiB in total.
-	Properties    map[string]string `protobuf:"bytes,6,rep,name=properties,proto3" json:"properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Properties map[string]string `protobuf:"bytes,6,rep,name=properties,proto3" json:"properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// A correction (ADR 0027): the idempotency key of the event this one corrects. Then `quantity` is the quantity that event should have had (0 cancels it), `reason` is
+	// required, customer and meter must be the original's, and event_time and properties are omitted (it lands at the original's time).
+	Corrects string `protobuf:"bytes,7,opt,name=corrects,proto3" json:"corrects,omitempty"`
+	// 1..500 characters; only with `corrects`.
+	Reason        string `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -206,6 +220,20 @@ func (x *IncomingEvent) GetProperties() map[string]string {
 	return nil
 }
 
+func (x *IncomingEvent) GetCorrects() string {
+	if x != nil {
+		return x.Corrects
+	}
+	return ""
+}
+
+func (x *IncomingEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type IngestEventsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Same order as the request.
@@ -256,8 +284,9 @@ type EventResult struct {
 	Status EventResult_Status     `protobuf:"varint,1,opt,name=status,proto3,enum=payrudder.ingest.v1.EventResult_Status" json:"status,omitempty"`
 	// Set for ACCEPTED and DUPLICATE (the original id for a duplicate).
 	EventId string `protobuf:"bytes,2,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	// UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION,
-	// IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES.
+	// UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION,
+	// IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES and, for a correction, INVALID_CORRECTION,
+	// CORRECTION_UNKNOWN_EVENT, CORRECTION_MISMATCH, CORRECTION_UNSUPPORTED_METER, CORRECTION_OF_CORRECTION.
 	ErrorCode     string `protobuf:"bytes,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	ErrorMessage  string `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -415,9 +444,10 @@ var File_payrudder_ingest_v1_ingest_proto protoreflect.FileDescriptor
 
 const file_payrudder_ingest_v1_ingest_proto_rawDesc = "" +
 	"\n" +
-	" payrudder/ingest/v1/ingest.proto\x12\x13payrudder.ingest.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"Q\n" +
+	" payrudder/ingest/v1/ingest.proto\x12\x13payrudder.ingest.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"g\n" +
 	"\x13IngestEventsRequest\x12:\n" +
-	"\x06events\x18\x01 \x03(\v2\".payrudder.ingest.v1.IncomingEventR\x06events\"\xf3\x02\n" +
+	"\x06events\x18\x01 \x03(\v2\".payrudder.ingest.v1.IncomingEventR\x06events\x12\x14\n" +
+	"\x05actor\x18\x02 \x01(\tR\x05actor\"\xa7\x03\n" +
 	"\rIncomingEvent\x12'\n" +
 	"\x0fidempotency_key\x18\x01 \x01(\tR\x0eidempotencyKey\x120\n" +
 	"\x14customer_external_id\x18\x02 \x01(\tR\x12customerExternalId\x12\x1d\n" +
@@ -428,7 +458,9 @@ const file_payrudder_ingest_v1_ingest_proto_rawDesc = "" +
 	"event_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\teventTime\x12R\n" +
 	"\n" +
 	"properties\x18\x06 \x03(\v22.payrudder.ingest.v1.IncomingEvent.PropertiesEntryR\n" +
-	"properties\x1a=\n" +
+	"properties\x12\x1a\n" +
+	"\bcorrects\x18\a \x01(\tR\bcorrects\x12\x16\n" +
+	"\x06reason\x18\b \x01(\tR\x06reason\x1a=\n" +
 	"\x0fPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"R\n" +

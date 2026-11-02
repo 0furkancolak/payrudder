@@ -103,8 +103,12 @@ func (f fakeLookups) Meter(_ context.Context, _, code string) (lookup.Meter, boo
 	case f.err != nil:
 		return lookup.Meter{}, false, f.err
 	case code == "gb_hours":
-		return lookup.Meter{Code: code, Version: 2, Scale: 3}, true, nil
+		return lookup.Meter{Code: code, Version: 2, Scale: 3, AcceptsCorrection: true}, true, nil
 	case code == "api_calls":
+		return lookup.Meter{Code: code, Version: 1, Scale: 0, AcceptsCorrection: true}, true, nil
+	case code == "requests": // a COUNT meter: an event is one
+		return lookup.Meter{Code: code, Version: 1, Scale: 0, AcceptsCorrection: true, Counts: true}, true, nil
+	case code == "peak_seats", code == "eu_calls": // a MAX meter, and a SUM meter with a property filter: neither takes a correction
 		return lookup.Meter{Code: code, Version: 1, Scale: 0}, true, nil
 	}
 	return lookup.Meter{}, false, nil

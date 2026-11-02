@@ -117,6 +117,18 @@ func (s *Server) ingestEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errEventsQuota())
 		return
 	}
+	resp, ok := s.ingest(w, r, req)
+	if !ok {
+		return
+	}
+	if pol != nil {
+		s.saasMeter(r.Context(), pol, principalFrom(r.Context()).Tenant.ID.String(), resp.GetResults())
+	}
+	writeEventResults(w, resp)
+}
+
+// ingest sends a batch to ingest-svc, with the headers a failure to accept anything deserves, or writes the error and says false.
+func (s *Server) ingest(w http.ResponseWriter, r *http.Request, req *ingestv1.IngestEventsRequest) (*ingestv1.IngestEventsResponse, bool) {
 	resp, err := s.d.Ingest.IngestEvents(r.Context(), req)
 	if err != nil {
 		switch status.Code(err) {
@@ -126,11 +138,13 @@ func (s *Server) ingestEvents(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "1") // nothing was accepted: retrying with the same keys is safe
 		}
 		writeError(w, r, err)
-		return
+		return nil, false
 	}
-	if pol != nil {
-		s.saasMeter(r.Context(), pol, principalFrom(r.Context()).Tenant.ID.String(), resp.GetResults())
-	}
+	return resp, true
+}
+
+// writeEventResults is the 202 answer of a batch: one result per event, in order.
+func writeEventResults(w http.ResponseWriter, resp *ingestv1.IngestEventsResponse) {
 	out := struct {
 		Results []eventResultJSON `json:"results"`
 	}{Results: make([]eventResultJSON, len(resp.GetResults()))}

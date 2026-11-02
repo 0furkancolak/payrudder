@@ -103,6 +103,13 @@ WHERE c.tenant_id = @tenant_id AND c.customer_id = @customer_id AND c.applied_in
 ORDER BY c.created_at, c.id
 FOR UPDATE OF c;
 
+-- name: ListUnappliedCreditsRead :many
+-- ListUnappliedCredits without the row locks: what the upcoming-invoice preview reads, in the order the real invoice would use the lots.
+SELECT c.id, (c.amount_minor - COALESCE((SELECT sum(a.amount_minor) FROM credit_applications a WHERE a.tenant_id = c.tenant_id AND a.credit_id = c.id), 0))::bigint AS remaining
+FROM credit_balances c
+WHERE c.tenant_id = @tenant_id AND c.customer_id = @customer_id AND c.applied_invoice_id IS NULL AND (c.currency = @currency::text OR c.currency IS NULL)
+ORDER BY c.created_at, c.id;
+
 -- name: InsertCreditApplication :exec
 INSERT INTO credit_applications (tenant_id, credit_id, invoice_id, amount_minor) VALUES (@tenant_id, @credit_id, @invoice_id, @amount_minor);
 

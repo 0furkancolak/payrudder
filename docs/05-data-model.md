@@ -296,9 +296,22 @@ CREATE TABLE idempotency_keys (
   event_id         text NOT NULL,                     -- ULID
   payload_hash     bytea NOT NULL,                    -- sha256 of canonical event; detects key reuse
   created_at       timestamptz NOT NULL,
+  customer_id      uuid,                              -- 00002 (ADR 0027): what the key stands for, so that a correction can find it;
+  meter_code       text,                              --   NULL for keys written before the migration, which cannot be corrected
+  event_time       timestamptz,
+  quantity_units   bigint,
   PRIMARY KEY (tenant_id, idempotency_key, created_at)  -- see note
 ) PARTITION BY RANGE (created_at);
 -- monthly partitions created ahead by a maintenance job; dropped after 45 days
+
+CREATE TABLE event_corrections (                      -- 00002 (ADR 0027): one row per correction, kept, RLS'd (ingest_app: SELECT, INSERT)
+  tenant_id uuid NOT NULL, event_id text NOT NULL,     -- the correcting event
+  correction_key text NOT NULL, corrects_key text NOT NULL, corrects_event_id text NOT NULL,
+  customer_id uuid NOT NULL, meter_code text NOT NULL,
+  delta_units bigint NOT NULL,                         -- the signed difference the correction published
+  reason text NOT NULL, corrected_by text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, event_id)                    -- the sum over corrects_event_id is what an original stands moved by
+);
 
 CREATE TABLE outbox (
   id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -37,6 +37,16 @@ A **billing period** is a calendar month in the account's time zone, written `YY
 
 `GET /v1/customers/{external_id}/usage?period=2026-11` returns the on-time usage of a customer in a period, per meter, as exact decimals; late usage is not in it.
 
+## Correcting an event
+
+An accepted event is never edited. To fix one, send a **correction**: `POST /v1/events/corrections` with the `idempotency_key` of the event (`corrects`), the quantity it should have had (`0` cancels it), a `reason`, and a key of its own. Payrudder works out the difference from what the event stands at now and adds it to the **period of the original event**, by the rules above: while that period is open (or inside its grace period) the usage changes exactly; after the cutoff the difference is late usage, a (negative, when you take usage back) adjustment line on the next open invoice, priced on top of what the period already cost so tiers stay right. A finalized invoice never changes. A retry of the same correction changes nothing.
+
+What can be corrected: events of `SUM` and `COUNT` meters without a property filter, while the event's idempotency key is still remembered (at least 45 days, less than 76). A `COUNT` event is one whatever its quantity, so you can cancel it (`0`) or count it again. `MAX`, `LAST` and `UNIQUE` meters cannot be corrected. If a correction takes back more than the next invoice charges, that invoice is `0`; the rest is not carried forward, so issue a credit note or grant credit for it.
+
+## The upcoming invoice
+
+`GET /v1/customers/{external_id}/upcoming-invoice` shows what the customer's next regular invoice would be if it were drafted now: usage and late usage so far, the fixed fee, tax and any credit balance, as the real invoice computes them. It is an estimate (`estimate: true`) with no id or number; it changes with every event until the period closes, and it leaves out a fixed fee that is invoiced in advance as its own invoice.
+
 ## From usage to money
 
 A **package** (plan) gives each meter a price (per unit, graduated tiers, package or flat) and optional limits. A customer subscribed to a package gets an **invoice** at the end of the period: the usage is rated with the prices of the plan version the subscription was on, plus any fixed fee. Amounts are integers in the currency's minor unit (cents), sent as strings in JSON. Limits are enforced from a fast counter that is reconciled with the exact figures, so they are eventually consistent: do not rely on them as a to-the-event cutoff.

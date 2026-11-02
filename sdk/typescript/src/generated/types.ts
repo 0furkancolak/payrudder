@@ -571,6 +571,10 @@ export interface ContractWithdrawal {
   refund_time: string | null;
 }
 
+export interface CorrectEventsRequest {
+  corrections: Array<EventCorrection>;
+}
+
 export interface Coupon {
   /** 2–40 letters, digits, - or _ */
   code: string;
@@ -1309,11 +1313,26 @@ export interface EntitlementTerms {
   mode?: QuotaMode;
 }
 
+export interface EventCorrection {
+  /** The correction's own key. Required for live keys. Optional in sandbox (then no dedup). */
+  idempotency_key?: string;
+  /** The idempotency_key of the event to correct, as it was sent */
+  corrects: string;
+  /** Why. Kept with the correction */
+  reason: string;
+  /** The customer of the event being corrected */
+  customer_external_id: string;
+  /** The meter of the event being corrected */
+  meter_code: string;
+  /** The quantity the corrected event should have had, a non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number. 0 cancels the event. */
+  quantity: string;
+}
+
 export interface EventResult {
   status: "accepted" | "duplicate" | "rejected";
   /** Set for accepted and duplicate (the original id). */
   event_id?: string;
-  error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES";
+  error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES" | "INVALID_CORRECTION" | "CORRECTION_UNKNOWN_EVENT" | "CORRECTION_MISMATCH" | "CORRECTION_UNSUPPORTED_METER" | "CORRECTION_OF_CORRECTION";
   error_message?: string;
 }
 
@@ -2833,6 +2852,30 @@ export interface TaxRatesInput {
     /** 2000 is 20 % */
     rate_bps?: number;
   }>;
+}
+
+export interface UpcomingInvoice {
+  /** Always true. The preview is never the invoice */
+  estimate: boolean;
+  customer_external_id: string;
+  /** The period whose invoice this is, in the tenant's time zone */
+  period_id: string;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  /** The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit */
+  lines: Array<InvoiceLine>;
+  /** Before tax and after the credit, as on an invoice */
+  subtotal_minor: Int64;
+  tax_minor: Int64;
+  /** The credit balance the invoice would use, a positive number */
+  credit_minor: Int64;
+  /** What would be charged; never negative */
+  total_minor: Int64;
+  /** The clock of the estimate */
+  as_of: string;
+  /** False when the customer has no subscription in the period and no late usage to bill */
+  has_invoice: boolean;
 }
 
 export interface UpdateAffiliateRequest {

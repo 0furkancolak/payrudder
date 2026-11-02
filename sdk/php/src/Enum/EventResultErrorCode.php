@@ -19,4 +19,9 @@ enum EventResultErrorCode: string
     case IdempotencyKeyInvalid = 'IDEMPOTENCY_KEY_INVALID';
     case IdempotencyKeyReused = 'IDEMPOTENCY_KEY_REUSED';
     case InvalidProperties = 'INVALID_PROPERTIES';
+    case InvalidCorrection = 'INVALID_CORRECTION';
+    case CorrectionUnknownEvent = 'CORRECTION_UNKNOWN_EVENT';
+    case CorrectionMismatch = 'CORRECTION_MISMATCH';
+    case CorrectionUnsupportedMeter = 'CORRECTION_UNSUPPORTED_METER';
+    case CorrectionOfCorrection = 'CORRECTION_OF_CORRECTION';
 }

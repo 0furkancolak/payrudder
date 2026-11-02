@@ -635,6 +635,11 @@ type ContractWithdrawal struct {
 	RefundTime  *time.Time `json:"refund_time"`
 }
 
+// CorrectEventsRequest is the request body of CorrectEvents.
+type CorrectEventsRequest struct {
+	Corrections []EventCorrection `json:"corrections"`
+}
+
 // Coupon is an object of the API; see components.schemas.Coupon in api/openapi/v1.yaml.
 type Coupon struct {
 	// 2–40 letters, digits, - or _
@@ -1370,6 +1375,23 @@ type EntitlementTerms struct {
 	Mode               string `json:"mode,omitempty"`
 }
 
+// EventCorrection is an object of the API; see components.schemas.EventCorrection in api/openapi/v1.yaml.
+type EventCorrection struct {
+	// The correction's own key. Required for live keys. Optional in sandbox (then no dedup).
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	// The idempotency_key of the event to correct, as it was sent
+	Corrects string `json:"corrects"`
+	// Why. Kept with the correction
+	Reason string `json:"reason"`
+	// The customer of the event being corrected
+	CustomerExternalID string `json:"customer_external_id"`
+	// The meter of the event being corrected
+	MeterCode string `json:"meter_code"`
+	// The quantity the corrected event should have had, a non-negative decimal with at most the meter's
+	// quantity_scale decimal places. A string or a JSON number. 0 cancels the event.
+	Quantity Decimal `json:"quantity"`
+}
+
 // EventResult is an object of the API; see components.schemas.EventResult in api/openapi/v1.yaml.
 type EventResult struct {
 	// One of: accepted, duplicate, rejected.
@@ -1378,7 +1400,8 @@ type EventResult struct {
 	EventID string `json:"event_id,omitempty"`
 	// One of: UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME,
 	// INVALID_QUANTITY, INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID,
-	// IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES.
+	// IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES, INVALID_CORRECTION, CORRECTION_UNKNOWN_EVENT,
+	// CORRECTION_MISMATCH, CORRECTION_UNSUPPORTED_METER, CORRECTION_OF_CORRECTION.
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
 }
@@ -2646,6 +2669,31 @@ type TaxRatesRates struct {
 	Name string `json:"name"`
 	// 2000 is 20 %
 	RateBps int `json:"rate_bps"`
+}
+
+// UpcomingInvoice is an object of the API; see components.schemas.UpcomingInvoice in api/openapi/v1.yaml.
+type UpcomingInvoice struct {
+	// Always true. The preview is never the invoice
+	Estimate           bool   `json:"estimate"`
+	CustomerExternalID string `json:"customer_external_id"`
+	// The period whose invoice this is, in the tenant's time zone
+	PeriodID    string    `json:"period_id"`
+	PeriodStart time.Time `json:"period_start"`
+	PeriodEnd   time.Time `json:"period_end"`
+	Currency    string    `json:"currency"`
+	// The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit
+	Lines []InvoiceLine `json:"lines"`
+	// Before tax and after the credit, as on an invoice
+	SubtotalMinor Int64 `json:"subtotal_minor"`
+	TaxMinor      Int64 `json:"tax_minor"`
+	// The credit balance the invoice would use, a positive number
+	CreditMinor Int64 `json:"credit_minor"`
+	// What would be charged; never negative
+	TotalMinor Int64 `json:"total_minor"`
+	// The clock of the estimate
+	AsOf time.Time `json:"as_of"`
+	// False when the customer has no subscription in the period and no late usage to bill
+	HasInvoice bool `json:"has_invoice"`
 }
 
 // UpdateAffiliateRequest is the request body of UpdateAffiliate.

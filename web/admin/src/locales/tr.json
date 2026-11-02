@@ -687,6 +687,13 @@
         "suspendHint": "Engel kaldırılana veya sona erene kadar bu müşterinin yetki kontrolleri her sayaçta “izin yok” yanıtını verir. Gönderdiğiniz kullanım yine kabul edilir ve sayılır.",
         "bannerSuspended": "Hizmet askıda: yetki kontrolleri “izin yok” yanıtını veriyor.",
         "suspended": "Hizmet askıya alındı"
+      },
+      "upcoming": {
+        "title": "Gelecek fatura",
+        "estimate": "Tahmin",
+        "period": "Dönem {period}",
+        "none": "Henüz faturalanacak bir şey yok: bu müşterinin bu dönemde aboneliği ve faturalanacak gecikmiş kullanımı yok.",
+        "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir."
       }
     },
     "packages": {
@@ -2071,6 +2078,38 @@
       "batch": "Ödeme / parti",
       "empty": "Bu dönemde sağlayıcıdan başarılı ödeme yok."
     },
+    "corrections": {
+      "action": "Kullanımı düzelt",
+      "title": "Bir kullanım olayını düzelt",
+      "hint": "Uygulamanızın {customer} için gönderdiği bir miktarı düzeltin. Olayın kendisi değişmez: fark, ait olduğu döneme eklenir; dönem kapandıysa bir sonraki faturada yansıtılır.",
+      "formLabel": "kullanımı düzelt",
+      "meter": "Sayaç",
+      "pickMeter": "Bir sayaç seçin",
+      "corrects": "Olay anahtarı",
+      "correctsHint": "Uygulamanızın olayla birlikte gönderdiği idempotency anahtarı.",
+      "quantity": "Olması gereken miktar",
+      "quantityHint": "0 olayı iptal eder. Sayım sayaçlarında 0'dan büyük herhangi bir sayı olayı yeniden sayar.",
+      "reason": "Neden",
+      "submit": "Kullanımı düzelt",
+      "errors": {
+        "meter": "Bir sayaç seçin.",
+        "corrects": "Olayın idempotency anahtarını girin.",
+        "quantity": "0 veya daha büyük bir sayı girin.",
+        "reason": "Nedenini yazın."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "Düzeltme geçerli değil: en fazla 500 karakterlik bir neden ve düzeltilecek olayın anahtarı gerekir.",
+        "CORRECTION_UNKNOWN_EVENT": "Böyle bir olay bilinmiyor. Anahtarı kontrol edin; bir olay, gönderilmesinden sonra en az 45 gün düzeltilebilir.",
+        "CORRECTION_MISMATCH": "Bu olay başka bir müşteriye veya sayaca ait.",
+        "CORRECTION_UNSUPPORTED_METER": "Bu sayaç düzeltilemez: yalnızca özellik filtresi olmayan toplam ve sayım sayaçları düzeltilebilir.",
+        "CORRECTION_OF_CORRECTION": "Bu anahtar bir düzeltmeye ait. Bunun yerine asıl olayı yeniden düzeltin.",
+        "UNKNOWN_METER": "Böyle bir sayaç yok.",
+        "UNKNOWN_CUSTOMER": "Böyle bir müşteri yok.",
+        "INVALID_QUANTITY": "Miktar 0 veya daha büyük bir sayı olmalıdır.",
+        "INVALID_QUANTITY_PRECISION": "Miktarın ondalık basamağı sayacın izin verdiğinden fazla.",
+        "IDEMPOTENCY_KEY_REUSED": "Bu düzeltme daha önce farklı değerlerle yapılmış."
+      }
+    },
     "feeRules": {
       "title": "Beklenen sağlayıcı komisyonları",
       "hint": "Her sağlayıcının bir ödemeden para birimi başına ne kadar kesmesi beklendiği: bir yüzde ve sabit bir tutar. Payrudder hiçbir sağlayıcının fiyatını bilmez, bu yüzden bir operatör girer. Sağlayıcının raporunda bir alt birimden fazla farklı görünen komisyon, inceleme kuyruğunda bir uyuşmazlık olur.",
@@ -2863,6 +2902,9 @@
       },
       "customer": {
         "blocked": "Bu müşteri engellenmiş, yeni satın alma başlatılamaz."
+      },
+      "upcoming": {
+        "customer_not_found": "Böyle bir müşteri yok."
       }
     },
     "coupon": {

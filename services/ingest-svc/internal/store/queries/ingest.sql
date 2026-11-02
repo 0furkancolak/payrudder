@@ -2,17 +2,22 @@
 SELECT clock_timestamp()::timestamptz AS now;
 
 -- name: InsertIdempotencyKeys :many
--- Returns the keys that were new. Rows that already exist in this month's bucket are skipped silently.
-INSERT INTO idempotency_keys (tenant_id, idempotency_key, event_id, payload_hash, created_at)
-SELECT @tenant_id::uuid, k.key, e.id, h.hash, @created_at::timestamptz
+-- Returns the keys that were new. Rows that already exist in this month's bucket are skipped silently. The customer, meter, time and quantity of the event are kept
+-- with the key, so that a correction of the event (ADR 0027) can find what it corrects.
+INSERT INTO idempotency_keys (tenant_id, idempotency_key, event_id, payload_hash, created_at, customer_id, meter_code, event_time, quantity_units)
+SELECT @tenant_id::uuid, k.key, e.id, h.hash, @created_at::timestamptz, c.id, m.code, t.at, q.units
 FROM unnest(@keys::text[]) WITH ORDINALITY AS k(key, n)
 JOIN unnest(@event_ids::text[]) WITH ORDINALITY AS e(id, n) USING (n)
 JOIN unnest(@hashes::bytea[]) WITH ORDINALITY AS h(hash, n) USING (n)
+JOIN unnest(@customer_ids::uuid[]) WITH ORDINALITY AS c(id, n) USING (n)
+JOIN unnest(@meter_codes::text[]) WITH ORDINALITY AS m(code, n) USING (n)
+JOIN unnest(@event_times::timestamptz[]) WITH ORDINALITY AS t(at, n) USING (n)
+JOIN unnest(@quantities::bigint[]) WITH ORDINALITY AS q(units, n) USING (n)
 ON CONFLICT DO NOTHING
 RETURNING idempotency_key;
 
 -- name: FindIdempotencyKeys :many
-SELECT idempotency_key, event_id, payload_hash, created_at
+SELECT idempotency_key, event_id, payload_hash, created_at, customer_id, meter_code, event_time, quantity_units
 FROM idempotency_keys
 WHERE tenant_id = @tenant_id::uuid
   AND idempotency_key = ANY(@keys::text[])

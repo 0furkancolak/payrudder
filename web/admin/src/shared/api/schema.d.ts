@@ -28,6 +28,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct usage events (1..500 per request, at most 1 MiB)
+         * @description A correction is a new event, never an edit: it names the `idempotency_key` of the event it corrects and the `quantity` that event should have had (`0` cancels it), with a
+         *     `reason`. The service works out the difference between that and what the event stands at now (its own quantity plus every earlier correction of it) and adds it to the
+         *     **period of the original event**, by the rules every event follows: while that period is open, or closed but inside its grace period, the usage of the period changes
+         *     exactly; once it has passed its cutoff or been rated, the difference becomes **late usage** of that period, a (negative, for less) `LATE_USAGE` line on the invoice of the
+         *     period the correction was accepted in. A finalized invoice is never changed.
+         *
+         *     Only events of meters that add (`SUM`, `COUNT`) and have no property filter can be corrected (`CORRECTION_UNSUPPORTED_METER` otherwise). For a `COUNT` meter an event is
+         *     one whatever its quantity, so the only corrections are `0` (cancel it) and any positive quantity (count it again). An event can be corrected as long as its idempotency
+         *     key is remembered, which is at least 45 and less than 76 days after it was first seen (`CORRECTION_UNKNOWN_EVENT` after). A correction cannot be corrected: send the
+         *     original's key again with the quantity it should have. `customer_external_id` and `meter_code` must be the original's.
+         *
+         *     The answer is `202` with one result per correction, in request order, like `POST /v1/events`; the correction has its own `idempotency_key`, and a retry with the same key and
+         *     payload is a `duplicate` and changes nothing. A refused correction claims no key. Who made it (the signed-in person, or the API key) and the reason are kept.
+         *     The `ingest` rate limit is charged per correction. A correction is not usage and is not metered as events.
+         */
+        post: operations["correctEvents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -551,6 +584,30 @@ export interface paths {
          *     tenant's time zone.
          */
         get: operations["getCustomerUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/upcoming-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the customer's next invoice would be if it were drafted now
+         * @description An estimate of the regular invoice of the period that is still open (or, while a closed period's grace period runs, of that period): the usage and late usage so far, rated by
+         *     the plan version in force, the fixed fee, tax at the tenant's rate for the customer's country and the credit balance the invoice would use. It is computed by the same code
+         *     that drafts the real invoice, from the same inputs, and nothing is stored. It moves with every event until the period closes, and a change of plan, a coupon or a tax rate
+         *     made later can move it too: `estimate` is always `true`, and the response has no id and no number. A fixed fee invoiced in advance is its own invoice and is not in it.
+         *     A customer with nothing to bill in the period gets `has_invoice: false` and no lines.
+         */
+        get: operations["getUpcomingInvoice"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6640,6 +6697,47 @@ export interface components {
             /** Format: date-time */
             service_to: string | null;
         };
+        UpcomingInvoice: {
+            /** @description Always true. The preview is never the invoice */
+            estimate: boolean;
+            customer_external_id: string;
+            /**
+             * @description The period whose invoice this is, in the tenant's time zone
+             * @example 2026-11
+             */
+            period_id: string;
+            /** Format: date-time */
+            period_start: string;
+            /** Format: date-time */
+            period_end: string;
+            currency: string;
+            /** @description The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit */
+            lines: components["schemas"]["InvoiceLine"][];
+            /**
+             * Format: int64
+             * @description Before tax and after the credit, as on an invoice
+             */
+            subtotal_minor: string;
+            /** Format: int64 */
+            tax_minor: string;
+            /**
+             * Format: int64
+             * @description The credit balance the invoice would use, a positive number
+             */
+            credit_minor: string;
+            /**
+             * Format: int64
+             * @description What would be charged; never negative
+             */
+            total_minor: string;
+            /**
+             * Format: date-time
+             * @description The clock of the estimate
+             */
+            as_of: string;
+            /** @description False when the customer has no subscription in the period and no late usage to bill */
+            has_invoice: boolean;
+        };
         Invoice: {
             id: string;
             customer_id: string;
@@ -6825,6 +6923,23 @@ export interface components {
                 [key: string]: string;
             };
         };
+        CorrectEventsRequest: {
+            corrections: components["schemas"]["EventCorrection"][];
+        };
+        EventCorrection: {
+            /** @description The correction's own key. Required for live keys. Optional in sandbox (then no dedup). */
+            idempotency_key?: string;
+            /** @description The idempotency_key of the event to correct, as it was sent */
+            corrects: string;
+            /** @description Why. Kept with the correction */
+            reason: string;
+            /** @description The customer of the event being corrected */
+            customer_external_id: string;
+            /** @description The meter of the event being corrected */
+            meter_code: string;
+            /** @description The quantity the corrected event should have had, a non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number. 0 cancels the event. */
+            quantity: string | number;
+        };
         IngestEventsResponse: {
             /** @description One per request event, same order. */
             results: components["schemas"]["EventResult"][];
@@ -6835,7 +6950,7 @@ export interface components {
             /** @description Set for accepted and duplicate (the original id). */
             event_id?: string;
             /** @enum {string} */
-            error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES";
+            error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES" | "INVALID_CORRECTION" | "CORRECTION_UNKNOWN_EVENT" | "CORRECTION_MISMATCH" | "CORRECTION_UNSUPPORTED_METER" | "CORRECTION_OF_CORRECTION";
             error_message?: string;
         };
         AuthUser: {
@@ -12691,6 +12806,34 @@ export interface operations {
             503: components["responses"]["Error"];
         };
     };
+    correctEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectEventsRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted for processing */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     listCustomers: {
         parameters: {
             query?: {
@@ -13498,6 +13641,30 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    getUpcomingInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingInvoice"];
+                };
+            };
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
         };

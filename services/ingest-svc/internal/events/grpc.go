@@ -16,7 +16,7 @@ func New(cmd *command.Commands) *Handler { return &Handler{cmd: cmd} }
 
 // IngestEvents implements ingestv1.IngestServiceServer.
 func (h *Handler) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsRequest) (*ingestv1.IngestEventsResponse, error) {
-	results, err := h.cmd.Ingest(ctx, req.GetEvents())
+	results, err := h.cmd.Ingest(ctx, req.GetEvents(), req.GetActor())
 	if err != nil {
 		return nil, err
 	}

@@ -10,12 +10,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/quantity"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 )
+
+// RegularCreditDescription is the text of the CREDIT line a regular invoice gets when the customer has a balance.
+const RegularCreditDescription = "Credit from a price correction of an earlier period" //nolint:gosec // a line text, not a credential
 
 // RegularDraft is the regular invoice of one customer for a billing run, about to be inserted.
 type RegularDraft struct {
@@ -70,7 +74,7 @@ func insertRegular(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, per
 		return false, err
 	}
 	// Credits from re-rating are applied to the first regular invoice that can use them.
-	lines, scales, err := ApplyCredits(ctx, q, tenantID, d.CustomerID, id, d.Currency, subtotal, d.Total, d.Lines, d.LineScales, "Credit from a price correction of an earlier period")
+	lines, scales, err := ApplyCredits(ctx, q, tenantID, d.CustomerID, id, d.Currency, subtotal, d.Total, d.Lines, d.LineScales, RegularCreditDescription)
 	if err != nil {
 		return false, err
 	}
@@ -86,10 +90,56 @@ func ApplyCredits(ctx context.Context, q *sqlc.Queries, tenantID, customerID, in
 	if err != nil || credit == 0 {
 		return lines, scales, err
 	}
-	lines = append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: description})
-	scales = append(append([]int(nil), scales...), 0)
+	lines, scales = WithCreditLine(lines, scales, credit, description)
 	err = q.SetInvoiceTotals(ctx, sqlc.SetInvoiceTotalsParams{SubtotalMinor: subtotal - credit, TotalMinor: total - credit, TenantID: tenantID, ID: invoiceID})
 	return lines, scales, err
+}
+
+// WithCreditLine adds the CREDIT line that applies credit minor units of balance to an invoice. The preview of the upcoming invoice builds the same line.
+func WithCreditLine(lines []rating.Line, scales []int, credit int64, description string) ([]rating.Line, []int) {
+	return append(append([]rating.Line(nil), lines...), rating.Line{Kind: rating.KindCredit, AmountMinor: -credit, Description: description}),
+		append(append([]int(nil), scales...), 0)
+}
+
+// CreditUse is the part of one credit lot an invoice consumes; Last is set when it takes all that is left of the lot.
+type CreditUse struct {
+	ID     uuid.UUID
+	Amount int64
+	Last   bool
+}
+
+// PlanCredits is how an invoice of max minor units consumes the lots, in the order given (oldest first): each lot up to what is left to pay. It is the rule of
+// applyCredits, kept apart so that the preview of an upcoming invoice uses the same one without writing anything.
+func PlanCredits(lots []sqlc.ListUnappliedCreditsRow, max int64) (uses []CreditUse, applied int64) {
+	for _, c := range lots {
+		if applied >= max {
+			break
+		}
+		use := min(c.Remaining, max-applied)
+		if use <= 0 {
+			continue
+		}
+		uses = append(uses, CreditUse{ID: c.ID, Amount: use, Last: use == c.Remaining})
+		applied += use
+	}
+	return uses, applied
+}
+
+// PreviewCredit is the credit balance an invoice of total minor units would consume now, without consuming it.
+func PreviewCredit(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, currency string, total int64) (int64, error) {
+	if total <= 0 {
+		return 0, nil
+	}
+	rows, err := q.ListUnappliedCreditsRead(ctx, sqlc.ListUnappliedCreditsReadParams{TenantID: tenantID, CustomerID: customerID, Currency: currency})
+	if err != nil {
+		return 0, err
+	}
+	lots := make([]sqlc.ListUnappliedCreditsRow, len(rows))
+	for i, r := range rows {
+		lots[i] = sqlc.ListUnappliedCreditsRow(r)
+	}
+	_, applied := PlanCredits(lots, total)
+	return applied, nil
 }
 
 // applyCredits consumes the customer's unapplied credit balances, oldest first, up to max minor units, records the
@@ -98,28 +148,20 @@ func applyCredits(ctx context.Context, q *sqlc.Queries, tenantID, customerID, in
 	if max <= 0 {
 		return 0, nil
 	}
-	credits, err := q.ListUnappliedCredits(ctx, sqlc.ListUnappliedCreditsParams{TenantID: tenantID, CustomerID: customerID, Currency: currency})
+	lots, err := q.ListUnappliedCredits(ctx, sqlc.ListUnappliedCreditsParams{TenantID: tenantID, CustomerID: customerID, Currency: currency})
 	if err != nil {
 		return 0, err
 	}
-	var applied int64
-	for _, c := range credits {
-		if applied >= max {
-			break
-		}
-		use := min(c.Remaining, max-applied)
-		if use <= 0 {
-			continue
-		}
-		if err := q.InsertCreditApplication(ctx, sqlc.InsertCreditApplicationParams{TenantID: tenantID, CreditID: c.ID, InvoiceID: invoiceID, AmountMinor: use}); err != nil {
+	uses, applied := PlanCredits(lots, max)
+	for _, u := range uses {
+		if err := q.InsertCreditApplication(ctx, sqlc.InsertCreditApplicationParams{TenantID: tenantID, CreditID: u.ID, InvoiceID: invoiceID, AmountMinor: u.Amount}); err != nil {
 			return 0, err
 		}
-		if use == c.Remaining {
-			if err := q.MarkCreditApplied(ctx, sqlc.MarkCreditAppliedParams{AppliedInvoiceID: invoiceID, TenantID: tenantID, ID: c.ID}); err != nil {
+		if u.Last {
+			if err := q.MarkCreditApplied(ctx, sqlc.MarkCreditAppliedParams{AppliedInvoiceID: invoiceID, TenantID: tenantID, ID: u.ID}); err != nil {
 				return 0, err
 			}
 		}
-		applied += use
 	}
 	return applied, nil
 }
@@ -147,6 +189,19 @@ func InsertLines(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.
 }
 
 var unitsCtx = apd.BaseContext.WithPrecision(80)
+
+// QuantityText is the quantity of a line as the invoice stores and shows it: rounded to the meter's scale, with exactly that many decimals.
+func QuantityText(q *apd.Decimal, scale int) (string, error) {
+	stored, err := unitsOf(q, scale)
+	if err != nil {
+		return "", err
+	}
+	units, err := rating.StoredUnits(stored)
+	if err != nil {
+		return "", err
+	}
+	return quantity.FormatUnits(units, scale), nil
+}
 
 // unitsOf renders a decimal quantity as scaled integer units with the given scale (the stored form).
 func unitsOf(q *apd.Decimal, scale int) (string, error) {

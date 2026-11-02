@@ -9,6 +9,7 @@ namespace Payrudder\Resource\Generated;
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
+use Payrudder\Model\CorrectEventsRequest;
 use Payrudder\Model\IngestEventsRequest;
 use Payrudder\Model\IngestEventsResponse;
 use Payrudder\RequestOptions;
@@ -32,5 +33,18 @@ final class EventsResource extends AbstractResource
     public function ingestEvents(IngestEventsRequest|array $body, ?RequestOptions $options = null): IngestEventsResponse
     {
         return IngestEventsResponse::fromArray($this->call('POST', '/v1/events', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Correct usage events (1..500 per request, at most 1 MiB) (POST /v1/events/corrections).
+     *
+     * @param CorrectEventsRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function correctEvents(CorrectEventsRequest|array $body, ?RequestOptions $options = null): IngestEventsResponse
+    {
+        return IngestEventsResponse::fromArray($this->call('POST', '/v1/events/corrections', [], Cast::body($body), $options));
     }
 }

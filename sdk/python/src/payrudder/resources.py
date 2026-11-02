@@ -43,6 +43,13 @@ class EventsResource:
             results.extend(response.get("results", []))
         return results
 
+    def correct_events(self, body: m.CorrectEventsRequest, *, options: RequestOptions | None = None) -> m.IngestEventsResponse:
+        """Correct usage events (1..500 per request, at most 1 MiB).
+
+        ``POST /v1/events/corrections``
+        """
+        return cast("m.IngestEventsResponse", self._client._request("POST", "/v1/events/corrections", body=body, options=options))
+
 
 class CustomersResource:
     """``/v1/customers`` and related operations."""
@@ -164,6 +171,13 @@ class CustomersResource:
         ``GET /v1/customers/{external_id}/usage``
         """
         return cast("m.GetCustomerUsageResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/usage", query={"period": period}, response_wire='GetCustomerUsageResponse', options=options))
+
+    def get_upcoming_invoice(self, external_id: str, *, options: RequestOptions | None = None) -> m.UpcomingInvoice:
+        """What the customer's next invoice would be if it were drafted now.
+
+        ``GET /v1/customers/{external_id}/upcoming-invoice``
+        """
+        return cast("m.UpcomingInvoice", self._client._request("GET", f"/v1/customers/{_p(external_id)}/upcoming-invoice", response_wire='UpcomingInvoice', options=options))
 
     def list_entitlements(self, external_id: str, *, period: str | None = None, options: RequestOptions | None = None) -> m.ListEntitlementsResponse:
         """Usage against the limits of every meter the customer has an entitlement on.
@@ -1771,6 +1785,13 @@ class AsyncEventsResource:
             results.extend(response.get("results", []))
         return results
 
+    async def correct_events(self, body: m.CorrectEventsRequest, *, options: RequestOptions | None = None) -> m.IngestEventsResponse:
+        """Correct usage events (1..500 per request, at most 1 MiB).
+
+        ``POST /v1/events/corrections``
+        """
+        return cast("m.IngestEventsResponse", await self._client._request("POST", "/v1/events/corrections", body=body, options=options))
+
 
 class AsyncCustomersResource:
     """``/v1/customers`` and related operations."""
@@ -1893,6 +1914,13 @@ class AsyncCustomersResource:
         ``GET /v1/customers/{external_id}/usage``
         """
         return cast("m.GetCustomerUsageResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/usage", query={"period": period}, response_wire='GetCustomerUsageResponse', options=options))
+
+    async def get_upcoming_invoice(self, external_id: str, *, options: RequestOptions | None = None) -> m.UpcomingInvoice:
+        """What the customer's next invoice would be if it were drafted now.
+
+        ``GET /v1/customers/{external_id}/upcoming-invoice``
+        """
+        return cast("m.UpcomingInvoice", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/upcoming-invoice", response_wire='UpcomingInvoice', options=options))
 
     async def list_entitlements(self, external_id: str, *, period: str | None = None, options: RequestOptions | None = None) -> m.ListEntitlementsResponse:
         """Usage against the limits of every meter the customer has an entitlement on.

@@ -334,6 +334,10 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	if err != nil {
 		return fmt.Errorf("meter lookup: %w", err)
 	}
+	if ev.Corrects != "" && !m.AcceptsCorrection() {
+		a.skip(ctx, "unsupported_correction") // ADR 0027: a difference means nothing to a maximum, a latest value or a set
+		return nil
+	}
 	if !m.Matches(ev.Props) {
 		a.skip(ctx, "filtered")
 		return nil

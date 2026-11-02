@@ -38,6 +38,14 @@ func (fakeBilling) GetInvoice(_ context.Context, req *billingv1.GetInvoiceReques
 		Lines: []*billingv1.InvoiceLine{{LineNo: 1, Kind: "BASE_FEE", AmountMinor: 1000, Description: "Base fee"}}}}, nil
 }
 
+func (fakeBilling) GetUpcomingInvoice(_ context.Context, req *billingv1.GetUpcomingInvoiceRequest) (*billingv1.GetUpcomingInvoiceResponse, error) {
+	if req.GetCustomerExternalId() == "nobody" {
+		return nil, status.Error(codes.NotFound, "customer not found")
+	}
+	return &billingv1.GetUpcomingInvoiceResponse{Upcoming: &billingv1.UpcomingInvoice{Estimate: true, CustomerExternalId: req.GetCustomerExternalId(), PeriodId: "2026-11", Currency: "USD",
+		TotalMinor: 1100, HasInvoice: true, Lines: []*billingv1.InvoiceLine{{LineNo: 1, Kind: "BASE_FEE", AmountMinor: 1100, Description: "Base fee"}}}}, nil
+}
+
 func (fakeBilling) GetInvoicePdfUrl(_ context.Context, req *billingv1.GetInvoicePdfUrlRequest) (*billingv1.GetInvoicePdfUrlResponse, error) {
 	if req.GetInvoiceId() == "norender" {
 		return nil, status.Error(codes.FailedPrecondition, "the invoice PDF is not rendered yet")
@@ -130,6 +138,18 @@ func TestInvoices(t *testing.T) {
 	}
 	if resp, _ := do(t, ts, "GET", "/v1/invoices/missing", "live-key", ""); resp.StatusCode != 404 {
 		t.Fatalf("missing: %d", resp.StatusCode)
+	}
+}
+
+// The upcoming invoice is the estimate itself at the top level of the answer (no wrapper), for the customer named in the path, and says it is an estimate.
+func TestUpcomingInvoice(t *testing.T) {
+	ts, _ := newTestServer(t)
+	resp, m := do(t, ts, "GET", "/v1/customers/cus_1/upcoming-invoice", "live-key", "")
+	if resp.StatusCode != 200 || m["estimate"] != true || m["customer_external_id"] != "cus_1" || m["total_minor"] != "1100" || m["has_invoice"] != true || len(m["lines"].([]any)) != 1 {
+		t.Fatalf("upcoming: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := do(t, ts, "GET", "/v1/customers/nobody/upcoming-invoice", "live-key", ""); resp.StatusCode != 404 {
+		t.Fatalf("unknown customer: %d", resp.StatusCode)
 	}
 }
 

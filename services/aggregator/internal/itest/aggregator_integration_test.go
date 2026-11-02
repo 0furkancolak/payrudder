@@ -42,6 +42,8 @@ func TestAggregator(t *testing.T) {
 	t.Run("MeterFilterIgnoresNonMatchingEvents", testFilter)
 	t.Run("ClosePeriodEarly", testClosePeriodEarly)
 	t.Run("FreezePeriodRoutesLateArrivals", testFreeze)
+	t.Run("CorrectionsAdjustTheOpenPeriodAndBecomeLateUsageOnceItIsClosed", testCorrections)
+	t.Run("ACorrectionOfAMeterThatDoesNotAddChangesNothing", testCorrectionOfAMeterThatDoesNotAdd)
 	t.Run("ReplayFixesAFilterAndPromotesUnderLoad", testReplayFixesAFilterAndPromotesUnderLoad)
 	t.Run("ReplayCanBeDiscardedAndRestarted", testReplayDiscard)
 	t.Run("ReplayPromoteKeepsPeriodsOutsideTheRange", testReplayPromoteKeepsPeriodsOutsideTheRange)
@@ -638,4 +640,109 @@ func contains(xs []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// fix is the event ingest-svc publishes for a correction (ADR 0027): a signed difference in the original's period and at its time.
+func fix(id string, of *eventsv1.UsageEvent, delta int64, ingestedAt time.Time) *eventsv1.UsageEvent {
+	e := ev(id, uuid.MustParse(of.TenantId), uuid.MustParse(of.CustomerId), of.MeterCode, delta, of.QuantityScale, of.PeriodId, ingestedAt)
+	e.EventTime = of.EventTime
+	e.Correction = &eventsv1.Correction{CorrectsEventId: of.EventId, Reason: "entered twice", CorrectedBy: "key:test"}
+	return e
+}
+
+// A correction is added to the original's period like any event: exactly, while the period is open; and as late usage of that period once it is past its cutoff or frozen, in the
+// period it was ingested in, summed with the other late events of the origin and billed once. A replayed correction changes nothing.
+func testCorrections(t *testing.T) {
+	r := newRun(t, runOpts{})
+	c := queryClient(t, r)
+	tn, cust := uuid.New(), uuid.New()
+	// October ended 2026-10-31T21:00Z in Istanbul; with 1 h of grace the cutoff is 22:00Z. 21:59:59.999Z is on time and is November in Istanbul's clock.
+	onTime := time.Date(2026, 10, 31, 21, 59, 59, 999_000_000, time.UTC)
+	orig := ev("COR000000001", tn, cust, "sum_m", 10, 0, "2026-10", onTime)
+	first := fix("COR000000002", orig, -4, onTime)
+	// A COUNT event is one whatever its quantity; the correction that cancels it is -1.
+	counted := ev("COR000000005", tn, cust, "count_m", 99, 0, "2026-10", onTime)
+	r.produce(orig, first, counted, fix("COR000000006", counted, -1, onTime))
+	r.start(r.group)
+	r.drain(30 * time.Second)
+	k := rowKey{tenant: tn, customer: cust, meter: "sum_m", period: "2026-10"}
+	if g := onTimeRows(t, tn)[k]; g.qty != "6" || g.count != 2 {
+		t.Fatalf("open period after a correction of -4 = %+v, want exactly 6 from 2 events", g)
+	}
+	if g := onTimeRows(t, tn)[rowKey{tenant: tn, customer: cust, meter: "count_m", period: "2026-10"}]; g.qty != "0" || g.count != 2 {
+		t.Fatalf("a COUNT event after its cancelling correction = %+v, want 0 from 2 events", g)
+	}
+
+	// The relay published it again, and the log has it at a second offset: nothing changes.
+	r.produce(first)
+	r.drain(30 * time.Second)
+	if g := onTimeRows(t, tn)[k]; g.qty != "6" || g.count != 2 {
+		t.Fatalf("after a replayed correction = %+v, want 6 from 2 events", g)
+	}
+
+	// The period is rated and frozen. A correction that is on time by its timestamps is late usage now, and so is one past the cutoff: they sum in one row of the origin, which
+	// billing reads as -3 for 2026-10, billed in 2026-11 (the invoice of that period carries the line).
+	if _, err := c.FreezePeriod(as(tn, "live"), &aggregatorv1.FreezePeriodRequest{PeriodId: "2026-10"}); err != nil {
+		t.Fatal(err)
+	}
+	r.produce(fix("COR000000003", orig, -2, onTime), fix("COR000000004", orig, -1, nov))
+	r.drain(30 * time.Second)
+	if g := onTimeRows(t, tn)[k]; g.qty != "6" || g.count != 2 {
+		t.Fatalf("the frozen period changed to %+v", g)
+	}
+	late := lateRows(t, tn)
+	if len(late) != 1 {
+		t.Fatalf("late rows = %v, want one", late)
+	}
+	for lk, g := range late {
+		if lk.period != "2026-11|2026-10" || g.qty != "-3" || g.count != 2 {
+			t.Fatalf("late row %s = %+v, want -3 from 2 corrections", lk.period, g)
+		}
+	}
+	// As billing reads it.
+	stream, err := c.StreamLateUsage(as(tn, "live"), &aggregatorv1.StreamLateUsageRequest{BilledPeriodId: "2026-11"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg, err := stream.Recv()
+	if err != nil || msg.GetLateUsage().GetQuantity() != "-3" || msg.GetLateUsage().GetOriginPeriodId() != "2026-10" {
+		t.Fatalf("StreamLateUsage = %v, %v; want -3 for 2026-10", msg, err)
+	}
+}
+
+// Ingest refuses a correction of a MAX, LAST or UNIQUE meter or a filtered one; if one arrives anyway (the meter changed under it) the aggregator ignores it, and the
+// aggregates and the hole documented for those meters (docs/07-correctness.md, ADR 0025) are as they were.
+func testCorrectionOfAMeterThatDoesNotAdd(t *testing.T) {
+	r := newRun(t, runOpts{})
+	tn, cust := uuid.New(), uuid.New()
+	onTime := time.Date(2026, 10, 31, 21, 59, 59, 999_000_000, time.UTC)
+	peak := ev("NOA000000001", tn, cust, "max_m", 7, 0, "2026-10", onTime)
+	eu := ev("NOA000000003", tn, cust, "eu_only", 5, 0, "2026-10", onTime)
+	eu.Properties = map[string]string{"region": "eu"}
+	latest := ev("NOA000000005", tn, cust, "last_m", 4, 0, "2026-10", onTime)
+	user := ev("NOA000000007", tn, cust, "uniq_m", 0, 0, "2026-10", onTime)
+	user.Properties = map[string]string{"user": "alice"}
+	before := counterTotal(t, "aggregator_unsupported_corrections")
+	r.produce(peak, eu, latest, user, fix("NOA000000002", peak, -3, onTime), fix("NOA000000004", eu, -5, onTime), fix("NOA000000006", latest, -4, onTime), fix("NOA000000008", user, -1, onTime))
+	r.start(r.group)
+	r.drain(30 * time.Second)
+	rows := onTimeRows(t, tn)
+	if g := rows[rowKey{tenant: tn, customer: cust, meter: "max_m", period: "2026-10"}]; g.qty != "7" || g.count != 1 {
+		t.Errorf("a MAX meter after a correction = %+v, want 7 from 1 event", g)
+	}
+	if g := rows[rowKey{tenant: tn, customer: cust, meter: "eu_only", period: "2026-10"}]; g.qty != "5" || g.count != 1 {
+		t.Errorf("a filtered meter after a correction = %+v, want 5 from 1 event", g)
+	}
+	if g := rows[rowKey{tenant: tn, customer: cust, meter: "last_m", period: "2026-10"}]; g.qty != "4" || g.count != 1 {
+		t.Errorf("a LAST meter after a correction = %+v, want 4 from 1 event", g)
+	}
+	if g := rows[rowKey{tenant: tn, customer: cust, meter: "uniq_m", period: "2026-10"}]; g.qty != "1" {
+		t.Errorf("a UNIQUE meter after a correction = %+v, want 1 distinct value", g)
+	}
+	if len(lateRows(t, tn)) != 0 {
+		t.Error("a correction of a meter that does not add made late usage")
+	}
+	if d := counterTotal(t, "aggregator_unsupported_corrections") - before; d != 4 {
+		t.Errorf("unsupported corrections grew by %d, want 4", d)
+	}
 }

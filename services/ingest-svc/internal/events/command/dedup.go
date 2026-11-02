@@ -62,6 +62,11 @@ func findKeys(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, buckets 
 	for i, p := range ps {
 		keys[i] = p.key
 	}
+	return findKeyRows(ctx, q, tenantID, buckets, keys)
+}
+
+// findKeyRows reads the rows the given buckets hold for keys, by key.
+func findKeyRows(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, buckets []time.Time, keys []string) (map[string]sqlc.FindIdempotencyKeysRow, error) {
 	rows, err := q.FindIdempotencyKeys(ctx, sqlc.FindIdempotencyKeysParams{TenantID: tenantID, Keys: keys, Buckets: buckets})
 	if err != nil {
 		return nil, err
@@ -98,6 +103,13 @@ func claimKeys(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, bucket 
 		ins.Keys = append(ins.Keys, p.key)
 		ins.EventIds = append(ins.EventIds, p.event.EventId)
 		ins.Hashes = append(ins.Hashes, p.hash)
+		// What the key stands for, so that a correction can find it (ADR 0027). A correction's own row holds its difference and the original's time.
+		cust, err := uuid.Parse(p.event.CustomerId)
+		if err != nil {
+			return nil, fmt.Errorf("customer id %q: %w", p.event.CustomerId, err)
+		}
+		ins.CustomerIds, ins.MeterCodes = append(ins.CustomerIds, cust), append(ins.MeterCodes, p.event.MeterCode)
+		ins.EventTimes, ins.Quantities = append(ins.EventTimes, p.event.EventTime.AsTime()), append(ins.Quantities, p.event.QuantityUnits)
 	}
 	won, err := q.InsertIdempotencyKeys(ctx, ins)
 	if err != nil {

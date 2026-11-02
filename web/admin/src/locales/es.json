@@ -687,6 +687,13 @@
         "suspendHint": "Las comprobaciones de derechos de este cliente responden «no permitido» en cada medidor hasta que se levante el bloqueo o termine. El uso que envíe se sigue aceptando y contando.",
         "bannerSuspended": "Servicio suspendido: las comprobaciones de derechos responden «no permitido».",
         "suspended": "Servicio suspendido"
+      },
+      "upcoming": {
+        "title": "Próxima factura",
+        "estimate": "Estimación",
+        "period": "Periodo {period}",
+        "none": "Aún no hay nada que facturar: este cliente no tiene suscripción en el periodo actual ni uso tardío que facturar.",
+        "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla."
       }
     },
     "packages": {
@@ -2071,6 +2078,38 @@
       "batch": "Pago / lote",
       "empty": "No hay pagos correctos del proveedor en este periodo."
     },
+    "corrections": {
+      "action": "Corregir el uso",
+      "title": "Corregir un evento de uso",
+      "hint": "Corrija una cantidad que su aplicación envió para {customer}. El evento en sí no se modifica: la diferencia se suma al periodo al que pertenece y, si ese periodo ya está cerrado, se factura en la siguiente factura.",
+      "formLabel": "corregir el uso",
+      "meter": "Medidor",
+      "pickMeter": "Elija un medidor",
+      "corrects": "Clave del evento",
+      "correctsHint": "La clave de idempotencia que su aplicación envió con el evento.",
+      "quantity": "Cantidad correcta",
+      "quantityHint": "0 cancela el evento. En un medidor de conteo, cualquier número mayor que 0 lo cuenta de nuevo.",
+      "reason": "Motivo",
+      "submit": "Corregir el uso",
+      "errors": {
+        "meter": "Elija un medidor.",
+        "corrects": "Introduzca la clave de idempotencia del evento.",
+        "quantity": "Introduzca un número igual o mayor que 0.",
+        "reason": "Indique el motivo."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "La corrección no es válida: necesita un motivo de hasta 500 caracteres y la clave del evento que se corrige.",
+        "CORRECTION_UNKNOWN_EVENT": "Ese evento no se conoce. Compruebe la clave; un evento se puede corregir durante al menos 45 días desde que se envió.",
+        "CORRECTION_MISMATCH": "Ese evento pertenece a otro cliente o medidor.",
+        "CORRECTION_UNSUPPORTED_METER": "Este medidor no se puede corregir: solo los medidores de suma y de conteo sin filtro de propiedades.",
+        "CORRECTION_OF_CORRECTION": "Esa clave pertenece a una corrección. Corrija de nuevo el evento original.",
+        "UNKNOWN_METER": "Ese medidor no existe.",
+        "UNKNOWN_CUSTOMER": "Ese cliente no existe.",
+        "INVALID_QUANTITY": "La cantidad debe ser un número igual o mayor que 0.",
+        "INVALID_QUANTITY_PRECISION": "La cantidad tiene más decimales de los que permite el medidor.",
+        "IDEMPOTENCY_KEY_REUSED": "Esta corrección ya se hizo con otros valores."
+      }
+    },
     "feeRules": {
       "title": "Comisiones esperadas de los proveedores",
       "hint": "Lo que se espera que cada proveedor retenga de un pago, por moneda: un porcentaje y un importe fijo. Payrudder no conoce los precios de ningún proveedor, así que los introduce un operador. Una comisión que el informe del proveedor muestre distinta en más de una unidad menor se convierte en una discrepancia en la cola de revisión.",
@@ -2863,6 +2902,9 @@
       },
       "customer": {
         "blocked": "Este cliente está bloqueado, no se puede iniciar una compra nueva."
+      },
+      "upcoming": {
+        "customer_not_found": "No existe ese cliente."
       }
     },
     "coupon": {

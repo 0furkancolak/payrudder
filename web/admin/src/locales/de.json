@@ -687,6 +687,13 @@
         "suspendHint": "Die Berechtigungsprüfungen für diesen Kunden antworten bei jedem Zähler mit „nicht erlaubt“, bis die Sperre aufgehoben wird oder endet. Gesendete Nutzung wird weiterhin angenommen und gezählt.",
         "bannerSuspended": "Dienst ausgesetzt: Berechtigungsprüfungen antworten mit „nicht erlaubt“.",
         "suspended": "Dienst ausgesetzt"
+      },
+      "upcoming": {
+        "title": "Kommende Rechnung",
+        "estimate": "Schätzung",
+        "period": "Zeitraum {period}",
+        "none": "Noch nichts zu berechnen: Dieser Kunde hat in diesem Zeitraum kein Abonnement und keine nachträgliche Nutzung zu berechnen.",
+        "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern."
       }
     },
     "packages": {
@@ -2071,6 +2078,38 @@
       "batch": "Auszahlung / Charge",
       "empty": "Keine erfolgreichen Anbieterzahlungen in diesem Zeitraum."
     },
+    "corrections": {
+      "action": "Nutzung korrigieren",
+      "title": "Ein Nutzungsereignis korrigieren",
+      "hint": "Korrigieren Sie eine Menge, die Ihre App für {customer} gesendet hat. Das Ereignis selbst wird nicht geändert: Die Differenz wird dem Zeitraum zugerechnet, zu dem es gehört, und ist dieser abgeschlossen, wird sie auf der nächsten Rechnung berechnet.",
+      "formLabel": "Nutzung korrigieren",
+      "meter": "Zähler",
+      "pickMeter": "Zähler wählen",
+      "corrects": "Ereignisschlüssel",
+      "correctsHint": "Der Idempotency-Schlüssel, den Ihre App mit dem Ereignis gesendet hat.",
+      "quantity": "Richtige Menge",
+      "quantityHint": "0 storniert das Ereignis. Bei einem Zählzähler zählt jede Zahl über 0 es erneut.",
+      "reason": "Grund",
+      "submit": "Nutzung korrigieren",
+      "errors": {
+        "meter": "Wählen Sie einen Zähler.",
+        "corrects": "Geben Sie den Idempotency-Schlüssel des Ereignisses ein.",
+        "quantity": "Geben Sie eine Zahl ab 0 ein.",
+        "reason": "Geben Sie einen Grund an."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "Die Korrektur ist ungültig: Sie braucht einen Grund mit höchstens 500 Zeichen und den Schlüssel des zu korrigierenden Ereignisses.",
+        "CORRECTION_UNKNOWN_EVENT": "Dieses Ereignis ist nicht bekannt. Prüfen Sie den Schlüssel; ein Ereignis lässt sich mindestens 45 Tage nach dem Senden korrigieren.",
+        "CORRECTION_MISMATCH": "Dieses Ereignis gehört zu einem anderen Kunden oder Zähler.",
+        "CORRECTION_UNSUPPORTED_METER": "Dieser Zähler lässt sich nicht korrigieren: Nur Summen- und Zählzähler ohne Eigenschaftsfilter können korrigiert werden.",
+        "CORRECTION_OF_CORRECTION": "Dieser Schlüssel gehört zu einer Korrektur. Korrigieren Sie stattdessen das ursprüngliche Ereignis erneut.",
+        "UNKNOWN_METER": "Diesen Zähler gibt es nicht.",
+        "UNKNOWN_CUSTOMER": "Diesen Kunden gibt es nicht.",
+        "INVALID_QUANTITY": "Die Menge muss eine Zahl ab 0 sein.",
+        "INVALID_QUANTITY_PRECISION": "Die Menge hat mehr Nachkommastellen, als der Zähler erlaubt.",
+        "IDEMPOTENCY_KEY_REUSED": "Diese Korrektur wurde schon mit anderen Werten durchgeführt."
+      }
+    },
     "feeRules": {
       "title": "Erwartete Anbietergebühren",
       "hint": "Was jeder Anbieter von einer Zahlung je Währung einbehalten soll: ein Prozentsatz und ein fester Betrag. Payrudder kennt die Preise keines Anbieters, deshalb trägt ein Operator sie ein. Eine Gebühr, die im Bericht des Anbieters um mehr als eine kleinste Einheit abweicht, wird zu einer Abweichung in der Prüfwarteschlange.",
@@ -2863,6 +2902,9 @@
       },
       "customer": {
         "blocked": "Dieser Kunde ist gesperrt, ein neuer Kauf kann nicht gestartet werden."
+      },
+      "upcoming": {
+        "customer_not_found": "Diesen Kunden gibt es nicht."
       }
     },
     "coupon": {

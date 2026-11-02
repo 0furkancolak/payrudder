@@ -45,6 +45,7 @@ func TestQuotas(t *testing.T) {
 	for name, fn := range uniqueAndLastTests {
 		t.Run(name, fn)
 	}
+	t.Run("CorrectionsMoveACounterDownOnlyForMetersThatAdd", testCorrections)
 }
 
 // quotaPod is one replica's entitlement map and apply loop over a flushed Redis, without Kafka (no LimitExceeded is produced; the fired markers

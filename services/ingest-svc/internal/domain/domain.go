@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
@@ -38,7 +40,17 @@ const (
 	CodeKeyReused         = "IDEMPOTENCY_KEY_REUSED"
 	CodeInvalidProperties = "INVALID_PROPERTIES"
 	AutoKeyPrefix         = "auto:"
+
+	// Corrections (ADR 0027).
+	CodeInvalidCorrection          = "INVALID_CORRECTION"
+	CodeCorrectionUnknownEvent     = "CORRECTION_UNKNOWN_EVENT"
+	CodeCorrectionMismatch         = "CORRECTION_MISMATCH"
+	CodeCorrectionUnsupportedMeter = "CORRECTION_UNSUPPORTED_METER"
+	CodeCorrectionOfCorrection     = "CORRECTION_OF_CORRECTION"
 )
+
+// MaxReasonRunes is the longest reason a correction may give.
+const MaxReasonRunes = 500
 
 var keyRe = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 
@@ -59,10 +71,10 @@ type Prelim struct {
 	EventTime time.Time
 }
 
-// CheckPrelim validates the idempotency key, event time and properties.
-func CheckPrelim(ev *ingestv1.IncomingEvent, now time.Time, environment string) (Prelim, *Reject) {
+// checkKey validates the idempotency key of an event: required for live keys, absent in the sandbox means no dedup.
+func checkKey(key, environment string) (Prelim, *Reject) {
 	var p Prelim
-	switch key := ev.GetIdempotencyKey(); {
+	switch {
 	case key == "" && environment == tenant.EnvSandbox:
 		p.Auto = true
 	case key == "":
@@ -71,6 +83,15 @@ func CheckPrelim(ev *ingestv1.IncomingEvent, now time.Time, environment string) 
 		return p, &Reject{CodeKeyInvalid, "idempotency_key must be 1-128 characters of [A-Za-z0-9_.:-]"}
 	default:
 		p.Key = key
+	}
+	return p, nil
+}
+
+// CheckPrelim validates the idempotency key, event time and properties.
+func CheckPrelim(ev *ingestv1.IncomingEvent, now time.Time, environment string) (Prelim, *Reject) {
+	p, rej := checkKey(ev.GetIdempotencyKey(), environment)
+	if rej != nil {
+		return p, rej
 	}
 
 	ts := ev.GetEventTime()
@@ -89,6 +110,37 @@ func CheckPrelim(ev *ingestv1.IncomingEvent, now time.Time, environment string) 
 		return p, &Reject{CodeInvalidProperties, err.Error()}
 	}
 	return p, nil
+}
+
+// CheckCorrectionPrelim validates what a correction says on its own face (ADR 0027): its own key, the key it corrects, a reason, and that it carries nothing the original
+// decides: a correction has no time of its own (it lands at the original's) and no properties.
+func CheckCorrectionPrelim(ev *ingestv1.IncomingEvent, environment string) (Prelim, *Reject) {
+	p, rej := checkKey(ev.GetIdempotencyKey(), environment)
+	if rej != nil {
+		return p, rej
+	}
+	bad := func(msg string) (Prelim, *Reject) { return p, &Reject{CodeInvalidCorrection, msg} }
+	switch reason := strings.TrimSpace(ev.GetReason()); {
+	case ev.GetCorrects() == "":
+		return bad("reason is only for a correction: name the event it corrects in corrects")
+	case !keyRe.MatchString(ev.GetCorrects()):
+		return bad("corrects must be the idempotency key of the event to correct")
+	case ev.GetCorrects() == p.Key:
+		return bad("an event cannot correct itself")
+	case reason == "" || utf8.RuneCountInString(reason) > MaxReasonRunes:
+		return bad("reason is required and at most 500 characters")
+	case ev.GetEventTime() != nil:
+		return bad("a correction has no event_time: it lands at the time of the event it corrects")
+	case len(ev.GetProperties()) > 0:
+		return bad("a correction carries no properties: they are the original's")
+	}
+	return p, nil
+}
+
+// CorrectionHash is PayloadHash of a correction: what the request says (the key it corrects, the reason, customer, meter and the quantity the event should have had), so a retry is
+// told from a reuse of the key. The properties slot carries the two texts and the time is zero, which no event has, so it cannot equal the hash of an ordinary event.
+func CorrectionHash(customerExternalID, meterCode, corrects, reason string, units int64, scale int) []byte {
+	return PayloadHash(customerExternalID, meterCode, units, scale, time.Time{}, map[string]string{"corrects": corrects, "reason": strings.TrimSpace(reason)})
 }
 
 // CheckDistinctProperty rejects an event of a UNIQUE meter that does not carry the property whose distinct values the meter counts: it would be accepted

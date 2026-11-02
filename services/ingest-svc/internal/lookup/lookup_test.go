@@ -33,6 +33,13 @@ func (f *fakePlans) GetMeter(_ context.Context, in *plansv1.GetMeterRequest, _ .
 		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "gb", Version: 3, QuantityScale: 2, Aggregation: plansv1.Aggregation_AGGREGATION_SUM, ValueProperty: "gb"}}, nil
 	case in.GetCode() == "users":
 		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "users", Version: 1, Aggregation: plansv1.Aggregation_AGGREGATION_UNIQUE, ValueProperty: "user_id"}}, nil
+	case in.GetCode() == "calls":
+		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "calls", Version: 1, Aggregation: plansv1.Aggregation_AGGREGATION_COUNT}}, nil
+	case in.GetCode() == "peak":
+		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "peak", Version: 1, Aggregation: plansv1.Aggregation_AGGREGATION_MAX}}, nil
+	case in.GetCode() == "eu_gb":
+		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "eu_gb", Version: 1, Aggregation: plansv1.Aggregation_AGGREGATION_SUM,
+			Filter: map[string]*plansv1.FilterValues{"region": {Values: []string{"eu"}}}}}, nil
 	}
 	return nil, status.Error(codes.NotFound, "no meter")
 }
@@ -127,5 +134,19 @@ func TestUniqueMeterNamesItsDistinctProperty(t *testing.T) {
 	g, _, _ := p.Meter(context.Background(), "t1", "gb")
 	if g.DistinctProperty != "" {
 		t.Fatalf("a SUM meter has distinct property %q", g.DistinctProperty)
+	}
+}
+
+// Only a meter that adds and has no filter can have an event corrected (ADR 0027); a COUNT meter is told apart, because its events are one each.
+func TestWhichMetersAcceptCorrections(t *testing.T) {
+	p := NewPlans(&fakePlans{}, Options{})
+	for _, c := range []struct {
+		code           string
+		accepts, count bool
+	}{{"gb", true, false}, {"calls", true, true}, {"peak", false, false}, {"users", false, false}, {"eu_gb", false, false}} {
+		m, ok, err := p.Meter(context.Background(), "t1", c.code)
+		if err != nil || !ok || m.AcceptsCorrection != c.accepts || m.Counts != c.count {
+			t.Errorf("%s: accepts %v counts %v (%v, %v); want %v and %v", c.code, m.AcceptsCorrection, m.Counts, ok, err, c.accepts, c.count)
+		}
 	}
 }

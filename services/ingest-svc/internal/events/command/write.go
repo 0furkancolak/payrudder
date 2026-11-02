@@ -18,14 +18,14 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
 // write persists the batch in one transaction and fills results for every pending event.
-func (c *Commands) write(ctx context.Context, ti tenant.Info, todo []*pending, results []*ingestv1.EventResult) error {
+func (c *Commands) write(ctx context.Context, b batch, todo []*pending, results []*ingestv1.EventResult) error {
+	ti := b.ti
 	traceHeaders := c.traceHeaders(ctx)
 	err := pgxx.InTenantTx(ctx, c.o.App, ti.ID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
@@ -39,12 +39,20 @@ func (c *Commands) write(ctx context.Context, ti tenant.Info, todo []*pending, r
 		bucket := domain.BucketOf(now)
 		earlier := []time.Time{bucket.AddDate(0, -1, 0), bucket.AddDate(0, -2, 0)} // MaxLateness spans up to three months
 
+		// A correction is checked against the event it corrects, and its difference worked out, before its key is claimed: a refusal claims nothing.
+		todo, err := c.resolveCorrections(ctx, q, b, append([]time.Time{bucket}, earlier...), todo, results)
+		if err != nil {
+			return err
+		}
 		accepted, err := c.dedup(ctx, q, ti.ID, bucket, earlier, todo, results)
 		if err != nil {
 			return err
 		}
 		if len(accepted) == 0 {
 			return nil
+		}
+		if err := recordCorrections(ctx, q, ti.ID, accepted); err != nil {
+			return err
 		}
 		payloads, headers, err := outboxRows(accepted, now, ti.ID.String(), traceHeaders)
 		if err != nil {

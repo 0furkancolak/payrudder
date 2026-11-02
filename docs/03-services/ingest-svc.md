@@ -58,6 +58,8 @@ message GetOutboxWatermarkResponse {
 | At most 32 properties, 4 KiB of names and values in total, no empty names | `INVALID_PROPERTIES` |
 | Same idempotency key, **different payload hash** | `IDEMPOTENCY_KEY_REUSED` |
 
+A correction (below) adds five more codes: `INVALID_CORRECTION`, `CORRECTION_UNKNOWN_EVENT`, `CORRECTION_MISMATCH`, `CORRECTION_UNSUPPORTED_METER`, `CORRECTION_OF_CORRECTION`.
+
 A validation failure rejects that event only. The batch still answers with one result per event, in request order.
 Infrastructure failures (plans-svc or Postgres down) fail the whole call with `UNAVAILABLE`, after which nothing has been
 written, so a retry is safe. Checks run in this order: key, event time, properties, meter, customer, quantity. The first
@@ -108,6 +110,10 @@ Details that differ from the sketch above:
 - Sandbox events without a key skip `idempotency_keys` entirely.
 - Meter and customer lookups are cached per tenant (hits 30 s, misses 2 s, so a freshly created meter works within
   seconds). A batch resolves its distinct meters and customers concurrently first.
+
+## Corrections (plan 22 G12, [ADR 0027](../adr/0027-event-corrections.md))
+
+`POST /v1/events/corrections` (gateway) sends `IncomingEvent`s with `corrects` (the idempotency key of the event to correct) and `reason` set; `IngestEventsRequest.actor` says who (the gateway fills it from the credential). The correction is a new event with its own key and the usual dedup; `quantity` is the quantity the original should have had. What `prepareCorrection` checks without a write: the key rules, a reason of 1 to 500 characters, no `event_time` or properties, the customer and meter exist, the meter `AcceptsCorrection` (SUM or COUNT, no property filter: `CORRECTION_UNSUPPORTED_METER`), the quantity. What `resolveCorrections` does inside the write transaction, **before the key is claimed** (a refusal claims nothing): finds the original's key row in the three month buckets (`CORRECTION_UNKNOWN_EVENT`, also for keys written before the migration, whose row has no customer, meter, time and quantity), refuses a correction of a correction (`event_corrections` knows the ids), checks customer and meter against the row (`CORRECTION_MISMATCH`), takes `pg_advisory_xact_lock` on (tenant, original event id) in id order, and works out `difference = wanted - (original quantity + sum of earlier differences)`; for a COUNT meter the original stands at 1 and `wanted` is 1 if the quantity is positive, else 0. The correcting event carries the original's `event_time` and `period_id`, the difference as `quantity_units` (signed) and `UsageEvent.correction` (`corrects_event_id`, `reason`, `corrected_by`). After the dedup, the corrections that won their keys are written to `event_corrections` (the audit record; kept; cleared by a sandbox reset). `idempotency_keys` gained `customer_id`, `meter_code`, `event_time` and `quantity_units` for every event (migration `00002_event_corrections`, public and tenant). Tests: `TestIngestSvc/ACorrection*`, `ConcurrentCorrectionsOfOneEventSeeEachOther` (it fails without the lock), `domain` tables, `lookup`.
 
 ## Outbox relay
 

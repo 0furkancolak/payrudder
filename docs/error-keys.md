@@ -215,6 +215,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`
 - `billing.tenant.on_hold`
+- `billing.upcoming.customer_not_found`
 - `common.already_exists`
 - `common.canceled`
 - `common.conflict`

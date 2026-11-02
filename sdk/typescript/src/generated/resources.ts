@@ -27,6 +27,7 @@ import type {
   ContractSettings,
   ContractVersion,
   ContractWithdrawal,
+  CorrectEventsRequest,
   Coupon,
   CouponInputParams,
   CreateAffiliatePayoutsRequest,
@@ -212,6 +213,7 @@ import type {
   Subscription,
   TaxRates,
   TaxRatesInput,
+  UpcomingInvoice,
   UpdateAffiliateRequest,
   UploadAssetsResponse,
   UploadFile,
@@ -1070,6 +1072,21 @@ export class CustomersResource {
   }
 
   /**
+   * What the customer's next invoice would be if it were drafted now
+   *
+   * An estimate of the regular invoice of the period that is still open (or, while a closed period's grace period runs, of that period): the usage and late usage so far, rated by
+   * the plan version in force, the fixed fee, tax at the tenant's rate for the customer's country and the credit balance the invoice would use. It is computed by the same code
+   * that drafts the real invoice, from the same inputs, and nothing is stored. It moves with every event until the period closes, and a change of plan, a coupon or a tax rate
+   * made later can move it too: `estimate` is always `true`, and the response has no id and no number. A fixed fee invoiced in advance is its own invoice and is not in it.
+   * A customer with nothing to bill in the period gets `has_invoice: false` and no lines.
+   *
+   * `GET /v1/customers/{external_id}/upcoming-invoice`
+   */
+  getUpcomingInvoice(externalId: string, options?: RequestOptions): Promise<UpcomingInvoice> {
+    return this.t.request<UpcomingInvoice>({ method: "GET", path: `/v1/customers/${seg(externalId)}/upcoming-invoice`, response: "json" }, options);
+  }
+
+  /**
    * Usage against the limits of every meter the customer has an entitlement on
    *
    * See `getEntitlement` for the semantics of each item. Not paged: the response is the complete list.
@@ -1301,6 +1318,30 @@ export class EventsResourceBase {
    */
   ingestEvents(body: IngestEventsRequest, options?: RequestOptions): Promise<IngestEventsResponse> {
     return this.t.request<IngestEventsResponse>({ method: "POST", path: `/v1/events`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Correct usage events (1..500 per request, at most 1 MiB)
+   *
+   * A correction is a new event, never an edit: it names the `idempotency_key` of the event it corrects and the `quantity` that event should have had (`0` cancels it), with a
+   * `reason`. The service works out the difference between that and what the event stands at now (its own quantity plus every earlier correction of it) and adds it to the
+   * **period of the original event**, by the rules every event follows: while that period is open, or closed but inside its grace period, the usage of the period changes
+   * exactly; once it has passed its cutoff or been rated, the difference becomes **late usage** of that period, a (negative, for less) `LATE_USAGE` line on the invoice of the
+   * period the correction was accepted in. A finalized invoice is never changed.
+   *
+   * Only events of meters that add (`SUM`, `COUNT`) and have no property filter can be corrected (`CORRECTION_UNSUPPORTED_METER` otherwise). For a `COUNT` meter an event is
+   * one whatever its quantity, so the only corrections are `0` (cancel it) and any positive quantity (count it again). An event can be corrected as long as its idempotency
+   * key is remembered, which is at least 45 and less than 76 days after it was first seen (`CORRECTION_UNKNOWN_EVENT` after). A correction cannot be corrected: send the
+   * original's key again with the quantity it should have. `customer_external_id` and `meter_code` must be the original's.
+   *
+   * The answer is `202` with one result per correction, in request order, like `POST /v1/events`; the correction has its own `idempotency_key`, and a retry with the same key and
+   * payload is a `duplicate` and changes nothing. A refused correction claims no key. Who made it (the signed-in person, or the API key) and the reason are kept.
+   * The `ingest` rate limit is charged per correction. A correction is not usage and is not metered as events.
+   *
+   * `POST /v1/events/corrections`
+   */
+  correctEvents(body: CorrectEventsRequest, options?: RequestOptions): Promise<IngestEventsResponse> {
+    return this.t.request<IngestEventsResponse>({ method: "POST", path: `/v1/events/corrections`, body, bodyKind: "json", response: "json" }, options);
   }
 }
 

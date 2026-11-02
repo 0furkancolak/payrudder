@@ -151,3 +151,44 @@ func TestIngestEventsUpstreamErrors(t *testing.T) {
 		t.Fatalf("backlog: %d retry=%q %v", resp.StatusCode, resp.Header.Get("Retry-After"), m)
 	}
 }
+
+// A correction (ADR 0027) goes to ingest-svc as an event that names the one it corrects, with the credential as who made it; it is charged per correction, is not a field of
+// POST /v1/events, and a malformed request never reaches ingest-svc.
+func TestCorrectEventsMapsRequestAndResponse(t *testing.T) {
+	ts, _, ing, lim := newFullTestServer(t)
+	body := `{"corrections":[
+	  {"idempotency_key":"fix-1","corrects":"k1","reason":"entered twice","customer_external_id":"cus_1","meter_code":"gb","quantity":"0"},
+	  {"idempotency_key":"fix-2","corrects":"k2","reason":"wrong unit","customer_external_id":"cus_1","meter_code":"bad","quantity":1.10}]}`
+	resp, m := do(t, ts, "POST", "/v1/events/corrections", "keyed-key", body)
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("status %d %v", resp.StatusCode, m)
+	}
+	results := m["results"].([]any)
+	if len(results) != 2 || results[0].(map[string]any)["status"] != "accepted" || results[1].(map[string]any)["error_code"] != "UNKNOWN_METER" {
+		t.Fatalf("results = %v", results)
+	}
+	got := ing.last.Events
+	if got[0].Corrects != "k1" || got[0].Reason != "entered twice" || got[0].IdempotencyKey != "fix-1" || got[0].Quantity != "0" || got[0].EventTime != nil || got[1].Quantity != "1.10" {
+		t.Fatalf("forwarded %v", got)
+	}
+	if ing.last.Actor != "key:key-123" {
+		t.Fatalf("actor = %q, want the API key", ing.last.Actor)
+	}
+	if c := lim.costs[ratelimit.ClassIngest]; len(c) != 1 || c[0] != 2 {
+		t.Fatalf("ingest charges = %v, want [2]", c)
+	}
+	// An event cannot carry the fields: corrections have their own request.
+	resp, m = do(t, ts, "POST", "/v1/events", "keyed-key", `{"events":[{"idempotency_key":"k","corrects":"k1","customer_external_id":"c","meter_code":"m","quantity":"1","event_time":"2026-11-03T10:15:00Z"}]}`)
+	if resp.StatusCode != 400 || errCode(m) != "INVALID_ARGUMENT" {
+		t.Fatalf("corrects on an event: %d %v", resp.StatusCode, m)
+	}
+	ing.last = nil
+	for name, bad := range map[string]string{"empty": `{"corrections":[]}`, "unknown field": `{"corrections":[{"event_time":"2026-11-03T10:15:00Z"}]}`, "not json": `{"corrections":`} {
+		if resp, m := do(t, ts, "POST", "/v1/events/corrections", "keyed-key", bad); resp.StatusCode != 400 {
+			t.Errorf("%s: %d %v", name, resp.StatusCode, m)
+		}
+	}
+	if ing.last != nil {
+		t.Fatal("a malformed request reached ingest-svc")
+	}
+}

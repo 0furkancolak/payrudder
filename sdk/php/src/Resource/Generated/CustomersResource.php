@@ -45,6 +45,7 @@ use Payrudder\Model\RecordContractAcceptanceRequest;
 use Payrudder\Model\RecordContractAcceptanceResponse;
 use Payrudder\Model\RevokePortalLinksResponse;
 use Payrudder\Model\SetPaymentMethodRequest;
+use Payrudder\Model\UpcomingInvoice;
 use Payrudder\RequestOptions;
 
 /**
@@ -295,6 +296,19 @@ final class CustomersResource extends AbstractResource
     public function getCustomerUsage(string $externalId, ?string $period = null, ?RequestOptions $options = null): GetCustomerUsageResponse
     {
         return GetCustomerUsageResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/usage', ['period' => $period], null, $options));
+    }
+
+    /**
+     * What the customer's next invoice would be if it were drafted now (GET /v1/customers/{external_id}/upcoming-invoice).
+     *
+     * @param string $externalId
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function getUpcomingInvoice(string $externalId, ?RequestOptions $options = null): UpcomingInvoice
+    {
+        return UpcomingInvoice::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/upcoming-invoice', [], null, $options));
     }
 
     /**

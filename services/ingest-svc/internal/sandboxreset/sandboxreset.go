@@ -1,4 +1,4 @@
-// Package sandboxreset deletes a sandbox tenant's dedup keys and unpublished events (phase 45 E). Events already on the topic stay there: the aggregator has read
+// Package sandboxreset deletes a sandbox tenant's dedup keys, the record of its corrections and its unpublished events (phase 45 E). Events already on the topic stay there: the aggregator has read
 // them (or reads them, and a reset can be repeated).
 package sandboxreset
 
@@ -15,7 +15,7 @@ import (
 
 // Tables are the tables a reset deletes from; Kept are the tables with tenant rows it leaves alone (none: ingest-svc keeps no configuration).
 var (
-	Tables = []string{"idempotency_keys", "outbox"}
+	Tables = []string{"idempotency_keys", "event_corrections", "outbox"}
 	Kept   []string
 )
 
@@ -44,11 +44,15 @@ func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]in
 		if err != nil {
 			return err
 		}
+		corrections, err := q.ResetEventCorrections(ctx, tenantID)
+		if err != nil {
+			return err
+		}
 		queued, err := q.ResetOutbox(ctx, tenantID)
 		if err != nil {
 			return err
 		}
-		for table, n := range map[string]int64{"idempotency_keys": keys, "outbox": queued} {
+		for table, n := range map[string]int64{"idempotency_keys": keys, "event_corrections": corrections, "outbox": queued} {
 			if n > 0 {
 				out[table] = n
 			}

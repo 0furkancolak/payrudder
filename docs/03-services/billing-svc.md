@@ -19,6 +19,7 @@ service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);       // by customer / period / status
   rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse); // presigned S3 URL, 5 min
+  rpc GetUpcomingInvoice(GetUpcomingInvoiceRequest) returns (UpcomingInvoice);  // the next regular invoice as an estimate; writes nothing
 }
 
 service SandboxService {                                                     // sandbox tenants only (FAILED_PRECONDITION otherwise)
@@ -355,6 +356,16 @@ Module `accounting` (`model/` for the expense and its recurrence, `command/`, `q
 ## As built: sandbox reset (Phase 45 E)
 
 `SandboxResetService.ResetTenant` (operator only, environment must be SANDBOX) deletes a sandbox tenant's data in billing_db: invoices, sagas, credit notes, credits, links, runs and numbering (credit packs, credit settings and dunning settings stay). plans-svc calls it from the reset job; `internal/sandboxreset` lists what goes and `Kept` what stays on purpose, and a test fails for a table that is neither. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).
+
+## As built: the upcoming invoice (plan 22, G14)
+
+`GET /v1/customers/{external_id}/upcoming-invoice` (`BillingService.GetUpcomingInvoice`; the console's customer sheet shows it on the overview) prices what the customer's next regular invoice would be if it were drafted now, flagged `estimate: true`. It is **the code that drafts the real invoice**, not a copy: `Manager.Upcoming` builds the same `rateRun` a billing run builds (`rateRunOf`: tenant, time zone, meters), fills it for one customer (their subscription from `Subscriptions`, their usage from `GetCustomerUsage`, the late usage billed in the period from `StreamLateUsage`, the tenant's tax table) and calls `draftFor`, which makes the lines, the late lines, the tax line and the clamp of a negative total. The credit balance goes through `invoicecmd.PlanCredits`, the rule `ApplyCredits` consumes lots by, read without row locks and without writing (`PreviewCredit`); the CREDIT line is `WithCreditLine`, the line `ApplyCredits` adds. `TestBilling/UpcomingInvoiceIsTheInvoiceTheRunWouldDraft` reads the preview in the middle of the period, closes it with a billing run and compares every line (kind, text, quantity, amount) and the subtotal and total with the invoice the run drafted: they match to the minor unit, with fractional usage over a free tier, late usage of an earlier period, tax and a credit balance in play.
+
+- **Which period.** The one whose invoice has not been raised: the period of `now - grace` in the tenant's time zone, so the current one, or the previous one while its grace period runs (when late events still count as on time).
+- **What is not in it.** A fixed fee invoiced in advance is its own `FEE` invoice; it is not on the regular invoice, so not here. A provider-run subscription shows usage only, as its real invoice does. Anything that changes after the call (events, a plan change, a coupon, a tax rate, a credit grant) moves the figures: the answer has no id and no number and nothing is stored.
+- **No subscription.** A customer with no subscription in the period and no late usage to bill gets `has_invoice: false` and no lines; an unknown external id is `billing.upcoming.customer_not_found`.
+- **Cost.** One call reads the tenant's subscriptions of the period (`ListSubscriptionsForPeriod` has no customer filter, and adding one is plans-svc's change) and the period's late usage across customers, then picks the customer's. A tenant with very many subscriptions pays that per call; the console asks once per opened customer sheet and keeps the answer for 15 s.
+- **The portal.** Not added: a customer seeing an amount that is an estimate of usage is the owner's call (per tenant, opt-in?), and the portal templates, their six languages and their CSP/contrast/RTL tests are another plan's files ([hosted pages](../hosted-pages.md)). The summary of `GetPortalSubscriptions` is where it would go, reading `Manager.Upcoming` for the portal's customer.
 
 ## In a cell (phase 28)
 

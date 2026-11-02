@@ -8,6 +8,9 @@ import "google/protobuf/timestamp.proto";
 service BillingService {
   rpc GetInvoice(GetInvoiceRequest) returns (GetInvoiceResponse);
   rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+  // GetUpcomingInvoice prices what the customer's next invoice would be if it were drafted now: the usage and late usage so far, the fixed fee, tax and the credit balance,
+  // with the code that drafts the real invoice. It writes nothing, and it is an estimate until the period closes.
+  rpc GetUpcomingInvoice(GetUpcomingInvoiceRequest) returns (GetUpcomingInvoiceResponse);
   // GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
   rpc GetInvoicePdfUrl(GetInvoicePdfUrlRequest) returns (GetInvoicePdfUrlResponse);
   // GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
@@ -224,6 +227,41 @@ message Invoice {
   repeated InvoiceLine lines = 16;
   // Payments recorded by hand (RecordInvoicePayment), oldest first. Only GetInvoice fills it.
   repeated InvoicePayment payments = 17;
+}
+
+message GetUpcomingInvoiceRequest {
+  string customer_external_id = 1;
+}
+
+message GetUpcomingInvoiceResponse {
+  UpcomingInvoice upcoming = 1;
+}
+
+// UpcomingInvoice is the regular invoice a customer's period would get if it were drafted at as_of. It has no id and no number and nothing is stored: the figures move with
+// every event until the period closes, and a plan change, a coupon or a tax rate set later can move them too.
+message UpcomingInvoice {
+  // Always true: the preview is never the invoice.
+  bool estimate = 1;
+  string customer_external_id = 2;
+  // The period whose invoice this is, in the tenant's time zone ("2026-11"): the one still open, or the previous one while its grace period runs.
+  string period_id = 3;
+  google.protobuf.Timestamp period_start = 4;
+  google.protobuf.Timestamp period_end = 5;
+  string currency = 6;
+  // The lines exactly as the invoice would have them: base fee, usage, late usage, tax and, when the customer has a credit balance, the credit.
+  repeated InvoiceLine lines = 7;
+  // Before tax, after the credit (the invoice's subtotal_minor).
+  int64 subtotal_minor = 8;
+  // Tax lines.
+  int64 tax_minor = 9;
+  // The credit balance the invoice would use (a positive number; the CREDIT line is its negative).
+  int64 credit_minor = 10;
+  // What would be charged. Never negative: a net credit from late corrections is clamped to zero, as the real invoice does.
+  int64 total_minor = 11;
+  // The clock of the estimate.
+  google.protobuf.Timestamp as_of = 12;
+  // False when the customer has no subscription in the period (lines is empty then): there is no upcoming invoice.
+  bool has_invoice = 13;
 }
 
 // InvoicePayment is money received outside a payment provider and recorded by an operator.

@@ -144,6 +144,8 @@ var defaultMeters = fakeMeters{
 	"sum_m":   {Code: "sum_m", Aggregation: usage.Sum},
 	"count_m": {Code: "count_m", Aggregation: usage.Count},
 	"max_m":   {Code: "max_m", Aggregation: usage.Max},
+	"last_m":  {Code: "last_m", Aggregation: usage.Last},
+	"uniq_m":  {Code: "uniq_m", Aggregation: usage.Unique, ValueProperty: "user"},
 	"eu_only": {Code: "eu_only", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}},
 }
 

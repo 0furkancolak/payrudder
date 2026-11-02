@@ -188,3 +188,60 @@ export function useSetCustomerTax(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
   });
 }
+
+/** The invoice a customer's open period would get if it were drafted now: an estimate that moves with every event until the period closes. */
+export function useUpcomingInvoice(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "upcoming-invoice", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/upcoming-invoice", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== ""),
+    staleTime: 15_000,
+  });
+}
+
+export interface UsageCorrection {
+  customer: string;
+  meter: string;
+  /** The idempotency key of the event to correct, as the app sent it. */
+  corrects: string;
+  /** The quantity that event should have had; 0 cancels it. */
+  quantity: string;
+  reason: string;
+  /** The correction's own idempotency key: the form keeps it across retries and renews it when the correction went through. */
+  key: string;
+}
+
+/**
+ * Corrects a usage event (POST /v1/events/corrections). The answer is 202 whatever the verdict, so a refused correction is turned into a `CorrectionRefused` carrying the
+ * code of the result, and an accepted or repeated one resolves.
+ */
+export function useCorrectUsage(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: UsageCorrection) => {
+      const { results } = await unwrap(
+        tenantApi(toValue(tenantId)).POST("/v1/events/corrections", {
+          body: { corrections: [{ idempotency_key: v.key, corrects: v.corrects, reason: v.reason, customer_external_id: v.customer, meter_code: v.meter, quantity: v.quantity }] },
+        }),
+      );
+      const r = results[0];
+      if (!r || r.status === "rejected") throw new CorrectionRefused(r?.error_code ?? "", r?.error_message ?? "");
+      return r;
+    },
+    onSuccess: (_r, v) => {
+      // The estimate of the next invoice and the usage move with a correction.
+      void queries.invalidateQueries({ queryKey: [...customerKeys.list(toValue(tenantId)), "upcoming-invoice", v.customer] });
+      void queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "usage"] });
+    },
+  });
+}
+
+/** A correction the service refused: `code` is the event result's error_code. */
+export class CorrectionRefused extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}

@@ -32,12 +32,28 @@ class _EventResultRequired(TypedDict):
 
 class EventResult(_EventResultRequired, total=False):
     event_id: str
-    error_code: Literal["UNKNOWN_METER", "UNKNOWN_CUSTOMER", "EVENT_TOO_OLD", "EVENT_IN_FUTURE", "INVALID_EVENT_TIME", "INVALID_QUANTITY", "INVALID_QUANTITY_PRECISION", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_KEY_REUSED", "INVALID_PROPERTIES"]
+    error_code: Literal["UNKNOWN_METER", "UNKNOWN_CUSTOMER", "EVENT_TOO_OLD", "EVENT_IN_FUTURE", "INVALID_EVENT_TIME", "INVALID_QUANTITY", "INVALID_QUANTITY_PRECISION", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_KEY_REUSED", "INVALID_PROPERTIES", "INVALID_CORRECTION", "CORRECTION_UNKNOWN_EVENT", "CORRECTION_MISMATCH", "CORRECTION_UNSUPPORTED_METER", "CORRECTION_OF_CORRECTION"]
     error_message: str
 
 
 class IngestEventsResponse(TypedDict):
     results: list[EventResult]
+
+
+class _EventCorrectionRequired(TypedDict):
+    corrects: str
+    reason: str
+    customer_external_id: str
+    meter_code: str
+    quantity: str | int | Decimal
+
+
+class EventCorrection(_EventCorrectionRequired, total=False):
+    idempotency_key: str
+
+
+class CorrectEventsRequest(TypedDict):
+    corrections: list[EventCorrection]
 
 
 class Address(TypedDict):
@@ -459,6 +475,34 @@ class GetCustomerUsageResponse(TypedDict):
     customer_external_id: str
     period_id: str
     usage: list[GetCustomerUsageUsage]
+
+
+class InvoiceLine(TypedDict):
+    line_no: int
+    kind: Literal["BASE_FEE", "USAGE", "LATE_USAGE", "CREDIT", "CORRECTION", "DISCOUNT", "TAX"]
+    meter_code: str
+    origin_period_id: str
+    quantity: str
+    amount_minor: int
+    description: str
+    service_from: str | None
+    service_to: str | None
+
+
+class UpcomingInvoice(TypedDict):
+    estimate: bool
+    customer_external_id: str
+    period_id: str
+    period_start: str
+    period_end: str
+    currency: str
+    lines: list[InvoiceLine]
+    subtotal_minor: int
+    tax_minor: int
+    credit_minor: int
+    total_minor: int
+    as_of: str
+    has_invoice: bool
 
 
 class EntitlementStatus(TypedDict):
@@ -1693,18 +1737,6 @@ class PreviewRoutingResponse(TypedDict):
     rule_index: int
     owner: Literal["payrudder", "provider"]
     can_charge: bool
-
-
-class InvoiceLine(TypedDict):
-    line_no: int
-    kind: Literal["BASE_FEE", "USAGE", "LATE_USAGE", "CREDIT", "CORRECTION", "DISCOUNT", "TAX"]
-    meter_code: str
-    origin_period_id: str
-    quantity: str
-    amount_minor: int
-    description: str
-    service_from: str | None
-    service_to: str | None
 
 
 class InvoicePayment(TypedDict):

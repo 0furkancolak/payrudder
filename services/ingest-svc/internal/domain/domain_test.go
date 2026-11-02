@@ -137,3 +137,66 @@ func TestBucketOf(t *testing.T) {
 		t.Fatalf("bucket = %s, want UTC month", got)
 	}
 }
+
+func fix(mut func(*ingestv1.IncomingEvent)) *ingestv1.IncomingEvent {
+	e := &ingestv1.IncomingEvent{IdempotencyKey: "fix-1", Corrects: "req-1", Reason: "wrong unit", CustomerExternalId: "cus_1", MeterCode: "gb_hours", Quantity: "1"}
+	if mut != nil {
+		mut(e)
+	}
+	return e
+}
+
+func TestCheckCorrectionPrelim(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		env  string
+		ev   *ingestv1.IncomingEvent
+		want string // error code, "" = ok
+	}{
+		{"valid", "live", fix(nil), ""},
+		{"valid sandbox without key", "sandbox", fix(func(e *ingestv1.IncomingEvent) { e.IdempotencyKey = "" }), ""},
+		{"live without key", "live", fix(func(e *ingestv1.IncomingEvent) { e.IdempotencyKey = "" }), CodeKeyRequired},
+		{"key with space", "live", fix(func(e *ingestv1.IncomingEvent) { e.IdempotencyKey = "a b" }), CodeKeyInvalid},
+		{"corrects a key that cannot be one", "live", fix(func(e *ingestv1.IncomingEvent) { e.Corrects = "a b" }), CodeInvalidCorrection},
+		{"corrects itself", "live", fix(func(e *ingestv1.IncomingEvent) { e.Corrects = "fix-1" }), CodeInvalidCorrection},
+		{"a reason without a correction", "live", fix(func(e *ingestv1.IncomingEvent) { e.Corrects = "" }), CodeInvalidCorrection},
+		{"no reason", "live", fix(func(e *ingestv1.IncomingEvent) { e.Reason = "" }), CodeInvalidCorrection},
+		{"a blank reason", "live", fix(func(e *ingestv1.IncomingEvent) { e.Reason = " \n " }), CodeInvalidCorrection},
+		{"a reason of 500 characters", "live", fix(func(e *ingestv1.IncomingEvent) { e.Reason = strings.Repeat("é", MaxReasonRunes) }), ""},
+		{"a reason of 501 characters", "live", fix(func(e *ingestv1.IncomingEvent) { e.Reason = strings.Repeat("é", MaxReasonRunes+1) }), CodeInvalidCorrection},
+		{"properties", "live", fix(func(e *ingestv1.IncomingEvent) { e.Properties = map[string]string{"a": "b"} }), CodeInvalidCorrection},
+		{"an event time", "live", fix(func(e *ingestv1.IncomingEvent) { e.EventTime = timestamppb.New(now) }), CodeInvalidCorrection},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p, rej := CheckCorrectionPrelim(c.ev, c.env)
+			switch {
+			case c.want == "" && rej != nil:
+				t.Fatalf("unexpected rejection %v", rej)
+			case c.want != "" && (rej == nil || rej.Code != c.want):
+				t.Fatalf("got %v, want %s", rej, c.want)
+			case c.want == "" && c.ev.IdempotencyKey == "" && !p.Auto:
+				t.Fatal("a sandbox correction without a key must be Auto")
+			}
+		})
+	}
+}
+
+// A retry of a correction hashes the same; changing anything it says, or the reason's surrounding blanks excepted, changes the hash; and it is never the hash of an event.
+func TestCorrectionHash(t *testing.T) {
+	base := CorrectionHash("cus_1", "gb_hours", "req-1", "wrong unit", 1500, 3)
+	if string(base) != string(CorrectionHash("cus_1", "gb_hours", "req-1", "  wrong unit\n", 1500, 3)) {
+		t.Error("blanks around the reason changed the hash")
+	}
+	for name, other := range map[string][]byte{
+		"customer": CorrectionHash("cus_2", "gb_hours", "req-1", "wrong unit", 1500, 3),
+		"meter":    CorrectionHash("cus_1", "api_calls", "req-1", "wrong unit", 1500, 3),
+		"corrects": CorrectionHash("cus_1", "gb_hours", "req-2", "wrong unit", 1500, 3),
+		"reason":   CorrectionHash("cus_1", "gb_hours", "req-1", "other", 1500, 3),
+		"units":    CorrectionHash("cus_1", "gb_hours", "req-1", "wrong unit", 1501, 3),
+		"event":    PayloadHash("cus_1", "gb_hours", 1500, 3, now, nil),
+	} {
+		if string(other) == string(base) {
+			t.Errorf("a different %s has the same hash", name)
+		}
+	}
+}

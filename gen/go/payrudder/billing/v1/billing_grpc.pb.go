@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	BillingService_GetInvoice_FullMethodName           = "/payrudder.billing.v1.BillingService/GetInvoice"
 	BillingService_ListInvoices_FullMethodName         = "/payrudder.billing.v1.BillingService/ListInvoices"
+	BillingService_GetUpcomingInvoice_FullMethodName   = "/payrudder.billing.v1.BillingService/GetUpcomingInvoice"
 	BillingService_GetInvoicePdfUrl_FullMethodName     = "/payrudder.billing.v1.BillingService/GetInvoicePdfUrl"
 	BillingService_GetRevenueReport_FullMethodName     = "/payrudder.billing.v1.BillingService/GetRevenueReport"
 	BillingService_GetDunningReport_FullMethodName     = "/payrudder.billing.v1.BillingService/GetDunningReport"
@@ -74,6 +75,9 @@ const (
 type BillingServiceClient interface {
 	GetInvoice(ctx context.Context, in *GetInvoiceRequest, opts ...grpc.CallOption) (*GetInvoiceResponse, error)
 	ListInvoices(ctx context.Context, in *ListInvoicesRequest, opts ...grpc.CallOption) (*ListInvoicesResponse, error)
+	// GetUpcomingInvoice prices what the customer's next invoice would be if it were drafted now: the usage and late usage so far, the fixed fee, tax and the credit balance,
+	// with the code that drafts the real invoice. It writes nothing, and it is an estimate until the period closes.
+	GetUpcomingInvoice(ctx context.Context, in *GetUpcomingInvoiceRequest, opts ...grpc.CallOption) (*GetUpcomingInvoiceResponse, error)
 	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
 	GetInvoicePdfUrl(ctx context.Context, in *GetInvoicePdfUrlRequest, opts ...grpc.CallOption) (*GetInvoicePdfUrlResponse, error)
 	// GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
@@ -185,6 +189,16 @@ func (c *billingServiceClient) ListInvoices(ctx context.Context, in *ListInvoice
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListInvoicesResponse)
 	err := c.cc.Invoke(ctx, BillingService_ListInvoices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetUpcomingInvoice(ctx context.Context, in *GetUpcomingInvoiceRequest, opts ...grpc.CallOption) (*GetUpcomingInvoiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUpcomingInvoiceResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetUpcomingInvoice_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -629,6 +643,9 @@ func (c *billingServiceClient) SetCreditSettings(ctx context.Context, in *SetCre
 type BillingServiceServer interface {
 	GetInvoice(context.Context, *GetInvoiceRequest) (*GetInvoiceResponse, error)
 	ListInvoices(context.Context, *ListInvoicesRequest) (*ListInvoicesResponse, error)
+	// GetUpcomingInvoice prices what the customer's next invoice would be if it were drafted now: the usage and late usage so far, the fixed fee, tax and the credit balance,
+	// with the code that drafts the real invoice. It writes nothing, and it is an estimate until the period closes.
+	GetUpcomingInvoice(context.Context, *GetUpcomingInvoiceRequest) (*GetUpcomingInvoiceResponse, error)
 	// GetInvoicePdfUrl returns a presigned link to the invoice PDF (valid for 5 minutes).
 	GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error)
 	// GetRevenueReport sums the tenant's invoices by period, payment provider, customer country and currency. Currencies are never added together.
@@ -731,6 +748,9 @@ func (UnimplementedBillingServiceServer) GetInvoice(context.Context, *GetInvoice
 }
 func (UnimplementedBillingServiceServer) ListInvoices(context.Context, *ListInvoicesRequest) (*ListInvoicesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListInvoices not implemented")
+}
+func (UnimplementedBillingServiceServer) GetUpcomingInvoice(context.Context, *GetUpcomingInvoiceRequest) (*GetUpcomingInvoiceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUpcomingInvoice not implemented")
 }
 func (UnimplementedBillingServiceServer) GetInvoicePdfUrl(context.Context, *GetInvoicePdfUrlRequest) (*GetInvoicePdfUrlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInvoicePdfUrl not implemented")
@@ -914,6 +934,24 @@ func _BillingService_ListInvoices_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BillingServiceServer).ListInvoices(ctx, req.(*ListInvoicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetUpcomingInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUpcomingInvoiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetUpcomingInvoice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetUpcomingInvoice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetUpcomingInvoice(ctx, req.(*GetUpcomingInvoiceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1706,6 +1744,10 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListInvoices",
 			Handler:    _BillingService_ListInvoices_Handler,
+		},
+		{
+			MethodName: "GetUpcomingInvoice",
+			Handler:    _BillingService_GetUpcomingInvoice_Handler,
 		},
 		{
 			MethodName: "GetInvoicePdfUrl",

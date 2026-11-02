@@ -464,6 +464,45 @@ func (q *Queries) ListUnappliedCredits(ctx context.Context, arg ListUnappliedCre
 	return items, nil
 }
 
+const listUnappliedCreditsRead = `-- name: ListUnappliedCreditsRead :many
+SELECT c.id, (c.amount_minor - COALESCE((SELECT sum(a.amount_minor) FROM credit_applications a WHERE a.tenant_id = c.tenant_id AND a.credit_id = c.id), 0))::bigint AS remaining
+FROM credit_balances c
+WHERE c.tenant_id = $1 AND c.customer_id = $2 AND c.applied_invoice_id IS NULL AND (c.currency = $3::text OR c.currency IS NULL)
+ORDER BY c.created_at, c.id
+`
+
+type ListUnappliedCreditsReadParams struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+	Currency   string
+}
+
+type ListUnappliedCreditsReadRow struct {
+	ID        uuid.UUID
+	Remaining int64
+}
+
+// ListUnappliedCredits without the row locks: what the upcoming-invoice preview reads, in the order the real invoice would use the lots.
+func (q *Queries) ListUnappliedCreditsRead(ctx context.Context, arg ListUnappliedCreditsReadParams) ([]ListUnappliedCreditsReadRow, error) {
+	rows, err := q.db.Query(ctx, listUnappliedCreditsRead, arg.TenantID, arg.CustomerID, arg.Currency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnappliedCreditsReadRow{}
+	for rows.Next() {
+		var i ListUnappliedCreditsReadRow
+		if err := rows.Scan(&i.ID, &i.Remaining); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockCreditNoteByRefundCommand = `-- name: LockCreditNoteByRefundCommand :one
 SELECT id, customer_id, invoice_id, number, currency, total_minor, COALESCE(reason, '')::text AS reason, created_at FROM credit_notes
 WHERE tenant_id = $1 AND refund_command_id = $2::uuid AND refund_state = 'requested'

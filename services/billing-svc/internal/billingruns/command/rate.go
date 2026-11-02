@@ -77,11 +77,17 @@ func (m *Manager) rate(ctx context.Context, run *model.Run) error {
 
 // loadRateRun reads the tenant, the period's bounds and the meters.
 func (m *Manager) loadRateRun(ctx context.Context, run *model.Run) (*rateRun, error) {
-	rr := &rateRun{run: run, tctx: inputs.TenantCtx(ctx, run.TenantID), plans: map[string]rating.PlanVersion{}}
-	var err error
-	if rr.tenant, err = m.in.Tenant(ctx, run.TenantID); err != nil {
+	t, err := m.in.Tenant(ctx, run.TenantID)
+	if err != nil {
 		return nil, err
 	}
+	return m.rateRunOf(ctx, run, t)
+}
+
+// rateRunOf is loadRateRun for a tenant that was read already (the preview of an upcoming invoice needs its time zone to find the period).
+func (m *Manager) rateRunOf(ctx context.Context, run *model.Run, t *plansv1.Tenant) (*rateRun, error) {
+	rr := &rateRun{run: run, tctx: inputs.TenantCtx(ctx, run.TenantID), plans: map[string]rating.PlanVersion{}, tenant: t}
+	var err error
 	if _, ok := money.LookupCurrency(rr.tenant.GetCurrency()); !ok {
 		return nil, inputs.Permanent(fmt.Errorf("tenant currency %q is not supported", rr.tenant.GetCurrency()))
 	}
