@@ -5,7 +5,7 @@ global:
   imageRegistry: ""        # e.g. "registry.example.com/" (trailing slash). Empty: images are loaded into the cluster (kind load).
   imageTag: dev
   imagePullPolicy: IfNotPresent
-  environment: kind        # PAYRUDDER_ENV: local | ci | kind
+  environment: kind        # PAYRUDDER_ENV: local | ci | kind (development: a secret may be left at the public local value) | production (a real cluster: values-small.yaml; every secret is yours)
   allowedEnvironments: sandbox,live   # PAYRUDDER_ALLOWED_ENVIRONMENTS of plans-svc and the gateway
   saas: "off"                         # PAYRUDDER_SAAS of plans-svc and the gateway: "on" sells Payrudder's own plans (ADR 0024); self-hosters leave it off
   publicURL: ""             # where customers reach the gateway (https://api.example.com); the hosted invoice links start with it. Empty: relative links
@@ -71,7 +71,7 @@ auth:
   operatorEmails: ""               # comma separated: people who sign in with one of these (verified) addresses are platform operators
   trustedProxies: ""               # comma separated CIDRs of a proxy with a fixed address whose X-Forwarded-For is believed (PAYRUDDER_TRUSTED_PROXIES); empty: none
   trustedProxySecret: ""           # >= 32 characters; the console Worker's EDGE_AUTH_SECRET. Set: its X-Forwarded-For is believed (PAYRUDDER_TRUSTED_PROXY_SECRET); empty: off
-  otpPepper: local-otp-pepper-change-me-0123456789   # keys the hash of one-time codes (a secret: set your own, or use secrets.existingSecrets)
+  otpPepper: ""                    # keys the hash of one-time sign-in codes and recovery codes (`openssl rand -hex 32`). Empty: a development environment (global.environment local, ci, kind) gets a public local value; any other must set it, and plans-svc refuses to start without it
   google:
     clientId: ""                   # both set: the "Continue with Google" button appears (docs/13-admin-ui.md says how to create the client)
     clientSecret: ""
@@ -242,6 +242,7 @@ services:
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_PUBLIC_URL: "{{ .Values.global.publicURL }}"   # the link in the mail that asks a customer to confirm a payment (3-D Secure)
       PAYRUDDER_SCHEDULER_INTERVAL: 1m
       PAYRUDDER_SWEEP_INTERVAL: 30s
       PAYRUDDER_STEP_TIMEOUT: 2m

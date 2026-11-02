@@ -124,7 +124,8 @@
       "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst",
       "settlement_missing": "Bezahlt, nicht in der Abrechnung des Anbieters",
       "settlement_mismatch": "Abgerechneter Betrag weicht ab",
-      "fee_mismatch": "Anbietergebühr weicht ab"
+      "fee_mismatch": "Anbietergebühr weicht ab",
+      "payment_disputed": "Zahlung bestritten, offen"
     },
     "ledgerKind": {
       "charge": "Abbuchung",
@@ -147,7 +148,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "abgelehnt, Wiederholung läuft",
       "PAYMENT_UNKNOWN": "Ergebnis unbekannt",
-      "UNCOLLECTIBLE": "aufgegeben"
+      "UNCOLLECTIBLE": "aufgegeben",
+      "PAYMENT_ACTION_REQUIRED": "wartet auf die Bestätigung des Kunden",
+      "PAYMENT_HELD": "erste Abbuchung gehalten"
     },
     "sagaState": {
       "PAYMENT_PENDING": "wartet auf Überweisung",
@@ -168,7 +171,9 @@
       "REFUND_FAILED": "Erstattung fehlgeschlagen",
       "REFUNDED": "erstattet",
       "VOIDED": "storniert",
-      "AWAITING_PAYMENT": "wartet auf Zahlung"
+      "AWAITING_PAYMENT": "wartet auf Zahlung",
+      "PAYMENT_ACTION_REQUIRED": "wartet auf die Bestätigung des Kunden",
+      "PAYMENT_HELD": "erste Abbuchung gehalten"
     },
     "paymentMethod": {
       "bank_transfer": "Banküberweisung",
@@ -215,6 +220,16 @@
       "not_reported": "Bezahlt, nicht gemeldet",
       "pending_payout": "Gemeldet, Auszahlung offen",
       "settled": "Abgerechnet"
+    },
+    "disputeReason": {
+      "fraudulent": "Betrug behauptet",
+      "general": "Allgemein",
+      "product_not_received": "Produkt nicht erhalten",
+      "product_unacceptable": "Produkt mangelhaft",
+      "subscription_canceled": "Abonnement gekündigt",
+      "duplicate": "Doppelte Zahlung",
+      "unrecognized": "Nicht erkannt",
+      "credit_not_processed": "Gutschrift nicht verbucht"
     }
   },
   "tenants": {
@@ -692,7 +707,20 @@
         "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern.",
         "creditSurplus": "{amount} würde dem Guthaben des Kunden gutgeschrieben: die Positionen ergeben weniger als null."
       },
-      "taxNotSaved": "Der Kunde wurde angelegt, aber seine Steuerdaten wurden nicht gespeichert. Schließen Sie dieses Fenster, öffnen Sie den Kunden und versuchen Sie es mit Bearbeiten, Steuerdaten erneut."
+      "taxNotSaved": "Der Kunde wurde angelegt, aber seine Steuerdaten wurden nicht gespeichert. Schließen Sie dieses Fenster, öffnen Sie den Kunden und versuchen Sie es mit Bearbeiten, Steuerdaten erneut.",
+      "cards": {
+        "title": "Gespeicherte Karten",
+        "card": "Karte",
+        "none": "Der Zahlungsanbieter hat keine Karte für diesen Kunden.",
+        "inUse": "Für Rechnungen belastet",
+        "delete": "Karte löschen",
+        "deleteAria": "Die Karte mit den Endziffern {last4} löschen",
+        "deleteTitle": "Karte mit den Endziffern {last4} löschen?",
+        "deleteBody": "Die Karte wird beim Zahlungsanbieter gelöscht und kann nicht mehr belastet werden. Das lässt sich nicht rückgängig machen: der Kunde müsste sie dort, wo Karten gespeichert werden, neu eingeben.",
+        "deleteInUse": "Das ist die Karte, mit der die Rechnungen des Kunden belastet werden. Nach dem Löschen schlägt die nächste Abbuchung fehl, bis für den Kunden eine neue Zahlungsmethode gesetzt ist. Die Karte wird beim Zahlungsanbieter gelöscht, das lässt sich nicht rückgängig machen.",
+        "deletedInUse": "Die Karte wurde gelöscht. Es war die Karte, mit der die Rechnungen des Kunden belastet werden: Setzen Sie eine neue Zahlungsmethode für den Kunden.",
+        "hint": "Payrudder speichert keine Kartennummern: eine Karte wird dort gespeichert, wo der Zahler sie eingibt, und die Zahlungsmethode des Kunden benennt sie. Hier sehen Sie die Karten und können eine löschen."
+      }
     },
     "packages": {
       "new": "Neues Paket",
@@ -1170,16 +1198,18 @@
         "badRate": "Kein Prozentsatz: 0 bis 100 mit höchstens zwei Dezimalstellen."
       },
       "dunning": {
-        "title": "Zahlungswiederholungen",
+        "title": "Zahlungsversuche und Rückbuchungen",
         "hint": "Wird eine Abbuchung abgelehnt, versucht Payrudder es nach jeder Wartezeit erneut und stuft die Rechnung danach als uneinbringlich ein. Die Zeiten sind in Stunden (in einem Sandbox-Konto in Minuten).",
         "defaults": "Nichts eingestellt: Es werden die Standardzeiten angezeigt.",
         "retry": "Versuch {n}",
         "delay": "Stunden vor Versuch {n}",
         "add": "Versuch hinzufügen",
-        "save": "Versuche speichern",
-        "saved": "Versuche gespeichert.",
+        "save": "Einstellungen speichern",
+        "saved": "Einstellungen gespeichert.",
         "none": "Keine Wiederholungen: Eine abgelehnte Abbuchung wird sofort aufgegeben.",
-        "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720."
+        "bad": "Jede Wartezeit ist eine ganze Zahl von 1 bis 720.",
+        "blockOnChargeback": "Kunden sperren, wenn eine Rückbuchung eröffnet wird",
+        "blockOnChargebackHint": "Sperrt ihn mit der Kategorie Rückbuchung: keine neuen Käufe, und eine offene Rechnung kann nicht mehr bezahlt werden. Die Sperre endet nie von selbst; Sie heben sie beim Kunden auf. Eine Anfrage sperrt nicht."
       },
       "promotions": {
         "title": "Aktionen",
@@ -3212,7 +3242,8 @@
         "not_live": "Nur Live-Rechnungen werden über einen Anbieter bezahlt.",
         "payment_in_progress": "Für diese Rechnung wird gerade eine Zahlung gestartet. Versuchen Sie es gleich erneut.",
         "return_url_required": "Für eine Checkout-Zahlung ist eine Rücksprungadresse erforderlich.",
-        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt."
+        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt.",
+        "installment_unavailable": "Diese Ratenzahl wird für diese Karte und diesen Betrag nicht angeboten. Zahlen Sie einmal oder wählen Sie eine der Optionen auf der Seite."
       },
       "ledger": {
         "bad_limit": "Das Limit muss zwischen 1 und 1000 liegen.",
@@ -3280,6 +3311,9 @@
       "failover": {
         "bad_target": "Ein Failover braucht zwei verschiedene Konten, die es in der Umgebung gibt; eine Banküberweisung kann nicht daran teilnehmen.",
         "not_found": "Für dieses Konto ist kein Failover eingerichtet."
+      },
+      "card": {
+        "not_found": "Der Kunde hat keine solche gespeicherte Karte."
       }
     },
     "einvoice": {
@@ -3698,6 +3732,16 @@
       },
       "canned_reply": {
         "not_found": "Diese Textvorlage gibt es nicht mehr."
+      },
+      "attachment": {
+        "account_full": "Ihre Organisation hat das Limit von 50 MB an Support-Dateien erreicht.",
+        "bad_type": "Es können nur PNG-, JPEG-, PDF- und reine Textdateien angehängt werden.",
+        "no_app": "Dateien werden bei einer App gespeichert: Legen Sie zuerst eine App an und hängen Sie die Datei dann an.",
+        "not_found": "Diese Datei gibt es nicht.",
+        "rejected": "Die Datei kann nicht angehängt werden.",
+        "storage_full": "Der Speicher für Support-Dateien ist voll. Geben Sie Platz in den Dateien Ihrer App frei oder schreiben Sie uns ohne die Datei.",
+        "too_large": "Eine Datei darf höchstens 5 MB groß sein.",
+        "too_many": "Ein Ticket kann höchstens 10 Dateien enthalten."
       }
     },
     "audit": {
@@ -4231,7 +4275,8 @@
           "buyer_country": "Land des Käufers",
           "buyer_zip_code": "Postleitzahl des Käufers",
           "buyer_ip": "Öffentliche IP-Adresse Ihres Unternehmens",
-          "buyer_gsm_number": "Telefonnummer des Käufers"
+          "buyer_gsm_number": "Telefonnummer des Käufers",
+          "enabled_installments": "Raten, die der Zahler wählen darf"
         },
         "problems": {
           "required": "Pflichtfeld.",
@@ -4406,7 +4451,8 @@
           "api_key": "Im iyzico-Händlerpanel unter Einstellungen, Firmeneinstellungen, API-Schlüssel. Verwenden Sie das Live-Paar.",
           "secret_key": "Steht am selben Ort neben dem API-Schlüssel. Er wird dort nur einmal angezeigt; kopieren Sie ihn jetzt.",
           "buyer_identity_number": "Die Steuernummer (TCKN oder VKN) der Person oder Firma, die bei Zahlungen als Käufer erscheint. Ihr Rechnungsprofil füllt sie aus.",
-          "buyer_ip": "Die feste öffentliche IP-Adresse, von der Ihr Unternehmen Anfragen sendet; iyzico bindet die Schlüssel daran."
+          "buyer_ip": "Die feste öffentliche IP-Adresse, von der Ihr Unternehmen Anfragen sendet; iyzico bindet die Schlüssel daran.",
+          "enabled_installments": "Zahlen aus 1, 2, 3, 6, 9 und 12, durch Kommas getrennt, zum Beispiel 1, 3, 6. Sie werden im Zahlungsformular von iyzico und, für eine gespeicherte Karte, auf der Rechnungsseite angeboten; die Zinsen sind die in Ihrem iyzico-Panel eingestellten, der Zahler kann also mehr als die Rechnung zahlen und die Rechnung gilt trotzdem als voll bezahlt. Leer lassen für Einmalzahlungen. Beim Austausch der Schlüssel erneut eintragen."
         },
         "paddle": {
           "api_key": "In Paddle unter Developer tools, Authentication einen Live-API-Schlüssel erstellen.",
@@ -5557,6 +5603,14 @@
     "badge": {
       "unread": "Tickets mit Neuigkeiten: {n}",
       "waiting": "Warten auf uns: {n}"
+    },
+    "attach": {
+      "add": "Dateien anhängen",
+      "hint": "PNG, JPEG, PDF oder Text; je höchstens 5 MB, 10 pro Ticket.",
+      "remove": "{name} entfernen",
+      "failed": "Diese Dateien wurden nicht angehängt:",
+      "openedButFailed": "Ihr Ticket wurde eröffnet, aber einige Dateien wurden nicht angehängt. Sie können sie an eine Antwort anhängen.",
+      "download": "{name} herunterladen"
     }
   },
   "connect": {
@@ -6121,5 +6175,43 @@
         "reset_by_operator": "Zwei-Faktor-Anmeldung vom Support zurückgesetzt"
       }
     }
+  },
+  "disputes": {
+    "tab": "Streitfälle",
+    "tabsLabel": "Zahlungen und Streitfälle",
+    "tabs": {
+      "payments": "Zahlungen",
+      "disputes": "Streitfälle"
+    },
+    "title": "Streitfälle",
+    "hint": "Fälle, die der Kunde bei seiner Bank zu dieser Zahlung eröffnet hat. Beantworten Sie sie bei Ihrem Zahlungsanbieter; Payrudder zeigt, wo jeder steht.",
+    "empty": "Keine Streitfälle. Ein Fall erscheint hier, sobald ein Kunde eine Zahlung bei seiner Bank infrage stellt.",
+    "outcomeLabel": "Ergebnis",
+    "allOutcomes": "Alle Ergebnisse",
+    "kindLabel": "Art",
+    "allKinds": "Alle Arten",
+    "outcome": {
+      "open": "Offen",
+      "won": "Gewonnen",
+      "lost": "Verloren"
+    },
+    "kind": {
+      "chargeback": "Rückbuchung",
+      "inquiry": "Anfrage"
+    },
+    "means": {
+      "openChargeback": "Die Bank des Kunden hat diese Zahlung zurückgebucht: Der Anbieter hat das Geld zurückgeholt, bis er entscheidet. Senden Sie Ihre Nachweise bis zum unten genannten Datum.",
+      "openInquiry": "Die Bank des Kunden fragt zu dieser Zahlung nach. Es wurde kein Geld zurückgeholt; beantworten Sie die Anfrage des Anbieters, damit daraus keine Rückbuchung wird.",
+      "wonChargeback": "Zu Ihren Gunsten entschieden: Das Geld ist wieder bei Ihnen.",
+      "wonInquiry": "Geschlossen, ohne zur Rückbuchung zu werden: Es ging nichts verloren.",
+      "lost": "Der Karteninhaber hat gewonnen: Das Geld bleibt bei ihm."
+    },
+    "provider": "Anbieter",
+    "reason": "Grund",
+    "evidenceDue": "Nachweise fällig",
+    "opened": "Eröffnet",
+    "closed": "Geschlossen",
+    "reference": "Fall",
+    "case": "Fall"
   }
 }

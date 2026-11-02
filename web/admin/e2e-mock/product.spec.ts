@@ -774,7 +774,8 @@ test.describe("billing pages of the app", () => {
     await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "New coupon" })).toBeDisabled();
     await page.getByTestId("sidebar").getByRole("link", { name: "Tax and retries" }).click();
-    await expect(page.getByRole("button", { name: "Save retries" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Save settings" })).toBeDisabled();
+    await expect(page.getByTestId("block-on-chargeback")).toBeDisabled();
     await page.goto(`/app/t/${LIVE}/invoices`);
     await expect(page.getByTestId("invoice-INV-2026-000003")).toBeVisible();
     expect(gw.calls.filter((c) => c.method !== "GET" && c.path.startsWith("/v1/"))).toEqual([]);

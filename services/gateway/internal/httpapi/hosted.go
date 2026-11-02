@@ -49,7 +49,7 @@ func clientIP(r *http.Request) string {
 }
 
 func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.limits.pages.allow(s.clientAddr(r), s.now()) {
+	if s.limits.pages.allow(s.limitAddr(r), s.now()) {
 		return true
 	}
 	rejectRateLimited(w)
@@ -58,7 +58,7 @@ func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
 
 // hostedPayAllowed is hostedAllowed for the POSTs that start a payment: they also count against the stricter limit.
 func (s *Server) hostedPayAllowed(w http.ResponseWriter, r *http.Request) bool {
-	addr, now := s.clientAddr(r), s.now()
+	addr, now := s.limitAddr(r), s.now()
 	if s.limits.pages.allow(addr, now) && s.limits.pays.allowN(addr, now, hostedPaysPerMinute) {
 		return true
 	}
@@ -138,7 +138,7 @@ func hostedDir(lang string) string {
 }
 
 // textSources are the maps of text the public pages merge, English first.
-var textSources = []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings, subscriptionStrings, withdrawStrings, declineStrings}
+var textSources = []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings, subscriptionStrings, withdrawStrings, declineStrings, installmentStrings}
 
 // hostedTexts is the text of the public pages per language: English first, then the language's own over it, so a text a translation lacks reads in English.
 var hostedTexts = func() map[string]map[string]string {

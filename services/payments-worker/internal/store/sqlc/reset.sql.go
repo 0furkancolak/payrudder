@@ -80,6 +80,18 @@ func (q *Queries) ResetPaymentAttempts(ctx context.Context, tenantID uuid.UUID) 
 	return result.RowsAffected(), nil
 }
 
+const resetPaymentDisputes = `-- name: ResetPaymentDisputes :execrows
+DELETE FROM payment_disputes WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetPaymentDisputes(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetPaymentDisputes, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetPaymentLedger = `-- name: ResetPaymentLedger :execrows
 DELETE FROM payment_ledger WHERE tenant_id = $1
 `

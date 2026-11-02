@@ -32,6 +32,7 @@ export const EVENT_TYPES = [
   "payment_link.created",
   "payment_link.paid",
   "payment_link.expired",
+  "payment.disputed",
   "credits.purchased",
   "credits.low",
   "customer.blocked",

@@ -138,7 +138,7 @@ func (q *Queries) InsertSessionAsset(ctx context.Context, arg InsertSessionAsset
 
 const listReadyAssets = `-- name: ListReadyAssets :many
 SELECT tenant_id, id, session_id, purpose, filename, content_type, declared_size, size_bytes, sha256, object_key, s3_upload_id, part_size, part_count, status, reject_reason, verified_at, created_at, completed_at FROM assets
-WHERE status = 'READY' AND ($1::text = '' OR purpose = $1) AND id > $2
+WHERE status = 'READY' AND (($1::text = '' AND purpose <> 'support_attachment') OR purpose = $1) AND id > $2
 ORDER BY id
 LIMIT $3
 `
@@ -149,6 +149,7 @@ type ListReadyAssetsParams struct {
 	PageSize int32
 }
 
+// Support attachments belong to the help desk: they are listed only when asked for by name, never among "all purposes".
 func (q *Queries) ListReadyAssets(ctx context.Context, arg ListReadyAssetsParams) ([]Asset, error) {
 	rows, err := q.db.Query(ctx, listReadyAssets, arg.Purpose, arg.After, arg.PageSize)
 	if err != nil {

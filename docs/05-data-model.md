@@ -551,7 +551,8 @@ CREATE TABLE invoice_sagas (
   UNIQUE (tenant_id, invoice_id)
 );
 CREATE INDEX saga_deadlines ON invoice_sagas (step_deadline) WHERE state LIKE '%\_REQUESTED';
-CREATE INDEX saga_dunning   ON invoice_sagas (next_attempt_at) WHERE state = 'PAYMENT_DECLINED';
+CREATE INDEX saga_dunning   ON invoice_sagas (next_attempt_at) WHERE state IN ('PAYMENT_DECLINED','PAYMENT_HELD');  -- 00011 widened it; saga_polls (00010) covers PAYMENT_PENDING and PAYMENT_ACTION_REQUIRED
+-- dunning_settings.block_on_chargeback boolean NOT NULL DEFAULT false (migration 00012): a formal dispute of a customer's payment blocks the customer (category chargeback).
 
 CREATE TABLE saga_events (                              -- append-only audit log
   tenant_id uuid NOT NULL, saga_id uuid NOT NULL, seq int NOT NULL,
@@ -668,6 +669,20 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 -- (statement trigger ledger_no_truncate, hint ledger_table_truncate, migration 00009, tenant 00010), whoever asks.
 -- payments_app holds no privilege on any table of payments_db (migration 00007, tenant 00008): payments-worker connects as payments_system only, and these tables have no
 -- row-level security, so a SELECT of the app role would read every tenant's rows. The role exists because the init scripts make one per service; the integration test lists the tables it can read: none.
+
+-- Disputes (migration 00011 / tenant 00012; docs/reconciliation.md): one row per case a customer opened with their bank, kept as it stands; the ledger holds each step as a row of kind 'dispute'.
+-- No row-level security. payments_system may insert, update and (the sandbox reset) delete.
+CREATE TABLE payment_disputes (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL CHECK (environment IN ('sandbox','live')), provider text NOT NULL,
+  dispute_ref text NOT NULL,            -- the provider's reference of the case (Stripe du_..., Paddle cb_/cbw_ and the transaction)
+  payment_ref text NOT NULL,            -- the payment disputed, as the ledger holds it (a PaymentIntent id, a transaction id)
+  invoice_id uuid,                      -- that payment's invoice; empty for a payment Payrudder did not make
+  amount_minor bigint NOT NULL CHECK (amount_minor >= 0), currency char(3) NOT NULL,
+  outcome text NOT NULL CHECK (outcome IN ('open','won','lost')), formal boolean NOT NULL,  -- formal: a chargeback proper; false: an inquiry or a warning
+  provider_status text NOT NULL DEFAULT '', reason text NOT NULL DEFAULT '', evidence_due_at timestamptz, opened_at timestamptz NOT NULL, closed_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, provider, dispute_ref)  -- an ended case is not reopened by a late notification; lost can still turn won
+);
+-- payment_attempts.provider_ref (migration 00010 / tenant 00011): the provider's own reference (a PaymentIntent id) of the first response of a charge; NULL until one has it.
 
 -- Reconciliation as a workflow (plan 22 G7, migration 00003 / tenant 00004; docs/reconciliation.md). No row-level security (payments_db has none).
 CREATE TABLE reconciliation_discrepancies (  -- one per thing that does not agree, per tenant and period; fingerprint = hash(kind, invoice, provider, provider_ref)

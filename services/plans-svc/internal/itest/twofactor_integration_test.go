@@ -14,6 +14,7 @@ import (
 	auditv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/audit/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/totp"
 )
 
@@ -203,6 +204,71 @@ func testTwoFactor(t *testing.T) {
 			if strings.Contains(ev.GetDetailJson()+ev.GetSummary(), recovery[0]) || ev.GetTenantId() != "" {
 				t.Errorf("entry %v holds the code or a tenant", ev)
 			}
+		}
+	})
+
+	// Security review: recovery codes are hashed with a key derived from the pepper for them alone (hash_version 2). A row made before that (version 1, HMAC keyed
+	// with the pepper itself) must keep working until its code is used or replaced, and a row opens only with the derivation its own version names.
+	t.Run("recovery codes are hashed under their own key; rows of the old version still open and nothing crosses versions", func(t *testing.T) {
+		kim := e.verified(t, "kim@twofactor.example", "Kim Co")
+		secret, codes10 := e.enableTwoFactor(t, kim)
+		norm := func(code string) string {
+			n, ok := totp.NormalizeRecovery(code)
+			if !ok {
+				t.Fatalf("recovery code %q", code)
+			}
+			return n
+		}
+		var versions, wrong int
+		if err := e.system.QueryRow(ctx, `SELECT count(*) FILTER (WHERE hash_version = 2), count(*) FILTER (WHERE hash_version <> 2) FROM user_recovery_codes WHERE user_id = $1::uuid`, kim.id).Scan(&versions, &wrong); err != nil || versions != totp.RecoveryCodes || wrong != 0 {
+			t.Fatalf("new codes by version: %d of version 2, %d of another: %v", versions, wrong, err)
+		}
+		for _, c := range codes10 {
+			var v2, v1 int
+			if err := e.system.QueryRow(ctx, `SELECT count(*) FILTER (WHERE code_hash = $2), count(*) FILTER (WHERE code_hash = $3) FROM user_recovery_codes WHERE user_id = $1::uuid`, kim.id,
+				credential.HashRecovery([]byte(testPepper), kim.id, norm(c)), credential.HashRecoveryV1([]byte(testPepper), kim.id, norm(c))).Scan(&v2, &v1); err != nil || v2 != 1 || v1 != 0 {
+				t.Fatalf("a new code is stored with the version 2 hash: %d, and with the old one: %d (%v)", v2, v1, err)
+			}
+		}
+		useCode := func(code string) error {
+			t.Helper()
+			if _, err := e.system.Exec(ctx, `UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1::uuid`, kim.id); err != nil {
+				t.Fatal(err)
+			}
+			r := e.firstStep(t, kim.email)
+			_, err := e.ident.VerifyTwoFactor(ctx, &plansv1.VerifyTwoFactorRequest{Challenge: r.GetChallenge(), Code: code})
+			return err
+		}
+		// A row from before the change: the old hash, version 1.
+		if _, err := e.system.Exec(ctx, `UPDATE user_recovery_codes SET code_hash = $3, hash_version = 1 WHERE user_id = $1::uuid AND code_hash = $2`, kim.id,
+			credential.HashRecovery([]byte(testPepper), kim.id, norm(codes10[0])), credential.HashRecoveryV1([]byte(testPepper), kim.id, norm(codes10[0]))); err != nil {
+			t.Fatal(err)
+		}
+		if err := useCode(codes10[0]); err != nil {
+			t.Fatalf("a recovery code of the old version: %v", err)
+		}
+		wantCode(t, "that code again", useCode(codes10[0]), codes.Unauthenticated, "identity.two_factor.invalid")
+		// A row that says version 1 but holds the version 2 hash (and the reverse) opens with nothing: each version has its own derivation.
+		if _, err := e.system.Exec(ctx, `UPDATE user_recovery_codes SET hash_version = 1 WHERE user_id = $1::uuid AND code_hash = $2`, kim.id, credential.HashRecovery([]byte(testPepper), kim.id, norm(codes10[1]))); err != nil {
+			t.Fatal(err)
+		}
+		wantCode(t, "a version 2 hash in a version 1 row", useCode(codes10[1]), codes.Unauthenticated, "identity.two_factor.invalid")
+		if _, err := e.system.Exec(ctx, `UPDATE user_recovery_codes SET hash_version = 2, code_hash = $3 WHERE user_id = $1::uuid AND code_hash = $2`, kim.id, credential.HashRecovery([]byte(testPepper), kim.id, norm(codes10[1])),
+			credential.HashRecoveryV1([]byte(testPepper), kim.id, norm(codes10[1]))); err != nil {
+			t.Fatal(err)
+		}
+		wantCode(t, "a version 1 hash in a version 2 row", useCode(codes10[1]), codes.Unauthenticated, "identity.two_factor.invalid")
+		// A version 2 code is still good, and a new set replaces every row with version 2.
+		if err := useCode(codes10[2]); err != nil {
+			t.Fatalf("a recovery code of the new version: %v", err)
+		}
+		e.fresh(t, kim.id)
+		fresh, err := e.ident.RegenerateRecoveryCodes(ctx, &plansv1.RegenerateRecoveryCodesRequest{UserId: kim.id, Code: codeNow(t, secret)})
+		if err != nil || len(fresh.GetRecoveryCodes()) != totp.RecoveryCodes {
+			t.Fatalf("new codes: %v %v", fresh, err)
+		}
+		if err := e.system.QueryRow(ctx, `SELECT count(*) FILTER (WHERE hash_version = 2), count(*) FILTER (WHERE hash_version <> 2) FROM user_recovery_codes WHERE user_id = $1::uuid`, kim.id).Scan(&versions, &wrong); err != nil || versions != totp.RecoveryCodes || wrong != 0 {
+			t.Fatalf("after new codes: %d of version 2, %d of another: %v", versions, wrong, err)
 		}
 	})
 

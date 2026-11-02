@@ -124,7 +124,8 @@
       "conflicting_outcomes": "Succès et échec enregistrés",
       "settlement_missing": "Payé, absent du règlement du fournisseur",
       "settlement_mismatch": "Le montant réglé diffère",
-      "fee_mismatch": "Les frais du fournisseur diffèrent"
+      "fee_mismatch": "Les frais du fournisseur diffèrent",
+      "payment_disputed": "Paiement contesté, non tranché"
     },
     "ledgerKind": {
       "charge": "débit",
@@ -147,7 +148,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "refusé, nouvelle tentative",
       "PAYMENT_UNKNOWN": "issue inconnue",
-      "UNCOLLECTIBLE": "abandonné"
+      "UNCOLLECTIBLE": "abandonné",
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client",
+      "PAYMENT_HELD": "premier prélèvement retenu"
     },
     "sagaState": {
       "PAYMENT_PENDING": "virement attendu",
@@ -168,7 +171,9 @@
       "REFUND_FAILED": "remboursement en échec",
       "REFUNDED": "remboursée",
       "VOIDED": "annulée",
-      "AWAITING_PAYMENT": "en attente de paiement"
+      "AWAITING_PAYMENT": "en attente de paiement",
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client",
+      "PAYMENT_HELD": "premier prélèvement retenu"
     },
     "paymentMethod": {
       "bank_transfer": "Virement bancaire",
@@ -215,6 +220,16 @@
       "not_reported": "Payé, non déclaré",
       "pending_payout": "Déclaré, virement en attente",
       "settled": "Réglé"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraude invoquée",
+      "general": "Général",
+      "product_not_received": "Produit non reçu",
+      "product_unacceptable": "Produit non conforme",
+      "subscription_canceled": "Abonnement résilié",
+      "duplicate": "Paiement en double",
+      "unrecognized": "Non reconnu",
+      "credit_not_processed": "Avoir non traité"
     }
   },
   "tenants": {
@@ -692,7 +707,20 @@
         "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
         "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
       },
-      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer."
+      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer.",
+      "cards": {
+        "title": "Cartes enregistrées",
+        "card": "Carte",
+        "none": "Le prestataire de paiement ne détient aucune carte pour ce client.",
+        "inUse": "Débitée pour les factures",
+        "delete": "Supprimer la carte",
+        "deleteAria": "Supprimer la carte finissant par {last4}",
+        "deleteTitle": "Supprimer la carte finissant par {last4} ?",
+        "deleteBody": "La carte est supprimée chez le prestataire de paiement et ne peut plus être débitée. C'est irréversible : le client devrait la saisir à nouveau là où les cartes sont enregistrées.",
+        "deleteInUse": "C'est la carte avec laquelle les factures du client sont débitées. Une fois supprimée, le prochain prélèvement échoue tant qu'un nouveau moyen de paiement n'est pas défini pour le client. Elle est supprimée chez le prestataire de paiement, c'est irréversible.",
+        "deletedInUse": "La carte a été supprimée. C'était celle des prélèvements des factures du client : définissez un nouveau moyen de paiement pour le client.",
+        "hint": "Payrudder ne conserve aucun numéro de carte : une carte est enregistrée là où le payeur la saisit, et le moyen de paiement du client la désigne. Ici, vous voyez les cartes et pouvez en supprimer une."
+      }
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -1170,16 +1198,18 @@
         "badRate": "Pas un pourcentage : de 0 à 100 avec au plus deux décimales."
       },
       "dunning": {
-        "title": "Nouvelles tentatives de paiement",
+        "title": "Nouvelles tentatives de paiement et rétrofacturations",
         "hint": "Quand un prélèvement est refusé, Payrudder réessaie après chaque délai ci-dessous, puis déclare la facture irrécouvrable. Les délais sont en heures (en minutes dans un compte sandbox).",
         "defaults": "Rien n'est défini : les délais standard sont affichés.",
         "retry": "Tentative {n}",
         "delay": "Heures avant la tentative {n}",
         "add": "Ajouter une tentative",
-        "save": "Enregistrer les tentatives",
-        "saved": "Tentatives enregistrées.",
+        "save": "Enregistrer les réglages",
+        "saved": "Réglages enregistrés.",
         "none": "Aucune nouvelle tentative : un prélèvement refusé est abandonné aussitôt.",
-        "bad": "Chaque délai est un entier de 1 à 720."
+        "bad": "Chaque délai est un entier de 1 à 720.",
+        "blockOnChargeback": "Bloquer le client à l'ouverture d'une rétrofacturation",
+        "blockOnChargebackHint": "Le bloque avec la catégorie rétrofacturation : plus d'achat, et une facture ouverte ne peut plus être payée. Le blocage ne se lève jamais seul ; vous le levez sur le client. Une demande d'information ne bloque pas."
       },
       "promotions": {
         "title": "Promotions",
@@ -3212,7 +3242,8 @@
         "not_live": "Seules les factures en production sont payées via un prestataire.",
         "payment_in_progress": "Un paiement pour cette facture est en cours de démarrage. Réessayez dans un instant.",
         "return_url_required": "Une adresse de retour est requise pour un paiement en ligne.",
-        "unknown_method": "Ce mode de paiement est inconnu."
+        "unknown_method": "Ce mode de paiement est inconnu.",
+        "installment_unavailable": "Ce nombre de fois n'est pas proposé pour cette carte et ce montant. Payez en une fois ou choisissez l'une des options de la page."
       },
       "ledger": {
         "bad_limit": "La limite doit être comprise entre 1 et 1000.",
@@ -3280,6 +3311,9 @@
       "failover": {
         "bad_target": "Un basculement demande deux comptes différents qui existent dans l'environnement ; un virement bancaire ne peut pas y participer.",
         "not_found": "Aucun basculement n'est défini pour ce compte."
+      },
+      "card": {
+        "not_found": "Le client n'a pas cette carte enregistrée."
       }
     },
     "einvoice": {
@@ -3698,6 +3732,16 @@
       },
       "canned_reply": {
         "not_found": "Cette réponse type n'existe plus."
+      },
+      "attachment": {
+        "account_full": "Votre organisation a atteint la limite de 50 Mo de fichiers de support.",
+        "bad_type": "Seuls les fichiers png, jpeg, pdf et texte brut peuvent être joints.",
+        "no_app": "Les fichiers sont stockés avec une application : créez-en une d'abord, puis joignez le fichier.",
+        "not_found": "Ce fichier n'existe pas.",
+        "rejected": "Le fichier ne peut pas être joint.",
+        "storage_full": "Le stockage des fichiers de support est plein. Libérez de l'espace dans les fichiers de votre application, ou écrivez-nous sans le fichier.",
+        "too_large": "Un fichier ne peut pas dépasser 5 Mo.",
+        "too_many": "Un ticket peut contenir au plus 10 fichiers."
       }
     },
     "audit": {
@@ -4231,7 +4275,8 @@
           "buyer_country": "Pays de l'acheteur",
           "buyer_zip_code": "Code postal de l'acheteur",
           "buyer_ip": "Adresse IP publique de votre entreprise",
-          "buyer_gsm_number": "Téléphone de l'acheteur"
+          "buyer_gsm_number": "Téléphone de l'acheteur",
+          "enabled_installments": "Versements que le payeur peut choisir"
         },
         "problems": {
           "required": "Obligatoire.",
@@ -4406,7 +4451,8 @@
           "api_key": "Dans le panneau marchand iyzico : Paramètres, Paramètres de l'entreprise, Clés API. Utilisez la paire live.",
           "secret_key": "Affichée à côté de la clé API au même endroit. Elle n'y est montrée qu'une fois ; copiez-la maintenant.",
           "buyer_identity_number": "Le numéro fiscal (TCKN ou VKN) de la personne ou de l'entreprise qui figure comme acheteur. Votre profil de facturation le remplit.",
-          "buyer_ip": "L'adresse IP publique fixe d'où votre entreprise envoie ses requêtes ; iyzico y lie les clés."
+          "buyer_ip": "L'adresse IP publique fixe d'où votre entreprise envoie ses requêtes ; iyzico y lie les clés.",
+          "enabled_installments": "Nombres parmi 1, 2, 3, 6, 9 et 12, séparés par des virgules, par exemple 1, 3, 6. Ils sont proposés sur le formulaire de paiement d'iyzico et, pour une carte enregistrée, sur la page de la facture ; les intérêts sont ceux réglés dans votre panneau iyzico, le payeur peut donc payer plus que la facture et la facture est tout de même payée en totalité. Laissez vide pour un paiement unique. Saisissez-le à nouveau quand vous remplacez les clés."
         },
         "paddle": {
           "api_key": "Dans Paddle, sous Developer tools, Authentication, créez une clé API live.",
@@ -5557,6 +5603,14 @@
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",
       "waiting": "En attente de nous : {n}"
+    },
+    "attach": {
+      "add": "Joindre des fichiers",
+      "hint": "png, jpeg, pdf ou texte ; 5 Mo au plus chacun, 10 par ticket.",
+      "remove": "Retirer {name}",
+      "failed": "Ces fichiers n'ont pas été joints :",
+      "openedButFailed": "Votre ticket a été ouvert, mais certains fichiers n'ont pas été joints. Vous pouvez les joindre à une réponse.",
+      "download": "Télécharger {name}"
     }
   },
   "connect": {
@@ -6121,5 +6175,43 @@
         "reset_by_operator": "Connexion en deux étapes réinitialisée par le support"
       }
     }
+  },
+  "disputes": {
+    "tab": "Litiges",
+    "tabsLabel": "Paiements et litiges",
+    "tabs": {
+      "payments": "Paiements",
+      "disputes": "Litiges"
+    },
+    "title": "Litiges",
+    "hint": "Dossiers ouverts par le client auprès de sa banque au sujet de ce paiement. Répondez-y chez votre prestataire de paiement ; Payrudder montre où en est chacun.",
+    "empty": "Aucun litige. Un dossier apparaît ici lorsqu'un client conteste un paiement auprès de sa banque.",
+    "outcomeLabel": "Issue",
+    "allOutcomes": "Toutes les issues",
+    "kindLabel": "Type",
+    "allKinds": "Tous les types",
+    "outcome": {
+      "open": "En cours",
+      "won": "Gagné",
+      "lost": "Perdu"
+    },
+    "kind": {
+      "chargeback": "Rétrofacturation",
+      "inquiry": "Demande d'information"
+    },
+    "means": {
+      "openChargeback": "La banque du client a annulé ce paiement : le prestataire a repris l'argent en attendant sa décision. Envoyez vos preuves avant la date ci-dessous.",
+      "openInquiry": "La banque du client s'interroge sur ce paiement. Aucun argent n'a été repris ; répondez à la demande du prestataire pour qu'elle ne devienne pas une rétrofacturation.",
+      "wonChargeback": "Décidé en votre faveur : l'argent vous est revenu.",
+      "wonInquiry": "Clos sans devenir une rétrofacturation : rien n'a été perdu.",
+      "lost": "Le titulaire de la carte a gagné : l'argent reste chez lui."
+    },
+    "provider": "Prestataire",
+    "reason": "Motif",
+    "evidenceDue": "Preuves à fournir avant le",
+    "opened": "Ouvert le",
+    "closed": "Clos le",
+    "reference": "Dossier",
+    "case": "Dossier"
   }
 }

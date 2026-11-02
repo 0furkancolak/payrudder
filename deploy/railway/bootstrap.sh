@@ -189,7 +189,7 @@ note "billing-svc"
 go_service billing-svc services/billing-svc 9100
 pg_vars billing-svc billing app system migrator
 vars billing-svc "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
-  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}"
+  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}" 'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}'
 
 note "assets-svc"
 go_service assets-svc services/assets-svc 9100

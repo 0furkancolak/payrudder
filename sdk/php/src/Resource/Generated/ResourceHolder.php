@@ -27,6 +27,7 @@ abstract class ResourceHolder
     public readonly CreditPacksResource $creditPacks;
     public readonly CreditsResource $credits;
     public readonly CustomersResource $customers;
+    public readonly DisputesResource $disputes;
     public readonly DunningSettingsResource $dunningSettings;
     public readonly EInvoicesResource $eInvoices;
     public readonly EventsResource $events;
@@ -70,6 +71,7 @@ abstract class ResourceHolder
         $this->creditPacks = new CreditPacksResource($requester);
         $this->credits = new CreditsResource($requester);
         $this->customers = new CustomersResource($requester);
+        $this->disputes = new DisputesResource($requester);
         $this->dunningSettings = new DunningSettingsResource($requester);
         $this->eInvoices = new EInvoicesResource($requester);
         $this->events = new EventsResource($requester);

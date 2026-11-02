@@ -532,3 +532,52 @@ func TestPortalAgreementsAreOptionalAndFailOpenForThePage(t *testing.T) {
 }
 
 func mustDay(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 0, 0, 0, 0, time.UTC) }
+
+// A checkout's server holds customers:write so that it can record an acceptance or a withdrawal. It must not be able to make a card refund of that: accepting a
+// withdrawal that refunds, and the refund route, are credit-note acts and need invoices:write like POST /v1/credit-notes does.
+func TestAKeyThatOnlyWritesCustomersCannotRefundAWithdrawal(t *testing.T) {
+	ts, _ := newTestServer(t)
+	c := lastContracts
+	resetCreditNotes()
+	c.decideInvoice = "inv-paid"
+
+	// Recording a withdrawal stays possible.
+	if r, m := do(t, ts, http.MethodPost, "/v1/customers/cus_1/contract-withdrawals", "checkout-key", `{"statement":"no thanks"}`); r.StatusCode != http.StatusCreated {
+		t.Fatalf("recording a withdrawal: %d %v", r.StatusCode, m)
+	}
+	for _, tc := range []struct{ name, method, path, body string }{
+		{"accepting with the setting full", http.MethodPut, "/v1/contract-withdrawals/wd-1/status", `{"status":"accepted"}`},
+		{"the refund route", http.MethodPost, "/v1/contract-withdrawals/wd-1/refund", `{}`},
+	} {
+		r, m := do(t, ts, tc.method, tc.path, "checkout-key", tc.body)
+		if r.StatusCode != http.StatusForbidden || errKeyOf(m) != "gateway.auth.permission_denied" {
+			t.Errorf("%s: %d %v, want 403 gateway.auth.permission_denied", tc.name, r.StatusCode, m)
+		}
+	}
+	cnMu.Lock()
+	n := len(cnCreated)
+	cnMu.Unlock()
+	if n != 0 || len(c.claims) != 0 || c.decided != nil {
+		t.Fatalf("a refused request still reached the services: %d credit notes, %d claims, decided %v", n, len(c.claims), c.decided)
+	}
+
+	// Rejecting never refunds, and accepting while the setting leaves the refund to the seller does not either: neither needs invoices:write, and neither refunds.
+	if r, _ := do(t, ts, http.MethodPut, "/v1/contract-withdrawals/wd-1/status", "checkout-key", `{"status":"rejected"}`); r.StatusCode != http.StatusOK {
+		t.Errorf("rejecting: %d", r.StatusCode)
+	}
+	c.settings = &plansv1.ContractSettings{RequiredKinds: []string{"tos"}, WithdrawalRefund: "none"}
+	if r, m := do(t, ts, http.MethodPut, "/v1/contract-withdrawals/wd-1/status", "checkout-key", `{"status":"accepted"}`); r.StatusCode != http.StatusOK || m["status"] != "accepted" {
+		t.Errorf("accepting with the setting none: %d %v", r.StatusCode, m)
+	}
+	cnMu.Lock()
+	n = len(cnCreated)
+	cnMu.Unlock()
+	if n != 0 {
+		t.Errorf("a key without invoices:write made %d credit notes", n)
+	}
+	// A key that also holds invoices:write (the billing role) still refunds, and so does an admin-like caller that carries no role (the console).
+	c.settings = nil
+	if r, m := do(t, ts, http.MethodPost, "/v1/contract-withdrawals/wd-1/refund", "billing-key", `{}`); r.StatusCode != http.StatusOK || m["refund_state"] != "requested" {
+		t.Errorf("billing key refund: %d %v", r.StatusCode, m)
+	}
+}

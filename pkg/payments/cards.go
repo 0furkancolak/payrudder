@@ -20,9 +20,19 @@ type StoredCard struct {
 // number, not by Payrudder: no adapter takes a card number.
 type CardStore interface {
 	Provider
+	// CardUserKey is the user key a customer's payment method names at this provider ("cardUserKey:cardToken" at iyzico), or false when the payment method is not one of
+	// its stored cards. The user key is read from the customer's record, never from a caller.
+	CardUserKey(paymentMethod string) (userKey string, ok bool)
 	// ListCards returns the cards the provider holds under the customer's user key.
 	ListCards(ctx context.Context, userKey string) ([]StoredCard, error)
 	DeleteCard(ctx context.Context, userKey, token string) error
+}
+
+// InstallmentOffer is a provider whose payer may split a payment with a stored card: it says which instalment options (more than one payment) the account offers for
+// this card and amount. An error, or no option, means the payer pays once.
+type InstallmentOffer interface {
+	Provider
+	StoredCardInstallments(ctx context.Context, paymentMethod string, amountMinor int64, currency string) ([]InstallmentOption, error)
 }
 
 // InstallmentOption is one way to split a payment.

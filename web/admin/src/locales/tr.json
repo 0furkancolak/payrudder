@@ -124,7 +124,8 @@
       "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı",
       "settlement_missing": "Ödendi, sağlayıcı mutabakatında yok",
       "settlement_mismatch": "Mutabık tutar farklı",
-      "fee_mismatch": "Sağlayıcı komisyonu farklı"
+      "fee_mismatch": "Sağlayıcı komisyonu farklı",
+      "payment_disputed": "Ödemeye itiraz, karara bağlanmadı"
     },
     "ledgerKind": {
       "charge": "tahsilat",
@@ -147,7 +148,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
-      "UNCOLLECTIBLE": "vazgeçildi"
+      "UNCOLLECTIBLE": "vazgeçildi",
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "sagaState": {
       "PAYMENT_PENDING": "havale bekleniyor",
@@ -168,7 +171,9 @@
       "REFUND_FAILED": "iade başarısız",
       "REFUNDED": "iade edildi",
       "VOIDED": "iptal edildi",
-      "AWAITING_PAYMENT": "ödeme bekleniyor"
+      "AWAITING_PAYMENT": "ödeme bekleniyor",
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "paymentMethod": {
       "bank_transfer": "Banka havalesi",
@@ -215,6 +220,16 @@
       "not_reported": "Ödendi, bildirilmedi",
       "pending_payout": "Bildirildi, ödeme bekliyor",
       "settled": "Mutabık"
+    },
+    "disputeReason": {
+      "fraudulent": "Sahtecilik iddiası",
+      "general": "Genel",
+      "product_not_received": "Ürün alınmadı",
+      "product_unacceptable": "Ürün kabul edilemez",
+      "subscription_canceled": "Abonelik iptal edildi",
+      "duplicate": "Mükerrer ödeme",
+      "unrecognized": "Tanınmayan işlem",
+      "credit_not_processed": "İade işlenmedi"
     }
   },
   "tenants": {
@@ -692,7 +707,20 @@
         "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir.",
         "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklenirdi: kalemlerin toplamı sıfırın altında."
       },
-      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin."
+      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin.",
+      "cards": {
+        "title": "Kayıtlı kartlar",
+        "card": "Kart",
+        "none": "Ödeme sağlayıcısında bu müşteri için kayıtlı kart yok.",
+        "inUse": "Faturalar bununla tahsil edilir",
+        "delete": "Kartı sil",
+        "deleteAria": "{last4} ile biten kartı sil",
+        "deleteTitle": "{last4} ile biten kart silinsin mi?",
+        "deleteBody": "Kart ödeme sağlayıcısında silinir ve artık tahsilat yapılamaz. Bu geri alınamaz: müşteri kartı, kartın kaydedildiği yerde yeniden girmek zorunda kalır.",
+        "deleteInUse": "Müşterinin faturalarının tahsil edildiği kart bu. Silindikten sonra müşteriye yeni bir ödeme yöntemi tanımlanana kadar sonraki tahsilat başarısız olur. Kart ödeme sağlayıcısında silinir ve bu geri alınamaz.",
+        "deletedInUse": "Kart silindi. Müşterinin faturalarının tahsil edildiği karttı: müşteriye yeni bir ödeme yöntemi tanımlayın.",
+        "hint": "Payrudder kart numarası tutmaz: kart, ödeyenin yazdığı yerde kaydedilir ve müşterinin ödeme yöntemi onu gösterir. Burada kartları görebilir ve birini silebilirsiniz."
+      }
     },
     "packages": {
       "new": "Yeni paket",
@@ -1170,16 +1198,18 @@
         "badRate": "Yüzde değil: 0 ile 100 arası, en fazla iki ondalık."
       },
       "dunning": {
-        "title": "Ödeme yeniden denemeleri",
+        "title": "Ödeme yeniden denemeleri ve chargeback'ler",
         "hint": "Bir tahsilat reddedilirse Payrudder aşağıdaki her gecikmeden sonra yeniden dener, sonunda faturayı tahsil edilemez sayar. Gecikmeler saat cinsindendir (sandbox hesapta dakika).",
         "defaults": "Hiç ayarlamadınız: standart gecikmeler gösteriliyor.",
         "retry": "{n}. deneme",
         "delay": "{n}. denemeden önceki saat",
         "add": "Deneme ekle",
-        "save": "Denemeleri kaydet",
-        "saved": "Denemeler kaydedildi.",
+        "save": "Ayarları kaydet",
+        "saved": "Ayarlar kaydedildi.",
         "none": "Deneme yok: reddedilen tahsilattan hemen vazgeçilir.",
-        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır."
+        "bad": "Her gecikme 1 ile 720 arasında bir tam sayıdır.",
+        "blockOnChargeback": "Chargeback açıldığında müşteriyi engelle",
+        "blockOnChargebackHint": "Müşteriyi chargeback kategorisiyle engeller: yeni satın alma olmaz ve açık bir fatura artık ödenemez. Kendiliğinden kalkmaz; müşteri sayfasından siz kaldırırsınız. Bilgi talebi engellemez."
       },
       "promotions": {
         "title": "Promosyonlar",
@@ -3212,7 +3242,8 @@
         "not_live": "Yalnızca canlı faturalar bir sağlayıcı üzerinden ödenir.",
         "payment_in_progress": "Bu fatura için bir ödeme başlatılıyor. Birazdan yeniden deneyin.",
         "return_url_required": "Ödeme sayfası için bir dönüş adresi gerekli.",
-        "unknown_method": "Bu ödeme yöntemi tanınmıyor."
+        "unknown_method": "Bu ödeme yöntemi tanınmıyor.",
+        "installment_unavailable": "Bu kart ve tutar için bu taksit sayısı sunulmuyor. Tek çekimle ödeyin ya da sayfadaki seçeneklerden birini seçin."
       },
       "ledger": {
         "bad_limit": "Sınır 1 ile 1000 arasında olmalı.",
@@ -3280,6 +3311,9 @@
       "failover": {
         "bad_target": "Yedekleme için, ortamda bulunan iki farklı hesap gerekir; banka havalesi bunda yer alamaz.",
         "not_found": "Bu hesap için bir yedekleme tanımlı değil."
+      },
+      "card": {
+        "not_found": "Müşterinin böyle bir kayıtlı kartı yok."
       }
     },
     "einvoice": {
@@ -3698,6 +3732,16 @@
       },
       "canned_reply": {
         "not_found": "Bu hazır yanıt artık yok."
+      },
+      "attachment": {
+        "account_full": "Kuruluşunuz 50 MB'lık destek dosyası sınırına ulaştı.",
+        "bad_type": "Yalnızca png, jpeg, pdf ve düz metin dosyaları eklenebilir.",
+        "no_app": "Dosyalar bir uygulamayla saklanır: önce bir uygulama oluşturun, sonra dosyayı ekleyin.",
+        "not_found": "Bu dosya bulunamadı.",
+        "rejected": "Dosya eklenemiyor.",
+        "storage_full": "Destek dosyalarının saklandığı alan dolu. Uygulamanızın dosyalarında yer açın ya da dosyayı eklemeden yazın.",
+        "too_large": "Bir dosya en fazla 5 MB olabilir.",
+        "too_many": "Bir talepte en fazla 10 dosya olabilir."
       }
     },
     "audit": {
@@ -4231,7 +4275,8 @@
           "buyer_country": "Alıcı ülkesi",
           "buyer_zip_code": "Alıcı posta kodu",
           "buyer_ip": "İşletmenizin genel IP adresi",
-          "buyer_gsm_number": "Alıcı telefon numarası"
+          "buyer_gsm_number": "Alıcı telefon numarası",
+          "enabled_installments": "Ödeyenin seçebileceği taksitler"
         },
         "problems": {
           "required": "Zorunlu.",
@@ -4406,7 +4451,8 @@
           "api_key": "iyzico üye iş yeri panelinde Ayarlar, Firma Ayarları, API anahtarları altında. Canlı çifti kullanın.",
           "secret_key": "Aynı yerde API anahtarının yanında görünür. Orada yalnızca bir kez gösterilir; şimdi kopyalayın.",
           "buyer_identity_number": "Ödemelerde alıcı görünen kişi veya şirketin vergi kimlik numarası (TCKN veya VKN). Fatura profiliniz bunu doldurur.",
-          "buyer_ip": "İşletmenizin istek gönderdiği sabit genel IP adresi; iyzico anahtarları buna bağlar."
+          "buyer_ip": "İşletmenizin istek gönderdiği sabit genel IP adresi; iyzico anahtarları buna bağlar.",
+          "enabled_installments": "1, 2, 3, 6, 9 ve 12 sayılarından virgülle ayrılmış olarak, örneğin 1, 3, 6. iyzico ödeme formunda ve kayıtlı kart için fatura sayfasında sunulur; faiz iyzico panelinizde belirlediğiniz faizdir, bu yüzden ödeyen faturadan fazla ödeyebilir ve fatura yine tam ödenmiş sayılır. Tek çekim için boş bırakın. Anahtarları değiştirirken yeniden yazın."
         },
         "paddle": {
           "api_key": "Paddle'da Developer tools, Authentication altında canlı bir API anahtarı oluşturun.",
@@ -5557,6 +5603,14 @@
     "badge": {
       "unread": "Yenilik olan talepler: {n}",
       "waiting": "Bizi bekleyen: {n}"
+    },
+    "attach": {
+      "add": "Dosya ekle",
+      "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",
+      "remove": "{name} dosyasını kaldır",
+      "failed": "Bu dosyalar eklenemedi:",
+      "openedButFailed": "Talebiniz açıldı ancak bazı dosyalar eklenemedi. Dosyaları bir yanıta ekleyebilirsiniz.",
+      "download": "{name} dosyasını indir"
     }
   },
   "connect": {
@@ -6121,5 +6175,43 @@
         "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
       }
     }
+  },
+  "disputes": {
+    "tab": "İtirazlar",
+    "tabsLabel": "Ödemeler ve itirazlar",
+    "tabs": {
+      "payments": "Ödemeler",
+      "disputes": "İtirazlar"
+    },
+    "title": "İtirazlar",
+    "hint": "Müşterinin bu ödeme için bankasında açtığı vakalar. Bunları ödeme sağlayıcınızda yanıtlayın; Payrudder her birinin durumunu gösterir.",
+    "empty": "İtiraz yok. Bir müşteri bankasında bir ödemeye itiraz ettiğinde vaka burada görünür.",
+    "outcomeLabel": "Sonuç",
+    "allOutcomes": "Tüm sonuçlar",
+    "kindLabel": "Tür",
+    "allKinds": "Tüm türler",
+    "outcome": {
+      "open": "Açık",
+      "won": "Kazanıldı",
+      "lost": "Kaybedildi"
+    },
+    "kind": {
+      "chargeback": "Geri ödeme itirazı (chargeback)",
+      "inquiry": "Bilgi talebi"
+    },
+    "means": {
+      "openChargeback": "Müşterinin bankası bu ödemeyi iade ettirdi: sağlayıcı karar verene kadar parayı geri çekti. Kanıtlarınızı aşağıdaki tarihe kadar gönderin.",
+      "openInquiry": "Müşterinin bankası bu ödemeyi soruyor. Para geri çekilmedi; chargeback'e dönüşmemesi için sağlayıcının talebini yanıtlayın.",
+      "wonChargeback": "Lehinize sonuçlandı: para size geri döndü.",
+      "wonInquiry": "Chargeback'e dönüşmeden kapandı: bir şey kaybedilmedi.",
+      "lost": "Kart sahibi kazandı: para onda kalıyor."
+    },
+    "provider": "Sağlayıcı",
+    "reason": "Gerekçe",
+    "evidenceDue": "Kanıt son tarihi",
+    "opened": "Açıldı",
+    "closed": "Kapandı",
+    "reference": "Vaka",
+    "case": "Vaka"
   }
 }

@@ -30,6 +30,7 @@ final class WebhookEventType
     public const PAYMENT_LINK_CREATED = 'payment_link.created';
     public const PAYMENT_LINK_PAID = 'payment_link.paid';
     public const PAYMENT_LINK_EXPIRED = 'payment_link.expired';
+    public const PAYMENT_DISPUTED = 'payment.disputed';
     public const CREDITS_PURCHASED = 'credits.purchased';
     public const CREDITS_LOW = 'credits.low';
     public const CUSTOMER_BLOCKED = 'customer.blocked';
@@ -68,6 +69,7 @@ final class WebhookEventType
             self::PAYMENT_LINK_CREATED,
             self::PAYMENT_LINK_PAID,
             self::PAYMENT_LINK_EXPIRED,
+            self::PAYMENT_DISPUTED,
             self::CREDITS_PURCHASED,
             self::CREDITS_LOW,
             self::CUSTOMER_BLOCKED,

@@ -48,28 +48,28 @@ VALUES (@tenant_id, @saga_id, @seq, @state, @state, 'timeout:reissue', @at);
 SELECT tenant_id, id FROM invoice_sagas WHERE step_deadline IS NOT NULL AND step_deadline < @now::timestamptz ORDER BY step_deadline LIMIT @row_limit;
 
 -- name: ListSagasDueForDunning :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_DECLINED' AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
 
 -- name: LockSagaPastDeadline :one
 SELECT id FROM invoice_sagas
 WHERE tenant_id = @tenant_id AND id = @id AND step_deadline IS NOT NULL AND step_deadline < @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
--- The retry of a tenant that is on hold is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
+-- The retry of a payment the gate refuses (a tenant on hold, a customer blocked for fraud) is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
 -- name: HoldSagaDunning :exec
 UPDATE invoice_sagas SET next_attempt_at = @until::timestamptz WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED';
 
 -- name: LockSagaDueForDunning :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED' AND next_attempt_at <= @now::timestamptz
+WHERE tenant_id = @tenant_id AND id = @id AND state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
 -- name: ListSagasDueForPoll :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
 
 -- name: LockSagaDueForPoll :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz
+WHERE tenant_id = @tenant_id AND id = @id AND state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
 -- name: InsertInboxReply :execrows
@@ -82,5 +82,5 @@ SELECT state, count(*) AS sagas FROM invoice_sagas GROUP BY state;
 -- When the charge under the saga's current idempotency key was first sent: the latest entry into PAYMENT_REQUESTED that is neither a re-charge after "not found"
 -- (those keep the key) nor the re-issue of a command (from and to are the same state).
 SELECT at FROM saga_events
-WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING')
+WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED')
 ORDER BY seq DESC LIMIT 1;

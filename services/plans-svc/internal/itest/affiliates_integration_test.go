@@ -74,6 +74,11 @@ func testAffiliates(t *testing.T) {
 			"hold too long":            {CommissionKind: "percent_bps", CommissionValue: 500, HoldDays: 181},
 			"percent with a currency":  {CommissionKind: "percent_bps", CommissionValue: 500, Currency: "EUR"},
 			"landing not http":         {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "javascript:alert(1)"},
+			"landing with a user name": {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "https://shop.example.com@evil.example/"},
+			"landing is localhost":     {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "http://localhost:3000/welcome"},
+			"landing is an IP address": {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "https://203.0.113.9/welcome"},
+			"landing is a private one": {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "https://192.168.0.10/welcome"},
+			"landing is a bare name":   {CommissionKind: "percent_bps", CommissionValue: 500, LandingUrl: "https://intranet/welcome"},
 			"unknown coupon":           {CommissionKind: "percent_bps", CommissionValue: 500, ReferredCouponCode: "NOSUCH"},
 		} {
 			if _, err := e.aff.SetAffiliateProgram(ctx, &plansv1.SetAffiliateProgramRequest{Program: p}); err == nil {
@@ -101,6 +106,76 @@ func testAffiliates(t *testing.T) {
 		// The sandbox has its own: nothing set there.
 		if _, err := e.aff.GetAffiliateProgram(other, &plansv1.GetAffiliateProgramRequest{}); errkey.Of(err) != "affiliate.program.not_set" {
 			t.Fatalf("the sandbox sees the live program: %v", err)
+		}
+	})
+
+	// The public link is an address on our own domain, so what it leads to must not be anything a throwaway tenant chooses: the answer says whether the gateway may
+	// redirect straight to the landing page. It may for a live, active tenant of an account with an owner who has verified their address, and for nobody else.
+	t.Run("a landing page is redirected to straight only for a live, active tenant with a verified owner", func(t *testing.T) {
+		owner := e.verified(t, strings.ToLower(uniq("land"))+"@example.com", "Landing Co")
+		made, err := e.ident.CreateMyApp(context.Background(), &plansv1.CreateMyAppRequest{UserId: owner.id, AccountId: owner.account, Name: "Shop", Currency: "EUR", Timezone: "Europe/Berlin"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var liveID, sandboxID string
+		for _, tn := range made.GetApp().GetTenants() {
+			if tn.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE {
+				liveID = tn.GetId()
+			} else {
+				sandboxID = tn.GetId()
+			}
+		}
+		e.activate(t, liveID)
+		codes := map[string]string{}
+		for name, id := range map[string]string{"live": liveID, "sandbox": sandboxID} {
+			activeProgram(t, e, as(id), func(p *plansv1.AffiliateProgram) { p.LandingUrl = "https://shop.example.com/welcome" })
+			codes[name] = newAffiliate(t, e, as(id), uniq("lnd")+"@partners.test").GetCode()
+		}
+		trusted := func(which string) bool {
+			t.Helper()
+			var answer [2]bool
+			for i, skip := range []bool{false, true} { // a counted visit and one by a visitor who carries the cookie answer the same
+				r, err := e.pub.TrackAffiliateClick(context.Background(), &plansv1.TrackAffiliateClickRequest{Code: codes[which], SkipCount: skip})
+				if err != nil || !r.GetValid() || r.GetLandingUrl() != "https://shop.example.com/welcome" {
+					t.Fatalf("%s: %v %v", which, r, err)
+				}
+				answer[i] = r.GetLandingTrusted()
+			}
+			if answer[0] != answer[1] {
+				t.Errorf("%s: a counted visit says %v, a visit with the cookie says %v", which, answer[0], answer[1])
+			}
+			return answer[1]
+		}
+		if !trusted("live") {
+			t.Error("a live, active tenant with a verified owner is not vouched for")
+		}
+		if trusted("sandbox") {
+			t.Error("a sandbox is vouched for")
+		}
+		exec := func(sql string, args ...any) {
+			t.Helper()
+			if _, err := e.system.Exec(context.Background(), sql, args...); err != nil {
+				t.Fatalf("%s: %v", sql, err)
+			}
+		}
+		exec(`UPDATE users SET email_verified_at = NULL WHERE id = $1::uuid`, owner.id)
+		if trusted("live") {
+			t.Error("a live tenant whose owner has not verified their address is vouched for")
+		}
+		exec(`UPDATE users SET email_verified_at = now() WHERE id = $1::uuid`, owner.id)
+		exec(`UPDATE account_members SET role = 'admin' WHERE account_id = $1::uuid AND user_id = $2::uuid`, owner.account, owner.id)
+		if trusted("live") {
+			t.Error("a live tenant with no owner (an admin is not one) is vouched for")
+		}
+		exec(`UPDATE account_members SET role = 'owner' WHERE account_id = $1::uuid AND user_id = $2::uuid`, owner.account, owner.id)
+		if !trusted("live") {
+			t.Fatal("the live tenant is not vouched for again once the owner is back")
+		}
+		if _, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: liveID, Status: plansv1.TenantStatus_TENANT_STATUS_SUSPENDED, Reason: "itest"}); err != nil {
+			t.Fatal(err)
+		}
+		if trusted("live") {
+			t.Error("a suspended live tenant is vouched for")
 		}
 	})
 
