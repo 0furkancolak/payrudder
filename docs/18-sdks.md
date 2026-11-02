@@ -22,11 +22,13 @@ With `/path/to/payrudder` the folder you cloned the repository into:
 | Python | `pip install /path/to/payrudder/sdk/python` |
 | PHP | `composer config repositories.payrudder path /path/to/payrudder/sdk/php`, then `composer require payrudder/payrudder-php:"*@dev"` |
 
+Each SDK has an `examples/` directory with the same four programs (send a usage event, create a customer, list invoices, verify a webhook): [Go](../sdk/go/examples/README.md), [TypeScript](../sdk/typescript/examples/README.md), [Python](../sdk/python/examples/README.md), [PHP](../sdk/php/examples/README.md). They are not run (they need a gateway), but they are type-checked, vetted or analysed by each SDK's own CI job (`go build` and golangci-lint, `tsc` and eslint, `mypy --strict` and ruff, PHPStan level max and php-cs-fixer), so a renamed method fails the build.
+
 The console's **Connect your app** page shows these lines with the code to send a first event and to verify a webhook, built from your own meter; a test (`web/admin/src/features/connect/snippets.sdk.test.ts`) compiles that code against the SDKs of this checkout.
 
 ## Command line
 
-The Go module also builds `payrudder`, a command line on the Go SDK (`sdk/go/cmd/payrudder`, standard library only): `login`, `events send`, `events tail`, `webhooks listen` and `webhooks trigger ping`, `customers list`, `invoices list`. It is described on the [Command line](../docs-site/content/cli.md) page and has the same pre-release status as the SDKs.
+The Go module also builds `payrudder`, a command line on the Go SDK (`sdk/go/cmd/payrudder`, standard library only): `login`, `events send`, `events tail`, `webhooks listen`, `webhooks trigger ping`, `webhooks redeliver`, `customers list`, `customers create`, `plans create`, `invoices list`. It is described on the [Command line](../docs-site/content/cli.md) page and has the same pre-release status as the SDKs.
 
 ## Versions and releases
 

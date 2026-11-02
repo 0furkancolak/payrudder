@@ -419,7 +419,7 @@ func TestLiveCommandOfAMovingTenantIsRetried(t *testing.T) {
 	accounts := store.Accounts{DB: pl.DB, Box: newBox(t)}
 	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://unused", 0), Attempts: store.Attempts{DB: pl.DB}, Ledger: store.Ledger{DB: pl.DB},
 		Resolver: &handler.Resolver{Registry: registry, Accounts: accounts}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`
 	for _, tn := range pl.all {
 		if err := accounts.Put(ctx, tn, "iyzico", "live", []byte(settings), true); err != nil {
 			t.Fatal(err)
@@ -463,7 +463,7 @@ func TestWebhookFindsTheTenantAcrossPlaces(t *testing.T) {
 	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pl.DB}, Attempts: attempts, Ledger: ledger,
 		Log: log, Token: "internal"}).Handler())
 	defer api.Close()
-	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	settings := `{"api_key":"api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`
 	notify := func(ref, conversation string) (int, string) {
 		t.Helper()
 		b, _ := json.Marshal(map[string]any{"iyziEventType": "API_AUTH", "iyziReferenceCode": ref, "paymentId": 1, "paymentConversationId": conversation, "status": "SUCCESS", "iyziEventTime": 1})

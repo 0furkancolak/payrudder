@@ -76,7 +76,7 @@ func TestSandboxProviderAccounts(t *testing.T) {
 
 	tenant := uuid.New()
 	base := "/admin/tenants/" + tenant.String()
-	buyer := `"buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}`
+	buyer := `"buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}`
 	settings := `{"api_key":"sandbox-api","secret_key":"TOP-SECRET-KEY","base_url":"` + fake.srv.URL + `",` + buyer + `}`
 
 	t.Run("a person's connection is verified against the provider's own hosts and its mode", func(t *testing.T) {

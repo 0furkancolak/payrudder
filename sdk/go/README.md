@@ -20,6 +20,8 @@ go mod edit -replace=github.com/0furkancolak/payrudder/sdk/go=/path/to/payrudder
 or add `./sdk/go` to your `go.work`. The import path is `github.com/0furkancolak/payrudder/sdk/go`; the package is named
 `payrudder`.
 
+Runnable programs (send a usage event, create a customer, list invoices, verify a webhook) are in [`examples/`](examples/README.md).
+
 ## Quickstart
 
 ```go

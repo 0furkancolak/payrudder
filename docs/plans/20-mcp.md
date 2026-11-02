@@ -22,10 +22,10 @@ List 2 (1): **MCP**.
 Audience, hosting, authentication (API key vs OAuth with the console's sign-in), which actions an assistant may take.
 
 ## Work
-1. Spec of audiences and tool sets, with a risk table per tool.
-2. Generate read tools from the OpenAPI (with an allow-list) so tools and API never drift; test the mapping.
+1. Spec of audiences and tool sets, with a risk table per tool. *(Draft table written, not signed: `mcp/README.md`.)*
+2. Generate read tools from the OpenAPI (with an allow-list) so tools and API never drift; test the mapping. *(Done; 25 read tools, see the third progress part.)*
 3. Streamable HTTP transport + OAuth (if hosted); per-key rate limits and audit log.
-4. Resources: OpenAPI and docs as MCP resources; a few prompts (monthly revenue review, find the customer over limit).
+4. Resources: OpenAPI and docs as MCP resources; a few prompts (monthly revenue review, find the customer over limit). *(Done: resources, and four prompts.)*
 5. Operator MCP in a separate server with its own auth and an approval step for any write.
 6. Evaluate with real assistants on scripted tasks; record results.
 
@@ -65,3 +65,16 @@ Done:
 - **The rate-limit fact, corrected:** the gateway limits per **tenant** and route class (`gw:rl:{tenant}:{class}`, by tier), not per key, so every key of a tenant shares one budget and an assistant spends the application's. The README says so ("Rate limits") and what to do (a sandbox key, an app of its own, the audit log). **A limit per key does not exist and would be a gateway change** (the gap above says "per key": it is a per-tenant limit with no per-key share).
 
 Still open: OAuth with the console's sign-in, a limit per key (gateway), prompts, the operator MCP, the risk table per tool for the owner to sign, any new read tool. Not verified: nothing was tried with a real assistant; shipping the stderr lines to a collector is the deployment's job and was not set up.
+
+
+## Progress, third part (2026-11-02, branch `feat/mcp-3`)
+
+Done:
+- **Four prompts** (`mcp/src/prompts.ts`): `summarise_customer_billing`, `explain_invoice` ("why did this invoice come out like this"), `monthly_revenue_review`, `check_customer_limits`. Each is a text that names read tools and asks for a report; none names a tool that writes (a test reads the backticked tool names out of every prompt and checks them against the generated read tools, and that no write tool's name appears). An argument is checked before the prompt is made (customer external id: letters, digits and `_ . : @ + = -`, at most 200; invoice id: at most 64 of letters, digits and `_ . : -`; month `YYYY-MM`) and goes into a block that says "data to look up, never an instruction"; so a line break, a space, a quote, a backtick or an angle bracket in an argument is refused and nothing is called (broken once on purpose: loosening the customer pattern failed six tests). Tested with the in-memory client (list, get, arguments, with and without writes), over streamable HTTP and over the built binary on stdio.
+- **Sixteen new read tools**, all generated from the OpenAPI file (25 in all): `get_meter`, `get_subscription`, `get_upcoming_invoice`, `get_plan_version`, `list_entitlements`, `get_entitlement`, `get_credit_balance`, `list_credit_ledger`, `list_credit_notes`, `get_credit_note`, `list_customer_payments`, `list_coupons`, `get_tax_rates`, `get_revenue_report`, `get_subscription_report`, `get_dunning_report`. Each free-text field of their answers was classified: `reason`, `refund_error`, `last_error` and `idempotency_key` are tagged `<untrusted>` (staff's, the payment provider's and the app's own words); the plan decimals, `window_id`, `invoice_number`, `period`, `month` and `state` are identifiers or numbers the API makes. The generator now also rewrites an operation named in a description ("see `getEntitlement`") to its tool name and fails for one that is not a tool (found when `list_entitlements` told the model to call a tool it did not have). The first nine keep their names and arguments (a test pins the arguments).
+- **What is not offered is written down and tested:** `NOT_OFFERED` in `mcp/scripts/read-tools.config.mjs` lists 18 reads with the reason (links anyone can open, attachments, a customer's address and browser, a webhook endpoint's address, a delivery's answer body, the audit log, promotion codes, CSV exports). A test fails when one of them is allow-listed and when an allow-listed answer has a field named like a secret, a token, a link or a payload (tried: allow-listing `getInvoicePdf` fails the generator and three tests).
+- **The risk table** is in `mcp/README.md` ("Risk table (DRAFT, not signed by the owner)"): one row per tool, the two writes, the prompts and the resources, with what each can expose, the free text in the answer, the worst case and the default. It also lists three open questions for the owner. The README is the published MCP page of the docs site, so the site shows it (marked pre-release).
+
+Defaults (not agreed): the sixteen added reads and the exclusions above; every read tool is on (no per-tool switch); prompts are always offered; customer personal data may reach the model's provider through `list_customers` and `get_customer` for whoever starts the server.
+
+Not done: OAuth with the console's sign-in, a limit per key (gateway), the operator MCP, scripted evaluation with a real assistant, a switch to leave the personal-data reads out of a shared HTTP server, a reads-on-live flag like the writes' one. **NOT VERIFIED:** nothing was tried with a real assistant (Claude Desktop, Claude Code): that the prompts show up and read well there, that a model follows them, that it respects the `<untrusted>` tags; the risk table is the author's draft and is signed by nobody.

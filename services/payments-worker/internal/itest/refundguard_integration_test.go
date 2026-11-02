@@ -126,7 +126,7 @@ func TestRefundResendNeverRefundsTwice(t *testing.T) {
 	hNoLedger := newHandler(store.Ledger{DB: ledgerWritesFail{pool}})
 
 	providers := []struct{ name, settings, charge, ref string }{
-		{"iyzico", `{"api_key":"api","secret_key":"s","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`, "P1", "R1"},
+		{"iyzico", `{"api_key":"api","secret_key":"s","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`, "P1", "R1"},
 		{"paddle", `{"api_key":"pdl_secret","base_url":"` + fake.srv.URL + `","webhook_secret":"w","usage_product_id":"pro_usage"}`, "txn_01", "adj_01"},
 	}
 	for _, p := range providers {

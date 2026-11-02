@@ -3,6 +3,7 @@ parameters:
     paths:
         - src
         - tests
+        - examples
     tmpDir: .phpstan.cache
     treatPhpDocTypesAsCertain: false
     excludePaths:
