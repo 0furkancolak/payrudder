@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mcp-${{ github.ref }}
+  group: mcp-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: true
 
 jobs:

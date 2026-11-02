@@ -2753,7 +2753,7 @@
         "tr_any": "A tax number in Turkey is a 10-digit VKN or an 11-digit TCKN. This does not look like either; you can still save it.",
         "tr_is_tckn": "This is a TCKN, the number of an individual, but the customer is a business (which has a VKN). You can still save it.",
         "tr_is_vkn": "This is a VKN, the number of a business, but the customer is an individual (who has a TCKN). You can still save it.",
-        "eu_vat": "A business in the EU has a VAT id that starts with its country code (for example DE123456789). This does not look like one; you can still save it."
+        "eu_vat": "A business in the EU has a VAT id that starts with its country code (for example DE136695976). This does not look like one; you can still save it."
       },
       "warned": "This number does not look right for this customer. Open the tax data to see why."
     },

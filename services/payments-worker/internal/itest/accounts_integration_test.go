@@ -66,6 +66,9 @@ func newFakeIyzico(t *testing.T) *fakeIyzico {
 			_, _ = io.WriteString(w, f.detail)
 		case "/payment/bin/check":
 			_, _ = io.WriteString(w, f.bin)
+		case "/payment/cancel":
+			// A same-day whole refund is tried as a cancel first (#322); this payment cannot be cancelled, so the refund follows.
+			_, _ = io.WriteString(w, `{"status":"failure","errorCode":"5090","errorMessage":"cannot be cancelled"}`)
 		case "/v2/payment/refund":
 			_, _ = io.WriteString(w, `{"status":"success","paymentId":"P1","refundHostReference":"R1"}`)
 		default:
