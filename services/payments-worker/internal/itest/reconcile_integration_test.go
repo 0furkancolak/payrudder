@@ -10,7 +10,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -148,5 +151,59 @@ func TestReconciliation(t *testing.T) {
 	}
 	if code, _ := get("/admin/tenants/" + tenant.String() + "/reconciliation"); code != 400 {
 		t.Errorf("no period: %d", code)
+	}
+}
+
+// A case that is open keeps its finding until it ends. A case that was lost does not clear it while the invoice is still paid in billing: the money is gone and the books say
+// otherwise. A lost case of an invoice billing no longer calls paid, a won one, one of another period's opening and one of an invoice billing does not know are not raised.
+func TestAReconciliationKeepsAFindingForALostDisputeWhileTheInvoiceIsStillPaid(t *testing.T) {
+	cdb := openDB(t, testkit.StartPostgres(t))
+	ctx := context.Background()
+	tenant := uuid.New()
+	cases := store.Disputes{DB: cdb.DB}
+	billing := fakeBilling{invoices: map[string]*billingv1.Invoice{}}
+	inv := func(status, period string) *billingv1.Invoice {
+		i := &billingv1.Invoice{Id: uuid.NewString(), Number: "INV-" + uuid.NewString()[:6], PeriodId: period, Currency: "EUR", TotalMinor: 1250, Status: status}
+		billing.invoices[i.Id] = i
+		return i
+	}
+	opened := func(day int) time.Time { return time.Date(2026, 10, day, 12, 0, 0, 0, time.UTC) }
+	put := func(ref, outcome string, i *billingv1.Invoice, at time.Time) {
+		t.Helper()
+		c := store.DisputeCase{TenantID: tenant, Environment: "live", Provider: "stripe", Ref: ref, PaymentRef: "pi_" + ref, AmountMinor: 1250, Currency: "EUR", Outcome: outcome, Formal: true,
+			Status: outcome, Reason: "fraudulent", OpenedAt: at}
+		if i != nil {
+			c.InvoiceID = uuid.MustParse(i.Id)
+		}
+		if err := cases.Upsert(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	paidThisMonth, voided, paidEarlier := inv("paid", "2026-10"), inv("void", "2026-10"), inv("paid", "2026-09")
+	put("du_open", "open", inv("paid", "2026-10"), opened(3))
+	put("du_lost_paid", "lost", paidThisMonth, opened(4))
+	put("du_lost_voided", "lost", voided, opened(5))
+	put("du_lost_earlier_invoice", "lost", paidEarlier, opened(6)) // the invoice is of the month before: billing is asked about it
+	put("du_won", "won", paidThisMonth, opened(7))
+	put("du_lost_september", "lost", paidThisMonth, time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC))
+	put("du_lost_unknown_invoice", "lost", &billingv1.Invoice{Id: uuid.NewString()}, opened(8))
+	put("du_lost_not_ours", "lost", nil, opened(9))
+
+	rec, err := reconcile.Get(ctx, reconcile.Deps{Billing: billing, Ledger: store.Ledger{DB: cdb.DB}, Disputes: cases}, tenant, "2026-10")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, d := range rec.Discrepancies {
+		if d.Kind == reconcile.PaymentDisputed {
+			got = append(got, d.ProviderRef)
+			if d.ProviderRef == "du_lost_paid" && !strings.Contains(d.Detail, "lost") {
+				t.Errorf("the finding of the lost case says %q, want it to say so", d.Detail)
+			}
+		}
+	}
+	slices.Sort(got)
+	if want := []string{"du_lost_earlier_invoice", "du_lost_paid", "du_open"}; !slices.Equal(got, want) {
+		t.Errorf("the dispute findings = %v, want %v", got, want)
 	}
 }

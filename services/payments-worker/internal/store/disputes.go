@@ -125,7 +125,7 @@ func (d Disputes) list(ctx context.Context, tenant uuid.UUID, invoice uuid.UUID,
 	return out, nil
 }
 
-// OpenDispute is a case that is undecided and belongs to one of the tenant's invoices.
+// OpenDispute is a case that belongs to one of the tenant's invoices and that the reconciliation raises: one that is undecided (Open) or that was lost (Lost).
 type OpenDispute struct {
 	Ref, PaymentRef, Provider, Currency, Status, Reason string
 	InvoiceID                                           uuid.UUID
@@ -151,6 +151,26 @@ func (d Disputes) Open(ctx context.Context, tenant uuid.UUID) ([]OpenDispute, er
 	return out, nil
 }
 
+// Lost lists the cases the cardholder won that were opened from from until before and point at an invoice, oldest first: money that is gone, which the reconciliation keeps
+// raising while the invoice is still paid.
+func (d Disputes) Lost(ctx context.Context, tenant uuid.UUID, from, before time.Time) ([]OpenDispute, error) {
+	rows, err := get(ctx, d.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListLostDisputesRow, error) {
+		return q.ListLostDisputes(ctx, sqlc.ListLostDisputesParams{TenantID: tenant, OpenedFrom: from, OpenedBefore: before})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]OpenDispute, 0, len(rows))
+	for _, r := range rows {
+		if r.InvoiceID == nil {
+			continue
+		}
+		out = append(out, OpenDispute{Ref: r.DisputeRef, PaymentRef: r.PaymentRef, Provider: r.Provider, Currency: r.Currency, Status: r.ProviderStatus, Reason: r.Reason,
+			InvoiceID: *r.InvoiceID, AmountMinor: r.AmountMinor, Formal: r.Formal, OpenedAt: r.OpenedAt})
+	}
+	return out, nil
+}
+
 // PaymentOf finds the invoice and the amount of the successful charge the ledger holds for a provider's payment reference.
 func (l Ledger) PaymentOf(ctx context.Context, tenant uuid.UUID, provider, ref string) (invoice uuid.UUID, amountMinor int64, currency string, found bool, err error) {
 	r, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (sqlc.GetChargeByPaymentRefRow, error) {
@@ -162,10 +182,11 @@ func (l Ledger) PaymentOf(ctx context.Context, tenant uuid.UUID, provider, ref s
 	return *r.InvoiceID, r.AmountMinor, r.Currency, true, nil
 }
 
-// DisputeStepKnown says whether the ledger holds this step of a case already.
-func (l Ledger) DisputeStepKnown(ctx context.Context, tenant uuid.UUID, provider, ref, status string) (bool, error) {
+// DisputeStepKnown says whether this step of a case was announced already: the ledger holds it, and, for a formal step (a chargeback), the case is known as formal. Stripe's
+// inquiry and the chargeback it becomes share the ledger's row (open), so the chargeback is told apart by the case.
+func (l Ledger) DisputeStepKnown(ctx context.Context, tenant uuid.UUID, provider, ref, status string, formal bool) (bool, error) {
 	return get(ctx, l.DB, tenant, func(q *sqlc.Queries) (bool, error) {
-		return q.DisputeFactExists(ctx, sqlc.DisputeFactExistsParams{TenantID: tenant, Provider: provider, ProviderRef: &ref, Status: status})
+		return q.DisputeFactExists(ctx, sqlc.DisputeFactExistsParams{TenantID: tenant, Provider: provider, ProviderRef: &ref, Status: status, Formal: formal})
 	})
 }
 

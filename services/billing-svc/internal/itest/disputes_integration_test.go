@@ -117,6 +117,18 @@ func testPaymentDisputesAreAnnouncedOncePerStepAndBlockWhenAsked(t *testing.T) {
 	if events() != 5 || audits("payment.dispute_won") != 1 || audits("payment.dispute_lost") != 1 || audits("payment.dispute_open") != 3 {
 		t.Errorf("events %d, audit: open %d, won %d, lost %d; want 5 events and 3, 1, 1", events(), audits("payment.dispute_open"), audits("payment.dispute_won"), audits("payment.dispute_lost"))
 	}
+	// An inquiry that becomes a chargeback (Stripe: warning_needs_response, then needs_response) is announced again, as a chargeback, and blocks the customer then, not for the
+	// inquiry; the chargeback told twice is told once.
+	was := events()
+	if r := step("du_5", "open", false); !r.GetAnnounced() || r.GetCustomerBlocked() || events() != was+1 || plans.count() != 1 {
+		t.Fatalf("the inquiry = %v, %d events, %d blocks; want announced and no block", r, events()-was, plans.count())
+	}
+	if r := step("du_5", "open", true); !r.GetAnnounced() || !r.GetCustomerBlocked() || events() != was+2 || plans.count() != 2 || audits("payment.dispute_open") != 5 {
+		t.Fatalf("the chargeback it became = %v, %d events, %d blocks, %d audit entries; want announced, blocked, 2 events, 2 blocks, 5 entries", r, events()-was, plans.count(), audits("payment.dispute_open"))
+	}
+	if r := step("du_5", "open", true); r.GetAnnounced() || events() != was+2 {
+		t.Errorf("the chargeback again: %v, %d events; want it told once", r, events()-was)
+	}
 	// An invoice that is not the tenant's is not found.
 	if _, err := svc.RecordPaymentDispute(tctx, &billingv1.RecordPaymentDisputeRequest{InvoiceId: uuid.NewString(), Provider: "stripe", DisputeRef: "du_x", Outcome: "open"}); err == nil {
 		t.Error("a dispute of an unknown invoice was taken")

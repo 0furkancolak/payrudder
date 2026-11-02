@@ -433,22 +433,31 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	if reply != nil {
 		return reply, nil
 	}
+	// Billing re-issues a charge nobody answered in time with a new command id and the same key: the command id is not what tells a repeat from a first try. The charge goes
+	// to the account the first attempt went to, not to wherever the subscription's provider (empty: the default account, which may have moved since) points now: that account
+	// alone knows the key, and a provider that does not dedupe by key would charge again.
+	first, before, err := h.chargedBefore(ctx, run, invoiceID, ch.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	ref, hasRef := h.account(prov)
+	name := accountName(prov, ref, hasRef)
+	if first != "" && first != name {
+		if prov, reply, err = h.providerForCommand(ctx, run, invoiceID, true, first, ch.GetPaymentMethod()); err != nil || reply != nil {
+			return reply, err
+		}
+		ref, hasRef = h.account(prov)
+		name = accountName(prov, ref, hasRef)
+	}
 	caps := capabilities(prov)
 	if !caps.CanCharge(ch.GetCurrency()) {
 		return errored(CodeCurrency, fmt.Sprintf("%s cannot charge in %s", prov.Name(), ch.GetCurrency())), nil
 	}
-	ref, hasRef := h.account(prov)
-	name := accountName(prov, ref, hasRef)
 	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindCharge, run.env, name, ch.GetIdempotencyKey(), ch)
 	if err != nil {
 		return nil, err
 	}
-	if !redelivered {
-		// Billing re-issues a charge nobody answered in time with a new command id and the same key: the command id is not what tells a repeat from a first try.
-		if redelivered, err = h.chargedBefore(ctx, run, invoiceID, ch.GetIdempotencyKey()); err != nil {
-			return nil, err
-		}
-	}
+	redelivered = redelivered || before
 	if redelivered && h.Failovers != nil {
 		// A command that failed over goes on at the account it failed over to when it is delivered again, never back to the first: that one may be up again by now.
 		if fo, ok, err := h.Attempts.FailoverAttempt(ctx, run.tenant, invoiceID, payments.FailoverPrefix(ch.GetIdempotencyKey())); err != nil {
@@ -501,16 +510,15 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 }
 
 // chargedBefore reports whether a charge under key was started by another command, at this account or at the one it failed over to, or the ledger already holds its outcome.
-// Such a charge may have reached the provider: it is asked first (askBeforeCharging), goes on where it failed over (resumeFailover) and is never failed over again.
-func (h *Handler) chargedBefore(ctx context.Context, run commandRun, invoice uuid.UUID, key string) (bool, error) {
-	if before, err := h.Attempts.ChargedBefore(ctx, run.tenant, invoice, key, run.id); err != nil || before {
-		return before, err
-	}
-	if h.Ledger.DB == nil {
-		return false, nil
+// Such a charge may have reached the provider: it is asked first (askBeforeCharging), goes on where it failed over (resumeFailover) and is never failed over again. The first
+// result is the account the first attempt under the key went to (Attempts.ChargedBefore), empty when there is none.
+func (h *Handler) chargedBefore(ctx context.Context, run commandRun, invoice uuid.UUID, key string) (string, bool, error) {
+	first, before, err := h.Attempts.ChargedBefore(ctx, run.tenant, invoice, key, run.id)
+	if err != nil || before || h.Ledger.DB == nil {
+		return first, before, err
 	}
 	_, ok, err := h.Ledger.ChargeFact(ctx, run.tenant, key)
-	return ok, err
+	return first, ok, err
 }
 
 // account is the provider account an adapter was built for, when the resolver built it: the mock and the configured live provider are no one's account.
@@ -768,7 +776,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	if err != nil {
 		return providerFailure(err)
 	}
-	h.record(ctx, refundEntry(run, prov, invoiceID, rf, res.RefundID))
+	h.record(ctx, h.refundEntry(run, prov, invoiceID, rf, res.RefundID))
 	return refundedReply(res.RefundID), nil
 }
 
@@ -777,7 +785,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 // later resend from it; unlike after a provider call, a ledger write that fails fails the command, which the queue delivers again: nothing has moved that a resend could repeat.
 func (h *Handler) recordConfirmedRefund(ctx context.Context, run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, refundID string) (*commandsv1.ReplyEnvelope, error) {
 	if h.Ledger.DB != nil {
-		e := refundEntry(run, prov, invoice, rf, refundID)
+		e := h.refundEntry(run, prov, invoice, rf, refundID)
 		e.Source, e.Detail = store.SourceManual, "confirmed by an operator"
 		if _, err := h.Ledger.Append(ctx, e); err != nil {
 			return nil, err
@@ -786,8 +794,10 @@ func (h *Handler) recordConfirmedRefund(ctx context.Context, run commandRun, pro
 	return refundedReply(refundID), nil
 }
 
-func refundEntry(run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, ref string) store.LedgerEntry {
-	return store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: prov.Name(), Environment: run.env, Kind: store.KindRefund, Status: store.StatusSucceeded,
+// refundEntry is the ledger row of a refund, under the account's key (stripe~eu) like the charge's and the notification's rows: a refund is one row, whichever way it is written.
+func (h *Handler) refundEntry(run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, ref string) store.LedgerEntry {
+	acct, ok := h.account(prov)
+	return store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: accountName(prov, acct, ok), Environment: run.env, Kind: store.KindRefund, Status: store.StatusSucceeded,
 		AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency(), ProviderRef: ref, IdempotencyKey: rf.GetIdempotencyKey(), Source: store.SourceCommand}
 }
 
@@ -819,7 +829,7 @@ func (h *Handler) guardRefund(ctx context.Context, run commandRun, prov payments
 		case r.GetPaymentRefunded() != nil:
 			// The ledger row may be what is missing (its write failed): write it now.
 			ref := r.GetPaymentRefunded().GetPspRefundId()
-			h.record(ctx, refundEntry(run, prov, invoice, rf, ref))
+			h.record(ctx, h.refundEntry(run, prov, invoice, rf, ref))
 			return refundedReply(ref), nil
 		case r.GetPaymentErrored().GetCode() == CodeRejected: // the provider said no: nothing moved
 		default: // no answer (STARTED), a timeout, or an answer that cannot be read

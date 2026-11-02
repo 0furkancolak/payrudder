@@ -20,9 +20,9 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
-// A sandbox reset deletes from ten tables, and the database is asked first whether the tenant has a row of the live environment in any of them, not only in the ledger and
-// the attempts. A tenant with an e-invoice, a provider subscription or a notification of the live environment is refused with nothing deleted; the same rows of a sandbox
-// tenant go. (A notification has no environment of its own: a tenant with a live provider account is a live tenant.)
+// A sandbox reset deletes from twelve tables, and the database is asked first whether the tenant has a row of the live environment in any of them that has an environment, not
+// only in the ledger and the attempts. A tenant with an e-invoice, a provider subscription, a dispute (or a seller's note on one) or a notification of the live environment is
+// refused with nothing deleted; the same rows of a sandbox tenant go. (A notification has no environment of its own: a tenant with a live provider account is a live tenant.)
 func TestAResetIsRefusedForLiveRowsInEveryTableItDeletesFrom(t *testing.T) {
 	w := openDB(t, testkit.StartPostgres(t))
 	ctx := context.Background()
@@ -30,6 +30,12 @@ func TestAResetIsRefusedForLiveRowsInEveryTableItDeletesFrom(t *testing.T) {
 		"einvoice_issuances":     `INSERT INTO einvoice_issuances (document_id, tenant_id, environment, provider, kind, document_type, status) VALUES (gen_random_uuid(), $1, $2, 'nilvera', 'invoice', 'e-fatura', 'started')`,
 		"provider_subscriptions": `INSERT INTO provider_subscriptions (tenant_id, provider, environment, provider_ref, status) VALUES ($1, 'paddle', $2, 'sub_1', 'active')`,
 		"provider_events":        `INSERT INTO provider_events (provider, event_id, tenant_id, body, status) VALUES ('paddle', 'evt_' || $2::text || gen_random_uuid()::text, $1, '{}', 'processed')`,
+		"payment_disputes": `INSERT INTO payment_disputes (tenant_id, environment, provider, dispute_ref, payment_ref, amount_minor, currency, outcome, formal, opened_at)
+			VALUES ($1, $2, 'stripe', 'du_1', 'pi_1', 1250, 'EUR', 'open', true, now())`,
+		// The case a note belongs to is a sandbox one for both tenants, so that only the note decides.
+		"payment_dispute_events": `WITH d AS (INSERT INTO payment_disputes (tenant_id, environment, provider, dispute_ref, payment_ref, amount_minor, currency, outcome, formal, opened_at)
+			VALUES ($1, 'sandbox', 'stripe', 'du_1', 'pi_1', 1250, 'EUR', 'open', true, now()) RETURNING id)
+			INSERT INTO payment_dispute_events (tenant_id, environment, dispute_id, action, note, actor) SELECT $1, $2, id, 'note', 'called the bank', 'x@example.com' FROM d`,
 	}
 	for table, insert := range rows {
 		t.Run(table, func(t *testing.T) {

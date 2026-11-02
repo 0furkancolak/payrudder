@@ -32,6 +32,7 @@ type noDedupe struct {
 	taken   int
 	charged map[string]string // account|key -> the charge id
 	down    map[string]bool   // account -> "definitely not processed"
+	timeout map[string]bool   // account -> the charge is taken and the answer is lost
 	calls   []string
 }
 
@@ -64,6 +65,9 @@ func (a *noDedupeAccount) Charge(_ context.Context, r payments.ChargeRequest) (p
 	a.w.taken++
 	id := fmt.Sprintf("pay_%s_%d", a.account, a.w.taken)
 	a.w.charged[a.account+"|"+r.IdempotencyKey] = id
+	if a.w.timeout[a.account] {
+		return payments.ChargeResult{}, payments.ErrTimeout
+	}
 	if a.like == "paddle" {
 		return payments.ChargeResult{}, &payments.PendingError{Ref: r.IdempotencyKey}
 	}
@@ -109,7 +113,7 @@ func TestAChargeReissuedWithANewCommandIdIsNeverChargedTwice(t *testing.T) {
 		t.Run(like, func(t *testing.T) {
 			pg := testkit.StartPostgres(t)
 			wd := openDB(t, pg)
-			w := &noDedupe{charged: map[string]string{}, down: map[string]bool{}}
+			w := &noDedupe{charged: map[string]string{}, down: map[string]bool{}, timeout: map[string]bool{}}
 			box, _ := secretbox.New(bytes.Repeat([]byte{4}, 32))
 			registry := payments.NewRegistry()
 			registry.Register("nodedupe", w.factory)
@@ -143,7 +147,7 @@ func TestAChargeReissuedWithANewCommandIdIsNeverChargedTwice(t *testing.T) {
 					}
 				}
 				w.mu.Lock()
-				w.taken, w.charged, w.down, w.calls = 0, map[string]string{}, map[string]bool{}, nil
+				w.taken, w.charged, w.down, w.timeout, w.calls = 0, map[string]string{}, map[string]bool{}, map[string]bool{}, nil
 				w.mu.Unlock()
 				return r
 			}
@@ -179,25 +183,56 @@ func TestAChargeReissuedWithANewCommandIdIsNeverChargedTwice(t *testing.T) {
 				}
 			}
 
-			t.Run("at the account the charge was sent to", func(t *testing.T) {
-				r := scenario(t, false)
-				first, err := charge(r, uuid.New())
-				if like == "iyzico" && (err != nil || first.GetPaymentSucceeded().GetPspChargeId() != "pay_a_1") {
-					t.Fatalf("first charge = %v, %v", first, err)
-				}
-				if like == "paddle" && (err != nil || first.GetPaymentErrored().GetCode() != handler.CodePending) {
-					t.Fatalf("first charge = %v, %v; want it pending", first, err)
-				}
-				// The answer never reached billing; the step deadline passed and it asks again with a command id of its own.
-				ref := "pay_a_1"
-				if like == "paddle" {
-					ref = "txn_a_1"
-				}
-				settled(t, r, uuid.New(), ref, "nodedupe", r.key)
-				if got := w.chargeCalls("a"); got != 1 {
-					t.Errorf("the account was sent %d charges, want 1", got)
-				}
-			})
+			// The command names no provider (the subscription has none), so it goes to the tenant's default account: the account the first attempt went to, or, when the
+			// default moved before the re-issue (or before the same message was delivered again), the account the charge must still be asked at, not the new default (which
+			// never saw the key and would charge again).
+			for _, c := range []struct {
+				name        string
+				moved, same bool
+			}{{"at the account the charge was sent to", false, false}, {"at the account of the first attempt after the default moved", true, false},
+				{"at the account of the first attempt when the same command is delivered again after the default moved", true, true}} {
+				moved := c.moved
+				t.Run(c.name, func(t *testing.T) {
+					r := scenario(t, false)
+					if moved {
+						w.mu.Lock()
+						w.timeout["a"] = true // the charge is taken and nothing answers: no ledger row, nothing for the new default to find
+						w.mu.Unlock()
+					}
+					command := uuid.New()
+					first, err := charge(r, command)
+					switch {
+					case moved:
+						if err != nil || first.GetPaymentErrored().GetCode() != handler.CodeTimeout {
+							t.Fatalf("first charge = %v, %v; want it timed out", first, err)
+						}
+					case like == "iyzico" && (err != nil || first.GetPaymentSucceeded().GetPspChargeId() != "pay_a_1"):
+						t.Fatalf("first charge = %v, %v", first, err)
+					case like == "paddle" && (err != nil || first.GetPaymentErrored().GetCode() != handler.CodePending):
+						t.Fatalf("first charge = %v, %v; want it pending", first, err)
+					}
+					if moved {
+						if ok, err := accounts.SetDefault(ctx, r.tenant, "nodedupe~b", "live", store.Audit{}); err != nil || !ok {
+							t.Fatalf("move the default: %v, %v", ok, err)
+						}
+					}
+					// The answer never reached billing; the step deadline passed and it asks again with a command id of its own.
+					ref := "pay_a_1"
+					if like == "paddle" {
+						ref = "txn_a_1"
+					}
+					if !c.same {
+						command = uuid.New()
+					}
+					settled(t, r, command, ref, "nodedupe", r.key)
+					if got := w.chargeCalls("a"); got != 1 {
+						t.Errorf("the account was sent %d charges, want 1", got)
+					}
+					if got := w.chargeCalls("b"); got != 0 {
+						t.Errorf("the account that never saw the key was sent %d charges, want 0", got)
+					}
+				})
+			}
 
 			t.Run("at the account it failed over to", func(t *testing.T) {
 				r := scenario(t, true)

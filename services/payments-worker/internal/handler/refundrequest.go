@@ -27,7 +27,7 @@ func (h *Handler) refundRequest(ctx context.Context, run commandRun, invoice uui
 // refundCharge is the provider's id of the charge a refund is made against. Billing keeps no charge id and sends none, and Stripe, Paddle and iyzico each refuse a refund
 // that names no charge, so when the command has none the ledger is asked: the invoice's successful charge at the account that took it. With several (a payment link that
 // was paid as well, a second payment) it takes the one whose amount the refund's is, and nothing else is guessed: a reply is returned instead, the provider is not asked and
-// nothing moved. With none in the ledger the id stays empty, and the adapter says what it needs. mock-psp refunds by invoice and needs no id.
+// nothing moved, unless the ledger already holds this very refund (its key), which answers a resend. With none in the ledger the id stays empty, and the adapter says what it needs. mock-psp refunds by invoice and needs no id.
 func (h *Handler) refundCharge(ctx context.Context, run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment) (string, *commandsv1.ReplyEnvelope, error) {
 	if id := rf.GetPspChargeId(); id != "" || h.Ledger.DB == nil || IsMock(prov) {
 		return id, nil, nil
@@ -51,6 +51,12 @@ func (h *Handler) refundCharge(ctx context.Context, run commandRun, prov payment
 	}
 	if len(same) == 1 {
 		return same[0], nil, nil
+	}
+	// A resend of a refund that was made is not unclear: the ledger holds it under the command's key, though a second charge of the same amount has appeared since.
+	if ref, ok, err := h.Ledger.RefundFact(ctx, run.tenant, invoice, rf.GetIdempotencyKey()); err != nil {
+		return "", nil, err
+	} else if ok {
+		return "", refundedReply(ref), nil
 	}
 	return "", errored(CodeRefundChargeUnclear, fmt.Sprintf("invoice %s has %d successful charges at %s and a refund of %d does not single out one of them (%d have that amount); refund the customer at %s, then record it on the credit note (Resolve refund)",
 		invoice, len(charges), prov.Name(), rf.GetAmountMinor(), len(same), prov.Name())), nil
