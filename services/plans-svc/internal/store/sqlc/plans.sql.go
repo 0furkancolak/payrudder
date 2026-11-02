@@ -321,6 +321,18 @@ func (q *Queries) FinishProviderMigration(ctx context.Context, arg FinishProvide
 	return i, err
 }
 
+const firstMeterTime = `-- name: FirstMeterTime :one
+SELECT COALESCE(min(created_at), to_timestamp(0))::timestamptz AS created_at FROM meters WHERE tenant_id = app_tenant_id() AND code = $1
+`
+
+// When the tenant's first version of a meter was made (the epoch when there is none, so that nothing was published before it).
+func (q *Queries) FirstMeterTime(ctx context.Context, code string) (time.Time, error) {
+	row := q.db.QueryRow(ctx, firstMeterTime, code)
+	var created_at time.Time
+	err := row.Scan(&created_at)
+	return created_at, err
+}
+
 const getChangedFromID = `-- name: GetChangedFromID :one
 SELECT changed_from_id FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = $1
 `
@@ -2217,6 +2229,90 @@ func (q *Queries) ListUnendedSubscriptionsOfCustomer(ctx context.Context, arg Li
 			&i.OpenEnded,
 			&i.EndTime,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnendedSubscriptionsOnVersion = `-- name: ListUnendedSubscriptionsOnVersion :many
+SELECT customer_id, lower(active)::timestamptz AS start_time, upper_inf(active)::bool AS open_ended, COALESCE(upper(active), lower(active))::timestamptz AS end_time
+FROM subscriptions
+WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 AND (upper_inf(active) OR upper(active) > $2::timestamptz)
+ORDER BY lower(active), id
+`
+
+type ListUnendedSubscriptionsOnVersionParams struct {
+	PlanVersionID uuid.UUID
+	Now           time.Time
+}
+
+type ListUnendedSubscriptionsOnVersionRow struct {
+	CustomerID uuid.UUID
+	StartTime  time.Time
+	OpenEnded  bool
+	EndTime    time.Time
+}
+
+// The subscriptions on one plan version whose entitlements are (or will be) in force at now, oldest start first.
+func (q *Queries) ListUnendedSubscriptionsOnVersion(ctx context.Context, arg ListUnendedSubscriptionsOnVersionParams) ([]ListUnendedSubscriptionsOnVersionRow, error) {
+	rows, err := q.db.Query(ctx, listUnendedSubscriptionsOnVersion, arg.PlanVersionID, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnendedSubscriptionsOnVersionRow{}
+	for rows.Next() {
+		var i ListUnendedSubscriptionsOnVersionRow
+		if err := rows.Scan(
+			&i.CustomerID,
+			&i.StartTime,
+			&i.OpenEnded,
+			&i.EndTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVersionsWithoutEntitlement = `-- name: ListVersionsWithoutEntitlement :many
+SELECT v.id, v.version FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
+WHERE v.tenant_id = app_tenant_id() AND p.code = $1 AND v.published_at < $2::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM plan_entitlements e WHERE e.tenant_id = v.tenant_id AND e.plan_version_id = v.id AND e.meter_code = $3::text)
+ORDER BY v.version
+`
+
+type ListVersionsWithoutEntitlementParams struct {
+	PlanCode  string
+	Before    time.Time
+	MeterCode string
+}
+
+type ListVersionsWithoutEntitlementRow struct {
+	ID      uuid.UUID
+	Version int32
+}
+
+// The published versions of a plan, published before a time, that carry no entitlement on a meter (the backfill of the `mails` allowance, plan 11).
+func (q *Queries) ListVersionsWithoutEntitlement(ctx context.Context, arg ListVersionsWithoutEntitlementParams) ([]ListVersionsWithoutEntitlementRow, error) {
+	rows, err := q.db.Query(ctx, listVersionsWithoutEntitlement, arg.PlanCode, arg.Before, arg.MeterCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListVersionsWithoutEntitlementRow{}
+	for rows.Next() {
+		var i ListVersionsWithoutEntitlementRow
+		if err := rows.Scan(&i.ID, &i.Version); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

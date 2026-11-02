@@ -34,6 +34,7 @@ import (
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/httpapi"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/mailadmin"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -54,10 +55,14 @@ type Config struct {
 	RedisURL       string `env:"PAYRUDDER_REDIS_URL"`
 	OperatorToken  string `env:"PAYRUDDER_OPERATOR_TOKEN,required"`
 	// PaymentsURL is payments-worker's HTTP address; empty disables provider webhooks and provider accounts.
-	PaymentsURL   string   `env:"PAYRUDDER_PAYMENTS_URL"`
-	PaymentsToken string   `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
-	Replicas      int      `env:"PAYRUDDER_GATEWAY_REPLICAS"`
-	AllowedEnvs   []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	// NotifierURL is the notifier's events listener (NOTIFIER_EVENTS_ADDR, "http://notifier:9111") and NotifierSecret its NOTIFIER_MAIL_EVENTS_SECRET, which signs every request
+	// (environment only). Both or neither: without them the suppression list, the message log and the price-change preview answer 503 gateway.mail.unavailable.
+	NotifierURL    string   `env:"PAYRUDDER_NOTIFIER_EVENTS_URL"`
+	NotifierSecret string   `env:"PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"`
+	PaymentsURL    string   `env:"PAYRUDDER_PAYMENTS_URL"`
+	PaymentsToken  string   `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
+	Replicas       int      `env:"PAYRUDDER_GATEWAY_REPLICAS"`
+	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"PAYRUDDER_PUBLIC_URL"`
 	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's Worker or proxy).
@@ -130,6 +135,9 @@ func (c *Config) Validate() error {
 		if u, err := url.Parse(raw); !regionName.MatchString(name) || err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_REGION_URLS: %q=%q is not a region name and an http(s) address", name, raw))
 		}
+	}
+	if (c.NotifierURL == "") != (c.NotifierSecret == "") {
+		errs = append(errs, errors.New("PAYRUDDER_NOTIFIER_EVENTS_URL and PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET are set together or not at all"))
 	}
 	if c.TrustedProxySecret != "" && len(c.TrustedProxySecret) < 32 {
 		errs = append(errs, errors.New("PAYRUDDER_TRUSTED_PROXY_SECRET must be at least 32 characters"))
@@ -249,6 +257,14 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 			return nil, fmt.Errorf("PAYRUDDER_PAYMENTS_URL: %w", err)
 		}
 	}
+	var mail httpapi.MailAdmin
+	if cfg.NotifierURL != "" {
+		c, err := mailadmin.New(cfg.NotifierURL, cfg.NotifierSecret, nil)
+		if err != nil {
+			return nil, fmt.Errorf("PAYRUDDER_NOTIFIER_EVENTS_URL: %w", err)
+		}
+		mail = c
+	}
 	proxies, err := parseProxies(cfg.TrustedProxies)
 	if err != nil {
 		return nil, err
@@ -277,6 +293,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 	return httpapi.New(httpapi.Deps{
 		Region:         region,
 		Saas:           saas,
+		Mail:           mail,
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),

@@ -273,6 +273,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.dashboard.range_too_long`
 - `gateway.geo.country_not_found`
 - `gateway.geo.region_not_found`
+- `gateway.mail.suppression_not_found`
+- `gateway.mail.unavailable`
 - `gateway.payments.ledger_unreachable`
 - `gateway.payments.not_configured`
 - `gateway.payments.unreachable`

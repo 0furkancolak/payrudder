@@ -85,7 +85,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterContractServiceServer(srv, contracts.New(store.New(d.AppDB)))
 	auditgrpc.Register(srv, auditlog.Source{Places: d.Places})
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
-	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
+	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log).WithDB(store.New(d.AppDB))
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))
 	cmd := identitycmd.New(d.SystemPool, admin.accounts, admin.keys, d.Mail, d.AppURL, d.Log).WithPepper(d.OTPPepper).WithBox(d.Box)
 	if saasC.Enabled() {

@@ -314,6 +314,7 @@ services:
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
+      PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"   # the mail rate limit's buckets, shared by the replicas
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
       NAFRU_BASE_URL: "{{ .Values.nafru.baseURL }}"
       NAFRU_API_KEY: "{{ .Values.nafru.apiKey }}"

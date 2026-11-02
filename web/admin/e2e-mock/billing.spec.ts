@@ -221,6 +221,43 @@ test.describe("packages", () => {
     expect(gw.called("POST", "/v1/price-changes/pc-1/withdraw")).toHaveLength(1);
   });
 
+  test("the notice a customer would get is previewed in the language chosen, from the new version's fee, and sends nothing", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
+      if (c.path === "/v1/plans") return { body: { plans: [plan] } };
+      if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
+      if (c.method === "GET" && c.path === "/v1/plans/pro/versions/2") return { body: { ...version, version: 2, base_fee_minor: "4000" } };
+      if (c.method === "GET" && c.path === "/v1/price-changes") return { body: { price_changes: [] } };
+      if (c.method === "POST" && c.path === "/v1/mail-previews/price-change") {
+        return { body: { subject: `Your price changes (${String(c.body?.locale)})`, html: "<p>Hello Ada</p>", text: "Hello Ada" } };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await rowAction(page.getByRole("row", { name: /pro/ }), "Schedule a price change");
+    const sheet = page.getByTestId("price-change-sheet");
+    await sheet.getByTestId("pc-to").fill("2");
+    await sheet.getByTestId("pc-notice").fill("21");
+    await sheet.getByTestId("pc-preview-language").selectOption("de");
+    await sheet.getByTestId("pc-preview-button").click();
+    await expect(sheet.getByTestId("pc-preview-subject")).toHaveText("Your price changes (de)");
+    const frame = sheet.getByTestId("pc-preview-frame");
+    await expect(frame).toHaveAttribute("sandbox", "");
+    await expect(frame.contentFrame().getByText("Hello Ada")).toBeVisible();
+    const body = gw.called("POST", "/v1/mail-previews/price-change")[0]?.body as Record<string, unknown>;
+    expect(body).toMatchObject({ locale: "de", plan_code: "pro", new_renewal_minor: 4000, customer_name: "Ada" });
+    expect(Object.keys(body).sort()).toEqual(["customer_name", "effective_time", "locale", "new_renewal_minor", "plan_code"]);
+    // The new price starts after the notice: 21 days from now on the page's clock (the mock pins it), give or take seconds.
+    const days = (Date.parse(String(body.effective_time)) - (await page.evaluate(() => Date.now()))) / 86_400_000;
+    expect(days).toBeGreaterThan(20.9);
+    expect(days).toBeLessThan(21.1);
+    // Nothing was scheduled or sent for the customers by looking.
+    expect(gw.called("POST", "/v1/plans/pro/price-changes")).toHaveLength(0);
+    // Changing a field throws the old preview away.
+    await sheet.getByTestId("pc-notice").fill("30");
+    await expect(sheet.getByTestId("pc-preview-mail")).toHaveCount(0);
+  });
+
   test("the subscriptions of a price change load a page at a time", async ({ page }) => {
     const pc = { id: "pc-1", plan_code: "pro", from_version: 1, to_version: 2, notice_days: 30, effective_time: "2026-12-05T10:00:00Z", state: "open", created_by: "boss@example.com", create_time: "2026-11-02T09:00:00Z",
       withdraw_time: null, withdrawn_by: "", scheduled: 3, applied: 0, withdrawn: 0, skipped: 0 };

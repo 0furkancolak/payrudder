@@ -31,7 +31,8 @@ type memory struct {
 		tenant    uuid.UUID
 		recipient string
 	}
-	rows map[string]store.Suppression // tenant/address
+	rows   map[string]store.Suppression // tenant/address
+	states map[string]string            // message id: what the provider reported
 }
 
 func newMemory() *memory {
@@ -50,6 +51,18 @@ func (m *memory) ByMessageID(_ context.Context, id string) (uuid.UUID, string, b
 	defer m.mu.Unlock()
 	s, ok := m.sent[id]
 	return s.tenant, s.recipient, ok, nil
+}
+
+func (m *memory) RecordDelivery(_ context.Context, id, state string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.states == nil {
+		m.states = map[string]string{}
+	}
+	if cur := m.states[id]; cur != "bounced" && cur != "complained" {
+		m.states[id] = state
+	}
+	return nil
 }
 
 func key(t uuid.UUID, a string) string { return t.String() + "/" + strings.ToLower(a) }
@@ -153,6 +166,29 @@ func TestOtherEventsAreOnlyCounted(t *testing.T) {
 	}
 }
 
+// What the provider reports is kept for the message log, and a permanent bounce is the last word: a late delivery notice does not take it back.
+func TestEventsAreKeptForTheMessageLog(t *testing.T) {
+	srv, mem := serve(t)
+	post := func(f string) { do(t, "POST", srv.URL+"/v1/mail-events", fixture(t, f), "") }
+	post("delivered.json")   // fake-1
+	post("soft-bounce.json") // fake-2
+	if mem.states["fake-1"] != "delivered" || mem.states["fake-2"] != "soft_bounced" {
+		t.Fatalf("states = %v", mem.states)
+	}
+	post("hard-bounce.json") // fake-1 again: now it bounced for good
+	if mem.states["fake-1"] != "bounced" {
+		t.Errorf("a permanent bounce is kept as bounced: %v", mem.states)
+	}
+	post("delivered.json") // a late notice for fake-1
+	if mem.states["fake-1"] != "bounced" {
+		t.Errorf("a late delivery took back a bounce: %v", mem.states)
+	}
+	post("complaint.json") // fake-3
+	if mem.states["fake-3"] != "complained" {
+		t.Errorf("a complaint is kept: %v", mem.states)
+	}
+}
+
 func TestUnmatchedAndForeignRecipientEventsSuppressNothing(t *testing.T) {
 	srv, mem := serve(t)
 	for _, f := range []string{"unknown-message.json", "other-address.json"} {
@@ -225,5 +261,104 @@ func TestListAddAndLiftASuppression(t *testing.T) {
 	}
 	if code, _ = do(t, "PUT", base+"/"+tenantA.String()+"/not-an-address", nil, ""); code != 400 {
 		t.Errorf("add a non-address: %d", code)
+	}
+}
+
+// messageLog is a tenant's mail in memory, newest first, paged like the store pages it.
+type messageLog struct{ rows []store.Message }
+
+func (l messageLog) ListForTenant(_ context.Context, t uuid.UUID, after store.MessagesAfter, size int32) ([]store.Message, error) {
+	if t != tenantA {
+		return nil, nil
+	}
+	var out []store.Message
+	for _, m := range l.rows {
+		if after.Key == "" || m.ClaimTime.Before(after.At) || (m.ClaimTime.Equal(after.At) && m.Key < after.Key) {
+			out = append(out, m)
+		}
+	}
+	return out[:min(len(out), int(size))], nil
+}
+
+func serveMessages(t *testing.T, log Messages, preview func(PriceChangePreview) (Rendered, error)) *httptest.Server {
+	t.Helper()
+	mem := newMemory()
+	h := &Handler{Secret: secret, Notes: mem, List: mem, Messages: log, PreviewPriceChange: preview, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	srv := httptest.NewServer(h.Routes())
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// The message log answers a tenant's mail newest first, a page at a time; the token it gives gets the next page and nothing is repeated or missed; another tenant sees
+// none of it; a token that is not its own is refused.
+func TestMessageLogPagesNewestFirst(t *testing.T) {
+	at := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	var rows []store.Message
+	for i := range 5 {
+		rows = append(rows, store.Message{Key: "k" + string(rune('5'-i)), Kind: "command", Template: "invoice_paid.v1", Recipient: "ada@example.com", State: "sent", ClaimTime: at.Add(-time.Duration(i) * time.Minute)})
+	}
+	rows[1].State, rows[2].State = "bounced", "sending"
+	srv := serveMessages(t, messageLog{rows}, nil)
+	url := srv.URL + "/v1/mail-messages?tenant_id=" + tenantA.String() + "&page_size=2"
+	var keys []string
+	next := ""
+	for range 5 {
+		code, m := do(t, "GET", url+"&after="+next, nil, "")
+		if code != 200 {
+			t.Fatalf("page: %d %v", code, m)
+		}
+		for _, r := range m["messages"].([]any) {
+			keys = append(keys, r.(map[string]any)["key"].(string))
+		}
+		if next, _ = m["next_after"].(string); next == "" {
+			break
+		}
+	}
+	if strings.Join(keys, ",") != "k5,k4,k3,k2,k1" {
+		t.Fatalf("messages in pages of two = %v", keys)
+	}
+	if _, m := do(t, "GET", srv.URL+"/v1/mail-messages?tenant_id="+uuid.NewString(), nil, ""); len(m["messages"].([]any)) != 0 {
+		t.Errorf("another tenant sees %v", m["messages"])
+	}
+	for _, bad := range []string{"&after=garbage", "&page_size=0", "&page_size=501"} {
+		if code, _ := do(t, "GET", srv.URL+"/v1/mail-messages?tenant_id="+tenantA.String()+bad, nil, ""); code != 400 {
+			t.Errorf("%s: %d, want 400", bad, code)
+		}
+	}
+	if code, _ := do(t, "GET", srv.URL+"/v1/mail-messages", nil, ""); code != 400 {
+		t.Errorf("no tenant: %d", code)
+	}
+	if code, _ := do(t, "GET", url, nil, "t=1,v1=bad"); code != 401 {
+		t.Errorf("a bad signature: %d", code)
+	}
+}
+
+// The preview renders what it is given and says why it cannot; both routes answer 501 where the notifier was started without them.
+func TestPreviewAnswersTheRenderedMail(t *testing.T) {
+	var got PriceChangePreview
+	srv := serveMessages(t, nil, func(in PriceChangePreview) (Rendered, error) {
+		got = in
+		if in.Locale == "xx" {
+			return Rendered{}, io.ErrUnexpectedEOF
+		}
+		return Rendered{Subject: "S " + in.PlanCode, HTML: "<p>H</p>", Text: "T"}, nil
+	})
+	body := `{"locale":"de","customer_name":"Ada","tenant_name":"Acme","plan_code":"pro","effective_time":"2026-12-05T10:00:00Z","new_renewal_minor":4000,"currency":"EUR","timezone":"Europe/Berlin"}`
+	code, m := do(t, "POST", srv.URL+"/v1/mail-previews/price-change", []byte(body), "")
+	if code != 200 || m["subject"] != "S pro" || m["html"] != "<p>H</p>" || got.NewRenewalMinor != 4000 || got.Locale != "de" || got.EffectiveTime.Year() != 2026 {
+		t.Fatalf("preview: %d %v %+v", code, m, got)
+	}
+	if code, _ := do(t, "POST", srv.URL+"/v1/mail-previews/price-change", []byte(`{"plan_code":"pro"}`), ""); code != 400 {
+		t.Errorf("a preview without a date and a currency: %d", code)
+	}
+	if code, _ := do(t, "POST", srv.URL+"/v1/mail-previews/price-change", []byte(strings.Replace(body, `"de"`, `"xx"`, 1)), ""); code != 400 {
+		t.Errorf("a preview that cannot be rendered: %d", code)
+	}
+	bare := serveMessages(t, nil, nil)
+	if code, _ := do(t, "POST", bare.URL+"/v1/mail-previews/price-change", []byte(body), ""); code != 501 {
+		t.Errorf("preview without a renderer: %d", code)
+	}
+	if code, _ := do(t, "GET", bare.URL+"/v1/mail-messages?tenant_id="+tenantA.String(), nil, ""); code != 501 {
+		t.Errorf("messages without a log: %d", code)
 	}
 }

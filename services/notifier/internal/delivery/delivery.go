@@ -182,7 +182,7 @@ func (m *Mailer) refuse(ctx context.Context, d Delivery, own bool) (drop bool, e
 		droppedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("category", "quota")))
 		return true, nil
 	}
-	if !m.Limit.Allow(d.TenantID) {
+	if !m.Limit.Allow(ctx, d.TenantID) {
 		rateLimitedTotal.Add(ctx, 1)
 		return false, ErrRateLimited
 	}

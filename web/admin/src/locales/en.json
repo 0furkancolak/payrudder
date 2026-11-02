@@ -876,7 +876,15 @@
           "not_changeable": "cannot be moved this way",
           "customer_blocked": "customer is blocked"
         },
-        "loadMore": "Show more subscriptions"
+        "loadMore": "Show more subscriptions",
+        "preview": {
+          "title": "Preview of the notice",
+          "hint": "The mail a customer gets of this price change, in the language you choose, with the new monthly fee of the version they move to. Nothing is sent.",
+          "language": "Language",
+          "tenantDefault": "This app's default language",
+          "show": "Preview the mail",
+          "subject": "Subject:"
+        }
       },
       "prorateAfterTrial": "Charge the first period from the end of the trial",
       "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",
@@ -1505,7 +1513,45 @@
         "usage_alerts": "A customer passed a usage limit of its plan.",
         "system": "Every other message Payrudder sends."
       },
-      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail."
+      "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail.",
+      "loadMore": "Show more",
+      "suppressions": {
+        "title": "Addresses we do not mail",
+        "hint": "An address lands here when its mail bounced for good, drew a complaint, or the operator put it here. Whatever the mail is, it is not sent to the address until you mail it again.",
+        "empty": "No address is held back.",
+        "columns": {
+          "address": "Address",
+          "reason": "Why",
+          "since": "Since"
+        },
+        "reasons": {
+          "bounce": "Bounced for good",
+          "complaint": "Complaint",
+          "manual": "Added by the operator"
+        },
+        "remove": "Mail again",
+        "confirm": "Mail {address} again? If its mail bounces for good again, the address is put back on the list."
+      },
+      "messages": {
+        "title": "Recent mail",
+        "hint": "What was sent to your customers, newest first, and what the provider reported of each. Mail Payrudder sends for itself is not listed.",
+        "empty": "Nothing was sent yet.",
+        "columns": {
+          "when": "Time",
+          "to": "To",
+          "mail": "Mail",
+          "state": "State"
+        },
+        "states": {
+          "sending": "Sending",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "delayed": "Delayed",
+          "bounced": "Bounced",
+          "soft_bounced": "Bounced for now",
+          "complained": "Complaint"
+        }
+      }
     },
     "credits": {
       "packs": {
@@ -3483,6 +3529,10 @@
         "events_quota": "Your plan's limit of events for this month is reached. Upgrade to send more.",
         "unavailable": "Plans are temporarily unavailable. Try again in a moment.",
         "invoice_not_payable": "This invoice cannot be paid any more."
+      },
+      "mail": {
+        "unavailable": "The mail log and the suppression list are not connected on this deployment, or the mail service did not answer. Try again in a moment.",
+        "suppression_not_found": "That address is not on the suppression list."
       }
     },
     "env": {

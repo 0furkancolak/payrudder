@@ -7,7 +7,9 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import PriceChangeHistory from "./PriceChangeHistory.vue";
-import { useSchedulePriceChange, type PriceChangeResult } from "./api";
+import { NativeSelect } from "@/shared/ui/native-select";
+import { languages, locales } from "@/app/i18n";
+import { usePreviewPriceChangeMail, useSchedulePriceChange, type PriceChangeResult } from "./api";
 
 /**
  * A price change for the customers of a package: the subscriptions on one version move to another (the latest unless named) at their next renewal, when that is
@@ -19,6 +21,9 @@ const props = defineProps<{ tenantId: string; code: string; latest: number }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
 const run = useSchedulePriceChange(() => props.tenantId);
+const preview = usePreviewPriceChangeMail(() => props.tenantId);
+/** The language of the example mail; empty is the tenant's own default. */
+const previewLocale = ref("");
 
 const fromVersion = ref("1");
 const toVersion = ref("");
@@ -33,9 +38,11 @@ watch(open, (isOpen) => {
   noticeDays.value = "30";
   checked.value = null;
   done.value = null;
+  previewLocale.value = "";
   run.reset();
+  preview.reset();
 });
-watch([fromVersion, toVersion, noticeDays], () => (checked.value = null));
+watch([fromVersion, toVersion, noticeDays], () => ((checked.value = null), preview.reset()));
 
 const valid = computed(() => Number(fromVersion.value) >= 1 && Number(noticeDays.value) >= 14 && Number(noticeDays.value) <= 365 && (toVersion.value === "" || Number(toVersion.value) >= 1));
 const args = (dryRun: boolean) => ({ code: props.code, fromVersion: Number(fromVersion.value), toVersion: toVersion.value ? Number(toVersion.value) : undefined, noticeDays: Number(noticeDays.value), dryRun });
@@ -51,6 +58,9 @@ async function schedule() {
     done.value = r;
     checked.value = null;
   }
+}
+async function showPreview() {
+  await preview.mutateAsync({ code: props.code, ...(toVersion.value ? { toVersion: Number(toVersion.value) } : {}), noticeDays: Number(noticeDays.value), locale: previewLocale.value }).catch(() => null);
 }
 const reasons = (r: PriceChangeResult) => {
   const m = new Map<string, number>();
@@ -82,6 +92,26 @@ const reasons = (r: PriceChangeResult) => {
           </label>
         </form>
         <ErrorText :error="run.error.value" />
+
+        <section class="grid gap-2" data-testid="pc-preview">
+          <h3 class="text-sm font-medium">{{ t("billing.packages.priceChange.preview.title") }}</h3>
+          <p class="text-muted-foreground text-xs">{{ t("billing.packages.priceChange.preview.hint") }}</p>
+          <div class="flex flex-wrap items-end gap-2">
+            <label class="grid gap-1 text-sm">{{ t("billing.packages.priceChange.preview.language") }}
+              <NativeSelect v-model="previewLocale" data-testid="pc-preview-language">
+                <option value="">{{ t("billing.packages.priceChange.preview.tenantDefault") }}</option>
+                <option v-for="l in locales" :key="l" :value="l">{{ languages[l].name }}</option>
+              </NativeSelect>
+            </label>
+            <Button type="button" variant="outline" :disabled="!valid || preview.isPending.value" data-testid="pc-preview-button" @click="showPreview">{{ t("billing.packages.priceChange.preview.show") }}</Button>
+          </div>
+          <ErrorText :error="preview.error.value" />
+          <div v-if="preview.data.value" class="grid gap-2" data-testid="pc-preview-mail">
+            <p class="text-sm"><span class="text-muted-foreground">{{ t("billing.packages.priceChange.preview.subject") }}</span> <strong data-testid="pc-preview-subject" dir="auto">{{ preview.data.value.subject }}</strong></p>
+            <!-- The mail is the notifier's HTML: it is shown in a frame that runs no script and submits nothing. -->
+            <iframe sandbox="" :srcdoc="preview.data.value.html" :title="t('billing.packages.priceChange.preview.title')" class="h-80 w-full rounded-xl border bg-white" data-testid="pc-preview-frame" />
+          </div>
+        </section>
 
         <div v-if="checked" class="bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="pc-check">
           <p class="font-medium">{{ t("billing.packages.priceChange.willSchedule", { n: checked.scheduled, version: checked.to_version }) }}</p>

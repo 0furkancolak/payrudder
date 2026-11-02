@@ -1356,6 +1356,75 @@ class MailSettingsResource:
         return cast("m.MailSettings", self._client._request("PUT", "/v1/mail-settings", body=body, options=options))
 
 
+class MailSuppressionsResource:
+    """``/v1/mail-suppressions`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_mail_suppressions(self, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListMailSuppressionsResponse:
+        """The addresses the tenant's mail is not sent to.
+
+        ``GET /v1/mail-suppressions``
+        """
+        return cast("m.ListMailSuppressionsResponse", self._client._request("GET", "/v1/mail-suppressions", query={"page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_mail_suppressions(self, *, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.MailSuppression]:
+        """Every item of ``list_mail_suppressions``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.list_mail_suppressions(page_size=page_size, options=options, page_token=token)
+            yield from page.get("suppressions", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    def delete_mail_suppression(self, address: str, *, options: RequestOptions | None = None) -> None:
+        """Mail an address again.
+
+        ``DELETE /v1/mail-suppressions/{address}``
+        """
+        self._client._request("DELETE", f"/v1/mail-suppressions/{_p(address)}", returns="none", options=options)
+
+
+class MailMessagesResource:
+    """``/v1/mail-messages`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_mail_messages(self, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListMailMessagesResponse:
+        """The tenant's recent mail, newest first.
+
+        ``GET /v1/mail-messages``
+        """
+        return cast("m.ListMailMessagesResponse", self._client._request("GET", "/v1/mail-messages", query={"page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_mail_messages(self, *, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.MailMessage]:
+        """Every item of ``list_mail_messages``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.list_mail_messages(page_size=page_size, options=options, page_token=token)
+            yield from page.get("messages", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+
+class MailPreviewsResource:
+    """``/v1/mail-previews`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def preview_price_change_mail(self, body: m.PriceChangeMailPreviewRequest, *, options: RequestOptions | None = None) -> m.RenderedMail:
+        """The notice a customer would get of a price change, without sending anything.
+
+        ``POST /v1/mail-previews/price-change``
+        """
+        return cast("m.RenderedMail", self._client._request("POST", "/v1/mail-previews/price-change", body=body, body_wire='PriceChangeMailPreviewRequest', options=options))
+
+
 class InvoicesResource:
     """``/v1/invoices`` and related operations."""
 
@@ -1731,6 +1800,9 @@ class Resources:
     reports: ReportsResource
     routing_rules: RoutingRulesResource
     mail_settings: MailSettingsResource
+    mail_suppressions: MailSuppressionsResource
+    mail_messages: MailMessagesResource
+    mail_previews: MailPreviewsResource
     invoices: InvoicesResource
     credit_notes: CreditNotesResource
     payment_links: PaymentLinksResource
@@ -1770,6 +1842,9 @@ class Resources:
         self.reports = ReportsResource(client)
         self.routing_rules = RoutingRulesResource(client)
         self.mail_settings = MailSettingsResource(client)
+        self.mail_suppressions = MailSuppressionsResource(client)
+        self.mail_messages = MailMessagesResource(client)
+        self.mail_previews = MailPreviewsResource(client)
         self.invoices = InvoicesResource(client)
         self.credit_notes = CreditNotesResource(client)
         self.payment_links = PaymentLinksResource(client)
@@ -3133,6 +3208,77 @@ class AsyncMailSettingsResource:
         return cast("m.MailSettings", await self._client._request("PUT", "/v1/mail-settings", body=body, options=options))
 
 
+class AsyncMailSuppressionsResource:
+    """``/v1/mail-suppressions`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_mail_suppressions(self, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListMailSuppressionsResponse:
+        """The addresses the tenant's mail is not sent to.
+
+        ``GET /v1/mail-suppressions``
+        """
+        return cast("m.ListMailSuppressionsResponse", await self._client._request("GET", "/v1/mail-suppressions", query={"page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_mail_suppressions(self, *, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.MailSuppression]:
+        """Every item of ``list_mail_suppressions``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.list_mail_suppressions(page_size=page_size, options=options, page_token=token)
+            for item in page.get("suppressions", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    async def delete_mail_suppression(self, address: str, *, options: RequestOptions | None = None) -> None:
+        """Mail an address again.
+
+        ``DELETE /v1/mail-suppressions/{address}``
+        """
+        await self._client._request("DELETE", f"/v1/mail-suppressions/{_p(address)}", returns="none", options=options)
+
+
+class AsyncMailMessagesResource:
+    """``/v1/mail-messages`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_mail_messages(self, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListMailMessagesResponse:
+        """The tenant's recent mail, newest first.
+
+        ``GET /v1/mail-messages``
+        """
+        return cast("m.ListMailMessagesResponse", await self._client._request("GET", "/v1/mail-messages", query={"page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_mail_messages(self, *, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.MailMessage]:
+        """Every item of ``list_mail_messages``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.list_mail_messages(page_size=page_size, options=options, page_token=token)
+            for item in page.get("messages", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+
+class AsyncMailPreviewsResource:
+    """``/v1/mail-previews`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def preview_price_change_mail(self, body: m.PriceChangeMailPreviewRequest, *, options: RequestOptions | None = None) -> m.RenderedMail:
+        """The notice a customer would get of a price change, without sending anything.
+
+        ``POST /v1/mail-previews/price-change``
+        """
+        return cast("m.RenderedMail", await self._client._request("POST", "/v1/mail-previews/price-change", body=body, body_wire='PriceChangeMailPreviewRequest', options=options))
+
+
 class AsyncInvoicesResource:
     """``/v1/invoices`` and related operations."""
 
@@ -3513,6 +3659,9 @@ class AsyncResources:
     reports: AsyncReportsResource
     routing_rules: AsyncRoutingRulesResource
     mail_settings: AsyncMailSettingsResource
+    mail_suppressions: AsyncMailSuppressionsResource
+    mail_messages: AsyncMailMessagesResource
+    mail_previews: AsyncMailPreviewsResource
     invoices: AsyncInvoicesResource
     credit_notes: AsyncCreditNotesResource
     payment_links: AsyncPaymentLinksResource
@@ -3552,6 +3701,9 @@ class AsyncResources:
         self.reports = AsyncReportsResource(client)
         self.routing_rules = AsyncRoutingRulesResource(client)
         self.mail_settings = AsyncMailSettingsResource(client)
+        self.mail_suppressions = AsyncMailSuppressionsResource(client)
+        self.mail_messages = AsyncMailMessagesResource(client)
+        self.mail_previews = AsyncMailPreviewsResource(client)
         self.invoices = AsyncInvoicesResource(client)
         self.credit_notes = AsyncCreditNotesResource(client)
         self.payment_links = AsyncPaymentLinksResource(client)

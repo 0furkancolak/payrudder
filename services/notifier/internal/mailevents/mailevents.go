@@ -8,7 +8,9 @@ package mailevents
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -29,6 +31,33 @@ import (
 // Notes finds the mail a provider message id belongs to.
 type Notes interface {
 	ByMessageID(ctx context.Context, messageID string) (tenantID uuid.UUID, recipient string, found bool, err error)
+	// RecordDelivery keeps what the provider reported of the message, for the tenant's message log.
+	RecordDelivery(ctx context.Context, messageID, state string) error
+}
+
+// Messages is the log of a tenant's mail.
+type Messages interface {
+	ListForTenant(ctx context.Context, tenantID uuid.UUID, after store.MessagesAfter, pageSize int32) ([]store.Message, error)
+}
+
+// PriceChangePreview is what the preview of the price-change notice is made of: the customer, the tenant, the plan, when the price starts and what it will be (in the
+// renewal's minor units and currency), and the language.
+type PriceChangePreview struct {
+	Locale          string    `json:"locale"`
+	CustomerName    string    `json:"customer_name"`
+	TenantName      string    `json:"tenant_name"`
+	PlanCode        string    `json:"plan_code"`
+	EffectiveTime   time.Time `json:"effective_time"`
+	NewRenewalMinor int64     `json:"new_renewal_minor"`
+	Currency        string    `json:"currency"`
+	Timezone        string    `json:"timezone"`
+}
+
+// Rendered is a mail as it would be sent.
+type Rendered struct {
+	Subject string `json:"subject"`
+	HTML    string `json:"html"`
+	Text    string `json:"text"`
 }
 
 // List is the suppression list.
@@ -44,7 +73,11 @@ type Handler struct {
 	Secret string
 	Notes  Notes
 	List   List
-	Log    *slog.Logger
+	// Messages is the log of a tenant's mail; nil answers 501 on its route.
+	Messages Messages
+	// PreviewPriceChange renders the price-change notice as the consumer would write it, from the numbers the console has; nil answers 501 on its route.
+	PreviewPriceChange func(PriceChangePreview) (Rendered, error)
+	Log                *slog.Logger
 	// Now is the clock; time.Now when nil.
 	Now func() time.Time
 }
@@ -72,6 +105,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /v1/mail-suppressions", h.signed(h.list))
 	mux.HandleFunc("PUT /v1/mail-suppressions/{tenant_id}/{address}", h.signed(h.add))
 	mux.HandleFunc("DELETE /v1/mail-suppressions/{tenant_id}/{address}", h.signed(h.remove))
+	mux.HandleFunc("GET /v1/mail-messages", h.signed(h.messages))
+	mux.HandleFunc("POST /v1/mail-previews/price-change", h.signed(h.previewPriceChange))
 	return mux
 }
 
@@ -140,6 +175,11 @@ func (h *Handler) event(w http.ResponseWriter, r *http.Request, body []byte) {
 		write(w, http.StatusOK, eventAnswer{})
 		return
 	}
+	if err := h.Notes.RecordDelivery(ctx, e.MessageID, deliveryState(e)); err != nil {
+		h.Log.ErrorContext(ctx, "mail event: recording the delivery failed", "error", err)
+		write(w, http.StatusInternalServerError, problem{"try again"})
+		return
+	}
 	if !e.Suppresses() {
 		count("counted")
 		write(w, http.StatusOK, eventAnswer{Matched: true})
@@ -160,6 +200,22 @@ func (h *Handler) event(w http.ResponseWriter, r *http.Request, body []byte) {
 		h.Log.InfoContext(ctx, "mail suppressed", "tenant_id", tenantID, "reason", reason, "message_id", e.MessageID)
 	}
 	write(w, http.StatusOK, eventAnswer{Matched: true, Suppressed: added})
+}
+
+// deliveryState is the word the message log shows for an event.
+func deliveryState(e mailx.Event) string {
+	switch e.Type {
+	case mailx.EventBounced:
+		if e.BounceType == mailx.BounceHard {
+			return "bounced"
+		}
+		return "soft_bounced"
+	case mailx.EventComplained:
+		return "complained"
+	case mailx.EventDelayed:
+		return "delayed"
+	}
+	return "delivered"
 }
 
 func clip(s string) string {
@@ -193,6 +249,82 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request, _ []byte) {
 		next = rows[len(rows)-1].Address
 	}
 	write(w, http.StatusOK, map[string]any{"suppressions": rows, "next_after": next})
+}
+
+// messages lists a tenant's recent mail, newest first, with the state each one is in. after is the token the previous page gave.
+func (h *Handler) messages(w http.ResponseWriter, r *http.Request, _ []byte) {
+	if h.Messages == nil {
+		write(w, http.StatusNotImplemented, problem{"the message log is not available"})
+		return
+	}
+	tid, err := uuid.Parse(r.URL.Query().Get("tenant_id"))
+	if err != nil {
+		write(w, http.StatusBadRequest, problem{"tenant_id is required"})
+		return
+	}
+	size := 50
+	if v := r.URL.Query().Get("page_size"); v != "" {
+		if size, err = strconv.Atoi(v); err != nil || size < 1 || size > maxPage {
+			write(w, http.StatusBadRequest, problem{"page_size is 1 to " + strconv.Itoa(maxPage)})
+			return
+		}
+	}
+	var after store.MessagesAfter
+	if tok := r.URL.Query().Get("after"); tok != "" {
+		if after, err = parseMessageToken(tok); err != nil {
+			write(w, http.StatusBadRequest, problem{"after is not a token this list gave"})
+			return
+		}
+	}
+	rows, err := h.Messages.ListForTenant(r.Context(), tid, after, int32(size)+1) //nolint:gosec // 2..501
+	if err != nil {
+		h.Log.ErrorContext(r.Context(), "mail messages: list failed", "error", err)
+		write(w, http.StatusInternalServerError, problem{"try again"})
+		return
+	}
+	next := ""
+	if len(rows) > size {
+		rows = rows[:size]
+		last := rows[len(rows)-1]
+		next = messageToken(last.ClaimTime, last.Key)
+	}
+	if rows == nil {
+		rows = []store.Message{} // a list, never null
+	}
+	write(w, http.StatusOK, map[string]any{"messages": rows, "next_after": next})
+}
+
+func messageToken(at time.Time, key string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(at.UTC().Format(time.RFC3339Nano) + "|" + key))
+}
+
+func parseMessageToken(tok string) (store.MessagesAfter, error) {
+	b, err := base64.RawURLEncoding.DecodeString(tok)
+	at, key, ok := strings.Cut(string(b), "|")
+	if err != nil || !ok || key == "" {
+		return store.MessagesAfter{}, errors.New("bad token")
+	}
+	t, err := time.Parse(time.RFC3339Nano, at)
+	return store.MessagesAfter{At: t, Key: key}, err
+}
+
+// previewPriceChange renders the price-change notice for the numbers it is given, as the consumer would write it for a customer. It sends nothing and stores nothing.
+func (h *Handler) previewPriceChange(w http.ResponseWriter, _ *http.Request, body []byte) {
+	if h.PreviewPriceChange == nil {
+		write(w, http.StatusNotImplemented, problem{"the preview is not available"})
+		return
+	}
+	var in PriceChangePreview
+	if err := json.Unmarshal(body, &in); err != nil || in.PlanCode == "" || in.EffectiveTime.IsZero() || in.Currency == "" {
+		write(w, http.StatusBadRequest, problem{"a plan_code, effective_time and currency are required"})
+		return
+	}
+	out, err := h.PreviewPriceChange(in)
+	if err != nil {
+		write(w, http.StatusBadRequest, problem{err.Error()})
+		return
+	}
+	write(w, http.StatusOK, out)
 }
 
 func (h *Handler) target(w http.ResponseWriter, r *http.Request) (uuid.UUID, string, bool) {

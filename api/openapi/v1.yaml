@@ -1727,6 +1727,62 @@ paths:
       responses:
         "200": { description: Every category with its new state, content: { application/json: { schema: { $ref: "#/components/schemas/MailSettings" } } } }
         "400": { $ref: "#/components/responses/Error" }
+  /v1/mail-suppressions:
+    get:
+      operationId: listMailSuppressions
+      summary: The addresses the tenant's mail is not sent to
+      description: |
+        An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
+        In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
+        deployment whose gateway is not connected to the notifier.
+      parameters:
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListMailSuppressionsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/mail-suppressions/{address}:
+    delete:
+      operationId: deleteMailSuppression
+      summary: Mail an address again
+      description: Lifts the suppression of one address. Lifting an address that is not on the list is 404 `gateway.mail.suppression_not_found`. An address that bounces again is put back by that bounce.
+      parameters: [{ name: address, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Lifted }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/mail-messages:
+    get:
+      operationId: listMailMessages
+      summary: The tenant's recent mail, newest first
+      description: |
+        The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
+        `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+      parameters:
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListMailMessagesResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/mail-previews/price-change:
+    post:
+      operationId: previewPriceChangeMail
+      summary: The notice a customer would get of a price change, without sending anything
+      description: |
+        Renders the price-change notice in the language given (the tenant's default when none), with the date written in the tenant's time zone and the amount, in the tenant's
+        currency, the way that language writes money. It is the mail the notifier would send; nothing is sent or kept. Show `html` in a sandboxed frame.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PriceChangeMailPreviewRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RenderedMail" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/routing-rules/preview:
     post:
       operationId: previewRouting
@@ -5923,6 +5979,53 @@ components:
         reason: { type: string }
         updated_by: { type: string }
         update_time: { type: string, format: date-time, nullable: true }
+    MailSuppression:
+      type: object
+      required: [address, reason, detail, create_time]
+      properties:
+        address: { type: string }
+        reason: { type: string, enum: [bounce, complaint, manual] }
+        detail: { type: string, description: What the provider or the operator said. }
+        create_time: { type: string, format: date-time }
+    ListMailSuppressionsResponse:
+      type: object
+      required: [suppressions, next_page_token]
+      properties:
+        suppressions: { type: array, items: { $ref: "#/components/schemas/MailSuppression" } }
+        next_page_token: { type: string }
+    MailMessage:
+      type: object
+      required: [key, kind, template, recipient, state, claim_time, send_time]
+      properties:
+        key: { type: string, description: "The notifier's key for the mail (one mail has one key, however often it was asked for)." }
+        kind: { type: string, description: "What asked for it: command, limit, trial, price_change, contract, renewal or withdrawal." }
+        template: { type: string }
+        recipient: { type: string }
+        state: { type: string, enum: [sending, sent, delivered, delayed, bounced, soft_bounced, complained] }
+        claim_time: { type: string, format: date-time }
+        send_time: { type: string, format: date-time, nullable: true }
+    ListMailMessagesResponse:
+      type: object
+      required: [messages, next_page_token]
+      properties:
+        messages: { type: array, items: { $ref: "#/components/schemas/MailMessage" } }
+        next_page_token: { type: string }
+    PriceChangeMailPreviewRequest:
+      type: object
+      required: [plan_code, effective_time, new_renewal_minor]
+      properties:
+        locale: { type: string, description: "The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language." }
+        customer_name: { type: string, maxLength: 200 }
+        plan_code: { type: string, maxLength: 200 }
+        effective_time: { type: string, format: date-time, description: When the new price starts. }
+        new_renewal_minor: { type: integer, format: int64, description: "The new renewal fee in the tenant's currency, in minor units." }
+    RenderedMail:
+      type: object
+      required: [subject, html, text]
+      properties:
+        subject: { type: string }
+        html: { type: string }
+        text: { type: string }
     GetPriceChangeResponse:
       type: object
       required: [price_change, items, next_page_token]

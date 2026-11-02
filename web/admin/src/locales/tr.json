@@ -876,7 +876,15 @@
           "not_changeable": "bu yolla taşınamaz",
           "customer_blocked": "müşteri engelli"
         },
-        "loadMore": "Daha fazla abonelik göster"
+        "loadMore": "Daha fazla abonelik göster",
+        "preview": {
+          "title": "Bildirimin önizlemesi",
+          "hint": "Bir müşterinin bu fiyat değişikliği için alacağı posta, seçtiğiniz dilde ve geçecekleri sürümün yeni aylık ücretiyle. Hiçbir şey gönderilmez.",
+          "language": "Dil",
+          "tenantDefault": "Bu uygulamanın varsayılan dili",
+          "show": "Postayı önizle",
+          "subject": "Konu:"
+        }
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
@@ -1505,7 +1513,45 @@
         "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
         "system": "Payrudder'ın gönderdiği diğer tüm iletiler."
       },
-      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir."
+      "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir.",
+      "loadMore": "Daha fazla göster",
+      "suppressions": {
+        "title": "Posta göndermediğimiz adresler",
+        "hint": "Postası kalıcı olarak geri dönen, şikâyet alan veya operatörün buraya koyduğu bir adres burada görünür. Yeniden posta göndermeyi seçene kadar, ne olursa olsun, bu adrese posta gönderilmez.",
+        "empty": "Hiçbir adres engellenmiyor.",
+        "columns": {
+          "address": "Adres",
+          "reason": "Neden",
+          "since": "Tarihi"
+        },
+        "reasons": {
+          "bounce": "Kalıcı olarak geri döndü",
+          "complaint": "Şikâyet",
+          "manual": "Operatör ekledi"
+        },
+        "remove": "Yeniden posta gönder",
+        "confirm": "{address} adresine yeniden posta gönderilsin mi? Postası tekrar kalıcı olarak geri dönerse adres listeye yeniden eklenir."
+      },
+      "messages": {
+        "title": "Son gönderilen postalar",
+        "hint": "Müşterilerinize gönderilenler, en yeniden eskiye, ve sağlayıcının her biri için bildirdiği durum. Payrudder'ın kendi adına gönderdiği postalar listelenmez.",
+        "empty": "Henüz bir şey gönderilmedi.",
+        "columns": {
+          "when": "Zaman",
+          "to": "Alıcı",
+          "mail": "Posta",
+          "state": "Durum"
+        },
+        "states": {
+          "sending": "Gönderiliyor",
+          "sent": "Gönderildi",
+          "delivered": "Teslim edildi",
+          "delayed": "Gecikti",
+          "bounced": "Geri döndü",
+          "soft_bounced": "Geçici olarak geri döndü",
+          "complained": "Şikâyet"
+        }
+      }
     },
     "credits": {
       "packs": {
@@ -3483,6 +3529,10 @@
         "events_quota": "Planınızın bu ayki olay limitine ulaşıldı. Daha fazla göndermek için planı yükseltin.",
         "unavailable": "Planlar geçici olarak kullanılamıyor. Biraz sonra yeniden deneyin.",
         "invoice_not_payable": "Bu fatura artık ödenemez."
+      },
+      "mail": {
+        "unavailable": "Posta günlüğü ve engelli adres listesi bu kurulumda bağlı değil veya posta servisi yanıt vermedi. Biraz sonra tekrar deneyin.",
+        "suppression_not_found": "Bu adres engelli adres listesinde değil."
       }
     },
     "env": {

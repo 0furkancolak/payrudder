@@ -1943,6 +1943,18 @@ type ListInvoicesResponse struct {
 	NextPageToken string    `json:"next_page_token"`
 }
 
+// ListMailMessagesResponse is the response of ListMailMessages.
+type ListMailMessagesResponse struct {
+	Messages      []MailMessage `json:"messages"`
+	NextPageToken string        `json:"next_page_token"`
+}
+
+// ListMailSuppressionsResponse is the response of ListMailSuppressions.
+type ListMailSuppressionsResponse struct {
+	Suppressions  []MailSuppression `json:"suppressions"`
+	NextPageToken string            `json:"next_page_token"`
+}
+
 // ListMetersResponse is the response of ListMeters.
 type ListMetersResponse struct {
 	Meters []Meter `json:"meters"`
@@ -1994,6 +2006,20 @@ type ListWebhookEndpointsResponse struct {
 	Endpoints []WebhookEndpoint `json:"endpoints"`
 }
 
+// MailMessage is an object of the API; see components.schemas.MailMessage in api/openapi/v1.yaml.
+type MailMessage struct {
+	// The notifier's key for the mail (one mail has one key, however often it was asked for).
+	Key string `json:"key"`
+	// What asked for it: command, limit, trial, price_change, contract, renewal or withdrawal.
+	Kind      string `json:"kind"`
+	Template  string `json:"template"`
+	Recipient string `json:"recipient"`
+	// One of: sending, sent, delivered, delayed, bounced, soft_bounced, complained.
+	State     string     `json:"state"`
+	ClaimTime time.Time  `json:"claim_time"`
+	SendTime  *time.Time `json:"send_time"`
+}
+
 // MailSettings is an object of the API; see components.schemas.MailSettings in api/openapi/v1.yaml.
 type MailSettings struct {
 	Categories []MailSettingsCategories `json:"categories"`
@@ -2018,6 +2044,16 @@ type MailSettingsInputCategories struct {
 	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
 	Category string `json:"category,omitempty"`
 	Enabled  *bool  `json:"enabled,omitempty"`
+}
+
+// MailSuppression is an object of the API; see components.schemas.MailSuppression in api/openapi/v1.yaml.
+type MailSuppression struct {
+	Address string `json:"address"`
+	// One of: bounce, complaint, manual.
+	Reason string `json:"reason"`
+	// What the provider or the operator said.
+	Detail     string    `json:"detail"`
+	CreateTime time.Time `json:"create_time"`
 }
 
 // MarkAffiliatePayoutPaidRequest is the request body of MarkAffiliatePayoutPaid.
@@ -2228,6 +2264,18 @@ type PriceChangeItem struct {
 	NotifyTime *time.Time `json:"notify_time"`
 }
 
+// PriceChangeMailPreviewRequest is the request body of PriceChangeMailPreview.
+type PriceChangeMailPreviewRequest struct {
+	// The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language.
+	Locale       string `json:"locale,omitempty"`
+	CustomerName string `json:"customer_name,omitempty"`
+	PlanCode     string `json:"plan_code"`
+	// When the new price starts.
+	EffectiveTime time.Time `json:"effective_time"`
+	// The new renewal fee in the tenant's currency, in minor units.
+	NewRenewalMinor Int64 `json:"new_renewal_minor"`
+}
+
 // PriceChangeSkipped is an object of the API; see components.schemas.PriceChangeSkipped in api/openapi/v1.yaml.
 type PriceChangeSkipped struct {
 	SubscriptionID     string `json:"subscription_id"`
@@ -2436,6 +2484,13 @@ type RecordContractAcceptanceRequest struct {
 type RecordContractAcceptanceResponse struct {
 	GroupID     string               `json:"group_id"`
 	Acceptances []ContractAcceptance `json:"acceptances"`
+}
+
+// RenderedMail is an object of the API; see components.schemas.RenderedMail in api/openapi/v1.yaml.
+type RenderedMail struct {
+	Subject string `json:"subject"`
+	HTML    string `json:"html"`
+	Text    string `json:"text"`
 }
 
 // RequestContractWithdrawalRefundRequest is the request body of RequestContractWithdrawalRefund.
@@ -3879,6 +3934,46 @@ func (p *ListInvoicesParams) values() url.Values {
 	}
 	if p.Status != "" {
 		v.Set("status", p.Status)
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// ListMailMessagesParams are the query parameters of ListMailMessages.
+type ListMailMessagesParams struct {
+	PageSize  *int
+	PageToken string
+}
+
+func (p *ListMailMessagesParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// ListMailSuppressionsParams are the query parameters of ListMailSuppressions.
+type ListMailSuppressionsParams struct {
+	PageSize  *int
+	PageToken string
+}
+
+func (p *ListMailSuppressionsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
 	}
 	if p.PageSize != nil {
 		v.Set("page_size", strconv.Itoa(*p.PageSize))

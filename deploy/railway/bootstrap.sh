@@ -217,7 +217,7 @@ vars invoice-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices S3_ASSETS_
 note "notifier"
 go_service notifier services/notifier 9100
 pg_vars notifier notifier system migrator
-vars notifier "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025
+vars notifier 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025
 
 note "gateway"
 go_service gateway services/gateway 8000

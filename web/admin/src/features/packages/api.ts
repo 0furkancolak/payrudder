@@ -155,3 +155,24 @@ export function useSchedulePriceChange(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: (_r, v) => (v.dryRun ? undefined : queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId)] })),
   });
 }
+
+export type RenderedMail = components["schemas"]["RenderedMail"];
+
+/**
+ * The notice a customer would get of this price change, rendered by the notifier (nothing is sent): the new renewal is the fixed monthly fee of the version the
+ * customers move to, in the tenant's currency, and the new price starts after the notice. The customer is an example; the tenant's name, zone and currency are the gateway's.
+ */
+export function usePreviewPriceChangeMail(tenantId: MaybeRefOrGetter<string>) {
+  return useMutation({
+    mutationFn: async (v: { code: string; toVersion?: number; noticeDays: number; locale: string }): Promise<RenderedMail> => {
+      const api = tenantApi(toValue(tenantId));
+      const version = await unwrap(api.GET("/v1/plans/{code}/versions/{version}", { params: { path: { code: v.code, version: v.toVersion ? String(v.toVersion) : "latest" } } }));
+      const start = new Date(Date.now() + v.noticeDays * 24 * 3600 * 1000);
+      return unwrap(
+        api.POST("/v1/mail-previews/price-change", {
+          body: { locale: v.locale, customer_name: "Ada", plan_code: v.code, effective_time: start.toISOString(), new_renewal_minor: Number(version.base_fee_minor) },
+        }),
+      );
+    },
+  });
+}

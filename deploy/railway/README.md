@@ -293,6 +293,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PAYRUDDER_RABBITMQ_URL` | AMQP | |
 | `PAYRUDDER_KAFKA_BROKERS` | KAFKA | |
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
+| `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the mail rate limit's buckets are shared by the replicas; without it each replica keeps its own |
 | `SMTP_ADDR` | `mailpit.railway.internal:1025` | see [Mail](#mail) |
 
 ### mockpsp

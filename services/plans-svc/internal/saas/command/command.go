@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -89,6 +90,7 @@ type Commands struct {
 	plans Plans
 	qry   *query.Queries
 	log   *slog.Logger
+	db    *store.DB // the platform tenant's own data, for what the system pool may not write (WithDB)
 }
 
 // New returns the commands. pool is the system pool.
@@ -142,6 +144,10 @@ func (c *Commands) bootstrapOnce(ctx context.Context) (bool, error) {
 		}
 		if err := c.seed(p.Context(ctx)); err != nil {
 			return fmt.Errorf("saas: seeding plans: %w", err)
+		}
+		// Best effort: a failure is logged and tried again at the next start, it does not keep plans-svc from starting.
+		if _, _, err := c.BackfillMails(ctx); err != nil {
+			c.log.ErrorContext(ctx, "saas: the mails allowance could not be added to the older plan versions", "error", err)
 		}
 		c.log.InfoContext(ctx, "saas: platform tenant ready", "tenant_id", p.TenantID, "environment", p.Environment)
 		return nil

@@ -876,7 +876,15 @@
           "not_changeable": "no se puede mover así",
           "customer_blocked": "el cliente está bloqueado"
         },
-        "loadMore": "Mostrar más suscripciones"
+        "loadMore": "Mostrar más suscripciones",
+        "preview": {
+          "title": "Vista previa del aviso",
+          "hint": "El correo que recibe un cliente por este cambio de precio, en el idioma que elijas, con la nueva cuota mensual de la versión a la que pasa. No se envía nada.",
+          "language": "Idioma",
+          "tenantDefault": "Idioma por defecto de esta aplicación",
+          "show": "Ver el correo",
+          "subject": "Asunto:"
+        }
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -1505,7 +1513,45 @@
         "usage_alerts": "Un cliente superó un límite de uso de su plan.",
         "system": "Cualquier otro mensaje que envía Payrudder."
       },
-      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder."
+      "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder.",
+      "loadMore": "Mostrar más",
+      "suppressions": {
+        "title": "Direcciones a las que no enviamos",
+        "hint": "Una dirección aparece aquí cuando su correo rebotó definitivamente, provocó una queja o el operador la puso aquí. Sea cual sea el correo, no se le envía hasta que vuelvas a habilitarla.",
+        "empty": "Ninguna dirección está retenida.",
+        "columns": {
+          "address": "Dirección",
+          "reason": "Motivo",
+          "since": "Desde"
+        },
+        "reasons": {
+          "bounce": "Rebotó definitivamente",
+          "complaint": "Queja",
+          "manual": "Añadida por el operador"
+        },
+        "remove": "Volver a enviar",
+        "confirm": "¿Volver a enviar a {address}? Si su correo vuelve a rebotar definitivamente, la dirección vuelve a la lista."
+      },
+      "messages": {
+        "title": "Correos recientes",
+        "hint": "Lo enviado a tus clientes, del más reciente al más antiguo, y lo que el proveedor informó de cada uno. Los correos que Payrudder envía por su cuenta no aparecen.",
+        "empty": "Aún no se ha enviado nada.",
+        "columns": {
+          "when": "Hora",
+          "to": "Para",
+          "mail": "Correo",
+          "state": "Estado"
+        },
+        "states": {
+          "sending": "Enviando",
+          "sent": "Enviado",
+          "delivered": "Entregado",
+          "delayed": "Retrasado",
+          "bounced": "Rebotado",
+          "soft_bounced": "Rebotado por ahora",
+          "complained": "Queja"
+        }
+      }
     },
     "credits": {
       "packs": {
@@ -3483,6 +3529,10 @@
         "events_quota": "Se alcanzó el límite de eventos de tu plan para este mes. Mejora el plan para enviar más.",
         "unavailable": "Los planes no están disponibles temporalmente. Inténtalo de nuevo en un momento.",
         "invoice_not_payable": "Esta factura ya no se puede pagar."
+      },
+      "mail": {
+        "unavailable": "El registro de correos y la lista de supresión no están conectados en este despliegue, o el servicio de correo no respondió. Inténtalo de nuevo en un momento.",
+        "suppression_not_found": "Esa dirección no está en la lista de supresión."
       }
     },
     "env": {

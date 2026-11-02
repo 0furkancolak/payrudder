@@ -691,6 +691,7 @@ services:
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
+      PAYRUDDER_REDIS_URL: redis://redis:6379/0   # the mail rate limit's buckets, shared by the replicas
       SMTP_ADDR: mailpit:1025
       NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
       NAFRU_API_KEY: ${NAFRU_API_KEY:-}
@@ -701,6 +702,7 @@ services:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       redpanda: { condition: service_healthy }
+      redis: { condition: service_healthy }
       mailpit: { condition: service_healthy }
       plans-svc: { condition: service_started }
     deploy: { resources: { limits: { memory: 96m } } }

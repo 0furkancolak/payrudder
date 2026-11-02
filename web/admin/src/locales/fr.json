@@ -876,7 +876,15 @@
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
         },
-        "loadMore": "Afficher plus d'abonnements"
+        "loadMore": "Afficher plus d'abonnements",
+        "preview": {
+          "title": "Aperçu de l'avis",
+          "hint": "L'e-mail qu'un client reçoit pour ce changement de prix, dans la langue choisie, avec le nouveau tarif mensuel de la version vers laquelle il passe. Rien n'est envoyé.",
+          "language": "Langue",
+          "tenantDefault": "Langue par défaut de cette application",
+          "show": "Aperçu de l'e-mail",
+          "subject": "Objet :"
+        }
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -1505,7 +1513,45 @@
         "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
         "system": "Tous les autres messages envoyés par Payrudder."
       },
-      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Payrudder."
+      "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Payrudder.",
+      "loadMore": "Afficher plus",
+      "suppressions": {
+        "title": "Adresses que nous ne contactons plus",
+        "hint": "Une adresse figure ici lorsque son e-mail a été rejeté définitivement, a provoqué une plainte ou a été placé ici par l'opérateur. Quel que soit l'e-mail, il ne lui est pas envoyé tant que vous ne la réactivez pas.",
+        "empty": "Aucune adresse n'est bloquée.",
+        "columns": {
+          "address": "Adresse",
+          "reason": "Raison",
+          "since": "Depuis"
+        },
+        "reasons": {
+          "bounce": "Rejeté définitivement",
+          "complaint": "Plainte",
+          "manual": "Ajoutée par l'opérateur"
+        },
+        "remove": "Réactiver",
+        "confirm": "Réactiver {address} ? Si son e-mail est de nouveau rejeté définitivement, l'adresse revient sur la liste."
+      },
+      "messages": {
+        "title": "E-mails récents",
+        "hint": "Ce qui a été envoyé à vos clients, du plus récent au plus ancien, et ce que le fournisseur a indiqué pour chacun. Les e-mails que Payrudder envoie pour son propre compte ne sont pas listés.",
+        "empty": "Rien n'a encore été envoyé.",
+        "columns": {
+          "when": "Heure",
+          "to": "À",
+          "mail": "E-mail",
+          "state": "État"
+        },
+        "states": {
+          "sending": "Envoi en cours",
+          "sent": "Envoyé",
+          "delivered": "Distribué",
+          "delayed": "Retardé",
+          "bounced": "Rejeté",
+          "soft_bounced": "Rejeté temporairement",
+          "complained": "Plainte"
+        }
+      }
     },
     "credits": {
       "packs": {
@@ -3483,6 +3529,10 @@
         "events_quota": "La limite d'événements de votre offre pour ce mois est atteinte. Passez à une offre supérieure pour en envoyer davantage.",
         "unavailable": "Les offres sont temporairement indisponibles. Réessayez dans un instant.",
         "invoice_not_payable": "Cette facture ne peut plus être payée."
+      },
+      "mail": {
+        "unavailable": "Le journal des e-mails et la liste de suppression ne sont pas connectés sur ce déploiement, ou le service de messagerie n'a pas répondu. Réessayez dans un instant.",
+        "suppression_not_found": "Cette adresse n'est pas sur la liste de suppression."
       }
     },
     "env": {

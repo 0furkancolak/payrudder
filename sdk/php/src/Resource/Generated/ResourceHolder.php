@@ -34,7 +34,10 @@ abstract class ResourceHolder
     public readonly ExpenseRulesResource $expenseRules;
     public readonly ExpensesResource $expenses;
     public readonly InvoicesResource $invoices;
+    public readonly MailMessagesResource $mailMessages;
+    public readonly MailPreviewsResource $mailPreviews;
     public readonly MailSettingsResource $mailSettings;
+    public readonly MailSuppressionsResource $mailSuppressions;
     public readonly MetersResource $meters;
     public readonly PaymentLinksResource $paymentLinks;
     public readonly PaymentsResource $payments;
@@ -74,7 +77,10 @@ abstract class ResourceHolder
         $this->expenseRules = new ExpenseRulesResource($requester);
         $this->expenses = new ExpensesResource($requester);
         $this->invoices = new InvoicesResource($requester);
+        $this->mailMessages = new MailMessagesResource($requester);
+        $this->mailPreviews = new MailPreviewsResource($requester);
         $this->mailSettings = new MailSettingsResource($requester);
+        $this->mailSuppressions = new MailSuppressionsResource($requester);
         $this->meters = new MetersResource($requester);
         $this->paymentLinks = new PaymentLinksResource($requester);
         $this->payments = new PaymentsResource($requester);

@@ -8,10 +8,15 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	envpkg "github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 )
 
@@ -122,6 +127,87 @@ func testSaas(t *testing.T) {
 			if p.GetCode() == "free" && p.GetLatestVersion() != 2 {
 				t.Errorf("free is on version %d, want the operator's 2", p.GetLatestVersion())
 			}
+		}
+	})
+
+	t.Run("TheMailsAllowanceIsBackfilledOnVersionsThatPredateTheMeter", func(t *testing.T) {
+		pt := e.platformOf(t)
+		tid := uuid.MustParse(pt.GetId())
+		// An installation that had these plans before the mails meter: Pro's first version has no mails entitlement, was published a day ago, and the meter is an
+		// hour old. (Free's second version, the operator's above, was published after the meter and has none either: that one is a choice and stays as it is.)
+		if err := pgxx.InTenantTx(ctx, e.ownerDB(t), tid, func(tx pgx.Tx) error {
+			for _, stmt := range []string{
+				`DELETE FROM plan_entitlements WHERE meter_code = 'mails' AND plan_version_id = (SELECT v.id FROM plan_versions v JOIN plans p ON p.id = v.plan_id AND p.tenant_id = v.tenant_id WHERE p.code = 'pro' AND v.version = 1)`,
+				`UPDATE plan_versions SET published_at = now() - interval '1 day' WHERE version = 1`,
+				`UPDATE meters SET created_at = now() - interval '1 hour' WHERE code = 'mails'`,
+			} {
+				if _, err := tx.Exec(ctx, stmt); err != nil {
+					return fmt.Errorf("%s: %w", stmt, err)
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		pctx := as(pt.GetId())
+		if _, err := e.plans.CreateCustomer(pctx, &plansv1.CreateCustomerRequest{ExternalId: "org_backfill", Name: "Backfill", Email: "backfill@example.com"}); err != nil {
+			t.Fatal(err)
+		}
+		sub, err := e.plans.CreateSubscription(pctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "org_backfill", PlanCode: "pro", PlanVersion: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		entitlements := func(plan string, version int32) map[string]*plansv1.Entitlement {
+			t.Helper()
+			r, err := e.plans.GetPlanVersion(pctx, &plansv1.GetPlanVersionRequest{PlanCode: plan, Version: version})
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := map[string]*plansv1.Entitlement{}
+			for _, en := range r.GetPlanVersion().GetEntitlements() {
+				m[en.GetMeterCode()] = en
+			}
+			return m
+		}
+		if entitlements("pro", 1)["mails"] != nil {
+			t.Fatal("the fixture did not remove the mails entitlement")
+		}
+		e.relayAll(t, &captureSink{}) // drain what the subscription published
+
+		versions, subs, err := e.saas.BackfillMails(ctx)
+		if err != nil || versions != 1 || subs != 1 {
+			t.Fatalf("backfill = %d versions, %d subscriptions, %v; want Pro's first version and its one subscription", versions, subs, err)
+		}
+		if m := entitlements("pro", 1)["mails"]; m == nil || m.GetLimit() != "5000" || m.GetMode() != plansv1.QuotaMode_QUOTA_MODE_NOTIFY {
+			t.Errorf("pro v1 mails entitlement = %v, want 5000 notify", m)
+		}
+		if len(entitlements("free", 2)) != 4 || entitlements("free", 2)["mails"] != nil {
+			t.Errorf("the operator's version of Free, published after the meter, was touched: %v", entitlements("free", 2))
+		}
+		sink := &captureSink{}
+		e.relayAll(t, sink)
+		got := false
+		for _, row := range sink.rows {
+			if row.Topic != "plans.entitlements.v1" || row.Payload == nil {
+				continue
+			}
+			var st eventsv1.EntitlementState
+			if err := proto.Unmarshal(row.Payload, &st); err != nil {
+				t.Fatal(err)
+			}
+			if st.GetMeterCode() == "mails" && st.GetLimitUnits() == 5000 && st.GetMode() == "notify" && st.GetCustomerId() == sub.GetSubscription().GetCustomerId() {
+				got = true
+			}
+		}
+		if !got {
+			t.Error("limits-svc was not told of the new mails limit of the subscription (no entitlement state on plans.entitlements.v1)")
+		}
+		// Idempotent: nothing is left to do, and the start-up run (Bootstrap) finds the same.
+		if v, n, err := e.saas.BackfillMails(ctx); err != nil || v != 0 || n != 0 {
+			t.Errorf("a second backfill = %d, %d, %v; want nothing", v, n, err)
+		}
+		if err := e.saas.Bootstrap(ctx); err != nil {
+			t.Fatal(err)
 		}
 	})
 

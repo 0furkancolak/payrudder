@@ -23,7 +23,10 @@ import {
   ExpenseRulesResource,
   ExpensesResource,
   InvoicesResource,
+  MailMessagesResource,
+  MailPreviewsResource,
   MailSettingsResource,
+  MailSuppressionsResource,
   MetersResource,
   PaymentLinksResource,
   PaymentsResource,
@@ -73,6 +76,10 @@ import type {
   ListExpensesQuery,
   ListInvoicesQuery,
   ListInvoicesResponse,
+  ListMailMessagesQuery,
+  ListMailMessagesResponse,
+  ListMailSuppressionsQuery,
+  ListMailSuppressionsResponse,
   ListPaymentLinksQuery,
   ListPaymentLinksResponse,
   ListPromotionCodesQuery,
@@ -207,6 +214,22 @@ export class Paginators {
     );
   }
 
+  listMailSuppressions(query?: ListMailSuppressionsQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListMailSuppressionsResponse["suppressions"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.mailSuppressions.listMailSuppressions(q, options),
+      (page) => page.suppressions,
+      query,
+    );
+  }
+
+  listMailMessages(query?: ListMailMessagesQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListMailMessagesResponse["messages"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.mailMessages.listMailMessages(q, options),
+      (page) => page.messages,
+      query,
+    );
+  }
+
   listInvoices(query?: ListInvoicesQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListInvoicesResponse["invoices"]>[number], void, undefined> {
     return paginate(
       (q) => this.r.invoices.listInvoices(q, options),
@@ -271,7 +294,10 @@ export abstract class PayrudderResources {
   readonly expenseRules: ExpenseRulesResource;
   readonly expenses: ExpensesResource;
   readonly invoices: InvoicesResource;
+  readonly mailMessages: MailMessagesResource;
+  readonly mailPreviews: MailPreviewsResource;
   readonly mailSettings: MailSettingsResource;
+  readonly mailSuppressions: MailSuppressionsResource;
   readonly meters: MetersResource;
   readonly paymentLinks: PaymentLinksResource;
   readonly payments: PaymentsResource;
@@ -312,7 +338,10 @@ export abstract class PayrudderResources {
     this.expenseRules = new ExpenseRulesResource(t);
     this.expenses = new ExpensesResource(t);
     this.invoices = new InvoicesResource(t);
+    this.mailMessages = new MailMessagesResource(t);
+    this.mailPreviews = new MailPreviewsResource(t);
     this.mailSettings = new MailSettingsResource(t);
+    this.mailSuppressions = new MailSuppressionsResource(t);
     this.meters = new MetersResource(t);
     this.paymentLinks = new PaymentLinksResource(t);
     this.payments = new PaymentsResource(t);

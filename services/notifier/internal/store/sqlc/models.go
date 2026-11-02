@@ -38,4 +38,5 @@ type SentNotification struct {
 	SentAt        *time.Time
 	SmtpMessageID *string
 	TenantID      *uuid.UUID
+	DeliveryState string
 }
