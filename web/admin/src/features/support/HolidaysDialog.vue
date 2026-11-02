@@ -56,6 +56,7 @@ const save = () => actions.saveHolidays.mutate({ appId: props.appId, holidays: d
         <Button type="submit" variant="outline" size="sm" :disabled="!day" data-testid="holiday-add">{{ t("support.holidays.add") }}</Button>
       </form>
       <ErrorText :error="actions.saveHolidays.error.value" />
+      <p v-if="actions.saveHolidays.isSuccess.value" class="text-success m-0 text-sm" role="status" data-testid="holidays-saved">{{ t("support.holidays.saved") }}</p>
       <DialogFooter>
         <Button type="button" variant="ghost" @click="open = false">{{ t("common.close") }}</Button>
         <Button type="button" :disabled="!holidays.data.value || actions.saveHolidays.isPending.value" data-testid="holidays-save" @click="save">{{ t("support.holidays.save") }}</Button>

@@ -6,6 +6,19 @@ import { MockGateway, signInAsOperator } from "./gateway";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
+test("a failed read of the notice rules shows an error with a retry, not an empty form", async ({ page }) => {
+  const gw = new MockGateway();
+  gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/tenants" ? { body: { tenants: [] } } : undefined));
+  // The last handler added is asked first.
+  gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/price-change-notice" ? { status: 503, body: { error: { code: "UNAVAILABLE", key: "", message: "the notice table is down" } } } : undefined));
+  await gw.install(page);
+  await signInAsOperator(page);
+  const card = page.getByTestId("price-notice");
+  await expect(card).toContainText("the notice table is down");
+  await expect(card.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(card.getByTestId("price-notice-save")).toHaveCount(0);
+});
+
 test("the operator edits the default notice and the notice per country, and the whole table is sent", async ({ page }) => {
   const gw = new MockGateway();
   gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/tenants" ? { body: { tenants: [] } } : undefined));
@@ -32,6 +45,7 @@ test("the operator edits the default notice and the notice per country, and the 
     ],
   });
   await expect(card).toContainText("operator@example.com");
+  await expect(card.getByTestId("price-notice-saved")).toBeVisible();
 
   // A row removed is a row left out of the next save.
   await card.getByTestId("price-notice-remove-1").click();

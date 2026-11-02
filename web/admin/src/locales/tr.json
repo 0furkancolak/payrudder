@@ -275,6 +275,7 @@
       "remove": "Kaldır",
       "add": "Ülke ekle",
       "save": "Bildirim kurallarını kaydet",
+      "saved": "Bildirim kuralları kaydedildi.",
       "star": "* satırı kendi satırı olmayan her ülke için (ve ülkesi olmayan müşteri için) geçerlidir. Olmazsa platform 14 gün tutar.",
       "updated": "Son kaydeden {who}, {date}."
     }
@@ -5898,6 +5899,7 @@
       "name": "Ad (isteğe bağlı)",
       "add": "Günü ekle",
       "save": "Tatil günlerini kaydet",
+      "saved": "Tatil günleri kaydedildi.",
       "remove": "{day} gününü kaldır"
     },
     "slaTier": "Süre {tier} planındaki bir uygulama için hesaplandı.",

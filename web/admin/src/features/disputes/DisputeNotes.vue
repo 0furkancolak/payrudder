@@ -51,7 +51,7 @@ async function add() {
       <li v-for="e in events" :key="e.id" class="flex flex-col gap-0.5 text-sm" :data-action="e.action">
         <span v-if="e.action === 'note'" class="break-words whitespace-pre-wrap">{{ e.note }}</span>
         <span v-else class="font-medium">{{ t(`disputes.notes.event.${e.action}`) }}</span>
-        <span class="text-muted-foreground text-xs">{{ fmt.date(e.create_time, "dateTime") }}<template v-if="e.actor"> · {{ e.actor }}</template></span>
+        <span class="text-muted-foreground text-xs break-words">{{ fmt.date(e.create_time, "dateTime") }}<template v-if="e.actor"> · {{ e.actor }}</template></span>
       </li>
     </ul>
     <p v-else-if="!history.isPending.value && !history.error.value" class="text-muted-foreground m-0 text-sm" data-testid="dispute-events-empty">{{ t("disputes.notes.empty") }}</p>
