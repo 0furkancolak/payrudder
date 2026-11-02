@@ -63,10 +63,12 @@ func TestPrice(t *testing.T) {
 }
 
 type fake struct {
-	srv   *httptest.Server
-	paths []string
-	last  map[string]any
-	reply func(path string, body map[string]any) (int, string)
+	srv     *httptest.Server
+	paths   []string
+	methods []string
+	bodies  []map[string]any
+	last    map[string]any
+	reply   func(path string, body map[string]any) (int, string)
 }
 
 func newFake(t *testing.T, settings func(*Settings)) (*fake, *Client) {
@@ -82,6 +84,8 @@ func newFake(t *testing.T, settings func(*Settings)) (*fake, *Client) {
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
 		f.paths = append(f.paths, r.URL.Path)
+		f.methods = append(f.methods, r.Method)
+		f.bodies = append(f.bodies, body)
 		f.last = body
 		code, out := f.reply(r.URL.Path, body)
 		w.WriteHeader(code)
@@ -89,7 +93,7 @@ func newFake(t *testing.T, settings func(*Settings)) (*fake, *Client) {
 	}))
 	t.Cleanup(f.srv.Close)
 	s := Settings{APIKey: "api", SecretKey: "sec", BaseURL: f.srv.URL, Buyer: Buyer{Name: "Ada", Surname: "Lovelace", IdentityNumber: "11111111111",
-		Address: "Nisantasi", City: "Istanbul", Country: "Turkey", ZipCode: "34000", IP: "85.34.78.112", Email: "billing@example.com"}}
+		Address: "Nisantasi", City: "Istanbul", Country: "Turkey", ZipCode: "34000", IP: "85.34.78.112", Email: "billing@example.com", GSMNumber: "+905321234567"}}
 	if settings != nil {
 		settings(&s)
 	}
@@ -130,7 +134,8 @@ func TestChargeFailures(t *testing.T) {
 	t.Run("a refusal is a decline in Payrudder's vocabulary, or carries the error group when iyzico's group has no equivalent", func(t *testing.T) {
 		for body, want := range map[string]string{
 			`{"status":"failure","errorCode":"10051","errorMessage":"Not sufficient funds","errorGroup":"NOT_SUFFICIENT_FUNDS"}`: "insufficient_funds",
-			`{"status":"failure","errorCode":"10057","errorMessage":"restricted","errorGroup":"NOT_PERMITTED_TO_CARDHOLDER"}`:    "NOT_PERMITTED_TO_CARDHOLDER",
+			`{"status":"failure","errorCode":"10058","errorMessage":"terminal","errorGroup":"NOT_PERMITTED_TO_TERMINAL"}`:        "NOT_PERMITTED_TO_TERMINAL",
+			`{"status":"failure","errorCode":"10057","errorMessage":"restricted","errorGroup":"NOT_PERMITTED_TO_CARDHOLDER"}`:    "restricted_card",
 			`{"status":"failure","errorCode":"10999","errorMessage":"new"}`:                                                      "10999",
 		} {
 			f, c := newFake(t, nil)

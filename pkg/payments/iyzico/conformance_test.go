@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func iyzicoFake(t *testing.T, sc conformance.Scenario, detail string) (payments.
 			price, _ := strconv.ParseFloat(body["price"].(string), 64)
 			probe.Refund(conformance.SeenRefund{AmountMinor: int64(math.Round(price * 100))}) // iyzico takes no idempotency key on a refund
 			_, _ = io.WriteString(w, `{"status":"success","paymentId":"23456","refundHostReference":"ref-9"}`)
-		case "/payment/detail":
+		case "/payment/detail", retrieveCheckoutFormPath:
 			_, _ = io.WriteString(w, detail)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -67,12 +68,33 @@ func iyzicoFake(t *testing.T, sc conformance.Scenario, detail string) (payments.
 	return c, probe
 }
 
+// iyzicoFakeAnswering is a fake whose every call is answered with body: the checkout form retrieve of a return.
+func iyzicoFakeAnswering(t *testing.T, body string) payments.Provider {
+	t.Helper()
+	p, _ := iyzicoFake(t, conformance.ChargeSucceeds, body)
+	return p
+}
+
 func TestConformance(t *testing.T) {
 	conformance.Run(t, conformance.Harness{
 		Provider: func(t *testing.T, sc conformance.Scenario) (payments.Provider, *conformance.Probe) {
 			return iyzicoFake(t, sc, `{}`)
 		},
 		Currency: "TRY", PaymentMethod: "ck:ct", ChargeRef: "23456", PartialRefunds: true, Parse: ParseNotification,
+		Buyer: &payments.Buyer{ID: "cus-1", Name: "Ada Lovelace", Email: "ada@example.com", Phone: "+905321234567", TaxID: "11111111110", Line1: "Nisantasi 1", City: "Istanbul", Country: "TR"},
+		Return: func(t *testing.T, c conformance.ReturnCase) (payments.Provider, payments.ReturnRequest) {
+			cf := `{"status":"success","paymentStatus":"SUCCESS","paymentId":"23456","basketId":"` + conformance.InvoiceID + `","token":"tok-1","price":11.16,"currency":"TRY","fraudStatus":1}`
+			ref := "tok-1"
+			switch c {
+			case conformance.ReturnDeclined:
+				cf = `{"status":"failure","errorCode":"10051","errorGroup":"NOT_SUFFICIENT_FUNDS"}`
+			case conformance.ReturnForged:
+				ref = "tok-of-another-attempt"
+			}
+			f := iyzicoFakeAnswering(t, cf)
+			return f, payments.ReturnRequest{IdempotencyKey: conformance.ChargeKey, InvoiceID: conformance.InvoiceID, AmountMinor: conformance.Total, Currency: "TRY",
+				ProviderRef: "tok-1", Form: url.Values{"token": {ref}}}
+		},
 		Webhook: func(t *testing.T, c conformance.WebhookCase) (payments.Provider, []byte, http.Header) {
 			// iyzico is asked what the notified payment is: the answer decides, the body and the signature only name it.
 			detail := `{"status":"success","paymentId":"23456","paymentStatus":"SUCCESS","basketId":"` + conformance.InvoiceID + `","fraudStatus":1}`
