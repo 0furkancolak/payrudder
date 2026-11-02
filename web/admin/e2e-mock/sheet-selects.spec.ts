@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { LIVE, productGateway, signInAsAda } from "./product";
-import { METERS } from "./usage";
 
 // Plan 03, complaint 9: the searchable lists (Combobox: currency, time zone, country, customer, package, an event list...) inside every sheet that has one.
 // Sheets whose forms have no searchable list (a package, a coupon, a webhook endpoint, a meter: native selects and suggestions only) are not here. One data-driven test per sheet: the page behind is made tall and scrolled, the sheet is opened from its own button, and each list in it is opened with the pointer,
