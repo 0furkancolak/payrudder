@@ -28,8 +28,9 @@ test("a switch is off at the start and on at the end, in either direction of wri
   await mail().install(page);
   await openTenantPage(page, "/mail");
   await expect(page.getByTestId("mail-payment_receipts")).not.toBeChecked();
-  expect(await thumbSide(page, "mail-payment_receipts")).toBe("left");
-  expect(await thumbSide(page, "mail-usage_alerts")).toBe("right");
+  // The thumb slides (a transition) when the settings arrive and the switch turns off: poll, do not read it mid-way.
+  await expect.poll(() => thumbSide(page, "mail-payment_receipts")).toBe("left");
+  await expect.poll(() => thumbSide(page, "mail-usage_alerts")).toBe("right");
 
   await pickLanguage(page, "ar");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
