@@ -351,6 +351,9 @@ message PlanVersion {
   repeated CurrencyPrices currency_prices = 10;
   // The trial in days a new subscription to this version gets unless its request says otherwise. 0 = none.
   int32 trial_days = 11;
+  // When a trial ends inside a billing period, the fixed fee of that first period is charged from the trial's end to the period's end instead of in full. A version
+  // published before this field existed is false (it charged the whole period and keeps doing so); a new version is true unless its request says otherwise.
+  bool prorate_after_trial = 12;
 }
 
 // CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).

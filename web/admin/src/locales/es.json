@@ -693,7 +693,8 @@
         "estimate": "Estimación",
         "period": "Periodo {period}",
         "none": "Aún no hay nada que facturar: este cliente no tiene suscripción en el periodo actual ni uso tardío que facturar.",
-        "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla."
+        "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla.",
+        "creditSurplus": "Se añadirían {amount} al saldo a favor del cliente: las líneas suman menos de cero."
       }
     },
     "packages": {
@@ -842,7 +843,12 @@
           "not_changeable": "no se puede mover así",
           "customer_blocked": "el cliente está bloqueado"
         }
-      }
+      },
+      "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
+      "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
+      "firstPeriod": "Primer periodo tras la prueba",
+      "firstPeriodProrated": "Desde el fin de la prueba",
+      "firstPeriodWhole": "El periodo completo"
     },
     "subscriptions": {
       "new": "Nueva suscripción",
@@ -1282,7 +1288,8 @@
       "retryRefund": "Reintentar el reembolso",
       "new": "Nueva nota de crédito",
       "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta.",
-      "allWhere": "Cualquiera"
+      "allWhere": "Cualquiera",
+      "taxGiven": "Impuesto devuelto"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -4062,7 +4069,8 @@
         "service": "Periodo de servicio",
         "quantity": "Cantidad",
         "amount": "Importe",
-        "total": "Total"
+        "total": "Total",
+        "creditSurplus": "Se añadieron {amount} al saldo a favor del cliente: las líneas sumaban menos de cero, y una factura nunca tiene un total negativo."
       },
       "payments": {
         "title": "Pagos",

@@ -6126,7 +6126,7 @@ components:
         service_to: { type: string, format: date-time, nullable: true }
     UpcomingInvoice:
       type: object
-      required: [estimate, customer_external_id, period_id, period_start, period_end, currency, lines, subtotal_minor, tax_minor, credit_minor, total_minor, as_of, has_invoice]
+      required: [estimate, customer_external_id, period_id, period_start, period_end, currency, lines, subtotal_minor, tax_minor, credit_minor, total_minor, credit_surplus_minor, as_of, has_invoice]
       properties:
         estimate: { type: boolean, description: Always true. The preview is never the invoice }
         customer_external_id: { type: string }
@@ -6139,11 +6139,12 @@ components:
         tax_minor: { type: string, format: int64 }
         credit_minor: { type: string, format: int64, description: "The credit balance the invoice would use, a positive number" }
         total_minor: { type: string, format: int64, description: "What would be charged; never negative" }
+        credit_surplus_minor: { type: string, format: int64, description: "What the lines come to below zero, which the real invoice would add to the customer's credit balance instead of charging a negative total; 0 normally" }
         as_of: { type: string, format: date-time, description: The clock of the estimate }
         has_invoice: { type: boolean, description: False when the customer has no subscription in the period and no late usage to bill }
     Invoice:
       type: object
-      required: [id, customer_id, customer_external_id, period_id, kind, number, currency, subtotal_minor, total_minor, status, saga_state, create_time, finalize_time, lines, payments, plan_version_id, pdf_object_key]
+      required: [id, customer_id, customer_external_id, period_id, kind, number, currency, subtotal_minor, total_minor, status, saga_state, create_time, finalize_time, lines, payments, plan_version_id, pdf_object_key, credit_surplus_minor]
       properties:
         id: { type: string }
         customer_id: { type: string }
@@ -6165,6 +6166,7 @@ components:
           items: { $ref: "#/components/schemas/InvoicePayment" }
         plan_version_id: { type: string }
         pdf_object_key: { type: string }
+        credit_surplus_minor: { type: string, format: int64, description: "What the lines came to below zero (late-usage corrections larger than everything else on the invoice). The total is never negative, so this was added to the customer's credit balance instead, once per invoice, and their next invoices use it. 0 for every other invoice" }
     InvoicePayment:
       type: object
       required: [id, invoice_id, method, amount_minor, currency, received_at, reference, note, recorded_by, recorded_at]
@@ -6921,6 +6923,7 @@ components:
         prices: { type: array, items: { $ref: "#/components/schemas/PriceInput" } }
         entitlements: { type: array, items: { $ref: "#/components/schemas/EntitlementInput" } }
         trial_days: { type: integer, minimum: 0, maximum: 365, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
+        prorate_after_trial: { type: boolean, description: "Left out: true. When a trial ends inside a billing period, charge the first period from the trial's end to the period's end instead of the whole fee; false charges the whole fee as versions published before this rule do" }
     ListSubscriptionsResponse:
       type: object
       required: [subscriptions, next_page_token]
@@ -9813,7 +9816,7 @@ components:
         mode: { $ref: "#/components/schemas/QuotaMode" }
     PlanVersion:
       type: object
-      required: [id, plan_id, plan_code, version, base_fee_minor, prices, entitlements, publish_time, trial_days, fees]
+      required: [id, plan_id, plan_code, version, base_fee_minor, prices, entitlements, publish_time, trial_days, prorate_after_trial, fees]
       properties:
         id: { type: string, format: uuid }
         plan_id: { type: string, format: uuid }
@@ -9824,6 +9827,7 @@ components:
         entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
         publish_time: { type: string, format: date-time, nullable: true }
         trial_days: { type: integer, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
+        prorate_after_trial: { type: boolean, description: "When a trial ends inside a billing period, the fixed fee of that first period is charged from the trial's end to the period's end instead of in full. False for a version published before the rule existed (it charged the whole period and keeps doing so)" }
         fees:
           type: array
           description: Fixed fees other than the tenant currency's monthly one, per currency and interval
@@ -9885,7 +9889,7 @@ components:
       description: "Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out."
     CreditNote:
       type: object
-      required: [id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, reason, create_time, disposition, refund_state, refund_error]
+      required: [id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, tax_minor, reason, create_time, disposition, refund_state, refund_error]
       properties:
         id: { type: string, format: uuid }
         number: { type: string, description: CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox) }
@@ -9895,6 +9899,7 @@ components:
         customer_external_id: { type: string }
         currency: { type: string }
         total_minor: { type: string, format: int64 }
+        tax_minor: { type: string, format: int64, description: "The part of total_minor that is the invoice's tax given back: the note's share of the invoice's total taken from the invoice's tax, so the notes of an invoice give back its tax exactly. 0 for an untaxed invoice and for a note made before this field existed" }
         reason: { type: string }
         create_time: { type: string, format: date-time, nullable: true }
         disposition: { type: string, enum: [CREDIT_NOTE_DISPOSITION_CREDIT, CREDIT_NOTE_DISPOSITION_REFUND], description: "Where the amount went: the credit balance, or back to the card" }
@@ -10232,7 +10237,7 @@ components:
       properties:
         currency: { type: string }
         gross_income_minor: { type: string, description: "Invoices paid in the period, tax included", format: int64 }
-        tax_minor: { type: string, description: "The tax lines of those invoices", format: int64 }
+        tax_minor: { type: string, description: "The tax lines of those invoices, less the tax that credit notes issued in the period gave back (it is negative in a period that gave back more than it collected)", format: int64 }
         refunds_minor: { type: string, description: "Credit notes against paid invoices plus invoices refunded in full", format: int64 }
         net_income_minor: { type: string, description: "gross - tax - refunds", format: int64 }
         expenses_minor: { type: string, description: "Every live occurrence in the period, provider fees included", format: int64 }

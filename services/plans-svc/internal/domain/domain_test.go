@@ -229,6 +229,22 @@ func TestValidatePlanVersionTrialAndFreeTier(t *testing.T) {
 	}
 }
 
+// A new version prorates the first paid period after a trial unless its request says it should not; the rule is the version's own (billing-svc-status 17).
+func TestValidatePlanVersionProrateAfterTrialDefaultsToTrue(t *testing.T) {
+	scales := map[string]int{}
+	no, yes := false, true
+	for _, tc := range []struct {
+		name string
+		set  *bool
+		want bool
+	}{{"unset", nil, true}, {"explicitly yes", &yes, true}, {"explicitly no", &no, false}} {
+		in, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{BaseFeeMinor: 100, TrialDays: 14, ProrateAfterTrial: tc.set}, scales)
+		if err != nil || in.ProrateAfterTrial != tc.want {
+			t.Errorf("%s: prorate = %v, %v; want %v", tc.name, in.ProrateAfterTrial, err, tc.want)
+		}
+	}
+}
+
 func TestValidateAppName(t *testing.T) {
 	if got, err := ValidateAppName("  Web shop \n"); err != nil || got != "Web shop" {
 		t.Errorf("a padded name = %q, %v", got, err)

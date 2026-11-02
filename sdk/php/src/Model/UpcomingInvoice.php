@@ -26,6 +26,7 @@ final class UpcomingInvoice implements Model
      * @param int|null $taxMinor
      * @param int|null $creditMinor
      * @param int|null $totalMinor
+     * @param int|null $creditSurplusMinor
      * @param string|null $asOf
      * @param bool|null $hasInvoice
      */
@@ -41,6 +42,7 @@ final class UpcomingInvoice implements Model
         public readonly ?int $taxMinor = null,
         public readonly ?int $creditMinor = null,
         public readonly ?int $totalMinor = null,
+        public readonly ?int $creditSurplusMinor = null,
         public readonly ?string $asOf = null,
         public readonly ?bool $hasInvoice = null,
     ) {}
@@ -62,6 +64,7 @@ final class UpcomingInvoice implements Model
             taxMinor: Cast::int($data['tax_minor'] ?? null),
             creditMinor: Cast::int($data['credit_minor'] ?? null),
             totalMinor: Cast::int($data['total_minor'] ?? null),
+            creditSurplusMinor: Cast::int($data['credit_surplus_minor'] ?? null),
             asOf: Cast::string($data['as_of'] ?? null),
             hasInvoice: Cast::bool($data['has_invoice'] ?? null),
         );
@@ -84,6 +87,7 @@ final class UpcomingInvoice implements Model
             'tax_minor' => Cast::int64($this->taxMinor),
             'credit_minor' => Cast::int64($this->creditMinor),
             'total_minor' => Cast::int64($this->totalMinor),
+            'credit_surplus_minor' => Cast::int64($this->creditSurplusMinor),
             'as_of' => $this->asOf,
             'has_invoice' => $this->hasInvoice,
         ]);

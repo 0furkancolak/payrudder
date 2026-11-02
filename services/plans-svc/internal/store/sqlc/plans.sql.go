@@ -492,7 +492,7 @@ func (q *Queries) GetPlanByCode(ctx context.Context, code string) (GetPlanByCode
 }
 
 const getPlanVersionByCode = `-- name: GetPlanVersionByCode :one
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.prorate_after_trial, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND p.code = $1 AND ($2::int = 0 OR v.version = $2::int)
 ORDER BY v.version DESC
@@ -505,13 +505,14 @@ type GetPlanVersionByCodeParams struct {
 }
 
 type GetPlanVersionByCodeRow struct {
-	ID           uuid.UUID
-	PlanID       uuid.UUID
-	Version      int32
-	BaseFeeMinor int64
-	TrialDays    int32
-	PublishedAt  time.Time
-	PlanCode     string
+	ID                uuid.UUID
+	PlanID            uuid.UUID
+	Version           int32
+	BaseFeeMinor      int64
+	TrialDays         int32
+	ProrateAfterTrial bool
+	PublishedAt       time.Time
+	PlanCode          string
 }
 
 // version 0 = latest.
@@ -524,6 +525,7 @@ func (q *Queries) GetPlanVersionByCode(ctx context.Context, arg GetPlanVersionBy
 		&i.Version,
 		&i.BaseFeeMinor,
 		&i.TrialDays,
+		&i.ProrateAfterTrial,
 		&i.PublishedAt,
 		&i.PlanCode,
 	)
@@ -531,19 +533,20 @@ func (q *Queries) GetPlanVersionByCode(ctx context.Context, arg GetPlanVersionBy
 }
 
 const getPlanVersionByID = `-- name: GetPlanVersionByID :one
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.prorate_after_trial, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND v.id = $1
 `
 
 type GetPlanVersionByIDRow struct {
-	ID           uuid.UUID
-	PlanID       uuid.UUID
-	Version      int32
-	BaseFeeMinor int64
-	TrialDays    int32
-	PublishedAt  time.Time
-	PlanCode     string
+	ID                uuid.UUID
+	PlanID            uuid.UUID
+	Version           int32
+	BaseFeeMinor      int64
+	TrialDays         int32
+	ProrateAfterTrial bool
+	PublishedAt       time.Time
+	PlanCode          string
 }
 
 func (q *Queries) GetPlanVersionByID(ctx context.Context, id uuid.UUID) (GetPlanVersionByIDRow, error) {
@@ -555,6 +558,7 @@ func (q *Queries) GetPlanVersionByID(ctx context.Context, id uuid.UUID) (GetPlan
 		&i.Version,
 		&i.BaseFeeMinor,
 		&i.TrialDays,
+		&i.ProrateAfterTrial,
 		&i.PublishedAt,
 		&i.PlanCode,
 	)
@@ -992,18 +996,19 @@ func (q *Queries) InsertPlanPrice(ctx context.Context, arg InsertPlanPriceParams
 }
 
 const insertPlanVersion = `-- name: InsertPlanVersion :one
-INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor, trial_days)
+INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor, trial_days, prorate_after_trial)
 VALUES (app_tenant_id(), $1, $2,
         (SELECT COALESCE(max(version), 0) + 1 FROM plan_versions WHERE tenant_id = app_tenant_id() AND plan_id = $2),
-        $3, $4)
-RETURNING tenant_id, id, plan_id, version, base_fee_minor, published_at, trial_days
+        $3, $4, $5)
+RETURNING tenant_id, id, plan_id, version, base_fee_minor, published_at, trial_days, prorate_after_trial
 `
 
 type InsertPlanVersionParams struct {
-	ID           uuid.UUID
-	PlanID       uuid.UUID
-	BaseFeeMinor int64
-	TrialDays    int32
+	ID                uuid.UUID
+	PlanID            uuid.UUID
+	BaseFeeMinor      int64
+	TrialDays         int32
+	ProrateAfterTrial bool
 }
 
 // Next version number; a concurrent publish loses on UNIQUE (tenant_id, plan_id, version) and is retried.
@@ -1013,6 +1018,7 @@ func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionPa
 		arg.PlanID,
 		arg.BaseFeeMinor,
 		arg.TrialDays,
+		arg.ProrateAfterTrial,
 	)
 	var i PlanVersion
 	err := row.Scan(
@@ -1023,6 +1029,7 @@ func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionPa
 		&i.BaseFeeMinor,
 		&i.PublishedAt,
 		&i.TrialDays,
+		&i.ProrateAfterTrial,
 	)
 	return i, err
 }

@@ -65,7 +65,7 @@ func (m *Manager) draftFor(ctx context.Context, rr *rateRun, cid string) (*invoi
 	// Tax at the tenant's rate for the customer's country, on an invoice Payrudder raises. What a provider charges for is taxed by the provider.
 	if !subscribed || !sub.ProviderOwned() {
 		if name, bps, ok := rr.taxes.RateFor(cu.GetCustomer().GetCountry()); ok {
-			if tl, ok := rating.TaxLine(ls.lines, name, bps); ok {
+			if tl, ok := rating.NetTaxLine(ls.lines, name, bps); ok {
 				ls.add(tl, 0)
 			}
 		}
@@ -107,8 +107,11 @@ func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid
 	if err != nil {
 		return nil, inputs.Permanent(err)
 	}
+	// A total below zero (late-usage corrections larger than the rest of the invoice, tax included) is not charged; the invoice's total is 0, its lines keep their amounts
+	// and what they came to below zero becomes a credit balance of the customer's (invoicecmd.InsertRegular), shown on the invoice as its credit surplus.
+	var surplus int64
 	if total < 0 {
-		total = 0 // a negative total (credit-like late adjustments) is clamped; the lines keep their amounts
+		surplus, total = -total, 0
 	}
 	exponent, ok := inputs.CurrencyExponent(invoiceCurrency)
 	if !ok {
@@ -132,8 +135,9 @@ func (m *Manager) buildDraft(rr *rateRun, cu *plansv1.Customer, ls *lineSet, cid
 	}
 	snapshot := inputs.SnapshotOf{TenantID: rr.run.TenantID, Tenant: rr.tenant, Customer: cu, External: snapExternal, Provider: provider, PaymentMethod: paymentMethod,
 		Currency: invoiceCurrency, CurrencyExponent: exponent}.Snapshot()
+	snapshot.CreditSurplusMinor = surplus
 	return &invoicecmd.RegularDraft{
-		Provider: provider, Country: cu.GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pv, Lines: ls.lines, LineScales: ls.scales, Total: total,
+		Provider: provider, Country: cu.GetCountry(), Currency: invoiceCurrency, CustomerID: cuid, PlanVersion: pv, Lines: ls.lines, LineScales: ls.scales, Total: total, CreditSurplus: surplus,
 		Snapshot: snapshot,
 	}, nil
 }

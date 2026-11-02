@@ -92,7 +92,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, comma
 		return false, err
 	}
 	cn := &model.CreditNote{Refund: true, ID: row.ID, CustomerID: row.CustomerID, InvoiceID: row.InvoiceID, Number: row.Number, Currency: row.Currency, TotalMinor: row.TotalMinor,
-		Reason: row.Reason, CreatedAt: row.CreatedAt}
+		TaxMinor: row.TaxMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
 	switch r := reply.GetReply().(type) {
 	case *commandsv1.ReplyEnvelope_PaymentRefunded:
 		if err := q.MarkRefundRefunded(ctx, sqlc.MarkRefundRefundedParams{RefundRef: r.PaymentRefunded.GetPspRefundId(), TenantID: tenantID, ID: cn.ID}); err != nil {
@@ -133,7 +133,7 @@ func (c *Commands) sweepRefunds(ctx context.Context, s tenantdb.Scope) error {
 		return err
 	}
 	for _, r := range rows {
-		p := pendingRefund{tenant: r.TenantID, cn: model.CreditNote{ID: r.ID, InvoiceID: r.InvoiceID, Currency: r.Currency, TotalMinor: r.TotalMinor}, env: r.Environment,
+		p := pendingRefund{tenant: r.TenantID, cn: model.CreditNote{ID: r.ID, InvoiceID: r.InvoiceID, Currency: r.Currency, TotalMinor: r.TotalMinor, TaxMinor: r.TaxMinor}, env: r.Environment,
 			attempt: int(r.RefundAttempt), runFrom: int(r.RefundRunFrom), generation: int(r.RefundGeneration)}
 		err := s.InTx(ctx, p.tenant, pgx.TxOptions{}, func(tx pgx.Tx) error { return c.resendRefund(ctx, tx, &p) })
 		if tenantdb.Skippable(err) {
@@ -190,7 +190,7 @@ func (c *Commands) retryRefund(ctx context.Context, tenantID, creditNoteID uuid.
 			return model.ErrRefundNotFailed
 		}
 		cn := &model.CreditNote{ID: creditNoteID, Refund: true, InvoiceID: row.InvoiceID, CustomerID: row.CustomerID, Number: row.Number, Currency: row.Currency,
-			TotalMinor: row.TotalMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
+			TotalMinor: row.TotalMinor, TaxMinor: row.TaxMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
 		generation := int(row.RefundGeneration)
 		if !mayHaveHappened(row.RefundError) {
 			generation++

@@ -155,6 +155,7 @@ MODELS: dict[str, dict[str, Any]] = {
     },
     'CreditNote': {
         'total_minor': ('int',),
+        'tax_minor': ('int',),
     },
     'CreditPack': {
         'credits': ('int',),
@@ -275,6 +276,7 @@ MODELS: dict[str, dict[str, Any]] = {
         'total_minor': ('int',),
         'lines': ('list', ('model', 'InvoiceLine')),
         'payments': ('list', ('model', 'InvoicePayment')),
+        'credit_surplus_minor': ('int',),
     },
     'InvoiceLine': {
         'amount_minor': ('int',),
@@ -406,6 +408,7 @@ MODELS: dict[str, dict[str, Any]] = {
         'tax_minor': ('int',),
         'credit_minor': ('int',),
         'total_minor': ('int',),
+        'credit_surplus_minor': ('int',),
     },
     'UploadAssetsResponse': {
         'results': ('list', ('model', 'UploadAssetsResult')),

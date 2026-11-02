@@ -693,7 +693,8 @@
         "estimate": "Estimation",
         "period": "Période {period}",
         "none": "Rien à facturer pour l'instant : ce client n'a pas d'abonnement sur la période en cours ni d'utilisation tardive à facturer.",
-        "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier."
+        "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
+        "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
       }
     },
     "packages": {
@@ -842,7 +843,12 @@
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
         }
-      }
+      },
+      "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
+      "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
+      "firstPeriod": "Première période après l'essai",
+      "firstPeriodProrated": "À partir de la fin de l'essai",
+      "firstPeriodWhole": "Toute la période"
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -1282,7 +1288,8 @@
       "retryRefund": "Réessayer le remboursement",
       "new": "Nouvel avoir",
       "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte.",
-      "allWhere": "Partout"
+      "allWhere": "Partout",
+      "taxGiven": "Taxe restituée"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -4062,7 +4069,8 @@
         "service": "Période de service",
         "quantity": "Quantité",
         "amount": "Montant",
-        "total": "Total"
+        "total": "Total",
+        "creditSurplus": "{amount} a été ajouté au solde créditeur du client : les lignes totalisaient moins que zéro, et une facture n'a jamais un total négatif."
       },
       "payments": {
         "title": "Paiements",

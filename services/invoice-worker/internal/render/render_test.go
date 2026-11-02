@@ -156,3 +156,28 @@ func TestSandboxWatermarkFitsThePage(t *testing.T) {
 		})
 	}
 }
+
+// An invoice whose lines came to less than nothing charges 0 and says where the rest went: onto the customer's credit balance. An invoice without a surplus says nothing.
+func TestCreditSurplusIsPrinted(t *testing.T) {
+	plain, err := PDF(snapshot(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(pdfText(t, plain), "credit balance") {
+		t.Error("an invoice without a surplus mentions a credit balance")
+	}
+	s := snapshot()
+	s.Lines = []*commandsv1.InvoiceLineSnapshot{{LineNo: 1, Kind: "LATE_USAGE", Description: "Late usage", AmountMinor: -1800}}
+	s.SubtotalMinor, s.TotalMinor, s.CreditSurplusMinor = -1800, 0, 1800
+	for locale, want := range map[string]string{"en": "Carried to your credit balance", "tr": "Kredi bakiyenize aktarılan", "de": "Auf Ihr Guthaben übertragen",
+		"fr": "Reporté sur votre solde créditeur", "es": "Abonado a su saldo a favor"} {
+		s.Locale = locale
+		pdf, err := PDF(s, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text := pdfText(t, pdf); !strings.Contains(text, want) {
+			t.Errorf("%s: the PDF lacks %q: %s", locale, want, text)
+		}
+	}
+}

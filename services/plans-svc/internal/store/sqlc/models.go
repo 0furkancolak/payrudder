@@ -518,13 +518,14 @@ type PlanPrice struct {
 }
 
 type PlanVersion struct {
-	TenantID     uuid.UUID
-	ID           uuid.UUID
-	PlanID       uuid.UUID
-	Version      int32
-	BaseFeeMinor int64
-	PublishedAt  time.Time
-	TrialDays    int32
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	PlanID            uuid.UUID
+	Version           int32
+	BaseFeeMinor      int64
+	PublishedAt       time.Time
+	TrialDays         int32
+	ProrateAfterTrial bool
 }
 
 type PlanVersionFee struct {
