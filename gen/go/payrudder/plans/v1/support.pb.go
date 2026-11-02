@@ -56,7 +56,9 @@ type SupportTicket struct {
 	MessageCount int32                  `protobuf:"varint,22,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
 	// True for the person who opened the ticket when there is an answer or a status change by the operator they have not read yet. Always false for the operator
 	// and for the other members of the account.
-	Unread        bool `protobuf:"varint,23,opt,name=unread,proto3" json:"unread,omitempty"`
+	Unread bool `protobuf:"varint,23,opt,name=unread,proto3" json:"unread,omitempty"`
+	// The operator's own labels ("refund", "vat"), at most five, lower case. Never shown to the person who opened the ticket: the "My" calls leave it empty.
+	Tags          []string `protobuf:"bytes,24,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -252,11 +254,18 @@ func (x *SupportTicket) GetUnread() bool {
 	return false
 }
 
+func (x *SupportTicket) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // SupportEvent is one change of a ticket's status, priority or assignee, in the order they happened. The history is never edited.
 type SupportEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// status, priority or assignee.
+	// status, priority, assignee or tags (a list joined by commas).
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Who changed it: customer, operator or system (the job that closes tickets nobody answered).
 	ActorKind     string                 `protobuf:"bytes,3,opt,name=actor_kind,json=actorKind,proto3" json:"actor_kind,omitempty"`
@@ -998,7 +1007,9 @@ type ListSupportTicketsRequest struct {
 	// Matches the subject and the number, case-insensitively.
 	Search string `protobuf:"bytes,4,opt,name=search,proto3" json:"search,omitempty"`
 	// Only tickets whose first answer is overdue.
-	SlaBreached   bool `protobuf:"varint,5,opt,name=sla_breached,json=slaBreached,proto3" json:"sla_breached,omitempty"`
+	SlaBreached bool `protobuf:"varint,5,opt,name=sla_breached,json=slaBreached,proto3" json:"sla_breached,omitempty"`
+	// Only tickets that carry this tag.
+	Tag           string `protobuf:"bytes,6,opt,name=tag,proto3" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1066,6 +1077,13 @@ func (x *ListSupportTicketsRequest) GetSlaBreached() bool {
 		return x.SlaBreached
 	}
 	return false
+}
+
+func (x *ListSupportTicketsRequest) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
 }
 
 type ListSupportTicketsResponse struct {
@@ -1337,9 +1355,13 @@ type UpdateSupportTicketRequest struct {
 	// Each is applied only when set.
 	Status   *string `protobuf:"bytes,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
 	Priority *string `protobuf:"bytes,3,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
+	// An address from ListSupportOperators, or empty to take the ticket off its assignee. A ticket keeps an assignee that is no longer on the list until it is changed.
 	Assignee *string `protobuf:"bytes,4,opt,name=assignee,proto3,oneof" json:"assignee,omitempty"`
 	// Who is changing it, as shown in the ticket's history.
-	AuthorName    string `protobuf:"bytes,5,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	AuthorName string `protobuf:"bytes,5,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	// With set_tags the ticket's tags become exactly these (at most five, each lower case letters, digits and hyphens, at most 30 characters); without it they stay.
+	SetTags       bool     `protobuf:"varint,6,opt,name=set_tags,json=setTags,proto3" json:"set_tags,omitempty"`
+	Tags          []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1409,6 +1431,20 @@ func (x *UpdateSupportTicketRequest) GetAuthorName() string {
 	return ""
 }
 
+func (x *UpdateSupportTicketRequest) GetSetTags() bool {
+	if x != nil {
+		return x.SetTags
+	}
+	return false
+}
+
+func (x *UpdateSupportTicketRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 type UpdateSupportTicketResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Ticket        *SupportTicket         `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
@@ -1453,11 +1489,791 @@ func (x *UpdateSupportTicketResponse) GetTicket() *SupportTicket {
 	return nil
 }
 
+type CountMySupportUnreadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountMySupportUnreadRequest) Reset() {
+	*x = CountMySupportUnreadRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountMySupportUnreadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountMySupportUnreadRequest) ProtoMessage() {}
+
+func (x *CountMySupportUnreadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountMySupportUnreadRequest.ProtoReflect.Descriptor instead.
+func (*CountMySupportUnreadRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CountMySupportUnreadRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type CountMySupportUnreadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Unread        int32                  `protobuf:"varint,1,opt,name=unread,proto3" json:"unread,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountMySupportUnreadResponse) Reset() {
+	*x = CountMySupportUnreadResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountMySupportUnreadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountMySupportUnreadResponse) ProtoMessage() {}
+
+func (x *CountMySupportUnreadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountMySupportUnreadResponse.ProtoReflect.Descriptor instead.
+func (*CountMySupportUnreadResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *CountMySupportUnreadResponse) GetUnread() int32 {
+	if x != nil {
+		return x.Unread
+	}
+	return 0
+}
+
+type GetSupportReportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSupportReportRequest) Reset() {
+	*x = GetSupportReportRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSupportReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSupportReportRequest) ProtoMessage() {}
+
+func (x *GetSupportReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSupportReportRequest.ProtoReflect.Descriptor instead.
+func (*GetSupportReportRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{23}
+}
+
+type GetSupportReportResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Tickets waiting for the operator (open), and how many of them are past their first-answer deadline.
+	Waiting  int32 `protobuf:"varint,1,opt,name=waiting,proto3" json:"waiting,omitempty"`
+	Breached int32 `protobuf:"varint,2,opt,name=breached,proto3" json:"breached,omitempty"`
+	// Every ticket by status, and the tickets still waiting (open or pending) by priority.
+	ByStatus   []*SupportCount `protobuf:"bytes,3,rep,name=by_status,json=byStatus,proto3" json:"by_status,omitempty"`
+	ByPriority []*SupportCount `protobuf:"bytes,4,rep,name=by_priority,json=byPriority,proto3" json:"by_priority,omitempty"`
+	// The tickets opened in the last window_days days: how many, how many have a first answer, how many of those came in time, and how long the first answer took (seconds,
+	// wall clock). Zero when none was answered.
+	WindowDays                int32 `protobuf:"varint,5,opt,name=window_days,json=windowDays,proto3" json:"window_days,omitempty"`
+	Opened                    int32 `protobuf:"varint,6,opt,name=opened,proto3" json:"opened,omitempty"`
+	Answered                  int32 `protobuf:"varint,7,opt,name=answered,proto3" json:"answered,omitempty"`
+	AnsweredOnTime            int32 `protobuf:"varint,8,opt,name=answered_on_time,json=answeredOnTime,proto3" json:"answered_on_time,omitempty"`
+	MedianFirstAnswerSeconds  int64 `protobuf:"varint,9,opt,name=median_first_answer_seconds,json=medianFirstAnswerSeconds,proto3" json:"median_first_answer_seconds,omitempty"`
+	AverageFirstAnswerSeconds int64 `protobuf:"varint,10,opt,name=average_first_answer_seconds,json=averageFirstAnswerSeconds,proto3" json:"average_first_answer_seconds,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GetSupportReportResponse) Reset() {
+	*x = GetSupportReportResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSupportReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSupportReportResponse) ProtoMessage() {}
+
+func (x *GetSupportReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSupportReportResponse.ProtoReflect.Descriptor instead.
+func (*GetSupportReportResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetSupportReportResponse) GetWaiting() int32 {
+	if x != nil {
+		return x.Waiting
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetBreached() int32 {
+	if x != nil {
+		return x.Breached
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetByStatus() []*SupportCount {
+	if x != nil {
+		return x.ByStatus
+	}
+	return nil
+}
+
+func (x *GetSupportReportResponse) GetByPriority() []*SupportCount {
+	if x != nil {
+		return x.ByPriority
+	}
+	return nil
+}
+
+func (x *GetSupportReportResponse) GetWindowDays() int32 {
+	if x != nil {
+		return x.WindowDays
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetOpened() int32 {
+	if x != nil {
+		return x.Opened
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetAnswered() int32 {
+	if x != nil {
+		return x.Answered
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetAnsweredOnTime() int32 {
+	if x != nil {
+		return x.AnsweredOnTime
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetMedianFirstAnswerSeconds() int64 {
+	if x != nil {
+		return x.MedianFirstAnswerSeconds
+	}
+	return 0
+}
+
+func (x *GetSupportReportResponse) GetAverageFirstAnswerSeconds() int64 {
+	if x != nil {
+		return x.AverageFirstAnswerSeconds
+	}
+	return 0
+}
+
+type SupportCount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupportCount) Reset() {
+	*x = SupportCount{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupportCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupportCount) ProtoMessage() {}
+
+func (x *SupportCount) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupportCount.ProtoReflect.Descriptor instead.
+func (*SupportCount) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SupportCount) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *SupportCount) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type SupportOperator struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Email string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	// The name of the user with that address; empty when nobody has signed up with it.
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupportOperator) Reset() {
+	*x = SupportOperator{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupportOperator) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupportOperator) ProtoMessage() {}
+
+func (x *SupportOperator) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupportOperator.ProtoReflect.Descriptor instead.
+func (*SupportOperator) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SupportOperator) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *SupportOperator) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type ListSupportOperatorsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSupportOperatorsRequest) Reset() {
+	*x = ListSupportOperatorsRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSupportOperatorsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSupportOperatorsRequest) ProtoMessage() {}
+
+func (x *ListSupportOperatorsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSupportOperatorsRequest.ProtoReflect.Descriptor instead.
+func (*ListSupportOperatorsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{27}
+}
+
+type ListSupportOperatorsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operators     []*SupportOperator     `protobuf:"bytes,1,rep,name=operators,proto3" json:"operators,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSupportOperatorsResponse) Reset() {
+	*x = ListSupportOperatorsResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSupportOperatorsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSupportOperatorsResponse) ProtoMessage() {}
+
+func (x *ListSupportOperatorsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSupportOperatorsResponse.ProtoReflect.Descriptor instead.
+func (*ListSupportOperatorsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ListSupportOperatorsResponse) GetOperators() []*SupportOperator {
+	if x != nil {
+		return x.Operators
+	}
+	return nil
+}
+
+type SupportCannedReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	UpdatedBy     string                 `protobuf:"bytes,4,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SupportCannedReply) Reset() {
+	*x = SupportCannedReply{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SupportCannedReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SupportCannedReply) ProtoMessage() {}
+
+func (x *SupportCannedReply) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SupportCannedReply.ProtoReflect.Descriptor instead.
+func (*SupportCannedReply) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *SupportCannedReply) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SupportCannedReply) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *SupportCannedReply) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *SupportCannedReply) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+func (x *SupportCannedReply) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+type ListSupportCannedRepliesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSupportCannedRepliesRequest) Reset() {
+	*x = ListSupportCannedRepliesRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSupportCannedRepliesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSupportCannedRepliesRequest) ProtoMessage() {}
+
+func (x *ListSupportCannedRepliesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSupportCannedRepliesRequest.ProtoReflect.Descriptor instead.
+func (*ListSupportCannedRepliesRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{30}
+}
+
+type ListSupportCannedRepliesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// By title.
+	Replies       []*SupportCannedReply `protobuf:"bytes,1,rep,name=replies,proto3" json:"replies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSupportCannedRepliesResponse) Reset() {
+	*x = ListSupportCannedRepliesResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSupportCannedRepliesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSupportCannedRepliesResponse) ProtoMessage() {}
+
+func (x *ListSupportCannedRepliesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSupportCannedRepliesResponse.ProtoReflect.Descriptor instead.
+func (*ListSupportCannedRepliesResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ListSupportCannedRepliesResponse) GetReplies() []*SupportCannedReply {
+	if x != nil {
+		return x.Replies
+	}
+	return nil
+}
+
+type SaveSupportCannedReplyRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty makes a new one.
+	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Body  string `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	// Who saves it, as kept with it. The gateway sets it.
+	AuthorName    string `protobuf:"bytes,4,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveSupportCannedReplyRequest) Reset() {
+	*x = SaveSupportCannedReplyRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveSupportCannedReplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveSupportCannedReplyRequest) ProtoMessage() {}
+
+func (x *SaveSupportCannedReplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveSupportCannedReplyRequest.ProtoReflect.Descriptor instead.
+func (*SaveSupportCannedReplyRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *SaveSupportCannedReplyRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SaveSupportCannedReplyRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *SaveSupportCannedReplyRequest) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *SaveSupportCannedReplyRequest) GetAuthorName() string {
+	if x != nil {
+		return x.AuthorName
+	}
+	return ""
+}
+
+type SaveSupportCannedReplyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reply         *SupportCannedReply    `protobuf:"bytes,1,opt,name=reply,proto3" json:"reply,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveSupportCannedReplyResponse) Reset() {
+	*x = SaveSupportCannedReplyResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveSupportCannedReplyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveSupportCannedReplyResponse) ProtoMessage() {}
+
+func (x *SaveSupportCannedReplyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveSupportCannedReplyResponse.ProtoReflect.Descriptor instead.
+func (*SaveSupportCannedReplyResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *SaveSupportCannedReplyResponse) GetReply() *SupportCannedReply {
+	if x != nil {
+		return x.Reply
+	}
+	return nil
+}
+
+type DeleteSupportCannedReplyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteSupportCannedReplyRequest) Reset() {
+	*x = DeleteSupportCannedReplyRequest{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteSupportCannedReplyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSupportCannedReplyRequest) ProtoMessage() {}
+
+func (x *DeleteSupportCannedReplyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSupportCannedReplyRequest.ProtoReflect.Descriptor instead.
+func (*DeleteSupportCannedReplyRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *DeleteSupportCannedReplyRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteSupportCannedReplyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteSupportCannedReplyResponse) Reset() {
+	*x = DeleteSupportCannedReplyResponse{}
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteSupportCannedReplyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteSupportCannedReplyResponse) ProtoMessage() {}
+
+func (x *DeleteSupportCannedReplyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_support_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteSupportCannedReplyResponse.ProtoReflect.Descriptor instead.
+func (*DeleteSupportCannedReplyResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_support_proto_rawDescGZIP(), []int{35}
+}
+
 var File_payrudder_plans_v1_support_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_support_proto_rawDesc = "" +
 	"\n" +
-	" payrudder/plans/v1/support.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x88\a\n" +
+	" payrudder/plans/v1/support.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\a\n" +
 	"\rSupportTicket\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06number\x18\x02 \x01(\x03R\x06number\x12\x1d\n" +
@@ -1487,7 +2303,8 @@ const file_payrudder_plans_v1_support_proto_rawDesc = "" +
 	"\n" +
 	"solve_time\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\tsolveTime\x12#\n" +
 	"\rmessage_count\x18\x16 \x01(\x05R\fmessageCount\x12\x16\n" +
-	"\x06unread\x18\x17 \x01(\bR\x06unread\"\xe7\x01\n" +
+	"\x06unread\x18\x17 \x01(\bR\x06unread\x12\x12\n" +
+	"\x04tags\x18\x18 \x03(\tR\x04tags\"\xe7\x01\n" +
 	"\fSupportEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x1d\n" +
@@ -1544,13 +2361,14 @@ const file_payrudder_plans_v1_support_proto_rawDesc = "" +
 	"\tticket_id\x18\x02 \x01(\tR\bticketId\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\"]\n" +
 	" SetMySupportTicketStatusResponse\x129\n" +
-	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket\"\xa6\x01\n" +
+	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket\"\xb8\x01\n" +
 	"\x19ListSupportTicketsRequest\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1a\n" +
 	"\bpriority\x18\x02 \x01(\tR\bpriority\x12\x1a\n" +
 	"\bassignee\x18\x03 \x01(\tR\bassignee\x12\x16\n" +
 	"\x06search\x18\x04 \x01(\tR\x06search\x12!\n" +
-	"\fsla_breached\x18\x05 \x01(\bR\vslaBreached\"Y\n" +
+	"\fsla_breached\x18\x05 \x01(\bR\vslaBreached\x12\x10\n" +
+	"\x03tag\x18\x06 \x01(\tR\x03tag\"Y\n" +
 	"\x1aListSupportTicketsResponse\x12;\n" +
 	"\atickets\x18\x01 \x03(\v2!.payrudder.plans.v1.SupportTicketR\atickets\"6\n" +
 	"\x17GetSupportTicketRequest\x12\x1b\n" +
@@ -1566,19 +2384,71 @@ const file_payrudder_plans_v1_support_proto_rawDesc = "" +
 	"\vauthor_name\x18\x04 \x01(\tR\n" +
 	"authorName\"W\n" +
 	"\x1aReplySupportTicketResponse\x129\n" +
-	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket\"\xde\x01\n" +
+	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket\"\x8d\x02\n" +
 	"\x1aUpdateSupportTicketRequest\x12\x1b\n" +
 	"\tticket_id\x18\x01 \x01(\tR\bticketId\x12\x1b\n" +
 	"\x06status\x18\x02 \x01(\tH\x00R\x06status\x88\x01\x01\x12\x1f\n" +
 	"\bpriority\x18\x03 \x01(\tH\x01R\bpriority\x88\x01\x01\x12\x1f\n" +
 	"\bassignee\x18\x04 \x01(\tH\x02R\bassignee\x88\x01\x01\x12\x1f\n" +
 	"\vauthor_name\x18\x05 \x01(\tR\n" +
-	"authorNameB\t\n" +
+	"authorName\x12\x19\n" +
+	"\bset_tags\x18\x06 \x01(\bR\asetTags\x12\x12\n" +
+	"\x04tags\x18\a \x03(\tR\x04tagsB\t\n" +
 	"\a_statusB\v\n" +
 	"\t_priorityB\v\n" +
 	"\t_assignee\"X\n" +
 	"\x1bUpdateSupportTicketResponse\x129\n" +
-	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket2\xcc\b\n" +
+	"\x06ticket\x18\x01 \x01(\v2!.payrudder.plans.v1.SupportTicketR\x06ticket\"6\n" +
+	"\x1bCountMySupportUnreadRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"6\n" +
+	"\x1cCountMySupportUnreadResponse\x12\x16\n" +
+	"\x06unread\x18\x01 \x01(\x05R\x06unread\"\x19\n" +
+	"\x17GetSupportReportRequest\"\xd1\x03\n" +
+	"\x18GetSupportReportResponse\x12\x18\n" +
+	"\awaiting\x18\x01 \x01(\x05R\awaiting\x12\x1a\n" +
+	"\bbreached\x18\x02 \x01(\x05R\bbreached\x12=\n" +
+	"\tby_status\x18\x03 \x03(\v2 .payrudder.plans.v1.SupportCountR\bbyStatus\x12A\n" +
+	"\vby_priority\x18\x04 \x03(\v2 .payrudder.plans.v1.SupportCountR\n" +
+	"byPriority\x12\x1f\n" +
+	"\vwindow_days\x18\x05 \x01(\x05R\n" +
+	"windowDays\x12\x16\n" +
+	"\x06opened\x18\x06 \x01(\x05R\x06opened\x12\x1a\n" +
+	"\banswered\x18\a \x01(\x05R\banswered\x12(\n" +
+	"\x10answered_on_time\x18\b \x01(\x05R\x0eansweredOnTime\x12=\n" +
+	"\x1bmedian_first_answer_seconds\x18\t \x01(\x03R\x18medianFirstAnswerSeconds\x12?\n" +
+	"\x1caverage_first_answer_seconds\x18\n" +
+	" \x01(\x03R\x19averageFirstAnswerSeconds\":\n" +
+	"\fSupportCount\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\";\n" +
+	"\x0fSupportOperator\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\x1d\n" +
+	"\x1bListSupportOperatorsRequest\"a\n" +
+	"\x1cListSupportOperatorsResponse\x12A\n" +
+	"\toperators\x18\x01 \x03(\v2#.payrudder.plans.v1.SupportOperatorR\toperators\"\xaa\x01\n" +
+	"\x12SupportCannedReply\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\x04 \x01(\tR\tupdatedBy\x12;\n" +
+	"\vupdate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\"!\n" +
+	"\x1fListSupportCannedRepliesRequest\"d\n" +
+	" ListSupportCannedRepliesResponse\x12@\n" +
+	"\areplies\x18\x01 \x03(\v2&.payrudder.plans.v1.SupportCannedReplyR\areplies\"z\n" +
+	"\x1dSaveSupportCannedReplyRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x12\x1f\n" +
+	"\vauthor_name\x18\x04 \x01(\tR\n" +
+	"authorName\"^\n" +
+	"\x1eSaveSupportCannedReplyResponse\x12<\n" +
+	"\x05reply\x18\x01 \x01(\v2&.payrudder.plans.v1.SupportCannedReplyR\x05reply\"1\n" +
+	"\x1fDeleteSupportCannedReplyRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\"\n" +
+	" DeleteSupportCannedReplyResponse2\xc2\x0e\n" +
 	"\x0eSupportService\x12v\n" +
 	"\x13OpenMySupportTicket\x12..payrudder.plans.v1.OpenMySupportTicketRequest\x1a/.payrudder.plans.v1.OpenMySupportTicketResponse\x12y\n" +
 	"\x14ListMySupportTickets\x12/.payrudder.plans.v1.ListMySupportTicketsRequest\x1a0.payrudder.plans.v1.ListMySupportTicketsResponse\x12s\n" +
@@ -1588,7 +2458,13 @@ const file_payrudder_plans_v1_support_proto_rawDesc = "" +
 	"\x12ListSupportTickets\x12-.payrudder.plans.v1.ListSupportTicketsRequest\x1a..payrudder.plans.v1.ListSupportTicketsResponse\x12m\n" +
 	"\x10GetSupportTicket\x12+.payrudder.plans.v1.GetSupportTicketRequest\x1a,.payrudder.plans.v1.GetSupportTicketResponse\x12s\n" +
 	"\x12ReplySupportTicket\x12-.payrudder.plans.v1.ReplySupportTicketRequest\x1a..payrudder.plans.v1.ReplySupportTicketResponse\x12v\n" +
-	"\x13UpdateSupportTicket\x12..payrudder.plans.v1.UpdateSupportTicketRequest\x1a/.payrudder.plans.v1.UpdateSupportTicketResponseB\xd5\x01\n" +
+	"\x13UpdateSupportTicket\x12..payrudder.plans.v1.UpdateSupportTicketRequest\x1a/.payrudder.plans.v1.UpdateSupportTicketResponse\x12y\n" +
+	"\x14CountMySupportUnread\x12/.payrudder.plans.v1.CountMySupportUnreadRequest\x1a0.payrudder.plans.v1.CountMySupportUnreadResponse\x12m\n" +
+	"\x10GetSupportReport\x12+.payrudder.plans.v1.GetSupportReportRequest\x1a,.payrudder.plans.v1.GetSupportReportResponse\x12y\n" +
+	"\x14ListSupportOperators\x12/.payrudder.plans.v1.ListSupportOperatorsRequest\x1a0.payrudder.plans.v1.ListSupportOperatorsResponse\x12\x85\x01\n" +
+	"\x18ListSupportCannedReplies\x123.payrudder.plans.v1.ListSupportCannedRepliesRequest\x1a4.payrudder.plans.v1.ListSupportCannedRepliesResponse\x12\x7f\n" +
+	"\x16SaveSupportCannedReply\x121.payrudder.plans.v1.SaveSupportCannedReplyRequest\x1a2.payrudder.plans.v1.SaveSupportCannedReplyResponse\x12\x85\x01\n" +
+	"\x18DeleteSupportCannedReply\x123.payrudder.plans.v1.DeleteSupportCannedReplyRequest\x1a4.payrudder.plans.v1.DeleteSupportCannedReplyResponseB\xd5\x01\n" +
 	"\x16com.payrudder.plans.v1B\fSupportProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
 
 var (
@@ -1603,7 +2479,7 @@ func file_payrudder_plans_v1_support_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_support_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_support_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_payrudder_plans_v1_support_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_payrudder_plans_v1_support_proto_goTypes = []any{
 	(*SupportTicket)(nil),                    // 0: payrudder.plans.v1.SupportTicket
 	(*SupportEvent)(nil),                     // 1: payrudder.plans.v1.SupportEvent
@@ -1626,17 +2502,32 @@ var file_payrudder_plans_v1_support_proto_goTypes = []any{
 	(*ReplySupportTicketResponse)(nil),       // 18: payrudder.plans.v1.ReplySupportTicketResponse
 	(*UpdateSupportTicketRequest)(nil),       // 19: payrudder.plans.v1.UpdateSupportTicketRequest
 	(*UpdateSupportTicketResponse)(nil),      // 20: payrudder.plans.v1.UpdateSupportTicketResponse
-	(*timestamppb.Timestamp)(nil),            // 21: google.protobuf.Timestamp
+	(*CountMySupportUnreadRequest)(nil),      // 21: payrudder.plans.v1.CountMySupportUnreadRequest
+	(*CountMySupportUnreadResponse)(nil),     // 22: payrudder.plans.v1.CountMySupportUnreadResponse
+	(*GetSupportReportRequest)(nil),          // 23: payrudder.plans.v1.GetSupportReportRequest
+	(*GetSupportReportResponse)(nil),         // 24: payrudder.plans.v1.GetSupportReportResponse
+	(*SupportCount)(nil),                     // 25: payrudder.plans.v1.SupportCount
+	(*SupportOperator)(nil),                  // 26: payrudder.plans.v1.SupportOperator
+	(*ListSupportOperatorsRequest)(nil),      // 27: payrudder.plans.v1.ListSupportOperatorsRequest
+	(*ListSupportOperatorsResponse)(nil),     // 28: payrudder.plans.v1.ListSupportOperatorsResponse
+	(*SupportCannedReply)(nil),               // 29: payrudder.plans.v1.SupportCannedReply
+	(*ListSupportCannedRepliesRequest)(nil),  // 30: payrudder.plans.v1.ListSupportCannedRepliesRequest
+	(*ListSupportCannedRepliesResponse)(nil), // 31: payrudder.plans.v1.ListSupportCannedRepliesResponse
+	(*SaveSupportCannedReplyRequest)(nil),    // 32: payrudder.plans.v1.SaveSupportCannedReplyRequest
+	(*SaveSupportCannedReplyResponse)(nil),   // 33: payrudder.plans.v1.SaveSupportCannedReplyResponse
+	(*DeleteSupportCannedReplyRequest)(nil),  // 34: payrudder.plans.v1.DeleteSupportCannedReplyRequest
+	(*DeleteSupportCannedReplyResponse)(nil), // 35: payrudder.plans.v1.DeleteSupportCannedReplyResponse
+	(*timestamppb.Timestamp)(nil),            // 36: google.protobuf.Timestamp
 }
 var file_payrudder_plans_v1_support_proto_depIdxs = []int32{
-	21, // 0: payrudder.plans.v1.SupportTicket.create_time:type_name -> google.protobuf.Timestamp
-	21, // 1: payrudder.plans.v1.SupportTicket.update_time:type_name -> google.protobuf.Timestamp
-	21, // 2: payrudder.plans.v1.SupportTicket.last_message_time:type_name -> google.protobuf.Timestamp
-	21, // 3: payrudder.plans.v1.SupportTicket.first_response_due:type_name -> google.protobuf.Timestamp
-	21, // 4: payrudder.plans.v1.SupportTicket.first_response_time:type_name -> google.protobuf.Timestamp
-	21, // 5: payrudder.plans.v1.SupportTicket.solve_time:type_name -> google.protobuf.Timestamp
-	21, // 6: payrudder.plans.v1.SupportEvent.create_time:type_name -> google.protobuf.Timestamp
-	21, // 7: payrudder.plans.v1.SupportMessage.create_time:type_name -> google.protobuf.Timestamp
+	36, // 0: payrudder.plans.v1.SupportTicket.create_time:type_name -> google.protobuf.Timestamp
+	36, // 1: payrudder.plans.v1.SupportTicket.update_time:type_name -> google.protobuf.Timestamp
+	36, // 2: payrudder.plans.v1.SupportTicket.last_message_time:type_name -> google.protobuf.Timestamp
+	36, // 3: payrudder.plans.v1.SupportTicket.first_response_due:type_name -> google.protobuf.Timestamp
+	36, // 4: payrudder.plans.v1.SupportTicket.first_response_time:type_name -> google.protobuf.Timestamp
+	36, // 5: payrudder.plans.v1.SupportTicket.solve_time:type_name -> google.protobuf.Timestamp
+	36, // 6: payrudder.plans.v1.SupportEvent.create_time:type_name -> google.protobuf.Timestamp
+	36, // 7: payrudder.plans.v1.SupportMessage.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 8: payrudder.plans.v1.OpenMySupportTicketResponse.ticket:type_name -> payrudder.plans.v1.SupportTicket
 	0,  // 9: payrudder.plans.v1.ListMySupportTicketsResponse.tickets:type_name -> payrudder.plans.v1.SupportTicket
 	0,  // 10: payrudder.plans.v1.GetMySupportTicketResponse.ticket:type_name -> payrudder.plans.v1.SupportTicket
@@ -1650,29 +2541,47 @@ var file_payrudder_plans_v1_support_proto_depIdxs = []int32{
 	1,  // 18: payrudder.plans.v1.GetSupportTicketResponse.events:type_name -> payrudder.plans.v1.SupportEvent
 	0,  // 19: payrudder.plans.v1.ReplySupportTicketResponse.ticket:type_name -> payrudder.plans.v1.SupportTicket
 	0,  // 20: payrudder.plans.v1.UpdateSupportTicketResponse.ticket:type_name -> payrudder.plans.v1.SupportTicket
-	3,  // 21: payrudder.plans.v1.SupportService.OpenMySupportTicket:input_type -> payrudder.plans.v1.OpenMySupportTicketRequest
-	5,  // 22: payrudder.plans.v1.SupportService.ListMySupportTickets:input_type -> payrudder.plans.v1.ListMySupportTicketsRequest
-	7,  // 23: payrudder.plans.v1.SupportService.GetMySupportTicket:input_type -> payrudder.plans.v1.GetMySupportTicketRequest
-	9,  // 24: payrudder.plans.v1.SupportService.ReplyMySupportTicket:input_type -> payrudder.plans.v1.ReplyMySupportTicketRequest
-	11, // 25: payrudder.plans.v1.SupportService.SetMySupportTicketStatus:input_type -> payrudder.plans.v1.SetMySupportTicketStatusRequest
-	13, // 26: payrudder.plans.v1.SupportService.ListSupportTickets:input_type -> payrudder.plans.v1.ListSupportTicketsRequest
-	15, // 27: payrudder.plans.v1.SupportService.GetSupportTicket:input_type -> payrudder.plans.v1.GetSupportTicketRequest
-	17, // 28: payrudder.plans.v1.SupportService.ReplySupportTicket:input_type -> payrudder.plans.v1.ReplySupportTicketRequest
-	19, // 29: payrudder.plans.v1.SupportService.UpdateSupportTicket:input_type -> payrudder.plans.v1.UpdateSupportTicketRequest
-	4,  // 30: payrudder.plans.v1.SupportService.OpenMySupportTicket:output_type -> payrudder.plans.v1.OpenMySupportTicketResponse
-	6,  // 31: payrudder.plans.v1.SupportService.ListMySupportTickets:output_type -> payrudder.plans.v1.ListMySupportTicketsResponse
-	8,  // 32: payrudder.plans.v1.SupportService.GetMySupportTicket:output_type -> payrudder.plans.v1.GetMySupportTicketResponse
-	10, // 33: payrudder.plans.v1.SupportService.ReplyMySupportTicket:output_type -> payrudder.plans.v1.ReplyMySupportTicketResponse
-	12, // 34: payrudder.plans.v1.SupportService.SetMySupportTicketStatus:output_type -> payrudder.plans.v1.SetMySupportTicketStatusResponse
-	14, // 35: payrudder.plans.v1.SupportService.ListSupportTickets:output_type -> payrudder.plans.v1.ListSupportTicketsResponse
-	16, // 36: payrudder.plans.v1.SupportService.GetSupportTicket:output_type -> payrudder.plans.v1.GetSupportTicketResponse
-	18, // 37: payrudder.plans.v1.SupportService.ReplySupportTicket:output_type -> payrudder.plans.v1.ReplySupportTicketResponse
-	20, // 38: payrudder.plans.v1.SupportService.UpdateSupportTicket:output_type -> payrudder.plans.v1.UpdateSupportTicketResponse
-	30, // [30:39] is the sub-list for method output_type
-	21, // [21:30] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	25, // 21: payrudder.plans.v1.GetSupportReportResponse.by_status:type_name -> payrudder.plans.v1.SupportCount
+	25, // 22: payrudder.plans.v1.GetSupportReportResponse.by_priority:type_name -> payrudder.plans.v1.SupportCount
+	26, // 23: payrudder.plans.v1.ListSupportOperatorsResponse.operators:type_name -> payrudder.plans.v1.SupportOperator
+	36, // 24: payrudder.plans.v1.SupportCannedReply.update_time:type_name -> google.protobuf.Timestamp
+	29, // 25: payrudder.plans.v1.ListSupportCannedRepliesResponse.replies:type_name -> payrudder.plans.v1.SupportCannedReply
+	29, // 26: payrudder.plans.v1.SaveSupportCannedReplyResponse.reply:type_name -> payrudder.plans.v1.SupportCannedReply
+	3,  // 27: payrudder.plans.v1.SupportService.OpenMySupportTicket:input_type -> payrudder.plans.v1.OpenMySupportTicketRequest
+	5,  // 28: payrudder.plans.v1.SupportService.ListMySupportTickets:input_type -> payrudder.plans.v1.ListMySupportTicketsRequest
+	7,  // 29: payrudder.plans.v1.SupportService.GetMySupportTicket:input_type -> payrudder.plans.v1.GetMySupportTicketRequest
+	9,  // 30: payrudder.plans.v1.SupportService.ReplyMySupportTicket:input_type -> payrudder.plans.v1.ReplyMySupportTicketRequest
+	11, // 31: payrudder.plans.v1.SupportService.SetMySupportTicketStatus:input_type -> payrudder.plans.v1.SetMySupportTicketStatusRequest
+	13, // 32: payrudder.plans.v1.SupportService.ListSupportTickets:input_type -> payrudder.plans.v1.ListSupportTicketsRequest
+	15, // 33: payrudder.plans.v1.SupportService.GetSupportTicket:input_type -> payrudder.plans.v1.GetSupportTicketRequest
+	17, // 34: payrudder.plans.v1.SupportService.ReplySupportTicket:input_type -> payrudder.plans.v1.ReplySupportTicketRequest
+	19, // 35: payrudder.plans.v1.SupportService.UpdateSupportTicket:input_type -> payrudder.plans.v1.UpdateSupportTicketRequest
+	21, // 36: payrudder.plans.v1.SupportService.CountMySupportUnread:input_type -> payrudder.plans.v1.CountMySupportUnreadRequest
+	23, // 37: payrudder.plans.v1.SupportService.GetSupportReport:input_type -> payrudder.plans.v1.GetSupportReportRequest
+	27, // 38: payrudder.plans.v1.SupportService.ListSupportOperators:input_type -> payrudder.plans.v1.ListSupportOperatorsRequest
+	30, // 39: payrudder.plans.v1.SupportService.ListSupportCannedReplies:input_type -> payrudder.plans.v1.ListSupportCannedRepliesRequest
+	32, // 40: payrudder.plans.v1.SupportService.SaveSupportCannedReply:input_type -> payrudder.plans.v1.SaveSupportCannedReplyRequest
+	34, // 41: payrudder.plans.v1.SupportService.DeleteSupportCannedReply:input_type -> payrudder.plans.v1.DeleteSupportCannedReplyRequest
+	4,  // 42: payrudder.plans.v1.SupportService.OpenMySupportTicket:output_type -> payrudder.plans.v1.OpenMySupportTicketResponse
+	6,  // 43: payrudder.plans.v1.SupportService.ListMySupportTickets:output_type -> payrudder.plans.v1.ListMySupportTicketsResponse
+	8,  // 44: payrudder.plans.v1.SupportService.GetMySupportTicket:output_type -> payrudder.plans.v1.GetMySupportTicketResponse
+	10, // 45: payrudder.plans.v1.SupportService.ReplyMySupportTicket:output_type -> payrudder.plans.v1.ReplyMySupportTicketResponse
+	12, // 46: payrudder.plans.v1.SupportService.SetMySupportTicketStatus:output_type -> payrudder.plans.v1.SetMySupportTicketStatusResponse
+	14, // 47: payrudder.plans.v1.SupportService.ListSupportTickets:output_type -> payrudder.plans.v1.ListSupportTicketsResponse
+	16, // 48: payrudder.plans.v1.SupportService.GetSupportTicket:output_type -> payrudder.plans.v1.GetSupportTicketResponse
+	18, // 49: payrudder.plans.v1.SupportService.ReplySupportTicket:output_type -> payrudder.plans.v1.ReplySupportTicketResponse
+	20, // 50: payrudder.plans.v1.SupportService.UpdateSupportTicket:output_type -> payrudder.plans.v1.UpdateSupportTicketResponse
+	22, // 51: payrudder.plans.v1.SupportService.CountMySupportUnread:output_type -> payrudder.plans.v1.CountMySupportUnreadResponse
+	24, // 52: payrudder.plans.v1.SupportService.GetSupportReport:output_type -> payrudder.plans.v1.GetSupportReportResponse
+	28, // 53: payrudder.plans.v1.SupportService.ListSupportOperators:output_type -> payrudder.plans.v1.ListSupportOperatorsResponse
+	31, // 54: payrudder.plans.v1.SupportService.ListSupportCannedReplies:output_type -> payrudder.plans.v1.ListSupportCannedRepliesResponse
+	33, // 55: payrudder.plans.v1.SupportService.SaveSupportCannedReply:output_type -> payrudder.plans.v1.SaveSupportCannedReplyResponse
+	35, // 56: payrudder.plans.v1.SupportService.DeleteSupportCannedReply:output_type -> payrudder.plans.v1.DeleteSupportCannedReplyResponse
+	42, // [42:57] is the sub-list for method output_type
+	27, // [27:42] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_support_proto_init() }
@@ -1687,7 +2596,7 @@ func file_payrudder_plans_v1_support_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_support_proto_rawDesc), len(file_payrudder_plans_v1_support_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

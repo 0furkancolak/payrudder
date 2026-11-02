@@ -166,6 +166,34 @@ jobs:
           path: web/admin/test-results
           if-no-files-found: ignore
 
+  hosted-pages:
+    name: customer-facing pages (axe, no sideways scroll)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - name: The gateway writes every hosted page in every language (docs/hosted-pages.md)
+        working-directory: services/gateway
+        env:
+          HOSTED_PAGES_DIR: ${{ runner.temp }}/hosted-pages
+        run: |
+          mkdir -p "$HOSTED_PAGES_DIR"
+          CGO_ENABLED=0 go test -count=1 ./internal/httpapi -run '^TestEveryPageRendersInEveryLanguage$'
+          test "$(ls "$HOSTED_PAGES_DIR" | wc -l)" -ge 60
+      - name: axe-core on each page, light and dark, at 1440, 768 and 360 px (the runner's Google Chrome)
+        working-directory: web/admin
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/hosted-pages.mjs "${{ runner.temp }}/hosted-pages" --axe
+
   backup:
     name: backup scripts and point-in-time recovery drill
     runs-on: ubuntu-latest
@@ -174,7 +202,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Scripts against a throwaway Postgres (make test-backup-scripts)
         run: make test-backup-scripts
-      - name: Restore to a chosen minute from WAL in MinIO, check the data, measure the RTO (make backup-drill)
+      - name: The object and ClickHouse backups against throwaway servers (make test-store-backups)
+        run: make test-store-backups
+      - name: Restore to a chosen minute from WAL in MinIO, check the data, the migrations version and the service roles, measure the RTO (make backup-drill)
         run: make backup-drill
 
   helm:

@@ -78,4 +78,12 @@ describe("the operator's paths", () => {
     expect(OPERATOR_PATHS.test("/auditing")).toBe(false);
     expect(OPERATOR_PATHS.test("/app/t/abc/audit")).toBe(false);
   });
+
+  it("include the support inbox, so that its sidebar is the operator's and a person who is no operator is sent home, and not the help page of an organisation", async () => {
+    fakeWindow();
+    const { OPERATOR_PATHS } = await import("./session");
+    expect(OPERATOR_PATHS.test("/support")).toBe(true);
+    expect(OPERATOR_PATHS.test("/app/support")).toBe(false);
+    expect(OPERATOR_PATHS.test("/supports")).toBe(false);
+  });
 });

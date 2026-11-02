@@ -103,9 +103,32 @@ func TestMailPreviewValidatesWhatItIsGiven(t *testing.T) {
 			t.Errorf("%s: %d, want 400", name, resp.StatusCode)
 		}
 	}
-	// A deployment without the notifier's listener.
+}
+
+// A deployment without the notifier's listener: the two views the console opens on every visit answer 200 with an empty list and "connected": false, so a page that is
+// merely not connected logs nothing in the browser; the actions (lift, preview) still answer 503, and a connected one says "connected": true.
+func TestMailViewsWithoutTheNotifierAreEmptyAndSayTheyAreNotConnected(t *testing.T) {
 	bare, _ := newTestServer(t)
-	if resp, m := do(t, bare, "GET", "/v1/mail-suppressions", "live-key", ""); resp.StatusCode != 503 || errKey(m) != "gateway.mail.unavailable" {
-		t.Errorf("without the notifier: %d %v", resp.StatusCode, m)
+	for path, list := range map[string]string{"/v1/mail-suppressions": "suppressions", "/v1/mail-messages": "messages"} {
+		resp, m := do(t, bare, "GET", path, "live-key", "")
+		rows, isList := m[list].([]any)
+		if resp.StatusCode != 200 || !isList || len(rows) != 0 || m["connected"] != false || m["next_page_token"] != "" {
+			t.Errorf("GET %s without the notifier: %d %v, want 200 with an empty %s and connected false", path, resp.StatusCode, m, list)
+		}
+		if resp, _ := do(t, bare, "GET", path, "", ""); resp.StatusCode != 401 {
+			t.Errorf("GET %s without the notifier and without a key: %d, want 401", path, resp.StatusCode)
+		}
+	}
+	if resp, m := do(t, bare, "DELETE", "/v1/mail-suppressions/ada@example.com", "live-key", ""); resp.StatusCode != 503 || errKey(m) != "gateway.mail.unavailable" {
+		t.Errorf("lifting without the notifier: %d %v", resp.StatusCode, m)
+	}
+	if resp, m := do(t, bare, "POST", "/v1/mail-previews/price-change", "live-key", `{"plan_code":"pro","effective_time":"2026-12-05T10:00:00Z","new_renewal_minor":1}`); resp.StatusCode != 503 || errKey(m) != "gateway.mail.unavailable" {
+		t.Errorf("previewing without the notifier: %d %v", resp.StatusCode, m)
+	}
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Mail = &fakeMail{} })
+	for _, path := range []string{"/v1/mail-suppressions", "/v1/mail-messages"} {
+		if resp, m := do(t, ts, "GET", path, "live-key", ""); resp.StatusCode != 200 || m["connected"] != true {
+			t.Errorf("GET %s with the notifier: %d %v, want connected true", path, resp.StatusCode, m)
+		}
 	}
 }

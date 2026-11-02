@@ -106,7 +106,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | analytics-svc | 42706 | — | 42916 |
 | invoice-worker | — | — | 42917 |
 | payments-worker | — | 42895 (internal API, used by the gateway) | 42918 |
-| notifier | — | — | 42919 |
+| notifier | — | 42920 (loopback only: the signed mail-events listener, `NOTIFIER_EVENTS_ADDR`; the gateway's `PAYRUDDER_NOTIFIER_EVENTS_URL` points at it, so the console's mail page is connected) | 42919 |
 | assets-svc | 42707 | — | 42921 |
 | mock-psp | — | 42890 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
 
@@ -138,6 +138,15 @@ S3_FORCE_PATH_STYLE=true
 MOCKPSP_URL=http://mock-psp:8090
 PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live charges fail with PROVIDER_NOT_CONFIGURED
 PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: payments-worker refuses live → mock otherwise
+
+# notifier + gateway: the signed mail-events listener behind the console's mail page (both ends, or neither; the secret is the same, 16+ characters)
+NOTIFIER_EVENTS_ADDR=:9111                     # notifier
+NOTIFIER_MAIL_EVENTS_SECRET=…                  # notifier; the compose file defaults it, override in .env
+PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier:9111          # gateway
+PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=…        # gateway, the same value
+
+# every service: panics and unexpected errors to a Sentry-compatible server (off when empty; docs/08-observability.md)
+PAYRUDDER_ERROR_TRACKING_URL=https://<public key>@glitchtip.example.com/1
 ```
 
 `.env.example` is committed. `.env` is git-ignored.
@@ -154,8 +163,9 @@ PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: p
 | `make up` / `make down` | Compose `infra` + `obs` + `app` profiles up/down |
 | `make up-infra` | Only infrastructure (run services from your IDE) |
 | `make up-pitr` | Point-in-time recovery for the local Postgres: WAL archiving, a sidecar that ships it to MinIO and a daily base backup (recreates the postgres container, the data stays; [runbook](runbooks/backup-restore.md)) |
-| `make backup-drill` | Restore to a chosen minute on a throwaway stack, check the data, measure the RTO (about 5 minutes, Docker) |
-| `make test-backup-scripts` | The backup, restore and verify scripts against a throwaway Postgres; the Helm copies match |
+| `make backup-drill` | Restore to a chosen minute on a throwaway stack, check the data, the migrations version and the service roles, measure the RTO (about 5 minutes, Docker) |
+| `make test-backup-scripts` | The backup, restore, verify and migrations-version scripts against a throwaway Postgres; the Helm copies match |
+| `make test-store-backups` | `object-backup.sh` (mc mirror, restore, verify) against a throwaway MinIO and `clickhouse-backup.sh` (BACKUP and RESTORE to MinIO) against a throwaway ClickHouse (about 2 minutes, Docker) |
 | `make alert-test` | Fire a test page and warning at the running Alertmanager; the mail lands in Mailpit |
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |

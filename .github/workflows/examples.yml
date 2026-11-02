@@ -1,6 +1,6 @@
 name: examples
 
-# The framework templates under examples/ (Express, FastAPI, Go net/http) are compiled and smoke-tested: each starts next to docs-site/fakeapi.mjs (a stand-in for the API
+# The framework templates under examples/ (Express, FastAPI, Go net/http, Next.js, Laravel) are compiled and smoke-tested: each starts next to docs-site/fakeapi.mjs (a stand-in for the API
 # made from api/openapi/v1.yaml) and examples/smoke.mjs checks that a delivery signed the documented way is accepted, that a changed body, a wrong secret, an old timestamp and
 # a missing header are refused, and that POST /usage reaches the API as a valid usage event. It proves the template runs and uses the SDK correctly, not that a real
 # gateway accepts anything. The SDKs are installed from this checkout: nothing is published.
@@ -86,3 +86,49 @@ jobs:
       - run: go build -o "$RUNNER_TEMP/nethttp" .
         working-directory: examples/go-nethttp
       - run: node examples/smoke.mjs examples/go-nethttp "$RUNNER_TEMP/nethttp"
+
+  nextjs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Build the SDK the template depends on
+        working-directory: sdk/typescript
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - run: npm ci --no-audit --no-fund
+        working-directory: examples/nextjs
+      - run: npm run check
+        working-directory: examples/nextjs
+      # next build loads every route without the app's settings: it must not need them.
+      - run: npm run build
+        working-directory: examples/nextjs
+      - run: node examples/smoke.mjs examples/nextjs npm start
+
+  laravel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, curl, dom, fileinfo, mbstring, openssl, tokenizer, xml
+          coverage: none
+          tools: composer:v2
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      # No lock file is committed (the SDK is a path repository), so this resolves the versions Laravel allows.
+      - run: composer update --no-interaction --no-progress --prefer-dist
+        working-directory: examples/laravel
+      - run: find app bootstrap config public routes -name '*.php' -print0 | xargs -0 -n1 php -l
+        working-directory: examples/laravel
+      # The built-in server, not artisan serve: the settings come from the process environment the smoke test sets, as they do in a container.
+      - run: node examples/smoke.mjs examples/laravel sh -c 'exec php -S 127.0.0.1:"$PORT" -t public public/index.php'

@@ -405,6 +405,32 @@ services:
     depends_on: { postgres: { condition: service_healthy } }
     deploy: { resources: { limits: { memory: 96m } } }
 
+  # Copies the object buckets (invoice PDFs, assets) to backups/objects/ in the same MinIO every OBJECT_BACKUP_INTERVAL_SECONDS (deploy/backup/object-backup.sh; an object
+  # deleted in the source stays in the copy). The image has bash and mc and nothing else, so it waits with read -t on a pipe it holds open itself. Start it with
+  # `docker compose --profile ops up -d object-backup` after make up-infra (minio-init made the buckets); it reports to the pushgateway of the obs profile.
+  object-backup:
+    <<: *defaults
+    profiles: [ops]
+    image: cgr.dev/chainguard/minio-client@sha256:d8a93c5d335509ff353774eefec8f82fa2a2a975e800139702232d8be3dbe6b9
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        while true; do
+          bash /scripts/object-backup.sh mirror || true
+          read -r -t "$${OBJECT_BACKUP_INTERVAL_SECONDS:-86400}" <> <(:) || true
+        done
+    environment:
+      MC_CONFIG_DIR: /tmp/mc
+      OBJ_SOURCE_URL: http://minio:9000
+      OBJ_SOURCE_USER: payrudder
+      OBJ_SOURCE_PASSWORD: payrudder_local
+      OBJECT_BACKUP_INTERVAL_SECONDS: ${OBJECT_BACKUP_INTERVAL_SECONDS:-86400}
+      PUSHGATEWAY_HOST_PORT: ${PUSHGATEWAY_HOST_PORT:-pushgateway:9091}
+    volumes:
+      - ../backup:/scripts:ro
+    depends_on: { minio: { condition: service_healthy } }
+    deploy: { resources: { limits: { memory: 96m } } }
+
   # --- chaos profile -----------------------------------------------------------------------------
   toxiproxy:
     <<: *defaults
@@ -444,6 +470,7 @@ services:
       # mock provider can take the payments; a deployment of its own uses live. Set PAYRUDDER_SAAS=off for the plain product.
       PAYRUDDER_SAAS: ${PAYRUDDER_SAAS:-on}
       PAYRUDDER_SAAS_ENVIRONMENT: ${PAYRUDDER_SAAS_ENVIRONMENT:-sandbox}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
       # Seals the signing secrets of tenants' webhook endpoints (the same key as payments-worker's; local default only).
       PAYRUDDER_SECRETS_KEY: ${PAYRUDDER_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
@@ -498,6 +525,7 @@ services:
       PAYRUDDER_MIGRATE_ON_START: "true"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42702:7002", "42912:9102"]
     depends_on:
@@ -526,6 +554,7 @@ services:
       PAYRUDDER_MIGRATE_ON_START: "true"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42703:7003", "42913:9103"]
     depends_on:
@@ -553,6 +582,7 @@ services:
       PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
       PAYRUDDER_RECONCILE_INTERVAL: ${PAYRUDDER_RECONCILE_INTERVAL:-5m}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42704:7004", "42914:9104"]
     depends_on:
@@ -622,6 +652,7 @@ services:
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
       PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
       # The UBL and PDF of e-invoices (phase 30) go to the invoices bucket, next to the invoice PDFs.
       S3_ENDPOINT: http://minio:9000
@@ -664,6 +695,7 @@ services:
       S3_ACCESS_KEY: payrudder
       S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       rabbitmq: { condition: service_healthy }
@@ -697,7 +729,14 @@ services:
       NAFRU_API_KEY: ${NAFRU_API_KEY:-}
       # The local stack may send a tenant's mail through an e-mail provider on http:// and a private address. Never set this in production.
       NOTIFIER_MAIL_ALLOW_PRIVATE: ${NOTIFIER_MAIL_ALLOW_PRIVATE:-true}
+      # The signed listener for bounce and complaint notices and the operator's suppression calls (plan 11, docs/runbooks/mail-suppression.md). The gateway reaches it by name for
+      # the console's mail page. The secret signs every request and must be the gateway's PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET: generate your own with `openssl rand -base64 32`.
+      NOTIFIER_EVENTS_ADDR: ":9111"
+      NOTIFIER_MAIL_EVENTS_SECRET: ${NOTIFIER_MAIL_EVENTS_SECRET:-local-mail-events-secret-change-me-0123456789}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
+    # The gateway reaches the listener by name in Docker; published on loopback so that a gateway on the host (make dev) can too.
+    ports: ["127.0.0.1:42920:9111"]
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
@@ -742,6 +781,7 @@ services:
       PAYRUDDER_STEP_TIMEOUT: ${PAYRUDDER_STEP_TIMEOUT:-2m}
       PAYRUDDER_WATERMARK_DELAY: ${PAYRUDDER_WATERMARK_DELAY:-30s}
       PAYRUDDER_DUNNING_SANDBOX: ${PAYRUDDER_DUNNING_SANDBOX:-1m,3m,7m}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42705:7005", "42915:9105"]
     depends_on:
@@ -773,6 +813,7 @@ services:
       CLICKHOUSE_USER: payrudder
       CLICKHOUSE_PASSWORD: payrudder_local
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42706:7006", "42916:9106"]
     depends_on:
@@ -807,6 +848,7 @@ services:
       S3_FORCE_PATH_STYLE: "true"
       ASSETS_VERIFY_INTERVAL: ${ASSETS_VERIFY_INTERVAL:-30s}
       ASSETS_SWEEP_INTERVAL: ${ASSETS_SWEEP_INTERVAL:-1m}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42707:7007", "42921:9111"]
     depends_on:
@@ -907,6 +949,10 @@ services:
       PAYRUDDER_GOOGLE_CLIENT_ID: ${PAYRUDDER_GOOGLE_CLIENT_ID:-}
       PAYRUDDER_GOOGLE_CLIENT_SECRET: ${PAYRUDDER_GOOGLE_CLIENT_SECRET:-}
       PAYRUDDER_GOOGLE_ISSUER: ${PAYRUDDER_GOOGLE_ISSUER:-https://accounts.google.com}
+      # The notifier's signed listener (suppression list, message log, price-change preview on the console's mail page). Both or neither; the secret is the notifier's NOTIFIER_MAIL_EVENTS_SECRET.
+      PAYRUDDER_NOTIFIER_EVENTS_URL: http://notifier:9111
+      PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET: ${NOTIFIER_MAIL_EVENTS_SECRET:-local-mail-events-secret-change-me-0123456789}
+      PAYRUDDER_ERROR_TRACKING_URL: ${PAYRUDDER_ERROR_TRACKING_URL:-}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     ports: ["42800:8000", "42910:9100"]
     depends_on:

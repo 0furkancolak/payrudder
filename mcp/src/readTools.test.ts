@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { buildReadTools, freeTextFields, repoRoot } from "../scripts/generate.mjs";
-import { NOT_OFFERED, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
-import { READ_TOOL_SPECS } from "./generated/read-tools.js";
+import { NOT_OFFERED, PERSONAL, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
+import { PERSONAL_KEYS, READ_TOOL_SPECS, UNTRUSTED_KEYS } from "./generated/read-tools.js";
+import { REDACTED, redactPersonal } from "./privacy.js";
 import { TOOLS } from "./tools.js";
 
 const doc = parse(await readFile(join(repoRoot, "api/openapi/v1.yaml"), "utf8"));
-const config = { READ_TOOLS, STRUCTURAL, UNTRUSTED };
+const config = { READ_TOOLS, STRUCTURAL, UNTRUSTED, PERSONAL };
 
 interface Op {
   operationId?: string;
@@ -127,6 +128,35 @@ describe("the read tools are the allow-listed operations of the OpenAPI file", (
   });
 });
 
+describe("personal data", () => {
+  it("is classified: every personal key is an untrusted key, and the generated list is the configured one", () => {
+    for (const k of PERSONAL) expect(UNTRUSTED, k).toContain(k);
+    expect(PERSONAL_KEYS).toEqual(PERSONAL);
+  });
+
+  it("is redacted in full from a customer: every text of the Customer answer that people wrote, but the staff's block note and the id warning", () => {
+    // A sample with a text in every string property of the Customer model, so a field added to it (and to UNTRUSTED) without a decision about personal data fails here.
+    const sample = (n: any): unknown => {
+      if (n?.$ref) return sample(n.$ref.slice(2).split("/").reduce((x: any, k: string) => x?.[k], doc));
+      if (n?.properties) return Object.fromEntries(Object.entries<any>(n.properties).map(([k, v]) => [k, sample(v)]));
+      return n?.type === "string" ? "text" : null;
+    };
+    const customer = sample({ $ref: "#/components/schemas/Customer" }) as Record<string, any>;
+    const { value } = redactPersonal(customer, new Set(PERSONAL));
+    const left: string[] = [];
+    const walk = (v: unknown, path: string): void => {
+      if (typeof v === "string") {
+        const key = path.split(".").pop() ?? "";
+        if (v !== REDACTED && UNTRUSTED.includes(key)) left.push(path);
+      } else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) walk(x, path ? `${path}.${k}` : k);
+    };
+    walk(value, "");
+    // Staff's own words stay (they explain a block); nothing else people wrote may.
+    expect(left.sort()).toEqual(["block_reason", "tax_id_warning"]);
+    expect(UNTRUSTED_KEYS).toContain("block_reason");
+  });
+});
+
 describe("the generator refuses what must not become a tool", () => {
   const spec = (over: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) => ({
     paths: {
@@ -137,6 +167,10 @@ describe("the generator refuses what must not become a tool", () => {
   });
   const cfg = (tools: Record<string, object>) => ({ READ_TOOLS: tools, STRUCTURAL: ["id"], UNTRUSTED: ["note"] });
 
+  it("refuses a personal key that is not an untrusted key", () => {
+    expect(() => buildReadTools(spec(), { ...cfg({ getThing: {} }), PERSONAL: ["email"] })).toThrow(/email is personal data but not an untrusted key/);
+    expect(buildReadTools(spec(), { ...cfg({ getThing: {} }), PERSONAL: ["note"] }).personal).toEqual(["note"]);
+  });
   it("accepts a plain GET of the tenant API", () => {
     expect(buildReadTools(spec(), cfg({ getThing: {} })).tools[0]).toMatchObject({ name: "get_thing", path: "/v1/things/{id}" });
   });

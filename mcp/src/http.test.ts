@@ -10,7 +10,7 @@ afterEach(() => {
   while (open.length) open.pop()?.close();
 });
 
-async function start(opts: { allowWrites?: boolean; audit?: (r: AuditRecord) => void } = {}) {
+async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPersonalData?: boolean; audit?: (r: AuditRecord) => void } = {}) {
   const seen: { path: string; auth: string | null }[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     seen.push({ path: new URL(String(input)).pathname, auth: new Headers(init.headers).get("Authorization") });
@@ -32,7 +32,7 @@ async function start(opts: { allowWrites?: boolean; audit?: (r: AuditRecord) => 
 
 describe("streamable HTTP", () => {
   it("serves the tools to a client that sends its API key, and calls the API with that key", async () => {
-    const { connect, seen } = await start();
+    const { connect, seen } = await start({ allowPersonalData: true });
     const client = await connect("qk_test_alpha_secret1");
     expect((await client.listTools()).tools).toHaveLength(25);
     const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
@@ -49,10 +49,30 @@ describe("streamable HTTP", () => {
   });
 
   it("never lets one caller's key reach another caller's call", async () => {
-    const { connect, seen } = await start();
+    const { connect, seen } = await start({ allowLive: true });
     const [a, b] = [await connect("qk_test_a_1111"), await connect("qk_live_b_2222")];
     await Promise.all([a.callTool({ name: "list_meters", arguments: {} }), b.callTool({ name: "list_meters", arguments: {} })]);
     expect(seen.map((s) => s.auth).sort()).toEqual(["Bearer qk_live_b_2222", "Bearer qk_test_a_1111"]);
+  });
+
+  it("redacts customers' personal data unless the server was started to allow it", async () => {
+    const call = async (opts: { allowPersonalData?: boolean }) => JSON.stringify((await (await (await start(opts)).connect("qk_test_a_1111")).callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } })).content);
+    expect(await call({})).not.toContain("Ada");
+    expect(await call({})).toContain("redacted: personal data");
+    expect(await call({ allowPersonalData: true })).toContain("Ada");
+  });
+
+  it("refuses a live key with a 403 and a reason unless the server was started to allow live, and never calls the API for it", async () => {
+    const post = (url: string, key: string) => fetch(url, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) });
+    const refused = await start();
+    const res = await post(refused.url, "qk_live_ab12cd34_TOPSECRET");
+    expect(res.status).toBe(403);
+    const body = await res.text();
+    expect(body).toContain("PAYRUDDER_MCP_ALLOW_LIVE=1");
+    expect(body).not.toContain("TOPSECRET");
+    expect((await post(refused.url, "qk_test_ab12cd34_x")).status).toBe(200);
+    expect((await post((await start({ allowLive: true })).url, "qk_live_ab12cd34_x")).status).toBe(200);
+    expect(refused.seen).toHaveLength(0);
   });
 
   it("offers the write tools only when the server was started with writes", async () => {
@@ -83,7 +103,7 @@ describe("streamable HTTP", () => {
 describe("the audit log over HTTP", () => {
   it("names the caller's key by its prefix and the transport, and never holds the secret part", async () => {
     const records: AuditRecord[] = [];
-    const { connect } = await start({ audit: (r) => records.push(r) });
+    const { connect } = await start({ allowLive: true, audit: (r) => records.push(r) });
     const [a, b] = [await connect("qk_test_alpha_SECRETONE"), await connect("qk_live_beta_SECRETTWO")];
     await a.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
     await b.callTool({ name: "list_meters", arguments: {} });

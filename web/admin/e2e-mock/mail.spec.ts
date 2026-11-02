@@ -35,13 +35,13 @@ test.describe("mail", () => {
     ];
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/mail-settings") return { body: { categories: [] } };
-      if (c.path === "/v1/mail-messages") return { body: { messages: [], next_page_token: "" } };
+      if (c.path === "/v1/mail-messages") return { body: { messages: [], next_page_token: "", connected: true } };
       if (c.method === "GET" && c.path === "/v1/mail-suppressions") {
         // Two to a page, to see the token followed.
         const after = c.query.get("page_token");
         const start = after ? rows.findIndex((r) => r.address === after) + 1 : 0;
         const page = rows.slice(start, start + 2);
-        return { body: { suppressions: page, next_page_token: start + 2 < rows.length ? (page.at(-1)?.address ?? "") : "" } };
+        return { body: { suppressions: page, next_page_token: start + 2 < rows.length ? (page.at(-1)?.address ?? "") : "", connected: true } };
       }
       if (c.method === "DELETE" && c.path.startsWith("/v1/mail-suppressions/")) {
         const address = decodeURIComponent(c.path.split("/").pop() ?? "");
@@ -78,11 +78,11 @@ test.describe("mail", () => {
     const m = (key: string, state: string, to: string) => ({ key, kind: "command", template: "invoice_paid.v1", recipient: to, state, claim_time: "2026-11-02T09:00:00Z", send_time: state === "sending" ? null : "2026-11-02T09:00:01Z" });
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/mail-settings") return { body: { categories: [] } };
-      if (c.path === "/v1/mail-suppressions") return { status: 503, body: { error: { code: "UNAVAILABLE", key: "gateway.mail.unavailable", message: "not connected" } } };
+      if (c.path === "/v1/mail-suppressions") return { body: { suppressions: [], next_page_token: "", connected: false } };
       if (c.method === "GET" && c.path === "/v1/mail-messages") {
         return c.query.get("page_token") === "next"
-          ? { body: { messages: [m("k3", "bounced", "cyd@example.com")], next_page_token: "" } }
-          : { body: { messages: [m("k1", "delivered", "ada@example.com"), m("k2", "sending", "bob@example.com")], next_page_token: "next" } };
+          ? { body: { messages: [m("k3", "bounced", "cyd@example.com")], next_page_token: "", connected: true } }
+          : { body: { messages: [m("k1", "delivered", "ada@example.com"), m("k2", "sending", "bob@example.com")], next_page_token: "next", connected: true } };
       }
       return undefined;
     });
@@ -95,7 +95,29 @@ test.describe("mail", () => {
     await expect(log.getByTestId("message-k3")).toHaveCount(0);
     await log.getByTestId("messages-more").click();
     await expect(log.getByTestId("message-k3")).toContainText("Bounced");
-    // The suppression list answered 503: it says so, in the reader's language, and the log is not affected.
-    await expect(page.getByTestId("mail-suppressions")).toContainText("not connected on this deployment");
+    // The suppression list says the notifier is not connected (a 200 with connected=false, not an error), in the reader's language, and the log is not affected.
+    await expect(page.getByTestId("mail-suppressions-not-connected")).toContainText("not connected on this deployment");
+    await expect(page.getByTestId("mail-suppressions-empty")).toHaveCount(0);
+  });
+
+  test("a deployment without the notifier opens the mail page quietly: both lists say they are not connected and no mail request is refused", async ({ page }) => {
+    // The browser logs a "Failed to load resource" error for every response of 400 or more; the mock refuses other calls of the page, so only the mail routes are watched.
+    const refused: string[] = [];
+    page.on("response", (r) => {
+      if (r.url().includes("/v1/mail-") && r.status() >= 400) refused.push(`${r.status()} ${r.url()}`);
+    });
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/mail-settings") return { body: { categories: [] } };
+      if (c.method === "GET" && c.path === "/v1/mail-suppressions") return { body: { suppressions: [], next_page_token: "", connected: false } };
+      if (c.method === "GET" && c.path === "/v1/mail-messages") return { body: { messages: [], next_page_token: "", connected: false } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/mail");
+    await expect(page.getByTestId("mail-suppressions-not-connected")).toBeVisible();
+    await expect(page.getByTestId("mail-messages-not-connected")).toBeVisible();
+    expect(refused).toEqual([]);
+    expect(gw.called("GET", "/v1/mail-suppressions").length).toBeGreaterThan(0);
+    expect(gw.called("GET", "/v1/mail-messages").length).toBeGreaterThan(0);
   });
 });
