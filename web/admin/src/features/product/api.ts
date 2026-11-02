@@ -214,6 +214,19 @@ export interface NewApp {
   name: string;
   currency: Currency;
   timezone: string;
+  /** One of useRegions(); left out, the server pins the app to its own region (none on a deployment without regions). */
+  region?: string;
+}
+
+/** The regions an app can be pinned to from this deployment, and the default; both empty on a deployment without regions. Read when the dialog opens. */
+export function useRegions(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: ["app", "regions"] as const,
+    queryFn: () => unwrap(api.GET("/app/v1/regions")),
+    enabled: computed(() => toValue(enabled)),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 }
 
 export function useCreateApp() {

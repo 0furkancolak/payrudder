@@ -4,8 +4,8 @@
 INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING *;
 
 -- name: InsertTenant :one
-INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period, status, activated_at)
-VALUES (@id, @account_id, @app_id, @environment, @name, @tier, @currency, @timezone, @grace_period, @status, CASE WHEN @status::text = 'active' THEN now() END)
+INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period, status, activated_at, region)
+VALUES (@id, @account_id, @app_id, @environment, @name, @tier, @currency, @timezone, @grace_period, @status, CASE WHEN @status::text = 'active' THEN now() END, @region)
 RETURNING *;
 
 -- name: SetTenantStatus :one

@@ -355,6 +355,10 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateMyAppReques
 	if err != nil {
 		return nil, err
 	}
+	if err := accountscmd.CheckRegion(req.GetRegion()); err != nil {
+		return nil, err
+	}
+	settings.Region = req.GetRegion()
 	slug, err := accountscmd.ResolveSlug(settings.Name, req.GetSlug())
 	if err != nil {
 		return nil, err

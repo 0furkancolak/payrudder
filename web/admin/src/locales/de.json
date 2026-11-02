@@ -3087,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "Der Regionsname darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten und höchstens 31 Zeichen lang sein.",
         "bad_slug": "Das Kürzel der App darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten und höchstens 60 Zeichen lang sein.",
         "slug_taken": "Dieses Konto hat bereits eine App mit diesem Kürzel."
       },
@@ -3534,6 +3535,7 @@
         "unreachable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich erneut."
       },
       "region": {
+        "unknown": "Diese Region gibt es in dieser Installation nicht. Wählen Sie eine aus der Liste.",
         "wrong": "Diese Umgebung wird aus einer anderen Region bereitgestellt. Senden Sie die Anfrage an das Gateway ihrer Region (siehe die Header X-Payrudder-Region und X-Payrudder-Region-Url)."
       },
       "rate_limit": {
@@ -3925,6 +3927,8 @@
       "name": "App-Name",
       "currency": "Währung",
       "timezone": "Zeitzone",
+      "region": "Region",
+      "regionHint": "Wo die Daten dieser App gespeichert werden. Die Konsole kann das später nicht ändern; die App wird unter der Adresse dieser Region erreicht.",
       "immutable": "Währung und Zeitzone lassen sich später nicht ändern: Abrechnungszeiträume werden in dieser Zeitzone geschnitten.",
       "submit": "App erstellen",
       "badCurrency": "Wählen Sie eine Währung aus der Liste.",

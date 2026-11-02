@@ -281,6 +281,8 @@ message CreateMyAppRequest {
   string slug = 4;
   string currency = 5;
   string timezone = 6;
+  // The region of the app's tenants (see Tenant.region); empty takes the deployment's default.
+  string region = 7;
 }
 
 message CreateMyAppResponse {

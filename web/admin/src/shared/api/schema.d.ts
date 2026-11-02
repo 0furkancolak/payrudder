@@ -3932,6 +3932,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The regions an app can be pinned to from this deployment
+         * @description Where the data of a new app can live, and where it lives when the person chooses none. Both are empty on a deployment without regions (its gateway has no `PAYRUDDER_REGION`), where nothing is pinned. An app is pinned when it is created (`region` of `appCreateApp`); a gateway of another region then answers 421 `gateway.region.wrong` for it.
+         */
+        get: operations["appListRegions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps": {
         parameters: {
             query?: never;
@@ -8819,6 +8839,13 @@ export interface components {
             currency: string;
             /** @example Europe/Istanbul */
             timezone: string;
+            /** @description Where the app's data lives, one of `appListRegions`; left out: this gateway's region (none on a deployment without regions). Cannot be changed afterwards except by moving the tenant */
+            region?: string;
+        };
+        AppRegionsResponse: {
+            regions: string[];
+            /** @description Empty on a deployment without regions */
+            default_region: string;
         };
         AppGetAppResponse: {
             app: components["schemas"]["App"] | null;
@@ -9128,6 +9155,8 @@ export interface components {
             grace_period: string;
             /** @enum {string} */
             tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+            /** @description The region of the app's tenants; left out: the deployment's default (`PAYRUDDER_DEFAULT_REGION` of plans-svc, itself empty: not pinned) */
+            region?: string;
         };
         ListAppsResponse: {
             apps: components["schemas"]["App"][];
@@ -12880,6 +12909,8 @@ export interface components {
              * @enum {string}
              */
             default_language: "" | "en" | "tr" | "de" | "fr" | "es" | "ar";
+            /** @description Where the tenant's data lives (set when the app was created, or when the tenant was moved into a cell); empty: not pinned, every gateway serves it */
+            region: string;
             /** @enum {string} */
             environment: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             name: string;
@@ -20055,6 +20086,27 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+        };
+    };
+    appListRegions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppRegionsResponse"];
+                };
+            };
+            401: components["responses"]["Error"];
         };
     };
     appListApps: {

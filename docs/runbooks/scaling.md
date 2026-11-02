@@ -35,6 +35,20 @@ A tenant placed in cell `eu1` has its rows in `eu1`'s databases and its events i
 4. **No tool moves Kafka, ClickHouse or MinIO data between regions.** Only Postgres rows move.
 5. **The gateway guard is not a firewall.** It refuses a request that arrives at the wrong region's gateway; it does not stop a service in region A from being configured with a cell DSN in region B. That is the cells config and the network.
 
+## Setting a tenant's region at creation (plan 17)
+
+`tenants.region` used to be set only when a tenant was moved into a cell. An app now says where it lives when it is created, and both of its tenants (sandbox and live) get it:
+
+- **From the console or the product API**: `POST /app/v1/apps` takes an optional `region`. The gateway offers the regions it knows (`GET /app/v1/regions`: its own `PAYRUDDER_REGION` and the names in `PAYRUDDER_REGION_URLS`, default its own) and refuses any other (`400 gateway.region.unknown`); without the field the app is pinned to **the region of the gateway that took the request**. With the guard off (no `PAYRUDDER_REGION`) there are no regions, nothing is pinned here and a `region` in the body is refused. The console's *Create an app* dialog shows a **Region** field only when the deployment offers more than one.
+- **From the operator API**: `POST /admin/v1/accounts/{id}/apps` takes `region` (any valid name; the operator is trusted to know the topology).
+- **Default**: plans-svc `PAYRUDDER_DEFAULT_REGION` (empty by default) pins the tenants of an app whose request names none and that did not come through a gateway with a region, and the first app (`default`) that the operator's `createAccount` makes.
+- A name must be lower-case letters, digits and hyphens, at most 31 characters (`plans.app.bad_region`); the table checks the same.
+- The tenant API and the app answers show it: `region` on the tenant (empty is not pinned).
+
+**Default, not agreed:** a person choosing a region other than the one they are signed in at gets an app whose requests this console's gateway will refuse with 421 (the guard reads `tenants.region`); they reach it at that region's address. The console says so in the field's hint and does not follow the hint itself. The alternative is to offer only the gateway's own region until the console can follow `X-Payrudder-Region-Url`. A region cannot be changed from the console afterwards; moving a tenant (`payrudderctl cells move`) is the operator's.
+
+**Tested:** the gateway (`TestAnAppIsCreatedInARegionOfTheDeployment`: the list, the default, a chosen one, an unknown one, a deployment without regions), plans-svc against a real Postgres (`TestPlansSvc/AnAppIsPinnedToTheRegionChosenOrTheDefault`: chosen, default, refused name, both tenants, `tenants.region` equals what the API says, the operator's way in), the console's mock e2e (the field appears only with more than one region and its choice is sent). The default is tested through the self-serve path (no region in the request, plans-svc default `eu`); the first app of the operator's `createAccount` takes it through the same `InsertApp` and has no test of its own. **Not tested:** two real gateways with a real plans-svc, the console following the hint.
+
 ## The gateway guard (PAYRUDDER_REGION)
 
 ```

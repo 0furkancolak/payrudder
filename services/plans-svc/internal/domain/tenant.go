@@ -86,7 +86,12 @@ type AccountSettings struct {
 	Timezone string
 	Grace    time.Duration
 	Tier     string
+	// Region pins the tenants of the app to a region (tenants.region); empty takes the deployment's default (accounts Commands.WithDefaultRegion).
+	Region string
 }
+
+// RegionName is the shape of a region name (and of tenants.region, which the table checks too).
+var RegionName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 
 // ValidateCreateAccount checks that currency, time zone and grace were chosen explicitly (no defaults, ADR 0011).
 func ValidateCreateAccount(req *plansv1.CreateAccountRequest) (AccountSettings, error) {
