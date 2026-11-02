@@ -242,7 +242,7 @@ func testAuditLeftovers(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		got := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"support.status_changed"}})
+		got := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"support.status_changed"}, TargetType: "support_ticket", TargetId: open.GetTicket().GetId()})
 		if len(got) != 2 {
 			t.Fatalf("support.status_changed = %v, want open to pending and pending to solved", got)
 		}
@@ -258,7 +258,7 @@ func testAuditLeftovers(t *testing.T) {
 		for range 6 {
 			_, _ = e.ident.SignIn(ac, &plansv1.SignInRequest{Email: addr, Password: "not the password!"})
 		}
-		locked := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"user.sign_in_locked"}})
+		locked := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"user.sign_in_locked"}, TargetType: "user", TargetId: p.id})
 		if len(locked) != 1 || locked[0].GetTargetId() != p.id || locked[0].GetSourceIp() != "198.51.100.77" || locked[0].GetActorType() != "system" || detailOf(locked[0])["step"] != "password" {
 			t.Fatalf("user.sign_in_locked = %v (one entry for the failure that set the lock, with the address the failures came from)", locked)
 		}
@@ -270,7 +270,7 @@ func testAuditLeftovers(t *testing.T) {
 		if _, err := e.ident.ResetPassword(actedAs(ctx, audit.Actor{IP: "198.51.100.78", RequestID: "req-left-5"}), &plansv1.ResetPasswordRequest{Token: token, NewPassword: "a brand new password"}); err != nil {
 			t.Fatal(err)
 		}
-		reset := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"user.password_reset"}})
+		reset := e.events(t, operator(), &auditv1.ListAuditEventsRequest{Actions: []string{"user.password_reset"}, TargetType: "user", TargetId: p.id})
 		if len(reset) != 1 || reset[0].GetTargetId() != p.id || reset[0].GetActorEmail() != addr || reset[0].GetSourceIp() != "198.51.100.78" {
 			t.Errorf("user.password_reset = %v", reset)
 		}
