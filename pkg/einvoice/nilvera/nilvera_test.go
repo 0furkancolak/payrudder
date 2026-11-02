@@ -96,13 +96,17 @@ func TestDuplicateFetchesStatus(t *testing.T) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
-		if r.URL.Path != "/einvoice/Sale/11111111-2222-3333-4444-555555555555/Status" {
+		switch r.URL.Path {
+		case "/einvoice/Sale/11111111-2222-3333-4444-555555555555/Status":
+			_, _ = w.Write([]byte(`{"InvoiceStatus":{"Code":"succeed"},"Answer":{"AnswerCode":"approved"}}`))
+		case "/einvoice/Sale/11111111-2222-3333-4444-555555555555/Details": // the status carries no number; the details do
+			_, _ = w.Write([]byte(`{"UUID":"11111111-2222-3333-4444-555555555555","InvoiceNumber":"ABC2026000000001"}`))
+		default:
 			t.Errorf("%s", r.URL)
 		}
-		_, _ = w.Write([]byte(`{"InvoiceStatus":{"Code":"succeed"},"Answer":{"AnswerCode":"approved"}}`))
 	})
 	res, err := p.Issue(t.Context(), einvoice.IssueRequest{Doc: doc(einvoice.TypeEFatura), UBL: []byte("<x/>")})
-	if err != nil || res.State != einvoice.StateIssued || sends != 1 {
+	if err != nil || res.State != einvoice.StateIssued || res.LegalNumber != "ABC2026000000001" || sends != 1 {
 		t.Errorf("%+v %v sends=%d", res, err, sends)
 	}
 }

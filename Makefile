@@ -65,6 +65,10 @@ test-backup-scripts: ## The backup, restore and verify scripts against a throwaw
 	@for f in backup restore verify invariants; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
 	sh deploy/backup/test.sh
 
+.PHONY: test-einvoice-rules
+test-einvoice-rules: ## The UBL that pkg/einvoice builds against the EN 16931, Peppol BIS 3 and UBL-TR XSD and schematron (needs java, xmllint; downloads pinned artefacts into ~/.cache)
+	scripts/einvoice-validate.sh
+
 .PHONY: backup-drill
 backup-drill: ## Point-in-time recovery drill on a throwaway stack: restore to a chosen minute, check the data, measure the RTO (Docker, about 5 minutes)
 	sh deploy/backup/drill.sh
@@ -82,7 +86,7 @@ alert-test: ## Fire a test page and a test warning at the running Alertmanager (
 
 .PHONY: test-integration
 test-integration: ## Integration tests (build tag integration; needs Docker)
-	@for m in $(MODULES); do (cd $$m && go test -race -count=1 -tags integration ./...); done
+	@for m in $(MODULES); do (cd $$m && go test -race -count=1 -timeout 30m -tags integration ./...); done
 
 .PHONY: e2e
 e2e: ## End-to-end tests against the running compose stack (make up first)

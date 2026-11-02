@@ -76,7 +76,7 @@ func TestPortalShowsCreditsAndBuysAPack(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
-	for _, want := range []string{"Credit balance", "12,500", "2,500 / 10,000", "2026-12-31", "Never expires", "Buy credits", "Starter &lt;b&gt;pack&lt;/b&gt;", "5.00 USD", "40.00 USD", "Valid for 30 days",
+	for _, want := range []string{"Credit balance", "12,500", "2,500 / 10,000", "31 December 2026", "Never expires", "Buy credits", "Starter &lt;b&gt;pack&lt;/b&gt;", "5.00 USD", "40.00 USD", "Valid for 30 days",
 		"The credits do not expire", `action="/c/` + portalTok + `/credits/buy"`, `name="pack_id" value="pack-1"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the portal lacks %q", want)

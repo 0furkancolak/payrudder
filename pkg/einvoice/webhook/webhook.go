@@ -133,7 +133,7 @@ func (p *Provider) post(ctx context.Context, action, contentType string, body []
 	}
 	var a answer
 	jsonOK := json.Unmarshal(raw, &a) == nil
-	msg := truncate(a.Message)
+	msg := truncate(strings.ReplaceAll(a.Message, p.secret, "[redacted]")) // the endpoint knows the secret and may echo it; the message is shown to the operator
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
 		return answer{}, einvoice.ErrNotFound
@@ -171,6 +171,9 @@ func toState(s string) (einvoice.State, bool) {
 // Issue implements einvoice.Provider.
 func (p *Provider) Issue(ctx context.Context, r einvoice.IssueRequest) (einvoice.IssueResult, error) {
 	d := r.Doc
+	if d.Sandbox {
+		return einvoice.IssueResult{}, &einvoice.PermanentError{Code: "sandbox", Message: "sandbox documents are issued by the mock provider only"}
+	}
 	a, err := p.post(ctx, "issue", "application/xml", r.UBL, map[string]string{
 		"Document-Uuid": d.UUID, "Document-Kind": string(d.Kind), "Document-Type": string(d.Type), "Document-Number": d.Number})
 	if err != nil {

@@ -124,7 +124,10 @@
       "amount_mismatch": "Tutar farklı",
       "duplicate_charge": "Birden fazla tahsil edildi",
       "charge_without_paid": "Tahsil edildi, fatura ödenmemiş",
-      "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı"
+      "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı",
+      "settlement_missing": "Ödendi, sağlayıcı mutabakatında yok",
+      "settlement_mismatch": "Mutabık tutar farklı",
+      "fee_mismatch": "Sağlayıcı komisyonu farklı"
     },
     "ledgerKind": {
       "charge": "tahsilat",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Banka havalesi",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Açık",
+      "explained": "Açıklandı",
+      "resolved": "Çözüldü"
+    },
+    "discrepancyEvent": {
+      "detected": "Bulundu",
+      "reopened": "Yeniden açıldı",
+      "cleared": "Sonraki çalıştırmada temizlendi",
+      "assigned": "Atandı",
+      "explained": "Açıklandı",
+      "resolved": "Çözüldü"
+    },
+    "resolution": {
+      "ledger_fact": "Deftere kayıt yazıldı",
+      "credit_note": "Alacak dekontu düzenlendi",
+      "refunded_at_provider": "Sağlayıcıda iade edildi",
+      "corrected_in_billing": "Faturalamada düzeltildi",
+      "not_an_error": "Hata değil",
+      "other": "Diğer",
+      "cleared": "Artık bulunmuyor"
+    },
+    "settlementState": {
+      "not_reported": "Ödendi, bildirilmedi",
+      "pending_payout": "Bildirildi, ödeme bekliyor",
+      "settled": "Mutabık"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "Sınır en fazla {n} ondalıklı bir miktar olmalı.",
         "thresholds": "Uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir."
       }
+    },
+    "reconcile": {
+      "title": "İnceleme kuyruğu",
+      "hint": "Karşılaştırmanın bulduğu farklar, saklanmış hâlde: sahibi kim, hakkında ne söylendi, nasıl bitti. Zamanlayıcı canlı ödeme almış her kiracı için çalıştırır; bir farkı çözmek onu yok etmez, hâlâ görüyorsa sonraki çalıştırma yeniden açar.",
+      "show": "Göster",
+      "view": {
+        "review": "İncelenecekler",
+        "resolved": "Çözülenler",
+        "all": "Hepsi"
+      },
+      "period": "Dönem",
+      "owner": "Sahibi",
+      "note": "Not",
+      "noteHint": "Ne öğrendiğiniz ve ne yapıldığı. Zorunlu.",
+      "resolution": "Çözüm",
+      "settled": "Mutabık",
+      "firstSeen": "İlk görülme",
+      "lastSeen": "Son görülme",
+      "history": "Geçmiş",
+      "assign": "Ata",
+      "explain": "Açıkla",
+      "resolve": "Çöz",
+      "resolveSelected": "Seçilenleri çöz",
+      "explainHint": "Gerekçesiyle kuyrukta kalsın. Bilinen ve bekleyen bir fark için kullanın.",
+      "resolveHint": "Bitirir. Sağlayıcıda veya faturada hiçbir şey değişmez; çözüm, başka yerde ne yapıldığını söyler.",
+      "factHint": "Ödeme defterine, yazdığınız sağlayıcı ve referans için faturanın tutarında başarılı bir tahsilat satırı yazar. Önce ödemeyi sağlayıcıda kontrol edin.",
+      "confirmTitle": "{n} fark çözülsün mü?",
+      "confirmBody": "Hepsi aynı çözüm ve notla çözülür; her birinin geçmişine ayrı bir kayıt düşer.",
+      "counts": "Duruma göre farklar",
+      "ran": "{period} dönemi: {found} bulundu, {opened} yeni, {reopened} yeniden açıldı, {cleared} temizlendi.",
+      "lastRun": "Son çalıştırma {when}, {by} tarafından, {period} için: {found} bulundu.",
+      "neverRun": "Henüz çalıştırılmadı. Bir dönemi çalıştırın ya da zamanlayıcıyı bekleyin.",
+      "by": {
+        "schedule": "zamanlayıcı",
+        "operator": "operatör"
+      },
+      "nothingToReview": "İncelenecek bir şey yok.",
+      "nothing": "Burada bir şey yok.",
+      "more": "En yeni {n} gösteriliyor. Diğerlerini görmek için görünümü daraltın."
+    },
+    "settlement": {
+      "title": "Ödenen ve mutabık kalınan",
+      "hint": "Başarılı bir ödeme, defterin sözüdür. Para, sağlayıcı komisyonu düşülerek mutabakata bağlandığında kiracının olur. Bunlar dönemin ödemeleri ve sağlayıcının ya da içe aktarılan raporun her biri için söyledikleri.",
+      "provider": "Sağlayıcı (hesap anahtarı)",
+      "providerHint": "Sağlayıcı sütunu olmayan rapor için",
+      "file": "Rapor (CSV)",
+      "import": "Raporu içe aktar",
+      "imported": "{lines} satır okundu, {changed} yeni veya değişen.",
+      "counts": "Mutabakat durumuna göre ödemeler",
+      "paidOn": "Ödendi",
+      "fee": "Sağlayıcı komisyonu",
+      "expected": "beklenen {fee}",
+      "batch": "Ödeme / parti",
+      "empty": "Bu dönemde sağlayıcıdan başarılı ödeme yok."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Bu ödeme sağlayıcısı tanınmıyor."
       },
       "reconcile": {
-        "bad_period": "Dönem 2026-10 biçiminde olmalı."
+        "bad_period": "Dönem 2026-10 biçiminde olmalı.",
+        "bad_filter": "Bir süzgeç değeri bu listenin bildiği değerlerden değil.",
+        "bad_ledger_fact": "Defter kaydı için sağlayıcı ve ödemenin referansı gerekir; yalnızca ödenmiş ama defterde olmayan faturayı çözer.",
+        "bad_resolution": "Listelenen çözüm yollarından birini seçin.",
+        "not_found": "Böyle bir fark yok.",
+        "note_required": "Ne öğrendiğinizi yazın: not zorunlu.",
+        "resolved": "Çözüldü. Yeniden bulan bir çalıştırma onu tekrar açar.",
+        "too_long": "Bu metin çok uzun.",
+        "too_many": "1 ile 100 arasında fark seçin."
       },
       "request": {
         "bad_body": "İstek gövdesi geçerli bir JSON olmalı.",
@@ -3014,10 +3106,21 @@
         "provider_not_configured": "Bu hesap için bir ödeme sağlayıcısı kurulu değil.",
         "rejected": "Ödeme sağlayıcısı isteği reddetti.",
         "timeout": "Ödeme sağlayıcısı zamanında yanıt vermedi."
+      },
+      "settlement": {
+        "bad_csv": "Rapor içe aktarılmadı: bir satır hatalı ve hiçbir şey saklanmadı.",
+        "bad_fee_rule": "Komisyon kuralı geçersiz: sağlayıcıyı, para birimini ve oranı kontrol edin.",
+        "bad_since": "Başlangıç geçmişte ve en çok 400 gün önce olmalı.",
+        "fee_rule_not_found": "Böyle bir komisyon kuralı yok."
+      },
+      "failover": {
+        "bad_target": "Yedekleme için, ortamda bulunan iki farklı hesap gerekir; banka havalesi bunda yer alamaz.",
+        "not_found": "Bu hesap için bir yedekleme tanımlı değil."
       }
     },
     "einvoice": {
       "account": {
+        "default_in_use": "Bu, varsayılan e-fatura hesabı. Önce başka bir hesabı varsayılan yapın, sonra bunu kaldırın.",
         "invalid": "E-fatura hesabı ayarları bu sağlayıcı için geçerli değil.",
         "missing": "Bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
         "sandbox_mock_only": "Sandbox ortamı yalnızca sahte (mock) e-fatura sağlayıcısını kullanabilir."
@@ -3039,6 +3142,10 @@
       "provider": {
         "rejected": "E-fatura sağlayıcısı belgeyi reddetti.",
         "unavailable": "E-fatura sağlayıcısına şu an ulaşılamıyor. Yeniden denenecek."
+      },
+      "routing": {
+        "invalid": "Yönlendirme kuralları geçerli değil: her ülke iki harfli bir kod olmalı, bir kez listelenmeli ve her hesap bağlı bir hesap olmalı.",
+        "unknown_account": "Bir yönlendirme kuralı, bağlı olmayan bir e-fatura hesabını gösteriyor."
       },
       "seller": {
         "incomplete": "Satıcının şirket bilgileri eksik: e-fatura ayarlarına unvanı ve vergi numarasını ekleyin."
@@ -4280,7 +4387,6 @@
           "webhook": "Her e-belge, kendi entegratörünüzün adresine imzalı olarak gönderilir. Adresini ve imzayı doğrulamak için kullandığı sırrı girin."
         },
         "envNote": "Bu, canlı ortamı bağlar. Sandbox yerleşik simülatörü kullanmaya devam eder.",
-        "replaces": "Bir ortamın tek entegratörü olur. Bunu bağlamak şu an bağlı olanı değiştirir: {current}.",
         "mode": "Mod",
         "modes": {
           "test": "Test modu",
@@ -4297,7 +4403,9 @@
           "credentials": "Entegratör bu bilgileri kabul ediyor.",
           "configuration": "Ayarlar geçerli. Gerisini yalnızca gerçek bir belge kanıtlar."
         },
-        "confirmRemove": "{name} bağlantısı kesilsin mi? Canlı ortamın yeni faturaları artık e-belge olarak gönderilmez."
+        "confirmRemove": "{name} bağlantısı kesilsin mi? Canlı ortamın yeni faturaları artık e-belge olarak gönderilmez.",
+        "accountsLine": "{count} hesap bağlı.",
+        "accountLabel": "Hesap etiketi: {label}"
       },
       "mail": {
         "builtInTitle": "Payrudder e-postası",
@@ -4322,6 +4430,59 @@
         "checkAndConnect": "Denetle ve bağla",
         "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
         "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
+      },
+      "accounts": {
+        "title": "Hesaplar",
+        "intro": "Bu uygulamanın tüm hesapları tek listede: ödeme, e-fatura ve e-posta. Her türde birden çok hesap olabilir, biri varsayılandır ve aşağıdaki kurallar hangi hesabın hangi müşterileri aldığını söyler.",
+        "add": "Entegrasyon ekle",
+        "addIntro": "Neyi bağlayacağınızı seçin: önce tür, sonra sağlayıcı. Sonraki adımda kimlik bilgileri istenir.",
+        "mailNote": "Bir uygulamanın, Payrudder'ın yerleşik göndericisinin yanında kendi e-posta sağlayıcısı olabilir.",
+        "continue": "Devam",
+        "search": "Hesaplarda ara",
+        "kind": "Tür",
+        "status": "Durum",
+        "provider": "Sağlayıcı",
+        "kinds": {
+          "payment": "Ödemeler",
+          "einvoice": "E-fatura",
+          "mail": "E-posta"
+        },
+        "inUse": "Kullanımda",
+        "makeDefaultHint": "Bunu varsayılan hesap yap",
+        "remove": "Kaldır",
+        "confirmRemove": "{name} kaldırılsın mı? Daha önce kesilmiş ya da tahsil edilmiş hiçbir şey değişmez.",
+        "eRouting": {
+          "title": "Hangi e-fatura hesabı hangi belgeleri keser",
+          "intro": "Alıcının ülkesi belirler: burada listelenen bir ülkedeki alıcının belgesi o hesaptan, diğer tüm belgeler varsayılan hesaptan kesilir. Başlamış bir belge kendi hesabında kalır.",
+          "duplicate": "Bir ülke bir kez listelenebilir."
+        },
+        "tester": {
+          "title": "Bu müşteriyi kim alır?",
+          "intro": "Bir ülke ve para birimi girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
+          "run": "Kontrol et",
+          "byRule": "{account}, {n}. kurala göre",
+          "byDefault": "Varsayılan hesap, hiçbir kural eşleşmiyor.",
+          "byRuleCountry": "{account}, {country} kuralına göre",
+          "eDefault": "{account}, varsayılan hesap",
+          "eNone": "Hesap yok: varsayılan belirlenmemiş ve hiçbir kural bu ülkeyi söylemiyor.",
+          "mailOwn": "Kendi e-posta sağlayıcınız",
+          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi"
+        },
+        "audit": {
+          "title": "Hesapları kim değiştirdi",
+          "intro": "Ödeme ve e-fatura hesaplarının bağlanması, varsayılan değişiklikleri ve yönlendirme değişiklikleri, en yeniden eskiye. Kimlik bilgileri asla kaydedilmez.",
+          "empty": "Henüz bir değişiklik olmadı.",
+          "more": "Daha eskileri göster",
+          "support": "Payrudder destek",
+          "verified": "Sağlayıcı kabul etti",
+          "actions": {
+            "connected": "{actor}, {account} hesabını bağladı",
+            "replaced": "{actor}, {account} hesabının kimlik bilgilerini değiştirdi",
+            "removed": "{actor}, {account} hesabını kaldırdı",
+            "default_set": "{actor}, {account} hesabını varsayılan yaptı",
+            "routing_changed": "{actor} yönlendirme kurallarını değiştirdi"
+          }
+        }
       }
     },
     "envSwitch": {

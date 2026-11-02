@@ -119,7 +119,7 @@ func TestHostedInvoicePage(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
 		t.Fatalf("status %d, type %q", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
-	for _, want := range []string{"INV-2026-000007", "1,234.56", "-1,234.61", "Acme &amp; Sons", "1 Market St", "34000 İstanbul", "2026-10-01 – 2026-11-01", `href="/i/` + goodToken + `/pdf"`, "Paid"} {
+	for _, want := range []string{"INV-2026-000007", "1,234.56", "-1,234.61", "Acme &amp; Sons", "1 Market St", "34000 İstanbul", "1 October 2026 – 1 November 2026", `href="/i/` + goodToken + `/pdf"`, "Paid"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page lacks %q", want)
 		}

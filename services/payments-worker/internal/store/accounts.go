@@ -44,6 +44,12 @@ type Audit struct {
 	VerifiedRemote bool
 }
 
+// Kinds of account the audit trail tells apart.
+const (
+	KindPayment  = "payment"
+	KindEInvoice = "einvoice"
+)
+
 // Put stores (or replaces) an account. makeDefault makes it the account live charges go to; the previous default stops being one.
 func (a Accounts) Put(ctx context.Context, tenant uuid.UUID, provider, env string, settings []byte, makeDefault bool) error {
 	return a.PutAudited(ctx, tenant, provider, env, settings, makeDefault, Audit{})
@@ -74,7 +80,7 @@ func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, en
 		}); err != nil {
 			return err
 		}
-		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Provider: provider, Environment: env, Action: action,
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: action,
 			Actor: audit.Actor, IsDefault: makeDefault, VerifiedRemote: audit.VerifiedRemote})
 	})
 }
@@ -93,7 +99,7 @@ func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider,
 			return err
 		}
 		deleted = true
-		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Provider: provider, Environment: env, Action: "removed", Actor: audit.Actor})
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "removed", Actor: audit.Actor})
 	})
 	return deleted, err
 }
@@ -136,8 +142,8 @@ func (a Accounts) Default(ctx context.Context, tenant uuid.UUID, env string) (st
 }
 
 // SetDefault makes an existing account the one live charges go to, without touching its settings; the previous default stops being one. It reports whether
-// there was such an account.
-func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, env string) (bool, error) {
+// there was such an account. The move is recorded in the audit trail.
+func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, env string, audit Audit) (bool, error) {
 	var found bool
 	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
 		if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
@@ -152,10 +158,41 @@ func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, en
 			return ErrNoAccount
 		}
 		found = true
-		return nil
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "default_set",
+			Actor: audit.Actor, IsDefault: true})
 	})
 	if errors.Is(err, ErrNoAccount) {
 		return false, nil
 	}
 	return found, err
+}
+
+// AccountEvent is one entry of the audit trail of provider and e-invoice accounts. It never holds a setting.
+type AccountEvent struct {
+	ID             int64     `json:"id"`
+	Kind           string    `json:"kind"`
+	Account        string    `json:"account"`
+	Environment    string    `json:"environment"`
+	Action         string    `json:"action"`
+	Actor          string    `json:"actor"`
+	IsDefault      bool      `json:"is_default"`
+	VerifiedRemote bool      `json:"verified_remote"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// Events returns the audit trail of a tenant, newest first: at most limit entries older than the entry `before` (0: from the newest), of one kind ("" for both).
+func (a Accounts) Events(ctx context.Context, tenant uuid.UUID, kind string, before int64, limit int) ([]AccountEvent, error) {
+	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListProviderAccountEventsRow, error) {
+		//nolint:gosec // limit is bounded by the caller (accounts/query.MaxEvents + 1)
+		return q.ListProviderAccountEvents(ctx, sqlc.ListProviderAccountEventsParams{TenantID: tenant, Kind: kind, Before: before, RowLimit: int32(limit)})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AccountEvent, len(rows))
+	for i, r := range rows {
+		out[i] = AccountEvent{ID: r.ID, Kind: r.Kind, Account: r.Provider, Environment: r.Environment, Action: r.Action, Actor: r.Actor, IsDefault: r.IsDefault,
+			VerifiedRemote: r.VerifiedRemote, CreatedAt: r.CreatedAt}
+	}
+	return out, nil
 }

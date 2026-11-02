@@ -942,3 +942,33 @@ func yearlyFees(code string, monthly int64) []*plansv1.CurrencyFee {
 	}
 	return fees
 }
+
+// An account at a provider is named by its key ("iyzico~istanbul"), and the key is what a routing rule names, what a subscription sold through it records and what a
+// provider migration moves to: none of the columns that hold it may refuse the label.
+func testLabelledAccounts(t *testing.T) {
+	e := newEnv(t)
+	live := e.account(t, "Labelled")[plansv1.Environment_ENVIRONMENT_LIVE]
+	ctx := as(live.GetId())
+	if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: "basic", Name: "basic"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "basic", BaseFeeMinor: 3000, Fees: yearlyFees("basic", 3000)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Country: "TR", Currency: "TRY", Provider: "iyzico~istanbul"}}}); err != nil {
+		t.Fatalf("a rule naming a labelled account: %v", err)
+	}
+	if p, err := e.plans.PreviewRouting(ctx, &plansv1.PreviewRoutingRequest{Country: "TR", Currency: "TRY"}); err != nil || p.GetProvider() != "iyzico~istanbul" || p.GetRuleIndex() != 0 {
+		t.Fatalf("preview = %v, %v", p, err)
+	}
+	if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_tr", Name: "cus_tr", Email: "tr@example.com", Country: "TR", BillingCurrency: "TRY"}); err != nil {
+		t.Fatal(err)
+	}
+	r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr", PlanCode: "basic"})
+	if err != nil || r.GetSubscription().GetProvider() != "iyzico~istanbul" {
+		t.Fatalf("a subscription sold through the labelled account = %v, %v", r.GetSubscription().GetProvider(), err)
+	}
+	if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{}); err != nil {
+		t.Fatal(err)
+	}
+}

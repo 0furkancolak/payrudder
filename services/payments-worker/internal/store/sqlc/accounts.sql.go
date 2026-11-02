@@ -85,12 +85,13 @@ func (q *Queries) GetProviderAccountSettings(ctx context.Context, arg GetProvide
 }
 
 const insertProviderAccountEvent = `-- name: InsertProviderAccountEvent :exec
-INSERT INTO provider_account_events (tenant_id, provider, environment, action, actor, is_default, verified_remote)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO provider_account_events (tenant_id, kind, provider, environment, action, actor, is_default, verified_remote)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertProviderAccountEventParams struct {
 	TenantID       uuid.UUID
+	Kind           string
 	Provider       string
 	Environment    string
 	Action         string
@@ -102,6 +103,7 @@ type InsertProviderAccountEventParams struct {
 func (q *Queries) InsertProviderAccountEvent(ctx context.Context, arg InsertProviderAccountEventParams) error {
 	_, err := q.db.Exec(ctx, insertProviderAccountEvent,
 		arg.TenantID,
+		arg.Kind,
 		arg.Provider,
 		arg.Environment,
 		arg.Action,
@@ -110,6 +112,66 @@ func (q *Queries) InsertProviderAccountEvent(ctx context.Context, arg InsertProv
 		arg.VerifiedRemote,
 	)
 	return err
+}
+
+const listProviderAccountEvents = `-- name: ListProviderAccountEvents :many
+SELECT id, kind, provider, environment, action, actor, is_default, verified_remote, created_at FROM provider_account_events
+WHERE tenant_id = $1 AND ($2::text = '' OR kind = $2) AND ($3::bigint = 0 OR id < $3)
+ORDER BY id DESC LIMIT $4
+`
+
+type ListProviderAccountEventsParams struct {
+	TenantID uuid.UUID
+	Kind     string
+	Before   int64
+	RowLimit int32
+}
+
+type ListProviderAccountEventsRow struct {
+	ID             int64
+	Kind           string
+	Provider       string
+	Environment    string
+	Action         string
+	Actor          string
+	IsDefault      bool
+	VerifiedRemote bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) ListProviderAccountEvents(ctx context.Context, arg ListProviderAccountEventsParams) ([]ListProviderAccountEventsRow, error) {
+	rows, err := q.db.Query(ctx, listProviderAccountEvents,
+		arg.TenantID,
+		arg.Kind,
+		arg.Before,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProviderAccountEventsRow{}
+	for rows.Next() {
+		var i ListProviderAccountEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Provider,
+			&i.Environment,
+			&i.Action,
+			&i.Actor,
+			&i.IsDefault,
+			&i.VerifiedRemote,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listProviderAccounts = `-- name: ListProviderAccounts :many

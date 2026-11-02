@@ -118,8 +118,12 @@ func TestEveryStoreRefusesAMovingTenant(t *testing.T) {
 			return err
 		},
 		"einvoice put": func(tn uuid.UUID) error {
-			return EInvoiceAccounts{DB: r, Box: box}.Put(ctx, tn, "live", "nilvera", "production", []byte(`{}`))
+			return EInvoiceAccounts{DB: r, Box: box}.Put(ctx, tn, "live", "nilvera", "production", []byte(`{}`), false, Audit{})
 		},
+		"einvoice routing": func(tn uuid.UUID) error {
+			return EInvoiceAccounts{DB: r, Box: box}.SetRouting(ctx, tn, "live", nil, Audit{})
+		},
+		"account events": func(tn uuid.UUID) error { _, err := Accounts{DB: r, Box: box}.Events(ctx, tn, "", 0, 10); return err },
 		"einvoice begin": func(tn uuid.UUID) error {
 			_, err := EInvoiceIssuances{DB: r}.Begin(ctx, uuid.New(), tn, "live", "nilvera", "invoice", "e-arsiv")
 			return err

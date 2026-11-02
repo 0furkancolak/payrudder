@@ -18,9 +18,9 @@ const (
 	OwnerProvider  = string(payments.OwnerProvider)
 )
 
-var providerNameRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
+var providerNameRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}(~[a-z0-9][a-z0-9-]{0,30})?$`)
 
-// ValidProviderName reports whether s looks like a payment provider's name, such as paddle.
+// ValidProviderName reports whether s looks like a payment account's key: a provider's name such as paddle, or with the label of one of its further accounts (paddle~eu).
 func ValidProviderName(s string) bool { return providerNameRe.MatchString(s) }
 
 // RequirePayrudderOwned refuses to change locally a subscription a provider runs: the change would not reach the provider.

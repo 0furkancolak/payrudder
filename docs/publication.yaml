@@ -43,6 +43,9 @@ files:
   paddle-compatibility-matrix.md: { audience: internal, status: preview }
   stripe-compatibility-matrix.md: { audience: internal, status: preview }
   payment-provider-contract.md: { audience: internal, status: preview }
+  provider-health.md: { audience: internal, status: preview }
+  reconciliation.md: { audience: internal, status: preview }
+  einvoice-integrator-contract.md: { audience: internal, status: preview }
   roadmap-owner-list.md: { audience: internal, status: historical }
   ui-test-report.md: { audience: internal, status: historical }
 

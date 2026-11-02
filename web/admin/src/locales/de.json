@@ -124,7 +124,10 @@
       "amount_mismatch": "Betrag weicht ab",
       "duplicate_charge": "Mehrfach abgebucht",
       "charge_without_paid": "Abgebucht, Rechnung nicht bezahlt",
-      "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst"
+      "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst",
+      "settlement_missing": "Bezahlt, nicht in der Abrechnung des Anbieters",
+      "settlement_mismatch": "Abgerechneter Betrag weicht ab",
+      "fee_mismatch": "Anbietergebühr weicht ab"
     },
     "ledgerKind": {
       "charge": "Abbuchung",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Banküberweisung",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Offen",
+      "explained": "Erklärt",
+      "resolved": "Gelöst"
+    },
+    "discrepancyEvent": {
+      "detected": "Gefunden",
+      "reopened": "Wieder geöffnet",
+      "cleared": "Von einem späteren Lauf bereinigt",
+      "assigned": "Zugewiesen",
+      "explained": "Erklärt",
+      "resolved": "Gelöst"
+    },
+    "resolution": {
+      "ledger_fact": "Zahlungsbuch-Eintrag geschrieben",
+      "credit_note": "Gutschrift ausgestellt",
+      "refunded_at_provider": "Beim Anbieter erstattet",
+      "corrected_in_billing": "In der Abrechnung korrigiert",
+      "not_an_error": "Kein Fehler",
+      "other": "Sonstiges",
+      "cleared": "Nicht mehr gefunden"
+    },
+    "settlementState": {
+      "not_reported": "Bezahlt, nicht gemeldet",
+      "pending_payout": "Gemeldet, Auszahlung offen",
+      "settled": "Abgerechnet"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "Das Limit muss eine Menge mit höchstens {n} Nachkommastellen sein.",
         "thresholds": "Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000."
       }
+    },
+    "reconcile": {
+      "title": "Prüfwarteschlange",
+      "hint": "Was der Abgleich gefunden hat, aufbewahrt: wer es verantwortet, was dazu gesagt wurde und wie es endete. Der Zeitplan läuft für jeden Mandanten mit einer Live-Zahlung; eine Abweichung zu lösen lässt sie nicht verschwinden, ein späterer Lauf, der sie weiter findet, öffnet sie wieder.",
+      "show": "Anzeigen",
+      "view": {
+        "review": "Zu prüfen",
+        "resolved": "Gelöst",
+        "all": "Alle"
+      },
+      "period": "Zeitraum",
+      "owner": "Verantwortlich",
+      "note": "Notiz",
+      "noteHint": "Was Sie herausgefunden haben und was getan wurde. Pflicht.",
+      "resolution": "Lösung",
+      "settled": "Abgerechnet",
+      "firstSeen": "Zuerst gesehen",
+      "lastSeen": "Zuletzt gesehen",
+      "history": "Verlauf",
+      "assign": "Zuweisen",
+      "explain": "Erklären",
+      "resolve": "Lösen",
+      "resolveSelected": "Auswahl lösen",
+      "explainHint": "Mit Begründung in der Warteschlange lassen. Für eine bekannte, wartende Abweichung.",
+      "resolveHint": "Beendet sie. Beim Anbieter und in Rechnungen ändert sich nichts; die Lösung sagt, was anderswo getan wurde.",
+      "factHint": "Schreibt eine erfolgreiche Abbuchung über den Rechnungsbetrag in das Zahlungsbuch, für den genannten Anbieter und die Referenz. Prüfen Sie die Zahlung zuerst beim Anbieter.",
+      "confirmTitle": "{n} Abweichungen lösen?",
+      "confirmBody": "Alle werden mit derselben Lösung und Notiz gelöst und erhalten je einen eigenen Verlaufseintrag.",
+      "counts": "Abweichungen nach Status",
+      "ran": "Zeitraum {period}: {found} gefunden, {opened} neu, {reopened} wieder geöffnet, {cleared} bereinigt.",
+      "lastRun": "Letzter Lauf {when} durch {by} für {period}: {found} gefunden.",
+      "neverRun": "Noch kein Lauf. Starten Sie einen Zeitraum oder warten Sie auf den Zeitplan.",
+      "by": {
+        "schedule": "Zeitplan",
+        "operator": "Operator"
+      },
+      "nothingToReview": "Nichts zu prüfen.",
+      "nothing": "Hier ist nichts.",
+      "more": "Die neuesten {n} werden gezeigt. Grenzen Sie die Ansicht ein, um die anderen zu sehen."
+    },
+    "settlement": {
+      "title": "Bezahlt und abgerechnet",
+      "hint": "Eine erfolgreiche Zahlung ist das Wort des Zahlungsbuchs. Das Geld gehört dem Mandanten, sobald der Anbieter es abrechnet, abzüglich seiner Gebühr. Hier die Zahlungen des Zeitraums mit dem, was der Anbieter oder ein importierter Bericht zu jeder sagt.",
+      "provider": "Anbieter (Kontoschlüssel)",
+      "providerHint": "Für einen Bericht ohne Anbieterspalte",
+      "file": "Bericht (CSV)",
+      "import": "Bericht importieren",
+      "imported": "{lines} Zeile(n) gelesen, {changed} neu oder geändert.",
+      "counts": "Zahlungen nach Abrechnungsstatus",
+      "paidOn": "Bezahlt",
+      "fee": "Anbietergebühr",
+      "expected": "erwartet {fee}",
+      "batch": "Auszahlung / Charge",
+      "empty": "Keine erfolgreichen Anbieterzahlungen in diesem Zeitraum."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Dieser Zahlungsanbieter ist nicht bekannt."
       },
       "reconcile": {
-        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen."
+        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen.",
+        "bad_filter": "Ein Filterwert ist dieser Liste nicht bekannt.",
+        "bad_ledger_fact": "Ein Zahlungsbuch-Eintrag braucht den Anbieter und dessen Referenz der Zahlung und löst nur eine bezahlte Rechnung, die im Zahlungsbuch fehlt.",
+        "bad_resolution": "Wählen Sie eine der aufgeführten Lösungen.",
+        "not_found": "Diese Abweichung gibt es nicht.",
+        "note_required": "Schreiben Sie, was Sie herausgefunden haben: Eine Notiz ist Pflicht.",
+        "resolved": "Sie ist gelöst. Ein Lauf, der sie wieder findet, öffnet sie erneut.",
+        "too_long": "Der Text ist zu lang.",
+        "too_many": "Wählen Sie zwischen 1 und 100 Abweichungen."
       },
       "request": {
         "bad_body": "Der Anfragetext muss gültiges JSON sein.",
@@ -3014,10 +3106,21 @@
         "provider_not_configured": "Für dieses Konto ist kein Zahlungsanbieter eingerichtet.",
         "rejected": "Der Zahlungsanbieter hat die Anfrage abgelehnt.",
         "timeout": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet."
+      },
+      "settlement": {
+        "bad_csv": "Der Bericht wurde nicht importiert: Eine Zeile ist fehlerhaft, nichts wurde gespeichert.",
+        "bad_fee_rule": "Die Gebührenregel ist ungültig: Prüfen Sie Anbieter, Währung und Satz.",
+        "bad_since": "Der Beginn muss in der Vergangenheit liegen, höchstens 400 Tage zurück.",
+        "fee_rule_not_found": "Diese Gebührenregel gibt es nicht."
+      },
+      "failover": {
+        "bad_target": "Ein Failover braucht zwei verschiedene Konten, die es in der Umgebung gibt; eine Banküberweisung kann nicht daran teilnehmen.",
+        "not_found": "Für dieses Konto ist kein Failover eingerichtet."
       }
     },
     "einvoice": {
       "account": {
+        "default_in_use": "Das ist das Standard-E-Rechnungs-Konto. Machen Sie zuerst ein anderes Konto zum Standard und entfernen Sie dieses danach.",
         "invalid": "Die Einstellungen des E-Rechnungskontos sind für diesen Anbieter ungültig.",
         "missing": "Dieser Mandant hat für diese Umgebung kein E-Rechnungskonto. Richten Sie zuerst eines ein.",
         "sandbox_mock_only": "Eine Sandbox-Umgebung kann nur den Mock-Anbieter für E-Rechnungen nutzen."
@@ -3039,6 +3142,10 @@
       "provider": {
         "rejected": "Der E-Rechnungsanbieter hat das Dokument abgelehnt.",
         "unavailable": "Der E-Rechnungsanbieter ist gerade nicht erreichbar. Es wird erneut versucht."
+      },
+      "routing": {
+        "invalid": "Die Routing-Regeln sind ungültig: Jedes Land ist ein zweistelliger Code, wird nur einmal gelistet, und jedes Konto ist ein verbundenes Konto.",
+        "unknown_account": "Eine Routing-Regel nennt ein E-Rechnungs-Konto, das nicht verbunden ist."
       },
       "seller": {
         "incomplete": "Die Firmendaten des Verkäufers sind unvollständig: Tragen Sie Firmenname und Steuernummer in den E-Rechnungs-Einstellungen ein."
@@ -4280,7 +4387,6 @@
           "webhook": "Jedes E-Dokument wird signiert an die Adresse Ihres eigenen Integrators gesendet. Geben Sie die Adresse und das Geheimnis zur Signaturprüfung ein."
         },
         "envNote": "Dies verbindet die Live-Umgebung. Die Sandbox nutzt weiter den eingebauten Simulator.",
-        "replaces": "Eine Umgebung hat einen Integrator. Wenn Sie diesen verbinden, ersetzt er den aktuell verbundenen: {current}.",
         "mode": "Modus",
         "modes": {
           "test": "Testmodus",
@@ -4297,7 +4403,9 @@
           "credentials": "Der Integrator akzeptiert diese Zugangsdaten.",
           "configuration": "Die Einstellungen sind gültig. Den Rest beweist nur ein echtes Dokument."
         },
-        "confirmRemove": "{name} trennen? Neue Rechnungen der Live-Umgebung werden nicht mehr als E-Dokumente gesendet."
+        "confirmRemove": "{name} trennen? Neue Rechnungen der Live-Umgebung werden nicht mehr als E-Dokumente gesendet.",
+        "accountsLine": "{count} Konten verbunden.",
+        "accountLabel": "Kontobezeichnung: {label}"
       },
       "mail": {
         "builtInTitle": "Payrudder-Mail",
@@ -4322,6 +4430,59 @@
         "checkAndConnect": "Prüfen und verbinden",
         "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
         "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird."
+      },
+      "accounts": {
+        "title": "Konten",
+        "intro": "Alle Konten dieser App in einer Liste: Zahlungen, E-Rechnung und E-Mail. Jede Art kann mehrere Konten haben, eines ist der Standard, und die Regeln darunter bestimmen, welches Konto welche Kunden übernimmt.",
+        "add": "Integration hinzufügen",
+        "addIntro": "Wählen Sie, was Sie verbinden: zuerst die Art, dann den Anbieter. Der nächste Schritt fragt die Zugangsdaten ab.",
+        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder einen eigenen E-Mail-Anbieter haben.",
+        "continue": "Weiter",
+        "search": "Konten durchsuchen",
+        "kind": "Art",
+        "status": "Status",
+        "provider": "Anbieter",
+        "kinds": {
+          "payment": "Zahlungen",
+          "einvoice": "E-Rechnung",
+          "mail": "E-Mail"
+        },
+        "inUse": "In Verwendung",
+        "makeDefaultHint": "Dieses Konto zum Standard machen",
+        "remove": "Entfernen",
+        "confirmRemove": "{name} entfernen? Bereits Ausgestelltes oder Eingezogenes ändert sich nicht.",
+        "eRouting": {
+          "title": "Welches E-Rechnungs-Konto welche Belege ausstellt",
+          "intro": "Das Land des Käufers entscheidet: Der Beleg eines Käufers in einem hier gelisteten Land wird über dieses Konto ausgestellt, alle anderen über das Standardkonto. Ein bereits begonnener Beleg behält sein Konto.",
+          "duplicate": "Ein Land kann nur einmal gelistet werden."
+        },
+        "tester": {
+          "title": "Wer übernimmt diesen Kunden?",
+          "intro": "Geben Sie ein Land und eine Währung ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
+          "run": "Prüfen",
+          "byRule": "{account}, nach Regel {n}",
+          "byDefault": "Das Standardkonto, keine Regel passt.",
+          "byRuleCountry": "{account}, nach der Regel für {country}",
+          "eDefault": "{account}, das Standardkonto",
+          "eNone": "Kein Konto: Es ist kein Standard gesetzt und keine Regel nennt dieses Land.",
+          "mailOwn": "Ihr eigener E-Mail-Anbieter",
+          "mailBuiltIn": "Der eingebaute Absender von Payrudder"
+        },
+        "audit": {
+          "title": "Wer die Konten geändert hat",
+          "intro": "Verbindungen, Standardwechsel und Routing-Änderungen der Zahlungs- und E-Rechnungs-Konten, neueste zuerst. Zugangsdaten werden nie aufgezeichnet.",
+          "empty": "Es hat sich noch nichts geändert.",
+          "more": "Ältere anzeigen",
+          "support": "Payrudder-Support",
+          "verified": "Vom Anbieter akzeptiert",
+          "actions": {
+            "connected": "{actor} hat {account} verbunden",
+            "replaced": "{actor} hat die Zugangsdaten von {account} ersetzt",
+            "removed": "{actor} hat {account} entfernt",
+            "default_set": "{actor} hat {account} zum Standard gemacht",
+            "routing_changed": "{actor} hat die Routing-Regeln geändert"
+          }
+        }
       }
     },
     "envSwitch": {

@@ -1,8 +1,9 @@
 // Package ubl renders an einvoice.Document as UBL 2.1: the UBL-TR 1.2 customisation for Turkey (e-fatura, e-arşiv) and EN 16931 / Peppol BIS Billing 3.0
 // for the EU. The output is deterministic: the same document gives the same bytes (no clock, no map iteration, integer arithmetic only).
 //
-// UNVERIFIED: the output is checked structurally (well-formed, UBL 2.1 element order for the parts emitted, namespaces, arithmetic) but has not been run
-// through the official UBL-TR 1.2 or Peppol BIS 3 schematron packages.
+// The output is checked structurally (well-formed, UBL 2.1 element order, namespaces, arithmetic) by this package's tests, and by scripts/einvoice-validate.sh
+// (CI: .github/workflows/einvoice-schematron.yml) against the UBL 2.1 XSD, the EN 16931 and Peppol BIS Billing 3.0 schematron (Peppol documents) and GIB's
+// UBL-TR 1.2.1 XSD and schematron (e-fatura, e-arsiv). Acceptance by a tax authority or a Peppol access point is NOT verified.
 package ubl
 
 import (
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
 	"github.com/0furkancolak/payrudder/pkg/money"
@@ -23,8 +25,8 @@ const (
 	nsCBC        = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
 	nsEXT        = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"
 
-	peppolCustomization = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poid:3.0"
-	peppolProfile       = "urn:fdc:peppol.eu:2017:poid:billing:01:1.0"
+	peppolCustomization = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0"
+	peppolProfile       = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
 )
 
 // Build renders doc for doc.Type.
@@ -164,6 +166,9 @@ func (b *builder) write() {
 		if !b.doc.Reference.IssueDate.IsZero() {
 			b.w.el("cbc:IssueDate", b.doc.Reference.IssueDate.Format("2006-01-02"))
 		}
+		if b.tr {
+			b.w.el("cbc:DocumentTypeCode", "IADE") // GIB's schematron: every referenced invoice of an iade carries IADE and a 16-character legal number
+		}
 		b.w.close("cac:InvoiceDocumentReference")
 		b.w.close("cac:BillingReference")
 	}
@@ -174,11 +179,14 @@ func (b *builder) write() {
 		b.w.el("cbc:DocumentTypeCode", "SendingType")
 		b.w.close("cac:AdditionalDocumentReference")
 	}
+	if b.tr {
+		b.signature(b.doc.Seller)
+	}
 	b.party("cac:AccountingSupplierParty", b.doc.Seller)
 	b.party("cac:AccountingCustomerParty", b.doc.Buyer)
 	if !b.tr {
 		b.w.open("cac:PaymentMeans")
-		b.w.el("cbc:PaymentMeansCode", "ZZ", "name", "Mutually defined") // UNVERIFIED: BR-49 needs a code; the payment is collected by Payrudder's provider
+		b.w.el("cbc:PaymentMeansCode", "ZZZ", "name", "Mutually defined") // BR-CL-16 (UNCL4461): the payment is collected by Payrudder's provider, so no means is named
 		b.w.close("cac:PaymentMeans")
 	}
 	if b.sums.Allowance > 0 {
@@ -189,8 +197,9 @@ func (b *builder) write() {
 		}
 		b.w.el("cbc:AllowanceChargeReason", "Discount")
 		b.amount("cbc:Amount", b.sums.Allowance)
-		b.amount("cbc:BaseAmount", b.sums.LineExtension)
-		if !b.tr {
+		if b.tr {
+			b.amount("cbc:BaseAmount", b.sums.LineExtension)
+		} else { // PEPPOL-EN16931-R042: a base amount needs the percentage too, and the percentage is not stored, so the base is left out
 			b.taxCategory("cac:TaxCategory", true)
 		}
 		b.w.close("cac:AllowanceCharge")
@@ -225,13 +234,58 @@ func (b *builder) notes() []string {
 	return n
 }
 
+// signature is the cac:Signature element UBL-TR's XSD requires before the seller: who signs (the seller) and the pointer to the XAdES seal the integrator puts in
+// ext:ExtensionContent. The seal itself is not ours to make, so an unsealed document is not XSD-valid until the integrator has added it.
+func (b *builder) signature(p einvoice.Party) {
+	scheme := "VKN"
+	if len(p.TaxID) == 11 {
+		scheme = "TCKN"
+	}
+	b.w.open("cac:Signature")
+	b.w.el("cbc:ID", p.TaxID, "schemeID", "VKN_TCKN")
+	b.w.open("cac:SignatoryParty")
+	b.w.open("cac:PartyIdentification")
+	b.w.el("cbc:ID", p.TaxID, "schemeID", scheme)
+	b.w.close("cac:PartyIdentification")
+	b.w.open("cac:PostalAddress")
+	if p.Street != "" {
+		b.w.el("cbc:StreetName", p.Street)
+	}
+	if p.District != "" {
+		b.w.el("cbc:CitySubdivisionName", p.District)
+	}
+	if p.City != "" {
+		b.w.el("cbc:CityName", p.City)
+	}
+	b.w.open("cac:Country")
+	b.w.el("cbc:Name", countryName(p.Country))
+	b.w.close("cac:Country")
+	b.w.close("cac:PostalAddress")
+	b.w.close("cac:SignatoryParty")
+	b.w.open("cac:DigitalSignatureAttachment")
+	b.w.open("cac:ExternalReference")
+	b.w.el("cbc:URI", "#Signature")
+	b.w.close("cac:ExternalReference")
+	b.w.close("cac:DigitalSignatureAttachment")
+	b.w.close("cac:Signature")
+}
+
+func countryName(code string) string {
+	if n := countryNames[code]; n != "" {
+		return n
+	}
+	return code
+}
+
 var countryNames = map[string]string{"TR": "Türkiye", "DE": "Germany", "FR": "France", "NL": "Netherlands", "IT": "Italy", "ES": "Spain", "GB": "United Kingdom", "US": "United States"}
 
 func (b *builder) party(tag string, p einvoice.Party) {
 	b.w.open(tag)
 	b.w.open("cac:Party")
-	if !b.tr && p.Email != "" {
-		b.w.el("cbc:EndpointID", p.Email, "schemeID", "EM") // UNVERIFIED: the real endpoint is the Peppol participant id
+	if !b.tr && p.EndpointID != "" && p.EndpointScheme != "" {
+		// The Peppol participant id. An e-mail address ("EM") is not in Peppol's code list (PEPPOL-EN16931-CL008), so without a participant id nothing is
+		// written and PEPPOL-EN16931-R010/R020 will say the document cannot travel.
+		b.w.el("cbc:EndpointID", p.EndpointID, "schemeID", p.EndpointScheme)
 	}
 	if b.tr {
 		scheme := "VKN"
@@ -266,6 +320,9 @@ func (b *builder) party(tag string, p einvoice.Party) {
 	if p.AdditionalLine != "" {
 		b.w.el("cbc:AdditionalStreetName", p.AdditionalLine)
 	}
+	if b.tr && p.District != "" {
+		b.w.el("cbc:CitySubdivisionName", p.District) // UBL-TR's XSD requires the district (ilçe) in every address
+	}
 	if p.City != "" {
 		b.w.el("cbc:CityName", p.City)
 	}
@@ -273,16 +330,12 @@ func (b *builder) party(tag string, p einvoice.Party) {
 		b.w.el("cbc:PostalZone", p.PostalCode)
 	}
 	if p.Region != "" {
-		b.w.el("cbc:CountrySubdivisionName", p.Region)
+		b.w.el("cbc:CountrySubentity", p.Region)
 	}
 	b.w.open("cac:Country")
 	b.w.el("cbc:IdentificationCode", p.Country)
 	if b.tr {
-		name := countryNames[p.Country]
-		if name == "" {
-			name = p.Country
-		}
-		b.w.el("cbc:Name", name)
+		b.w.el("cbc:Name", countryName(p.Country))
 	}
 	b.w.close("cac:Country")
 	b.w.close("cac:PostalAddress")
@@ -295,7 +348,7 @@ func (b *builder) party(tag string, p einvoice.Party) {
 		b.w.close("cac:PartyTaxScheme")
 	case p.TaxID != "":
 		b.w.open("cac:PartyTaxScheme")
-		b.w.el("cbc:CompanyID", p.TaxID)
+		b.w.el("cbc:CompanyID", vatID(p)) // BR-CO-09: the id starts with the country
 		b.w.open("cac:TaxScheme")
 		b.w.el("cbc:ID", "VAT")
 		b.w.close("cac:TaxScheme")
@@ -312,8 +365,37 @@ func (b *builder) party(tag string, p einvoice.Party) {
 		b.w.el("cbc:ElectronicMail", p.Email)
 		b.w.close("cac:Contact")
 	}
+	if b.tr && len(p.TaxID) == 11 { // a person (TCKN): GIB's schematron wants cac:Person with both names
+		first, family := personNames(p.Name)
+		b.w.open("cac:Person")
+		b.w.el("cbc:FirstName", first)
+		b.w.el("cbc:FamilyName", family)
+		b.w.close("cac:Person")
+	}
 	b.w.close("cac:Party")
 	b.w.close(tag)
+}
+
+// personNames splits a full name into first and family name at the last space: Turkish names put the surname last. A single word is the first name and the
+// family name is "-", because the schematron refuses an empty one. UNVERIFIED against how an integrator or GIB reads names written another way.
+func personNames(name string) (first, family string) {
+	f := strings.Fields(name)
+	switch len(f) {
+	case 0:
+		return "-", "-"
+	case 1:
+		return f[0], "-"
+	}
+	return strings.Join(f[:len(f)-1], " "), f[len(f)-1]
+}
+
+// vatID is the party's VAT identifier with the ISO country prefix EN 16931 requires (BR-CO-09); an id that already starts with letters is kept.
+func vatID(p einvoice.Party) string {
+	id := strings.TrimSpace(p.TaxID)
+	if len(id) >= 2 && unicode.IsLetter(rune(id[0])) && unicode.IsLetter(rune(id[1])) {
+		return id
+	}
+	return p.Country + id
 }
 
 // taxCategory writes the category of the document's tax: standard (S) with the rate, or exempt (E) with a reason.
@@ -369,10 +451,16 @@ func (b *builder) legalTotals() {
 	if b.sums.Allowance > 0 {
 		b.amount("cbc:AllowanceTotalAmount", b.sums.Allowance)
 	}
-	if b.sums.Prepaid > 0 {
+	payable := b.sums.Payable
+	switch {
+	case b.tr:
+		// UBL-TR's XSD has no PrepaidAmount: a credit balance applied to the invoice is a payment, not part of the document, whose payable amount is its total.
+		// UNVERIFIED with GIB or an accountant; the XSD is what proves the element cannot be sent.
+		payable = b.sums.TaxInclusive
+	case b.sums.Prepaid > 0:
 		b.amount("cbc:PrepaidAmount", b.sums.Prepaid)
 	}
-	b.amount("cbc:PayableAmount", b.sums.Payable)
+	b.amount("cbc:PayableAmount", payable)
 	b.w.close("cac:LegalMonetaryTotal")
 }
 
@@ -445,7 +533,7 @@ func (b *builder) lines() {
 		b.w.el("cbc:ID", itoa(i+1))
 		b.w.el(qtyTag, qty, "unitCode", unitCode(l.UnitLabel, exact))
 		b.amount("cbc:LineExtensionAmount", l.AmountMinor)
-		if !l.ServiceFrom.IsZero() && !l.ServiceTo.IsZero() {
+		if !b.tr && !l.ServiceFrom.IsZero() && !l.ServiceTo.IsZero() { // UBL-TR's XSD has no period on a line
 			b.w.open("cac:InvoicePeriod")
 			b.w.el("cbc:StartDate", l.ServiceFrom.Format("2006-01-02"))
 			b.w.el("cbc:EndDate", l.ServiceTo.Format("2006-01-02"))

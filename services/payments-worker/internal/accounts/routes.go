@@ -3,6 +3,7 @@
 package accounts
 
 import (
+	"cmp"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // ActorHeader names who an account change is recorded for: "user:<id>" for a person in the console, set by the gateway. Without it the change is the operator's.
@@ -39,6 +41,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("POST "+base+"/provider-accounts/{provider}/default", guard(h.makeDefault))
 	mux.HandleFunc("GET "+base+"/go-live", guard(h.goLive))
 	mux.HandleFunc("GET "+base+"/provider-health", guard(h.health))
+	mux.HandleFunc("GET "+base+"/provider-account-events", guard(h.events))
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +111,7 @@ func (h *Handler) makeDefault(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := command.SetDefaultAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode); err != nil {
+	if err := command.SetDefaultAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode, actor(r)); err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return
 	}
@@ -144,4 +147,30 @@ func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
+}
+
+// events is the audit trail of the tenant's accounts: ?kind=payment|einvoice, ?limit= and ?before= (the next_before of the previous page).
+func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	kind := q.Get("kind")
+	if kind != "" && kind != store.KindPayment && kind != store.KindEInvoice {
+		httpx.Fail(w, http.StatusBadRequest, "common.invalid_argument", "kind must be payment or einvoice")
+		return
+	}
+	before, err1 := strconv.ParseInt(cmp.Or(q.Get("before"), "0"), 10, 64)
+	limit, err2 := strconv.Atoi(cmp.Or(q.Get("limit"), "0"))
+	if err1 != nil || err2 != nil || before < 0 || limit < 0 {
+		httpx.Fail(w, http.StatusBadRequest, "common.invalid_argument", "before and limit must be non-negative numbers")
+		return
+	}
+	events, next, err := query.Events(r.Context(), h.Query, t, kind, before, limit)
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"events": events, "next_before": next})
 }

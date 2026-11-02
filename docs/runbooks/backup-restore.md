@@ -97,7 +97,7 @@ Prometheus (`deploy/prometheus/rules/payrudder.yaml`, tested by `make test-rules
 | `WalSpoolBacklog` | archived WAL waits over 10 min to be shipped | storage unreachable; free the disk before it fills (a full WAL disk stops Postgres): fix the upload, never delete spool files |
 | `BaseBackupStale` | no base backup for 26 h | `pitr-basebackup.sh` by hand; needs REPLICATION and the socket or a pg_hba entry; without a recent base backup a restore has to replay more WAL |
 | `PostgresDown`, `PostgresConnectionsHigh` | from the postgres exporter | |
-| `PaymentDiscrepancy` | a charge's outcomes disagree, or a customer paid twice | `GET /admin/tenants/{tenant}/reconciliation` (payments-worker, operator token) for the tenant, find the payment, refund the second one; see plan 22 G1/G7 |
+| `PaymentDiscrepancy` | a charge's outcomes disagree, or a customer paid twice | `GET /admin/tenants/{tenant}/reconciliation` (payments-worker, operator token) for the tenant, find the payment, refund the second one; the differences a reconciliation keeps are in the review queue of the tenant's Payments page ([`docs/reconciliation.md`](../reconciliation.md)); see plan 22 G1/G7 |
 | `PaymentCommandsErroring` | over 10% of payment commands end in an error (not a decline) | provider status page, expired or wrong credentials (`provider_accounts`), a deploy; the DLQ may be filling |
 | `ChargeFailureRateHigh` | over half of the charges of 30 min failed | usually one provider or one card network; compare declines and errors by `result`; dunning will retry |
 | `RefundSpike` | refunds over a quarter of successful charges in an hour | who issued them (operator, a script, a customer wave); is it a bug refunding twice |

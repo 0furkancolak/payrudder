@@ -9,18 +9,21 @@ const pageCSS = hostedCSS + `
 a:not(.btn){color:var(--accent-foreground);text-underline-offset:3px}a:not(.btn):hover{text-decoration-thickness:2px}
 .banner{background:var(--warning-soft);color:var(--warning);border-radius:calc(var(--radius) - 6px);padding:6px 12px;font-size:.85rem;font-weight:500;margin-bottom:16px}
 .badge.open{background:var(--secondary)}.badge.processing{background:var(--info-soft);color:var(--info)}.badge.failed{background:var(--destructive-soft);color:var(--destructive)}
+.badge.active{background:var(--success-soft);color:var(--success)}.badge.trialing{background:var(--info-soft);color:var(--info)}.badge.past_due{background:var(--destructive-soft);color:var(--destructive)}.badge.paused{background:var(--secondary)}
 .hint{margin:16px 0 0;padding:10px 12px;border-radius:calc(var(--radius) - 6px);background:var(--muted)}
 .pay{margin-top:24px}.pay h2{font-size:1.05rem;margin:0 0 12px}
-.pay form{display:inline-block;margin:0 8px 8px 0}
+.pay form{display:inline-block;margin-block:0 8px;margin-inline:0 8px}
 button.btn,a.btn{display:inline-flex;align-items:center;justify-content:center;margin:0;padding:0 18px;border:0;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none;font:inherit;font-weight:500;cursor:pointer;min-height:44px}
 button.btn:hover,a.btn:hover{filter:brightness(1.08)}
 a.btn.alt,button.btn.alt{background:transparent;color:inherit;border:1px solid var(--input);margin-top:20px;margin-inline-end:8px}
 .promo-row .btn.alt{margin:0}
-.big{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:8px 0;font-variant-numeric:tabular-nums}.wrap{overflow-x:auto}.foot{margin-top:20px;text-align:center}
+.big{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:8px 0;font-variant-numeric:tabular-nums}.wrap{position:relative;overflow-x:auto}.foot{margin-top:20px;text-align:center}
 dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}dl.kv dt{color:var(--muted-foreground)}dl.kv dd{margin:0;word-break:break-all}
 code.ref{display:block;padding:10px 12px;margin:8px 0;border-radius:calc(var(--radius) - 6px);background:var(--muted);font-size:1.05rem;word-break:break-all}
 h2.sec{font-size:1.05rem;margin:32px 0 10px;padding-top:24px;border-top:1px solid var(--border)}
-.nw td{white-space:nowrap}.seller{font-weight:600;font-size:.95rem;margin-bottom:2px}.stat{display:flex;align-items:baseline;gap:8px;padding:16px;border-radius:calc(var(--radius) - 4px);background:var(--muted)}.stat .big{margin:0}
+.nw td{white-space:nowrap}.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}.seller{font-weight:600;font-size:.95rem;margin-bottom:2px}.stat{display:flex;align-items:baseline;gap:8px;padding:16px;border-radius:calc(var(--radius) - 4px);background:var(--muted)}.stat .big{margin:0}
+.sub{padding:18px 20px;border-radius:16px;background:var(--muted);margin:0 0 12px}.subhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.subhead .name{font-size:1.1rem;font-weight:650}
+.subprice{margin-top:4px;font-size:1.35rem;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}.subfacts{margin:10px 0 0;padding:0;list-style:none;color:var(--muted-foreground);font-size:.9rem}.subfacts li+li{margin-top:2px}
 .packs{display:grid;gap:12px;margin:0;padding:0;list-style:none}
 .pack{display:grid;grid-template-columns:1fr auto;gap:12px 16px;align-items:center;padding:16px;border:1px solid var(--border);border-radius:calc(var(--radius) - 4px)}
 .pack .price{font-weight:600;font-variant-numeric:tabular-nums;text-align:end}.pack .name{font-weight:600}
@@ -34,11 +37,11 @@ h2.sec{font-size:1.05rem;margin:32px 0 10px;padding-top:24px;border-top:1px soli
 .side .sideamt{margin-top:14px;font-size:2.6rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .side .sidenote{margin-top:6px;opacity:.78}
 .side .sidefoot{font-size:.82rem;opacity:.7}
-.pane{width:100%;max-width:700px;margin:0;padding:56px 48px 48px}
+.pane{width:100%;min-width:0;max-width:700px;margin:0 auto;padding:56px 48px 48px}
 .pane .card{background:none;border:0;border-radius:0;box-shadow:none;padding:0}
 .pane h1{font-size:1.75rem;letter-spacing:-.02em;margin:0 0 6px}
 h2.sec{border-top:0;padding-top:0;margin:44px 0 12px;font-size:.78rem;color:var(--muted-foreground);font-weight:650;text-transform:uppercase;letter-spacing:.07em}
-.pane table{border-collapse:separate;border-spacing:0}.pane td{padding:14px 8px 14px 0;border-bottom:1px solid var(--border)}.pane th{padding:8px 8px 8px 0}
+.pane table{border-collapse:separate;border-spacing:0}.pane td{padding-block:14px;padding-inline:0 8px;border-bottom:1px solid var(--border)}.pane th{padding-block:8px;padding-inline:0 8px}
 .pane .wrap{border-top:1px solid var(--border)}.pane thead th{border-bottom:1px solid var(--border)}
 .pane .stat{background:var(--muted);border-radius:16px;padding:20px 22px}.pane .pack{border-radius:16px;padding:18px 20px;transition:border-color .15s,box-shadow .15s}.pane .pack:hover{border-color:var(--ring);box-shadow:var(--shadow)}
 .pane .pay{border:0;padding:0;margin-top:28px}.pane .pay h2{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin:0 0 12px}
@@ -54,13 +57,16 @@ details.contract{border:1px solid var(--border);border-radius:14px;padding:6px 1
 .contract .text ul,.contract .text ol{padding-inline-start:1.3rem;margin:6px 0}
 .check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;cursor:pointer}.check input{margin-top:.3rem;flex:none;width:18px;height:18px}
 .agree fieldset{border:0;padding:0;margin:14px 0}.agree legend{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin-bottom:4px}
-@media (max-width:860px){.shell{grid-template-columns:1fr}.side{padding:22px 20px;gap:12px}.side .sidetitle{display:none}.side .sideamt{font-size:1.8rem;margin-top:6px}.side .sidefoot{display:none}.side .sidemid{display:flex;flex-direction:column}.pane{max-width:none;padding:28px 20px 40px}}
+@media (max-width:860px){.shell{grid-template-columns:minmax(0,1fr)}.side{padding:22px 20px;gap:12px}.side .sidetitle{display:none}.side .sideamt{font-size:1.8rem;margin-top:6px}.side .sidefoot{display:none}.side .sidemid{display:flex;flex-direction:column}.pane{max-width:none;padding:28px 20px 40px}}
+/* Arabic letters join: any tracking (the small-caps labels, the tight headings) breaks the words apart. */
+html:lang(ar) *{letter-spacing:0!important}
+html:lang(ar) body{font-size:16px;line-height:1.7}html:lang(ar) :is(h2.sec,th,.meta b,.pane .pay h2,.promo label,.agree h3,.agree legend,.badge,.muted,.subfacts){font-size:.9rem}
 @media print{.side{display:none}.shell{display:block}.pane{padding:0;max-width:none}}
 @media print{body{background:#fff;color:#000}.card{border:0;padding:0;box-shadow:none}.noprint,.foot{display:none}}
 @media (max-width:480px){main{padding:12px 8px 24px}.card{padding:18px;border-radius:calc(var(--radius) - 4px)}.big{font-size:1.6rem}.pack form{flex-direction:column}.pack form input.code{flex:none;width:100%}.pack form .btn{width:100%}td,th{padding:10px 6px}}`
 
 const pageHead = `{{define "head"}}<!doctype html>
-<html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">{{if .Refresh}}<meta http-equiv="refresh" content="5">{{end}}
+<html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>{{.Title}}</title><style>` + pageCSS + `</style></head><body><div class="shell">
 <aside class="side"><div class="brandrow">{{if .Logo}}<span class="logochip"><img class="logo" src="{{.Logo}}" alt=""></span>{{end}}{{if .SideSeller}}<span class="seller">{{.SideSeller}}</span>{{end}}</div>
 <div class="sidemid"><p class="sidetitle" aria-hidden="true">{{.Title}}</p>{{if .SideAmount}}<div class="sideamt">{{.SideAmount}}</div>{{end}}{{if .SideNote}}<div class="sidenote">{{.SideNote}}</div>{{end}}</div>
@@ -74,10 +80,10 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 <div class="meta">
 <div><b>{{.L.from}}</b>{{.Seller}}{{range .SellerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div><div><b>{{.L.to}}</b>{{.Customer}}{{range .CustomerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div><div><b>{{.L.date}}</b>{{.Date}}</div>
 <div><b>{{.L.status}}</b><span class="badge {{.State}}">{{.StateLabel}}</span></div></div>
-<div class="wrap"><table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
+<div class="wrap" tabindex="0"><table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
 {{range .Lines}}<tr><td>{{.Description}}{{if .Period}}<div class="muted">{{.Period}}</div>{{end}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}}</td></tr>
 {{end}}</tbody><tfoot><tr><td>{{.L.subtotal}}</td><td class="n">{{.Subtotal}}</td></tr><tr><td>{{.L.total}}</td><td class="n">{{.Total}} {{.Currency}}</td></tr></tfoot></table></div>
-{{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}
+{{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}{{if .CheckAgain}}<a class="btn alt" id="check-again" href="{{.Self}}">{{.L.check_again}}</a>{{end}}
 {{with .Bank}}<div class="pay"><b>{{$.L.payBy}}</b><dl><dt>{{$.L.bank}}</dt><dd>{{.Name}}</dd><dt>{{$.L.holder}}</dt><dd>{{.Holder}}</dd><dt>{{$.L.iban}}</dt><dd class="mono">{{.IBAN}}</dd>{{if .BIC}}<dt>{{$.L.bic}}</dt><dd class="mono">{{.BIC}}</dd>{{end}}<dt>{{$.L.bankRef}}</dt><dd class="mono">{{.Reference}}</dd></dl><p class="muted">{{$.L.referenceHint}}</p></div>{{end}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
 {{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}
@@ -113,7 +119,7 @@ const receiptTmpl = `{{define "receipt"}}{{template "head" .}}
 <h1>{{.L.receipt}} · {{.Number}}</h1><div class="muted">{{.Seller}}</div>
 <div class="meta"><div><b>{{.L.from}}</b>{{.Seller}}{{range .SellerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div><div><b>{{.L.to}}</b>{{.Customer}}{{range .CustomerAddress}}<br><span class="muted">{{.}}</span>{{end}}</div>
 <div><b>{{.L.paid_on}}</b>{{if .PaidOn}}{{.PaidOn}}{{else}}{{.Date}}{{end}}</div>{{if .PaidWith}}<div><b>{{.L.method}}</b>{{.PaidWith}}</div>{{end}}</div>
-<div class="wrap"><table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
+<div class="wrap" tabindex="0"><table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
 {{range .Lines}}<tr><td>{{.Description}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}}</td></tr>
 {{end}}</tbody><tfoot><tr><td>{{.L.total}}</td><td class="n">{{.Total}} {{.Currency}}</td></tr></tfoot></table></div>
 <p><span class="badge paid">{{.L.st_paid}}</span></p>
@@ -144,18 +150,22 @@ const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
 
 const portalTmpl = `{{define "portal"}}{{template "head" .}}
 <h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
+{{if .Subscriptions}}<h2 class="sec">{{.L.sub_title}}</h2>
+{{range .Subscriptions}}<div class="sub"><div class="subhead"><span class="name">{{.Plan}}</span><span class="badge {{.State}}">{{.StateLabel}}</span></div>
+{{if .Price}}<div class="subprice">{{.Price}}</div>{{end}}{{if .Facts}}<ul class="subfacts">{{range .Facts}}<li>{{.}}</li>{{end}}</ul>{{end}}</div>
+{{end}}<p class="muted">{{.L.sub_contact}}</p>{{end}}
 <h2 class="sec">{{.L.portal_invoices}}</h2>
-{{if .Invoices}}<div class="wrap"><table class="nw"><thead><tr><th>{{.L.number}}</th><th>{{.L.date}}</th><th>{{.L.status}}</th><th class="n">{{.L.total}}</th><th></th></tr></thead><tbody>
+{{if .Invoices}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.number}}</th><th>{{.L.date}}</th><th>{{.L.status}}</th><th class="n">{{.L.total}}</th><th><span class="sr">{{.L.action}}</span></th></tr></thead><tbody>
 {{range .Invoices}}<tr><td>{{.Number}}</td><td>{{.Date}}</td><td><span class="badge {{.State}}">{{.StateLabel}}</span></td><td class="n">{{.Total}} {{.Currency}}</td><td><a href="{{.Href}}">{{if .Payable}}{{$.L.pay_title}}{{else}}{{$.L.view}}{{end}}</a></td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_inv}}</p>{{end}}
 <h2 class="sec">{{.L.portal_payments}}</h2>
-{{if .Payments}}<div class="wrap"><table class="nw"><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
+{{if .Payments}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
 {{range .Payments}}<tr><td>{{.Date}}</td><td>{{.Kind}}</td><td>{{.Number}}</td><td>{{.Status}}</td><td>{{.Provider}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}} {{.Currency}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>
 <div class="stat"><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> <span class="muted">{{.L.cr_unit}}</span></div>
-{{if .Lots}}<div class="wrap"><table class="nw"><thead><tr><th class="n">{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
-{{range .Lots}}<tr><td class="n">{{.Remaining}} / {{.Granted}}</td><td>{{if .Expires}}{{.Expires}}{{else}}{{$.L.cr_never}}{{end}}</td></tr>
+{{if .Lots}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
+{{range .Lots}}<tr><td>{{.Remaining}} / {{.Granted}}</td><td>{{if .Expires}}{{.Expires}}{{else}}{{$.L.cr_never}}{{end}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.cr_none}}</p>{{end}}
 {{if .Packs}}<h2 class="sec">{{.L.cr_buy_title}}</h2>
 <ul class="packs">{{range .Packs}}<li class="pack"><div><div class="name">{{.Name}}</div><div class="muted">{{.Credits}} {{$.L.cr_unit}} · {{.Valid}}</div></div><div class="price">{{.Price}} {{.Currency}}</div>
@@ -163,4 +173,9 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{end}}</ul>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 
-var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
+// parsePageTemplates parses the templates; the tests parse a second set to run it with stricter options than the one the handlers use.
+func parsePageTemplates() *template.Template {
+	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
+}
+
+var pageTemplates = parsePageTemplates()

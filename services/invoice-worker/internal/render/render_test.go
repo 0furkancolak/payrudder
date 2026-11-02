@@ -77,6 +77,9 @@ func TestSandboxWatermark(t *testing.T) {
 	if strings.Contains(pdfText(t, live), "SANDBOX") || !strings.Contains(pdfText(t, sb), "SANDBOX") {
 		t.Fatal("the SANDBOX watermark must appear on sandbox invoices only")
 	}
+	if strings.Contains(string(live), "/Subject ("+SandboxMarker+")") || !strings.Contains(string(sb), "/Subject ("+SandboxMarker+")") {
+		t.Fatal("the plain ASCII sandbox marker must be in sandbox invoices only")
+	}
 }
 
 func TestZeroExponentCurrency(t *testing.T) {

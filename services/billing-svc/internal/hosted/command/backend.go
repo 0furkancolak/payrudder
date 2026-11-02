@@ -30,8 +30,10 @@ type BackendConfig struct {
 	Engine   *sagacommand.Engine
 	// Affiliates is optional: without it a payer's referral cookie is not passed on.
 	Affiliates Affiliates
-	Now        func() time.Time
-	Log        *slog.Logger
+	// Subscriptions is optional: without it the portal lists no subscriptions.
+	Subscriptions SubscriptionReader
+	Now           func() time.Time
+	Log           *slog.Logger
 }
 
 // Backend is the Directory of the commands over the real services: customers and sellers from plans-svc, the invoices of ad-hoc uses of a link, the promotion

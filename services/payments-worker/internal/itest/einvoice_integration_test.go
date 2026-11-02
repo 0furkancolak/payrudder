@@ -234,7 +234,7 @@ func TestEInvoiceWorker(t *testing.T) {
 	})
 
 	in := newIntegrator(t, "whsec_test_secret")
-	if err := accounts.Put(ctx, tenant, "live", "webhook", "production", []byte(`{"url":"`+in.srv.URL+`","secret":"whsec_test_secret","allow_private":true}`)); err != nil {
+	if err := accounts.Put(ctx, tenant, "live", "webhook", "production", []byte(`{"url":"`+in.srv.URL+`","secret":"whsec_test_secret","allow_private":true}`), true, store.Audit{}); err != nil {
 		t.Fatal(err)
 	}
 

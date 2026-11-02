@@ -38,6 +38,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	accounthealth "github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/schedule"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers"
@@ -88,6 +90,18 @@ type Config struct {
 	// TransferWindowDays is how long a bank transfer waits for its money (1 to 90 days) when the tenant's account does not say. After that the payment counts
 	// as declined and the tenant's dunning applies.
 	TransferWindowDays int `env:"PAYMENTS_TRANSFER_WINDOW_DAYS"`
+	// ReconcileInterval is the pause between the scheduled reconciliations (docs/plans/22 G7); 0 turns the schedule off. It runs only with BillingAddr and the secrets key,
+	// like the operator endpoints it shares. Default (not agreed): 6 hours.
+	ReconcileInterval time.Duration `env:"PAYMENTS_RECONCILE_INTERVAL"`
+	// SettlementLag is how long a payment may go unreported by its provider before the reconciliation calls that a discrepancy. Default (not agreed): 7 days.
+	SettlementLag time.Duration `env:"PAYMENTS_SETTLEMENT_LAG"`
+	// The circuit breaker of every provider account (docs/provider-health.md), all default (not agreed): this many outages in a row open it (5), it stays open this long
+	// (30s) and then lets one charge through to see whether the provider is back.
+	BreakerFailures int           `env:"PAYMENTS_BREAKER_FAILURES"`
+	BreakerOpenFor  time.Duration `env:"PAYMENTS_BREAKER_OPEN_FOR"`
+	// HealthInterval is the pause between the checks of every account's health (5m; 0 turns the checks off) and HealthTimeout the limit of one (10s).
+	HealthInterval time.Duration `env:"PAYMENTS_HEALTH_INTERVAL"`
+	HealthTimeout  time.Duration `env:"PAYMENTS_HEALTH_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -101,6 +115,18 @@ func (c *Config) Validate() error {
 	}
 	if c.TransferWindowDays < 1 || c.TransferWindowDays > banktransfer.MaxPaymentWindowDays {
 		errs = append(errs, fmt.Errorf("PAYMENTS_TRANSFER_WINDOW_DAYS must be 1 to %d", banktransfer.MaxPaymentWindowDays))
+	}
+	if c.ReconcileInterval != 0 && c.ReconcileInterval < time.Minute {
+		errs = append(errs, errors.New("PAYMENTS_RECONCILE_INTERVAL must be 0 (off) or at least 1m"))
+	}
+	if c.BreakerFailures < 1 || c.BreakerOpenFor < time.Second {
+		errs = append(errs, errors.New("PAYMENTS_BREAKER_FAILURES must be at least 1 and PAYMENTS_BREAKER_OPEN_FOR at least 1s"))
+	}
+	if c.HealthInterval != 0 && c.HealthInterval < 30*time.Second || c.HealthTimeout < time.Second {
+		errs = append(errs, errors.New("PAYMENTS_HEALTH_INTERVAL must be 0 (off) or at least 30s and PAYMENTS_HEALTH_TIMEOUT at least 1s"))
+	}
+	if c.SettlementLag < 24*time.Hour {
+		errs = append(errs, errors.New("PAYMENTS_SETTLEMENT_LAG must be at least 24h"))
 	}
 	errs = append(errs, checkLiveProvider(c.LiveProvider, c.AllowMockLive, c.Demo))
 	return errors.Join(errs...)
@@ -182,12 +208,25 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	banktransfer.Register(registry)
 	var httpHandler http.Handler
+	var reconcile *schedule.Job
+	var monitor *accounthealth.Monitor
 	if box != nil {
-		var closeConns func()
-		if httpHandler, closeConns, err = webhookHandler(*cfg, db, box, h, registry, einvoices, log); err != nil {
+		srv, closeConns, err := webhookServer(*cfg, db, box, h, registry, einvoices, log)
+		if err != nil {
 			return err
 		}
 		defer closeConns()
+		httpHandler = srv.Handler()
+		// The circuit breakers and the failover are of the tenants' own provider accounts, which need the secrets key like everything else that calls a provider for them.
+		providerHealth := store.ProviderHealth{DB: db}
+		h.Breakers = &accounthealth.Breakers{Settings: payments.BreakerSettings{Failures: cfg.BreakerFailures, OpenFor: cfg.BreakerOpenFor}, Store: providerHealth, Log: log}
+		h.Failovers = providerHealth
+		if cfg.HealthInterval > 0 {
+			monitor = &accounthealth.Monitor{Store: providerHealth, Resolver: h.Resolver, Breakers: h.Breakers, Interval: cfg.HealthInterval, Timeout: cfg.HealthTimeout, Log: log}
+		}
+		if cfg.BillingAddr != "" && cfg.ReconcileInterval > 0 {
+			reconcile = &schedule.Job{Deps: srv.Reconcile(), Interval: cfg.ReconcileInterval, Log: log}
+		}
 	}
 	w := &workerx.Worker{
 		URL: cfg.RabbitMQURL, Prefetch: cfg.Prefetch, Handler: h, Inbox: h.Attempts, Log: log,
@@ -196,7 +235,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
-	return serve(ctx, cfg, log, hh, w, httpHandler)
+	return serve(ctx, cfg, log, hh, w, httpHandler, reconcile, monitor)
 }
 
 // tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps
@@ -237,14 +276,20 @@ func newHandler(cfg *Config, db store.DB, log *slog.Logger) *handler.Handler {
 	return h
 }
 
-// serve runs the metrics server, the optional webhook/operator HTTP server and the queue worker until ctx is cancelled or one of them fails.
-func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler) error {
+// serve runs the metrics server, the optional webhook/operator HTTP server, the scheduled reconciliation and the queue worker until ctx is cancelled or one of them fails.
+func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler, reconcile *schedule.Job, monitor *accounthealth.Monitor) error {
 	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
 	gctx := g.Context()
 	if httpHandler != nil {
 		g.Go(func() error { return serveHTTP(gctx, cfg.HTTPAddr, httpHandler, log) })
 	} else {
 		log.Warn("PAYRUDDER_SECRETS_KEY is not set: provider accounts and provider webhooks are disabled")
+	}
+	if reconcile != nil {
+		g.Go(func() error { return reconcile.Run(gctx) })
+	}
+	if monitor != nil {
+		g.Go(func() error { return monitor.Run(gctx) })
 	}
 	g.Go(func() error {
 		log.Info("payments-worker consuming", "live_provider", cfg.LiveProvider)
@@ -253,8 +298,8 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	return g.Wait()
 }
 
-// webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
-func webhookHandler(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
+// webhookServer builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
+func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (*webhook.Server, func(), error) {
 	accounts := store.Accounts{DB: db, Box: box}
 	h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
 	var conns []*grpc.ClientConn
@@ -292,11 +337,11 @@ func webhookHandler(cfg Config, db store.DB, box *secretbox.Box, h *handler.Hand
 	}
 	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
-	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
+	return &webhook.Server{Plans: plansSync, Billing: billing, SettlementLag: cfg.SettlementLag, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
-		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
+		Modules: []webhook.RouteRegistrar{transferHandler}}, closeConns, nil
 }
 
 // serveHTTP runs the webhook and operator server until ctx ends.

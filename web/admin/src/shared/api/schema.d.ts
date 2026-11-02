@@ -3937,6 +3937,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/go-live/routing/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Which live account would take a customer in a country paying in a currency
+         * @description The same answer as the tenant API's routing preview, for the console. Nothing is created. Any member asks.
+         */
+        post: operations["appPreviewLiveRouting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/sandbox/providers": {
         parameters: {
             query?: never;
@@ -3985,15 +4005,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The e-invoice integrator of the app's live environment (any member; no credential is in the answer) */
+        /**
+         * The e-invoice integrator accounts of the app's live environment, and the default among them (any member; no credential is in the answer)
+         * @description An environment can hold several accounts, at one integrator or at several. An account is named by its key, the integrator's name alone or with a label (`nilvera`, `nilvera~tr`). `account` is the default one, the one a document goes to when no routing rule names its buyer's country.
+         */
         get: operations["appGetEInvoiceIntegration"];
         /**
-         * Connect (or replace) the live environment's e-invoice integrator (the owner only)
-         * @description The integrator is nilvera or webhook, never the mock. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
+         * Connect (or replace) a live e-invoice integrator account (the owner only)
+         * @description The integrator is nilvera or webhook, never the mock. A label connects a further account at the same integrator; the first account of the environment is the default, and `default` makes this one the default. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
          */
         put: operations["appPutEInvoiceIntegration"];
         post?: never;
-        /** Disconnect the live environment's e-invoice integrator (the owner only) */
+        /**
+         * Disconnect a live e-invoice integrator account (the owner only)
+         * @description Name the account with `account`; it may be left out when the environment has just one. The default cannot be removed while other accounts exist (409 einvoice.account.default_in_use): make another the default first. The routing rules that name the account go with it.
+         */
         delete: operations["appRemoveEInvoiceIntegration"];
         options?: never;
         head?: never;
@@ -4014,6 +4040,70 @@ export interface paths {
          * @description Nothing is issued. A provider problem is ok false with its kind, not an HTTP error.
          */
         post: operations["appTestEInvoiceIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/e-invoice/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make one of the live e-invoice accounts the default (the owner only)
+         * @description The default is the account a document goes to when no routing rule names its buyer's country. The account's settings are not touched, so none is sent. The move is recorded for the person.
+         */
+        post: operations["appSetEInvoiceDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/e-invoice/routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The rules that send the documents of a buyer's country to an e-invoice account
+         * @description Any member reads it. A buyer of a country no rule names goes to the default account.
+         */
+        get: operations["appEInvoiceRouting"];
+        /**
+         * Replace the e-invoice routing rules (the owner only)
+         * @description A country is named once and every rule names an account the app has (400 einvoice.routing.unknown_account, einvoice.routing.invalid). Documents already begun keep the account they began with. The change is recorded for the person.
+         */
+        put: operations["appSetEInvoiceRouting"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who changed the live payment and e-invoice accounts, newest first
+         * @description Connected, replaced, removed, made default, and routing changed, with who did it. Any member reads it. No setting or secret is ever in it. The e-mail provider's changes are not in this trail.
+         */
+        get: operations["appIntegrationAudit"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5008,6 +5098,254 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare a period and keep what disagrees (a discrepancy found again is not a second one; one no longer found is cleared)
+         * @description The same comparison as `reconcilePayments`, and then kept: every discrepancy becomes a row with a status (open, explained, resolved), an owner and a history. The
+         *     schedule (`PAYMENTS_RECONCILE_INTERVAL`) does the same for every tenant that took a live payment, for the current and the previous period.
+         */
+        post: operations["runReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The queue of kept discrepancies, newest first, filtered on the server */
+        get: operations["listReconciliationDiscrepancies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve several discrepancies with one resolution (each is its own change and event; the answer says what happened to each) */
+        post: operations["resolveReconciliationDiscrepancies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One discrepancy with its history */
+        get: operations["getReconciliationDiscrepancy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give a discrepancy an owner (empty clears it) */
+        post: operations["assignReconciliationDiscrepancy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a discrepancy as known, with the reason; it stays in the queue until it is resolved or a run no longer finds it */
+        post: operations["explainReconciliationDiscrepancy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a discrepancy (the same resolution twice is one resolution)
+         * @description `ledger_fact` also writes one fact to the payment ledger (a successful charge of the invoice's own amount, source `reconciliation`, for the provider and reference given) and
+         *     is for `paid_without_charge` only. Every other resolution records what was done elsewhere (a credit note issued through the credit note API, a refund made at the provider,
+         *     a correction in billing) and writes nothing. Resolving does not make a difference go away: a later run that still finds it reopens it.
+         */
+        post: operations["resolveReconciliationDiscrepancy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/account-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Runtime health of every provider account - the last periodic check, the circuit breaker and the account a charge fails over to
+         * @description Not the go-live check (`getProviderHealth` asks the provider now): this is what the worker last saw. A periodic check of each account (`PAYMENTS_HEALTH_INTERVAL`) keeps
+         *     `status`; the account's circuit breaker keeps `breaker` and `consecutive_failures` when it changes. The breaker is in each worker's memory, so a worker that has just started
+         *     shows what the last one left.
+         */
+        get: operations["listProviderAccountHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}/failover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the account a new charge goes to when this one definitely did not process it
+         * @description Only a failure that is proven (the connection to the provider never opened, an adapter or provider that says "not processed", or an open circuit) lets a new charge go to
+         *     the other account, as a new attempt under a new key. A timeout never does. See docs/provider-health.md. Both accounts must exist in the environment; a bank transfer cannot take part.
+         */
+        put: operations["putProviderAccountFailover"];
+        post?: never;
+        /** Remove the failover of an account */
+        delete: operations["deleteProviderAccountFailover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/settlement/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The period's successful payments with what is known of their settlement (paid is not settled) */
+        get: operations["listSettlementPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/settlement/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a settlement report (CSV) from a provider or the bank; the whole file or nothing
+         * @description The columns are in docs/reconciliation.md. The same report twice changes nothing.
+         */
+        post: operations["importSettlement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/settlement/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read what a provider says it settled, through the tenant's account (Stripe; the other providers are imported from their report)
+         * @description UNVERIFIED against a live Stripe account; built from its documentation and a fake server.
+         */
+        post: operations["syncSettlement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/settlement/fee-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What each provider is expected to charge per payment (entered by an operator; Payrudder knows no provider's prices) */
+        get: operations["listSettlementFeeRules"];
+        /** Set the expected fee of a provider in a currency (rate in hundredths of a percent of the gross, plus a fixed amount) */
+        put: operations["putSettlementFeeRule"];
+        post?: never;
+        /** Remove the expected fee of a provider in a currency */
+        delete: operations["deleteSettlementFeeRule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -7539,19 +7877,32 @@ export interface components {
             environment: "live";
             default: boolean;
         };
+        /** @description An account: the integrator alone (nilvera) or with a label (nilvera~tr). */
+        EInvoiceAccountKey: string;
+        EInvoiceIntegrationAccount: {
+            account: components["schemas"]["EInvoiceAccountKey"];
+            /** @enum {string} */
+            provider: "nilvera" | "webhook";
+            /** @description The part of the key after the tilde; empty for the primary account of an integrator. */
+            label: string;
+            /** @enum {string} */
+            mode: "test" | "production";
+            is_default: boolean;
+            /** Format: date-time */
+            updated_at?: string;
+        };
         AppGetEInvoiceIntegrationResponse: {
-            account: {
-                /** @enum {string} */
-                provider: "nilvera" | "webhook";
-                /** @enum {string} */
-                mode: "test" | "production";
-                /** Format: date-time */
-                updated_at?: string;
-            } | null;
+            /** @description The default account, null when none is connected. */
+            account: components["schemas"]["EInvoiceIntegrationAccount"] | null;
+            accounts: components["schemas"]["EInvoiceIntegrationAccount"][];
         };
         AppPutEInvoiceIntegrationRequest: {
             /** @enum {string} */
             provider: "nilvera" | "webhook";
+            /** @description Tells a further account at the same integrator from the primary one; empty for the primary. */
+            label?: string;
+            /** @description Make this account the default. */
+            default?: boolean;
             /** @enum {string} */
             mode?: "test" | "production";
             /** @description nilvera: api_key[, base_url]; webhook: url, secret. */
@@ -7559,7 +7910,41 @@ export interface components {
                 [key: string]: string;
             };
         };
+        AppSetEInvoiceDefaultRequest: {
+            account: components["schemas"]["EInvoiceAccountKey"];
+        };
+        EInvoiceRoutingRules: {
+            rules: {
+                /** @description ISO 3166-1 alpha-2 country of the buyer. */
+                country: string;
+                account: components["schemas"]["EInvoiceAccountKey"];
+            }[];
+        };
+        IntegrationAuditEvent: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            kind: "payment" | "einvoice";
+            /** @description The account key (iyzico, paddle~eu, nilvera~tr); empty for a routing change. */
+            account: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            /** @enum {string} */
+            action: "connected" | "replaced" | "removed" | "default_set" | "routing_changed";
+            /** @description "user:<id>" for a person in the console, "operator" for Payrudder support. */
+            actor: string;
+            is_default: boolean;
+            /** @description The provider itself accepted the credentials when they were stored. */
+            verified_remote: boolean;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ListIntegrationAuditResponse: {
+            events: components["schemas"]["IntegrationAuditEvent"][];
+            next_page_token: string;
+        };
         AppTestEInvoiceIntegrationRequest: {
+            account?: components["schemas"]["EInvoiceAccountKey"];
             /** @description The seller's tax id, for an integrator that can look up a registered business */
             tax_id?: string;
         };
@@ -7846,11 +8231,15 @@ export interface components {
             period: string;
             paid_invoices: number;
             successful_charges: number;
-            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes */
+            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch */
             discrepancy_counts: {
                 [key: string]: number;
             };
             discrepancies: components["schemas"]["ReconcilePaymentsDiscrepancy"][];
+            /** @description The period's successful payments by not_reported, pending_payout or settled; absent without settlement lines */
+            settlement_states?: {
+                [key: string]: number;
+            };
             truncated?: boolean;
         };
         ReconcilePaymentsDiscrepancy: {
@@ -7864,7 +8253,269 @@ export interface components {
             billed_minor?: number;
             /** Format: int64 */
             ledger_minor?: number;
+            /** Format: int64 */
+            settled_minor?: number;
             detail?: string;
+        };
+        ReconcileRunRequest: {
+            period: string;
+        };
+        ReconcileRunResponse: {
+            period: string;
+            paid_invoices: number;
+            successful_charges: number;
+            found: number;
+            /** @description Found for the first time */
+            opened: number;
+            /** @description Resolved before and found again */
+            reopened: number;
+            /** @description Open or explained before and no longer found */
+            cleared: number;
+            discrepancy_counts: {
+                [key: string]: number;
+            };
+            /** @description More was found than a run keeps, so nothing was cleared */
+            truncated?: boolean;
+        };
+        ReconciliationDiscrepancy: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            period: string;
+            /** @description paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, settlement_missing, settlement_mismatch or fee_mismatch */
+            kind: string;
+            invoice_id?: string;
+            number?: string;
+            provider?: string;
+            provider_ref?: string;
+            currency?: string;
+            /** Format: int64 */
+            billed_minor?: number;
+            /**
+             * Format: int64
+             * @description What the ledger holds; for fee_mismatch the fee expected
+             */
+            ledger_minor?: number;
+            /**
+             * Format: int64
+             * @description What the provider reported (settlement kinds only); for fee_mismatch the fee kept
+             */
+            settled_minor?: number;
+            detail?: string;
+            /** @enum {string} */
+            status: "open" | "explained" | "resolved";
+            owner?: string;
+            note?: string;
+            /** @description ledger_fact, credit_note, refunded_at_provider, corrected_in_billing, not_an_error, other, or cleared (a later run no longer finds it) */
+            resolution?: string;
+            /** Format: date-time */
+            first_seen_at: string;
+            /** Format: date-time */
+            last_seen_at: string;
+            /** Format: date-time */
+            resolved_at?: string;
+        };
+        ReconciliationEvent: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            action: "detected" | "reopened" | "cleared" | "assigned" | "explained" | "resolved";
+            /** @description system for a run, otherwise who the gateway named */
+            actor: string;
+            from_status?: string;
+            to_status?: string;
+            resolution?: string;
+            note?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReconciliationRun: {
+            environment: string;
+            period: string;
+            /** @enum {string} */
+            started_by: "schedule" | "operator";
+            actor: string;
+            /** @enum {string} */
+            result: "ok" | "truncated" | "failed";
+            paid_invoices?: number;
+            charges?: number;
+            found?: number;
+            opened?: number;
+            reopened?: number;
+            cleared?: number;
+            error?: string;
+            /** Format: date-time */
+            finished_at: string;
+        };
+        ReconciliationCount: {
+            status: string;
+            kind: string;
+            /** Format: int64 */
+            n: number;
+        };
+        ListReconciliationDiscrepanciesResponse: {
+            discrepancies: components["schemas"]["ReconciliationDiscrepancy"][];
+            /** @description Per status and kind for the period (all periods when none is given), not narrowed by the other filters */
+            counts: components["schemas"]["ReconciliationCount"][];
+            next_page_token: string;
+            last_run?: components["schemas"]["ReconciliationRun"];
+        };
+        GetReconciliationDiscrepancyResponse: {
+            discrepancy: components["schemas"]["ReconciliationDiscrepancy"];
+            events: components["schemas"]["ReconciliationEvent"][];
+        };
+        ReconciliationDiscrepancyResponse: {
+            discrepancy: components["schemas"]["ReconciliationDiscrepancy"];
+        };
+        AssignReconciliationDiscrepancyRequest: {
+            owner?: string;
+        };
+        ExplainReconciliationDiscrepancyRequest: {
+            note: string;
+            owner?: string;
+        };
+        ReconciliationLedgerFact: {
+            /** @description An account key such as stripe or stripe~eu */
+            provider: string;
+            /** @description The provider's reference of the payment */
+            provider_ref: string;
+        };
+        ResolveReconciliationDiscrepancyRequest: {
+            /** @enum {string} */
+            resolution: "ledger_fact" | "credit_note" | "refunded_at_provider" | "corrected_in_billing" | "not_an_error" | "other";
+            /** @description What was found and done (for credit_note, the credit note number) */
+            note: string;
+            owner?: string;
+            ledger_fact?: components["schemas"]["ReconciliationLedgerFact"];
+        };
+        ResolveReconciliationDiscrepanciesRequest: {
+            ids: number[];
+            /** @enum {string} */
+            resolution: "credit_note" | "refunded_at_provider" | "corrected_in_billing" | "not_an_error" | "other";
+            note: string;
+            owner?: string;
+        };
+        ResolveReconciliationDiscrepanciesResponse: {
+            outcomes: {
+                /** Format: int64 */
+                id: number;
+                /** @enum {string} */
+                result: "resolved" | "unchanged" | "not_found" | "failed";
+                error_key?: string;
+            }[];
+        };
+        ProviderAccountHealth: {
+            /** @description The account key */
+            provider: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            is_default: boolean;
+            /**
+             * @description unknown - never checked, or the adapter has no call to ask its provider with
+             * @enum {string}
+             */
+            status: "unknown" | "healthy" | "bad_credentials" | "down";
+            /** @enum {string} */
+            breaker: "closed" | "open" | "half_open";
+            /**
+             * Format: int64
+             * @description Outages in a row the breaker has counted
+             */
+            consecutive_failures: number;
+            /** @description A class (unreachable, bad_credentials, unusable, circuit_open, no_remote_check), never a message from the provider */
+            last_error?: string;
+            /** Format: date-time */
+            last_checked_at?: string;
+            /** Format: date-time */
+            last_ok_at?: string;
+            /** Format: date-time */
+            last_failure_at?: string;
+            /** Format: date-time */
+            opened_at?: string;
+            /** @description The account a new charge fails over to when this one definitely did not process it */
+            failover_to?: string;
+        };
+        ListProviderAccountHealthResponse: {
+            accounts: components["schemas"]["ProviderAccountHealth"][];
+        };
+        PutProviderAccountFailoverRequest: {
+            /** @description The account key to fail over to */
+            failover_to: string;
+        };
+        PutProviderAccountFailoverResponse: {
+            provider: string;
+            environment: string;
+            failover_to: string;
+        };
+        SettlementPayment: {
+            invoice_id: string;
+            number?: string;
+            provider: string;
+            provider_ref: string;
+            currency: string;
+            /** Format: int64 */
+            amount_minor: number;
+            /** Format: date-time */
+            paid_at: string;
+            /**
+             * @description Paid is the ledger's word; settled is the provider's
+             * @enum {string}
+             */
+            state: "not_reported" | "pending_payout" | "settled";
+            settlement_currency?: string;
+            /** Format: int64 */
+            gross_minor?: number;
+            /** Format: int64 */
+            fee_minor?: number;
+            /** Format: int64 */
+            net_minor?: number;
+            /** Format: int64 */
+            expected_fee_minor?: number;
+            /** Format: date-time */
+            available_on?: string;
+            /** Format: date-time */
+            settled_at?: string;
+            settlement_batch?: string;
+        };
+        ListSettlementPaymentsResponse: {
+            period: string;
+            payments: components["schemas"]["SettlementPayment"][];
+        };
+        SettlementReadResult: {
+            lines: number;
+            /**
+             * Format: int64
+             * @description New or changed; the same lines read again change none
+             */
+            changed: number;
+        };
+        SyncSettlementRequest: {
+            /** @description The account key to read, such as stripe */
+            provider: string;
+            /**
+             * Format: date-time
+             * @description Default 45 days ago; at most 400
+             */
+            since?: string;
+        };
+        SettlementFeeRule: {
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            provider: string;
+            currency: string;
+            /** @description Hundredths of a percent of the gross */
+            rate_bps: number;
+            /** Format: int64 */
+            fixed_minor?: number;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ListSettlementFeeRulesResponse: {
+            rules: components["schemas"]["SettlementFeeRule"][];
+        };
+        PutSettlementFeeRuleResponse: {
+            rule: components["schemas"]["SettlementFeeRule"];
         };
         AdminListDeadLettersResponse: {
             queues: components["schemas"]["AdminListDeadLettersQueue"][];
@@ -9903,6 +10554,9 @@ export interface components {
         EInvoiceAccount: {
             /** @enum {string} */
             environment: "sandbox" | "live";
+            account?: components["schemas"]["EInvoiceAccountKey"];
+            label?: string;
+            is_default?: boolean;
             /** @enum {string} */
             provider: "mock" | "nilvera" | "webhook";
             /** @enum {string} */
@@ -18105,6 +18759,35 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appPreviewLiveRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRoutingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewRoutingResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appSandboxProviders: {
         parameters: {
             query?: never;
@@ -18250,7 +18933,9 @@ export interface operations {
     };
     appRemoveEInvoiceIntegration: {
         parameters: {
-            query?: never;
+            query?: {
+                account?: components["schemas"]["EInvoiceAccountKey"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -18266,9 +18951,11 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     appTestEInvoiceIntegration: {
@@ -18297,6 +18984,117 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetEInvoiceDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppSetEInvoiceDefaultRequest"];
+            };
+        };
+        responses: {
+            /** @description The default has moved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appEInvoiceRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceRoutingRules"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetEInvoiceRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EInvoiceRoutingRules"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceRoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appIntegrationAudit: {
+        parameters: {
+            query?: {
+                kind?: "payment" | "einvoice";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListIntegrationAuditResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };
@@ -20041,6 +20839,451 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             503: components["responses"]["Error"];
+        };
+    };
+    runReconciliation: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconcileRunResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listReconciliationDiscrepancies: {
+        parameters: {
+            query?: {
+                period?: string;
+                /** @description open, explained or resolved; repeat or comma-separate for several */
+                status?: string;
+                /** @description A kind of discrepancy; repeat or comma-separate for several */
+                kind?: string;
+                owner?: string;
+                invoice_id?: string;
+                limit?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListReconciliationDiscrepanciesResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    resolveReconciliationDiscrepancies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveReconciliationDiscrepanciesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolveReconciliationDiscrepanciesResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getReconciliationDiscrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetReconciliationDiscrepancyResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    assignReconciliationDiscrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignReconciliationDiscrepancyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationDiscrepancyResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    explainReconciliationDiscrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainReconciliationDiscrepancyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationDiscrepancyResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    resolveReconciliationDiscrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveReconciliationDiscrepancyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationDiscrepancyResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listProviderAccountHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProviderAccountHealthResponse"];
+                };
+            };
+        };
+    };
+    putProviderAccountFailover: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                /** @description The account key */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderAccountFailoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutProviderAccountFailoverResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteProviderAccountFailover: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listSettlementPayments: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSettlementPaymentsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    importSettlement: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+                /** @description The account key lines without a provider column belong to */
+                provider?: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementReadResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+        };
+    };
+    syncSettlement: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncSettlementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementReadResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    listSettlementFeeRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSettlementFeeRulesResponse"];
+                };
+            };
+        };
+    };
+    putSettlementFeeRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettlementFeeRule"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutSettlementFeeRuleResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    deleteSettlementFeeRule: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+                provider: string;
+                currency: string;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
         };
     };
     adminListDeadLetters: {

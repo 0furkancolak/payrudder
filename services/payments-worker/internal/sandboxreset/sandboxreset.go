@@ -1,4 +1,4 @@
-// Package sandboxreset deletes a sandbox tenant's payment attempts, ledger and receipts (phase 45 E). Its provider accounts and the objects created at providers stay.
+// Package sandboxreset deletes a sandbox tenant's payment attempts, ledger, receipts, kept discrepancies and settlement lines (phase 45 E). Its provider accounts, fee rules and the objects created at providers stay.
 package sandboxreset
 
 import (
@@ -15,8 +15,9 @@ import (
 
 // Tables are the tables a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose.
 var (
-	Tables = []string{"manual_receipts", "payment_ledger", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances"}
-	Kept   = []string{"provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts"}
+	Tables = []string{"manual_receipts", "payment_ledger", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances",
+		"reconciliation_events", "reconciliation_runs", "reconciliation_discrepancies", "settlement_lines"}
+	Kept = []string{"provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts", "einvoice_routing", "fee_rules", "provider_account_health", "provider_failover"}
 )
 
 // Resetter deletes on the system role, which sees every tenant of the pooled database, so each statement names the tenant. When cells are on (ADR 0018) it is
@@ -49,6 +50,9 @@ func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]in
 		}{
 			{"manual_receipts", q.ResetManualReceipts}, {"payment_ledger", q.ResetPaymentLedger}, {"payment_attempts", q.ResetPaymentAttempts},
 			{"provider_subscriptions", q.ResetProviderSubscriptions}, {"provider_events", func(ctx context.Context, id uuid.UUID) (int64, error) { return q.ResetProviderEvents(ctx, &id) }}, {"einvoice_issuances", q.ResetEInvoiceIssuances},
+			// the events and runs go before the discrepancies they point at
+			{"reconciliation_events", q.ResetReconciliationEvents}, {"reconciliation_runs", q.ResetReconciliationRuns},
+			{"reconciliation_discrepancies", q.ResetReconciliationDiscrepancies}, {"settlement_lines", q.ResetSettlementLines},
 		} {
 			n, err := s.run(ctx, tenantID)
 			if err != nil {
