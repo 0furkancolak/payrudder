@@ -76,6 +76,11 @@ see the schema owner's password while the Job still loads the service's complete
     {{- if $root.Values.mail.eventsSecret -}}
       {{- $_ := set $out "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET" $root.Values.mail.eventsSecret -}}
     {{- end -}}
+  {{- else if eq . "mailWebhook" -}}
+    {{- if $root.Values.mail.webhookSecret -}}
+      {{- if not $root.Values.mail.eventsSecret -}}{{- fail "mail.webhookSecret needs mail.eventsSecret: the gateway hands a delivery event to the notifier's listener, and refuses to start with the webhook secret and no listener" -}}{{- end -}}
+      {{- $_ := set $out "PAYRUDDER_MAIL_WEBHOOK_SECRET" $root.Values.mail.webhookSecret -}}
+    {{- end -}}
   {{- else if eq . "paymentsToken" -}}
     {{- $_ := set $out "PAYRUDDER_PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
   {{- else if eq . "secretsKey" -}}
@@ -99,6 +104,16 @@ the public local value of the compose stack. Empty anywhere else: no chart witho
 local-otp-pepper-change-me-0123456789
 {{- else if not .Values.secrets.existingSecrets -}}
 {{- required "auth.otpPepper is required when global.environment is not local, ci or kind: put it in your secrets file (`openssl rand -hex 32`, see values-secrets.example.yaml)" .Values.auth.otpPepper -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Where customers reach the gateway (global.publicURL): the hosted invoice links and the link in the mail that asks a customer to confirm a payment (3-D Secure) start with it,
+and billing-svc sends that mail without a link when it is empty. Empty in a development environment (local, ci, kind): relative links. Empty anywhere else: no chart without one. */}}
+{{- define "payrudder.publicURL" -}}
+{{- if has .Values.global.environment (list "local" "ci" "kind") -}}
+{{- .Values.global.publicURL -}}
+{{- else -}}
+{{- required "global.publicURL is required when global.environment is not local, ci or kind: the address customers reach the gateway at (https://api.example.com); without it the mail that asks a customer to confirm a payment has no link" .Values.global.publicURL -}}
 {{- end -}}
 {{- end -}}
 

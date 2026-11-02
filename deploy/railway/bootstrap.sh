@@ -32,6 +32,9 @@ done
 REPO=${REPO:-owner/payrudder}
 # OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
 # ERROR_TRACKING_URL (environment): the DSN of a GlitchTip or Sentry project (https://<public key>@host/<project id>); set as PAYRUDDER_ERROR_TRACKING_URL on every Go service. Empty: not set, error tracking stays off.
+# MAIL_WEBHOOK_SECRET (environment): the "whsec_..." signing secret of the mail provider's webhook of delivery events, which points at https://<gateway domain>/inbound/mail-events; set as
+# PAYRUDDER_MAIL_WEBHOOK_SECRET on the gateway. Empty: not set, the route answers 404 and bounces and complaints never reach the suppression list. The webhook needs the gateway's
+# public domain, which the first run creates, so the secret comes with a later run or with `railway variable set --service gateway PAYRUDDER_MAIL_WEBHOOK_SECRET=...`.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
 run() {
@@ -234,6 +237,7 @@ vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGES
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
   'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" \
   PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111 'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}'
+if [[ -n ${MAIL_WEBHOOK_SECRET:-} ]]; then vars gateway "PAYRUDDER_MAIL_WEBHOOK_SECRET=$MAIL_WEBHOOK_SECRET"; fi
 
 note "admin-ui"
 vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "PAYRUDDER_DEMO=$DEMO" BRAND_NAME=Payrudder

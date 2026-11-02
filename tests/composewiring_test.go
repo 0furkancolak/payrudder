@@ -62,6 +62,23 @@ func TestComposeWiresTheNotifiersMailEventsListenerToTheGateway(t *testing.T) {
 	}
 }
 
+// The mail provider's webhook of delivery events (/inbound/mail-events) answers 404 until the gateway has PAYRUDDER_MAIL_WEBHOOK_SECRET, so the compose file passes it through
+// from .env (empty: off); the gateway needs it together with the notifier's address, which the file wires above.
+func TestComposePassesTheMailWebhookSecretToTheGateway(t *testing.T) {
+	env := composeEnv(t)
+	if got, want := env["gateway"]["PAYRUDDER_MAIL_WEBHOOK_SECRET"], "${PAYRUDDER_MAIL_WEBHOOK_SECRET:-}"; got != want {
+		t.Errorf("the gateway's PAYRUDDER_MAIL_WEBHOOK_SECRET = %q, want %q", got, want)
+	}
+	for name, e := range env {
+		if _, ok := e["PAYRUDDER_MAIL_WEBHOOK_SECRET"]; ok && name != "gateway" {
+			t.Errorf("%s has PAYRUDDER_MAIL_WEBHOOK_SECRET: only the gateway verifies the provider's webhook", name)
+		}
+	}
+	if env["gateway"]["PAYRUDDER_NOTIFIER_EVENTS_URL"] == "" {
+		t.Error("the gateway has no PAYRUDDER_NOTIFIER_EVENTS_URL: it refuses to start with a webhook secret and none")
+	}
+}
+
 // PAYRUDDER_ERROR_TRACKING_URL (docs/08-observability.md) reaches every Go service of the stack when the operator sets it in .env, and is empty otherwise.
 func TestComposePassesTheErrorTrackingURLToEveryGoService(t *testing.T) {
 	const want = "${PAYRUDDER_ERROR_TRACKING_URL:-}"
