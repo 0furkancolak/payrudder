@@ -24,7 +24,8 @@ func placeholders(c copyText) string {
 }
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
-	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketReply, KindTicketStatus}
+	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketReply, KindTicketStatus,
+		KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated}
 	for _, l := range Locales {
 		for _, k := range kinds {
 			got, ok := texts[l][k]
@@ -51,6 +52,25 @@ func TestEveryLanguageHasEveryMail(t *testing.T) {
 		for _, w := range []string{"open", "pending", "solved", "closed", "low", "normal", "high", "urgent"} {
 			if ticketWords[l][w] == "" {
 				t.Errorf("%s: no word for ticket %s", l, w)
+			}
+		}
+	}
+}
+
+// A tenant status mail names the app and the account in every language, leaves no placeholder behind, keeps a name on one line and escapes it in the HTML, and says
+// nothing of the operator's reason (it has no field for it).
+func TestTenantStatusMailsNameTheAppInEveryLanguage(t *testing.T) {
+	for _, l := range Locales {
+		for _, k := range []Kind{KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated} {
+			subject, text, body := Render(Mail{Kind: k, Locale: l, To: "owner@example.com", Link: "https://app.example/app/support", App: "Shop <b>API</b>\r\nBcc: x@example.com", Account: "Ada Labs"})
+			if strings.ContainsAny(subject, "\r\n") || !strings.Contains(subject, "Shop <b>API</b>  Bcc: x@example.com") {
+				t.Errorf("%s/%s: subject %q", l, k, subject)
+			}
+			if !strings.Contains(text, "Ada Labs") || !strings.Contains(text, "https://app.example/app/support") || placeholder.MatchString(text+subject) {
+				t.Errorf("%s/%s: text %q", l, k, text)
+			}
+			if strings.Contains(body, "<b>API</b>") || !strings.Contains(body, "&lt;b&gt;API&lt;/b&gt;") {
+				t.Errorf("%s/%s: the app name is not escaped in the html", l, k)
 			}
 		}
 	}
