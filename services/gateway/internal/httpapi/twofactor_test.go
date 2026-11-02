@@ -43,6 +43,16 @@ func (f *fakeIdentity) DisableTwoFactor(_ context.Context, req *plansv1.DisableT
 	return &plansv1.DisableTwoFactorResponse{}, nil
 }
 
+func (f *fakeIdentity) ResetUserTwoFactor(ctx context.Context, req *plansv1.ResetUserTwoFactorRequest) (*plansv1.ResetUserTwoFactorResponse, error) {
+	f.mu.Lock()
+	f.twoFactorResets = append(f.twoFactorResets, req)
+	f.mu.Unlock()
+	if req.GetReason() == "" {
+		return nil, errkey.New(codes.InvalidArgument, "plans.request.invalid", "reason")
+	}
+	return &plansv1.ResetUserTwoFactorResponse{WasEnabled: req.GetEmail() != "none@example.com"}, nil
+}
+
 func (f *fakeIdentity) SetAccountSecurity(_ context.Context, req *plansv1.SetAccountSecurityRequest) (*plansv1.SetAccountSecurityResponse, error) {
 	f.seen(req.GetUserId())
 	return &plansv1.SetAccountSecurityResponse{RequireTwoFactorForOwners: req.GetRequireTwoFactorForOwners()}, nil
@@ -148,5 +158,32 @@ func TestChallengeRedirectKeepsTheChallengeInTheFragment(t *testing.T) {
 	loc := rec.Header().Get("Location")
 	if rec.Code != http.StatusFound || !strings.HasPrefix(loc, "https://app.example.com/signin/complete#challenge="+goodChallenge+"&expires=") || strings.Contains(strings.SplitN(loc, "#", 2)[0], "qc_") {
 		t.Fatalf("redirect = %d %s", rec.Code, loc)
+	}
+}
+
+// Resetting a lost second factor is the operator's: the operator token or a signed-in operator, never a person's session or a tenant key, and what the operator typed
+// goes to plans-svc as it is (the reason is required there).
+func TestOperatorResetsATwoFactor(t *testing.T) {
+	p := newProduct(t, nil, func(d *Deps) { d.OperatorEmails = NormalizeOperatorEmails([]string{"boss@example.com"}) })
+	body := `{"email":"ada@example.com","reason":"lost the phone"}`
+	for name, tok := range map[string]string{"no credential": "", "a person": tokAda, "an unverified operator address": tokOperatorUnverified, "a tenant key": adaLive} {
+		if resp, _ := p.call(t, "POST", "/admin/v1/users/two-factor/reset", tok, "", body); resp.StatusCode < 400 || resp.StatusCode >= 500 {
+			t.Errorf("%s: %d, want a refusal", name, resp.StatusCode)
+		}
+	}
+	if len(p.ident.twoFactorResets) != 0 {
+		t.Fatalf("plans-svc was asked %d times by callers that are not the operator", len(p.ident.twoFactorResets))
+	}
+	for name, tok := range map[string]string{"the operator token": operatorToken, "a signed-in operator": tokOperator} {
+		resp, m := p.call(t, "POST", "/admin/v1/users/two-factor/reset", tok, "", body)
+		if resp.StatusCode != 200 || m["was_enabled"] != true {
+			t.Errorf("%s: %d %v", name, resp.StatusCode, m)
+		}
+	}
+	if got := p.ident.twoFactorResets; len(got) != 2 || got[0].GetEmail() != "ada@example.com" || got[0].GetReason() != "lost the phone" {
+		t.Errorf("plans-svc was asked %v", got)
+	}
+	if resp, m := p.call(t, "POST", "/admin/v1/users/two-factor/reset", operatorToken, "", `{"email":"ada@example.com"}`); resp.StatusCode != 400 || errKeyOf(m) != "plans.request.invalid" {
+		t.Errorf("no reason: %d %v", resp.StatusCode, m)
 	}
 }

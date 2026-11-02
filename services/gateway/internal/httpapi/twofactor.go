@@ -29,7 +29,23 @@ func (s *Server) twoFactorRoutes() []Route {
 		{"POST", "/auth/2fa/disable", AccessSession, ratelimit.ClassWrite, s.twoFactorDisable},
 		{"POST", "/auth/2fa/recovery-codes", AccessSession, ratelimit.ClassWrite, s.twoFactorRecoveryCodes},
 		{"PATCH", "/app/v1/account/security", AccessSession, ratelimit.ClassWrite, s.withAccount(s.accountSecurity)},
+		{"POST", "/admin/v1/users/two-factor/reset", AccessOperator, "", s.adminResetTwoFactor},
 	}
+}
+
+// adminResetTwoFactor is POST /admin/v1/users/two-factor/reset {email, reason}: the operator turns off a person's two-factor sign-in after the person lost the device and
+// the recovery codes. The reason is required and goes to the audit log with the operator's name; the person is mailed and signed out everywhere (plans-svc).
+func (s *Server) adminResetTwoFactor(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email  string `json:"email"`
+		Reason string `json:"reason"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.ResetUserTwoFactor(r.Context(), &plansv1.ResetUserTwoFactorRequest{Email: body.Email, Reason: body.Reason})
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 // signedInOrChallenge is the answer of a first step: the session, or (two-factor sign-in on) {second_factor_required, challenge, challenge_expire_time}.

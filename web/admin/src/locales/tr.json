@@ -3404,6 +3404,9 @@
         "not_configured": "Bu kurulum henüz iki adımlı giriş sunamıyor: gizli anahtar tanımlı değil.",
         "required_by_organisation": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kıldığı için kapatamazsınız.",
         "setup_required": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Önce güvenlik sayfasında kurun."
+      },
+      "user": {
+        "not_found": "Bu adresle oturum açan bir kişi yok."
       }
     },
     "gateway": {
@@ -5453,7 +5456,19 @@
       "clear": "Özel limitleri kaldır",
       "save": "Kaydet",
       "saved": "Kaydedildi.",
-      "cleared": "Özel limitler kaldırıldı."
+      "cleared": "Özel limitler kaldırıldı.",
+      "twoFactor": {
+        "title": "Kaybolan ikinci adım",
+        "hint": "Hem kimlik doğrulayıcı uygulamasını hem kurtarma kodlarını kaybeden kişi için. Önce isteyenin kim olduğunu doğrulayın. Kişinin iki adımlı oturum açması kapatılır, her yerden çıkış yaptırılır, e-posta gönderilir ve sıfırlama gerekçenizle birlikte denetim günlüğüne yazılır.",
+        "email": "Kişinin oturum açma adresi",
+        "reason": "Gerekçe (denetim günlüğünde saklanır)",
+        "reset": "İki adımlı oturum açmayı kapat",
+        "confirmTitle": "İki adımlı oturum açma kapatılsın mı?",
+        "confirmBody": "{email} her yerden çıkış yapacak ve yeniden kurana kadar yalnızca parolasıyla oturum açabilecek. Kişiye e-posta gönderilir; sıfırlama adınız ve gerekçenizle kaydedilir.",
+        "confirm": "Kapat",
+        "done": "{email} için iki adımlı oturum açma kapatıldı. Kişiye e-posta gönderildi.",
+        "nothing": "{email} için iki adımlı oturum açma açık değildi; hiçbir şey değişmedi."
+      }
     }
   },
   "support": {
@@ -5999,7 +6014,9 @@
       "two_factor": {
         "enabled": "İki adımlı giriş açıldı",
         "disabled": "İki adımlı giriş kapatıldı",
-        "recovery_codes_regenerated": "Kurtarma kodları yeniden oluşturuldu"
+        "recovery_codes_replaced": "Kurtarma kodları yeniden oluşturuldu",
+        "recovery_code_used": "Kurtarma kodu kullanıldı",
+        "reset_by_operator": "İki adımlı oturum açma destek tarafından sıfırlandı"
       }
     }
   }

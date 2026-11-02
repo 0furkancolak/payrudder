@@ -94,6 +94,11 @@ export function saasGateway(gw: MockGateway, state: Partial<SaasState> = {}): { 
       );
       return { body: plan(s) };
     }
+    if (c.path === "/admin/v1/users/two-factor/reset" && c.method === "POST") {
+      if (!c.body?.reason) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "reason" } } };
+      if (c.body.email === "nobody@example.com") return { status: 404, body: { error: { code: "NOT_FOUND", key: "identity.user.not_found", message: "none" } } };
+      return { body: { was_enabled: c.body.email !== "plain@example.com" } };
+    }
     const clear = /^\/admin\/v1\/organizations\/([^/]+)\/overrides$/.exec(c.path);
     if (clear && c.method === "DELETE") {
       s.organisations = s.organisations.map((o) => (o.account_id === clear[1] ? { ...o, overridden: false } : o));

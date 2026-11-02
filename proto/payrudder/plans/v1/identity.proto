@@ -54,6 +54,10 @@ service IdentityService {
   rpc RegenerateRecoveryCodes(RegenerateRecoveryCodesRequest) returns (RegenerateRecoveryCodesResponse);
   // SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
   rpc SetAccountSecurity(SetAccountSecurityRequest) returns (SetAccountSecurityResponse);
+  // ResetUserTwoFactor is the operator's hand for a person who lost both the device and the recovery codes: it removes the secret and the recovery codes, ends every
+  // session of the person, clears the lock from failed sign-ins, mails the person and records the reset with its reason in the audit log. Operator only; the
+  // operator is the one who checked who is asking.
+  rpc ResetUserTwoFactor(ResetUserTwoFactorRequest) returns (ResetUserTwoFactorResponse);
 
   rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
   // CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
@@ -802,4 +806,16 @@ message SetAccountSecurityRequest {
 
 message SetAccountSecurityResponse {
   bool require_two_factor_for_owners = 1;
+}
+
+message ResetUserTwoFactorRequest {
+  // The person's sign-in address.
+  string email = 1;
+  // Why, at most 500 characters. Required: it is kept in the audit log.
+  string reason = 2;
+}
+
+message ResetUserTwoFactorResponse {
+  // The person had two-factor sign-in on. False: nothing was on, and nothing was changed or mailed.
+  bool was_enabled = 1;
 }

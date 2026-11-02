@@ -95,6 +95,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Contact support",
 			Ignore:  "You get this because you own the account {account}.",
 		},
+		KindTwoFactorOn: {
+			Subject: "Two-factor sign-in is now on for your Payrudder account",
+			Lines:   []string{"Two-factor sign-in was turned on for your Payrudder account. From now on you need a code from your authenticator app, or one of your recovery codes, to sign in.", "Keep the recovery codes somewhere safe: each one works once."},
+			Button:  "",
+			Ignore:  "If this was not you, reset your password now and contact support.",
+		},
+		KindTwoFactorOff: {
+			Subject: "Two-factor sign-in was turned off on your Payrudder account",
+			Lines:   []string{"Two-factor sign-in was turned off for your Payrudder account. Your password is the only thing that protects it now.", "You can turn it on again on your security page."},
+			Button:  "",
+			Ignore:  "If this was not you, reset your password now and contact support.",
+		},
+		KindRecoveryUsed: {
+			Subject: "A recovery code was used on your Payrudder account",
+			Lines:   []string{"One of your recovery codes was used to sign in to your Payrudder account. Each recovery code works once.", "If few are left, make new ones on your security page."},
+			Button:  "",
+			Ignore:  "If this was not you, reset your password now and contact support.",
+		},
+		KindTwoFactorReset: {
+			Subject: "Support turned off two-factor sign-in on your account",
+			Lines:   []string{"Payrudder support turned off two-factor sign-in for your account and signed you out everywhere, because you could not use your authenticator app or recovery codes.", "Sign in with your password, then set two-factor sign-in up again on your security page."},
+			Button:  "",
+			Ignore:  "If you did not ask support for this, reset your password now and tell support at once.",
+		},
 	},
 	"tr": {
 		KindVerify: {
@@ -168,6 +192,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder {app} (canlı) uygulamasını yeniden etkinleştirdi. API anahtarları yeniden çalışıyor, ödemeler alınıyor ve bekleyen webhook'lar iletiliyor.", "Başka hiçbir şey değişmedi. Bir şey yanlış görünüyorsa bir destek talebi açın."},
 			Button:  "Destekle iletişime geç",
 			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
+		},
+		KindTwoFactorOn: {
+			Subject: "Payrudder hesabınızda iki adımlı oturum açma açıldı",
+			Lines:   []string{"Payrudder hesabınız için iki adımlı oturum açma açıldı. Bundan sonra oturum açmak için kimlik doğrulayıcı uygulamanızdaki bir kodu ya da kurtarma kodlarınızdan birini girmeniz gerekir.", "Kurtarma kodlarını güvenli bir yerde saklayın: her biri yalnızca bir kez çalışır."},
+			Button:  "",
+			Ignore:  "Bunu siz yapmadıysanız parolanızı hemen sıfırlayın ve destekle iletişime geçin.",
+		},
+		KindTwoFactorOff: {
+			Subject: "Payrudder hesabınızda iki adımlı oturum açma kapatıldı",
+			Lines:   []string{"Payrudder hesabınız için iki adımlı oturum açma kapatıldı. Hesabı artık yalnızca parolanız koruyor.", "Güvenlik sayfanızdan yeniden açabilirsiniz."},
+			Button:  "",
+			Ignore:  "Bunu siz yapmadıysanız parolanızı hemen sıfırlayın ve destekle iletişime geçin.",
+		},
+		KindRecoveryUsed: {
+			Subject: "Payrudder hesabınızda bir kurtarma kodu kullanıldı",
+			Lines:   []string{"Payrudder hesabınızda oturum açmak için kurtarma kodlarınızdan biri kullanıldı. Her kurtarma kodu yalnızca bir kez çalışır.", "Az kaldıysa güvenlik sayfanızdan yenilerini oluşturun."},
+			Button:  "",
+			Ignore:  "Bunu siz yapmadıysanız parolanızı hemen sıfırlayın ve destekle iletişime geçin.",
+		},
+		KindTwoFactorReset: {
+			Subject: "Destek ekibi hesabınızdaki iki adımlı oturum açmayı kapattı",
+			Lines:   []string{"Kimlik doğrulayıcı uygulamanızı ve kurtarma kodlarınızı kullanamadığınız için Payrudder destek ekibi hesabınızdaki iki adımlı oturum açmayı kapattı ve tüm oturumlarınızı sonlandırdı.", "Parolanızla oturum açın, ardından güvenlik sayfanızdan iki adımlı oturum açmayı yeniden kurun."},
+			Button:  "",
+			Ignore:  "Destekten bunu siz istemediyseniz parolanızı hemen sıfırlayın ve desteğe bildirin.",
 		},
 	},
 	"de": {
@@ -243,6 +291,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Support kontaktieren",
 			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
 		},
+		KindTwoFactorOn: {
+			Subject: "Die Zwei-Faktor-Anmeldung ist für Ihr Payrudder-Konto jetzt aktiv",
+			Lines:   []string{"Für Ihr Payrudder-Konto wurde die Zwei-Faktor-Anmeldung eingeschaltet. Ab jetzt brauchen Sie zur Anmeldung einen Code aus Ihrer Authenticator-App oder einen Ihrer Wiederherstellungscodes.", "Bewahren Sie die Wiederherstellungscodes sicher auf: Jeder funktioniert nur einmal."},
+			Button:  "",
+			Ignore:  "Wenn Sie das nicht waren, setzen Sie jetzt Ihr Passwort zurück und wenden Sie sich an den Support.",
+		},
+		KindTwoFactorOff: {
+			Subject: "Die Zwei-Faktor-Anmeldung Ihres Payrudder-Kontos wurde ausgeschaltet",
+			Lines:   []string{"Für Ihr Payrudder-Konto wurde die Zwei-Faktor-Anmeldung ausgeschaltet. Jetzt schützt nur noch Ihr Passwort das Konto.", "Sie können sie auf Ihrer Sicherheitsseite wieder einschalten."},
+			Button:  "",
+			Ignore:  "Wenn Sie das nicht waren, setzen Sie jetzt Ihr Passwort zurück und wenden Sie sich an den Support.",
+		},
+		KindRecoveryUsed: {
+			Subject: "Auf Ihrem Payrudder-Konto wurde ein Wiederherstellungscode verwendet",
+			Lines:   []string{"Einer Ihrer Wiederherstellungscodes wurde für die Anmeldung bei Ihrem Payrudder-Konto verwendet. Jeder Wiederherstellungscode funktioniert nur einmal.", "Wenn nur noch wenige übrig sind, erstellen Sie auf Ihrer Sicherheitsseite neue."},
+			Button:  "",
+			Ignore:  "Wenn Sie das nicht waren, setzen Sie jetzt Ihr Passwort zurück und wenden Sie sich an den Support.",
+		},
+		KindTwoFactorReset: {
+			Subject: "Der Support hat die Zwei-Faktor-Anmeldung Ihres Kontos ausgeschaltet",
+			Lines:   []string{"Der Payrudder-Support hat die Zwei-Faktor-Anmeldung Ihres Kontos ausgeschaltet und Sie überall abgemeldet, weil Sie Ihre Authenticator-App und Ihre Wiederherstellungscodes nicht verwenden konnten.", "Melden Sie sich mit Ihrem Passwort an und richten Sie die Zwei-Faktor-Anmeldung auf Ihrer Sicherheitsseite neu ein."},
+			Button:  "",
+			Ignore:  "Wenn Sie den Support nicht darum gebeten haben, setzen Sie sofort Ihr Passwort zurück und informieren Sie den Support.",
+		},
 	},
 	"fr": {
 		KindVerify: {
@@ -316,6 +388,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder a réactivé {app} (production). Ses clés d'API fonctionnent de nouveau, les paiements sont pris et les webhooks en attente sont envoyés.", "Rien d'autre n'a changé. Si quelque chose vous semble anormal, ouvrez un ticket de support."},
 			Button:  "Contacter le support",
 			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTwoFactorOn: {
+			Subject: "La connexion en deux étapes est activée sur votre compte Payrudder",
+			Lines:   []string{"La connexion en deux étapes a été activée sur votre compte Payrudder. Désormais, pour vous connecter, vous avez besoin d'un code de votre application d'authentification ou d'un de vos codes de récupération.", "Conservez les codes de récupération en lieu sûr : chacun ne fonctionne qu'une fois."},
+			Button:  "",
+			Ignore:  "Si ce n'était pas vous, réinitialisez votre mot de passe maintenant et contactez le support.",
+		},
+		KindTwoFactorOff: {
+			Subject: "La connexion en deux étapes a été désactivée sur votre compte Payrudder",
+			Lines:   []string{"La connexion en deux étapes a été désactivée sur votre compte Payrudder. Seul votre mot de passe le protège désormais.", "Vous pouvez la réactiver depuis votre page de sécurité."},
+			Button:  "",
+			Ignore:  "Si ce n'était pas vous, réinitialisez votre mot de passe maintenant et contactez le support.",
+		},
+		KindRecoveryUsed: {
+			Subject: "Un code de récupération a été utilisé sur votre compte Payrudder",
+			Lines:   []string{"Un de vos codes de récupération a servi à se connecter à votre compte Payrudder. Chaque code de récupération ne fonctionne qu'une fois.", "S'il en reste peu, créez-en de nouveaux depuis votre page de sécurité."},
+			Button:  "",
+			Ignore:  "Si ce n'était pas vous, réinitialisez votre mot de passe maintenant et contactez le support.",
+		},
+		KindTwoFactorReset: {
+			Subject: "Le support a désactivé la connexion en deux étapes de votre compte",
+			Lines:   []string{"Le support Payrudder a désactivé la connexion en deux étapes de votre compte et vous a déconnecté partout, car vous ne pouviez plus utiliser votre application d'authentification ni vos codes de récupération.", "Connectez-vous avec votre mot de passe, puis configurez de nouveau la connexion en deux étapes depuis votre page de sécurité."},
+			Button:  "",
+			Ignore:  "Si vous n'avez pas demandé cela au support, réinitialisez immédiatement votre mot de passe et prévenez le support.",
 		},
 	},
 	"es": {
@@ -391,6 +487,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Contactar con soporte",
 			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
 		},
+		KindTwoFactorOn: {
+			Subject: "El inicio de sesión en dos pasos está activado en tu cuenta de Payrudder",
+			Lines:   []string{"Se activó el inicio de sesión en dos pasos en tu cuenta de Payrudder. A partir de ahora necesitas un código de tu aplicación de autenticación, o uno de tus códigos de recuperación, para iniciar sesión.", "Guarda los códigos de recuperación en un lugar seguro: cada uno funciona una sola vez."},
+			Button:  "",
+			Ignore:  "Si no fuiste tú, restablece tu contraseña ahora y contacta con el soporte.",
+		},
+		KindTwoFactorOff: {
+			Subject: "Se desactivó el inicio de sesión en dos pasos de tu cuenta de Payrudder",
+			Lines:   []string{"Se desactivó el inicio de sesión en dos pasos de tu cuenta de Payrudder. Ahora solo tu contraseña la protege.", "Puedes volver a activarlo en tu página de seguridad."},
+			Button:  "",
+			Ignore:  "Si no fuiste tú, restablece tu contraseña ahora y contacta con el soporte.",
+		},
+		KindRecoveryUsed: {
+			Subject: "Se usó un código de recuperación en tu cuenta de Payrudder",
+			Lines:   []string{"Se usó uno de tus códigos de recuperación para iniciar sesión en tu cuenta de Payrudder. Cada código de recuperación funciona una sola vez.", "Si quedan pocos, crea otros nuevos en tu página de seguridad."},
+			Button:  "",
+			Ignore:  "Si no fuiste tú, restablece tu contraseña ahora y contacta con el soporte.",
+		},
+		KindTwoFactorReset: {
+			Subject: "El soporte desactivó el inicio de sesión en dos pasos de tu cuenta",
+			Lines:   []string{"El soporte de Payrudder desactivó el inicio de sesión en dos pasos de tu cuenta y cerró tus sesiones en todas partes, porque no podías usar tu aplicación de autenticación ni tus códigos de recuperación.", "Inicia sesión con tu contraseña y vuelve a configurar el inicio de sesión en dos pasos en tu página de seguridad."},
+			Button:  "",
+			Ignore:  "Si no pediste esto al soporte, restablece tu contraseña ahora y avisa al soporte de inmediato.",
+		},
 	},
 	"ar": {
 		KindVerify: {
@@ -464,6 +584,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"أعادت Payrudder تفعيل {app} (إنتاج). تعمل مفاتيح واجهة البرمجة من جديد، وتُقبل المدفوعات، وتُرسل الـwebhooks التي كانت تنتظر.", "لم يتغير شيء آخر. إن بدا لك شيء غير صحيح فافتح تذكرة دعم."},
 			Button:  "تواصل مع الدعم",
 			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
+		},
+		KindTwoFactorOn: {
+			Subject: "تم تفعيل تسجيل الدخول بخطوتين على حسابك في Payrudder",
+			Lines:   []string{"تم تفعيل تسجيل الدخول بخطوتين لحسابك في Payrudder. من الآن فصاعدًا تحتاج إلى رمز من تطبيق المصادقة أو أحد رموز الاسترداد لتسجيل الدخول.", "احتفظ برموز الاسترداد في مكان آمن: كل رمز يعمل مرة واحدة فقط."},
+			Button:  "",
+			Ignore:  "إذا لم تكن أنت، فأعد تعيين كلمة المرور الآن وتواصل مع الدعم.",
+		},
+		KindTwoFactorOff: {
+			Subject: "تم إيقاف تسجيل الدخول بخطوتين على حسابك في Payrudder",
+			Lines:   []string{"تم إيقاف تسجيل الدخول بخطوتين لحسابك في Payrudder. أصبحت كلمة المرور هي الحماية الوحيدة للحساب الآن.", "يمكنك تفعيله مجددًا من صفحة الأمان الخاصة بك."},
+			Button:  "",
+			Ignore:  "إذا لم تكن أنت، فأعد تعيين كلمة المرور الآن وتواصل مع الدعم.",
+		},
+		KindRecoveryUsed: {
+			Subject: "تم استخدام رمز استرداد على حسابك في Payrudder",
+			Lines:   []string{"تم استخدام أحد رموز الاسترداد لتسجيل الدخول إلى حسابك في Payrudder. كل رمز استرداد يعمل مرة واحدة فقط.", "إذا بقيت رموز قليلة، فأنشئ رموزًا جديدة من صفحة الأمان الخاصة بك."},
+			Button:  "",
+			Ignore:  "إذا لم تكن أنت، فأعد تعيين كلمة المرور الآن وتواصل مع الدعم.",
+		},
+		KindTwoFactorReset: {
+			Subject: "أوقف الدعم تسجيل الدخول بخطوتين على حسابك",
+			Lines:   []string{"أوقف دعم Payrudder تسجيل الدخول بخطوتين لحسابك وأنهى جلساتك في كل مكان، لأنك لم تتمكن من استخدام تطبيق المصادقة أو رموز الاسترداد.", "سجّل الدخول بكلمة المرور ثم أعد إعداد تسجيل الدخول بخطوتين من صفحة الأمان الخاصة بك."},
+			Button:  "",
+			Ignore:  "إذا لم تطلب ذلك من الدعم، فأعد تعيين كلمة المرور فورًا وأبلغ الدعم.",
 		},
 	},
 }

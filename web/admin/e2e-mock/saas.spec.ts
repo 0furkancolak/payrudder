@@ -129,6 +129,34 @@ test.describe("the operator", () => {
     expect(gw.called("DELETE", /\/overrides$/)).toHaveLength(1);
   });
 
+  test("turns off a lost second factor after a confirmation, with a reason", async ({ page }) => {
+    const { gw } = saasGateway(baseTenant(new MockGateway()));
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/organisations");
+    await page.getByRole("row", { name: /Ada Labs/ }).getByRole("button", { name: "Manage" }).click();
+    const sheet = page.getByRole("dialog");
+    // The owner's address is filled in; nothing happens without a reason.
+    await expect(sheet.getByLabel("Person's sign-in address")).toHaveValue("ada@example.com");
+    await expect(page.getByTestId("org-2fa-reset")).toBeDisabled();
+    await sheet.getByLabel("Reason (kept in the audit log)").fill("lost the phone and the codes; checked by video call");
+    await page.getByTestId("org-2fa-reset").click();
+    // Cancelling sends nothing.
+    await page.getByTestId("confirm-cancel").click();
+    expect(gw.called("POST", /two-factor\/reset$/)).toHaveLength(0);
+    await page.getByTestId("org-2fa-reset").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("ada@example.com will be signed out everywhere");
+    await page.getByTestId("confirm-accept").click();
+    await expect(page.getByText("Two-factor sign-in of ada@example.com is off. They have been mailed.")).toBeVisible();
+    expect(gw.called("POST", /two-factor\/reset$/)[0]?.body).toEqual({ email: "ada@example.com", reason: "lost the phone and the codes; checked by video call" });
+    // An address nobody signs in with is told, not hidden.
+    await sheet.getByLabel("Person's sign-in address").fill("nobody@example.com");
+    await sheet.getByLabel("Reason (kept in the audit log)").fill("x");
+    await page.getByTestId("org-2fa-reset").click();
+    await page.getByTestId("confirm-accept").click();
+    await expect(sheet).toContainText("No person signs in with that address.");
+  });
+
   test("searches by name", async ({ page }) => {
     const { gw } = saasGateway(baseTenant(new MockGateway()));
     await gw.install(page);

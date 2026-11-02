@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -23,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/totp"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -111,7 +114,7 @@ func (c *Commands) VerifyTwoFactor(ctx context.Context, req *plansv1.VerifyTwoFa
 	if err != nil {
 		return Opened{}, convert.Err(err, "user")
 	}
-	spend, err := c.codeSpender(ctx, db, user, req.GetCode())
+	spend, recovery, err := c.codeSpender(ctx, db, user, req.GetCode())
 	if err != nil {
 		if errors.Is(err, errBadCode) {
 			if user.LockedUntil != nil {
@@ -143,30 +146,34 @@ func (c *Commands) VerifyTwoFactor(ctx context.Context, req *plansv1.VerifyTwoFa
 		return Opened{}, convert.Err(err, "session")
 	}
 	c.log.InfoContext(ctx, "signed in with a second factor", "user_id", user.ID)
+	if recovery {
+		c.tell(ctx, user, usermail.KindRecoveryUsed)
+	}
 	return out, nil
 }
 
 var errBadCode = errors.New("two-factor code refused")
 
 // codeSpender checks a code against the user's confirmed authenticator secret or recovery codes and returns what spends it: a statement that must run in the
-// transaction that uses the proof (it is atomic, so a code works once). errBadCode says the code is wrong. A recovery code leaves an entry in the audit log.
-func (c *Commands) codeSpender(ctx context.Context, db *sqlc.Queries, user sqlc.User, code string) (func(context.Context, pgx.Tx) error, error) {
+// transaction that uses the proof (it is atomic, so a code works once). errBadCode says the code is wrong. A recovery code leaves an entry in the audit log, and
+// recovery is true for it: the caller mails the person once the transaction has committed (tell).
+func (c *Commands) codeSpender(ctx context.Context, db *sqlc.Queries, user sqlc.User, code string) (spend func(context.Context, pgx.Tx) error, recovery bool, err error) {
 	t, err := db.GetUserTotp(ctx, user.ID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && t.ConfirmedAt == nil) {
-		return nil, errBadCode
+		return nil, false, errBadCode
 	}
 	if err != nil {
-		return nil, convert.Err(err, "user")
+		return nil, false, convert.Err(err, "user")
 	}
 	if credential.WellFormedCode(code) {
 		secret, err := c.openSecret(user.ID, t.SecretEnc)
 		if err != nil {
 			c.log.ErrorContext(ctx, "authenticator secret cannot be opened", "user_id", user.ID, "err", err)
-			return nil, errBadCode
+			return nil, false, errBadCode
 		}
 		step, ok := totp.Match(secret, code, c.now(), t.LastStep)
 		if !ok {
-			return nil, errBadCode
+			return nil, false, errBadCode
 		}
 		return func(ctx context.Context, tx pgx.Tx) error {
 			if n, err := sqlc.New(tx).UseTotpStep(ctx, sqlc.UseTotpStepParams{UserID: user.ID, Step: step}); err != nil {
@@ -175,11 +182,11 @@ func (c *Commands) codeSpender(ctx context.Context, db *sqlc.Queries, user sqlc.
 				return errBadCode // the same code, used by a parallel request
 			}
 			return nil
-		}, nil
+		}, false, nil
 	}
 	norm, ok := totp.NormalizeRecovery(code)
 	if !ok {
-		return nil, errBadCode
+		return nil, false, errBadCode
 	}
 	hash := credential.HashRecovery(c.pepper, user.ID.String(), norm)
 	return func(ctx context.Context, tx pgx.Tx) error {
@@ -197,7 +204,13 @@ func (c *Commands) codeSpender(ctx context.Context, db *sqlc.Queries, user sqlc.
 		}
 		return audit.Record(ctx, tx, audit.Event{By: who(user), Action: "two_factor.recovery_code_used", TargetType: "user", TargetID: user.ID.String(),
 			Summary: fmt.Sprintf("signed in with a recovery code (%d left)", left), Detail: map[string]any{"codes_left": left}})
-	}, nil
+	}, true, nil
+}
+
+// tell mails the person that their two-factor sign-in changed: on, off, a recovery code used, or reset by support. The mail has no link and no secret, and goes
+// after the change has committed; a lost mail is not a failed change (usermail logs it).
+func (c *Commands) tell(ctx context.Context, u sqlc.User, kind usermail.Kind) {
+	c.mail.Send(ctx, usermail.Mail{Kind: kind, To: u.Email, Locale: u.Locale})
 }
 
 func (c *Commands) openSecret(userID uuid.UUID, sealed []byte) ([]byte, error) {
@@ -310,6 +323,7 @@ func (c *Commands) Confirm(ctx context.Context, req *plansv1.ConfirmTwoFactorReq
 		return nil, badCode()
 	}
 	var recovery []string
+	var person sqlc.User
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if n, err := q.ConfirmTotp(ctx, sqlc.ConfirmTotpParams{UserID: uid, Step: step}); err != nil {
@@ -325,30 +339,32 @@ func (c *Commands) Confirm(ctx context.Context, req *plansv1.ConfirmTwoFactorReq
 		if err != nil {
 			return err
 		}
+		person = u
 		return audit.Record(ctx, tx, audit.Event{By: who(u), Action: "two_factor.enabled", TargetType: "user", TargetID: uid.String(), Summary: "turned on two-factor sign-in"})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "user")
 	}
 	c.log.InfoContext(ctx, "two-factor sign-in turned on", "user_id", uid)
+	c.tell(ctx, person, usermail.KindTwoFactorOn)
 	return recovery, nil
 }
 
 // spendFor is the proof a signed-in person gives to change their second factor: a code that counts against the lock, spent in tx.
-func (c *Commands) spendFor(ctx context.Context, uid uuid.UUID, code string) (sqlc.User, func(context.Context, pgx.Tx) error, error) {
+func (c *Commands) spendFor(ctx context.Context, uid uuid.UUID, code string) (user sqlc.User, spend func(context.Context, pgx.Tx) error, recovery bool, err error) {
 	db := sqlc.New(c.pool)
-	user, err := db.TryTwoFactor(ctx, sqlc.TryTwoFactorParams{ID: uid, MaxFailures: MaxFailures, LockFor: convert.Interval(LockFor)})
+	user, err = db.TryTwoFactor(ctx, sqlc.TryTwoFactorParams{ID: uid, MaxFailures: MaxFailures, LockFor: convert.Interval(LockFor)})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return sqlc.User{}, nil, badCode() // locked, or no such user
+		return sqlc.User{}, nil, false, badCode() // locked, or no such user
 	}
 	if err != nil {
-		return sqlc.User{}, nil, convert.Err(err, "user")
+		return sqlc.User{}, nil, false, convert.Err(err, "user")
 	}
-	spend, err := c.codeSpender(ctx, db, user, code)
+	spend, recovery, err = c.codeSpender(ctx, db, user, code)
 	if errors.Is(err, errBadCode) {
-		return sqlc.User{}, nil, badCode()
+		return sqlc.User{}, nil, false, badCode()
 	}
-	return user, spend, err
+	return user, spend, recovery, err
 }
 
 // Disable turns two-factor sign-in off. It needs a code, and is refused while an account the user owns requires it.
@@ -367,7 +383,7 @@ func (c *Commands) Disable(ctx context.Context, req *plansv1.DisableTwoFactorReq
 	if st.OwnerRequires {
 		return errkey.New(codes.PermissionDenied, "identity.two_factor.required_by_organisation", "an organisation you own requires two-factor sign-in: turn that off first")
 	}
-	user, spend, err := c.spendFor(ctx, uid, req.GetCode())
+	user, spend, recovery, err := c.spendFor(ctx, uid, req.GetCode())
 	if err != nil {
 		return err
 	}
@@ -394,6 +410,10 @@ func (c *Commands) Disable(ctx context.Context, req *plansv1.DisableTwoFactorReq
 		return convert.Err(err, "user")
 	}
 	c.log.WarnContext(ctx, "two-factor sign-in turned off", "user_id", uid)
+	if recovery {
+		c.tell(ctx, user, usermail.KindRecoveryUsed)
+	}
+	c.tell(ctx, user, usermail.KindTwoFactorOff)
 	return nil
 }
 
@@ -403,7 +423,7 @@ func (c *Commands) RegenerateRecoveryCodes(ctx context.Context, req *plansv1.Reg
 	if !ok {
 		return nil, query.ErrNoSession()
 	}
-	user, spend, err := c.spendFor(ctx, uid, req.GetCode())
+	user, spend, recovery, err := c.spendFor(ctx, uid, req.GetCode())
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +449,66 @@ func (c *Commands) RegenerateRecoveryCodes(ctx context.Context, req *plansv1.Reg
 	if err != nil {
 		return nil, convert.Err(err, "user")
 	}
+	if recovery {
+		c.tell(ctx, user, usermail.KindRecoveryUsed)
+	}
 	return fresh, nil
+}
+
+// ResetTwoFactor is the operator's hand for a person who lost both the device and the recovery codes. It removes the secret, the recovery codes and the open second-step
+// challenges, ends every session of the person, clears the lock from failed sign-ins, writes the audit entry (the operator from the context, the person, the reason) in
+// the same transaction and mails the person. It cannot check who is asking: the operator did, by other means, before calling it. It says whether two-factor sign-in was
+// on; when it was not, nothing is changed, recorded or mailed. An owner of an account that requires two-factor sign-in is sent to the setup page by the gateway when
+// they sign in again.
+func (c *Commands) ResetTwoFactor(ctx context.Context, email, reason string) (bool, error) {
+	reason = strings.TrimSpace(reason)
+	if n := utf8.RuneCountInString(reason); n == 0 || n > 500 {
+		return false, domain.Invalid("reason", "required, at most 500 characters")
+	}
+	email = NormalizeEmail(email)
+	if email == "" {
+		return false, domain.Invalid("email", "required")
+	}
+	user, err := sqlc.New(c.pool).GetUserByEmail(ctx, email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, errkey.New(codes.NotFound, "identity.user.not_found", "no person signs in with that address")
+	}
+	if err != nil {
+		return false, convert.Err(err, "user")
+	}
+	var was bool
+	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		n, err := q.DeleteTotp(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+		if was = n > 0; !was {
+			return nil
+		}
+		if err := q.DeleteRecoveryCodes(ctx, user.ID); err != nil {
+			return err
+		}
+		if err := q.DeleteLoginChallengesOfUser(ctx, user.ID); err != nil {
+			return err
+		}
+		if err := q.RevokeUserSessions(ctx, user.ID); err != nil {
+			return err
+		}
+		if err := q.ResetLoginFailures(ctx, user.ID); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{Action: "two_factor.reset_by_operator", TargetType: "user", TargetID: user.ID.String(),
+			Summary: "the operator turned off two-factor sign-in of " + user.Email + " (lost device and recovery codes)", Detail: map[string]any{"reason": reason, "email": user.Email, "sessions_revoked": true}})
+	})
+	if err != nil {
+		return false, convert.Err(err, "user")
+	}
+	if was {
+		c.log.WarnContext(ctx, "two-factor sign-in reset by the operator", "user_id", user.ID)
+		c.tell(ctx, user, usermail.KindTwoFactorReset)
+	}
+	return was, nil
 }
 
 // SetAccountSecurity turns the requirement that the owners of an account have two-factor sign-in on or off. An owner only, and an owner who turns it on must have it

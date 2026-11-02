@@ -44,6 +44,13 @@ const (
 	KindTenantFrozen     Kind = "tenant_frozen"
 	KindTenantBanned     Kind = "tenant_banned"
 	KindTenantReinstated Kind = "tenant_reinstated"
+	// KindTwoFactorOn and KindTwoFactorOff tell the person that two-factor sign-in was turned on or off for their account, KindRecoveryUsed that a recovery code
+	// signed somebody in, and KindTwoFactorReset that support turned it off at their request (plan 22 G9). They carry no link: what to do if it was not the
+	// person is in the text.
+	KindTwoFactorOn    Kind = "two_factor_on"
+	KindTwoFactorOff   Kind = "two_factor_off"
+	KindRecoveryUsed   Kind = "two_factor_recovery_used"
+	KindTwoFactorReset Kind = "two_factor_reset"
 )
 
 // Mail is one message to compose. Link is the full URL the button opens; the token inside it is the only secret.
