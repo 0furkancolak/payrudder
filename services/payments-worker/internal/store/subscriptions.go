@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
@@ -20,18 +21,31 @@ type ProviderSubscription struct {
 	PayrudderSubscriptionID *string    `json:"quotify_subscription_id,omitempty"`
 	Status                  string     `json:"status"`
 	NextBilledAt            *time.Time `json:"next_billed_at,omitempty"`
-	UpdatedAt               time.Time  `json:"updated_at"`
+	// ScheduledChange is what the provider has announced it will do to the subscription later (a cancellation at the end of the period leaves Status "active" until then);
+	// absent when nothing is announced. Read-only: it is the provider's word as its last notification gave it.
+	ScheduledChange *ScheduledChange `json:"scheduled_change,omitempty"`
+	UpdatedAt       time.Time        `json:"updated_at"`
+}
+
+// ScheduledChange is a pending change to a subscription at its provider, in the provider's words.
+type ScheduledChange struct {
+	Action      string     `json:"action"`
+	EffectiveAt time.Time  `json:"effective_at"`
+	ResumeAt    *time.Time `json:"resume_at,omitempty"`
 }
 
 // Upsert records what the provider says about a subscription. Events can arrive out of order, so an older event never overwrites a
-// newer one: occurred is the provider's timestamp of the event, and the row keeps the latest.
-func (s Subscriptions) Upsert(ctx context.Context, tenant uuid.UUID, provider, env, ref string, payrudderID *uuid.UUID, status string, next *time.Time, occurred time.Time) error {
-	return at(ctx, s.DB, tenant, func(q *sqlc.Queries) error {
-		return q.UpsertProviderSubscription(ctx, sqlc.UpsertProviderSubscriptionParams{
-			TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, PayrudderSubscriptionID: payrudderID,
-			Status: status, NextBilledAt: next, UpdatedAt: occurred,
-		})
-	})
+// newer one: occurred is the provider's timestamp of the event, and the row keeps the latest. sched is the change the event announces, nil for none: every event
+// carries the whole subscription, so the row's announcement is replaced, and an event without one clears it.
+func (s Subscriptions) Upsert(ctx context.Context, tenant uuid.UUID, provider, env, ref string, payrudderID *uuid.UUID, status string, next *time.Time, sched *payments.ScheduledChange, occurred time.Time) error {
+	p := sqlc.UpsertProviderSubscriptionParams{
+		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, PayrudderSubscriptionID: payrudderID,
+		Status: status, NextBilledAt: next, UpdatedAt: occurred,
+	}
+	if sched != nil {
+		p.ScheduledAction, p.ScheduledEffectiveAt, p.ScheduledResumeAt = &sched.Action, &sched.EffectiveAt, sched.ResumeAt
+	}
+	return at(ctx, s.DB, tenant, func(q *sqlc.Queries) error { return q.UpsertProviderSubscription(ctx, p) })
 }
 
 // List returns a tenant's provider subscriptions, most recently changed first.
@@ -47,6 +61,9 @@ func (s Subscriptions) List(ctx context.Context, tenant uuid.UUID) ([]ProviderSu
 		out[i] = ProviderSubscription{
 			Provider: r.Provider, Environment: r.Environment, ProviderRef: r.ProviderRef,
 			Status: r.Status, NextBilledAt: r.NextBilledAt, UpdatedAt: r.UpdatedAt,
+		}
+		if r.ScheduledAction != nil && r.ScheduledEffectiveAt != nil {
+			out[i].ScheduledChange = &ScheduledChange{Action: *r.ScheduledAction, EffectiveAt: *r.ScheduledEffectiveAt, ResumeAt: r.ScheduledResumeAt}
 		}
 		if r.PayrudderSubscriptionID != nil {
 			id := r.PayrudderSubscriptionID.String()

@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/payments/stripe"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -32,8 +33,9 @@ func (s *Server) sandboxProviderRoutes() []Route {
 	}
 }
 
-// sandboxHosts are the providers with a test mode a person can connect, and the host of it. A bank transfer has no test mode: its sandbox is the simulator.
-var sandboxHosts = map[string]string{iyzico.Name: iyzico.SandboxURL, paddle.Name: paddle.SandboxURL}
+// sandboxHosts are the providers with a test mode a person can connect, and the host of it. A bank transfer has no test mode: its sandbox is the simulator. Stripe has one
+// host for both modes (the key's sk_test_ / rk_test_ prefix is the mode, which payments-worker checks against the environment and against the balance's livemode).
+var sandboxHosts = map[string]string{iyzico.Name: iyzico.SandboxURL, paddle.Name: paddle.SandboxURL, stripe.Name: stripe.LiveURL}
 
 // sandboxProvider checks the provider of the path: one Payrudder has an adapter for, and one that has a test mode.
 func sandboxProvider(w http.ResponseWriter, r *http.Request) (string, bool) {

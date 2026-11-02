@@ -17,7 +17,7 @@ service PlansService {
   rpc ResolveCustomer(ResolveCustomerRequest) returns (Customer);  // internal, hot path, cached by callers
   rpc ListCustomers(ListCustomersRequest) returns (ListCustomersResponse);
 
-  rpc SetPaymentMethod(SetPaymentMethodRequest) returns (Customer); // sandbox: only pm_sandbox_* tokens accepted
+  rpc SetPaymentMethod(SetPaymentMethodRequest) returns (Customer); // sandbox: the pm_sandbox_* scenarios, or a provider's test-mode method (pm_... / cus_...:pm_...)
   rpc CreateMeter(CreateMeterRequest) returns (Meter);              // quantity_scale (0..6) + unit_label, fixed per code
   rpc GetMeter(GetMeterRequest) returns (Meter);                   // by code, latest version
   rpc ListMeters(ListMetersRequest) returns (ListMetersResponse);

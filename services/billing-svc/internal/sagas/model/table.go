@@ -55,32 +55,35 @@ func (s State) Awaiting() bool {
 type Event string
 
 const (
-	EvStart           Event = "Start"             // finalize assigned the number
-	EvContinue        Event = "Continue"          // automatic hop out of a transient state
-	EvPdfRendered     Event = "PdfRendered"       // reply
-	EvPdfFailed       Event = "PdfFailed"         // reply
-	EvPaymentOK       Event = "PaymentSucceeded"  // reply
-	EvPaymentDeclined Event = "PaymentDeclined"   // reply
-	EvPaymentErrored  Event = "PaymentErrored"    // reply
-	EvStatusSucceeded Event = "StatusSucceeded"   // PaymentStatus reply: charged
-	EvStatusNotFound  Event = "StatusNotFound"    // PaymentStatus reply: no charge
-	EvStatusDeclined  Event = "StatusDeclined"    // PaymentStatus reply: declined
-	EvStatusPending   Event = "StatusPending"     // PaymentStatus reply: accepted, not settled yet
-	EvPollDue         Event = "PollDue"           // pending-payment scheduler
-	EvSettled         Event = "OfflineSettlement" // operator: the money was received outside a provider
-	EvRefunded        Event = "PaymentRefunded"   // reply
-	EvNotified        Event = "NotificationSent"  // reply
-	EvExhausted       Event = "StepExhausted"     // sweeper: retries of the step used up
-	EvDunningDue      Event = "DunningDue"        // dunning scheduler
-	EvRetry           Event = "Retry"             // operator
-	EvVoid            Event = "Void"              // operator
-	EvPayRequested    Event = "PayRequested"      // the customer asks to pay now on a hosted page (mock payment); counts as a retry
-	EvProviderSettled Event = "Settled"           // a provider confirmed a payment the customer made on its hosted page (payments-worker)
+	EvStart           Event = "Start"            // finalize assigned the number
+	EvContinue        Event = "Continue"         // automatic hop out of a transient state
+	EvPdfRendered     Event = "PdfRendered"      // reply
+	EvPdfFailed       Event = "PdfFailed"        // reply
+	EvPaymentOK       Event = "PaymentSucceeded" // reply
+	EvPaymentDeclined Event = "PaymentDeclined"  // reply
+	EvPaymentErrored  Event = "PaymentErrored"   // reply
+	EvStatusSucceeded Event = "StatusSucceeded"  // PaymentStatus reply: charged
+	EvStatusNotFound  Event = "StatusNotFound"   // PaymentStatus reply: no charge
+	EvStatusDeclined  Event = "StatusDeclined"   // PaymentStatus reply: declined
+	// The provider said the payment must not be tried again with this method (PaymentDeclined.final): no dunning, whatever attempts are left.
+	EvPaymentDeclinedFinal Event = "PaymentDeclinedFinal" // reply
+	EvStatusDeclinedFinal  Event = "StatusDeclinedFinal"  // PaymentStatus reply
+	EvStatusPending        Event = "StatusPending"        // PaymentStatus reply: accepted, not settled yet
+	EvPollDue              Event = "PollDue"              // pending-payment scheduler
+	EvSettled              Event = "OfflineSettlement"    // operator: the money was received outside a provider
+	EvRefunded             Event = "PaymentRefunded"      // reply
+	EvNotified             Event = "NotificationSent"     // reply
+	EvExhausted            Event = "StepExhausted"        // sweeper: retries of the step used up
+	EvDunningDue           Event = "DunningDue"           // dunning scheduler
+	EvRetry                Event = "Retry"                // operator
+	EvVoid                 Event = "Void"                 // operator
+	EvPayRequested         Event = "PayRequested"         // the customer asks to pay now on a hosted page (mock payment); counts as a retry
+	EvProviderSettled      Event = "Settled"              // a provider confirmed a payment the customer made on its hosted page (payments-worker)
 )
 
 // Events lists every event.
 var Events = []Event{EvStart, EvContinue, EvPdfRendered, EvPdfFailed, EvPaymentOK, EvPaymentDeclined, EvPaymentErrored,
-	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvStatusPending, EvPollDue, EvSettled, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid, EvPayRequested, EvProviderSettled}
+	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvPaymentDeclinedFinal, EvStatusDeclinedFinal, EvStatusPending, EvPollDue, EvSettled, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid, EvPayRequested, EvProviderSettled}
 
 // Effect is what the engine does when a transition fires.
 type Effect string
@@ -115,6 +118,8 @@ const (
 	AwaitCustomer Guard = "total > 0, customer pays"
 	// LinkDeclined: a declined payment on a link-collected invoice is the customer's to retry; there is no dunning.
 	LinkDeclined Guard = "customer pays, no dunning"
+	// WeCharge: the invoice is charged by the saga (not collected by a link); with a decline the provider said not to retry, dunning is skipped.
+	WeCharge Guard = "we charge, provider says do not retry"
 	// The three ages at which a "not found" answer is read (see Ctx.ChargeAge): too soon to trust, trustworthy, and past what the provider remembers of the key.
 	NotFoundYoung   Guard = "not found, charge younger than the grace period"
 	NotFoundSettled Guard = "not found, charge old enough to be sure"
@@ -178,6 +183,8 @@ func (g Guard) holds(c Ctx) bool {
 		return c.TotalMinor > 0 && c.Link
 	case LinkDeclined:
 		return c.Link
+	case WeCharge:
+		return !c.Link
 	case DunningLeft:
 		return !c.Link && c.DunningAttempt < c.MaxDunning
 	case DunningSpent:
@@ -219,6 +226,8 @@ var Table = []Row{
 	{PaymentRequested, EvPaymentDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentRequested, EvPaymentDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentRequested, EvPaymentDeclined, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentRequested, EvPaymentDeclinedFinal, WeCharge, Uncollectible, EffNone},
+	{PaymentRequested, EvPaymentDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentRequested, EvPaymentErrored, Always, PaymentUnknown, EffQueryStatus},
 	{PaymentRequested, EvExhausted, Always, PaymentUnknown, EffQueryStatus},
 
@@ -227,6 +236,10 @@ var Table = []Row{
 	{PaymentUnknown, EvPaymentDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentUnknown, EvPaymentDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentUnknown, EvPaymentDeclined, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentUnknown, EvPaymentDeclinedFinal, WeCharge, Uncollectible, EffNone},
+	{PaymentUnknown, EvPaymentDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentUnknown, EvStatusDeclinedFinal, WeCharge, Uncollectible, EffNone},
+	{PaymentUnknown, EvStatusDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentUnknown, EvStatusSucceeded, Always, Paid, EffNone},
 	// "Not found" is acted on only inside a window (Ctx.ChargeAge): before it the status is asked again later, after it nobody charges again with a key the provider
 	// may have forgotten, and the saga parks for the operator.
@@ -250,6 +263,8 @@ var Table = []Row{
 	{PaymentPending, EvStatusDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentPending, EvStatusDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentPending, EvStatusDeclined, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentPending, EvStatusDeclinedFinal, WeCharge, Uncollectible, EffNone},
+	{PaymentPending, EvStatusDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentPending, EvExhausted, Always, PaymentPending, EffSchedulePoll}, // a poll nobody answered: wait for the next one, do not park
 
 	{PaymentDeclined, EvDunningDue, Always, PaymentRequested, EffChargeDunning},

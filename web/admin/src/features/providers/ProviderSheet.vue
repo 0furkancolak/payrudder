@@ -13,7 +13,7 @@ import { SegmentedControl } from "@/shared/ui/segmented";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill } from "@/shared/ui/status-pill";
 import BankTransferForm from "./BankTransferForm.vue";
-import { useAppsProviders, useConnectProvider, useDisconnectProvider, type ConnectEnvironment } from "./connectApi";
+import { useAppsProviders, useConnectProvider, useDisconnectProvider, useRegisterWebhook, type ConnectEnvironment } from "./connectApi";
 import { ACCOUNT_LABEL, PROVIDER_LINKS, accountKey, connectionOf, helpKey, summarize, targetsOf, type AppResult, type AppRow, type Scope } from "./connections";
 
 /**
@@ -54,6 +54,7 @@ const testProblem = ref<string | null>(null);
 
 const connect = useConnectProvider();
 const disconnect = useDisconnectProvider();
+const register = useRegisterWebhook();
 
 const sandbox = computed(() => props.environment === "sandbox");
 const typedLabel = ref("");
@@ -119,6 +120,7 @@ function clear() {
   typedLabel.value = "";
   connect.reset();
   disconnect.reset();
+  register.reset();
   bankForm.value?.reset();
 }
 // A sheet that opens starts clean, in the scope it was opened for, with the buyer details filled in from the billing profile where they are already known.
@@ -182,6 +184,10 @@ async function test() {
   testProblem.value = c.problem;
 }
 
+function registerWebhook() {
+  if (props.appId !== "" && props.isOwner) register.mutate({ appId: props.appId, key: key.value, environment: props.environment });
+}
+
 async function removeNow() {
   const p = props.provider;
   if (p === "" || connectedTargets.value.length === 0) return;
@@ -232,6 +238,18 @@ async function removeNow() {
           <Button variant="outline" size="sm" :disabled="own.isFetching.value" data-testid="provider-test" @click="test">{{ own.isFetching.value ? t("product.providers.sheet.testing") : t("product.providers.sheet.test") }}</Button>
         </div>
 
+        <div v-if="provider === 'stripe' && isOwner && scope === 'app' && here.state !== 'none'" class="grid gap-1.5" data-testid="provider-webhook">
+          <span class="text-sm font-medium">{{ t("product.providers.sheet.webhook.title") }}</span>
+          <p class="text-muted-foreground text-xs">{{ t("product.providers.sheet.webhook.hint") }}</p>
+          <div>
+            <Button variant="outline" size="sm" type="button" :disabled="register.isPending.value" data-testid="provider-register-webhook" @click="registerWebhook">
+              {{ register.isPending.value ? t("product.providers.sheet.webhook.registering") : t("product.providers.sheet.webhook.register") }}
+            </Button>
+          </div>
+          <p v-if="register.isSuccess.value" class="text-success text-xs" role="status" data-testid="provider-webhook-done">{{ t("product.providers.sheet.webhook.done") }}</p>
+          <ErrorText :error="register.error.value" />
+        </div>
+
         <form id="provider-sheet-form" class="grid gap-3" novalidate autocomplete="off" :aria-label="t('product.goLive.provider.connectTitle')" @submit.prevent="submit">
           <template v-if="provider === 'banktransfer'">
             <BankTransferForm ref="bankForm" environment="live" />
@@ -239,7 +257,7 @@ async function removeNow() {
           <template v-else-if="provider !== ''">
             <p class="text-muted-foreground text-xs">
               {{ here.state !== "none" && scope === "app" ? t("product.providers.sheet.replaceNote") : t("product.goLive.provider.secretsOnce") }}
-              <span v-if="sandbox && (provider === 'iyzico' || provider === 'paddle')" data-testid="provider-sandbox-keys">{{ t(`product.providers.sheet.sandboxKeys.${provider}`) }} </span>
+              <span v-if="sandbox && (provider === 'iyzico' || provider === 'paddle' || provider === 'stripe')" data-testid="provider-sandbox-keys">{{ t(`product.providers.sheet.sandboxKeys.${provider}`) }} </span>
               <a v-if="link" :href="link" target="_blank" rel="noopener noreferrer" class="text-primary font-medium hover:underline">{{ t("product.providers.sheet.openDashboard", { provider: providerName }) }}</a>
             </p>
             <div v-if="adding" class="grid gap-1">

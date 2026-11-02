@@ -480,7 +480,7 @@ test.describe("several accounts at one provider", () => {
 });
 
 test.describe("Stripe", () => {
-  test("is connected with a secret key and the webhook's signing secret, shown by its name with a general icon, and has no test mode of its own", async ({ page }) => {
+  test("is connected with a secret key and the webhook's signing secret, shown by its name with a general icon", async ({ page }) => {
     const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
     liveGateway(gw, {});
     await gw.install(page);
@@ -491,7 +491,6 @@ test.describe("Stripe", () => {
     await expect(card).toContainText("Stripe");
     // A provider without a licensed mark is drawn with a general-purpose icon, never an image.
     await expect(card.locator("img")).toHaveCount(0);
-    await expect(page.getByTestId("integration-open-sandbox-stripe")).toHaveCount(0);
     await page.getByTestId("integration-open-stripe").click();
     const sheet = page.getByTestId("provider-sheet");
     await sheet.getByTestId("lp-api_key").fill("pk_live_publishable");
@@ -504,6 +503,52 @@ test.describe("Stripe", () => {
     await expect(page.getByTestId("provider-connected")).toContainText("Stripe connected");
     expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/stripe`)[0]?.body).toEqual({ api_key: "sk_live_SECRETKEY", webhook_secret: "whsec_SECRETHOOK" });
     await expect(card).toHaveAttribute("data-state", "working");
+    expect(await page.content()).not.toContain("SECRETKEY");
+  });
+
+  test("is connected with the key alone and Payrudder has Stripe create the webhook endpoint; a test key connects the sandbox the same way", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    sandboxProvidersGateway(gw);
+    const hooks: string[] = [];
+    gw.on((c) => {
+      if (c.method === "POST" && c.path.endsWith("/stripe/webhook")) {
+        hooks.push(c.path);
+        return { status: 201, body: { endpoint_id: "we_123" } };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    // Live: the key alone connects (the signing secret comes from the endpoint Stripe creates); the endpoint is created from the connection's sheet, with no address typed.
+    await page.getByTestId("integration-open-stripe").click();
+    const sheet = page.getByTestId("provider-sheet");
+    await expect(sheet.getByTestId("provider-webhook")).toHaveCount(0); // nothing to create an endpoint for before the account exists
+    await sheet.getByTestId("lp-api_key").fill("sk_live_SECRETKEY");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toContainText("Stripe connected");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/stripe`)[0]?.body).toEqual({ api_key: "sk_live_SECRETKEY" });
+    await page.getByTestId("integration-open-stripe").click();
+    await sheet.getByTestId("provider-register-webhook").click();
+    await expect(sheet.getByTestId("provider-webhook-done")).toContainText("Stripe created the endpoint");
+    expect(hooks).toEqual([`/app/v1/apps/${APP}/go-live/providers/stripe/webhook`]);
+    expect(gw.called("POST", hooks[0]!)[0]?.body).toBeFalsy();
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    // Sandbox: Stripe has a test mode (the same host, a test key); the form says so and the endpoint is made for the sandbox.
+    await expect(page.getByTestId("integration-sandbox-stripe")).toHaveText("Built-in simulator");
+    await page.getByTestId("integration-open-sandbox-stripe").click();
+    await expect(sheet).toContainText("Connect Stripe test mode");
+    await expect(sheet.getByTestId("provider-sandbox-keys")).toContainText("test-mode key");
+    await sheet.getByTestId("lp-api_key").fill("sk_test_SECRETKEY");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toContainText("Stripe test mode connected for the sandbox");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/sandbox/providers/stripe`)[0]?.body).toEqual({ api_key: "sk_test_SECRETKEY" });
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/stripe`)).toHaveLength(1);
+    await page.getByTestId("integration-open-sandbox-stripe").click();
+    await sheet.getByTestId("provider-register-webhook").click();
+    await expect(sheet.getByTestId("provider-webhook-done")).toBeVisible();
+    expect(hooks[1]).toBe(`/app/v1/apps/${APP}/sandbox/providers/stripe/webhook`);
     expect(await page.content()).not.toContain("SECRETKEY");
   });
 });

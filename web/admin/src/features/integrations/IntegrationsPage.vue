@@ -96,7 +96,7 @@ function card(id: IntegrationId): { state: CardState; line: string } {
 }
 
 /** The providers with a test mode a person can connect in the sandbox: a bank transfer has none. */
-const hasTestMode = (id: IntegrationId) => id === "iyzico" || id === "paddle";
+const hasTestMode = (id: IntegrationId) => id === "iyzico" || id === "paddle" || id === "stripe";
 /** The sandbox row of a card: the simulator, unless the app connected the provider's test mode. */
 function sandboxRow(id: IntegrationId, g: string): { state: ConnectionState; label: string } {
   if (inApp.value && hasTestMode(id)) {

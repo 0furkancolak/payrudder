@@ -9,9 +9,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/buyer"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/target"
@@ -25,12 +28,15 @@ import (
 const (
 	KindCheckout     = "checkout"
 	KindInstructions = "instructions"
+	// KindStoredCard is the customer's stored card, authenticated at their bank (3-D Secure).
+	KindStoredCard = "stored_card"
 )
 
 // Method ids. A method that needs a provider says which in its id.
 const (
 	MethodCheckout     = KindCheckout
 	MethodInstructions = KindInstructions + ":"
+	MethodStoredCard   = KindStoredCard
 )
 
 // Router names the provider the tenant's routing rules send a customer to.
@@ -44,7 +50,9 @@ type Deps struct {
 	Accounts store.Accounts
 	Resolver target.Resolver
 	Plans    Router
-	Log      *slog.Logger
+	// Customers, when set, lets a customer who has a stored card at a provider that can authenticate it be offered that payment.
+	Customers buyer.Reader
+	Log       *slog.Logger
 }
 
 // InvoiceLink is the provider's own document (invoice or receipt) for a payment it took.
@@ -70,6 +78,8 @@ type Filter struct {
 	Country     string
 	// Provider, when set, is the provider the invoice is paid through; otherwise the routing rules and the default account decide.
 	Provider string
+	// CustomerExternalID, when set, is the customer the invoice is out to.
+	CustomerExternalID string
 }
 
 // RoutedProvider is the provider an invoice is paid through: the one named, else the one the tenant's routing rules choose for the customer's country and
@@ -121,11 +131,30 @@ func Methods(ctx context.Context, d Deps, tenant uuid.UUID, f Filter) ([]Method,
 		if _, ok := prov.(payments.InvoiceCheckoutProvider); ok && a.Provider == routed {
 			methods = append(methods, Method{ID: MethodCheckout, Kind: KindCheckout, Provider: a.Provider})
 		}
+		if tp, ok := prov.(payments.ThreeDSProvider); ok && a.Provider == routed && f.CustomerExternalID != "" && d.Customers != nil {
+			// A customer who cannot be read is offered no stored card (the page still has the checkout), and the log says why.
+			cu, err := d.Customers.GetCustomer(ctx, tenant, f.CustomerExternalID)
+			switch {
+			case err != nil && status.Code(err) != codes.NotFound:
+				d.Log.WarnContext(ctx, "customer not readable for the stored card method", "tenant", tenant, "err", err)
+			case err == nil && tp.StoresPaymentMethod(cu.GetPaymentMethod()):
+				methods = append(methods, Method{ID: MethodStoredCard, Kind: KindStoredCard, Provider: a.Provider})
+			}
+		}
 		if _, ok := prov.(payments.InstructionsProvider); ok {
 			methods = append(methods, Method{ID: MethodInstructions + a.Provider, Kind: KindInstructions, Provider: a.Provider})
 		}
 	}
-	// The card checkout comes first, manual ways after it.
-	sort.SliceStable(methods, func(i, j int) bool { return methods[i].Kind == KindCheckout && methods[j].Kind != KindCheckout })
+	// The card checkout comes first, the stored card next, manual ways after them.
+	rank := func(k string) int {
+		switch k {
+		case KindCheckout:
+			return 0
+		case KindStoredCard:
+			return 1
+		}
+		return 2
+	}
+	sort.SliceStable(methods, func(i, j int) bool { return rank(methods[i].Kind) < rank(methods[j].Kind) })
 	return methods, nil
 }

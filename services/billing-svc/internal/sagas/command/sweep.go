@@ -272,6 +272,9 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 	case *commandsv1.ReplyEnvelope_PaymentSucceeded:
 		return model.EvPaymentOK, "reply:PaymentSucceeded", true
 	case *commandsv1.ReplyEnvelope_PaymentDeclined:
+		if x.PaymentDeclined.GetFinal() {
+			return model.EvPaymentDeclinedFinal, "reply:PaymentDeclined(final)", true
+		}
 		return model.EvPaymentDeclined, "reply:PaymentDeclined", true
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
 		return model.EvPaymentErrored, "reply:PaymentErrored", true
@@ -284,6 +287,9 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 		case commandsv1.PaymentStatus_STATE_SUCCEEDED:
 			return model.EvStatusSucceeded, "reply:PaymentStatus(succeeded)", true
 		case commandsv1.PaymentStatus_STATE_DECLINED:
+			if x.PaymentStatus.GetFinal() {
+				return model.EvStatusDeclinedFinal, "reply:PaymentStatus(declined, final)", true
+			}
 			return model.EvStatusDeclined, "reply:PaymentStatus(declined)", true
 		case commandsv1.PaymentStatus_STATE_PENDING:
 			return model.EvStatusPending, "reply:PaymentStatus(pending)", true

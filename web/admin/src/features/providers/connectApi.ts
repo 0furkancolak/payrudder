@@ -50,6 +50,18 @@ async function eachApp(apps: readonly AppRow[], act: (id: string) => Promise<unk
   return out;
 }
 
+/** Has the provider create the webhook endpoint of the app's account and keep its signing secret: Payrudder's own address, never one typed here. The owner only; the secret is not in the answer. */
+export function useRegisterWebhook() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { appId: string; key: string; environment?: ConnectEnvironment }) =>
+      v.environment === "sandbox"
+        ? unwrap(api.POST("/app/v1/apps/{id}/sandbox/providers/{provider}/webhook", { params: { path: { id: v.appId, provider: v.key as "stripe" } } }))
+        : unwrap(api.POST("/app/v1/apps/{id}/go-live/providers/{provider}/webhook", { params: { path: { id: v.appId, provider: v.key } } })),
+    onSuccess: (_, v) => refresh(queries, [v.appId]),
+  });
+}
+
 /** Connects (or replaces) the account at a provider on the given apps: the live one, or with environment "sandbox" the test mode of the sandbox. The settings go up as they are typed and are never read back. */
 export function useConnectProvider() {
   const queries = useQueryClient();
@@ -57,7 +69,7 @@ export function useConnectProvider() {
     mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; /** The account key when it is a further account ("paddle~eu"); the provider's own name otherwise. */ key?: string; settings: Record<string, unknown>; environment?: ConnectEnvironment }) =>
       eachApp(v.apps, async (id) => {
         if (v.environment === "sandbox") {
-          await unwrap(api.PUT("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } }, body: v.settings }));
+          await unwrap(api.PUT("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" | "stripe" } }, body: v.settings }));
         } else {
           await unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.key ?? v.provider } }, body: v.settings }));
         }
@@ -73,7 +85,7 @@ export function useDisconnectProvider() {
     mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; key?: string; environment?: ConnectEnvironment }) =>
       eachApp(v.apps, async (id) => {
         if (v.environment === "sandbox") {
-          await unwrap(api.DELETE("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } } }));
+          await unwrap(api.DELETE("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" | "stripe" } } }));
         } else {
           await unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.key ?? v.provider } } }));
         }
