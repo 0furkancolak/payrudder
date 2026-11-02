@@ -393,6 +393,10 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.checkout.fields_required`
 - `payments.checkout.unsupported`
 - `payments.customer.not_ready`
+- `payments.dispute.bad_id`
+- `payments.dispute.not_found`
+- `payments.dispute.note_required`
+- `payments.dispute.note_too_long`
 - `payments.failover.bad_target`
 - `payments.failover.not_found`
 - `payments.invoice.amount_required`
@@ -524,6 +528,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.override.not_found`
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
+- `plans.price_change.date_differs`
 - `plans.price_change.not_found`
 - `plans.price_change.paused`
 - `plans.price_change.withdrawn`
@@ -572,6 +577,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `support.attachment.too_large`
 - `support.attachment.too_many`
 - `support.canned_reply.not_found`
+- `support.ticket.cannot_merge`
 - `support.ticket.closed`
+- `support.ticket.merged`
 - `support.ticket.not_found`
+- `support.ticket.not_solved`
 - `support.tickets.too_many`

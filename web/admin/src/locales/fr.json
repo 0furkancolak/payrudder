@@ -261,6 +261,22 @@
       "resume": "Reprendre les changements de prix",
       "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
       "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    },
+    "priceNotice": {
+      "title": "Préavis des changements de prix",
+      "unverified": "Non vérifié, pas un avis juridique",
+      "hint": "Le préavis que le changement de prix d'un vendeur utilise quand il n'en indique pas, et le préavis minimal par pays. Personne n'a vérifié ces lignes au regard des règles d'un pays : c'est ce que vous saisissez. Un pays peut relever le plancher, jamais descendre sous les 14 jours que la plateforme garde pour tous. Un client d'un pays au minimum plus long est prévenu d'autant plus tôt, ou écarté de l'exécution car il se renouvelle trop tôt.",
+      "defaultDays": "Préavis par défaut, en jours",
+      "defaultHint": "Utilisé quand un changement de prix n'indique pas de préavis. De 14 à 365.",
+      "rules": "Préavis minimal par pays",
+      "country": "Pays (code ISO ou *)",
+      "days": "Jours",
+      "note": "Note (source, date, qui a vérifié)",
+      "remove": "Retirer",
+      "add": "Ajouter un pays",
+      "save": "Enregistrer les règles de préavis",
+      "star": "La ligne * vaut pour tout pays sans ligne propre (et pour un client sans pays). Sans elle, la plateforme garde 14 jours.",
+      "updated": "Dernier enregistrement par {who} le {date}."
     }
   },
   "tenant": {
@@ -757,6 +773,26 @@
         "deleteInUse": "C'est la carte avec laquelle les factures du client sont débitées. Une fois supprimée, le prochain prélèvement échoue tant qu'un nouveau moyen de paiement n'est pas défini pour le client. Elle est supprimée chez le prestataire de paiement, c'est irréversible.",
         "deletedInUse": "La carte a été supprimée. C'était celle des prélèvements des factures du client : définissez un nouveau moyen de paiement pour le client.",
         "hint": "Payrudder ne conserve aucun numéro de carte : une carte est enregistrée là où le payeur la saisit, et le moyen de paiement du client la désigne. Ici, vous voyez les cartes et pouvez en supprimer une."
+      },
+      "askCard": {
+        "action": "Demander une carte",
+        "title": "Demander une carte au client",
+        "hint": "Stripe ouvre sa propre page où le client enregistre une carte pour des prélèvements ultérieurs. Rien n'est prélevé maintenant et aucun numéro de carte ne passe par Payrudder. Vous envoyez le lien au client.",
+        "consent": "Dans ce parcours, Payrudder ne recueille ni ne conserve aucun consentement. Le guide de Stripe demande que vous obteniez l'accord explicite du client pour être prélevé en son absence (montant et moment, comment le montant est déterminé, comment résilier) et que vous en gardiez une trace. Envoyez le lien avec vos conditions et conservez vous-même leur accord.",
+        "returnUrl": "Adresse de retour",
+        "returnUrlHint": "Où Stripe renvoie le client après la page : une adresse à vous, https uniquement.",
+        "errors": {
+          "required": "Saisissez l'adresse à laquelle le client revient.",
+          "notHttps": "L'adresse doit commencer par https:// et désigner un site.",
+          "tooLong": "L'adresse est trop longue (2000 caractères au plus)."
+        },
+        "made": "Le lien est prêt. Envoyez-le au client.",
+        "link": "Lien vers la page de Stripe",
+        "copy": "Copier",
+        "after": "Quand le client a enregistré la carte, Stripe le signale à Payrudder et la carte devient son moyen de paiement : les factures suivantes sont prélevées dessus. Il n'y a rien d'autre à faire ici. Si le lien ne fonctionne plus, créez-en un autre.",
+        "close": "Fermer",
+        "make": "Créer le lien",
+        "again": "Créer un autre lien"
       }
     },
     "packages": {
@@ -913,7 +949,10 @@
           "tenantDefault": "Langue par défaut de cette application",
           "show": "Aperçu de l'e-mail",
           "subject": "Objet :"
-        }
+        },
+        "fromDate": "À partir du (facultatif)",
+        "fromDateHelp": "Laissez vide pour déplacer chaque abonnement à son prochain renouvellement. Avec une date, chaque abonnement passe à son premier renouvellement à cette date ou après : un plan mensuel au premier, un plan annuel parfois des mois plus tard. Au moins le délai de préavis, au plus deux ans.",
+        "startsFrom": "à partir du {date}"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -3178,7 +3217,8 @@
       "price_change": {
         "not_found": "Modification de prix introuvable.",
         "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
-        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard.",
+        "date_differs": "Un changement de prix ouvert pour ces versions commence à une autre date. Retirez-le pour en faire un nouveau."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",
@@ -3370,6 +3410,12 @@
       },
       "refund": {
         "charge_unclear": "La facture a plusieurs encaissements réussis et le remboursement n'en désigne aucun avec certitude. Remboursez le client chez le prestataire de paiement, puis enregistrez-le sur l'avoir."
+      },
+      "dispute": {
+        "bad_id": "Ce n'est pas l'identifiant d'un litige.",
+        "not_found": "Le litige est introuvable.",
+        "note_required": "Écrivez quelque chose dans la note.",
+        "note_too_long": "Une note fait 2000 caractères au plus."
       }
     },
     "einvoice": {
@@ -3781,7 +3827,10 @@
       },
       "ticket": {
         "closed": "Ce ticket est clos. Ouvrez-en un nouveau.",
-        "not_found": "Ce ticket est introuvable."
+        "not_found": "Ce ticket est introuvable.",
+        "merged": "Ce ticket a été fusionné dans un autre. Écrivez-y.",
+        "cannot_merge": "Ces deux tickets ne peuvent pas être fusionnés : il faut deux tickets différents d'une même personne dans une même organisation, aucun déjà fusionné, et celui qui reçoit ne doit pas être fermé.",
+        "not_solved": "Vous pouvez noter un ticket une fois qu'il est résolu."
       },
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
@@ -5646,7 +5695,7 @@
     "filters": {
       "any": "Tous",
       "late": "En retard seulement",
-      "searchHint": "Objet ou #numéro"
+      "searchHint": "Sujet, #numéro ou mots des messages"
     },
     "status": {
       "active": "Actifs",
@@ -5682,7 +5731,7 @@
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord",
     "unread": "Nouveau",
-    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application.",
+    "businessHours": "Les délais de réponse comptent les heures ouvrables : du lundi au vendredi, de 09:00 à 18:00, dans le fuseau de votre app, hors jours fermés. Les délais ci-dessus valent pour une app du forfait standard : une app gratuite a plus de temps, une app entreprise moins. Le ticket indique l'heure exacte.",
     "tags": {
       "title": "Étiquettes",
       "filter": "Étiquette",
@@ -5713,7 +5762,10 @@
       "onTime": "Réponses dans les temps",
       "answeredOf": "{answered} répondus sur {opened} ouverts",
       "byStatus": "Tous les tickets, par statut",
-      "byPriority": "Encore en attente, par priorité"
+      "byPriority": "Encore en attente, par priorité",
+      "satisfaction": "Satisfaction, {days} derniers jours",
+      "ratingAverage": "{average} sur 5 d'après {n} notes",
+      "stars": "{n} étoiles"
     },
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",
@@ -5729,6 +5781,64 @@
       "failed": "Ces fichiers n'ont pas été joints :",
       "openedButFailed": "Votre ticket a été ouvert, mais certains fichiers n'ont pas été joints. Vous pouvez les joindre à une réponse.",
       "download": "Télécharger {name}"
+    },
+    "links": {
+      "title": "Concerne",
+      "none": "Aucun élément lié.",
+      "kind": {
+        "customer": "Client",
+        "invoice": "Facture",
+        "subscription": "Abonnement"
+      },
+      "env": {
+        "live": "production",
+        "sandbox": "bac à sable"
+      },
+      "remove": "Retirer le lien vers {link}",
+      "kindLabel": "Type",
+      "refLabel": "Identifiant du client ou de l'élément",
+      "envLabel": "Environnement",
+      "customerHint": "L'identifiant du client dans votre app",
+      "idHint": "L'identifiant affiché sur sa page",
+      "add": "Lier",
+      "needsApp": "Choisissez d'abord une app : un lien désigne un élément de cette app."
+    },
+    "rating": {
+      "ask": "Comment avez-vous trouvé notre aide ?",
+      "stars": "{n} sur 5",
+      "comment": "Un commentaire (facultatif)",
+      "send": "Envoyer la note",
+      "yours": "Votre note",
+      "change": "Modifier",
+      "operatorSees": "Noté {n} sur 5 par le client"
+    },
+    "merge": {
+      "open": "Fusionner dans un autre ticket",
+      "title": "Fusionner #{number} dans un autre ticket",
+      "hint": "Ses messages et ses fichiers passent dans l'autre ticket et celui-ci est fermé avec un renvoi vers lui. Seuls deux tickets de la même personne peuvent être fusionnés.",
+      "into": "Fusionner dans",
+      "none": "Cette personne n'a pas d'autre ticket dans la liste qui puisse le recevoir. Effacez le filtre de statut pour en voir plus.",
+      "confirm": "Fusionner",
+      "mergedInto": "Ce ticket a été fusionné dans #{number}. Ses messages s'y trouvent.",
+      "joined": "a fusionné le ticket {number} dans celui-ci",
+      "joinedOther": "a fusionné ce ticket dans {number}"
+    },
+    "holidays": {
+      "open": "Jours fermés de {app}",
+      "title": "Jours fermés de {app}",
+      "hint": "L'horloge de première réponse des tickets de cette app ne tourne pas ces jours-là, comme un week-end. Ce sont des jours civils dans le fuseau de l'app. Un ticket déjà ouvert garde son échéance ; changer sa priorité la recalcule avec les jours tels qu'ils sont alors.",
+      "none": "Aucun jour fermé pour l'instant.",
+      "day": "Jour",
+      "name": "Nom (facultatif)",
+      "add": "Ajouter le jour",
+      "save": "Enregistrer les jours fermés",
+      "remove": "Retirer {day}"
+    },
+    "slaTier": "L'échéance a été calculée pour une app du forfait {tier}.",
+    "tier": {
+      "free": "gratuit",
+      "standard": "standard",
+      "enterprise": "entreprise"
     }
   },
   "connect": {
@@ -6351,7 +6461,30 @@
     "opened": "Ouvert le",
     "closed": "Clos le",
     "reference": "Dossier",
-    "case": "Dossier"
+    "case": "Dossier",
+    "fee": "Frais de litige",
+    "handled": "Traité",
+    "handledLabel": "Traitement",
+    "allHandled": "Tous",
+    "handledYes": "Traité",
+    "handledNo": "Non traité",
+    "due": {
+      "overdue": "en retard",
+      "soon": "bientôt"
+    },
+    "notes": {
+      "title": "Notes",
+      "hint": "Pour vous et vos collègues ; Payrudder ne l'envoie nulle part. Les preuves elles-mêmes se soumettent chez votre prestataire de paiement, pas ici.",
+      "mark": "Marquer comme traité",
+      "lift": "Retirer la marque « traité »",
+      "empty": "Aucune note pour le moment.",
+      "placeholder": "Écrire une note sur ce dossier",
+      "add": "Ajouter la note",
+      "event": {
+        "handled": "Marqué comme traité",
+        "unhandled": "Marque « traité » retirée"
+      }
+    }
   },
   "blocklist": {
     "new": "Ajouter à la liste de blocage",

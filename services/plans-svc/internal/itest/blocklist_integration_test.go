@@ -109,6 +109,11 @@ func testBlocklist(t *testing.T) {
 	})
 
 	t.Run("the operator's list holds for every app, and does not say it is the operator's", func(t *testing.T) {
+		// An app's own call (not the operator) is refused by plans-svc itself, whatever the gateway lets through.
+		_, err := e.admin.ListPlatformBlocklist(ctx, &plansv1.ListPlatformBlocklistRequest{})
+		wantCode(t, "an app reading the operator's list", err, codes.PermissionDenied, "")
+		_, err = e.admin.AddPlatformBlocklistEntry(ctx, &plansv1.AddPlatformBlocklistEntryRequest{Kind: "email", Value: "x@example.com"})
+		wantCode(t, "an app adding to the operator's list", err, codes.PermissionDenied, "")
 		added, err := e.admin.AddPlatformBlocklistEntry(operator(), &plansv1.AddPlatformBlocklistEntryRequest{Kind: "email", Value: "Banned@Example.com", Note: "fraud ring", Actor: "root@example.com"})
 		if err != nil || added.GetEntry().GetValue() != "banned@example.com" || added.GetEntry().GetCreatedBy() != "root@example.com" {
 			t.Fatalf("add = %v, %v", added, err)

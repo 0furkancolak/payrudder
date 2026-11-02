@@ -46,6 +46,8 @@ func (s *Server) goLiveRoutes() []Route {
 		{"DELETE", "/admin/v1/blocklist/{id}", AccessOperator, "", s.removePlatformBlocklistEntry},
 		{"GET", "/admin/v1/price-change-pause", AccessOperator, "", s.priceChangePause},
 		{"PUT", "/admin/v1/price-change-pause", AccessOperator, "", s.setPriceChangePause},
+		{"GET", "/admin/v1/price-change-notice", AccessOperator, "", s.priceChangeNotice},
+		{"PUT", "/admin/v1/price-change-notice", AccessOperator, "", s.setPriceChangeNotice},
 	}
 }
 
@@ -402,6 +404,24 @@ func (s *Server) setPriceChangePause(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := s.d.Admin.SetPriceChangePause(r.Context(), &plansv1.SetPriceChangePauseRequest{Paused: *body.Paused, Reason: body.Reason, Actor: actorOf(r)})
 	respond(w, r, http.StatusOK, resp.GetPause(), err)
+}
+
+// priceChangeNotice is GET /admin/v1/price-change-notice: the notice rules of price changes (plan 15).
+func (s *Server) priceChangeNotice(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.GetPriceChangeNotice(r.Context(), &plansv1.GetPriceChangeNoticeRequest{})
+	respond(w, r, http.StatusOK, resp.GetNotice(), err)
+}
+
+// setPriceChangeNotice is PUT /admin/v1/price-change-notice: the operator replaces the default notice and the table of the least notice per country.
+func (s *Server) setPriceChangeNotice(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetPriceChangeNoticeRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.Actor = actorOf(r)
+	resp, err := s.d.Admin.SetPriceChangeNotice(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetNotice(), err)
 }
 
 // appPromote copies the app's sandbox configuration to its live environment (phase 45 D). With dry_run it only returns the diff; without, it applies it, and

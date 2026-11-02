@@ -4,6 +4,7 @@ import (
 	"context"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
 // Handler serves the blocklist methods of PlansService (the app's list).
@@ -35,10 +36,16 @@ type AdminHandler struct{ platform *Platform }
 func NewAdminHandler(p *Platform) *AdminHandler { return &AdminHandler{platform: p} }
 
 func (h *AdminHandler) ListPlatformBlocklist(ctx context.Context, _ *plansv1.ListPlatformBlocklistRequest) (*plansv1.ListPlatformBlocklistResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
 	return h.platform.List(ctx)
 }
 
 func (h *AdminHandler) AddPlatformBlocklistEntry(ctx context.Context, req *plansv1.AddPlatformBlocklistEntryRequest) (*plansv1.AddPlatformBlocklistEntryResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
 	e, err := h.platform.Add(ctx, req)
 	if err != nil {
 		return nil, err
@@ -47,5 +54,8 @@ func (h *AdminHandler) AddPlatformBlocklistEntry(ctx context.Context, req *plans
 }
 
 func (h *AdminHandler) RemovePlatformBlocklistEntry(ctx context.Context, req *plansv1.RemovePlatformBlocklistEntryRequest) (*plansv1.RemovePlatformBlocklistEntryResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
 	return &plansv1.RemovePlatformBlocklistEntryResponse{}, h.platform.Remove(ctx, req)
 }

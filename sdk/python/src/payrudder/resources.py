@@ -95,6 +95,13 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
+    def create_payment_method_setup(self, external_id: str, body: m.CreatePaymentMethodSetupRequest, *, options: RequestOptions | None = None) -> m.PaymentMethodSetup:
+        """Make the link to the provider's page where the customer saves a card for later charges.
+
+        ``POST /v1/customers/{external_id}/payment-method-setup``
+        """
+        return cast("m.PaymentMethodSetup", self._client._request("POST", f"/v1/customers/{_p(external_id)}/payment-method-setup", body=body, options=options))
+
     def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
         """The cards the payment provider holds for the customer.
 
@@ -1674,6 +1681,27 @@ class DisputesResource:
         """
         return cast("m.ListDisputesResponse", self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
 
+    def list_dispute_history(self, id: str, *, options: RequestOptions | None = None) -> m.ListDisputeEventsResponse:
+        """The notes and marks you made on a dispute, newest first.
+
+        ``GET /v1/disputes/{id}/history``
+        """
+        return cast("m.ListDisputeEventsResponse", self._client._request("GET", f"/v1/disputes/{_p(id)}/history", options=options))
+
+    def add_dispute_note(self, id: str, body: m.AddDisputeNoteRequest, *, options: RequestOptions | None = None) -> m.DisputeEvent:
+        """Write a note on a dispute.
+
+        ``POST /v1/disputes/{id}/notes``
+        """
+        return cast("m.DisputeEvent", self._client._request("POST", f"/v1/disputes/{_p(id)}/notes", body=body, options=options))
+
+    def set_dispute_handled(self, id: str, body: m.SetDisputeHandledRequest, *, options: RequestOptions | None = None) -> m.Dispute:
+        """Mark a dispute as handled in Payrudder, or lift the mark.
+
+        ``PUT /v1/disputes/{id}/handled``
+        """
+        return cast("m.Dispute", self._client._request("PUT", f"/v1/disputes/{_p(id)}/handled", body=body, response_wire='Dispute', options=options))
+
 
 class AssetsResource:
     """``/v1/assets`` and related operations."""
@@ -2013,6 +2041,13 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/payment-method``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
+
+    async def create_payment_method_setup(self, external_id: str, body: m.CreatePaymentMethodSetupRequest, *, options: RequestOptions | None = None) -> m.PaymentMethodSetup:
+        """Make the link to the provider's page where the customer saves a card for later charges.
+
+        ``POST /v1/customers/{external_id}/payment-method-setup``
+        """
+        return cast("m.PaymentMethodSetup", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/payment-method-setup", body=body, options=options))
 
     async def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
         """The cards the payment provider holds for the customer.
@@ -3612,6 +3647,27 @@ class AsyncDisputesResource:
         ``GET /v1/disputes``
         """
         return cast("m.ListDisputesResponse", await self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
+
+    async def list_dispute_history(self, id: str, *, options: RequestOptions | None = None) -> m.ListDisputeEventsResponse:
+        """The notes and marks you made on a dispute, newest first.
+
+        ``GET /v1/disputes/{id}/history``
+        """
+        return cast("m.ListDisputeEventsResponse", await self._client._request("GET", f"/v1/disputes/{_p(id)}/history", options=options))
+
+    async def add_dispute_note(self, id: str, body: m.AddDisputeNoteRequest, *, options: RequestOptions | None = None) -> m.DisputeEvent:
+        """Write a note on a dispute.
+
+        ``POST /v1/disputes/{id}/notes``
+        """
+        return cast("m.DisputeEvent", await self._client._request("POST", f"/v1/disputes/{_p(id)}/notes", body=body, options=options))
+
+    async def set_dispute_handled(self, id: str, body: m.SetDisputeHandledRequest, *, options: RequestOptions | None = None) -> m.Dispute:
+        """Mark a dispute as handled in Payrudder, or lift the mark.
+
+        ``PUT /v1/disputes/{id}/handled``
+        """
+        return cast("m.Dispute", await self._client._request("PUT", f"/v1/disputes/{_p(id)}/handled", body=body, response_wire='Dispute', options=options))
 
 
 class AsyncAssetsResource:

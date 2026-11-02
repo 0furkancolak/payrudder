@@ -126,6 +126,21 @@ type PaymentDispute struct {
 	OpenedAt       time.Time
 	ClosedAt       *time.Time
 	UpdatedAt      time.Time
+	FeeMinor       *int64
+	FeeCurrency    *string
+	HandledAt      *time.Time
+	HandledBy      string
+}
+
+type PaymentDisputeEvent struct {
+	ID          int64
+	TenantID    uuid.UUID
+	Environment string
+	DisputeID   int64
+	Action      string
+	Note        string
+	Actor       string
+	CreatedAt   time.Time
 }
 
 type PaymentLedger struct {

@@ -3,6 +3,7 @@ package query
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -91,6 +92,27 @@ func Disputes(ctx context.Context, d Deps, tenant uuid.UUID, invoice, outcome st
 		return nil, fmt.Errorf("list the disputes: %w", err)
 	}
 	return rows, nil
+}
+
+// DisputeID reads the id of a case from a path: the number Payrudder gave it.
+func DisputeID(raw string) (int64, error) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id < 1 {
+		return 0, refuse.New(http.StatusBadRequest, "payments.dispute.bad_id", "the dispute id is the number Payrudder gave the case")
+	}
+	return id, nil
+}
+
+// DisputeHistory is what the seller did with a case, newest first: notes, and the marks that it was handled.
+func DisputeHistory(ctx context.Context, d Deps, tenant uuid.UUID, id int64) ([]store.DisputeEvent, error) {
+	ev, err := d.Disputes.Events(ctx, tenant, id)
+	if errors.Is(err, store.ErrNoDispute) {
+		return nil, refuse.New(http.StatusNotFound, "payments.dispute.not_found", "no such dispute")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read the history of dispute %d: %w", id, err)
+	}
+	return ev, nil
 }
 
 // ChargeWindow is the window a payment that waits for the customer (3-D Secure) has: when the invoice's newest charge was first tried and when the status query starts to

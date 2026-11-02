@@ -559,18 +559,19 @@ type PlatformBlocklist struct {
 }
 
 type PriceChange struct {
-	TenantID    uuid.UUID
-	ID          uuid.UUID
-	PlanCode    string
-	FromVersion int32
-	ToVersion   int32
-	NoticeDays  int32
-	EffectiveAt time.Time
-	State       string
-	CreatedBy   string
-	CreatedAt   time.Time
-	WithdrawnAt *time.Time
-	WithdrawnBy string
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+	PlanCode      string
+	FromVersion   int32
+	ToVersion     int32
+	NoticeDays    int32
+	EffectiveAt   time.Time
+	State         string
+	CreatedBy     string
+	CreatedAt     time.Time
+	WithdrawnAt   *time.Time
+	WithdrawnBy   string
+	EffectiveFrom *time.Time
 }
 
 type PriceChangeItem struct {
@@ -582,6 +583,19 @@ type PriceChangeItem struct {
 	EffectiveAt    *time.Time
 	NotifiedAt     *time.Time
 	UpdatedAt      time.Time
+}
+
+type PriceChangeNoticeRule struct {
+	Country       string
+	MinNoticeDays int32
+	Note          string
+}
+
+type PriceChangeNoticeSetting struct {
+	Singleton         bool
+	DefaultNoticeDays int32
+	UpdatedBy         string
+	UpdatedAt         *time.Time
 }
 
 type PriceChangePause struct {
@@ -749,6 +763,12 @@ type SupportEvent struct {
 	CreatedAt time.Time
 }
 
+type SupportHoliday struct {
+	AppID uuid.UUID
+	Day   pgtype.Date
+	Name  string
+}
+
 type SupportMessage struct {
 	ID           uuid.UUID
 	TicketID     uuid.UUID
@@ -758,6 +778,7 @@ type SupportMessage struct {
 	Internal     bool
 	Body         string
 	CreatedAt    time.Time
+	Tsv          interface{}
 }
 
 type SupportTicket struct {
@@ -781,6 +802,21 @@ type SupportTicket struct {
 	SlaZone          string
 	OpenerSeenAt     *time.Time
 	Tags             []string
+	SlaTier          string
+	SlaAppID         *uuid.UUID
+	MergedInto       *uuid.UUID
+	Rating           *int16
+	RatingComment    string
+	RatedAt          *time.Time
+}
+
+type SupportTicketLink struct {
+	ID           uuid.UUID
+	TicketID     uuid.UUID
+	LinkTenantID uuid.UUID
+	Kind         string
+	Ref          string
+	CreatedAt    time.Time
 }
 
 type TaxRate struct {

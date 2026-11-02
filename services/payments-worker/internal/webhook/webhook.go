@@ -161,7 +161,7 @@ func (s *Server) modules() []RouteRegistrar {
 			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
 		&health.Handler{Store: store.ProviderHealth{DB: s.Ledger.DB}, Log: s.Log},
-		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger, Disputes: s.DisputeCases, Attempts: s.Attempts, Window: s.TransferWindow}, Command: ledgercommand.Deps{Reset: s.Reset}},
+		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger, Disputes: s.DisputeCases, Attempts: s.Attempts, Window: s.TransferWindow}, Command: ledgercommand.Deps{Reset: s.Reset, Disputes: s.DisputeCases}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
 			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Customers: s.Plans, Log: s.Log}},
@@ -642,6 +642,14 @@ func (d *delivery) recordDispute(ctx context.Context, conf payments.Notification
 		AmountMinor: conf.AmountMinor, Currency: conf.Currency, ProviderRef: ev.ID, Source: store.SourceWebhook, Detail: detail, OccurredAt: at}); err != nil {
 		return err
 	}
+	// The fee the provider took for the case is a ledger row of its own, written once (a repeat of the fact is the same row), when a notification says what it was.
+	if ev.FeeMinor > 0 && ev.FeeCurrency != "" {
+		if _, err := d.s.Ledger.Append(ctx, store.LedgerEntry{TenantID: d.tenant, InvoiceID: invoice, Provider: d.name, Environment: d.env, Kind: store.KindDisputeFee, Status: store.StatusSucceeded,
+			AmountMinor: ev.FeeMinor, Currency: ev.FeeCurrency, ProviderRef: ev.ID + ":fee", Source: store.SourceWebhook, Detail: "dispute fee of " + ev.ID, OccurredAt: at}); err != nil {
+			return err
+		}
+	}
 	return d.s.DisputeCases.Upsert(ctx, store.DisputeCase{TenantID: d.tenant, Environment: d.env, Provider: d.name, Ref: ev.ID, PaymentRef: conf.ProviderRef, InvoiceID: invoice,
-		AmountMinor: conf.AmountMinor, Currency: conf.Currency, Outcome: string(ev.Outcome), Formal: ev.Formal, Status: ev.Status, Reason: ev.Reason, EvidenceDue: ev.EvidenceDue, OpenedAt: at})
+		AmountMinor: conf.AmountMinor, Currency: conf.Currency, Outcome: string(ev.Outcome), Formal: ev.Formal, Status: ev.Status, Reason: ev.Reason, EvidenceDue: ev.EvidenceDue, OpenedAt: at,
+		FeeMinor: ev.FeeMinor, FeeCurrency: ev.FeeCurrency})
 }

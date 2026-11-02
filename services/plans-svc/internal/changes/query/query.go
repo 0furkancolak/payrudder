@@ -57,6 +57,34 @@ type Priced struct {
 	Quote       subscription.Quote
 	At          time.Time
 	Trial       bool
+	// Loc is the tenant's time zone, in which the subscription's periods are counted.
+	Loc *time.Location
+}
+
+// NotBefore moves a change that waits for the end of the paid period to the first period start of the subscription on or after t (plan 15, "from date X"): a
+// subscription renewing before t renews on at its old price, and the new price starts on the first renewal from t. A change that starts at t or later already is
+// left as it is. Only the date moves; the fee of the new plan and the quote's other figures do not depend on it.
+func (c *Priced) NotBefore(t time.Time) error {
+	if c.Quote.Timing != subscription.AtPeriodEnd || !c.Quote.Effective.Before(t) {
+		return nil
+	}
+	interval := subscription.Interval(c.Row.Interval)
+	// The period that contains the instant just before t ends on the first period start that is t or later.
+	n, err := subscription.PeriodIndex(c.Row.BillingAnchor, interval, t.Add(-time.Microsecond), c.Loc)
+	if err != nil {
+		return err
+	}
+	ps, err := subscription.PeriodStart(c.Row.BillingAnchor, interval, n, c.Loc)
+	if err != nil {
+		return err
+	}
+	pe, err := subscription.PeriodEnd(c.Row.BillingAnchor, interval, n, c.Loc)
+	if err != nil {
+		return err
+	}
+	c.Quote.PeriodStart, c.Quote.PeriodEnd = ps, pe
+	c.Quote.Effective, c.Quote.NewAnchor, c.Quote.NewFeeDue, c.Quote.NextRenewal = pe, pe, pe, pe
+	return nil
 }
 
 // Message is the quote the way the API returns it.
@@ -121,7 +149,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 		return nil, err
 	}
 
-	pc := &Priced{Row: row, NewPV: newPV, NewInterval: newInterval, NewQuantity: newQuantity, At: at}
+	pc := &Priced{Row: row, NewPV: newPV, NewInterval: newInterval, NewQuantity: newQuantity, At: at, Loc: loc}
 	if eff == subscription.Trialing {
 		if err := pc.quoteTrial(req.GetTiming(), newFee); err != nil {
 			return nil, err

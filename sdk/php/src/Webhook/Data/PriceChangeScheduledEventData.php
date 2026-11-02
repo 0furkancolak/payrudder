@@ -9,7 +9,7 @@ use Payrudder\Internal\Cast;
 /**
  * The `data` of `price_change.scheduled`: a run of a price change scheduled at least one subscription. `scheduled` and `skipped` are what that run did.
  * `priceChange` is the price change as the API returns it, without the fields at their zero value (`id`, `plan_code`, `from_version`, `to_version`, `notice_days`,
- * `effective_time`, `state`, `create_time` and, when set, `created_by`, `withdraw_time`, `withdrawn_by` and the counts `scheduled`, `applied`, `withdrawn`, `skipped`).
+ * `effective_time`, `state`, `create_time` and, when set, `effective_from`, `created_by`, `withdraw_time`, `withdrawn_by` and the counts `scheduled`, `applied`, `withdrawn`, `skipped`).
  * Read it with `WebhookEvent::dataAs(PriceChangeScheduledEventData::class)`.
  */
 final class PriceChangeScheduledEventData implements EventData

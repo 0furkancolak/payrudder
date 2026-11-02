@@ -32,6 +32,7 @@ func (s *Server) supportRoutes() []Route {
 		{"GET", "/app/v1/support/tickets/{id}", AccessSession, ratelimit.ClassRead, s.supportMyGet},
 		{"POST", "/app/v1/support/tickets/{id}/replies", AccessSession, ratelimit.ClassWrite, s.supportMyReply},
 		{"PUT", "/app/v1/support/tickets/{id}/status", AccessSession, ratelimit.ClassWrite, s.supportMyStatus},
+		{"POST", "/app/v1/support/tickets/{id}/rating", AccessSession, ratelimit.ClassWrite, s.supportMyRate},
 		{"POST", "/app/v1/support/tickets/{id}/messages/{message_id}/attachments", AccessSession, ratelimit.ClassWrite, s.supportMyAttach},
 		{"GET", "/app/v1/support/tickets/{id}/attachments/{attachment_id}", AccessSession, ratelimit.ClassRead, s.supportMyDownload},
 
@@ -39,6 +40,9 @@ func (s *Server) supportRoutes() []Route {
 		{"GET", "/admin/v1/support/tickets/{id}", AccessOperator, "", s.supportGet},
 		{"PATCH", "/admin/v1/support/tickets/{id}", AccessOperator, "", s.supportUpdate},
 		{"POST", "/admin/v1/support/tickets/{id}/replies", AccessOperator, "", s.supportReply},
+		{"POST", "/admin/v1/support/tickets/{id}/merge", AccessOperator, "", s.supportMerge},
+		{"GET", "/admin/v1/support/apps/{app_id}/holidays", AccessOperator, "", s.supportHolidays},
+		{"PUT", "/admin/v1/support/apps/{app_id}/holidays", AccessOperator, "", s.supportSetHolidays},
 		{"GET", "/admin/v1/support/report", AccessOperator, "", s.supportReport},
 		{"GET", "/admin/v1/support/operators", AccessOperator, "", s.supportOperators},
 		{"GET", "/admin/v1/support/canned-replies", AccessOperator, "", s.supportCannedList},
@@ -52,7 +56,7 @@ func (s *Server) supportRoutes() []Route {
 
 func (s *Server) supportMyList(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	resp, err := s.d.Support.ListMySupportTickets(r.Context(), &plansv1.ListMySupportTicketsRequest{UserId: sess.UserID, Status: r.URL.Query().Get("status")})
+	resp, err := s.d.Support.ListMySupportTickets(r.Context(), &plansv1.ListMySupportTicketsRequest{UserId: sess.UserID, Status: r.URL.Query().Get("status"), Search: r.URL.Query().Get("search")})
 	noStore(w)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -130,6 +134,7 @@ func (s *Server) supportUpdate(w http.ResponseWriter, r *http.Request) {
 	var keys map[string]json.RawMessage
 	_ = json.Unmarshal(raw, &keys)
 	_, req.SetTags = keys["tags"]
+	_, req.SetLinks = keys["links"]
 	// The signed-in operator's address is who the ticket's history names (the machine token: "Payrudder support").
 	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
 	resp, err := s.d.Support.UpdateSupportTicket(r.Context(), req)
@@ -146,6 +151,49 @@ func (s *Server) supportReply(w http.ResponseWriter, r *http.Request) {
 	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
 	resp, err := s.d.Support.ReplySupportTicket(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp, err)
+}
+
+// supportMyRate is POST /app/v1/support/tickets/{id}/rating: what the person thought of a solved ticket, 1 to 5 and a comment.
+func (s *Server) supportMyRate(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.RateMySupportTicketRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.UserId, req.TicketId = sessionFrom(r.Context()).UserID, r.PathValue("id")
+	resp, err := s.d.Support.RateMySupportTicket(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportMerge is POST /admin/v1/support/tickets/{id}/merge: the ticket's messages move into the ticket named by into_ticket_id (the same person's), and it is closed.
+func (s *Server) supportMerge(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.MergeSupportTicketsRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
+	resp, err := s.d.Support.MergeSupportTickets(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportHolidays is GET /admin/v1/support/apps/{app_id}/holidays: the days off the first-answer clock of the app's tickets skips.
+func (s *Server) supportHolidays(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Support.GetSupportHolidays(r.Context(), &plansv1.GetSupportHolidaysRequest{AppId: r.PathValue("app_id")})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportSetHolidays is PUT /admin/v1/support/apps/{app_id}/holidays: the whole list is replaced.
+func (s *Server) supportSetHolidays(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetSupportHolidaysRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.AppId, req.AuthorName = r.PathValue("app_id"), operatorFrom(r.Context())
+	resp, err := s.d.Support.SetSupportHolidays(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 // supportMyUnread is the number of the person's tickets with an answer or a status change they have not read (the badge on the help page's link).

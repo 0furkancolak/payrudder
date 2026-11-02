@@ -46,6 +46,11 @@ service AdminService {
   // a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
   // already scheduled is still applied at its renewal; withdraw the price change to stop that.
   rpc SetPriceChangePause(SetPriceChangePauseRequest) returns (SetPriceChangePauseResponse);
+  // GetPriceChangeNotice returns the notice rules of price changes: the notice a run uses when it names none and the least notice per country (plan 15). The rows are
+  // not legal advice and nobody has checked them.
+  rpc GetPriceChangeNotice(GetPriceChangeNoticeRequest) returns (GetPriceChangeNoticeResponse);
+  // SetPriceChangeNotice replaces the notice rules in one step (operator only).
+  rpc SetPriceChangeNotice(SetPriceChangeNoticeRequest) returns (SetPriceChangeNoticeResponse);
 }
 
 message CreateAccountRequest {
@@ -272,4 +277,38 @@ message PriceChangePause {
   string reason = 2;
   string updated_by = 3;
   google.protobuf.Timestamp update_time = 4;
+}
+
+message GetPriceChangeNoticeRequest {}
+message GetPriceChangeNoticeResponse {
+  PriceChangeNotice notice = 1;
+}
+
+message SetPriceChangeNoticeRequest {
+  // The notice a run uses when its request names none: 14 to 365 days.
+  int32 default_notice_days = 1;
+  // The whole table; rows not listed are removed. Each country once; '*' is the floor for any country without a row (14 when it has none).
+  repeated PriceChangeNoticeRule rules = 2;
+  // Who asks. The gateway sets it; a value in the request is overwritten.
+  string actor = 3;
+}
+message SetPriceChangeNoticeResponse {
+  PriceChangeNotice notice = 1;
+}
+
+// The notice rules of price changes. UNVERIFIED and not legal advice: the code's floor of 14 days is a guess, and a country's row is whatever the operator typed.
+message PriceChangeNotice {
+  int32 default_notice_days = 1;
+  repeated PriceChangeNoticeRule rules = 2;
+  string updated_by = 3;
+  google.protobuf.Timestamp update_time = 4;
+}
+
+message PriceChangeNoticeRule {
+  // An ISO 3166-1 alpha-2 code in capitals, or '*' for any other country.
+  string country = 1;
+  // The least notice before a price starts for a customer in that country: 14 to 365 days (a country row can raise the floor, never lower the code's 14).
+  int32 min_notice_days = 2;
+  // Free text for the next operator (a source, a date, who checked it). At most 200 characters.
+  string note = 3;
 }

@@ -99,6 +99,11 @@ type AddBlocklistEntryRequest struct {
 	Note  string `json:"note,omitempty"`
 }
 
+// AddDisputeNoteRequest is the request body of AddDisputeNote.
+type AddDisputeNoteRequest struct {
+	Note string `json:"note"`
+}
+
 // Address: A postal address as printed on an invoice. Every part is optional.
 type Address struct {
 	Line1 string `json:"line1"`
@@ -901,6 +906,14 @@ type CreatePaymentLinkRequest struct {
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
+// CreatePaymentMethodSetupRequest is the request body of CreatePaymentMethodSetup.
+type CreatePaymentMethodSetupRequest struct {
+	// The provider whose page it is; only Stripe has one. One of: stripe.
+	Provider string `json:"provider,omitempty"`
+	// Where the provider sends the customer after the page. `https` only
+	ReturnURL string `json:"return_url"`
+}
+
 // CreatePlanRequest is the request body of CreatePlan.
 type CreatePlanRequest struct {
 	Code string `json:"code"`
@@ -1335,6 +1348,34 @@ type Dispute struct {
 	OpenedTime      time.Time `json:"opened_time"`
 	// Absent while the case is open
 	ClosedTime time.Time `json:"closed_time,omitempty"`
+	// What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the
+	// provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own.
+	// Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the
+	// payout totals; UNVERIFIED against a live account. Absent when no notification named a fee
+	FeeMinor Int64 `json:"fee_minor,omitempty"`
+	// The currency of `fee_minor`
+	FeeCurrency string `json:"fee_currency,omitempty"`
+	// Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the
+	// provider
+	Handled bool `json:"handled"`
+	// Absent when the case is not marked
+	HandledTime time.Time `json:"handled_time,omitempty"`
+	// Who marked it; absent when it is not marked and for a viewer of the account
+	HandledBy string `json:"handled_by,omitempty"`
+	// How many notes you wrote (`GET /v1/disputes/{id}/history`)
+	NoteCount Int64 `json:"note_count"`
+}
+
+// DisputeEvent is an object of the API; see components.schemas.DisputeEvent in api/openapi/v1.yaml.
+type DisputeEvent struct {
+	ID string `json:"id"`
+	// A note, the mark that the case was handled, or that mark lifted. One of: note, handled, unhandled.
+	Action string `json:"action"`
+	// The text of a note; absent for a mark
+	Note string `json:"note,omitempty"`
+	// Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account
+	Actor      string    `json:"actor,omitempty"`
+	CreateTime time.Time `json:"create_time"`
 }
 
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
@@ -2020,6 +2061,11 @@ type ListCustomersResponse struct {
 	NextPageToken string     `json:"next_page_token"`
 }
 
+// ListDisputeEventsResponse is the response of ListDisputeEvents.
+type ListDisputeEventsResponse struct {
+	Events []DisputeEvent `json:"events"`
+}
+
 // ListDisputesResponse is the response of ListDisputes.
 type ListDisputesResponse struct {
 	Disputes []Dispute `json:"disputes"`
@@ -2249,6 +2295,14 @@ type PaymentLink struct {
 	IdempotencyKey string `json:"idempotency_key"`
 }
 
+// PaymentMethodSetup is an object of the API; see components.schemas.PaymentMethodSetup in api/openapi/v1.yaml.
+type PaymentMethodSetup struct {
+	// The provider's page: send it to the customer
+	URL string `json:"url"`
+	// The provider's reference of the page (Stripe's Checkout Session id)
+	Ref string `json:"ref"`
+}
+
 // PaymentWait is an object of the API; see components.schemas.PaymentWait in api/openapi/v1.yaml.
 type PaymentWait struct {
 	// The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and
@@ -2361,6 +2415,8 @@ type PriceChange struct {
 	// The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of
 	// the notice)
 	EffectiveTime time.Time `json:"effective_time"`
+	// The date the seller chose the new price to start from; null when each subscription moves on its next renewal
+	EffectiveFrom *time.Time `json:"effective_from"`
 	// One of: open, withdrawn.
 	State string `json:"state"`
 	// The signed-in person's address, key:<id> for an API key, or the operator
@@ -2740,8 +2796,15 @@ type SchedulePriceChangeRequest struct {
 	FromVersion int `json:"from_version"`
 	// The version they move to; 0 or absent is the latest published
 	ToVersion *int `json:"to_version,omitempty"`
-	// Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14
+	// Days before the new price starts that the customer must be told at the least: absent or 0 is the platform's
+	// default (30 until the operator changes it), otherwise at least 14. A customer in a country with a longer
+	// minimum (the operator's table) is told that much earlier, or skipped as `renews_soon`.
 	NoticeDays *int `json:"notice_days,omitempty"`
+	// The date the new price starts from. Each subscription then moves on its first period start on or after it (a
+	// monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next
+	// renewal. At least `notice_days` from now and at most two years. A run that continues an open price change
+	// must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`).
+	EffectiveFrom *time.Time `json:"effective_from,omitempty"`
 	// Only count; change nothing and mail nobody
 	DryRun *bool `json:"dry_run,omitempty"`
 }
@@ -2795,6 +2858,11 @@ type SetContractWithdrawalStatusRequest struct {
 	// Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is
 	// whatever is left of the invoice.
 	RefundAmountMinor *Int64 `json:"refund_amount_minor,omitempty"`
+}
+
+// SetDisputeHandledRequest is the request body of SetDisputeHandled.
+type SetDisputeHandledRequest struct {
+	Handled bool `json:"handled"`
 }
 
 // SetInvoiceLogoRequest is the request body of SetInvoiceLogo.

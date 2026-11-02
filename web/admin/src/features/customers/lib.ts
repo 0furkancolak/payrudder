@@ -171,3 +171,18 @@ export function isBlocked(c: Pick<Customer, "block_time" | "blocked_until">, now
   if (!c.block_time) return false;
   return !c.blocked_until || Date.parse(c.blocked_until) > now;
 }
+
+/** The address the customer returns to after the provider's page: `https` only, with a host, as the API takes it. The reason is the key under `billing.customers.askCard.errors`. */
+export function returnUrlProblem(raw: string): "required" | "notHttps" | "tooLong" | undefined {
+  const v = raw.trim();
+  if (!v) return "required";
+  if (v.length > 2000) return "tooLong";
+  // "https:///x" is a site to a browser's URL parser and none to the API's: the address must name the host right after the slashes.
+  if (!/^https:\/\/[^/\s]/i.test(v)) return "notHttps";
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" && u.host !== "" ? undefined : "notHttps";
+  } catch {
+    return "notHttps";
+  }
+}

@@ -177,6 +177,10 @@ type DisputeEvent struct {
 	Reason string
 	// EvidenceDue is when the seller's evidence is due; zero when the provider does not say.
 	EvidenceDue time.Time
+	// FeeMinor and FeeCurrency are the fee the provider took for the case, when the event says (Stripe's balance transactions of the dispute, Paddle's chargeback fee of the
+	// payout totals); zero and empty otherwise. The currency can differ from the disputed amount's: it is the currency the provider settles in.
+	FeeMinor    int64
+	FeeCurrency string
 }
 
 // Notification is what a confirmed provider notification says.
