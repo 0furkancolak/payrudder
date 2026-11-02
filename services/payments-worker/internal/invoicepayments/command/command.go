@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -67,6 +68,9 @@ type Payment struct {
 	// gateway that hands the form to the return endpoint). Empty: the provider is not asked to call back.
 	CallbackURL string `json:"callback_url"`
 	Environment string `json:"environment"`
+	// Installments is the number of instalments the payer chose for a stored-card payment (0 or 1: one payment). It is a choice of the page's form: it is checked
+	// against what the provider offers for the card before anything is started, and ignored by every other method.
+	Installments int `json:"installments"`
 }
 
 // Started is where the customer goes next.
@@ -88,6 +92,9 @@ type attemptRequest struct {
 	Currency    string `json:"currency"`
 	Method      string `json:"method"`
 	SagaID      string `json:"saga_id,omitempty"`
+	// Installments and PaidMinor are set when a stored-card payment is split: the count and the provider's quote for it in all (the return confirms with the same total).
+	Installments int   `json:"installments,omitempty"`
+	PaidMinor    int64 `json:"paid_minor,omitempty"`
 }
 
 // Start begins the payment of an invoice by the method the customer chose.
@@ -217,12 +224,30 @@ func startStoredCard(ctx context.Context, d Deps, t, invoice uuid.UUID, in Payme
 	if !tp.StoresPaymentMethod(cu.GetPaymentMethod()) {
 		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.unknown_method", "the customer has no stored card at "+name)
 	}
+	// A split payment is checked against what the provider quotes for this card and amount now: the count is the browser's word, the total is the provider's.
+	req := attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: query.MethodStoredCard, SagaID: in.SagaID}
+	if in.Installments > 1 {
+		offer, ok := prov.(payments.InstallmentOffer)
+		var options []payments.InstallmentOption
+		var oerr error
+		if ok {
+			options, oerr = offer.StoredCardInstallments(ctx, cu.GetPaymentMethod(), in.AmountMinor, in.Currency)
+		}
+		if oerr != nil {
+			d.Log.WarnContext(ctx, "instalment options not readable", "tenant", t, "provider", name, "err", oerr)
+		}
+		i := slices.IndexFunc(options, func(o payments.InstallmentOption) bool { return o.Count == in.Installments })
+		if i < 0 {
+			return Started{}, refuse.New(http.StatusConflict, "payments.invoice.installment_unavailable", fmt.Sprintf("%d instalments are not offered for this card and amount", in.Installments))
+		}
+		req.Installments, req.PaidMinor = in.Installments, options[i].TotalMinor
+	}
 	n, err := d.Attempts.CountLinkAttempts(ctx, t, invoice)
 	if err != nil {
 		return Started{}, fmt.Errorf("count the payment attempts: %w", err)
 	}
 	key := fmt.Sprintf("%s%s:%d", LinkKeyPrefix, invoice, n+1)
-	redelivered, err := startAttempt(ctx, d, t, invoice, name, key, attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: query.MethodStoredCard, SagaID: in.SagaID})
+	redelivered, err := startAttempt(ctx, d, t, invoice, name, key, req)
 	if err != nil {
 		return Started{}, err
 	}
@@ -230,7 +255,8 @@ func startStoredCard(ctx context.Context, d Deps, t, invoice uuid.UUID, in Payme
 		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.payment_in_progress", "a payment for this invoice is being started; try again in a moment")
 	}
 	st, err := tp.StartThreeDS(ctx, payments.ThreeDSRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number, AmountMinor: in.AmountMinor, Currency: in.Currency,
-		PaymentMethod: cu.GetPaymentMethod(), CallbackURL: callbackFor(in.CallbackURL, key), Buyer: buyer.FromCustomer(cu, in.PayerIP)})
+		PaymentMethod: cu.GetPaymentMethod(), CallbackURL: callbackFor(in.CallbackURL, key), Buyer: buyer.FromCustomer(cu, in.PayerIP),
+		Installments: req.Installments, PaidMinor: req.PaidMinor})
 	if err != nil {
 		return Started{}, startFailure("3-D Secure payment", err)
 	}

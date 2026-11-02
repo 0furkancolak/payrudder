@@ -69,6 +69,16 @@ type Method struct {
 	ID       string `json:"id"`
 	Kind     string `json:"kind"` // checkout or instructions
 	Provider string `json:"provider"`
+	// Installments are the ways to split a stored-card payment that the provider quotes now for the card and the amount (more than one payment; one payment is always
+	// there). Empty when the account enables none, the provider does not answer, or the method is not a stored card.
+	Installments []Installment `json:"installments,omitempty"`
+}
+
+// Installment is one split of a payment: Count payments of EachMinor, TotalMinor in all (the price and what the bank charges for splitting it).
+type Installment struct {
+	Count      int   `json:"count"`
+	EachMinor  int64 `json:"each_minor"`
+	TotalMinor int64 `json:"total_minor"`
 }
 
 // Filter narrows the methods to those that suit a payment.
@@ -80,6 +90,8 @@ type Filter struct {
 	Provider string
 	// CustomerExternalID, when set, is the customer the invoice is out to.
 	CustomerExternalID string
+	// AmountMinor, when set, is what the invoice asks: a stored-card method is then offered with the instalments the provider quotes for it.
+	AmountMinor int64
 }
 
 // RoutedProvider is the provider an invoice is paid through: the one named, else the one the tenant's routing rules choose for the customer's country and
@@ -138,7 +150,18 @@ func Methods(ctx context.Context, d Deps, tenant uuid.UUID, f Filter) ([]Method,
 			case err != nil && status.Code(err) != codes.NotFound:
 				d.Log.WarnContext(ctx, "customer not readable for the stored card method", "tenant", tenant, "err", err)
 			case err == nil && tp.StoresPaymentMethod(cu.GetPaymentMethod()):
-				methods = append(methods, Method{ID: MethodStoredCard, Kind: KindStoredCard, Provider: a.Provider})
+				m := Method{ID: MethodStoredCard, Kind: KindStoredCard, Provider: a.Provider}
+				if offer, ok := prov.(payments.InstallmentOffer); ok && f.AmountMinor > 0 {
+					// Instalments are offered only when the provider answers: an account that enables them and a provider that is down is a payer who pays once.
+					options, err := offer.StoredCardInstallments(ctx, cu.GetPaymentMethod(), f.AmountMinor, currency)
+					if err != nil {
+						d.Log.WarnContext(ctx, "instalment options not readable", "tenant", tenant, "provider", a.Provider, "err", err)
+					}
+					for _, o := range options {
+						m.Installments = append(m.Installments, Installment{Count: o.Count, EachMinor: o.InstallmentMinor, TotalMinor: o.TotalMinor})
+					}
+				}
+				methods = append(methods, m)
 			}
 		}
 		if _, ok := prov.(payments.InstructionsProvider); ok {

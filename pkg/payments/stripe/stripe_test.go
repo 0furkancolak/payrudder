@@ -121,8 +121,16 @@ func TestChargeOutcomes(t *testing.T) {
 	if err := charge(402, `{"error":{"type":"card_error","code":"card_declined","decline_code":"insufficient_funds"}}`); !errors.As(err, &declined) || declined.Code != "insufficient_funds" {
 		t.Errorf("card error: %v", err)
 	}
-	if err := charge(200, `{"id":"pi_2","status":"requires_action"}`); !errors.As(err, &declined) || declined.Code != "authentication_required" {
-		t.Errorf("3-D Secure: %v", err)
+	var action *payments.ActionRequiredError
+	if err := charge(200, `{"id":"pi_2","status":"requires_action"}`); !errors.As(err, &action) || action.Ref != "pi_2" || errors.As(err, &declined) {
+		t.Errorf("3-D Secure: %v, want the customer to be asked to act, not a decline", err)
+	}
+	// Off session Stripe answers 402 with the PaymentIntent in the error (docs.stripe.com/api/errors): a decline keeps its reference, authentication is no decline.
+	if err := charge(402, `{"error":{"type":"card_error","code":"authentication_required","payment_intent":{"id":"pi_5","status":"requires_payment_method"}}}`); !errors.As(err, &action) || action.Ref != "pi_5" {
+		t.Errorf("authentication_required: %v", err)
+	}
+	if err := charge(402, `{"error":{"type":"card_error","code":"card_declined","decline_code":"insufficient_funds","payment_intent":{"id":"pi_6"}}}`); !errors.As(err, &declined) || declined.Ref != "pi_6" {
+		t.Errorf("a decline keeps the PaymentIntent: %v", err)
 	}
 	if err := charge(200, `{"id":"pi_3","status":"requires_payment_method","last_payment_error":{"decline_code":"expired_card"}}`); !errors.As(err, &declined) || declined.Code != "expired_card" {
 		t.Errorf("requires a payment method: %v", err)
@@ -180,6 +188,44 @@ func TestStatusFindsTheIntentByTheKey(t *testing.T) {
 	f.body = `{"data":[{"id":"pi_7","status":"processing"}]}`
 	var pending *payments.PendingError
 	if _, err := f.client(t).Status(context.Background(), "k"); !errors.As(err, &pending) {
+		t.Errorf("processing: %v", err)
+	}
+	// A payment that waits for the customer is waiting, not declined: the saga must not start dunning for it.
+	for _, body := range []string{`{"data":[{"id":"pi_6","status":"requires_action"}]}`, `{"data":[{"id":"pi_6","status":"requires_payment_method","last_payment_error":{"code":"authentication_required"}}]}`} {
+		f.body = body
+		if st, err := f.client(t).Status(context.Background(), "k"); err != nil || st.State != payments.StateActionRequired || st.ChargeID != "pi_6" {
+			t.Errorf("%s: %+v %v", body, st, err)
+		}
+	}
+}
+
+// With the reference of the first response the PaymentIntent is fetched by its id, with no search; a reference that is not the charge's is refused.
+func TestStatusByRefRetrievesTheIntent(t *testing.T) {
+	f := newFake(t, 200, `{"id":"pi_9","status":"succeeded","metadata":{"payrudder_key":"inv-1:charge:0"}}`)
+	st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0")
+	if err != nil || st.State != payments.StateSucceeded || st.ChargeID != "pi_9" {
+		t.Fatalf("status: %+v %v", st, err)
+	}
+	if f.last.Method != http.MethodGet || f.last.URL.Path != "/v1/payment_intents/pi_9" || f.last.URL.RawQuery != "" {
+		t.Errorf("request: %s %s?%s, want a GET of the intent and no search", f.last.Method, f.last.URL.Path, f.last.URL.RawQuery)
+	}
+	if _, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-2:charge:0"); err == nil {
+		t.Error("an intent of another charge was taken for this one")
+	}
+	if _, err := f.client(t).StatusByRef(context.Background(), "ch_9", "inv-1:charge:0"); err == nil {
+		t.Error("a reference that is not a PaymentIntent was accepted")
+	}
+	f.body = `{"id":"pi_9","status":"requires_action","metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	if st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); err != nil || st.State != payments.StateActionRequired {
+		t.Errorf("requires_action: %+v %v", st, err)
+	}
+	f.body = `{"id":"pi_9","status":"requires_payment_method","last_payment_error":{"decline_code":"expired_card","advice_code":"do_not_try_again"},"metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	if st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); err != nil || st.State != payments.StateDeclined || st.DeclineCode != "expired_card" || !st.Final {
+		t.Errorf("declined: %+v %v", st, err)
+	}
+	f.body = `{"id":"pi_9","status":"processing","metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	var pending *payments.PendingError
+	if _, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); !errors.As(err, &pending) {
 		t.Errorf("processing: %v", err)
 	}
 }
@@ -394,8 +440,8 @@ func TestRefusalsAreRetriedAsStripeSays(t *testing.T) {
 		"a key used with other parameters":     {400, nil, `{"error":{"type":"idempotency_error","code":"idempotency_key_in_use"}}`, "refused"},
 		"a wrong key":                          {401, nil, `{"error":{"type":"invalid_request_error"}}`, "refused"},
 		"a card error":                         {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"do_not_honor"}}`, "decline do_not_honor"},
-		"authentication that was not handled":  {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"authentication_not_handled"}}`, "decline authentication_required"},
-		"authentication required":              {402, nil, `{"error":{"type":"card_error","code":"authentication_required"}}`, "decline authentication_required"},
+		"authentication that was not handled":  {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"authentication_not_handled"}}`, "action required"},
+		"authentication required":              {402, nil, `{"error":{"type":"card_error","code":"authentication_required"}}`, "action required"},
 	} {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			for k, v := range tc.header {
@@ -409,11 +455,14 @@ func TestRefusalsAreRetriedAsStripeSays(t *testing.T) {
 		srv.Close()
 		var tr *payments.TransientError
 		var d *payments.DeclinedError
+		var a *payments.ActionRequiredError
 		var e *Error
 		got := "other"
 		switch {
 		case errors.As(err, &tr):
 			got = "transient"
+		case errors.As(err, &a):
+			got = "action required"
 		case errors.As(err, &d):
 			got = "decline " + d.Code
 		case errors.As(err, &e):

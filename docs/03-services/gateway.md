@@ -17,6 +17,7 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | `GET /v1/customers/{external_id}/entitlements/{meter}` | `limits.v1.LimitsService/CheckEntitlement` | `read_hot` |
 | `POST /v1/customers` · `GET /v1/customers` · `GET /v1/customers/{external_id}` | `plans.v1.PlansService/CreateCustomer`, `ListCustomers`, `GetCustomer` | `write` / `read` |
 | `PUT /v1/customers/{external_id}/payment-method` | `SetPaymentMethod` | `write` |
+| `GET /v1/customers/{external_id}/cards` · `DELETE /v1/customers/{external_id}/cards/{token}` | payments-worker `GET`/`DELETE /admin/tenants/{tenant}/customers/{external_id}/cards[/{token}]` (the tenant is the principal's; permissions `customers:read` / `customers:write`) | `read` / `write` |
 | `POST /v1/meters` · `GET /v1/meters` · `GET /v1/meters/{code}` | `CreateMeter`, `ListMeters`, `GetMeter` | `write` / `read` |
 | `POST /v1/plans` · `GET /v1/plans` · `POST /v1/plans/{code}/versions` · `GET /v1/plans/{code}/versions/{version\|latest}` | `CreatePlan`, `ListPlans`, `PublishPlanVersion`, `GetPlanVersion` | `write` / `read` |
 | `POST /v1/subscriptions` · `DELETE /v1/subscriptions/{id}?end_time=` | `CreateSubscription`, `CancelSubscription` | `write` |

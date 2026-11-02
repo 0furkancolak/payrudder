@@ -302,6 +302,8 @@ func (h *Handler) count(ctx context.Context, reply *commandsv1.ReplyEnvelope, er
 			result = "succeeded"
 		case *commandsv1.ReplyEnvelope_PaymentDeclined:
 			result = "declined"
+		case *commandsv1.ReplyEnvelope_PaymentActionRequired:
+			result = "action_required"
 		case *commandsv1.ReplyEnvelope_PaymentErrored:
 			result = "errored"
 		case *commandsv1.ReplyEnvelope_PaymentRefunded:
@@ -406,6 +408,10 @@ func succeededReply(chargeID string) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: chargeID}}}
 }
 
+func actionRequiredReply(ref string) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentActionRequired{PaymentActionRequired: &commandsv1.PaymentActionRequired{PspChargeId: ref}}}
+}
+
 func declinedReply(code string, final bool) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: code, Final: final}}}
 }
@@ -465,6 +471,7 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	}
 	res, err := prov.Charge(ctx, req)
 	done(err)
+	h.keepRef(ctx, run, run.id, prov, res, err)
 	var pending *payments.PendingError
 	if manual && errors.As(err, &pending) {
 		// The customer has been told how to pay. The row marks when the payment window opened; its reference is the charge's key, so a dunning retry
@@ -568,6 +575,7 @@ func (h *Handler) chargeAt(ctx context.Context, run commandRun, ch *commandsv1.C
 	}
 	res, err := prov.Charge(ctx, req)
 	done(err)
+	h.keepRef(ctx, run, attempt, prov, res, err)
 	reply, err := h.chargeOutcome(ctx, entry, res, err)
 	return h.keepAttempt(ctx, run, attempt, reply, err)
 }
@@ -615,11 +623,43 @@ func (h *Handler) askBeforeCharging(ctx context.Context, prov payments.PaymentPr
 	return nil, nil
 }
 
+// keepRef stores the provider's own reference of a charge with the attempt, from the first response that carries one, whatever it says (a success, a decline, a payment that
+// is processing or one that waits for the customer): a later status query asks the provider by it instead of searching (payments.RefStatuser). Only a provider that can be
+// asked that way has its reference kept. Best effort: the search is the fallback, so a failure is logged and the charge goes on.
+func (h *Handler) keepRef(ctx context.Context, run commandRun, attempt uuid.UUID, prov payments.PaymentProvider, res payments.ChargeResult, err error) {
+	if _, ok := prov.(payments.RefStatuser); !ok {
+		return
+	}
+	ref := res.ChargeID
+	var declined *payments.DeclinedError
+	var pending *payments.PendingError
+	var action *payments.ActionRequiredError
+	switch {
+	case errors.As(err, &declined):
+		ref = declined.Ref
+	case errors.As(err, &pending):
+		ref = pending.Ref
+	case errors.As(err, &action):
+		ref = action.Ref
+	}
+	if ref == "" {
+		return
+	}
+	if serr := h.Attempts.SetRef(ctx, run.tenant, attempt, ref); serr != nil && h.Log != nil {
+		h.Log.WarnContext(ctx, "the provider's reference of a charge was not kept", "tenant", run.tenant, "ref", ref, "err", serr)
+	}
+}
+
 func (h *Handler) chargeOutcome(ctx context.Context, entry store.LedgerEntry, res payments.ChargeResult, err error) (*commandsv1.ReplyEnvelope, error) {
 	var declined *payments.DeclinedError
 	var pending *payments.PendingError
+	var action *payments.ActionRequiredError
 	var incomplete *payments.BuyerIncompleteError
 	switch {
+	case errors.As(err, &action):
+		// Nothing was charged and nothing is a decline: the customer has to come back. No ledger row: a pending one would make the hosted page say "processing" and refuse the
+		// payment the customer is being asked to make.
+		return actionRequiredReply(action.Ref), nil
 	case errors.As(err, &pending):
 		// Accepted, not settled: the provider's notification decides. Billing queries the status, which reads the ledger.
 		return errored(CodePending, pending.Error()), nil
@@ -789,11 +829,35 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 			return statusFromLedger(f), nil
 		}
 	}
-	st, err := prov.Status(ctx, key)
+	st, err := h.providerStatus(ctx, run, invoiceID, prov, key)
 	if err != nil {
 		return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
 	}
 	return statusFromProvider(st), nil
+}
+
+// providerStatus asks the provider how a charge went: by the reference the first response gave when the adapter can be asked that way and the attempt has one (a Stripe
+// PaymentIntent is read where it is, not searched for), else by the key. A payment that waits for the customer to authenticate is pending until the window of the pending
+// payments (a bank transfer's, PAYMENTS_TRANSFER_WINDOW_DAYS: default, not agreed) has passed since the charge, then it is declined as authentication_required and
+// dunning applies, so a customer who never comes back does not keep the invoice waiting for ever.
+func (h *Handler) providerStatus(ctx context.Context, run commandRun, invoice uuid.UUID, prov payments.PaymentProvider, key string) (payments.StatusResult, error) {
+	ref, started, found, err := h.Attempts.ChargeRef(ctx, run.tenant, invoice, key)
+	if err != nil {
+		return payments.StatusResult{}, err
+	}
+	var st payments.StatusResult
+	if rs, ok := prov.(payments.RefStatuser); ok && ref != "" {
+		st, err = rs.StatusByRef(ctx, ref, key)
+	} else {
+		st, err = prov.Status(ctx, key)
+	}
+	if err != nil {
+		return st, err
+	}
+	if st.State == payments.StateActionRequired && found && h.TransferWindow > 0 && h.now().Sub(started) > h.TransferWindow {
+		return payments.StatusResult{State: payments.StateDeclined, ChargeID: st.ChargeID, DeclineCode: "authentication_required"}, nil
+	}
+	return st, nil
 }
 
 func statusFromLedger(f store.Fact) *commandsv1.ReplyEnvelope {
@@ -813,6 +877,8 @@ func statusFromProvider(st payments.StatusResult) *commandsv1.ReplyEnvelope {
 		reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
 	case payments.StateDeclined:
 		reply.State, reply.Final = commandsv1.PaymentStatus_STATE_DECLINED, st.Final
+	case payments.StateActionRequired:
+		reply.State = commandsv1.PaymentStatus_STATE_ACTION_REQUIRED
 	default:
 		reply.State = commandsv1.PaymentStatus_STATE_NOT_FOUND
 	}

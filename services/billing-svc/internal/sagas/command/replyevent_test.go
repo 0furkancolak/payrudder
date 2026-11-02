@@ -30,3 +30,15 @@ func TestDeclinesThatMustNotBeRetriedAreTheirOwnEvent(t *testing.T) {
 		}
 	}
 }
+
+// A charge that needs the customer, and a status query that finds it still waiting, are events of their own: neither is a decline, so dunning does not start.
+func TestRepliesThatAskForTheCustomerAreTheirOwnEvents(t *testing.T) {
+	action := &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentActionRequired{PaymentActionRequired: &commandsv1.PaymentActionRequired{PspChargeId: "pi_1"}}}
+	status := &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_ACTION_REQUIRED}}}
+	if got, _, ok := ReplyEvent(action); !ok || got != model.EvPaymentActionRequired {
+		t.Errorf("the charge's reply: %s %v", got, ok)
+	}
+	if got, _, ok := ReplyEvent(status); !ok || got != model.EvStatusActionRequired {
+		t.Errorf("the status reply: %s %v", got, ok)
+	}
+}

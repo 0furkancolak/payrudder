@@ -1229,6 +1229,36 @@ func (s *CustomersService) ListCustomerBlockEvents(ctx context.Context, external
 	return &out, nil
 }
 
+// ListCustomerCards: The cards the payment provider holds for the customer (GET
+// /v1/customers/{external_id}/cards).
+//
+// The cards of the provider's card storage (iyzico) under the user key the customer's payment method names,
+// never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices
+// are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder
+// cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the
+// payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+func (s *CustomersService) ListCustomerCards(ctx context.Context, externalID string, opts ...RequestOption) (*CustomerCards, error) {
+	var out CustomerCards
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/cards", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteCustomerCard: Delete one of the customer's stored cards at the provider (DELETE
+// /v1/customers/{external_id}/cards/{token}).
+//
+// The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and
+// nothing is sent to the provider). The customer's payment method is not changed: when the card was `in_use`
+// the answer says so, and the next charge fails until a new payment method is set.
+func (s *CustomersService) DeleteCustomerCard(ctx context.Context, externalID string, token string, opts ...RequestOption) (*DeletedCustomerCard, error) {
+	var out DeletedCustomerCard
+	if err := s.c.do(ctx, requestSpec{method: http.MethodDelete, path: "/v1/customers/" + url.PathEscape(externalID) + "/cards/" + url.PathEscape(token), query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
 //
 // Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language.

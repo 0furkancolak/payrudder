@@ -140,6 +140,33 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/cards:
+    get:
+      operationId: listCustomerCards
+      summary: The cards the payment provider holds for the customer
+      description: >
+        The cards of the provider's card storage (iyzico) under the user key the customer's payment method names, never a number: the bank, the first digits (BIN), the last four, the
+        expiry. The card the customer's invoices are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder cannot put a card in storage
+        (it holds no card numbers): whoever holds the number puts it there and sets the payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerCards" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/cards/{token}:
+    delete:
+      operationId: deleteCustomerCard
+      summary: Delete one of the customer's stored cards at the provider
+      description: >
+        The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and nothing is sent to the provider). The customer's payment method
+        is not changed: when the card was `in_use` the answer says so, and the next charge fails until a new payment method is set.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Deleted, content: { application/json: { schema: { $ref: "#/components/schemas/DeletedCustomerCard" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/address:
     put:
       operationId: setCustomerAddress
@@ -1974,6 +2001,7 @@ paths:
       description: >
         Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference).
         Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address.
+        Form field `installments` (only with `stored_card`, 2 to 12): the saved card is paid in that many instalments. The page offers the choice only when the seller's iyzico account enables instalments (`enabled_installments`) and iyzico quotes them for the saved card and the amount; the count is checked against a fresh quote before anything starts (`409` when it is not offered), and the total of the quote, which can be more than the invoice when the bank charges for instalments, is what the payer is charged. The invoice is paid in full at its own price either way. Left out, or 1, is one payment.
         When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`.
         The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
       security: []
@@ -1981,7 +2009,7 @@ paths:
       requestBody:
         content:
           application/x-www-form-urlencoded:
-            schema: { type: object, properties: { method: { type: string }, v_distance_sales: { type: string }, accept_distance_sales: { type: string }, v_pre_info: { type: string }, accept_pre_info: { type: string }, v_tos: { type: string }, accept_tos: { type: string }, v_privacy: { type: string }, accept_privacy: { type: string }, consent_start: { type: string }, consent_waiver: { type: string } }, required: [method] }
+            schema: { type: object, properties: { method: { type: string }, installments: { type: integer, minimum: 1, maximum: 12 }, v_distance_sales: { type: string }, accept_distance_sales: { type: string }, v_pre_info: { type: string }, accept_pre_info: { type: string }, v_tos: { type: string }, accept_tos: { type: string }, v_privacy: { type: string }, accept_privacy: { type: string }, consent_start: { type: string }, consent_waiver: { type: string } }, required: [method] }
       responses:
         "303": { description: "Redirect to the provider's page, or back to the invoice page" }
         "200": { description: "Payment instructions", content: { text/html: { schema: { type: string } } } }
@@ -4560,6 +4588,42 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /app/v1/support/tickets/{id}/messages/{message_id}/attachments:
+    post:
+      operationId: appAttachToSupportMessage
+      tags: [Support]
+      summary: Attach one file to a message the person wrote (multipart, field `file`)
+      description: |
+        png, jpeg, pdf or plain text, at most 5 MiB; a ticket holds at most 10 files and an organisation keeps at most 50 MiB of them. The file is stored under the first tenant of the organisation's oldest app (`409 support.attachment.no_app` before one exists) with the purpose `support_attachment`, which the tenant API never lists. Refusals: `400 support.attachment.bad_type`, `400 support.attachment.too_large`, `429 support.attachment.too_many`, `429 support.attachment.account_full`, `429 support.attachment.storage_full`, `409 support.ticket.closed`.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: message_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "201": { description: Attached, content: { application/json: { schema: { $ref: "#/components/schemas/SupportAttachment" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/support/tickets/{id}/attachments/{attachment_id}:
+    get:
+      operationId: appSupportAttachmentLink
+      tags: [Support]
+      summary: A presigned link that downloads a file of a ticket (never one of the operator's internal notes)
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: attachment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/support/tickets/{id}/status:
     put:
       operationId: appSetSupportTicketStatus
@@ -4696,6 +4760,36 @@ paths:
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
         "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/tickets/{id}/messages/{message_id}/attachments:
+    post:
+      operationId: attachToSupportMessage
+      tags: [Support]
+      summary: Attach one file to an operator message or note (multipart, field `file`; same types and limits as the person's)
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: message_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "201": { description: Attached, content: { application/json: { schema: { $ref: "#/components/schemas/SupportAttachment" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/tickets/{id}/attachments/{attachment_id}:
+    get:
+      operationId: getSupportAttachmentLink
+      tags: [Support]
+      summary: A presigned link that downloads a file of a ticket, internal notes included (operator)
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: attachment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts:
     get:
@@ -6220,6 +6314,16 @@ components:
         body: { type: string }
         internal: { type: boolean, description: An operator note the person does not see }
         create_time: { type: string, format: date-time }
+        attachments: { type: array, items: { $ref: "#/components/schemas/SupportAttachment" }, description: "Files on the message; the person sees those of public messages only" }
+    SupportAttachment:
+      type: object
+      required: [id, filename, content_type, size_bytes, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        content_type: { type: string, enum: [image/png, image/jpeg, application/pdf, text/plain] }
+        size_bytes: { type: integer, format: int64 }
+        create_time: { type: string, format: date-time }
     SupportTicketList:
       type: object
       required: [tickets]
@@ -6230,6 +6334,7 @@ components:
       required: [ticket]
       properties:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
+        message: { $ref: "#/components/schemas/SupportMessage", description: "The message that was written (when a message was): files are attached to it" }
     SupportTicketThread:
       type: object
       required: [ticket, messages, events]
@@ -7228,6 +7333,34 @@ components:
       properties:
         customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
         next_page_token: { type: string }
+    StoredCard:
+      type: object
+      required: [token, alias, bin, last4, type, association, family, bank, expire_month, expire_year, in_use]
+      properties:
+        token: { type: string, description: "The provider's card token (cardToken): what the delete names" }
+        alias: { type: string }
+        bin: { type: string, description: "The first digits of the number (the BIN)" }
+        last4: { type: string }
+        type: { type: string, description: "CREDIT_CARD, DEBIT_CARD or PREPAID_CARD" }
+        association: { type: string, description: "VISA, MASTER_CARD, ..." }
+        family: { type: string }
+        bank: { type: string }
+        expire_month: { type: string }
+        expire_year: { type: string }
+        in_use: { type: boolean, description: "The customer's payment method names this card" }
+    CustomerCards:
+      type: object
+      required: [provider, cards]
+      properties:
+        provider: { type: string, description: "The provider that holds the cards; empty when the customer has none" }
+        cards: { type: array, items: { $ref: "#/components/schemas/StoredCard" } }
+    DeletedCustomerCard:
+      type: object
+      required: [provider, deleted, was_in_use]
+      properties:
+        provider: { type: string }
+        deleted: { type: boolean }
+        was_in_use: { type: boolean, description: "The deleted card was the one the customer's payment method names: set a new payment method" }
     SetPaymentMethodRequest:
       type: object
       required: [payment_method]
@@ -7578,7 +7711,7 @@ components:
         provider: { type: string }
         currency: { type: string }
         total_minor: { type: string, format: int64 }
-        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE] }
+        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, PAYMENT_HELD, UNCOLLECTIBLE] }
         dunning_attempt: { type: integer }
         next_attempt_time: { type: string, format: date-time, nullable: true }
         last_error: { type: string }
