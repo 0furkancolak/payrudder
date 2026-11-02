@@ -23,6 +23,7 @@ export const WebhookEventTypes = {
   PaymentLinkCreated: "payment_link.created",
   PaymentLinkPaid: "payment_link.paid",
   PaymentLinkExpired: "payment_link.expired",
+  PaymentDisputed: "payment.disputed",
   CreditsPurchased: "credits.purchased",
   CreditsLow: "credits.low",
   CustomerBlocked: "customer.blocked",
@@ -113,6 +114,28 @@ export interface CreditsLowEventData {
   customer_external_id?: string;
   balance: string;
   threshold: string;
+}
+
+/** `payment.disputed`: one step of a case a customer opened with their bank about a payment (a case that opens and is later won or lost is two or three events). */
+export interface PaymentDisputedEventData {
+  invoice_id: string;
+  invoice_number: string;
+  customer_external_id: string;
+  provider: string;
+  /** The provider's reference of the case, the same in every event about it. */
+  dispute_id: string;
+  payment_ref: string;
+  amount_minor: string;
+  currency: string;
+  /** Where the case stands. */
+  outcome: "open" | "won" | "lost";
+  /** `true` for a chargeback, which takes the money back; `false` for an inquiry or a warning ahead of one. */
+  formal: boolean;
+  /** The cardholder's reason in the provider's words; may be empty. */
+  reason: string;
+  provider_status: string;
+  /** RFC 3339; set when the provider gives a date. */
+  evidence_due_time?: string;
 }
 
 /** `customer.blocked` and `customer.unblocked`. */
@@ -252,6 +275,7 @@ export type WebhookEvent =
   | Distribute<CreditNoteTypes, CreditNoteEventData>
   | Distribute<SubscriptionTypes, SubscriptionEventData>
   | Distribute<PaymentLinkTypes, PaymentLinkEventData>
+  | Envelope<"payment.disputed", PaymentDisputedEventData>
   | Envelope<"credits.purchased", CreditsPurchasedEventData>
   | Envelope<"credits.low", CreditsLowEventData>
   | Distribute<CustomerTypes, CustomerBlockEventData>

@@ -111,36 +111,45 @@ func (q *Queries) DunningSummary(ctx context.Context) ([]DunningSummaryRow, erro
 
 const getDunningSettings = `-- name: GetDunningSettings :one
 
-SELECT retry_hours, updated_at FROM dunning_settings WHERE tenant_id = $1
+SELECT retry_hours, updated_at, block_on_chargeback FROM dunning_settings WHERE tenant_id = $1
 `
 
 type GetDunningSettingsRow struct {
-	RetryHours []int32
-	UpdatedAt  time.Time
+	RetryHours        []int32
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
 }
 
 // Dunning settings (tenant-scoped, billing_app) and the dunning report.
 func (q *Queries) GetDunningSettings(ctx context.Context, tenantID uuid.UUID) (GetDunningSettingsRow, error) {
 	row := q.db.QueryRow(ctx, getDunningSettings, tenantID)
 	var i GetDunningSettingsRow
-	err := row.Scan(&i.RetryHours, &i.UpdatedAt)
+	err := row.Scan(&i.RetryHours, &i.UpdatedAt, &i.BlockOnChargeback)
 	return i, err
 }
 
 const upsertDunningSettings = `-- name: UpsertDunningSettings :one
-INSERT INTO dunning_settings (tenant_id, retry_hours) VALUES ($1, $2)
-ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now()
-RETURNING updated_at
+INSERT INTO dunning_settings (tenant_id, retry_hours, block_on_chargeback) VALUES ($1, $2, COALESCE($3::boolean, false))
+ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now(),
+  block_on_chargeback = COALESCE($3::boolean, dunning_settings.block_on_chargeback)
+RETURNING updated_at, block_on_chargeback
 `
 
 type UpsertDunningSettingsParams struct {
-	TenantID   uuid.UUID
-	RetryHours []int32
+	TenantID          uuid.UUID
+	RetryHours        []int32
+	BlockOnChargeback *bool
 }
 
-func (q *Queries) UpsertDunningSettings(ctx context.Context, arg UpsertDunningSettingsParams) (time.Time, error) {
-	row := q.db.QueryRow(ctx, upsertDunningSettings, arg.TenantID, arg.RetryHours)
-	var updated_at time.Time
-	err := row.Scan(&updated_at)
-	return updated_at, err
+type UpsertDunningSettingsRow struct {
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
+}
+
+// block_on_chargeback is kept when the request does not name it.
+func (q *Queries) UpsertDunningSettings(ctx context.Context, arg UpsertDunningSettingsParams) (UpsertDunningSettingsRow, error) {
+	row := q.db.QueryRow(ctx, upsertDunningSettings, arg.TenantID, arg.RetryHours, arg.BlockOnChargeback)
+	var i UpsertDunningSettingsRow
+	err := row.Scan(&i.UpdatedAt, &i.BlockOnChargeback)
+	return i, err
 }

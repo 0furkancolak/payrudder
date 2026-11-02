@@ -1598,6 +1598,20 @@ class PaymentsResource:
         return cast("m.ListPaymentsResponse", self._client._request("GET", "/v1/payments", query={"limit": limit}, response_wire='ListPaymentsResponse', options=options))
 
 
+class DisputesResource:
+    """``/v1/disputes`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_disputes(self, *, invoice_id: str | None = None, outcome: Literal["open", "won", "lost"] | None = None, limit: int | None = None, options: RequestOptions | None = None) -> m.ListDisputesResponse:
+        """The cases customers opened with their banks about a payment, newest first.
+
+        ``GET /v1/disputes``
+        """
+        return cast("m.ListDisputesResponse", self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
+
+
 class AssetsResource:
     """``/v1/assets`` and related operations."""
 
@@ -1808,6 +1822,7 @@ class Resources:
     payment_links: PaymentLinksResource
     audit_events: AuditEventsResource
     payments: PaymentsResource
+    disputes: DisputesResource
     assets: AssetsResource
     tenant: TenantResource
     analytics: AnalyticsResource
@@ -1850,6 +1865,7 @@ class Resources:
         self.payment_links = PaymentLinksResource(client)
         self.audit_events = AuditEventsResource(client)
         self.payments = PaymentsResource(client)
+        self.disputes = DisputesResource(client)
         self.assets = AssetsResource(client)
         self.tenant = TenantResource(client)
         self.analytics = AnalyticsResource(client)
@@ -3456,6 +3472,20 @@ class AsyncPaymentsResource:
         return cast("m.ListPaymentsResponse", await self._client._request("GET", "/v1/payments", query={"limit": limit}, response_wire='ListPaymentsResponse', options=options))
 
 
+class AsyncDisputesResource:
+    """``/v1/disputes`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_disputes(self, *, invoice_id: str | None = None, outcome: Literal["open", "won", "lost"] | None = None, limit: int | None = None, options: RequestOptions | None = None) -> m.ListDisputesResponse:
+        """The cases customers opened with their banks about a payment, newest first.
+
+        ``GET /v1/disputes``
+        """
+        return cast("m.ListDisputesResponse", await self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
+
+
 class AsyncAssetsResource:
     """``/v1/assets`` and related operations."""
 
@@ -3667,6 +3697,7 @@ class AsyncResources:
     payment_links: AsyncPaymentLinksResource
     audit_events: AsyncAuditEventsResource
     payments: AsyncPaymentsResource
+    disputes: AsyncDisputesResource
     assets: AsyncAssetsResource
     tenant: AsyncTenantResource
     analytics: AsyncAnalyticsResource
@@ -3709,6 +3740,7 @@ class AsyncResources:
         self.payment_links = AsyncPaymentLinksResource(client)
         self.audit_events = AsyncAuditEventsResource(client)
         self.payments = AsyncPaymentsResource(client)
+        self.disputes = AsyncDisputesResource(client)
         self.assets = AsyncAssetsResource(client)
         self.tenant = AsyncTenantResource(client)
         self.analytics = AsyncAnalyticsResource(client)

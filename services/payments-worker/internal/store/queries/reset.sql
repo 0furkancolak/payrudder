@@ -5,6 +5,8 @@
 DELETE FROM manual_receipts WHERE tenant_id = $1;
 -- name: ResetPaymentLedger :execrows
 DELETE FROM payment_ledger WHERE tenant_id = $1;
+-- name: ResetPaymentDisputes :execrows
+DELETE FROM payment_disputes WHERE tenant_id = $1;
 -- name: ResetPaymentAttempts :execrows
 DELETE FROM payment_attempts WHERE tenant_id = $1;
 -- name: ResetProviderSubscriptions :execrows

@@ -259,6 +259,31 @@ func TestNotifications(t *testing.T) {
 			t.Errorf("a credit is not a refund: %+v", credit)
 		}
 	})
+	t.Run("a chargeback and its warning are disputes, and their reversals end them", func(t *testing.T) {
+		adj := func(action, status string) payments.Notification {
+			return confirm(t, c, `{"event_id":"evt_c","event_type":"adjustment.created","data":{"id":"adj_cb","action":"`+action+`","status":"`+status+`","transaction_id":"txn_01","currency_code":"EUR","totals":{"total":"1250"}}}`)
+		}
+		for _, tc := range []struct {
+			action, status, id string
+			outcome            payments.DisputeOutcome
+			formal             bool
+		}{
+			{"chargeback", "approved", "cb_txn_01", payments.DisputeOpen, true}, {"chargeback", "pending_approval", "cb_txn_01", payments.DisputeOpen, true},
+			{"chargeback", "reversed", "cb_txn_01", payments.DisputeWon, true}, {"chargeback_reverse", "approved", "cb_txn_01", payments.DisputeWon, true},
+			{"chargeback_warning", "approved", "cbw_txn_01", payments.DisputeOpen, false}, {"chargeback_warning_reverse", "approved", "cbw_txn_01", payments.DisputeWon, false},
+		} {
+			n := adj(tc.action, tc.status)
+			if n.Kind != payments.KindDispute || n.Dispute == nil || n.Dispute.ID != tc.id || n.Dispute.Outcome != tc.outcome || n.Dispute.Formal != tc.formal ||
+				n.ProviderRef != "txn_01" || n.AmountMinor != 1250 || n.Currency != "EUR" {
+				t.Errorf("%s/%s = %+v %+v, want %s %s", tc.action, tc.status, n, n.Dispute, tc.id, tc.outcome)
+			}
+		}
+		for _, tc := range [][2]string{{"chargeback", "rejected"}, {"chargeback_reverse", "pending_approval"}, {"credit_reverse", "approved"}} {
+			if n := adj(tc[0], tc[1]); n.Kind != payments.KindIgnored {
+				t.Errorf("%s/%s should be ignored: %+v", tc[0], tc[1], n)
+			}
+		}
+	})
 	t.Run("other events are ignored", func(t *testing.T) {
 		if n := confirm(t, c, `{"event_id":"evt_9","event_type":"customer.created","data":{"id":"ctm_1"}}`); n.Kind != payments.KindIgnored {
 			t.Errorf("notification = %+v", n)

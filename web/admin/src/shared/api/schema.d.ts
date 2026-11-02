@@ -3026,6 +3026,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The cases customers opened with their banks about a payment, newest first
+         * @description A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it: `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won. Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live account. `503` when the payment service does not answer.
+         */
+        get: operations["listDisputes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/assets/uploads": {
         parameters: {
             query?: never;
@@ -8562,6 +8582,50 @@ export interface components {
             payments: components["schemas"]["Payment"][];
             truncated: boolean;
         };
+        Dispute: {
+            /** @description Payrudder's id of the case */
+            id: string;
+            /** @example stripe */
+            provider: string;
+            /** @description The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction) */
+            dispute_id: string;
+            /** @description The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id) */
+            payment_ref: string;
+            /**
+             * Format: uuid
+             * @description The invoice of that payment; absent for a payment Payrudder did not make
+             */
+            invoice_id?: string;
+            /**
+             * Format: int64
+             * @description The disputed amount
+             */
+            amount_minor: string;
+            currency: string;
+            /** @enum {string} */
+            outcome: "open" | "won" | "lost";
+            /** @description A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one */
+            formal: boolean;
+            /** @description The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...) */
+            provider_status: string;
+            /** @description The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when the provider does not say */
+            reason?: string;
+            /**
+             * Format: date-time
+             * @description When your evidence is due; absent when the provider does not say
+             */
+            evidence_due_time?: string;
+            /** Format: date-time */
+            opened_time: string;
+            /**
+             * Format: date-time
+             * @description Absent while the case is open
+             */
+            closed_time?: string;
+        };
+        ListDisputesResponse: {
+            disputes: components["schemas"]["Dispute"][];
+        };
         CreateUploadSessionRequest: {
             files: components["schemas"]["CreateUploadSessionFile"][];
         };
@@ -9440,7 +9504,7 @@ export interface components {
             period: string;
             paid_invoices: number;
             successful_charges: number;
-            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch */
+            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed (a dispute of a payment is undecided), and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch */
             discrepancy_counts: {
                 [key: string]: number;
             };
@@ -9492,7 +9556,7 @@ export interface components {
             /** @enum {string} */
             environment: "sandbox" | "live";
             period: string;
-            /** @description paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, settlement_missing, settlement_mismatch or fee_mismatch */
+            /** @description paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed, settlement_missing, settlement_mismatch or fee_mismatch */
             kind: string;
             invoice_id?: string;
             number?: string;
@@ -10564,6 +10628,52 @@ export interface components {
              * @description only when the lot expires
              */
             expires_at?: string;
+        };
+        /** @description The data of an event of type payment.disputed: a customer questioned a payment with their bank, or the case moved on or ended (one event per step; outcome says where it stands) */
+        PaymentDisputedEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            invoice_number: string;
+            /** @description may be empty */
+            customer_external_id: string;
+            provider: string;
+            /** @description The provider's reference of the case; the same in every event about it */
+            dispute_id: string;
+            payment_ref: string;
+            /**
+             * Format: int64
+             * @description string
+             */
+            amount_minor: string;
+            currency: string;
+            /** @enum {string} */
+            outcome: "open" | "won" | "lost";
+            /** @description A chargeback proper (money taken back); false is an inquiry or a warning */
+            formal: boolean;
+            /** @description may be empty */
+            reason: string;
+            /** @description The provider's own word for the state of the case */
+            provider_status: string;
+            /**
+             * Format: date-time
+             * @description Only when the provider gives a date
+             */
+            evidence_due_time?: string;
+        };
+        /** @description The body of a delivery of type payment.disputed */
+        PaymentDisputedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "payment.disputed";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PaymentDisputedEventData"];
         };
         /** @description The body of a delivery of type credits.purchased */
         CreditsPurchasedEvent: {
@@ -11869,9 +11979,13 @@ export interface components {
             readonly defaults_in_use: boolean;
             /** Format: date-time */
             readonly update_time: string | null;
+            /** @description A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless you turn it on; it blocks only when the dispute opens and never lifts the block by itself. */
+            block_on_chargeback?: boolean;
         };
         DunningSettingsInput: {
             retry_hours?: number[];
+            /** @description Absent: kept as it is. retry_hours is replaced as before (absent is none). */
+            block_on_chargeback?: boolean;
         };
         CreditPackInput: {
             name: string;
@@ -12283,7 +12397,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "payment.disputed" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -12482,7 +12596,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["ContractWithdrawalDecidedEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["PaymentDisputedEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["ContractWithdrawalDecidedEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -18714,6 +18828,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListPaymentsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listDisputes: {
+        parameters: {
+            query?: {
+                /** @description Only the disputes of this invoice */
+                invoice_id?: string;
+                outcome?: "open" | "won" | "lost";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDisputesResponse"];
                 };
             };
             400: components["responses"]["Error"];

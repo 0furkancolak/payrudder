@@ -9,7 +9,7 @@ ON CONFLICT (message_id) DO NOTHING;
 -- name: NotifyOutbox :exec
 SELECT pg_notify(@channel::text, @tenant::text);
 
--- name: InsertTenantEvent :exec
+-- name: InsertTenantEvent :execrows
 INSERT INTO tenant_event_outbox (tenant_id, event_id, type, data, occurred_at) VALUES (@tenant_id, @event_id, @type, @data, @occurred_at)
 ON CONFLICT DO NOTHING;
 

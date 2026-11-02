@@ -46,6 +46,7 @@ const (
 	EventPaymentLinkCreated              = "payment_link.created"
 	EventPaymentLinkPaid                 = "payment_link.paid"
 	EventPaymentLinkExpired              = "payment_link.expired"
+	EventPaymentDisputed                 = "payment.disputed"
 	EventCreditsPurchased                = "credits.purchased"
 	EventCreditsLow                      = "credits.low"
 	EventCustomerBlocked                 = "customer.blocked"
@@ -66,7 +67,7 @@ var WebhookEventTypes = []string{
 	EventSubscriptionCreated, EventSubscriptionChanged, EventSubscriptionChangeScheduled, EventSubscriptionCancelled,
 	EventSubscriptionCancellationSet, EventSubscriptionCancellationDropped, EventSubscriptionPaused,
 	EventSubscriptionResumed, EventSubscriptionMovedToProvider, EventSubscriptionTrialWillEnd,
-	EventPaymentLinkCreated, EventPaymentLinkPaid, EventPaymentLinkExpired,
+	EventPaymentLinkCreated, EventPaymentLinkPaid, EventPaymentLinkExpired, EventPaymentDisputed,
 	EventCreditsPurchased, EventCreditsLow,
 	EventCustomerBlocked, EventCustomerUnblocked,
 	EventPriceChangeScheduled,
@@ -270,6 +271,29 @@ type CreditsEventData struct {
 	AmountMinor   Int64  `json:"amount_minor,omitempty"`
 	// ExpiresAt is an RFC 3339 time, absent when the credits never expire.
 	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
+// PaymentDisputedEventData is the data of payment.disputed: one step of a case a customer opened with their bank about a payment (a case that opens and is later won or
+// lost is two or three events, each once).
+type PaymentDisputedEventData struct {
+	InvoiceID          string `json:"invoice_id"`
+	InvoiceNumber      string `json:"invoice_number"`
+	CustomerExternalID string `json:"customer_external_id"`
+	Provider           string `json:"provider"`
+	// DisputeID is the provider's reference of the case, the same in every event about it.
+	DisputeID   string `json:"dispute_id"`
+	PaymentRef  string `json:"payment_ref"`
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	// Outcome is where the case stands: open, won or lost.
+	Outcome string `json:"outcome"`
+	// Formal is true for a chargeback, which takes the money back, and false for an inquiry or a warning ahead of one.
+	Formal bool `json:"formal"`
+	// Reason is the cardholder's, in the provider's words; it may be empty.
+	Reason         string `json:"reason"`
+	ProviderStatus string `json:"provider_status"`
+	// EvidenceDueTime is an RFC 3339 time, set when the provider gives a date.
+	EvidenceDueTime string `json:"evidence_due_time,omitempty"`
 }
 
 // CustomerBlockEventData is the data of customer.blocked and customer.unblocked.

@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Success and failure both recorded",
       "settlement_missing": "Paid, not in the provider's settlement",
       "settlement_mismatch": "Settled amount differs",
-      "fee_mismatch": "Provider fee differs"
+      "fee_mismatch": "Provider fee differs",
+      "payment_disputed": "Payment disputed, undecided"
     },
     "ledgerKind": {
       "charge": "charge",
@@ -225,6 +226,16 @@
       "not_reported": "Paid, not reported",
       "pending_payout": "Reported, awaiting payout",
       "settled": "Settled"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraud claimed",
+      "general": "General",
+      "product_not_received": "Product not received",
+      "product_unacceptable": "Product unacceptable",
+      "subscription_canceled": "Subscription canceled",
+      "duplicate": "Duplicate payment",
+      "unrecognized": "Not recognised",
+      "credit_not_processed": "Credit not processed"
     }
   },
   "tenants": {
@@ -1226,16 +1237,18 @@
         "badRate": "Not a percentage: 0 to 100 with at most two decimals."
       },
       "dunning": {
-        "title": "Payment retries",
+        "title": "Payment retries and chargebacks",
         "hint": "When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
         "defaults": "You have not set any: the standard delays are shown.",
         "retry": "Retry {n}",
         "delay": "Hours before retry {n}",
         "add": "Add a retry",
-        "save": "Save retries",
-        "saved": "Retries saved.",
+        "save": "Save settings",
+        "saved": "Settings saved.",
         "none": "No retries: a declined charge is given up at once.",
-        "bad": "Each delay is a whole number from 1 to 720."
+        "bad": "Each delay is a whole number from 1 to 720.",
+        "blockOnChargeback": "Block the customer when a chargeback opens",
+        "blockOnChargebackHint": "Blocks them with the category chargeback: no new purchases, and an open invoice can no longer be paid. It never lifts by itself; you lift it on the customer. An inquiry does not block."
       },
       "promotions": {
         "title": "Promotions",
@@ -6259,5 +6272,43 @@
         "reset_by_operator": "Two-factor sign-in reset by support"
       }
     }
+  },
+  "disputes": {
+    "tab": "Disputes",
+    "tabsLabel": "Payments and disputes",
+    "tabs": {
+      "payments": "Payments",
+      "disputes": "Disputes"
+    },
+    "title": "Disputes",
+    "hint": "Cases the customer opened with their bank about this payment. Answer them at your payment provider; Payrudder shows where each one stands.",
+    "empty": "No disputes. A case appears here when a customer questions a payment with their bank.",
+    "outcomeLabel": "Outcome",
+    "allOutcomes": "All outcomes",
+    "kindLabel": "Type",
+    "allKinds": "All types",
+    "outcome": {
+      "open": "Open",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "kind": {
+      "chargeback": "Chargeback",
+      "inquiry": "Inquiry"
+    },
+    "means": {
+      "openChargeback": "The customer's bank has reversed this payment: the provider has taken the money back until it decides. Send your evidence before the date below.",
+      "openInquiry": "The customer's bank is asking about this payment. No money has been taken back; answer the provider's request so that it does not become a chargeback.",
+      "wonChargeback": "Decided in your favour: the money is back with you.",
+      "wonInquiry": "Closed without becoming a chargeback: nothing was lost.",
+      "lost": "The cardholder won: the money stays with them."
+    },
+    "provider": "Provider",
+    "reason": "Reason",
+    "evidenceDue": "Evidence due",
+    "opened": "Opened",
+    "closed": "Closed",
+    "reference": "Case",
+    "case": "Case"
   }
 }

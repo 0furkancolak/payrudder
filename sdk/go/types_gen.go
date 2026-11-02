@@ -1265,18 +1265,53 @@ type CustomerTax struct {
 	EInvoiceRegistered *bool `json:"e_invoice_registered,omitempty"`
 }
 
+// Dispute is an object of the API; see components.schemas.Dispute in api/openapi/v1.yaml.
+type Dispute struct {
+	// Payrudder's id of the case
+	ID       string `json:"id"`
+	Provider string `json:"provider"`
+	// The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction)
+	DisputeID string `json:"dispute_id"`
+	// The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id)
+	PaymentRef string `json:"payment_ref"`
+	// The invoice of that payment; absent for a payment Payrudder did not make
+	InvoiceID string `json:"invoice_id,omitempty"`
+	// The disputed amount
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	// One of: open, won, lost.
+	Outcome string `json:"outcome"`
+	// A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one
+	Formal bool `json:"formal"`
+	// The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...)
+	ProviderStatus string `json:"provider_status"`
+	// The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when
+	// the provider does not say
+	Reason string `json:"reason,omitempty"`
+	// When your evidence is due; absent when the provider does not say
+	EvidenceDueTime time.Time `json:"evidence_due_time,omitempty"`
+	OpenedTime      time.Time `json:"opened_time"`
+	// Absent while the case is open
+	ClosedTime time.Time `json:"closed_time,omitempty"`
+}
+
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
 type DunningSettings struct {
 	RetryHours []int `json:"retry_hours"`
 	// True when nothing was set and the service-wide delays apply
 	DefaultsInUse bool       `json:"defaults_in_use"`
 	UpdateTime    *time.Time `json:"update_time"`
+	// A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless
+	// you turn it on; it blocks only when the dispute opens and never lifts the block by itself.
+	BlockOnChargeback bool `json:"block_on_chargeback,omitempty"`
 }
 
 // DunningSettingsInput is an object of the API; see components.schemas.DunningSettingsInput in
 // api/openapi/v1.yaml.
 type DunningSettingsInput struct {
 	RetryHours []int `json:"retry_hours,omitempty"`
+	// Absent: kept as it is. retry_hours is replaced as before (absent is none).
+	BlockOnChargeback *bool `json:"block_on_chargeback,omitempty"`
 }
 
 // EInvoiceDocument is an object of the API; see components.schemas.EInvoiceDocument in api/openapi/v1.yaml.
@@ -1925,6 +1960,11 @@ type ListCustomerPaymentsResponse struct {
 type ListCustomersResponse struct {
 	Customers     []Customer `json:"customers"`
 	NextPageToken string     `json:"next_page_token"`
+}
+
+// ListDisputesResponse is the response of ListDisputes.
+type ListDisputesResponse struct {
+	Disputes []Dispute `json:"disputes"`
 }
 
 // ListEntitlementOverridesResponse is the response of ListEntitlementOverrides.
@@ -3784,6 +3824,32 @@ func (p *GetCustomerUsageParams) values() url.Values {
 	}
 	if p.Period != "" {
 		v.Set("period", p.Period)
+	}
+	return v
+}
+
+// ListDisputesParams are the query parameters of ListDisputes.
+type ListDisputesParams struct {
+	// Only the disputes of this invoice
+	InvoiceID string
+	// One of: open, won, lost.
+	Outcome string
+	Limit   *int
+}
+
+func (p *ListDisputesParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.InvoiceID != "" {
+		v.Set("invoice_id", p.InvoiceID)
+	}
+	if p.Outcome != "" {
+		v.Set("outcome", p.Outcome)
+	}
+	if p.Limit != nil {
+		v.Set("limit", strconv.Itoa(*p.Limit))
 	}
 	return v
 }
