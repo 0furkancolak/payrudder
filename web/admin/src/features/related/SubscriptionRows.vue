@@ -27,7 +27,7 @@ const stateText = (state?: string) => {
 </script>
 
 <template>
-  <RelatedSection :title="t('related.subscriptions')" :empty="!subs.isPending.value && rows.length === 0" :hide-title="bare" :empty-text="emptyText">
+  <RelatedSection :title="t('related.subscriptions')" :empty="!subs.isPending.value && rows.length === 0" :hide-title="bare" :empty-text="emptyText" :error="subs.data.value ? undefined : subs.error.value" :retrying="subs.isFetching.value" @retry="subs.refetch()">
     <template v-if="$slots.action && all.length > rows.length" #action><slot name="action" /></template>
     <template v-if="subs.isPending.value">
       <li><Skeleton class="h-12 w-full rounded-xl" /></li>

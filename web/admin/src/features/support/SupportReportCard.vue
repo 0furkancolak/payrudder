@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { duration } from "./duration";
 import { PRIORITIES, STATUSES, useSupportReport } from "./api";
@@ -22,7 +22,7 @@ const counted = (list: { value: string; count: number }[] | undefined, key: stri
   <Card class="mb-4 flex flex-col gap-4 p-5" data-testid="support-report">
     <h2 class="m-0 text-base font-semibold">{{ t("support.report.title") }}</h2>
     <Skeleton v-if="report.isPending.value" class="h-16 w-full" aria-busy="true" />
-    <ErrorText :error="report.error.value" />
+    <ErrorState :error="report.error.value" :retrying="report.isFetching.value" compact class="mx-0" @retry="report.refetch()" />
     <template v-if="r">
       <dl class="m-0 grid grid-cols-2 gap-4 md:grid-cols-4">
         <div><dt class="text-muted-foreground text-xs">{{ t("support.report.waiting") }}</dt><dd class="m-0 text-2xl font-semibold tabular-nums" data-testid="report-waiting">{{ r.waiting }}</dd></div>

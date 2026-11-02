@@ -6,6 +6,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
 import { keepEnv } from "@/features/related/link";
+import { useCanWrite } from "@/shared/lib/access";
 import { useSubscriptionActions } from "@/features/subscriptions/api";
 import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
@@ -51,6 +52,7 @@ import { useRouteTenantId } from "@/shared/lib/routeTenant";
  */
 const { t, locale } = useI18n();
 const fmt = useFormat();
+const canWrite = useCanWrite();
 const tenantId = useRouteTenantId();
 const router = useRouter();
 const customers = useCustomers(tenantId);
@@ -185,6 +187,8 @@ useSheetTarget("customer-address", openOf(editingAddress), editingAddress, { id:
 useSheetTarget("customer-tax", openOf(editingTax), editingTax, { id: (c) => c.external_id ?? "", find: customerOf });
 const quotaTarget = computed({ get: () => (quotasOf.value === "" ? null : quotasOf.value), set: (v) => (quotasOf.value = v ?? "") });
 useSheetTarget("customer-quotas", quotasOpen, quotaTarget, { id: (c) => c, find: (id) => (customerOf(id) ? id : undefined) });
+/** What a viewer may still do from a row: look. The server refuses the rest. */
+const READ_ACTIONS = new Set(["view", "portal", "quotas"]);
 function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => open(i) },
@@ -198,7 +202,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     isBlocked(c)
       ? { key: "unblock", label: t("billing.customers.block.lift"), icon: CircleCheck, separatorBefore: true, onSelect: () => setBlocked(c, false) }
       : { key: "block", label: t("billing.customers.block.action"), icon: Ban, separatorBefore: true, onSelect: () => setBlocked(c, true) },
-  ];
+  ].filter((a) => canWrite.value || READ_ACTIONS.has(a.key));
 }
 
 /** The ticked customers as a CSV file: the fields the list knows, no secret. */
@@ -212,7 +216,7 @@ function exportSelected() {
 </script>
 
 <template>
-  <HeaderAction test-id="customers-new" :label="t('billing.customers.new')" @click="creating = true" />
+  <HeaderAction v-if="canWrite" test-id="customers-new" :label="t('billing.customers.new')" @click="creating = true" />
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" wide>
     <CustomerSheet
       v-if="current"
@@ -241,7 +245,7 @@ function exportSelected() {
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
   <Card class="gap-0 p-3">
-    <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" data-testid="bulk-block" @click="bulkBlock(true)">{{ t("billing.customers.block.action") }}</Button>
       <Button type="button" size="sm" variant="outline" data-testid="bulk-unblock" @click="bulkBlock(false)">{{ t("billing.customers.block.lift") }}</Button>
       <Button type="button" size="sm" variant="outline" data-testid="bulk-export" @click="exportSelected">{{ t("billing.customers.exportSelected") }}</Button>
@@ -270,7 +274,7 @@ function exportSelected() {
       <Table>
         <TableHeader>
           <TableRow class="hover:bg-transparent">
-            <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
+            <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
             <TableHead>{{ t("billing.customers.columns.customer") }}</TableHead>
             <TableHead class="max-md:hidden">{{ t("billing.customers.columns.subscriptions") }}</TableHead>
             <TableHead class="max-xl:hidden">{{ t("billing.customers.columns.currency") }}</TableHead>
@@ -284,7 +288,7 @@ function exportSelected() {
         <TableBody>
           <template v-if="customers.isPending.value">
             <TableRow v-for="n in 6" :key="n" class="hover:bg-transparent" data-testid="customers-skeleton">
-              <TableCell />
+              <TableCell v-if="canWrite" />
               <TableCell>
                 <div class="flex items-center gap-3"><Skeleton class="size-9 rounded-full" /><div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-32" /><Skeleton class="h-3 w-44 max-sm:w-28" /></div></div>
               </TableCell>
@@ -305,7 +309,7 @@ function exportSelected() {
             :data-testid="`customer-${c.external_id}`"
             @click="open(i)"
           >
-            <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${c.external_id}`" :checked="table.isTicked(c)" @change="(on) => table.tick(c, on)" /></TableCell>
+            <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${c.external_id}`" :checked="table.isTicked(c)" @change="(on) => table.tick(c, on)" /></TableCell>
             <TableCell class="w-full max-w-0 min-w-0">
               <div class="flex min-w-0 items-center gap-3">
                 <CustomerAvatar :customer="c" />

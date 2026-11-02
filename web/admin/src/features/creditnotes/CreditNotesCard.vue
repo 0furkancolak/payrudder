@@ -7,6 +7,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { peek } from "@/features/related/peek";
 import { formatMinor } from "@/shared/lib/money";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -84,7 +85,7 @@ const current = table.row;
   <Card data-testid="credit-notes-card" :class="invoiceId ? 'gap-3 rounded-none border-0 bg-transparent p-0 shadow-none' : 'mb-6 p-3'">
     <h2 :class="invoiceId ? 'text-lg font-semibold tracking-tight' : 'px-3 pt-2 text-lg font-semibold'">{{ t("billing.creditNotes.title") }}</h2>
     <ErrorText :error="retry.error.value" class="px-3" />
-    <ErrorText :error="notes.error.value" class="px-3" />
+    <ErrorState :error="notes.error.value" :retrying="notes.isFetching.value" compact @retry="notes.refetch()" />
     <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />

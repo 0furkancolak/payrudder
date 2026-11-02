@@ -5,7 +5,7 @@ import { PRESETS, presetRange, validRange, type Preset, type Range } from "@/fea
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -37,7 +37,7 @@ const sums = computed(() => sumBalances(balances.data.value));
 </script>
 
 <template>
-  <ErrorText :error="program.error.value" />
+  <ErrorState :error="program.error.value" :retrying="program.isFetching.value" compact class="mx-0" @retry="program.refetch()" />
   <div v-if="program.isSuccess.value && program.data.value === null" data-testid="no-program" role="status" class="bg-brand-soft text-brand-strong rounded-2xl px-4 py-3 text-sm">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <span>{{ t("affiliates.overview.noProgram") }}</span>
@@ -62,7 +62,7 @@ const sums = computed(() => sumBalances(balances.data.value));
     <p v-if="preset === 'custom' && !rangeOk" class="text-muted-foreground text-sm">{{ t("billing.accounting.period.invalid") }}</p>
 
     <h2 class="text-lg font-semibold">{{ t("affiliates.overview.funnel") }}</h2>
-    <ErrorText :error="funnel.error.value" />
+    <ErrorState :error="funnel.error.value" :retrying="funnel.isFetching.value" compact class="mx-0" @retry="funnel.refetch()" />
     <Skeleton v-if="funnel.isPending.value && rangeOk" class="h-28" />
     <ol v-else-if="funnel.data.value" class="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4" data-testid="funnel">
       <li v-for="(s, i) in steps" :key="s.key" :data-step="s.key" class="bg-muted/50 flex min-w-0 flex-col gap-1 rounded-2xl p-4">
@@ -84,7 +84,7 @@ const sums = computed(() => sumBalances(balances.data.value));
 
   <h2 class="text-lg font-semibold">{{ t("affiliates.overview.balances") }}</h2>
   <p class="text-muted-foreground -mt-4 text-sm">{{ t("affiliates.overview.balancesHint") }}</p>
-  <ErrorText :error="balances.error.value" />
+  <ErrorState :error="balances.error.value" :retrying="balances.isFetching.value" compact class="mx-0" @retry="balances.refetch()" />
   <Skeleton v-if="balances.isPending.value" class="h-28" />
   <p v-else-if="balances.isSuccess.value && !sums.length" class="text-muted-foreground text-sm">{{ t("affiliates.overview.noBalances") }}</p>
   <section v-for="c in sums" :key="c.currency" :aria-label="c.currency">

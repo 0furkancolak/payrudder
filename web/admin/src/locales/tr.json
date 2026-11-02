@@ -1180,7 +1180,8 @@
           "deactivate": "Seçilenleri devre dışı bırak",
           "title": "{n} kupon devre dışı bırakılsın mı? | {n} kupon devre dışı bırakılsın mı?",
           "confirm": "Yeni kullanım almazlar ve devre dışı bırakılan bir kupon yeniden açılamaz. Zaten birine sahip abonelikler onu korur."
-        }
+        },
+        "confirmTitle": "{code} kuponu devre dışı bırakılsın mı?"
       },
       "tax": {
         "title": "Vergi",
@@ -1275,7 +1276,9 @@
             "expires": "Son kullanma gelecekte bir gün olmalı.",
             "minAmount": "Bu para biriminde bir tutar değil: yalnızca rakamlar, para biriminin ondalık sayısını aşmayacak şekilde.",
             "currencies": "Para birimleri USD gibi üç harfli kodlardır, virgülle ayrılır."
-          }
+          },
+          "confirmTitle": "{code} kodu devre dışı bırakılsın mı?",
+          "confirmBody": "Yeni kullanım almaz. Kupon ve diğer kodları çalışmaya devam eder."
         },
         "redemptions": {
           "coupon": "Kupon",
@@ -1439,7 +1442,8 @@
         "regenerate": "Bağlantıyı yenile",
         "copied": "Ödeme sayfası bağlantısı kopyalandı",
         "regenerated": "Yeni bağlantı oluşturuldu ve kopyalandı; eskileri artık çalışmıyor",
-        "validFor": "Bağlantılar {days} gün geçerlidir"
+        "validFor": "Bağlantılar {days} gün geçerlidir",
+        "confirmRegenerate": "Bu müşteri için yeni bir ödeme sayfası bağlantısı oluşturulsun mu? Önceden gönderilen bağlantılar çalışmayı durdurur."
       },
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
@@ -2115,7 +2119,8 @@
       "errors": {
         "limit": "Sınır en fazla {n} ondalıklı bir miktar olmalı.",
         "thresholds": "Uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir."
-      }
+      },
+      "confirmRemove": "{meter} istisnası kaldırılsın mı? Bu müşteri için yeniden paketin limiti geçerli olur."
     },
     "reconcile": {
       "title": "İnceleme kuyruğu",
@@ -2498,7 +2503,9 @@
       "commissions": "Komisyonlar",
       "commissionsOf": "{code} ödemesinin komisyonları",
       "markPaid": "Ödendi işaretle",
-      "cancel": "İptal et"
+      "cancel": "İptal et",
+      "confirmTitle": "Bu ödeme iptal edilsin mi?",
+      "confirmBody": "Komisyonları başka bir ödemede yeniden ödenebilir hale gelir."
     },
     "pay": {
       "title": "Ödemeyi ödendi olarak işaretle",
@@ -4093,7 +4100,11 @@
       "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
       "allRoles": "Tüm roller",
       "expiresHead": "Geçerlilik",
-      "soleOwner": "Tek sahip sizsiniz, bu yüzden henüz ayrılamazsınız. Önce başka birini sahip yapın."
+      "soleOwner": "Tek sahip sizsiniz, bu yüzden henüz ayrılamazsınız. Önce başka birini sahip yapın.",
+      "cancelInviteTitle": "Bu davet iptal edilsin mi?",
+      "cancelInviteBody": "{email}, kendisine gönderilen bağlantıyla artık katılamaz.",
+      "lowerTitle": "{name} kişisinin rolü düşürülsün mü?",
+      "lowerBody": "{from} rolünden {to} rolüne: {name}, {from} rolünün yapabildiklerini hemen kaybeder."
     },
     "account": {
       "switch": "Hesap",
@@ -5604,6 +5615,9 @@
       "unread": "Yenilik olan talepler: {n}",
       "waiting": "Bizi bekleyen: {n}"
     },
+    "confirmCloseTitle": "#{number} numaralı talep kapatılsın mı?",
+    "confirmCloseMany": "{n} talep kapatılsın mı? | {n} talep kapatılsın mı?",
+    "confirmCloseBody": "Kapalı bir talebe artık yanıt verilemez; kişinin yeni bir talep açması gerekir.",
     "attach": {
       "add": "Dosya ekle",
       "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",

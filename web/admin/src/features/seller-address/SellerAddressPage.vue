@@ -5,6 +5,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenant } from "@/features/tenants";
 import { addressLines, ADDRESS_MAX, cleanAddress, countryProfile, postalCodeLooksOff, validateAddress, type Address, type AddressPart } from "@/shared/lib/address";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -80,7 +81,7 @@ function submit() {
       <p v-if="lines.length === 0" class="text-muted-foreground italic">{{ t("address.preview.empty") }}</p>
     </div>
     <p v-if="saved" class="text-success text-sm" role="status">{{ t("address.saved") }}</p>
-    <ErrorText :error="tenant.error.value" />
+    <ErrorState :error="tenant.error.value" :retrying="tenant.isFetching.value" compact class="mx-0" @retry="tenant.refetch()" />
 
     <Sheet v-model:open="open" name="seller-address">
       <SheetContent>

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
-import { pickFilter } from "./ui";
+import { confirmDialog, pickFilter } from "./ui";
 
 // The packages form reads the tenant's currency from the tenant list.
 const tenantList = (c: { method: string; path: string }) =>
@@ -309,6 +309,7 @@ test.describe("customer quota overrides", () => {
     await expect(calls).toContainText("own limit");
 
     await sheet.getByRole("button", { name: "Remove the override on gb_hours" }).click();
+    await confirmDialog(page);
     await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/entitlement-overrides/gb_hours").length).toBe(1);
     await expect(sheet.getByRole("region", { name: "Own limits" }).getByRole("row", { name: /gb_hours/ })).toHaveCount(0);
   });

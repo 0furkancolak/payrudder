@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { CountrySelect } from "@/shared/ui/location-fields";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FormField } from "@/shared/ui/form-field";
 import { useCanWrite } from "@/shared/lib/access";
@@ -75,7 +76,7 @@ function saveDunning() {
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.dunning.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.hint") }}</p>
       <p v-if="dunningStored.data.value?.defaults_in_use" class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.defaults") }}</p>
-      <ErrorText :error="dunningStored.error.value" />
+      <ErrorState :error="dunningStored.error.value" :retrying="dunningStored.isFetching.value" compact class="mx-0" @retry="dunningStored.refetch()" />
       <div v-for="(_, i) in retryHours" :key="i" class="flex items-center gap-3" role="group" :aria-label="t('billing.pricing.dunning.retry', { n: i + 1 })">
         <Input v-model="retryHours[i]" inputmode="numeric" class="max-w-32" :aria-label="t('billing.pricing.dunning.delay', { n: i + 1 })" required />
         <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="retryHours.splice(i, 1)"><X class="size-4" /></Button>
@@ -98,7 +99,7 @@ function saveDunning() {
     <Card>
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.tax.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.tax.hint") }}</p>
-      <ErrorText :error="stored.error.value" />
+      <ErrorState :error="stored.error.value" :retrying="stored.isFetching.value" compact class="mx-0" @retry="stored.refetch()" />
       <div v-for="(r, i) in rates" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.pricing.tax.rate', { n: i + 1 })">
         <CountrySelect v-model="r.country" code-only :aria-label="t('billing.pricing.tax.country', { n: i + 1 })" :blank="t('billing.pricing.tax.anyCountry')" />
         <Input v-model="r.name" :aria-label="t('billing.pricing.tax.name', { n: i + 1 })" :placeholder="t('billing.pricing.tax.namePlaceholder')" required />

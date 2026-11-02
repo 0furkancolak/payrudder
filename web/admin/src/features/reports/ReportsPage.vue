@@ -11,7 +11,7 @@ import { label } from "@/shared/lib/labels";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { amount, amountHigh, amountLow, countHigh, newest, oldest } from "@/shared/lib/sortDefs";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
@@ -131,7 +131,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
       <SortSelect v-if="revenueTable.sorts.value.length > 0" v-model="revenueTable.sort.value" :options="revenueTable.sorts.value" />
       <GroupChips v-model="split" :groups="['period', 'provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
-    <ErrorText :error="revenue.error.value" class="px-3" />
+    <ErrorState :error="revenue.error.value" :retrying="revenue.isFetching.value" compact @retry="revenue.refetch()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -177,7 +177,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
 <SortSelect v-if="subTable.sorts.value.length > 0" v-model="subTable.sort.value" :options="subTable.sorts.value" />
       <GroupChips v-model="subSplit" :groups="['provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
-    <ErrorText :error="subs.error.value" class="px-3" />
+    <ErrorState :error="subs.error.value" :retrying="subs.isFetching.value" compact @retry="subs.refetch()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -220,7 +220,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
         <StatusPill :tone="dunningTone(s.state)">{{ label(t, te, "dunningState", s.state) }} · {{ s.provider || "—" }} · {{ s.currency }}: {{ s.invoices }} · {{ money(s.total_minor, s.currency) }}</StatusPill>
       </li>
     </ul>
-    <ErrorText :error="dunning.error.value" class="px-3" />
+    <ErrorState :error="dunning.error.value" :retrying="dunning.isFetching.value" compact @retry="dunning.refetch()" />
     <DataToolbar v-model:search="dunningTable.search.value" :active="dunningTable.active.value" @clear="dunningTable.clear()">
       <FilterSelect v-model="dunningState" multiple :label="t('billing.reports.state')" :options="dunningStates" />
       <FilterSelect v-model="dunningCurrency" multiple :label="t('billing.reports.currency')" :options="dunningCurrencies" />

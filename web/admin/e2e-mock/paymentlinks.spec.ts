@@ -137,6 +137,7 @@ test.describe("payment links", () => {
     // Regenerate: every old link is revoked, a new one is made.
     await sheet.getByTestId("customer-payment-page").click();
     await page.getByTestId("payment-page-regenerate").click();
+    await confirmDialog(page);
     await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/portal-links").length).toBe(1);
     await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/portal-links").length).toBe(2);
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/c\/t2$/);

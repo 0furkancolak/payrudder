@@ -1180,7 +1180,8 @@
           "deactivate": "Desactivar los seleccionados",
           "title": "¿Desactivar {n} cupón? | ¿Desactivar {n} cupones?",
           "confirm": "No aceptan nuevos canjes y un cupón desactivado no se puede volver a activar. Las suscripciones que ya tienen uno lo conservan."
-        }
+        },
+        "confirmTitle": "¿Desactivar el cupón {code}?"
       },
       "tax": {
         "title": "Impuestos",
@@ -1275,7 +1276,9 @@
             "expires": "La caducidad debe ser un día futuro.",
             "minAmount": "No es un importe en esa moneda: solo dígitos, con como máximo los decimales de la moneda.",
             "currencies": "Las monedas son códigos de tres letras como USD, separados por comas."
-          }
+          },
+          "confirmTitle": "¿Desactivar el código {code}?",
+          "confirmBody": "No acepta nuevos canjes. El cupón y sus otros códigos siguen funcionando."
         },
         "redemptions": {
           "coupon": "Cupón",
@@ -1439,7 +1442,8 @@
         "regenerate": "Regenerar enlace",
         "copied": "Enlace de la página de pago copiado",
         "regenerated": "Enlace nuevo creado y copiado; los anteriores ya no funcionan",
-        "validFor": "Los enlaces son válidos {days} días"
+        "validFor": "Los enlaces son válidos {days} días",
+        "confirmRegenerate": "¿Crear un nuevo enlace a la página de pagos de este cliente? Los enlaces ya enviados dejan de funcionar."
       },
       "for": "Para",
       "promotionCode": "Código promocional (opcional)",
@@ -2115,7 +2119,8 @@
       "errors": {
         "limit": "El límite debe ser una cantidad con como mucho {n} decimales.",
         "thresholds": "Las alertas son hasta 10 porcentajes crecientes entre 1 y 1000."
-      }
+      },
+      "confirmRemove": "¿Quitar la excepción en {meter}? Vuelve a aplicarse a este cliente el límite del paquete."
     },
     "reconcile": {
       "title": "Cola de revisión",
@@ -2498,7 +2503,9 @@
       "commissions": "Comisiones",
       "commissionsOf": "Comisiones del pago de {code}",
       "markPaid": "Marcar pagado",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "confirmTitle": "¿Cancelar este pago?",
+      "confirmBody": "Sus comisiones vuelven a poder pagarse en otro pago."
     },
     "pay": {
       "title": "Marcar el pago como pagado",
@@ -4093,7 +4100,11 @@
       "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta.",
       "allRoles": "Todos los roles",
       "expiresHead": "Válida hasta",
-      "soleOwner": "Eres el único propietario, así que aún no puedes salir. Nombra primero a otro propietario."
+      "soleOwner": "Eres el único propietario, así que aún no puedes salir. Nombra primero a otro propietario.",
+      "cancelInviteTitle": "¿Cancelar esta invitación?",
+      "cancelInviteBody": "{email} ya no podrá unirse con el enlace que recibió.",
+      "lowerTitle": "¿Reducir el rol de {name}?",
+      "lowerBody": "De {from} a {to}: {name} pierde de inmediato lo que puede hacer {from}."
     },
     "account": {
       "switch": "Cuenta",
@@ -5604,6 +5615,9 @@
       "unread": "Tickets con novedades: {n}",
       "waiting": "Esperando a que respondamos: {n}"
     },
+    "confirmCloseTitle": "¿Cerrar el ticket n.º {number}?",
+    "confirmCloseMany": "¿Cerrar {n} ticket? | ¿Cerrar {n} tickets?",
+    "confirmCloseBody": "Un ticket cerrado ya no se puede responder; la persona tendrá que abrir uno nuevo.",
     "attach": {
       "add": "Adjuntar archivos",
       "hint": "png, jpeg, pdf o texto; hasta 5 MB cada uno, 10 por ticket.",

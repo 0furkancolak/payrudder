@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { firstError } from "@/shared/lib/errors";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
@@ -12,6 +13,7 @@ import MailSuppressionsCard from "./MailSuppressionsCard.vue";
 
 const { t } = useI18n();
 const tenantId = useRouteTenantId();
+const canWrite = useCanWrite();
 const settings = useMailSettings(tenantId);
 const set = useSetMailCategory(tenantId);
 
@@ -38,7 +40,7 @@ function toggle(category: MailCategory, on: boolean) {
           <span class="block text-sm font-medium">{{ t(`billing.mail.categories.${category}`) }}</span>
           <span class="text-muted-foreground block text-xs">{{ t(`billing.mail.descriptions.${category}`) }}</span>
         </label>
-        <Switch :id="`mail-${category}`" :data-testid="`mail-${category}`" :model-value="enabled(category)" :disabled="settings.isPending.value || set.isPending.value" @update:model-value="toggle(category, $event)" />
+        <Switch :id="`mail-${category}`" :data-testid="`mail-${category}`" :model-value="enabled(category)" :disabled="!canWrite || settings.isPending.value || set.isPending.value" @update:model-value="toggle(category, $event)" />
       </li>
     </ul>
     <p class="text-muted-foreground px-3 pt-3 text-xs">{{ t("billing.mail.providerNote") }}</p>

@@ -11,7 +11,7 @@ import { useAppsProviders, type ConnectEnvironment } from "@/features/providers/
 import { appRows, connectionOf, orgSummary, type ConnectionState, type Scope } from "@/features/providers/connections";
 import ProviderSheet from "@/features/providers/ProviderSheet.vue";
 import { Button } from "@/shared/ui/button";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useEInvoiceIntegration, useMailIntegration, type EInvoiceProvider } from "./api";
@@ -214,7 +214,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
     </header>
 
     <Skeleton v-if="loading" class="h-48 rounded-2xl" />
-    <ErrorText :error="apps.error.value" />
+    <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" compact class="mx-0" @retry="apps.refetch()" />
     <p v-if="!loading && !hasLive" class="text-muted-foreground surface p-6 text-sm" data-testid="integrations-no-live">{{ t("product.goLive.noLive") }}</p>
     <template v-else-if="!loading">
       <p v-if="notice" class="text-success text-sm" role="status" data-testid="provider-connected">{{ notice }}</p>

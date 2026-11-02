@@ -1180,7 +1180,8 @@
           "deactivate": "Deactivate selected",
           "title": "Deactivate {n} coupon? | Deactivate {n} coupons?",
           "confirm": "They take no new redemptions, and a deactivated coupon cannot be switched on again. Subscriptions that already have one keep it."
-        }
+        },
+        "confirmTitle": "Deactivate coupon {code}?"
       },
       "tax": {
         "title": "Tax",
@@ -1275,7 +1276,9 @@
             "expires": "The expiry must be a day in the future.",
             "minAmount": "Not an amount in that currency: digits only, with at most as many decimals as the currency has.",
             "currencies": "Currencies are three-letter codes such as USD, separated by commas."
-          }
+          },
+          "confirmTitle": "Deactivate the code {code}?",
+          "confirmBody": "It takes no new redemptions. The coupon and its other codes keep working."
         },
         "redemptions": {
           "coupon": "Coupon",
@@ -1439,7 +1442,8 @@
         "regenerate": "Regenerate link",
         "copied": "Payment page link copied",
         "regenerated": "New link made and copied; the old ones stopped working",
-        "validFor": "Links are valid for {days} days"
+        "validFor": "Links are valid for {days} days",
+        "confirmRegenerate": "Make a new payment page link for this customer? The links already sent stop working."
       },
       "for": "For",
       "promotionCode": "Promotion code (optional)",
@@ -2115,7 +2119,8 @@
       "errors": {
         "limit": "The limit must be a quantity with at most {n} decimals.",
         "thresholds": "Alerts are up to 10 ascending percentages between 1 and 1000."
-      }
+      },
+      "confirmRemove": "Remove the override on {meter}? The package's limit applies to this customer again."
     },
     "reconcile": {
       "title": "Review queue",
@@ -2498,7 +2503,9 @@
       "commissions": "Commissions",
       "commissionsOf": "Commissions of the payout of {code}",
       "markPaid": "Mark paid",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "confirmTitle": "Cancel this payout?",
+      "confirmBody": "Its commissions go back to being payable in another payout."
     },
     "pay": {
       "title": "Mark payout as paid",
@@ -4093,7 +4100,11 @@
       "removeBody": "{name} loses access to this account's apps and data at once.",
       "allRoles": "All roles",
       "expiresHead": "Valid until",
-      "soleOwner": "You are the only owner, so you cannot leave yet. Make someone else an owner first."
+      "soleOwner": "You are the only owner, so you cannot leave yet. Make someone else an owner first.",
+      "cancelInviteTitle": "Cancel this invitation?",
+      "cancelInviteBody": "{email} will no longer be able to join with the link they were sent.",
+      "lowerTitle": "Lower the role of {name}?",
+      "lowerBody": "From {from} to {to}: {name} loses at once what {from} may do."
     },
     "account": {
       "switch": "Account",
@@ -5604,6 +5615,9 @@
       "unread": "Tickets with news: {n}",
       "waiting": "Waiting for us: {n}"
     },
+    "confirmCloseTitle": "Close ticket #{number}?",
+    "confirmCloseMany": "Close {n} ticket? | Close {n} tickets?",
+    "confirmCloseBody": "Nobody can answer a closed ticket any more; the person has to open a new one.",
     "attach": {
       "add": "Attach files",
       "hint": "png, jpeg, pdf or text; up to 5 MB each, 10 per ticket.",
