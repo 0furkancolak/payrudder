@@ -141,11 +141,21 @@ const subRows = computed(() => {
     { key: "reference", label: t("billing.providers.reference"), value: s.provider_ref, mono: true },
     { key: "status", label: t("billing.subscriptions.state") },
     { key: "next", label: t("billing.providers.nextBilled"), value: when(s.next_billed_at) },
+    { key: "scheduled", label: t("billing.providers.scheduled"), value: scheduledText(s.scheduled_change) },
     { key: "updated", label: t("billing.providers.updated"), value: when(s.updated_at) },
   ];
 });
 const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => subTable.open(i) }];
 const when = (v?: string) => fmt.date(v, "day", "—");
+// What the provider has announced for later (a cancellation at the end of the period leaves the status "active" until then), in words; read-only.
+function scheduledText(c: ProviderSub["scheduled_change"]): string {
+  if (!c) return t("billing.providers.scheduledNone");
+  const date = when(c.effective_at);
+  if (c.action === "cancel") return t("billing.providers.scheduledCancel", { date });
+  if (c.action === "resume") return t("billing.providers.scheduledResume", { date });
+  if (c.action === "pause") return c.resume_at ? t("billing.providers.scheduledPauseUntil", { date, resume: when(c.resume_at) }) : t("billing.providers.scheduledPause", { date });
+  return t("billing.providers.scheduledOther", { action: c.action, date });
+}
 </script>
 
 <template>
@@ -238,7 +248,10 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         <TableRow v-for="(s, i) in subTable.items.value" :key="`${s.provider}-${s.provider_ref}`" class="cursor-pointer" @click="subTable.open(i)">
           <TableCell class="mono text-xs font-medium">{{ s.provider_ref }}</TableCell>
           <TableCell>{{ s.provider }} <span class="text-muted-foreground text-xs">{{ s.environment }}</span></TableCell>
-          <TableCell><StatusPill :tone="toneOf(s.status)">{{ s.status }}</StatusPill></TableCell>
+          <TableCell>
+            <StatusPill :tone="toneOf(s.status)">{{ s.status }}</StatusPill>
+            <p v-if="s.scheduled_change" class="text-muted-foreground mt-1 text-xs">{{ scheduledText(s.scheduled_change) }}</p>
+          </TableCell>
           <TableCell>{{ when(s.next_billed_at) }}</TableCell>
           <TableCell>{{ when(s.updated_at) }}</TableCell>
           <TableCell><RowActions :actions="subActions(i)" /></TableCell>

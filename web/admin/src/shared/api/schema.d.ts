@@ -8730,6 +8730,21 @@ export interface components {
             status: string;
             /** Format: date-time */
             next_billed_at?: string;
+            /** @description A change the provider has announced and will apply later, as its last notification gave it (a cancellation at the end of the period leaves the status "active" until then). Absent when none is announced. Read-only. */
+            scheduled_change?: {
+                /**
+                 * @description The provider's word: cancel, pause or resume (Paddle)
+                 * @example cancel
+                 */
+                action: string;
+                /** Format: date-time */
+                effective_at: string;
+                /**
+                 * Format: date-time
+                 * @description When a paused subscription resumes
+                 */
+                resume_at?: string;
+            };
             /** Format: date-time */
             updated_at: string;
         };

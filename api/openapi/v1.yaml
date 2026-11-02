@@ -8021,6 +8021,14 @@ components:
         quotify_subscription_id: { type: string, format: uuid }
         status: { type: string }
         next_billed_at: { type: string, format: date-time }
+        scheduled_change:
+          type: object
+          description: A change the provider has announced and will apply later, as its last notification gave it (a cancellation at the end of the period leaves the status "active" until then). Absent when none is announced. Read-only.
+          required: [action, effective_at]
+          properties:
+            action: { type: string, description: "The provider's word: cancel, pause or resume (Paddle)", examples: [cancel] }
+            effective_at: { type: string, format: date-time }
+            resume_at: { type: string, format: date-time, description: When a paused subscription resumes, for a pause }
         updated_at: { type: string, format: date-time }
     CreateProviderCheckoutRequest:
       type: object

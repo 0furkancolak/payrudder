@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -363,6 +364,53 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 		}
 	})
 
+	t.Run("a cancellation Paddle has scheduled is kept beside the status, replaced by the next event and not brought back by a stale one", func(t *testing.T) {
+		scheduled := func(id, occurred, change string) string {
+			return event(id, "subscription.updated", occurred, `{"id":"sub_sched","status":"active","custom_data":null,"next_billed_at":"2027-04-01T00:00:00Z","scheduled_change":`+change+`}`)
+		}
+		announce := scheduled("evt_s1", "2027-03-01T10:00:00Z", `{"action":"cancel","effective_at":"2027-04-01T00:00:00Z","resume_at":null}`)
+		withdrawn := scheduled("evt_s2", "2027-03-05T10:00:00Z", `null`)
+		stale := scheduled("evt_s3", "2027-03-02T10:00:00Z", `{"action":"pause","effective_at":"2027-03-20T00:00:00Z","resume_at":"2027-05-01T00:00:00Z"}`)
+		current := func() map[string]any {
+			t.Helper()
+			code, list := admin("GET", "/admin/tenants/"+tenant.String()+"/provider-subscriptions", "")
+			var out struct {
+				Subscriptions []map[string]any `json:"subscriptions"`
+			}
+			if err := json.Unmarshal([]byte(list), &out); err != nil || code != 200 {
+				t.Fatalf("subscriptions: %d %s %v", code, list, err)
+			}
+			for _, sub := range out.Subscriptions {
+				if sub["provider_ref"] == "sub_sched" {
+					return sub
+				}
+			}
+			t.Fatalf("sub_sched is not listed: %s", list)
+			return nil
+		}
+		deliver := func(b string) {
+			t.Helper()
+			if code, resp := post(hook, b, signed(b, time.Now())); code != 200 {
+				t.Fatalf("webhook: %d %s", code, resp)
+			}
+		}
+		deliver(announce)
+		sub := current()
+		sc, _ := sub["scheduled_change"].(map[string]any)
+		at, _ := time.Parse(time.RFC3339, fmt.Sprint(sc["effective_at"])) // the database answers in its own zone
+		if sub["status"] != "active" || sc["action"] != "cancel" || !at.Equal(time.Date(2027, 4, 1, 0, 0, 0, 0, time.UTC)) || sc["resume_at"] != nil {
+			t.Fatalf("after the announcement: %v; the status stays active and the cancellation is beside it", sub)
+		}
+		deliver(withdrawn)
+		if sub := current(); sub["scheduled_change"] != nil {
+			t.Fatalf("after the event without one: %v; the announcement is cleared", sub)
+		}
+		deliver(stale) // older than the event that withdrew it
+		if sub := current(); sub["scheduled_change"] != nil {
+			t.Fatalf("after a stale event: %v; an older event must not announce again", sub)
+		}
+	})
+
 	t.Run("a refund goes out as an adjustment and its approval is recorded", func(t *testing.T) {
 		refund := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: tenant.String(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
 			Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{InvoiceId: invoice.String(), PspChargeId: "txn_01",
@@ -627,7 +675,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 			t.Fatal("the old subscription was cancelled although the migration could not be planned")
 		}
 		next := time.Date(2027, 5, 1, 0, 0, 0, 0, time.UTC)
-		if err := subs.Upsert(ctx, tenant, "paddle", "live", "sub_PAID", nil, "active", &next, time.Now()); err != nil {
+		if err := subs.Upsert(ctx, tenant, "paddle", "live", "sub_PAID", nil, "active", &next, nil, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 		// Paddle refuses to cancel: nothing is started either, the customer keeps paying one provider.
