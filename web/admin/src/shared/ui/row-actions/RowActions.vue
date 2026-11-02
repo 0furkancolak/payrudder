@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { MoreHorizontal } from "@lucide/vue";
 import { useMediaQuery } from "@vueuse/core";
-import { computed, type Component } from "vue";
+import { computed, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
+import { openTabs, rememberOpener } from "@/shared/lib/sheets";
 import { Button } from "@/shared/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 
@@ -25,6 +26,18 @@ const { t } = useI18n();
 const card = useMediaQuery("(max-width: 1023px)");
 const inline = computed(() => card.value && props.actions.length > 1 && props.actions.length <= 3);
 const shown = () => props.actions.filter((a) => !a.disabled || props.actions.length > 1);
+
+// An action of the menu that opens a sheet: the sheet takes the focus (the menu must not hand it back to its button as it closes), and gives it back to that button when it closes.
+const trigger = ref<{ $el: HTMLElement } | null>(null);
+let sheetsBefore = 0;
+function select(a: RowAction) {
+  sheetsBefore = openTabs.value.length;
+  rememberOpener(trigger.value?.$el ?? null);
+  a.onSelect();
+}
+function keepFocusInSheet(e: Event) {
+  if (openTabs.value.length > sheetsBefore) e.preventDefault();
+}
 </script>
 
 <template>
@@ -50,14 +63,14 @@ const shown = () => props.actions.filter((a) => !a.disabled || props.actions.len
   <div v-else-if="actions.length > 1" class="flex justify-end">
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button size="icon" variant="ghost" class="size-8 rounded-full" :aria-label="label ?? t('common.moreActions')" data-testid="row-actions" @click.stop>
+        <Button ref="trigger" size="icon" variant="ghost" class="size-8 rounded-full" :aria-label="label ?? t('common.moreActions')" data-testid="row-actions" @click.stop>
           <MoreHorizontal class="size-4" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="min-w-44">
+      <DropdownMenuContent align="end" class="min-w-44" @close-auto-focus="keepFocusInSheet">
         <template v-for="a in shown()" :key="a.key">
           <DropdownMenuSeparator v-if="a.separatorBefore" />
-          <DropdownMenuItem class="rounded-xl" :variant="a.destructive ? 'destructive' : 'default'" :disabled="a.disabled" :data-testid="`row-action-${a.key}`" @select="a.onSelect()">
+          <DropdownMenuItem class="rounded-xl" :variant="a.destructive ? 'destructive' : 'default'" :disabled="a.disabled" :data-testid="`row-action-${a.key}`" @select="select(a)">
             <component :is="a.icon" v-if="a.icon" class="size-4" aria-hidden="true" />{{ a.label }}
           </DropdownMenuItem>
         </template>

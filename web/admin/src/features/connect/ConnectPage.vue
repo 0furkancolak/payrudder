@@ -11,6 +11,7 @@ import { seriesOptions } from "@/features/usage/api";
 import { useTenants } from "@/features/tenants/api";
 import { answerBody, plainAnswer } from "@/features/webhooks/lib";
 import { useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "@/features/webhooks/api";
+import { useCanWrite } from "@/shared/lib/access";
 import { copyText } from "@/shared/lib/clipboard";
 import { envOf, findTenant } from "@/shared/lib/environment";
 import { firstError } from "@/shared/lib/errors";
@@ -40,6 +41,8 @@ import { LANGS, keyHintOf, snippets, type Lang } from "./snippets";
  * never stored), in the sandbox a sample meter and customer, and a button that sends one test event as the signed-in person. All three use the APIs the console already uses.
  */
 const { t } = useI18n();
+// The code, the checklist and the address are for everybody; making a key, the samples or a test event writes, so a viewer is not offered those (the server would refuse them).
+const canWrite = useCanWrite();
 const tenantId = useRouteTenantId();
 const apps = useApps();
 const operatorTenants = useTenants({ enabled: isOperator });
@@ -194,7 +197,7 @@ const base = computed(() => tenantBase());
         </span>
       </li>
     </ol>
-    <div v-if="showSample" class="mt-3 grid gap-2" data-testid="connect-sample">
+    <div v-if="showSample && canWrite" class="mt-3 grid gap-2" data-testid="connect-sample">
       <div><Button type="button" variant="outline" size="sm" :disabled="samples.isPending.value" data-testid="connect-sample-create" @click="makeSamples"><Sparkles class="size-4" aria-hidden="true" />{{ t("connect.sample.create") }}</Button></div>
       <p class="text-muted-foreground text-xs">{{ t("connect.sample.help", { meter: SAMPLE_METER.code, customer: SAMPLE_CUSTOMER.external_id }) }}</p>
     </div>
@@ -205,7 +208,7 @@ const base = computed(() => tenantBase());
   <Card class="mb-4 p-5">
     <h2 class="mb-1 text-base font-semibold">{{ t("connect.codeTitle") }}</h2>
     <p class="text-muted-foreground mb-3 text-sm">{{ t(live ? "connect.keyLive" : "connect.keyTest") }}</p>
-    <div v-if="appId" class="bg-muted/40 mb-4 grid gap-3 rounded-2xl p-4" data-testid="connect-key">
+    <div v-if="appId && canWrite" class="bg-muted/40 mb-4 grid gap-3 rounded-2xl p-4" data-testid="connect-key">
       <h3 class="text-sm font-semibold">{{ t("connect.key.title") }}</h3>
       <template v-if="!secret">
         <p class="text-muted-foreground text-xs">{{ t("connect.key.help") }}</p>
@@ -242,7 +245,7 @@ const base = computed(() => tenantBase());
         <Button type="button" variant="ghost" size="sm" :data-testid="`connect-copy-${block}`" @click="copy(block)"><Copy class="size-4" aria-hidden="true" />{{ copied === block ? t("common.copied") : t("connect.copy") }}</Button>
       </div>
       <pre class="bg-muted mono overflow-x-auto rounded-2xl p-4 text-xs leading-relaxed" :data-testid="`connect-code-${block}`"><code>{{ code[block] }}</code></pre>
-      <div v-if="block === 'send' && !live" class="bg-muted/40 mt-3 grid gap-3 rounded-2xl p-4" data-testid="connect-test-event">
+      <div v-if="block === 'send' && !live && canWrite" class="bg-muted/40 mt-3 grid gap-3 rounded-2xl p-4" data-testid="connect-test-event">
         <h4 class="text-sm font-semibold">{{ t("connect.testEvent.title") }}</h4>
         <p class="text-muted-foreground text-xs">{{ eventReady ? t("connect.testEvent.help", { meter, customer: customer.trim() }) : t("connect.testEvent.need") }}</p>
         <div><Button type="button" variant="outline" :disabled="testEvent.isPending.value || !eventReady" data-testid="connect-test-event-send" @click="sendTestEvent"><Send class="size-4" aria-hidden="true" />{{ t("connect.testEvent.send") }}</Button></div>
@@ -254,7 +257,7 @@ const base = computed(() => tenantBase());
         <ErrorText :error="firstError(testEvent)" />
       </div>
       <p v-if="block === 'webhook'" class="text-muted-foreground mt-2 text-xs">{{ t("connect.webhookHelp") }} <Link :to="`${base}/${tenantId}/webhooks`" class="text-primary hover:underline">{{ t("connect.webhookLink") }}</Link></p>
-      <div v-if="block === 'webhook'" class="bg-muted/40 mt-3 grid gap-3 rounded-2xl p-4" data-testid="connect-webhook-test">
+      <div v-if="block === 'webhook' && canWrite" class="bg-muted/40 mt-3 grid gap-3 rounded-2xl p-4" data-testid="connect-webhook-test">
         <h4 class="text-sm font-semibold">{{ t("connect.webhookTest.title") }}</h4>
         <p v-if="hooks.length === 0" class="text-muted-foreground text-xs" data-testid="connect-webhook-none">{{ t("connect.webhookTest.none") }}</p>
         <template v-else>

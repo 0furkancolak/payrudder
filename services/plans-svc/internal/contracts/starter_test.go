@@ -39,3 +39,18 @@ func TestStarterTexts(t *testing.T) {
 		t.Error("a starter for a kind that does not exist")
 	}
 }
+
+// Directive (EU) 2023/2673 art. 1(2) adds the existence and placement of the withdrawal function to the information before the order, and the starter pre-information
+// names it by the label the hosted pages draw (services/gateway/internal/httpapi/hosted_withdraw_i18n.go). UNVERIFIED whether the text must (docs/plans/21-contracts.md).
+func TestStarterPreInformationNamesTheWithdrawalFunction(t *testing.T) {
+	for loc, label := range map[string]string{"en": "Withdraw from contract here", "tr": "Sözleşmeden buradan cayın"} {
+		body, _, _ := Starter(domain.ContractPreInfo, loc)
+		if !strings.Contains(body, `"`+label+`"`) {
+			t.Errorf("pre_info/%s does not name the function %q", loc, label)
+		}
+		// The seller is told to remove the sentence when the function is off, in the placeholder form the other seller notes have.
+		if !strings.Contains(body, "[seller: delete this paragraph") && !strings.Contains(body, "[satıcı: ayarlarınızda cayma işlevini") {
+			t.Errorf("pre_info/%s does not tell the seller to delete the paragraph when the function is off", loc)
+		}
+	}
+}

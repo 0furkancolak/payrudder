@@ -688,7 +688,16 @@ CREATE TABLE payment_disputes (
   outcome text NOT NULL CHECK (outcome IN ('open','won','lost')), formal boolean NOT NULL,  -- formal: a chargeback proper; false: an inquiry or a warning
   provider_status text NOT NULL DEFAULT '', reason text NOT NULL DEFAULT '', evidence_due_at timestamptz, opened_at timestamptz NOT NULL, closed_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, provider, dispute_ref)  -- an ended case is not reopened by a late notification; lost can still turn won
+  -- migration 00015 / tenant 00016 adds: fee_minor bigint (> 0) and fee_currency char(3), the fee a notification says the provider took (NULL when none did; a later notification
+  -- that does not name it leaves it), and handled_at timestamptz / handled_by text, the seller's own mark that the case was dealt with (it changes nothing at the provider).
 );
+-- payment_dispute_events (00015 / tenant 00016): what the seller did with a case, append-only (DELETE refused as for reconciliation_events, same trigger function): a note
+-- (action 'note', note <= 2000 characters), the mark 'handled', the mark lifted 'unhandled'; actor is who the gateway says. The sandbox reset deletes it before the cases.
+CREATE TABLE payment_dispute_events (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, dispute_id bigint NOT NULL REFERENCES payment_disputes (id),
+  action text NOT NULL CHECK (action IN ('note','handled','unhandled')), note text NOT NULL DEFAULT '', actor text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);
+-- The ledger's kind gains 'dispute_fee' (00015): the fee of a case as a row of its own, provider_ref the case's reference and ":fee", written once.
 -- payment_attempts.provider_ref (migration 00010 / tenant 00011): the provider's own reference (a PaymentIntent id) of the first response of a charge; NULL until one has it.
 
 -- Reconciliation as a workflow (plan 22 G7, migration 00003 / tenant 00004; docs/reconciliation.md). No row-level security (payments_db has none).

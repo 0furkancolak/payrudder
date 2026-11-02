@@ -133,6 +133,14 @@ func NewEngine(cfg Config) (*Engine, error) {
 	return e, nil
 }
 
+// Gate asks the payment gate about a customer of a tenant now, for a reader who wants to know why a charge is held; with no gate configured it lets everything through.
+func (e *Engine) Gate(ctx context.Context, tenantID uuid.UUID, customerExternalID string) (paymentgate.Verdict, error) {
+	if e.cfg.Gate == nil {
+		return paymentgate.Allowed, nil
+	}
+	return e.cfg.Gate(ctx, tenantID, customerExternalID)
+}
+
 // DunningDefaults are the delays before payment retry 1..n of a tenant that set none: the configured ones for its environment, not the built-in ones.
 func (e *Engine) DunningDefaults(sandbox bool) []time.Duration {
 	if sandbox {

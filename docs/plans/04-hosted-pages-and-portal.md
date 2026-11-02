@@ -70,3 +70,12 @@ Not verified: the comparison with the owner's Paddle/Stripe reference (a person'
 
 Still open from the list above: the Paddle-like portal's next charge for an active subscription, card on file and upcoming invoice (data missing end to end); customer actions; a language switcher; a performance budget; seller branding beyond the logo.
 
+## Status (2026-11-02), branch `feat/leftovers-4-dx-console`: the phone and tablet issues the console reports
+
+This plan's own phone and tablet checks are the hosted pages' (`web/admin/scripts/hosted-pages.mjs`, in CI); the console's two open phone issues are in [`docs/ui-test-report.md`](../ui-test-report.md) ("Observations that are by design or open") and in plan 03 ("not looked at on a phone"). Looked at again:
+
+- **Credits, "Valid for (days, optional)" cut in its input:** already gone. The pack form has a label for the field (`FormField`) and no placeholder to cut.
+- **Accounting chart, legend over the axis dates at 375 px:** already fixed in `BarSeries.vue` (the legend is on a line of its own under the dates); now held by a test (`e2e-mock/phone-tablet.spec.ts`: the legend starts under the dates, and both are inside the screen at 375 and 768 px).
+- New: **`e2e-mock/phone-tablet.spec.ts`** (12 tests, a phone at 375 and a tablet at 768 px) checks six pages and their sheets (customers and the customer's sheet, subscriptions and the subscription's sheet, credits, Connect, disputes, accounting): the document does not scroll sideways, a sheet's edges are inside the screen once it has stopped sliding in, and nothing in a sheet's body is wider than the body, with a deliberately long customer name, e-mail address and plan code. **It found nothing to fix**: it is a guard, so it does not fail without a change.
+
+Not done / not verified: a real phone or tablet (a Chrome viewport is not one), Safari, the other pages of the console at those widths (the real-stack `product-real.spec.ts` checks no sideways scroll on the product pages at 375 and 768 in the `end-to-end` job), Arabic on a phone.

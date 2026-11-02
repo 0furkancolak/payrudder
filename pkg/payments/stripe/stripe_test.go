@@ -801,3 +801,38 @@ func TestDisputesAreNotifiedAsOneCase(t *testing.T) {
 		t.Errorf("an unknown status: %+v", n)
 	}
 }
+
+// The dispute fee is the fee of the balance transactions the dispute lists, in their currency; a dispute with none, with a fee of zero, or whose transactions carry a fee in
+// two currencies reports only what it can say. UNVERIFIED against Stripe: where the fee really shows is not in the documentation (see the comment at the code).
+func TestADisputesFeeIsReadFromItsBalanceTransactions(t *testing.T) {
+	f := newFake(t, 200, `{}`)
+	c := f.client(t)
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	fee := func(bts string) *payments.DisputeEvent {
+		t.Helper()
+		body := `{"id":"evt_f","type":"charge.dispute.created","created":1782000000,"data":{"object":{"id":"du_f","amount":1250,"currency":"eur","payment_intent":"pi_1","status":"needs_response","balance_transactions":` + bts + `}}}`
+		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
+		if err != nil || n.Dispute == nil {
+			t.Fatalf("%s: %+v, %v", bts, n, err)
+		}
+		return n.Dispute
+	}
+	if d := fee(`[{"amount":-1250,"fee":1500,"currency":"usd"}]`); d.FeeMinor != 1500 || d.FeeCurrency != "USD" {
+		t.Errorf("one withdrawal with a fee: %d %s, want 1500 USD", d.FeeMinor, d.FeeCurrency)
+	}
+	if d := fee(`[{"amount":-1250,"fee":1500,"currency":"usd"},{"amount":1250,"fee":0,"currency":"usd"}]`); d.FeeMinor != 1500 {
+		t.Errorf("a withdrawal and a reinstatement: %d, want the fee of the withdrawal", d.FeeMinor)
+	}
+	if d := fee(`[{"amount":-1250,"fee":1500,"currency":"usd"},{"amount":-300,"fee":200,"currency":"usd"}]`); d.FeeMinor != 1700 {
+		t.Errorf("two fees in one currency: %d, want 1700", d.FeeMinor)
+	}
+	if d := fee(`[{"amount":-1250,"fee":1500,"currency":"usd"},{"amount":-300,"fee":200,"currency":"eur"}]`); d.FeeMinor != 1500 || d.FeeCurrency != "USD" {
+		t.Errorf("fees in two currencies: %d %s, want the first currency's only", d.FeeMinor, d.FeeCurrency)
+	}
+	for _, bts := range []string{`[]`, `null`, `[{"amount":-1250,"fee":0,"currency":"usd"}]`, `[{"amount":1250,"fee":-1500,"currency":"usd"}]`} {
+		if d := fee(bts); d.FeeMinor != 0 || d.FeeCurrency != "" {
+			t.Errorf("balance_transactions %s: fee %d %s, want none", bts, d.FeeMinor, d.FeeCurrency)
+		}
+	}
+}

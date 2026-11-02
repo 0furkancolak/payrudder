@@ -284,6 +284,29 @@ func TestNotifications(t *testing.T) {
 			}
 		}
 	})
+	t.Run("a chargeback's fee is the chargeback_fee of the payout totals, in the payout currency, and only on the action that incurs it", func(t *testing.T) {
+		fee := func(action, totals string) *payments.DisputeEvent {
+			n := confirm(t, c, `{"event_id":"evt_f","event_type":"adjustment.created","data":{"id":"adj_cb","action":"`+action+`","status":"approved","transaction_id":"txn_01","currency_code":"EUR","totals":{"total":"1250"},"payout_totals":`+totals+`}}`)
+			if n.Dispute == nil {
+				t.Fatalf("%s: %+v", action, n)
+			}
+			return n.Dispute
+		}
+		withFee := `{"currency_code":"USD","total":"1400","chargeback_fee":{"amount":"1500","original":{"amount":"1380","currency_code":"EUR"}}}`
+		for _, action := range []string{"chargeback", "chargeback_warning"} {
+			if d := fee(action, withFee); d.FeeMinor != 1500 || d.FeeCurrency != "USD" {
+				t.Errorf("%s: fee %d %s, want 1500 USD (the amount in the payout currency, not the original)", action, d.FeeMinor, d.FeeCurrency)
+			}
+		}
+		if d := fee("chargeback_reverse", withFee); d.FeeMinor != 0 {
+			t.Errorf("a reversal carries a fee of %d: the fee is not given back by this event", d.FeeMinor)
+		}
+		for _, totals := range []string{`null`, `{"currency_code":"USD","total":"1400"}`, `{"currency_code":"USD","chargeback_fee":null}`, `{"chargeback_fee":{"amount":"1500"}}`} {
+			if d := fee("chargeback", totals); d.FeeMinor != 0 || d.FeeCurrency != "" {
+				t.Errorf("payout_totals %s: fee %d %s, want none (no amount, or no currency to put it in)", totals, d.FeeMinor, d.FeeCurrency)
+			}
+		}
+	})
 	t.Run("other events are ignored", func(t *testing.T) {
 		if n := confirm(t, c, `{"event_id":"evt_9","event_type":"customer.created","data":{"id":"ctm_1"}}`); n.Kind != payments.KindIgnored {
 			t.Errorf("notification = %+v", n)

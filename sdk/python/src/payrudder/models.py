@@ -131,6 +131,19 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
+class _CreatePaymentMethodSetupRequestRequired(TypedDict):
+    return_url: str
+
+
+class CreatePaymentMethodSetupRequest(_CreatePaymentMethodSetupRequestRequired, total=False):
+    provider: Literal["stripe"]
+
+
+class PaymentMethodSetup(TypedDict):
+    url: str
+    ref: str
+
+
 class StoredCard(TypedDict):
     token: str
     alias: str
@@ -2006,6 +2019,27 @@ class ListCustomerPaymentsResponse(TypedDict):
     payments: list[CustomerPayment]
 
 
+class _PaymentWaitRequired(TypedDict):
+    state: str
+
+
+class PaymentWait(_PaymentWaitRequired, total=False):
+    since_time: str
+    next_check_time: str
+    hold_reason: Literal["customer_blocked", "tenant_on_hold", "none"]
+    window_ends_time: str
+
+
+class InvoiceSaga(TypedDict):
+    id: str
+    invoice_id: str
+    state: str
+    attempt: int
+    dunning_attempt: int
+    last_error: str
+    version: int
+
+
 class AuditEvent(TypedDict):
     id: str
     tenant_id: str
@@ -2059,6 +2093,8 @@ class _DisputeRequired(TypedDict):
     formal: bool
     provider_status: str
     opened_time: str
+    handled: bool
+    note_count: int
 
 
 class Dispute(_DisputeRequired, total=False):
@@ -2066,10 +2102,37 @@ class Dispute(_DisputeRequired, total=False):
     reason: str
     evidence_due_time: str
     closed_time: str
+    fee_minor: int
+    fee_currency: str
+    handled_time: str
+    handled_by: str
 
 
 class ListDisputesResponse(TypedDict):
     disputes: list[Dispute]
+
+
+class _DisputeEventRequired(TypedDict):
+    id: str
+    action: Literal["note", "handled", "unhandled"]
+    create_time: str
+
+
+class DisputeEvent(_DisputeEventRequired, total=False):
+    note: str
+    actor: str
+
+
+class ListDisputeEventsResponse(TypedDict):
+    events: list[DisputeEvent]
+
+
+class AddDisputeNoteRequest(TypedDict):
+    note: str
+
+
+class SetDisputeHandledRequest(TypedDict):
+    handled: bool
 
 
 class _CreateUploadSessionFileRequired(TypedDict):

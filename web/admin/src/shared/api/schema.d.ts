@@ -113,6 +113,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/payment-method-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the link to the provider's page where the customer saves a card for later charges
+         * @description For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+         */
+        post: operations["createPaymentMethodSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/cards": {
         parameters: {
             query?: never;
@@ -3028,6 +3048,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{id}/payment-wait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+         * @description Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+         */
+        get: operations["getInvoicePaymentWait"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+         * @description Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+         */
+        post: operations["releaseHeldInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void an invoice whose first charge is held
+         * @description Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+         */
+        post: operations["voidHeldInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/audit-events": {
         parameters: {
             query?: never;
@@ -3101,6 +3181,66 @@ export interface paths {
          */
         get: operations["listDisputes"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The notes and marks you made on a dispute, newest first
+         * @description What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+         */
+        get: operations["listDisputeHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Write a note on a dispute
+         * @description A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+         */
+        post: operations["addDisputeNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/handled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a dispute as handled in Payrudder, or lift the mark
+         * @description Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+         */
+        put: operations["setDisputeHandled"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7509,6 +7649,33 @@ export interface components {
             last_error: string;
             version: number;
         };
+        PaymentWait: {
+            /**
+             * @description The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED
+             * @example PAYMENT_HELD
+             */
+            state: string;
+            /**
+             * Format: date-time
+             * @description When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered)
+             */
+            since_time?: string;
+            /**
+             * Format: date-time
+             * @description When Payrudder looks again (the next pass over held charges, or the next question to the provider)
+             */
+            next_check_time?: string;
+            /**
+             * @description PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked
+             * @enum {string}
+             */
+            hold_reason?: "customer_blocked" | "tenant_on_hold" | "none";
+            /**
+             * Format: date-time
+             * @description PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer
+             */
+            window_ends_time?: string;
+        };
         InvoiceLine: {
             line_no: number;
             /** @enum {string} */
@@ -8455,6 +8622,25 @@ export interface components {
         SetPaymentMethodRequest: {
             payment_method: string;
         };
+        CreatePaymentMethodSetupRequest: {
+            /**
+             * @description The provider whose page it is; only Stripe has one
+             * @default stripe
+             * @enum {string}
+             */
+            provider: "stripe";
+            /**
+             * Format: uri
+             * @description Where the provider sends the customer after the page. `https` only
+             */
+            return_url: string;
+        };
+        PaymentMethodSetup: {
+            /** @description The provider's page: send it to the customer */
+            url: string;
+            /** @description The provider's reference of the page (Stripe's Checkout Session id) */
+            ref: string;
+        };
         ListMetersResponse: {
             meters: components["schemas"]["Meter"][];
         };
@@ -8935,6 +9121,50 @@ export interface components {
              * @description Absent while the case is open
              */
             closed_time?: string;
+            /**
+             * Format: int64
+             * @description What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee
+             */
+            fee_minor?: string;
+            /** @description The currency of `fee_minor` */
+            fee_currency?: string;
+            /** @description Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider */
+            handled: boolean;
+            /**
+             * Format: date-time
+             * @description Absent when the case is not marked
+             */
+            handled_time?: string;
+            /** @description Who marked it; absent when it is not marked and for a viewer of the account */
+            handled_by?: string;
+            /**
+             * Format: int64
+             * @description How many notes you wrote (`GET /v1/disputes/{id}/history`)
+             */
+            note_count: number;
+        };
+        DisputeEvent: {
+            id: string;
+            /**
+             * @description A note, the mark that the case was handled, or that mark lifted
+             * @enum {string}
+             */
+            action: "note" | "handled" | "unhandled";
+            /** @description The text of a note; absent for a mark */
+            note?: string;
+            /** @description Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account */
+            actor?: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListDisputeEventsResponse: {
+            events: components["schemas"]["DisputeEvent"][];
+        };
+        AddDisputeNoteRequest: {
+            note: string;
+        };
+        SetDisputeHandledRequest: {
+            handled: boolean;
         };
         ListDisputesResponse: {
             disputes: components["schemas"]["Dispute"][];
@@ -14052,6 +14282,37 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    createPaymentMethodSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentMethodSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodSetup"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     listCustomerCards: {
@@ -19190,6 +19451,77 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    getInvoicePaymentWait: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentWait"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    releaseHeldInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSaga"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    voidHeldInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSaga"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     listAuditEvents: {
         parameters: {
             query?: {
@@ -19308,6 +19640,89 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listDisputeHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDisputeEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    addDisputeNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDisputeNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeEvent"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    setDisputeHandled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisputeHandledRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { peek } from "@/features/related/peek";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
+import { isPerson } from "@/shared/lib/session";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
@@ -120,7 +122,9 @@ function confirm() {
         <TableBody>
           <TableRow v-for="w in table.items.value" :key="w.id" :data-testid="`withdrawal-${w.id}`" :data-status="w.status">
             <TableCell>
-              <span class="mono font-medium break-all">{{ w.customer_external_id }}</span>
+              <!-- A person's console mounts the peek sheets; the operator's does not, so there the id stays text. -->
+              <button v-if="isPerson" type="button" class="mono font-medium break-all text-start hover:underline" :data-testid="`withdrawal-customer-${w.id}`" @click="peek('customer', tenantId, w.customer_external_id)">{{ w.customer_external_id }}</button>
+              <span v-else class="mono font-medium break-all">{{ w.customer_external_id }}</span>
               <span class="text-muted-foreground block text-xs">{{ t(`contracts.withdrawals.sources.${w.source}`) }}</span>
             </TableCell>
             <TableCell class="max-w-xs whitespace-normal max-md:hidden"><span class="line-clamp-3 break-words" dir="auto" :title="w.statement">{{ w.statement || "—" }}</span></TableCell>

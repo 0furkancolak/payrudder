@@ -468,6 +468,43 @@
       "coupon": "Kupon {code}",
       "usage": "Kullanım — {meter} — {rest}",
       "late": "Geç gelen kullanım — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "İlk tahsilat beklemede",
+      "heldPill": "Beklemede",
+      "heldHint": "Bu fatura tahsil edilmeye hazırdı, ancak Payrudder tahsilatı ödeme sağlayıcısına göndermedi.",
+      "reason": {
+        "customer_blocked": "Müşteri dolandırıcılık veya itiraz (chargeback) nedeniyle engellenmiş. Fatura açık kalır ve engel kaldırılır kaldırılmaz tahsil edilir.",
+        "tenant_on_hold": "Payrudder bu ortamı beklemeye aldı (askıya alındı, dondurulmuş veya yasaklanmış); bu sürece hiçbir tahsilat yapılmaz. Ortam geri geldiğinde fatura tahsil edilir; yardım sayfasından destek ekibine yazın.",
+        "none": "Şu anda bu faturayı hiçbir şey tutmuyor. Bir sonraki kontrolde tahsil edilir; isterseniz şimdi serbest bırakabilirsiniz.",
+        "unknown": "Payrudder şu anda neden beklemede olduğunu kontrol edemedi. Biraz sonra tekrar deneyin."
+      },
+      "since": "Beklemede olduğu tarih",
+      "next": "Sonraki kontrol",
+      "release": "Tahsilatı serbest bırak",
+      "void": "Faturayı iptal et",
+      "viewerNote": "Yalnızca sahip veya yönetici serbest bırakabilir ya da iptal edebilir.",
+      "confirmRelease": {
+        "title": "{number} tahsilatı serbest bırakılsın mı?",
+        "body": "Payrudder, {amount} tutarının {customer} müşterisinden tahsil edilip edilemeyeceğini yeniden sorar. Müşteri hâlâ engelliyse fatura beklemede kalır ve hiçbir şey tahsil edilmez.",
+        "accept": "Serbest bırak"
+      },
+      "confirmVoid": {
+        "title": "{number} iptal edilsin mi?",
+        "body": "{amount} tahsil edilmeyecek. Fatura iptal olur ve artık ödenemez. Bu işlem geri alınamaz.",
+        "accept": "Faturayı iptal et"
+      },
+      "released": "Serbest bırakıldı: {amount} tutarındaki tahsilat ödeme sağlayıcısına gönderildi.",
+      "stillHeld": "Hâlâ beklemede: müşteri hâlâ engelli ya da ortam beklemede. Hiçbir şey tahsil edilmedi.",
+      "voided": "Fatura iptal edildi.",
+      "actionTitle": "Müşterinin ödemeyi onaylaması bekleniyor",
+      "actionPill": "Müşteri onaylamalı",
+      "actionHint": "Müşterinin bankası bu ödemeyi onaylamasını istiyor (3-D Secure); bu yüzden müşteri olmadan tahsil edilemez.",
+      "mailedHint": "Payrudder, müşteriye fatura sayfasına giden bir bağlantı içeren bir e-posta gönderilmesini istedi. E-postanın ulaşıp ulaşmadığını E-posta sayfası gösterir.",
+      "mailed": "Müşteriye e-posta",
+      "nextAsk": "Sağlayıcıya sonraki sorgu",
+      "windowEnds": "Reddedilmiş sayılacağı tarih",
+      "windowHint": "Müşteri o zamana kadar onaylamazsa ödeme reddedilmiş sayılır ve yeniden denemeler başlar."
     }
   },
   "deadLetters": {
@@ -736,6 +773,26 @@
         "deleteInUse": "Müşterinin faturalarının tahsil edildiği kart bu. Silindikten sonra müşteriye yeni bir ödeme yöntemi tanımlanana kadar sonraki tahsilat başarısız olur. Kart ödeme sağlayıcısında silinir ve bu geri alınamaz.",
         "deletedInUse": "Kart silindi. Müşterinin faturalarının tahsil edildiği karttı: müşteriye yeni bir ödeme yöntemi tanımlayın.",
         "hint": "Payrudder kart numarası tutmaz: kart, ödeyenin yazdığı yerde kaydedilir ve müşterinin ödeme yöntemi onu gösterir. Burada kartları görebilir ve birini silebilirsiniz."
+      },
+      "askCard": {
+        "action": "Kart iste",
+        "title": "Müşteriden kart isteyin",
+        "hint": "Stripe, müşterinin sonraki tahsilatlar için kartını kaydettiği kendi sayfasını açar. Şimdi hiçbir şey tahsil edilmez ve hiçbir kart numarası Payrudder'dan geçmez. Bağlantıyı siz müşteriye gönderirsiniz.",
+        "consent": "Bu akışta Payrudder onay toplamaz ve saklamaz. Stripe'ın kılavuzu, müşteri yokken tahsilat yapılması için müşterinin açık onayını almanızı (tutar ve zamanı, tutarın nasıl belirlendiği, nasıl iptal edileceği) ve bunun kaydını tutmanızı ister. Bağlantıyı kendi şartlarınızla birlikte gönderin ve müşterinin onayını kendiniz saklayın.",
+        "returnUrl": "Dönüş adresi",
+        "returnUrlHint": "Sayfadan sonra Stripe'ın müşteriyi yönlendireceği yer: size ait bir adres, yalnızca https.",
+        "errors": {
+          "required": "Müşterinin döneceği adresi girin.",
+          "notHttps": "Adres https:// ile başlamalı ve bir site belirtmelidir.",
+          "tooLong": "Adres çok uzun (en fazla 2000 karakter)."
+        },
+        "made": "Bağlantı hazır. Müşteriye gönderin.",
+        "link": "Stripe sayfasının bağlantısı",
+        "copy": "Kopyala",
+        "after": "Müşteri kartı kaydettiğinde Stripe, Payrudder'a bildirir ve kart müşterinin ödeme yöntemi olur: sonraki faturalar bununla tahsil edilir. Burada yapılacak başka bir şey yok. Bağlantı çalışmazsa yenisini oluşturun.",
+        "close": "Kapat",
+        "make": "Bağlantıyı oluştur",
+        "again": "Yeni bağlantı oluştur"
       }
     },
     "packages": {
@@ -2894,7 +2951,8 @@
         "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
         "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
         "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin.",
-        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin."
+        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin.",
+        "not_held": "Bu faturanın ilk tahsilatı beklemede değil; burada serbest bırakılacak ya da iptal edilecek bir şey yok."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
@@ -3348,6 +3406,12 @@
       },
       "refund": {
         "charge_unclear": "Faturanın birden fazla başarılı tahsilatı var ve iade tutarı bunlardan birini ayırt etmiyor. Müşteriye iadeyi ödeme sağlayıcısında yapın, ardından alacak dekontunda kaydedin."
+      },
+      "dispute": {
+        "bad_id": "Bu bir itiraz kimliği değil.",
+        "not_found": "İtiraz bulunamadı.",
+        "note_required": "Nota bir şey yazın.",
+        "note_too_long": "Bir not en fazla 2000 karakter olabilir."
       }
     },
     "einvoice": {
@@ -6321,6 +6385,29 @@
     "opened": "Açıldı",
     "closed": "Kapandı",
     "reference": "Vaka",
-    "case": "Vaka"
+    "case": "Vaka",
+    "fee": "İtiraz ücreti",
+    "handled": "İşlendi",
+    "handledLabel": "İşlem durumu",
+    "allHandled": "Tümü",
+    "handledYes": "İşlendi",
+    "handledNo": "İşlenmedi",
+    "due": {
+      "overdue": "süresi geçti",
+      "soon": "yakında"
+    },
+    "notes": {
+      "title": "Notlar",
+      "hint": "Sizin ve ekibiniz için; Payrudder bunu hiçbir yere göndermez. Kanıtın kendisi burada değil, ödeme sağlayıcınızda gönderilir.",
+      "mark": "İşlendi olarak işaretle",
+      "lift": "İşlendi işaretini kaldır",
+      "empty": "Henüz not yok.",
+      "placeholder": "Bu vaka hakkında bir not yazın",
+      "add": "Not ekle",
+      "event": {
+        "handled": "İşlendi olarak işaretlendi",
+        "unhandled": "İşlendi işareti kaldırıldı"
+      }
+    }
   }
 }

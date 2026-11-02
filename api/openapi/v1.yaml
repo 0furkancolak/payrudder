@@ -140,6 +140,31 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/payment-method-setup:
+    post:
+      operationId: createPaymentMethodSetup
+      summary: Make the link to the provider's page where the customer saves a card for later charges
+      description: >
+        For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the
+        customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge
+        takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so
+        asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent
+        to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep
+        the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404
+        payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentMethodSetupRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentMethodSetup" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/cards:
     get:
       operationId: listCustomerCards
@@ -2440,6 +2465,44 @@ paths:
               schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/payment-wait:
+    get:
+      operationId: getInvoicePaymentWait
+      summary: What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+      description: >
+        Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and
+        `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the
+        payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider
+        again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentWait" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/release:
+    post:
+      operationId: releaseHeldInvoice
+      summary: Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+      description: >
+        Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still
+        blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked
+        customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/invoices/{id}/void:
+    post:
+      operationId: voidHeldInvoice
+      summary: Void an invoice whose first charge is held
+      description: >
+        Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be
+        voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /v1/audit-events:
     get:
       operationId: listAuditEvents
@@ -2523,6 +2586,51 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ListDisputesResponse" }
         "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/history:
+    get:
+      operationId: listDisputeHistory
+      summary: The notes and marks you made on a dispute, newest first
+      description: >
+        What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it.
+        `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListDisputeEventsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/notes:
+    post:
+      operationId: addDisputeNote
+      summary: Write a note on a dispute
+      description: >
+        A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and
+        recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddDisputeNoteRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/DisputeEvent" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes/{id}/handled:
+    put:
+      operationId: setDisputeHandled
+      summary: Mark a dispute as handled in Payrudder, or lift the mark
+      description: >
+        Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in
+        what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SetDisputeHandledRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dispute" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads:
     post:
@@ -6753,6 +6861,15 @@ components:
         dunning_attempt: { type: integer }
         last_error: { type: string }
         version: { type: integer }
+    PaymentWait:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, examples: [PAYMENT_HELD], description: "The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED" }
+        since_time: { type: string, format: date-time, description: "When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered)" }
+        next_check_time: { type: string, format: date-time, description: "When Payrudder looks again (the next pass over held charges, or the next question to the provider)" }
+        hold_reason: { type: string, enum: [customer_blocked, tenant_on_hold, none], description: "PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked" }
+        window_ends_time: { type: string, format: date-time, description: "PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer" }
     InvoiceLine:
       type: object
       required: [line_no, kind, meter_code, origin_period_id, quantity, amount_minor, description, service_from, service_to]
@@ -7540,6 +7657,18 @@ components:
       required: [payment_method]
       properties:
         payment_method: { type: string }
+    CreatePaymentMethodSetupRequest:
+      type: object
+      required: [return_url]
+      properties:
+        provider: { type: string, enum: [stripe], default: stripe, description: The provider whose page it is; only Stripe has one }
+        return_url: { type: string, format: uri, maxLength: 2000, description: "Where the provider sends the customer after the page. `https` only" }
+    PaymentMethodSetup:
+      type: object
+      required: [url, ref]
+      properties:
+        url: { type: string, description: "The provider's page: send it to the customer" }
+        ref: { type: string, description: "The provider's reference of the page (Stripe's Checkout Session id)" }
     ListMetersResponse:
       type: object
       required: [meters]
@@ -8001,7 +8130,7 @@ components:
         truncated: { type: boolean }
     Dispute:
       type: object
-      required: [id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, provider_status, opened_time]
+      required: [id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, provider_status, opened_time, handled, note_count]
       properties:
         id: { type: string, description: "Payrudder's id of the case" }
         provider: { type: string, examples: [stripe] }
@@ -8017,6 +8146,36 @@ components:
         evidence_due_time: { type: string, format: date-time, description: When your evidence is due; absent when the provider does not say }
         opened_time: { type: string, format: date-time }
         closed_time: { type: string, format: date-time, description: Absent while the case is open }
+        fee_minor: { type: string, format: int64, description: "What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee" }
+        fee_currency: { type: string, description: The currency of `fee_minor` }
+        handled: { type: boolean, description: "Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider" }
+        handled_time: { type: string, format: date-time, description: Absent when the case is not marked }
+        handled_by: { type: string, description: "Who marked it; absent when it is not marked and for a viewer of the account" }
+        note_count: { type: integer, format: int64, description: "How many notes you wrote (`GET /v1/disputes/{id}/history`)" }
+    DisputeEvent:
+      type: object
+      required: [id, action, create_time]
+      properties:
+        id: { type: string }
+        action: { type: string, enum: [note, handled, unhandled], description: "A note, the mark that the case was handled, or that mark lifted" }
+        note: { type: string, description: The text of a note; absent for a mark }
+        actor: { type: string, description: "Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account" }
+        create_time: { type: string, format: date-time }
+    ListDisputeEventsResponse:
+      type: object
+      required: [events]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/DisputeEvent" } }
+    AddDisputeNoteRequest:
+      type: object
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    SetDisputeHandledRequest:
+      type: object
+      required: [handled]
+      properties:
+        handled: { type: boolean }
     ListDisputesResponse:
       type: object
       required: [disputes]
