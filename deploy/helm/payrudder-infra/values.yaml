@@ -28,6 +28,33 @@ backup:
   s3Url: ""                       # e.g. s3://my-bucket/payrudder (the volume is not the only copy then)
   s3Endpoint: ""                  # for MinIO and other S3-compatible storage
   s3SecretName: ""                # a Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+  # The object buckets (invoice PDFs, assets) copied to a second place every night with mc (deploy/backup/object-backup.sh; docs/runbooks/stateful-components.md). A delete in
+  # the source never reaches the copy. Without targetUrl the copy is a prefix in the same MinIO: it guards against an emptied bucket, not against losing the volume.
+  objects:
+    enabled: false
+    schedule: "37 2 * * *"
+    image: cgr.dev/chainguard/minio-client@sha256:d8a93c5d335509ff353774eefec8f82fa2a2a975e800139702232d8be3dbe6b9
+    buckets: "invoices assets"
+    sourceUrl: ""                 # empty: http://minio:9000, with the root user of this chart's MinIO
+    sourceSecretName: ""          # a Secret with OBJ_SOURCE_USER and OBJ_SOURCE_PASSWORD, for another source
+    targetUrl: ""                 # another endpoint (an S3 in another account or region); empty: the same server
+    targetSecretName: ""          # a Secret with OBJ_TARGET_USER and OBJ_TARGET_PASSWORD
+    targetBucket: backups
+    targetPrefix: objects
+    pushgatewayHostPort: ""       # e.g. pushgateway:9091
+
+# The alert rules and the Alertmanager route of the repository (deploy/prometheus/rules, deploy/alertmanager), for a cluster that already runs Prometheus and Alertmanager;
+# this chart does not install them. Off by default. docs/runbooks/backup-restore.md#alerts. Rendered and checked with promtool and amtool by tests/helm; never run on a cluster.
+monitoring:
+  rules:
+    enabled: false
+    prometheusRule: true          # a PrometheusRule for the Prometheus Operator (needs its CRD)
+    ruleLabels: {}                # the labels your Prometheus selects rules by, e.g. { release: kube-prometheus-stack }
+    configMap: false              # a ConfigMap payrudder-alert-rules for a Prometheus that loads rule files
+  alertmanager:
+    enabled: false                # a Secret with the route (page, warn, Watchdog) and webhook receivers
+    secretName: alertmanager-payrudder
+    urlsSecretName: payrudder-alertmanager-urls   # you create it with webhook_url and watchdog_url; mount it in the Alertmanager
 
 redpanda:
   enabled: true

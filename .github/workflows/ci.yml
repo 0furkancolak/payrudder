@@ -174,7 +174,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Scripts against a throwaway Postgres (make test-backup-scripts)
         run: make test-backup-scripts
-      - name: Restore to a chosen minute from WAL in MinIO, check the data, measure the RTO (make backup-drill)
+      - name: The object and ClickHouse backups against throwaway servers (make test-store-backups)
+        run: make test-store-backups
+      - name: Restore to a chosen minute from WAL in MinIO, check the data, the migrations version and the service roles, measure the RTO (make backup-drill)
         run: make backup-drill
 
   helm:

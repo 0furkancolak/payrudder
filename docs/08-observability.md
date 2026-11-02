@@ -140,6 +140,7 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 
 ## Alerts (Prometheus rules, `deploy/prometheus/rules/*.yaml`)
 
+- `ServiceDown`: `up{job="payrudder"} == 0` for 2m (page): a service is not being scraped
 - `OutboxStalled`: `ingest_outbox_oldest_age_seconds > 60` for 2m
 - `ConsumerLagHigh`: `consumer_lag_seconds > 30` for 5m (per group)
 - `TenantLagOutlier`: one tenant's lag > 5× the median for 10m
@@ -151,7 +152,7 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - Provider health (plan 22 G8): `provider_health_checks{provider,result}` (no alert), `provider_breaker_transitions{provider,to}` (`ProviderCircuitOpened`), `provider_breaker_rejections{provider}` (`ProviderChargesRefused`) (payments-worker)
 - Reconciliation (plan 22 G7): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (no alert), and the gauge `reconciliation_discrepancies_open{kind}` (live discrepancies with status open, read on each scrape; `ReconciliationBacklog`, `SettlementOverdue`) (payments-worker)
 - Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page); from the counters of G1, G7 and G8: `LedgerWriteFailed` (`ledger_write_failures{provider,kind}`, page), `RefundOutcomeUnknown` (`refund_outcome_unknown{provider}`, warn), `ProviderCircuitOpened` (warn), `ProviderChargesRefused` (page), `ReconciliationBacklog` and `SettlementOverdue` (warn)
-- Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified` (warn). A stack that never ran PITR raises no PITR alert (there is no metric to go stale); a stack that should run it watches the `pitr-agent` container itself
+- Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified`, `ObjectBackupStale` (warn). A stack that never ran PITR raises no PITR alert (there is no metric to go stale); a stack that should run it watches the `pitr-agent` container itself
 - `Watchdog`: always firing, routed to its own receiver, the dead man's switch
 
-What each means and the first response: [backup, restore and alerting runbook](runbooks/backup-restore.md#alerts); every rule has a promtool test (`make test-rules`).
+What each means and the first response: [backup, restore and alerting runbook](runbooks/backup-restore.md#alerts); every rule has a promtool test in which it fires (`make test-rules`; `tests/alerts` fails on a rule without one, or without a place in these two documents).

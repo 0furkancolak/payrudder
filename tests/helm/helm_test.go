@@ -356,9 +356,13 @@ func TestEveryWorkloadHasProbesResourcesAndNonRoot(t *testing.T) {
 func TestInfraFilesMatchTheirSources(t *testing.T) {
 	root := repoRoot(t)
 	for copyOf, src := range map[string]string{
-		"deploy/helm/payrudder-infra/files/topics.sh":        "deploy/compose/redpanda/topics.sh",
-		"deploy/helm/payrudder-infra/files/definitions.json": "deploy/rabbitmq/definitions.json",
-		"deploy/helm/payrudder-infra/files/low-memory.xml":   "deploy/clickhouse/low-memory.xml",
+		"deploy/helm/payrudder-infra/files/topics.sh":                "deploy/compose/redpanda/topics.sh",
+		"deploy/helm/payrudder-infra/files/definitions.json":         "deploy/rabbitmq/definitions.json",
+		"deploy/helm/payrudder-infra/files/low-memory.xml":           "deploy/clickhouse/low-memory.xml",
+		"deploy/helm/payrudder-infra/files/payrudder-rules.yaml":     "deploy/prometheus/rules/payrudder.yaml",
+		"deploy/helm/payrudder-infra/files/alertmanager.webhook.yml": "deploy/alertmanager/alertmanager.webhook.yml",
+		"deploy/helm/payrudder-infra/files/object-backup.sh":         "deploy/backup/object-backup.sh",
+		"deploy/helm/payrudder-infra/files/clickhouse-backup.sh":     "deploy/backup/clickhouse-backup.sh",
 	} {
 		a, err1 := os.ReadFile(filepath.Join(root, copyOf))
 		b, err2 := os.ReadFile(filepath.Join(root, src))
