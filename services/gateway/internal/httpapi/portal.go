@@ -1,6 +1,9 @@
 package httpapi
 
 import (
+	"cmp"
+	"context"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -8,11 +11,11 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/money"
 )
 
 // The customer portal: GET /c/{token}. Read-only, for one customer of one tenant. billing-svc resolves the token to the tenant and the customer and returns only
@@ -31,8 +34,10 @@ type portalPaymentRow struct {
 type portalView struct {
 	pageBase
 	Seller, Customer string
-	Invoices         []portalInvoiceRow
-	Payments         []portalPaymentRow
+	// Subscriptions is the read-only summary of the customer's subscriptions; empty hides the section.
+	Subscriptions []portalSubRow
+	Invoices      []portalInvoiceRow
+	Payments      []portalPaymentRow
 	// Credits (phase 36). ShowCredits is true when the customer has credits or the tenant has packs on sale.
 	ShowCredits bool
 	Balance     string
@@ -40,6 +45,12 @@ type portalView struct {
 	Packs       []portalPackRow
 	CanBuy      bool
 	Buy         string
+}
+
+// portalSubRow is one subscription as the summary shows it: the plan, its state as a badge, what one period costs, and a few facts (dates, quantity, who bills it).
+type portalSubRow struct {
+	Plan, State, StateLabel, Price string
+	Facts                          []string
 }
 
 type portalLotRow struct{ Granted, Remaining, Expires string }
@@ -74,14 +85,64 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	}
 	var ids []string
 	var shown map[string]knownInvoice
-	v.Invoices, ids, shown = portalInvoices(resp, v.L, token, q)
+	v.Invoices, ids, shown = portalInvoices(resp, v.pageBase, token, q)
 	rows, err := s.ledgerLookup(r.Context(), resp.GetTenantId(), ids)
 	if err != nil {
 		s.d.Log.WarnContext(r.Context(), "portal ledger lookup failed", "error", err)
 	}
-	v.Payments = portalPayments(rows, shown, v.L)
+	v.Payments = portalPayments(rows, shown, v.pageBase)
+	v.Subscriptions = s.portalSubscriptions(r.Context(), token, v.pageBase)
 	portalCredits(v, resp, token, q)
 	s.render(w, r, http.StatusOK, "portal", v)
+}
+
+// subscriptionsWait is how long the portal waits for the subscription summary: a slow plans-svc must not hold the whole page back.
+const subscriptionsWait = 2 * time.Second
+
+// portalSubscriptions asks billing for the customer's subscriptions and words them. The summary is read-only and optional: when billing cannot give it, the page is shown
+// without the section.
+func (s *Server) portalSubscriptions(ctx context.Context, token string, b pageBase) []portalSubRow {
+	ctx, cancel := context.WithTimeout(ctx, subscriptionsWait)
+	defer cancel()
+	resp, err := s.d.Hosted.GetPortalSubscriptions(ctx, &billingv1.GetPortalSubscriptionsRequest{PortalToken: token})
+	if err != nil {
+		if status.Code(err) != codes.Unimplemented {
+			s.d.Log.WarnContext(ctx, "portal subscriptions unavailable", "error", err)
+		}
+		return nil
+	}
+	return portalSubRows(resp.GetSubscriptions(), b)
+}
+
+// portalSubRows words the subscriptions of the summary in the page's language.
+func portalSubRows(subs []*billingv1.PortalSubscription, b pageBase) []portalSubRow {
+	var out []portalSubRow
+	date := func(t *timestamppb.Timestamp) string { return b.F.Date(t.AsTime().UTC()) }
+	for _, p := range subs {
+		row := portalSubRow{Plan: cmp.Or(p.GetPlanName(), p.GetPlanCode()), State: p.GetState(), StateLabel: b.L["sub_state_"+p.GetState()]}
+		if p.GetPriceKnown() {
+			row.Price = b.F.Amount(p.GetPriceMinor(), int(p.GetCurrencyExponent())) + " " + p.GetCurrency() + " / " + b.L["sub_"+p.GetInterval()]
+		}
+		if p.GetQuantity() > 1 {
+			row.Facts = append(row.Facts, b.L["sub_quantity"]+": "+b.F.Amount(int64(p.GetQuantity()), 0))
+		}
+		switch {
+		case p.GetTrialEndTime() != nil:
+			row.Facts = append(row.Facts, fmt.Sprintf(b.L["sub_trial_ends"], date(p.GetTrialEndTime())))
+		case p.GetScheduledTime() != nil:
+			row.Facts = append(row.Facts, fmt.Sprintf(b.L["sub_changes"], cmp.Or(p.GetScheduledPlanName(), p.GetPlanName()), date(p.GetScheduledTime())))
+		case p.GetNextRenewalTime() != nil && !p.GetCancelAtPeriodEnd():
+			row.Facts = append(row.Facts, fmt.Sprintf(b.L["sub_next"], date(p.GetNextRenewalTime())))
+		}
+		if p.GetCancelAtPeriodEnd() && p.GetEndTime() != nil {
+			row.Facts = append(row.Facts, fmt.Sprintf(b.L["sub_ends"], date(p.GetEndTime())))
+		}
+		if p.GetProviderManaged() {
+			row.Facts = append(row.Facts, b.L["sub_provider"])
+		}
+		out = append(out, row)
+	}
+	return out
 }
 
 // knownInvoice is an invoice of the portal's customer: what a ledger row of it is shown with.
@@ -92,15 +153,15 @@ type knownInvoice struct {
 
 // portalInvoices lists the customer's invoices as the page shows them, with their ids (the ledger is read for exactly these) and what to show a ledger
 // row of each with.
-func portalInvoices(resp *billingv1.GetPortalResponse, l map[string]string, token, q string) (rows []portalInvoiceRow, ids []string, shown map[string]knownInvoice) {
+func portalInvoices(resp *billingv1.GetPortalResponse, b pageBase, token, q string) (rows []portalInvoiceRow, ids []string, shown map[string]knownInvoice) {
 	shown = map[string]knownInvoice{}
 	for _, inv := range resp.GetInvoices() {
 		state := paymentStateWord(inv.GetPaymentState(), inv.GetStatus())
 		exp := int(inv.GetCurrencyExponent())
-		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: l["st_"+state], Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
+		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: b.L["st_"+state], Total: b.F.Amount(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
 			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
 		if t := inv.GetIssueTime(); t != nil {
-			row.Date = t.AsTime().UTC().Format(time.DateOnly)
+			row.Date = b.F.Date(t.AsTime().UTC())
 		}
 		rows = append(rows, row)
 		shown[inv.GetId()] = knownInvoice{inv.GetNumber(), exp}
@@ -113,7 +174,7 @@ func portalInvoices(resp *billingv1.GetPortalResponse, l map[string]string, toke
 var portalPaymentStatusKey = map[string]string{"succeeded": "pay_succeeded", "declined": "pay_declined", "failed": "pay_failed", "pending": "pay_pending"}
 
 // portalPayments lists the ledger rows of the customer's invoices, newest first. A row of an invoice that is not in shown is never listed.
-func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, l map[string]string) []portalPaymentRow {
+func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, b pageBase) []portalPaymentRow {
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].OccurredAt.After(rows[j].OccurredAt) })
 	var out []portalPaymentRow
 	for _, row := range rows {
@@ -121,10 +182,10 @@ func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, l map[strin
 		if !ok {
 			continue
 		}
-		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format(time.DateOnly), Kind: l["kind_"+row.Kind], Number: k.number, Status: l[portalPaymentStatusKey[row.Status]],
-			Provider: row.Provider, Currency: row.Currency, Amount: money.FormatMinorGrouped(row.amount(), k.exponent), Negative: row.Kind == "refund"}
+		p := portalPaymentRow{Date: b.F.Date(row.OccurredAt.UTC()), Kind: b.L["kind_"+row.Kind], Number: k.number, Status: b.L[portalPaymentStatusKey[row.Status]],
+			Provider: row.Provider, Currency: row.Currency, Amount: b.F.Amount(row.amount(), k.exponent), Negative: row.Kind == "refund"}
 		if p.Negative {
-			p.Amount = "-" + p.Amount
+			p.Amount = b.F.Minus + p.Amount
 		}
 		out = append(out, p)
 	}
@@ -133,16 +194,16 @@ func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, l map[strin
 
 // portalCredits fills the credit balance, lots and packs of the page.
 func portalCredits(v *portalView, resp *billingv1.GetPortalResponse, token, q string) {
-	v.Balance, v.CanBuy, v.Buy = money.FormatMinorGrouped(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
+	v.Balance, v.CanBuy, v.Buy = v.F.Amount(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
 	for _, l := range resp.GetCreditLots() {
-		row := portalLotRow{Granted: money.FormatMinorGrouped(l.GetGranted(), 0), Remaining: money.FormatMinorGrouped(l.GetRemaining(), 0)}
+		row := portalLotRow{Granted: v.F.Amount(l.GetGranted(), 0), Remaining: v.F.Amount(l.GetRemaining(), 0)}
 		if t := l.GetExpireTime(); t != nil {
-			row.Expires = t.AsTime().UTC().Format(time.DateOnly)
+			row.Expires = v.F.Date(t.AsTime().UTC())
 		}
 		v.Lots = append(v.Lots, row)
 	}
 	for _, p := range resp.GetCreditPacks() {
-		v.Packs = append(v.Packs, portalPackRow{ID: p.GetId(), Name: p.GetName(), Credits: money.FormatMinorGrouped(p.GetCredits(), 0), Price: money.FormatMinorGrouped(p.GetPriceMinor(), int(p.GetCurrencyExponent())),
+		v.Packs = append(v.Packs, portalPackRow{ID: p.GetId(), Name: p.GetName(), Credits: v.F.Amount(p.GetCredits(), 0), Price: v.F.Amount(p.GetPriceMinor(), int(p.GetCurrencyExponent())),
 			Currency: p.GetCurrency(), Valid: validText(v.L, p.GetValidityDays())})
 	}
 	v.ShowCredits = len(v.Lots) > 0 || len(v.Packs) > 0 || resp.GetCreditBalance() > 0

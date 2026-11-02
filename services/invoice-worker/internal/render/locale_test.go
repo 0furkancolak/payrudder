@@ -57,7 +57,7 @@ func TestEveryLocaleHasEveryKey(t *testing.T) {
 // Every character a layout can print, words, months and separators, is in the font: a missing glyph would print as '?'.
 func TestLayoutsAreCoveredByTheFont(t *testing.T) {
 	for code, l := range layouts {
-		all := []string{l.decimal, l.group, l.moneyGap, strings.ReplaceAll(l.dateFmt, "%", ""), strings.Join(l.months[:], " "), "-0123456789.:/…—"}
+		all := []string{l.Decimal, l.Group, l.MoneyGap, strings.ReplaceAll(l.DateFmt, "%", ""), strings.Join(l.Months[:], " "), "-0123456789.:/…—"}
 		for _, w := range l.words {
 			all = append(all, w)
 		}
@@ -83,8 +83,8 @@ func TestNumbersMoneyAndDatesGolden(t *testing.T) {
 		{"es", "11,16\u00a0USD", "1.234.567,89\u00a0USD", "-50,00\u00a0USD", "0,00\u00a0USD", "1016\u00a0JPY", "1250,500", "12.345,00\u00a0USD", "2 de noviembre de 2026", "octubre de 2026"},
 	} {
 		l := layouts[c.loc]
-		got := []string{l.money(1116, 2, "USD"), l.money(123456789, 2, "USD"), l.money(-5000, 2, "USD"), l.money(0, 2, "USD"), l.money(1016, 0, "JPY"), l.number("1250.500"),
-			l.money(1234500, 2, "USD"), l.date(day), l.period("2026-10")}
+		got := []string{l.Money(1116, 2, "USD"), l.Money(123456789, 2, "USD"), l.Money(-5000, 2, "USD"), l.Money(0, 2, "USD"), l.Money(1016, 0, "JPY"), l.Number("1250.500"),
+			l.Money(1234500, 2, "USD"), l.Date(day), l.Period("2026-10")}
 		want := []string{c.small, c.big, c.neg, c.zero, c.jpy, c.quantity, c.fiveDigits, c.date, c.per}
 		for i := range got {
 			if got[i] != want[i] {
@@ -93,7 +93,7 @@ func TestNumbersMoneyAndDatesGolden(t *testing.T) {
 		}
 	}
 	// A period that is not a calendar month is printed as it is.
-	if got := english.period("2026-W44"); got != "2026-W44" {
+	if got := english.Period("2026-W44"); got != "2026-W44" {
 		t.Errorf("period = %q", got)
 	}
 }

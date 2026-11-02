@@ -5,6 +5,7 @@ package hosted
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -15,6 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices"
@@ -28,13 +30,18 @@ import (
 type Handler struct {
 	d command.Deps
 	q query.Deps
+	// subs lists a customer's subscriptions for the portal (the backend; a nil one lists none).
+	subs interface {
+		PortalSubscriptions(ctx context.Context, tenantID uuid.UUID, externalID string) ([]command.PortalSubscription, error)
+	}
 }
 
 // New returns the handler over the billing_app and billing_system pools. backend makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
 func New(app pgxx.Beginner, system *tenantdb.DB, backend *command.Backend, eng *sagacommand.Engine) *Handler {
 	return &Handler{
-		d: command.Deps{App: app, System: system, Engine: eng, Dir: backend},
+		subs: backend,
+		d:    command.Deps{App: app, System: system, Engine: eng, Dir: backend},
 		q: query.Deps{App: app, System: system, Seller: func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
 			s, err := backend.Seller(ctx, tenantID)
 			return query.Seller{Name: s.Name, LogoKey: s.LogoKey, Environment: s.Environment}, err
@@ -349,6 +356,38 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		resp.CreditPacks = append(resp.CreditPacks, pack)
 	}
 	return resp, nil
+}
+
+// GetPortalSubscriptions implements billingv1.HostedInvoiceServiceServer: the read-only summary of the customer's subscriptions. The token resolves to the tenant and the
+// customer the same way GetPortal does; a customer the tenant knows by no external id has no subscriptions to list.
+func (h *Handler) GetPortalSubscriptions(ctx context.Context, req *billingv1.GetPortalSubscriptionsRequest) (*billingv1.GetPortalSubscriptionsResponse, error) {
+	scope, err := query.Resolve(ctx, h.q.System, "", req.GetPortalToken(), "")
+	if err != nil {
+		return nil, err
+	}
+	if scope.Portal == nil {
+		return nil, query.ErrNoLink
+	}
+	subs, err := h.subs.PortalSubscriptions(ctx, scope.TenantID, scope.Portal.ExternalID)
+	if err != nil {
+		return nil, apierr.Internal(ctx, err)
+	}
+	resp := &billingv1.GetPortalSubscriptionsResponse{}
+	for _, s := range subs {
+		p := &billingv1.PortalSubscription{Id: s.ID, PlanCode: s.PlanCode, PlanName: s.PlanName, State: s.State, Interval: s.Interval, Quantity: s.Quantity,
+			PriceKnown: s.PriceKnown, PriceMinor: s.PriceMinor, Currency: s.Currency, CurrencyExponent: query.CurrencyExponent(s.Currency),
+			CancelAtPeriodEnd: s.CancelAtPeriodEnd, ScheduledPlanName: s.ScheduledPlanName, ProviderManaged: s.ProviderManaged,
+			TrialEndTime: timeOrNil(s.TrialEnd), NextRenewalTime: timeOrNil(s.NextRenewal), EndTime: timeOrNil(s.End), ScheduledTime: timeOrNil(s.Scheduled)}
+		resp.Subscriptions = append(resp.Subscriptions, p)
+	}
+	return resp, nil
+}
+
+func timeOrNil(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
 
 // QuoteLinkPromotion implements billingv1.HostedInvoiceServiceServer.
