@@ -666,7 +666,7 @@ export class ContractWithdrawalsResource {
   /**
    * Decide a withdrawal request, or mark an accepted one refunded
    *
-   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
+   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded. Needs customers:write. A key that does not also hold invoices:write cannot accept a withdrawal while the settings say `withdrawal_refund: full` (403 gateway.auth.permission_denied, nothing is decided): the refund is a credit note, and creating one needs invoices:write everywhere. Rejecting, or accepting while the setting is `none`, needs customers:write only.
    *
    * `PUT /v1/contract-withdrawals/{id}/status`
    */
@@ -677,7 +677,7 @@ export class ContractWithdrawalsResource {
   /**
    * Ask for the refund of an accepted withdrawal
    *
-   * For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+   * For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`. Needs invoices:write, not only customers:write: it returns money to a card.
    *
    * `POST /v1/contract-withdrawals/{id}/refund`
    */
@@ -1085,7 +1085,7 @@ export class CustomersResource {
   /**
    * Record that the customer withdrew from a contract
    *
-   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund.
+   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund. Needs customers:write.
    *
    * `POST /v1/customers/{external_id}/contract-withdrawals`
    */
