@@ -75,13 +75,17 @@ usage: payrudder <command> [flags]
   events send                 send one usage event
   events tail                 follow a customer's usage (the API does not list events, so this polls the usage totals)
   webhooks list               your webhook endpoints
+  webhooks create             register an endpoint (its signing secret is printed once)
   webhooks deliveries         deliveries to your endpoints and how each went; --watch follows them
   webhooks trigger ping       send a test event to an endpoint and report how it answered
   webhooks redeliver          send a delivery again from the start
   webhooks listen             receive deliveries on this machine, verify them and forward them to your app
   customers list              your customers
   customers create            make a customer
-  plans create                make a plan (its prices are a version, published through the API)
+  plans create                make a plan (its prices are a version)
+  plans publish               publish the next version of a plan from a JSON file
+  meters create               make a meter, or the next version of one
+  subscriptions create        subscribe a customer to a plan
   invoices list               your invoices
   version                     the version of this program and of the SDK it is built on
 
@@ -109,12 +113,16 @@ func (c *cli) dispatch(ctx context.Context, args []string) error {
 		return c.group(ctx, "events", rest, map[string]func(context.Context, []string) error{"send": c.eventsSend, "tail": c.eventsTail})
 	case "webhooks":
 		return c.group(ctx, "webhooks", rest, map[string]func(context.Context, []string) error{
-			"list": c.webhooksList, "deliveries": c.webhooksDeliveries, "trigger": c.webhooksTrigger, "listen": c.webhooksListen, "redeliver": c.webhooksRedeliver,
+			"list": c.webhooksList, "create": c.webhooksCreate, "deliveries": c.webhooksDeliveries, "trigger": c.webhooksTrigger, "listen": c.webhooksListen, "redeliver": c.webhooksRedeliver,
 		})
 	case "customers":
 		return c.group(ctx, "customers", rest, map[string]func(context.Context, []string) error{"list": c.customersList, "create": c.customersCreate})
 	case "plans":
-		return c.group(ctx, "plans", rest, map[string]func(context.Context, []string) error{"create": c.plansCreate})
+		return c.group(ctx, "plans", rest, map[string]func(context.Context, []string) error{"create": c.plansCreate, "publish": c.plansPublish})
+	case "meters":
+		return c.group(ctx, "meters", rest, map[string]func(context.Context, []string) error{"create": c.metersCreate})
+	case "subscriptions":
+		return c.group(ctx, "subscriptions", rest, map[string]func(context.Context, []string) error{"create": c.subscriptionsCreate})
 	case "invoices":
 		return c.group(ctx, "invoices", rest, map[string]func(context.Context, []string) error{"list": c.invoicesList})
 	}
