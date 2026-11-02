@@ -4,11 +4,13 @@ import { Ban, ArrowUpRight, Ticket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
+import { useBulk } from "@/shared/lib/bulk";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { countHigh, nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
@@ -34,7 +36,7 @@ const creating = ref(false);
 
 const list = computed<Coupon[]>(() => coupons.data.value?.coupons ?? []);
 const table = useTableState<Coupon>(list, {
-  sheet: { kind: "coupon", id: (c) => c.code }, searchFields: (c) => [c.code, c.name],
+  sheet: { kind: "coupon", id: (c) => c.code }, url: "coupons-", searchFields: (c) => [c.code, c.name],
   sorts: () => [newest(t, (c) => time(c.create_time)), oldest(t, (c) => time(c.create_time)), nameAsc(t, (c) => c.code), nameDesc(t, (c) => c.code), countHigh(t, (c) => c.redeemed)],
   filters: {
     state: (c, v) => (v === "active" ? !!c.active : !c.active),
@@ -50,6 +52,14 @@ const stateOptions = computed(() => [
   { value: "inactive", label: t("billing.pricing.coupons.inactive") },
 ]);
 const targetOptions = computed(() => [{ value: "", label: t("billing.coupons.anyTarget") }, ...TARGETS.map((x) => ({ value: x.value, label: t(`billing.pricing.promotions.targets.${x.key}`) }))]);
+
+// Deactivating several at once: the ticked coupons that are still active. A coupon cannot be switched on again, so it asks first.
+const bulk = useBulk(table, { name: (c) => c.code ?? "" });
+const bulkDeactivate = () =>
+  bulk.run((c) => actions.deactivate.mutateAsync(c.code ?? ""), {
+    rows: (all) => all.filter((c) => c.active),
+    confirm: (rows) => ({ title: t("billing.pricing.coupons.bulk.title", { n: rows.length }, rows.length), body: t("billing.pricing.coupons.bulk.confirm", { n: rows.length }, rows.length), confirmLabel: t("billing.pricing.coupons.deactivate") }),
+  });
 
 const current = table.row;
 const actionsOf = (c: Coupon, i: number) => [
@@ -69,9 +79,14 @@ const actionsOf = (c: Coupon, i: number) => [
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <HeaderAction test-id="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
     </DataToolbar>
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-deactivate" @click="bulkDeactivate">{{ t("billing.pricing.coupons.bulk.deactivate") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead>{{ t("billing.pricing.coupons.code") }}</TableHead>
           <TableHead>{{ t("billing.coupons.discount") }}</TableHead>
           <TableHead class="max-lg:hidden">{{ t("billing.pricing.promotions.appliesTo") }}</TableHead>
@@ -84,6 +99,7 @@ const actionsOf = (c: Coupon, i: number) => [
       </TableHeader>
       <TableBody>
         <TableRow v-for="(c, i) in table.items.value" :key="c.code" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" :data-testid="`coupon-${c.code}`" @click="table.open(i)">
+          <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${c.code}`" :checked="table.isTicked(c)" @change="(on) => table.tick(c, on)" /></TableCell>
           <TableCell>
             <span class="mono font-medium">{{ c.code }}</span>
             <span v-if="c.name" class="text-muted-foreground block text-xs">{{ c.name }}</span>

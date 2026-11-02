@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeOutcome, intervalKey, MAX_SEATS, parseSeats, seatsOf, subscriptionAbilities, successorOf, trialDaysLeft, trialsEndingSoon } from "./lib";
+import { bulkEligibility, changeOutcome, intervalKey, MAX_SEATS, parseSeats, seatsOf, subscriptionAbilities, successorOf, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 describe("seats", () => {
   it("reads a seats field: empty is nothing chosen, a whole number in range is a number, anything else is bad", () => {
@@ -72,5 +72,24 @@ describe("successorOf", () => {
     expect(successorOf(list, "b")).toBeUndefined();
     expect(successorOf(list, "")).toBeUndefined();
     expect(successorOf(list, undefined)).toBeUndefined();
+  });
+});
+
+describe("bulkEligibility", () => {
+  it("cancels at the period end only what is running and not already scheduled", () => {
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_ACTIVE" }).cancelAtPeriodEnd).toBe(true);
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_ACTIVE", cancel_at_period_end: true, end_time: "2026-11-01T00:00:00Z" }).cancelAtPeriodEnd).toBe(false);
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_CANCELLED", end_time: "2026-10-01T00:00:00Z" }).cancelAtPeriodEnd).toBe(false);
+  });
+
+  it("keeps a subscription whose cancellation is scheduled, and resumes a paused one", () => {
+    expect(bulkEligibility({ cancel_at_period_end: true }).keep).toBe(true);
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_ACTIVE" }).keep).toBe(false);
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_PAUSED" }).resume).toBe(true);
+    expect(bulkEligibility({ state: "SUBSCRIPTION_STATE_ACTIVE" }).resume).toBe(false);
+  });
+
+  it("leaves a subscription a provider runs to the provider", () => {
+    expect(bulkEligibility({ owner: "provider", state: "SUBSCRIPTION_STATE_PAUSED", cancel_at_period_end: true })).toEqual({ cancelAtPeriodEnd: false, keep: false, resume: false });
   });
 });

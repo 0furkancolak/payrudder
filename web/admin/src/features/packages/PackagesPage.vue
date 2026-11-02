@@ -51,7 +51,7 @@ const priceFor = ref("");
 const pricing = computed({ get: () => priceFor.value !== "", set: (v) => { if (!v) priceFor.value = ""; } });
 const fmt = useFormat();
 const range = ref<DateRange>(thisMonth());
-const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name],
+const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, url: true, searchFields: (p) => [p.plan.code, p.plan.name],
   sorts: () => [nameAsc(t, (p) => p.plan.name), nameDesc(t, (p) => p.plan.name), newest(t, (p) => time(p.version?.publish_time)), oldest(t, (p) => time(p.version?.publish_time))] });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || rangeChanged(range.value));

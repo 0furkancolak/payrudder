@@ -10,10 +10,14 @@ import { formatMinor } from "@/shared/lib/money";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { matchesSearch } from "@/shared/lib/paging";
 import { PaymentContext } from "@/features/related";
+import { useBulk } from "@/shared/lib/bulk";
+import { useCanWrite } from "@/shared/lib/access";
+import { useServerPageSelection } from "@/shared/lib/selection";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
@@ -78,6 +82,16 @@ useOpenParam("link", () => links.isSuccess.value, (id) => {
 });
 const canRevoke = (l: { status?: string } | undefined) => l?.status === "active" || l?.status === "paid";
 
+// Revoking several at once: the ticked links of the page on screen that still work. A link stops working at once and cannot be brought back, so it asks first.
+const canWrite = useCanWrite();
+const table = useServerPageSelection(shown, (l) => l.id);
+const bulk = useBulk(table, { name: (l) => l.id?.slice(0, 8) ?? "" });
+const bulkRevoke = () =>
+  bulk.run((l) => act.revoke.mutateAsync(l.id ?? ""), {
+    rows: (all) => all.filter(canRevoke),
+    confirm: (rows) => ({ title: t("billing.paymentLinks.bulk.revokeTitle", { n: rows.length }, rows.length), body: t("billing.paymentLinks.bulk.confirmRevoke", { n: rows.length }, rows.length), confirmLabel: t("billing.paymentLinks.revoke") }),
+  });
+
 async function revoke(id: string | undefined) {
   if (id && (await askConfirm({ body: t("billing.paymentLinks.confirmRevoke") }))) act.revoke.mutate(id);
 }
@@ -136,9 +150,14 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
     </DataToolbar>
     <ErrorText :error="links.error.value" class="px-3" />
     <ErrorText :error="act.revoke.error.value" class="px-3" />
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-revoke" @click="bulkRevoke">{{ t("billing.paymentLinks.bulk.revoke") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead>{{ t("billing.paymentLinks.id") }}</TableHead>
           <TableHead>{{ t("billing.paymentLinks.kind") }}</TableHead>
           <TableHead>{{ t("billing.paymentLinks.for") }}</TableHead>
@@ -152,6 +171,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       </TableHeader>
       <TableBody>
         <TableRow v-for="(l, i) in shown" :key="l.id" class="cursor-pointer" @click="detail = i">
+          <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${l.id?.slice(0, 8)}`" :checked="table.isTicked(l)" @change="(on) => table.tick(l, on)" /></TableCell>
           <TableCell class="mono text-xs font-medium">{{ l.id?.slice(0, 8) }}</TableCell>
           <TableCell>{{ t(`billing.paymentLinks.kinds.${l.kind ?? 'adhoc'}`) }}<span v-if="l.single_use" class="text-muted-foreground block text-xs">{{ t("billing.paymentLinks.singleUseShort") }}</span></TableCell>
           <TableCell>

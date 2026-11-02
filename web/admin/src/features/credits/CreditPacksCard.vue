@@ -52,7 +52,7 @@ const validityValid = computed(() => validity.value !== undefined);
 const open = ref(false);
 type Pack = NonNullable<NonNullable<typeof packs.data.value>["packs"]>[number];
 const table = useTableState<Pack>(() => packs.data.value?.packs ?? [], {
-  searchFields: (p) => [p.name],
+  url: "packs-", searchFields: (p) => [p.name],
   sorts: () => [newest(t, (p) => time(p.create_time)), oldest(t, (p) => time(p.create_time)), nameAsc(t, (p) => p.name), nameDesc(t, (p) => p.name)],
   filters: { state: (p, v) => (v === "active" ? !!p.active : !p.active) },
 });

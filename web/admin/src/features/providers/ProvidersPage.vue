@@ -58,7 +58,7 @@ watch(open, (v) => {
 });
 type Account = NonNullable<NonNullable<typeof accounts.data.value>["accounts"]>[number];
 const accountTable = useTableState<Account>(() => accounts.data.value?.accounts ?? [], {
-  searchFields: (a) => [a.provider, a.environment],
+  url: "accounts-", searchFields: (a) => [a.provider, a.environment],
   sorts: () => [newest(t, (a) => time(a.updated_at)), oldest(t, (a) => time(a.updated_at)), nameAsc(t, (a) => a.provider), nameDesc(t, (a) => a.provider)],
   filters: { environment: (a, v) => a.environment === v },
 });
@@ -125,7 +125,7 @@ const pCurrency = ref("");
 const providerSubs = useProviderSubscriptions(tenantId);
 type ProviderSub = NonNullable<NonNullable<typeof providerSubs.data.value>["subscriptions"]>[number];
 const subTable = useTableState<ProviderSub>(() => providerSubs.data.value?.subscriptions ?? [], {
-  searchFields: (s) => [s.provider, s.provider_ref, s.environment],
+  url: "runs-", searchFields: (s) => [s.provider, s.provider_ref, s.environment],
   sorts: () => [newest(t, (s) => time(s.updated_at)), oldest(t, (s) => time(s.updated_at)), nameAsc(t, (s) => s.provider), nameDesc(t, (s) => s.provider)],
   filters: { status: (s, v) => s.status === v },
 });
@@ -149,7 +149,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>
-  <Card class="mb-6 p-3">
+  <Card class="mb-6 p-3" data-testid="providers-accounts">
     <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
       <FilterSelect v-model="accountEnv" multiple :label="t('billing.providers.environment')" :options="environments" />
@@ -217,7 +217,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     </Sheet>
   </Card>
 
-  <Card class="mb-6 p-3">
+  <Card class="mb-6 p-3" data-testid="providers-runs">
     <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
     <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" @clear="subTable.clear()">
       <FilterSelect v-model="subStatus" multiple :label="t('billing.subscriptions.state')" :options="subStatuses" />

@@ -446,7 +446,12 @@
       "reason": "Reason",
       "bytes": "Bytes"
     },
-    "noMessages": "No messages in this queue."
+    "noMessages": "No messages in this queue.",
+    "bulk": {
+      "redrive": "Redrive selected",
+      "title": "Redrive the selected queues?",
+      "confirm": "Queues: {queues}. Messages that move back to their working queues, with their retry counters reset: {count}."
+    }
   },
   "playground": {
     "title": "Playground",
@@ -961,6 +966,13 @@
         "replacedBy": "Replaced by a plan change: {plan} took over.",
         "changedFrom": "Started by a plan change from {plan}.",
         "open": "Open"
+      },
+      "bulk": {
+        "cancel": "Cancel selected at period end",
+        "keep": "Keep selected",
+        "resume": "Resume selected",
+        "cancelTitle": "Cancel {n} subscription at the period end? | Cancel {n} subscriptions at the period end?",
+        "confirmCancel": "Each ends when its current period does and is not renewed. Customers keep access until then, and “Keep selected” takes the cancellation back."
       }
     },
     "payments": {
@@ -1133,7 +1145,12 @@
         "empty": "No coupons yet.",
         "badPercent": "Not a percentage: 0.01 to 100 with at most two decimals.",
         "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
-        "repeatingFor": "First {n} fees"
+        "repeatingFor": "First {n} fees",
+        "bulk": {
+          "deactivate": "Deactivate selected",
+          "title": "Deactivate {n} coupon? | Deactivate {n} coupons?",
+          "confirm": "They take no new redemptions, and a deactivated coupon cannot be switched on again. Subscriptions that already have one keep it."
+        }
       },
       "tax": {
         "title": "Tax",
@@ -1400,7 +1417,12 @@
       "createdTitle": "Payment link created",
       "createdHint": "Copy the link now and send it to the payer.",
       "another": "Make another link",
-      "customerNone": "No customer"
+      "customerNone": "No customer",
+      "bulk": {
+        "revoke": "Revoke selected",
+        "revokeTitle": "Revoke {n} payment link? | Revoke {n} payment links?",
+        "confirmRevoke": "Revoked links stop working at once and cannot be brought back. Unpaid invoices made from them are voided."
+      }
     },
     "mail": {
       "title": "E-mail",
@@ -2293,7 +2315,14 @@
       "reinstate": "Reinstate",
       "edit": "Edit",
       "linkAndCode": "Link and code",
-      "referralsOf": "Referrals"
+      "referralsOf": "Referrals",
+      "bulk": {
+        "approve": "Approve selected",
+        "suspend": "Suspend selected",
+        "reinstate": "Reinstate selected",
+        "suspendTitle": "Suspend {n} partner? | Suspend {n} partners?",
+        "confirmSuspend": "A suspended partner gets no new attributions or commissions; what was approved stays. Reinstating brings them back."
+      }
     },
     "add": {
       "title": "Add an affiliate",

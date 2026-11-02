@@ -55,7 +55,7 @@ const sorts = (): SortDef<(typeof rows.value)[number]>[] => [
   { key: "priority_desc", label: t("support.sortPriority"), by: (r) => rank[r.priority] ?? 0, dir: "desc" },
   { key: "due_asc", label: t("support.sortDue"), by: (r) => time(r.first_response_due), dir: "asc" },
 ];
-const table = useTableState(rows, { searchFields: () => [], sorts, sheet: { kind: "ticket", id: (r) => r.id, loaded: () => queue.isSuccess.value } });
+const table = useTableState(rows, { url: true, searchFields: () => [], sorts, sheet: { kind: "ticket", id: (r) => r.id, loaded: () => queue.isSuccess.value } });
 const current = computed(() => table.row.value);
 const thread = useOperatorTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
