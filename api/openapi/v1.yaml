@@ -8028,7 +8028,7 @@ components:
           properties:
             action: { type: string, description: "The provider's word: cancel, pause or resume (Paddle)", examples: [cancel] }
             effective_at: { type: string, format: date-time }
-            resume_at: { type: string, format: date-time, description: When a paused subscription resumes, for a pause }
+            resume_at: { type: string, format: date-time, description: "When a paused subscription resumes, for a pause" }
         updated_at: { type: string, format: date-time }
     CreateProviderCheckoutRequest:
       type: object

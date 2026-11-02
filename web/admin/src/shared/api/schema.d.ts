@@ -8741,7 +8741,7 @@ export interface components {
                 effective_at: string;
                 /**
                  * Format: date-time
-                 * @description When a paused subscription resumes
+                 * @description When a paused subscription resumes, for a pause
                  */
                 resume_at?: string;
             };
