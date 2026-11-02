@@ -53,7 +53,7 @@ A provider's webhook is not this body. Resend's, for example (public documentati
 
 ## Watching it
 
-`notifier_mail_events_total{type,outcome}` (outcome `suppressed`, `counted` or `unmatched`: a high `unmatched` rate means the ids the provider reports are not the ones the send returned), `notifier_mail_dropped_total{category="suppressed"|"quota"}`, `notifier_mail_rate_limited_total`, `notifier_mail_rate_limit_fallback_total` (a rate-limit decision taken on the replica's own buckets because Redis could not be reached). The list is `notifier_db.mail_suppressions`; the mail it was sent for is `sent_notifications` (`tenant_id`, `smtp_message_id`, which holds the provider's id).
+`notifier_mail_events_total{type,outcome}` (outcome `suppressed`, `counted` or `unmatched`: a high `unmatched` rate means the ids the provider reports are not the ones the send returned), `notifier_mail_dropped_total{category="suppressed"|"quota"}`, `notifier_mail_rate_limited_total`, `notifier_mail_rate_limit_fallback_total` (a rate-limit decision taken on the replica's own buckets because Redis could not be reached). `notifier_mail_events_v1_signatures_total` (requests accepted on the old v1 signature while `NOTIFIER_MAIL_EVENTS_ACCEPT_V1` is on: zero means every sender signs v2 and the flag can go). The list is `notifier_db.mail_suppressions`; the mail it was sent for is `sent_notifications` (`tenant_id`, `smtp_message_id`, which holds the provider's id).
 
 ## Not built
 
