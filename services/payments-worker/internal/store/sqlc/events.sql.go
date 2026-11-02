@@ -51,17 +51,29 @@ func (q *Queries) ForgetProviderEvent(ctx context.Context, arg ForgetProviderEve
 }
 
 const receiveProviderEvent = `-- name: ReceiveProviderEvent :execrows
-INSERT INTO provider_events (provider, event_id, body, status) VALUES ($1, $2, $3, 'received') ON CONFLICT DO NOTHING
+INSERT INTO provider_events (provider, event_id, body, status) VALUES ($1, $2, $3, 'received')
+ON CONFLICT (provider, event_id) DO UPDATE
+SET body = EXCLUDED.body, status = 'received', error = NULL, processed_at = NULL, received_at = now()
+WHERE provider_events.status IN ('received', 'failed') AND provider_events.received_at < now() - make_interval(secs => $4::double precision)
 `
 
 type ReceiveProviderEventParams struct {
-	Provider string
-	EventID  string
-	Body     json.RawMessage
+	Provider         string
+	EventID          string
+	Body             json.RawMessage
+	ReclaimAfterSecs float64
 }
 
+// A notification seen before is a duplicate, unless the delivery that recorded it never finished: a row still received or failed for longer than the window (the process died
+// between this write and its answer, or the "failed" mark and the clean-up both failed) is taken over by the provider's retry, which processes it again. The effects are
+// idempotent: the ledger keeps a fact once, billing settles a payment once, a subscription follows the newest event.
 func (q *Queries) ReceiveProviderEvent(ctx context.Context, arg ReceiveProviderEventParams) (int64, error) {
-	result, err := q.db.Exec(ctx, receiveProviderEvent, arg.Provider, arg.EventID, arg.Body)
+	result, err := q.db.Exec(ctx, receiveProviderEvent,
+		arg.Provider,
+		arg.EventID,
+		arg.Body,
+		arg.ReclaimAfterSecs,
+	)
 	if err != nil {
 		return 0, err
 	}
