@@ -3,9 +3,11 @@ import { BRANDS, CONNECTABLE, GROUPS, IN_GROUP, WITHOUT_LOGO, type IntegrationId
 import { builtInMailState, eInvoiceState, ownMailState, stateTone } from "./status";
 
 describe("e-invoice state", () => {
-  it("is connected only for the integrator that is stored", () => {
-    expect(eInvoiceState({ provider: "nilvera", mode: "production" }, "nilvera")).toEqual({ state: "working", mode: "production" });
-    expect(eInvoiceState({ provider: "nilvera", mode: "production" }, "webhook").state).toBe("none");
+  it("is connected for an integrator that has an account, however many other accounts there are", () => {
+    const accounts = [{ provider: "nilvera", mode: "production" }, { provider: "nilvera", mode: "test" }];
+    expect(eInvoiceState(accounts, "nilvera")).toEqual({ state: "working", mode: "production", count: 2 });
+    expect(eInvoiceState(accounts, "webhook").state).toBe("none");
+    expect(eInvoiceState([...accounts, { provider: "webhook", mode: "production" }], "webhook")).toEqual({ state: "working", mode: "production", count: 1 });
     expect(eInvoiceState(null, "nilvera").state).toBe("none");
     expect(eInvoiceState(undefined, "webhook").state).toBe("none");
   });

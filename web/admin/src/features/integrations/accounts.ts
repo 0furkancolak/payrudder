@@ -1,0 +1,89 @@
+import type { AccountProblem } from "@/features/product/liveProvider";
+import { accountRows, splitAccountKey, type AccountView } from "@/features/providers/connections";
+import type { CardState } from "./status";
+
+/**
+ * The accounts of an app as one list, whatever they are for: the payment accounts (several at one provider, labelled), the e-invoice accounts (the same) and
+ * the e-mail sender in use. Pure functions; the card only draws what they return.
+ */
+export type AccountKind = "payment" | "einvoice" | "mail";
+export const ACCOUNT_KINDS: readonly AccountKind[] = ["payment", "einvoice", "mail"];
+
+export interface AccountEntry {
+  /** The test id and the key in a list: the account key, or `mail:builtin` / `mail:nafru`. */
+  id: string;
+  kind: AccountKind;
+  /** The account key ("paddle~eu", "nilvera"); empty for the e-mail rows, which are not accounts of the same kind. */
+  key: string;
+  provider: string;
+  label: string;
+  state: CardState;
+  problem: AccountProblem | null;
+  /** The one a charge or a document goes to when no rule names another; for e-mail, the sender in use. */
+  isDefault: boolean;
+  mode: string;
+}
+
+export interface EInvoiceAccountView {
+  account?: string;
+  provider?: string;
+  label?: string;
+  mode?: string;
+  is_default?: boolean;
+}
+
+/** The e-invoice accounts as the API lists them; a gateway that only knows the default (`account`) is read as an environment with that one account. */
+export function eInvoiceAccounts(res: { account?: EInvoiceAccountView | null; accounts?: readonly EInvoiceAccountView[] } | null | undefined): EInvoiceAccountView[] {
+  if (res?.accounts) return [...res.accounts];
+  return res?.account ? [{ ...res.account, account: res.account.account ?? res.account.provider, is_default: res.account.is_default ?? true }] : [];
+}
+
+interface MailView {
+  connected?: boolean;
+  integration?: { check_problem?: string } | null;
+}
+
+export function accountEntries(input: { payments: readonly AccountView[] | undefined; eInvoice: readonly EInvoiceAccountView[]; mail: MailView | null | undefined }): AccountEntry[] {
+  const out: AccountEntry[] = [];
+  for (const r of accountRows(input.payments)) {
+    out.push({ id: r.key, kind: "payment", key: r.key, provider: r.provider, label: r.label, state: r.state, problem: r.problem, isDefault: r.isDefault, mode: "" });
+  }
+  for (const a of input.eInvoice) {
+    const key = a.account ?? a.provider ?? "";
+    out.push({ id: key, kind: "einvoice", key, provider: a.provider ?? splitAccountKey(key).provider, label: a.label ?? splitAccountKey(key).label, state: "working", problem: null, isDefault: a.is_default === true, mode: a.mode ?? "" });
+  }
+  const own = input.mail?.connected === true;
+  out.push({ id: "mail:builtin", kind: "mail", key: "", provider: "payrudderMail", label: "", state: own ? "unused" : "always", problem: null, isDefault: !own, mode: "" });
+  if (own) out.push({ id: "mail:nafru", kind: "mail", key: "", provider: "nafru", label: "", state: input.mail?.integration?.check_problem ? "problem" : "working", problem: null, isDefault: true, mode: "" });
+  return out.sort((a, b) => ACCOUNT_KINDS.indexOf(a.kind) - ACCOUNT_KINDS.indexOf(b.kind) || a.provider.localeCompare(b.provider) || a.label.localeCompare(b.label));
+}
+
+export interface EInvoiceRule {
+  country: string;
+  account: string;
+}
+
+export interface Taker {
+  /** The account that takes the document, or null when the environment has no default and no rule names the country. */
+  account: string | null;
+  via: "rule" | "default" | "none";
+}
+
+/** Which e-invoice account would issue the document of a buyer in `country`: the account a rule names for it, else the default (the worker's own rule). */
+export function eInvoiceTaker(accounts: readonly EInvoiceAccountView[], rules: readonly EInvoiceRule[], country: string): Taker {
+  const c = country.trim().toUpperCase();
+  const rule = c === "" ? undefined : rules.find((r) => r.country.toUpperCase() === c);
+  if (rule && accounts.some((a) => (a.account ?? a.provider) === rule.account)) return { account: rule.account, via: "rule" };
+  const def = accounts.find((a) => a.is_default);
+  return def ? { account: def.account ?? def.provider ?? null, via: "default" } : { account: null, via: "none" };
+}
+
+/** What an audit entry says, as the key of its sentence (`product.integrations.accounts.audit.actions.<action>`). */
+export const AUDIT_ACTIONS = ["connected", "replaced", "removed", "default_set", "routing_changed"] as const;
+
+/** Who an audit entry names: a person of the app by name when known, "Payrudder support" for the operator, otherwise a short form of the id. */
+export function auditActor(actor: string, names: ReadonlyMap<string, string>, support: string): string {
+  if (actor === "operator") return support;
+  const id = actor.startsWith("user:") ? actor.slice(5) : actor;
+  return names.get(id) ?? (id.length > 8 ? `${id.slice(0, 8)}…` : id);
+}

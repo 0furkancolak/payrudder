@@ -35,6 +35,7 @@ func (s *Server) goLiveRoutes() []Route {
 		{"DELETE", "/app/v1/apps/{id}/go-live/providers/{provider}", AccessSession, ratelimit.ClassWrite, s.appLiveProviderDelete},
 		{"GET", "/app/v1/apps/{id}/go-live/routing", AccessSession, ratelimit.ClassRead, s.appLiveRoutingGet},
 		{"PUT", "/app/v1/apps/{id}/go-live/routing", AccessSession, ratelimit.ClassWrite, s.appLiveRoutingPut},
+		{"POST", "/app/v1/apps/{id}/go-live/routing/preview", AccessSession, ratelimit.ClassRead, s.appLiveRoutingPreview},
 		{"POST", "/app/v1/apps/{id}/go-live/providers/{provider}/default", AccessSession, ratelimit.ClassWrite, s.appLiveProviderDefault},
 		{"POST", "/app/v1/apps/{id}/api-keys/{key_id}/rotate", AccessSession, ratelimit.ClassWrite, s.appKeyRotate},
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
@@ -294,6 +295,30 @@ func (s *Server) appLiveRoutingPut(w http.ResponseWriter, r *http.Request) {
 	}
 	noStore(w)
 	resp, err := s.d.Plans.SetRoutingRules(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appLiveRoutingPreview says which live account a customer in a country paying in a currency would be charged through, without creating anything (the same
+// answer as the tenant API's routing preview, for the person who has no API key in the console). Any member asks.
+func (s *Server) appLiveRoutingPreview(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	req := &plansv1.PreviewRoutingRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.Plans.PreviewRouting(tenant.OutgoingFor(r.Context(), id), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
 

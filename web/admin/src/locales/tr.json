@@ -3120,6 +3120,7 @@
     },
     "einvoice": {
       "account": {
+        "default_in_use": "Bu, varsayılan e-fatura hesabı. Önce başka bir hesabı varsayılan yapın, sonra bunu kaldırın.",
         "invalid": "E-fatura hesabı ayarları bu sağlayıcı için geçerli değil.",
         "missing": "Bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
         "sandbox_mock_only": "Sandbox ortamı yalnızca sahte (mock) e-fatura sağlayıcısını kullanabilir."
@@ -3141,6 +3142,10 @@
       "provider": {
         "rejected": "E-fatura sağlayıcısı belgeyi reddetti.",
         "unavailable": "E-fatura sağlayıcısına şu an ulaşılamıyor. Yeniden denenecek."
+      },
+      "routing": {
+        "invalid": "Yönlendirme kuralları geçerli değil: her ülke iki harfli bir kod olmalı, bir kez listelenmeli ve her hesap bağlı bir hesap olmalı.",
+        "unknown_account": "Bir yönlendirme kuralı, bağlı olmayan bir e-fatura hesabını gösteriyor."
       },
       "seller": {
         "incomplete": "Satıcının şirket bilgileri eksik: e-fatura ayarlarına unvanı ve vergi numarasını ekleyin."
@@ -4382,7 +4387,6 @@
           "webhook": "Her e-belge, kendi entegratörünüzün adresine imzalı olarak gönderilir. Adresini ve imzayı doğrulamak için kullandığı sırrı girin."
         },
         "envNote": "Bu, canlı ortamı bağlar. Sandbox yerleşik simülatörü kullanmaya devam eder.",
-        "replaces": "Bir ortamın tek entegratörü olur. Bunu bağlamak şu an bağlı olanı değiştirir: {current}.",
         "mode": "Mod",
         "modes": {
           "test": "Test modu",
@@ -4399,7 +4403,9 @@
           "credentials": "Entegratör bu bilgileri kabul ediyor.",
           "configuration": "Ayarlar geçerli. Gerisini yalnızca gerçek bir belge kanıtlar."
         },
-        "confirmRemove": "{name} bağlantısı kesilsin mi? Canlı ortamın yeni faturaları artık e-belge olarak gönderilmez."
+        "confirmRemove": "{name} bağlantısı kesilsin mi? Canlı ortamın yeni faturaları artık e-belge olarak gönderilmez.",
+        "accountsLine": "{count} hesap bağlı.",
+        "accountLabel": "Hesap etiketi: {label}"
       },
       "mail": {
         "builtInTitle": "Payrudder e-postası",
@@ -4424,6 +4430,59 @@
         "checkAndConnect": "Denetle ve bağla",
         "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
         "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
+      },
+      "accounts": {
+        "title": "Hesaplar",
+        "intro": "Bu uygulamanın tüm hesapları tek listede: ödeme, e-fatura ve e-posta. Her türde birden çok hesap olabilir, biri varsayılandır ve aşağıdaki kurallar hangi hesabın hangi müşterileri aldığını söyler.",
+        "add": "Entegrasyon ekle",
+        "addIntro": "Neyi bağlayacağınızı seçin: önce tür, sonra sağlayıcı. Sonraki adımda kimlik bilgileri istenir.",
+        "mailNote": "Bir uygulamanın, Payrudder'ın yerleşik göndericisinin yanında kendi e-posta sağlayıcısı olabilir.",
+        "continue": "Devam",
+        "search": "Hesaplarda ara",
+        "kind": "Tür",
+        "status": "Durum",
+        "provider": "Sağlayıcı",
+        "kinds": {
+          "payment": "Ödemeler",
+          "einvoice": "E-fatura",
+          "mail": "E-posta"
+        },
+        "inUse": "Kullanımda",
+        "makeDefaultHint": "Bunu varsayılan hesap yap",
+        "remove": "Kaldır",
+        "confirmRemove": "{name} kaldırılsın mı? Daha önce kesilmiş ya da tahsil edilmiş hiçbir şey değişmez.",
+        "eRouting": {
+          "title": "Hangi e-fatura hesabı hangi belgeleri keser",
+          "intro": "Alıcının ülkesi belirler: burada listelenen bir ülkedeki alıcının belgesi o hesaptan, diğer tüm belgeler varsayılan hesaptan kesilir. Başlamış bir belge kendi hesabında kalır.",
+          "duplicate": "Bir ülke bir kez listelenebilir."
+        },
+        "tester": {
+          "title": "Bu müşteriyi kim alır?",
+          "intro": "Bir ülke ve para birimi girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
+          "run": "Kontrol et",
+          "byRule": "{account}, {n}. kurala göre",
+          "byDefault": "Varsayılan hesap, hiçbir kural eşleşmiyor.",
+          "byRuleCountry": "{account}, {country} kuralına göre",
+          "eDefault": "{account}, varsayılan hesap",
+          "eNone": "Hesap yok: varsayılan belirlenmemiş ve hiçbir kural bu ülkeyi söylemiyor.",
+          "mailOwn": "Kendi e-posta sağlayıcınız",
+          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi"
+        },
+        "audit": {
+          "title": "Hesapları kim değiştirdi",
+          "intro": "Ödeme ve e-fatura hesaplarının bağlanması, varsayılan değişiklikleri ve yönlendirme değişiklikleri, en yeniden eskiye. Kimlik bilgileri asla kaydedilmez.",
+          "empty": "Henüz bir değişiklik olmadı.",
+          "more": "Daha eskileri göster",
+          "support": "Payrudder destek",
+          "verified": "Sağlayıcı kabul etti",
+          "actions": {
+            "connected": "{actor}, {account} hesabını bağladı",
+            "replaced": "{actor}, {account} hesabının kimlik bilgilerini değiştirdi",
+            "removed": "{actor}, {account} hesabını kaldırdı",
+            "default_set": "{actor}, {account} hesabını varsayılan yaptı",
+            "routing_changed": "{actor} yönlendirme kurallarını değiştirdi"
+          }
+        }
       }
     },
     "envSwitch": {

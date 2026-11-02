@@ -29,7 +29,7 @@ A re-seal must give `Reseal` the same associated data the writer used, or the bo
 | Service | Table.column | Bound to |
 |---|---|---|
 | payments-worker | `provider_accounts.settings_enc` | `tenant|provider|environment` (`store/accounts.go`) |
-| payments-worker | `einvoice_accounts.settings_enc` | `tenant|einvoice|environment` (`store/einvoice.go`) |
+| payments-worker | `einvoice_accounts.settings_enc` | `tenant|einvoice|environment` for an integrator's primary account, `tenant|einvoice|environment|key` for a labelled one (`store/einvoice.go`) |
 | plans-svc | `webhook_endpoints.secret_enc`, `prev_secret_enc` | `webhooks/model.SecretAAD(endpoint)` |
 | plans-svc | `tenant_mail_integrations.api_key_enc` | `mailintegration/query.AAD(tenant)` |
 

@@ -465,6 +465,14 @@ func (p *productPlans) CreateCustomer(ctx context.Context, req *plansv1.CreateCu
 	return &plansv1.CreateCustomerResponse{Customer: &plansv1.Customer{Id: "c9", ExternalId: req.GetExternalId()}}, nil
 }
 
+func (p *productPlans) PreviewRouting(ctx context.Context, req *plansv1.PreviewRoutingRequest) (*plansv1.PreviewRoutingResponse, error) {
+	p.saw(ctx)
+	if req.GetCountry() == "DE" {
+		return &plansv1.PreviewRoutingResponse{Provider: "paddle~eu", RuleIndex: 0, Owner: "provider", CanCharge: true}, nil
+	}
+	return &plansv1.PreviewRoutingResponse{RuleIndex: -1, CanCharge: true}, nil
+}
+
 func (p *productPlans) GetSubscriptionReport(ctx context.Context, _ *plansv1.GetSubscriptionReportRequest) (*plansv1.GetSubscriptionReportResponse, error) {
 	p.saw(ctx)
 	return &plansv1.GetSubscriptionReportResponse{Rows: []*plansv1.SubscriptionReportRow{{Currency: "USD", Active: 4, MrrMinor: 4900}, {Currency: "TRY", Active: 1, MrrMinor: 25000}}}, nil

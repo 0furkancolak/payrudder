@@ -3120,6 +3120,7 @@
     },
     "einvoice": {
       "account": {
+        "default_in_use": "Es la cuenta de factura electrónica predeterminada. Primero haga predeterminada otra cuenta y luego quite esta.",
         "invalid": "La configuración de la cuenta de factura electrónica no es válida para este proveedor.",
         "missing": "Este tenant no tiene cuenta de factura electrónica para este entorno. Configure una primero.",
         "sandbox_mock_only": "Un entorno sandbox solo puede usar el proveedor simulado de factura electrónica."
@@ -3141,6 +3142,10 @@
       "provider": {
         "rejected": "El proveedor de factura electrónica rechazó el documento.",
         "unavailable": "El proveedor de factura electrónica no está disponible ahora. Se volverá a intentar."
+      },
+      "routing": {
+        "invalid": "Las reglas de enrutamiento no son válidas: cada país es un código de dos letras, aparece una sola vez y cada cuenta es una cuenta conectada.",
+        "unknown_account": "Una regla de enrutamiento nombra una cuenta de factura electrónica que no está conectada."
       },
       "seller": {
         "incomplete": "Los datos de la empresa del vendedor están incompletos: añada la razón social y el identificador fiscal en los ajustes de factura electrónica."
@@ -4382,7 +4387,6 @@
           "webhook": "Cada documento electrónico se envía, firmado, a la dirección de tu propio integrador. Introduce su dirección y el secreto con el que comprueba la firma."
         },
         "envNote": "Esto conecta el entorno live. El sandbox sigue usando el simulador integrado.",
-        "replaces": "Un entorno tiene un solo integrador. Conectar este reemplaza el conectado ahora: {current}.",
         "mode": "Modo",
         "modes": {
           "test": "Modo de prueba",
@@ -4399,7 +4403,9 @@
           "credentials": "El integrador acepta estas credenciales.",
           "configuration": "Los ajustes son válidos. Solo un documento real prueba lo demás."
         },
-        "confirmRemove": "¿Desconectar {name}? Las facturas nuevas del entorno live ya no se envían como documentos electrónicos."
+        "confirmRemove": "¿Desconectar {name}? Las facturas nuevas del entorno live ya no se envían como documentos electrónicos.",
+        "accountsLine": "{count} cuentas conectadas.",
+        "accountLabel": "Etiqueta de la cuenta: {label}"
       },
       "mail": {
         "builtInTitle": "Correo de Payrudder",
@@ -4424,6 +4430,59 @@
         "checkAndConnect": "Comprobar y conectar",
         "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
         "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta."
+      },
+      "accounts": {
+        "title": "Cuentas",
+        "intro": "Todas las cuentas de esta aplicación en una lista: pagos, factura electrónica y correo. Cada tipo puede tener varias cuentas, una es la predeterminada y las reglas de abajo dicen qué cuenta atiende a qué clientes.",
+        "add": "Añadir integración",
+        "addIntro": "Elija qué conecta: primero el tipo, luego el proveedor. El siguiente paso pide sus credenciales.",
+        "mailNote": "Una aplicación puede tener su propio proveedor de correo además del remitente integrado de Payrudder.",
+        "continue": "Continuar",
+        "search": "Buscar cuentas",
+        "kind": "Tipo",
+        "status": "Estado",
+        "provider": "Proveedor",
+        "kinds": {
+          "payment": "Pagos",
+          "einvoice": "Factura electrónica",
+          "mail": "Correo"
+        },
+        "inUse": "En uso",
+        "makeDefaultHint": "Hacer de esta la cuenta predeterminada",
+        "remove": "Quitar",
+        "confirmRemove": "¿Quitar {name}? Nada de lo ya emitido o cobrado cambia.",
+        "eRouting": {
+          "title": "Qué cuenta de factura electrónica emite qué documentos",
+          "intro": "Decide el país del comprador: el documento de un comprador de un país de esta lista se emite con esa cuenta, y todos los demás con la cuenta predeterminada. Un documento ya iniciado conserva su cuenta.",
+          "duplicate": "Un país solo puede aparecer una vez."
+        },
+        "tester": {
+          "title": "¿Quién atiende a este cliente?",
+          "intro": "Introduzca un país y una moneda para ver qué cuenta de pago cobraría al cliente, qué cuenta de factura electrónica emitiría sus documentos y qué remitente le escribiría. No se crea nada.",
+          "run": "Comprobar",
+          "byRule": "{account}, por la regla {n}",
+          "byDefault": "La cuenta predeterminada, ninguna regla coincide.",
+          "byRuleCountry": "{account}, por la regla de {country}",
+          "eDefault": "{account}, la cuenta predeterminada",
+          "eNone": "Ninguna cuenta: no hay cuenta predeterminada y ninguna regla nombra este país.",
+          "mailOwn": "Su propio proveedor de correo",
+          "mailBuiltIn": "El remitente integrado de Payrudder"
+        },
+        "audit": {
+          "title": "Quién cambió las cuentas",
+          "intro": "Conexiones, cambios de cuenta predeterminada y de enrutamiento de las cuentas de pago y de factura electrónica, de la más reciente a la más antigua. Las credenciales nunca se registran.",
+          "empty": "Todavía no ha cambiado nada.",
+          "more": "Mostrar anteriores",
+          "support": "Soporte de Payrudder",
+          "verified": "Aceptado por el proveedor",
+          "actions": {
+            "connected": "{actor} conectó {account}",
+            "replaced": "{actor} reemplazó las credenciales de {account}",
+            "removed": "{actor} quitó {account}",
+            "default_set": "{actor} hizo de {account} la cuenta predeterminada",
+            "routing_changed": "{actor} cambió las reglas de enrutamiento"
+          }
+        }
       }
     },
     "envSwitch": {

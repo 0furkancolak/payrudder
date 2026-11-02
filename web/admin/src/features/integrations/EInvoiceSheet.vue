@@ -3,7 +3,9 @@ import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { ACCOUNT_LABEL } from "@/features/providers/connections";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -11,18 +13,20 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useEInvoiceActions, type EInvoiceMode, type EInvoiceProvider } from "./api";
 import { BRANDS } from "./brands";
-import { eInvoiceState } from "./status";
 
 /**
- * The side sheet that connects the e-invoice integrator of the live environment (or replaces its credentials, tests it, or disconnects it). An environment has
- * one integrator, so connecting this one replaces the other; the sheet says so. The credentials are typed once, are password fields and are never shown again.
- * The sandbox needs no connection: its documents go to the built-in simulator.
+ * The side sheet that connects an e-invoice integrator account of the live environment (or replaces its credentials, tests it, or disconnects it). An
+ * environment holds several accounts, at one integrator or at several: a further account at an integrator that already has one is named with a label, and may
+ * be made the default. The credentials are typed once, are password fields and are never shown again. The sandbox needs no connection: its documents go to
+ * the built-in simulator.
  */
 const props = defineProps<{
   provider: EInvoiceProvider | "";
   appId: string;
-  /** What is stored now (no credential is in it). */
-  account: { provider?: string; mode?: string } | null | undefined;
+  /** The key of the account the sheet manages ("nilvera~tr"); empty to add one. */
+  account: string;
+  /** Every account stored now (no credential is in them). */
+  accounts: readonly { account?: string; provider?: string; label?: string; mode?: string; is_default?: boolean }[];
   isOwner: boolean;
   /** The seller's tax id from the billing profile, for the test (an integrator that can look up a registered business is asked about it). */
   taxId: string;
@@ -38,8 +42,16 @@ const hookUrl = ref("");
 const hookSecret = ref("");
 const problem = ref("");
 
-const here = computed(() => (props.provider ? eInvoiceState(props.account, props.provider) : { state: "none" as const, mode: "" }));
-const other = computed(() => !!props.account?.provider && props.provider !== "" && props.account.provider !== props.provider);
+const label = ref("");
+const makeDefault = ref(false);
+/** The account being managed, or none when the sheet adds one. */
+const stored = computed(() => props.accounts.find((a) => a.account === props.account && props.account !== ""));
+const here = computed(() => (stored.value ? { state: "working" as const, mode: stored.value.mode ?? "" } : { state: "none" as const, mode: "" }));
+const adding = computed(() => !stored.value);
+/** A further account at an integrator that already has one must be told apart by a label. */
+const labelRequired = computed(() => adding.value && props.accounts.some((a) => a.provider === props.provider));
+const labelProblem = computed(() => adding.value && (label.value.trim() === "" ? labelRequired.value : !ACCOUNT_LABEL.test(label.value.trim())));
+const offerDefault = computed(() => adding.value && props.accounts.length > 0);
 const name = computed(() => (props.provider ? (BRANDS[props.provider].name ?? t(`product.integrations.names.${props.provider}`)) : ""));
 
 watch(
@@ -47,7 +59,8 @@ watch(
   ([isOpen]) => {
     if (!isOpen) return;
     mode.value = "production";
-    apiKey.value = baseUrl.value = hookUrl.value = hookSecret.value = problem.value = "";
+    apiKey.value = baseUrl.value = hookUrl.value = hookSecret.value = problem.value = label.value = "";
+    makeDefault.value = false;
     actions.save.reset();
     actions.remove.reset();
     actions.test.reset();
@@ -61,9 +74,9 @@ function credentials(): Record<string, string> {
 }
 
 function submit() {
-  if (props.provider === "" || !props.isOwner) return;
+  if (props.provider === "" || !props.isOwner || labelProblem.value) return;
   actions.save.mutate(
-    { provider: props.provider, mode: mode.value, credentials: credentials() },
+    { provider: props.provider, label: adding.value ? label.value.trim() : (stored.value?.label ?? ""), makeDefault: makeDefault.value, mode: mode.value, credentials: credentials() },
     {
       onSuccess: () => {
         apiKey.value = hookSecret.value = "";
@@ -76,12 +89,12 @@ function submit() {
 
 async function removeNow() {
   if (!(await askConfirm({ body: t("product.integrations.einvoice.confirmRemove", { name: name.value }) }))) return;
-  actions.remove.mutate(undefined, { onSuccess: () => (open.value = false) });
+  actions.remove.mutate(props.account, { onSuccess: () => (open.value = false) });
 }
 
 function test() {
   problem.value = "";
-  actions.test.mutate(props.taxId, { onSuccess: (r) => (problem.value = r.ok ? "" : (r.problem ?? "refused")) });
+  actions.test.mutate({ account: props.account, taxId: props.taxId }, { onSuccess: (r) => (problem.value = r.ok ? "" : (r.problem ?? "refused")) });
 }
 const tested = computed(() => actions.test.data.value);
 </script>
@@ -96,7 +109,7 @@ const tested = computed(() => actions.test.data.value);
       <SheetBody>
         <p v-if="!isOwner" class="text-muted-foreground text-sm" data-testid="integration-owner-only">{{ t("product.integrations.ownerOnly") }}</p>
         <p class="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs">{{ t("product.integrations.einvoice.envNote") }}</p>
-        <p v-if="other" class="text-warning text-xs" role="status" data-testid="einvoice-replaces">{{ t("product.integrations.einvoice.replaces", { current: account?.provider }) }}</p>
+        <p v-if="stored && stored.label" class="text-muted-foreground text-xs" data-testid="einvoice-account-label">{{ t("product.integrations.einvoice.accountLabel", { label: stored.label }) }}</p>
 
         <div v-if="here.state !== 'none'" class="bg-muted flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3" data-testid="integration-sheet-status">
           <div class="min-w-0">
@@ -111,6 +124,13 @@ const tested = computed(() => actions.test.data.value);
 
         <form id="einvoice-sheet-form" class="grid gap-3" novalidate autocomplete="off" :aria-label="t('product.integrations.connectTitle', { name })" @submit.prevent="submit">
           <p class="text-muted-foreground text-xs">{{ here.state !== "none" ? t("product.integrations.replaceNote") : t("product.integrations.secretsOnce") }}</p>
+          <div v-if="adding" class="grid gap-1">
+            <label class="text-sm" for="ei-label">{{ t("product.providers.account.label") }}<span v-if="!labelRequired" class="text-muted-foreground"> ({{ t("product.integrations.optional") }})</span></label>
+            <Input id="ei-label" v-model="label" class="mono" spellcheck="false" autocomplete="off" :aria-invalid="labelProblem" data-testid="ei-label" />
+            <p class="text-muted-foreground text-xs">{{ t("product.providers.account.labelHelp") }}</p>
+            <p v-if="labelProblem" class="text-destructive text-xs" role="alert">{{ t("product.providers.account.labelBad") }}</p>
+          </div>
+          <label v-if="offerDefault" class="flex items-center gap-2 text-sm"><Checkbox v-model="makeDefault" :aria-label="t('product.providers.account.makeDefault')" data-testid="ei-default" />{{ t("product.integrations.accounts.makeDefaultHint") }}</label>
           <div class="grid gap-1">
             <label class="text-sm" for="ei-mode">{{ t("product.integrations.einvoice.mode") }}</label>
             <NativeSelect id="ei-mode" v-model="mode" data-testid="ei-mode">
@@ -144,7 +164,7 @@ const tested = computed(() => actions.test.data.value);
       <SheetFooter>
         <Button v-if="isOwner && here.state !== 'none'" variant="ghost" class="text-destructive me-auto" type="button" :disabled="actions.remove.isPending.value" data-testid="integration-disconnect" @click="removeNow">{{ t("product.integrations.disconnect") }}</Button>
         <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
-        <Button type="submit" form="einvoice-sheet-form" :disabled="!isOwner || actions.save.isPending.value" data-testid="integration-connect">{{ t("product.integrations.save") }}</Button>
+        <Button type="submit" form="einvoice-sheet-form" :disabled="!isOwner || actions.save.isPending.value || labelProblem" data-testid="integration-connect">{{ t("product.integrations.save") }}</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>

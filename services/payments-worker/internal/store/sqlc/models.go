@@ -19,6 +19,7 @@ type EinvoiceAccount struct {
 	SettingsEnc []byte
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	IsDefault   bool
 }
 
 type EinvoiceIssuance struct {
@@ -35,6 +36,14 @@ type EinvoiceIssuance struct {
 	PdfKey       *string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+}
+
+type EinvoiceRouting struct {
+	TenantID    uuid.UUID
+	Environment string
+	Country     string
+	Account     string
+	UpdatedAt   time.Time
 }
 
 type FeeRule struct {
@@ -113,6 +122,7 @@ type ProviderAccountEvent struct {
 	IsDefault      bool
 	VerifiedRemote bool
 	CreatedAt      time.Time
+	Kind           string
 }
 
 type ProviderAccountHealth struct {

@@ -13,10 +13,11 @@ interface EInvoiceAccount {
   mode?: string;
 }
 
-/** The integrator of the live environment: connected when it is this one (an environment has one account, so connecting the other replaces it). */
-export function eInvoiceState(account: EInvoiceAccount | null | undefined, provider: "nilvera" | "webhook"): { state: CardState; mode: string } {
-  if (!account || account.provider !== provider) return { state: "none", mode: "" };
-  return { state: "working", mode: account.mode ?? "" };
+/** The integrator is connected when the environment holds at least one account of it (it can hold several, and the other integrator's does not matter). */
+export function eInvoiceState(accounts: readonly EInvoiceAccount[] | null | undefined, provider: "nilvera" | "webhook"): { state: CardState; mode: string; count: number } {
+  const mine = (accounts ?? []).filter((a) => a.provider === provider);
+  if (mine.length === 0) return { state: "none", mode: "", count: 0 };
+  return { state: "working", mode: mine[0]?.mode ?? "", count: mine.length };
 }
 
 interface MailConnection {

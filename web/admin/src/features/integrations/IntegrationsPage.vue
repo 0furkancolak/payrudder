@@ -17,6 +17,9 @@ import { StatusPill } from "@/shared/ui/status-pill";
 import { useEInvoiceIntegration, useMailIntegration, type EInvoiceProvider } from "./api";
 import { BRANDS, CONNECTABLE, GROUPS, IN_GROUP, type IntegrationId } from "./brands";
 import AccountsCard from "./AccountsCard.vue";
+import AuditCard from "./AuditCard.vue";
+import RoutingTester from "./RoutingTester.vue";
+import { eInvoiceAccounts } from "./accounts";
 import EInvoiceSheet from "./EInvoiceSheet.vue";
 import MailSheet from "./MailSheet.vue";
 import ProviderLogo from "./ProviderLogo.vue";
@@ -52,6 +55,7 @@ const live = computed(() => app.data.value?.app?.tenants?.find((x) => x.environm
 const taxId = computed(() => fromTenant(live.value).taxId);
 
 const eInvoice = useEInvoiceIntegration(appId, () => inApp.value && hasLive.value);
+const eAccounts = computed(() => eInvoiceAccounts(eInvoice.data.value));
 const mail = useMailIntegration(appId, () => inApp.value && hasLive.value);
 
 const names = (p: string) => t(`product.goLive.provider.names.${p}`);
@@ -73,8 +77,9 @@ function card(id: IntegrationId): { state: CardState; line: string } {
     case "nilvera":
     case "webhook": {
       if (!inApp.value) return { state: "none", line: t("product.integrations.lines.perApp") };
-      const s = eInvoiceState(eInvoice.data.value, id);
-      return { state: s.state, line: s.state === "working" ? t("product.integrations.einvoice.modeLine", { mode: t(`product.integrations.einvoice.modes.${s.mode || "production"}`) }) : t("product.providers.notConnectedLine") };
+      const s = eInvoiceState(eAccounts.value, id);
+      const mode = t("product.integrations.einvoice.modeLine", { mode: t(`product.integrations.einvoice.modes.${s.mode || "production"}`) });
+      return { state: s.state, line: s.state !== "working" ? t("product.providers.notConnectedLine") : s.count > 1 ? t("product.integrations.einvoice.accountsLine", { count: s.count }) : mode };
     }
     case "payrudderMail": {
       if (!inApp.value) return { state: "always", line: t("product.integrations.lines.mailBuiltIn") };
@@ -149,15 +154,22 @@ function onDone(s: { provider: LiveProviderName; scope: Scope; ok: number; faile
 // --- e-invoice and e-mail
 const eInvoiceOpen = ref(false);
 const eInvoiceProvider = ref<EInvoiceProvider | "">("");
+/** The key of the e-invoice account the sheet manages; empty when it adds one. */
+const eInvoiceAccount = ref("");
 const mailOpen = ref(false);
 const mailKind = ref<"payrudderMail" | "nafru" | "">("");
 
+/** The e-invoice sheet for an account of an integrator (its key), or for a new one (empty). */
+function openEInvoice(provider: EInvoiceProvider, account: string) {
+  eInvoiceProvider.value = provider;
+  eInvoiceAccount.value = account;
+  eInvoiceOpen.value = true;
+}
+
 function open(id: IntegrationId) {
   if ((LIVE_PROVIDERS as readonly string[]).includes(id)) return fromPaymentCard(id as LiveProviderName);
-  if (id === "nilvera" || id === "webhook") {
-    eInvoiceProvider.value = id;
-    eInvoiceOpen.value = true;
-  } else if (id === "payrudderMail" || id === "nafru") {
+  if (id === "nilvera" || id === "webhook") openEInvoice(id, eAccounts.value.find((a) => a.provider === id)?.account ?? "");
+  else if (id === "payrudderMail" || id === "nafru") {
     mailKind.value = id;
     mailOpen.value = true;
   }
@@ -246,9 +258,14 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
           </li>
         </ul>
         <p v-if="g === 'payments'" class="text-muted-foreground px-1 text-xs">{{ t("product.providers.sandboxNote") }}</p>
-        <AccountsCard v-if="g === 'payments' && inApp" :app-id="appId" :apps="rows" :is-owner="isOwner" />
-        <p v-else-if="!inApp" class="text-muted-foreground px-1 text-xs" :data-testid="`integration-per-app-${g}`">{{ t("product.integrations.perAppNote") }}</p>
+        <p v-if="!inApp" class="text-muted-foreground px-1 text-xs" :data-testid="`integration-per-app-${g}`">{{ t("product.integrations.perAppNote") }}</p>
       </section>
+
+      <template v-if="inApp">
+        <AccountsCard :app-id="appId" :apps="rows" :is-owner="isOwner" @einvoice="openEInvoice" @mail="(k) => open(k)" />
+        <RoutingTester :app-id="appId" />
+        <AuditCard :app-id="appId" />
+      </template>
 
       <div v-if="!inApp && rows.length > 0" class="surface flex flex-col gap-3 p-5" data-testid="integrations-apps">
         <div>
@@ -284,7 +301,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
     </template>
 
     <ProviderSheet v-model:open="sheetOpen" :provider="sheetProvider" :app-id="sheetApp" :apps="rows" :scope="sheetScope" :can-org="canOrg" :is-owner="isOwner" :environment="sheetEnv" @done="onDone" />
-    <EInvoiceSheet v-model:open="eInvoiceOpen" :provider="eInvoiceProvider" :app-id="appId" :account="eInvoice.data.value" :is-owner="isOwner" :tax-id="taxId" />
+    <EInvoiceSheet v-model:open="eInvoiceOpen" :provider="eInvoiceProvider" :app-id="appId" :account="eInvoiceAccount" :accounts="eAccounts" :is-owner="isOwner" :tax-id="taxId" />
     <MailSheet v-model:open="mailOpen" :kind="mailKind" :app-id="appId" :is-owner="isOwner" />
   </section>
 </template>

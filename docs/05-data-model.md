@@ -670,6 +670,10 @@ CREATE TABLE einvoice_accounts (
   tenant_id uuid NOT NULL, environment text NOT NULL CHECK (environment IN ('sandbox','live')), provider text NOT NULL, mode text NOT NULL CHECK (mode IN ('test','production')),
   settings_enc bytea NOT NULL, PRIMARY KEY (tenant_id, environment)          -- AES-256-GCM, bound to tenant|einvoice|environment
 );
+-- plan 10 (migration 00005_integration_accounts, ADR 0026): `provider` holds the account's key ("nilvera", "nilvera~tr"), the primary key becomes (tenant_id, environment,
+-- provider), `is_default boolean` (one per environment, a partial unique index) marks the default, and a labelled account's seal also binds its key. einvoice_routing
+-- (tenant_id, environment, country, account) sends a buyer's country to an account (deleted with it). provider_account_events gains `kind` (payment, einvoice) and the
+-- actions default_set and routing_changed. A legal number is unique per (tenant_id, environment, provider).
 CREATE TABLE einvoice_issuances (
   document_id uuid PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, provider text NOT NULL, kind text NOT NULL, document_type text NOT NULL,
   status text NOT NULL CHECK (status IN ('started','issued','cancelled')), legal_number text, external_id text NOT NULL DEFAULT '', xml_key text, pdf_key text

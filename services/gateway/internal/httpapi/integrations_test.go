@@ -138,7 +138,7 @@ func TestEInvoiceIntegrationRoutes(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet:
-			_, _ = io.WriteString(w, `{"accounts":[{"environment":"sandbox","provider":"mock","mode":"test"},{"environment":"live","provider":"nilvera","mode":"production","updated_at":"2026-10-01T00:00:00Z"}]}`)
+			_, _ = io.WriteString(w, `{"accounts":[{"environment":"sandbox","provider":"mock","mode":"test"},{"environment":"live","account":"nilvera","provider":"nilvera","label":"","mode":"production","is_default":true,"updated_at":"2026-10-01T00:00:00Z"}]}`)
 		case r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
 		case strings.HasSuffix(r.URL.Path, "/check"):
