@@ -110,8 +110,11 @@ function submit() {
     },
   );
 }
+const accountName = computed(() => (stored.value?.label ? `Nafru Email (${stored.value.label})` : "Nafru Email"));
+/** The question says what disconnecting this account does: the built-in sender takes over only when it was the last one; the server refuses the default while others exist. */
 async function removeNow() {
-  if (!(await askConfirm({ body: t("product.integrations.mail.confirmRemove") }))) return;
+  const what = accountList.value.length <= 1 ? "confirmRemove" : stored.value?.is_default ? "confirmRemoveDefault" : "confirmRemoveOther";
+  if (!(await askConfirm({ body: t(`product.integrations.mail.${what}`, { name: accountName.value }) }))) return;
   actions.remove.mutate(stored.value?.account ?? "", { onSuccess: () => (open.value = false) });
 }
 const failure = computed(() => firstError(actions.save, actions.remove, actions.test, mail));

@@ -5,6 +5,7 @@ import { computed, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
 import { useAccount, useApp, useApps, useSandboxProviders } from "@/features/product/api";
+import { readOf, resultOf, together } from "@/shared/lib/reads";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { LIVE_PROVIDERS, type LiveProviderName } from "@/features/product/liveProvider";
 import { useAppsProviders, type ConnectEnvironment } from "@/features/providers/connectApi";
@@ -45,7 +46,11 @@ const rows = computed(() => appRows(apps.data.value?.apps));
 const overview = useAppsProviders(rows);
 const sandboxAccounts = useSandboxProviders(appId, () => inApp.value);
 const isOwner = computed(() => (inApp.value ? app.data.value?.role === "owner" : account.data.value?.role === "owner"));
-const loading = computed(() => apps.isPending.value || (inApp.value && app.isPending.value));
+// The reads the whole page stands on: who the owner is and which apps have a live environment. Without them a card can say nothing true (an owner would be
+// told only an owner can connect), so the page shows the failure and no card.
+const base = computed(() => together([readOf(apps), readOf(inApp.value ? app : account)]));
+const loading = computed(() => base.value.loading);
+const ready = computed(() => !base.value.loading && !base.value.error);
 const liveApps = computed(() => rows.value.filter((r) => r.hasLive));
 /** The organisation-wide choice is for an owner of an organisation with two or more apps that can take a live account. */
 const canOrg = computed(() => isOwner.value && liveApps.value.length > 1);
@@ -57,6 +62,15 @@ const taxId = computed(() => fromTenant(live.value).taxId);
 const eInvoice = useEInvoiceIntegration(appId, () => inApp.value && hasLive.value);
 const eAccounts = computed(() => eInvoiceAccounts(eInvoice.data.value));
 const mail = useMailIntegration(appId, () => inApp.value && hasLive.value);
+// What each group of cards states its connections from. A group whose read failed shows the failure and not "Connect" next to a provider that is connected.
+const reads = computed(() => {
+  const live = overview.value.filter((r) => r.app.hasLive && r.query && (!inApp.value || r.app.id === appId.value));
+  return {
+    payments: together([...live.map((r) => resultOf(r.query!)), ...(inApp.value ? [readOf(sandboxAccounts)] : [])]),
+    einvoice: together(inApp.value ? [readOf(eInvoice)] : []),
+    email: together(inApp.value ? [readOf(mail)] : []),
+  };
+});
 
 const names = (p: string) => t(`product.goLive.provider.names.${p}`);
 const nameOf = (id: IntegrationId) => BRANDS[id].name ?? t(`product.integrations.names.${id}`);
@@ -198,12 +212,12 @@ useSheetTarget("connect-provider", sheetOpen, paymentSheet, {
   find: (id) => {
     const sandbox = id.startsWith(SANDBOX_PREFIX);
     const p = sandbox ? id.slice(SANDBOX_PREFIX.length) : id;
-    return !loading.value && (LIVE_PROVIDERS as readonly string[]).includes(p) && (!sandbox || (inApp.value && hasTestMode(p as LiveProviderName))) ? id : undefined;
+    return ready.value && (LIVE_PROVIDERS as readonly string[]).includes(p) && (!sandbox || (inApp.value && hasTestMode(p as LiveProviderName))) ? id : undefined;
   },
   restore: (id) => (id.startsWith(SANDBOX_PREFIX) ? fromSandboxCard(id.slice(SANDBOX_PREFIX.length) as LiveProviderName) : fromPaymentCard(id as LiveProviderName)),
 });
-useSheetTarget("integration-einvoice", eInvoiceOpen, named(eInvoiceProvider), { id: (p) => p, find: (id) => (!loading.value && (id === "nilvera" || id === "webhook") ? id : undefined), restore: open });
-useSheetTarget("integration-mail", mailOpen, named(mailKind), { id: (k) => k, find: (id) => (!loading.value && (id === "payrudderMail" || id === "nafru") ? id : undefined), restore: open });
+useSheetTarget("integration-einvoice", eInvoiceOpen, named(eInvoiceProvider), { id: (p) => p, find: (id) => (ready.value && (id === "nilvera" || id === "webhook") ? id : undefined), restore: open });
+useSheetTarget("integration-mail", mailOpen, named(mailKind), { id: (k) => k, find: (id) => (ready.value && (id === "payrudderMail" || id === "nafru") ? id : undefined), restore: open });
 
 const buttonLabel = (id: IntegrationId) => {
   if (id === "payrudderMail") return t("product.integrations.settings");
@@ -221,9 +235,9 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
     </header>
 
     <Skeleton v-if="loading" class="h-48 rounded-2xl" />
-    <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" compact class="mx-0" @retry="apps.refetch()" />
-    <p v-if="!loading && !hasLive" class="text-muted-foreground surface p-6 text-sm" data-testid="integrations-no-live">{{ t("product.goLive.noLive") }}</p>
-    <template v-else-if="!loading">
+    <ErrorState v-else-if="base.error" :error="base.error" :retrying="base.fetching" compact class="mx-0" @retry="base.retry()" />
+    <p v-else-if="!hasLive" class="text-muted-foreground surface p-6 text-sm" data-testid="integrations-no-live">{{ t("product.goLive.noLive") }}</p>
+    <template v-else>
       <p v-if="notice" class="text-success text-sm" role="status" data-testid="provider-connected">{{ notice }}</p>
       <p v-if="!isOwner" class="text-muted-foreground text-sm" data-testid="integrations-owner-only">{{ t("product.goLive.provider.ownerOnly") }}</p>
 
@@ -232,7 +246,9 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
           <h2 :id="`group-${g}`" class="text-lg font-semibold tracking-tight">{{ t(`product.integrations.groups.${g}.title`) }}</h2>
           <p class="text-muted-foreground text-sm">{{ t(`product.integrations.groups.${g}.intro`) }}</p>
         </div>
-        <ul class="grid gap-4 lg:grid-cols-3" :aria-label="t(`product.integrations.groups.${g}.title`)">
+        <Skeleton v-if="reads[g].loading" class="h-40 rounded-2xl" />
+        <ErrorState v-else-if="reads[g].error" :error="reads[g].error" :retrying="reads[g].fetching" compact class="mx-0" @retry="reads[g].retry()" />
+        <ul v-else class="grid gap-4 lg:grid-cols-3" :aria-label="t(`product.integrations.groups.${g}.title`)">
           <li v-for="id in IN_GROUP[g]" :key="id" class="surface flex flex-col gap-4 p-5" :data-testid="`integration-card-${id}`" :data-state="card(id).state">
             <div class="flex items-center gap-3">
               <ProviderLogo :id="id" />
@@ -293,6 +309,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
                 <th scope="row" class="py-2.5 pe-3 text-start font-medium">{{ r.app.name }}</th>
                 <td v-for="p in LIVE_PROVIDERS" :key="p" class="px-3 py-2.5">
                   <span v-if="!r.app.hasLive" class="text-muted-foreground text-xs">{{ t("product.providers.noLive") }}</span>
+                  <span v-else-if="r.query?.error" class="text-destructive text-xs" :data-testid="`integrations-unread-${r.app.id}-${p}`">{{ t("product.integrations.unread") }}</span>
                   <button v-else type="button" class="rounded-full focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:cursor-default" :disabled="!isOwner" :data-testid="`integrations-cell-${r.app.id}-${p}`" :aria-label="`${r.app.name}: ${names(p)}`" @click="openPayments(p, r.app.id, 'app')">
                     <StatusPill :tone="stateTone(connectionOf(r.accounts, p).state)">{{ stateLabel(connectionOf(r.accounts, p).state) }}</StatusPill>
                   </button>

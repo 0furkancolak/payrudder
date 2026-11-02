@@ -429,6 +429,22 @@ export function sandboxProvidersGateway(gw: MockGateway, initial: { provider: st
 /** The go-live checklist, promote, sandbox reset and key rotation of the product API (phase 45). `state` is the test's to change while it runs. */
 export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { gw: MockGateway; state: LiveState } {
   const s: LiveState = { done: { email_verified: true }, status: "INACTIVE", reset: null, changes: [], hash: "h1", stale: false, accounts: [], refuseProvider: null, profile: null, ...state };
+  // What the integrations page reads besides the go-live state, as a new app has it (nothing connected, no rule, no entry). A read nobody mocked is a failed read, and the
+  // page says so, so a test that does not care about these still has to answer them. Registered first: every later handler (a test's own accounts) wins.
+  gw.on((c) => {
+    if (c.method !== "GET") return undefined;
+    const base = `/app/v1/apps/${APP}`;
+    const answers: Record<string, unknown> = {
+      [`${base}/sandbox/providers`]: { ready: false, providers: [], accounts: [] },
+      [`${base}/integrations/e-invoice`]: { account: null, accounts: [] },
+      [`${base}/integrations/e-invoice/routing`]: { rules: [] },
+      [`${base}/integrations/mail`]: { connected: false, integration: null, accounts: [] },
+      [`${base}/integrations/mail/routing`]: { rules: [] },
+      [`${base}/integrations/payment-accounts/health`]: { accounts: [] },
+      [`${base}/integrations/audit`]: { events: [], next_page_token: "" },
+    };
+    return c.path in answers ? { body: answers[c.path] } : undefined;
+  });
   gw.on((c) => {
     const providers = `/app/v1/apps/${APP}/go-live/providers`;
     if (c.path === `/app/v1/apps/${APP}/go-live/terms` && c.method === "POST") {

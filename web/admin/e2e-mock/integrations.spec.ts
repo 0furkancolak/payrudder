@@ -976,10 +976,16 @@ test.describe("one list of accounts: payments, e-invoice and e-mail", () => {
     await audit.getByTestId("audit-more").click();
     await expect(audit.locator('[data-testid^="audit-event-"]')).toHaveCount(23);
     await expect(audit.getByTestId("audit-more")).toHaveCount(0);
-    // Narrowing by kind asks the server for that kind.
-    await audit.getByTestId("audit-kind").selectOption("payment");
+    // Narrowing by kind asks the server for that kind, but only once Apply is pressed: choosing in the chip is a draft.
+    const asked = () => gw.called("GET", `/app/v1/apps/${APP}/integrations/audit`).filter((c) => c.query.get("kind") === "payment").length;
+    await audit.getByRole("button", { name: "Kind", exact: true }).click();
+    await page.getByRole("listbox", { name: "Kind" }).getByRole("option", { name: "Payments" }).click();
+    await page.waitForTimeout(300);
+    expect(asked()).toBe(0);
+    await expect(audit.getByTestId("audit-event-100")).toBeVisible();
+    await page.getByTestId("filter-apply").click();
     await expect(audit.getByTestId("audit-event-100")).toHaveCount(0);
-    expect(gw.called("GET", `/app/v1/apps/${APP}/integrations/audit`).some((c) => c.query.get("kind") === "payment")).toBe(true);
+    expect(asked()).toBeGreaterThan(0);
   });
 
   test("somebody who is not the owner sees the list, the tester and the audit but cannot add, move or remove anything", async ({ page }) => {
@@ -995,7 +1001,209 @@ test.describe("one list of accounts: payments, e-invoice and e-mail", () => {
     await expect(card.getByTestId("account-make-default-nilvera~tr")).toHaveCount(0);
     await expect(card.getByTestId("account-manage-nilvera~tr")).toBeDisabled();
     await expect(card.getByTestId("row-actions")).toHaveCount(0);
+    // The test of an e-invoice account is the owner's, like the button in its sheet: a viewer's request would be refused.
+    await expect(card.getByTestId("row-action-test")).toHaveCount(0);
     await expect(page.getByTestId("routing-tester")).toBeVisible();
     await expect(page.getByTestId("audit-card")).toBeVisible();
+  });
+});
+
+const down = { status: 503, body: { error: { code: "UNAVAILABLE", key: "gateway.unavailable", message: "try later", request_id: "req-1234" } } };
+
+// A read that failed is not an answer: the cards, the list of accounts, the tester, the editors and the trail say that they did not load, with a way to try again,
+// and never draw "Connect", "No accounts yet", "the built-in sender" or "no entries" from it (docs/13-admin-ui.md, "A failed read is not an empty list").
+test.describe("integrations: a read that failed", () => {
+  const nilveraRow = (label: string, isDefault: boolean): EInvoiceMock => ({ account: label ? `nilvera~${label}` : "nilvera", provider: "nilvera", label, mode: "production", is_default: isDefault });
+  const nafruRow = (label: string, isDefault: boolean): MailMock => ({
+    account: label ? `nafru~${label}` : "nafru", provider: "nafru", label, base_url: "https://mail.nafru.example", from: "Acme <billing@acme.example>", key_hint: "1234", check_problem: "", is_default: isDefault,
+    update_time: "2026-10-21T10:00:00Z", checked_time: "2026-10-21T10:00:00Z",
+  });
+  /** Fails the first reads of `path` until `heal()` is called. */
+  const failing = (gw: MockGateway, path: string) => {
+    let broken = true;
+    gw.on((c) => (broken && c.method === "GET" && c.path === path ? down : undefined));
+    return () => (broken = false);
+  };
+
+  test("the e-invoice read: the cards, the list and the tester say so, and a retry brings the account back", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw, { accounts: [nilveraRow("", true)] });
+    const heal = failing(gw, `/app/v1/apps/${APP}/integrations/e-invoice`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const group = page.getByTestId("integration-group-einvoice");
+    await expect(group.getByTestId("error-state")).toContainText("req-1234", { timeout: 20_000 });
+    // A connected integrator is not offered as "Connect" and nothing says there are no accounts or no rule.
+    await expect(page.getByTestId("integration-card-nilvera")).toHaveCount(0);
+    await expect(page.getByTestId("integration-open-nilvera")).toHaveCount(0);
+    const accounts = page.getByTestId("accounts-card");
+    await expect(accounts.getByTestId("error-state").first()).toBeVisible();
+    await expect(accounts.getByTestId("accounts-empty")).toHaveCount(0);
+    await expect(accounts.getByTestId("account-nilvera")).toHaveCount(0);
+    const tester = page.getByTestId("routing-tester");
+    await expect(tester.getByTestId("error-state")).toBeVisible();
+    await expect(tester.getByTestId("tester-run")).toBeDisabled();
+
+    heal();
+    await group.getByTestId("error-retry").click();
+    await expect(page.getByTestId("integration-card-nilvera")).toHaveAttribute("data-state", "working");
+    await expect(accounts.getByTestId("account-nilvera")).toBeVisible();
+    await expect(accounts.getByTestId("error-state")).toHaveCount(0);
+    await expect(tester.getByTestId("error-state")).toHaveCount(0);
+    await expect(tester.getByTestId("tester-run")).toBeEnabled();
+  });
+
+  test("the e-mail read: the own provider is not drawn as not connected, and the tester does not answer with the built-in sender", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw, { mails: [nafruRow("", true)] });
+    const heal = failing(gw, `/app/v1/apps/${APP}/integrations/mail`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const group = page.getByTestId("integration-group-email");
+    await expect(group.getByTestId("error-state")).toContainText("req-1234", { timeout: 20_000 });
+    await expect(page.getByTestId("integration-card-nafru")).toHaveCount(0);
+    await expect(page.getByTestId("integration-open-nafru")).toHaveCount(0);
+    await expect(page.getByTestId("routing-tester").getByTestId("tester-run")).toBeDisabled();
+
+    heal();
+    await group.getByTestId("error-retry").click();
+    await expect(page.getByTestId("integration-card-nafru")).toHaveAttribute("data-state", "working");
+    await expect(page.getByTestId("routing-tester").getByTestId("tester-run")).toBeEnabled();
+  });
+
+  test("the payment accounts read: a connected provider is not offered as Connect, and the list does not say there are none", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, { accounts: [{ provider: "paddle", default: true, working: true, checked: true }] });
+    extras(gw);
+    const heal = failing(gw, `/app/v1/apps/${APP}/go-live/providers`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const group = page.getByTestId("integration-group-payments");
+    await expect(group.getByTestId("error-state")).toContainText("req-1234", { timeout: 20_000 });
+    await expect(page.getByTestId("integration-card-paddle")).toHaveCount(0);
+    await expect(page.getByTestId("accounts-card").getByTestId("accounts-empty")).toHaveCount(0);
+
+    heal();
+    await group.getByTestId("error-retry").click();
+    await expect(page.getByTestId("integration-card-paddle")).toHaveAttribute("data-state", "working");
+    await expect(page.getByTestId("accounts-card").getByTestId("account-paddle")).toBeVisible();
+  });
+
+  test("the app read: an owner is not told that only an owner can connect", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw);
+    const heal = failing(gw, `/app/v1/apps/${APP}`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const screen = page.getByTestId("integrations-screen");
+    await expect(screen.getByTestId("error-state").first()).toContainText("req-1234", { timeout: 20_000 });
+    await expect(page.getByTestId("integrations-owner-only")).toHaveCount(0);
+    await expect(page.getByTestId("integrations-no-live")).toHaveCount(0);
+    await expect(page.getByTestId("integration-card-paddle")).toHaveCount(0);
+
+    heal();
+    await screen.getByTestId("error-retry").first().click();
+    await expect(page.getByTestId("integration-card-paddle")).toBeVisible();
+    await expect(page.getByTestId("integration-open-paddle")).toBeEnabled();
+    await expect(page.getByTestId("integrations-owner-only")).toHaveCount(0);
+  });
+
+  test("the list of apps: the page does not say there is no live environment", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw);
+    const heal = failing(gw, "/app/v1/apps");
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const screen = page.getByTestId("integrations-screen");
+    await expect(screen.getByTestId("error-state").first()).toContainText("req-1234", { timeout: 20_000 });
+    await expect(page.getByTestId("integrations-no-live")).toHaveCount(0);
+
+    heal();
+    await screen.getByTestId("error-retry").first().click();
+    await expect(page.getByTestId("integration-card-paddle")).toBeVisible();
+  });
+
+  test("the routing rules: an editor that could not read them offers no way to save a blank table over them", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, { accounts: [{ provider: "paddle", default: true, working: true, checked: true }, { provider: "iyzico", default: false, working: true, checked: true }] });
+    extras(gw);
+    const heal = failing(gw, `/app/v1/apps/${APP}/go-live/routing`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const editor = page.getByTestId("routing-editor");
+    await expect(editor.getByTestId("error-state")).toContainText("req-1234", { timeout: 20_000 });
+    await expect(editor.getByTestId("routing-add")).toHaveCount(0);
+    await expect(editor.getByTestId("routing-save")).toHaveCount(0);
+
+    heal();
+    await editor.getByTestId("error-retry").click();
+    await expect(editor.getByTestId("routing-add")).toBeVisible();
+  });
+
+  test("the trail: a failed read is not 'no entries'", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw, { accounts: [nilveraRow("", true)], events: [{ id: 100, kind: "einvoice", account: "nilvera", environment: "live", action: "connected", actor: "operator", is_default: false, verified_remote: false, created_at: "2026-10-20T10:00:00Z" }] });
+    const heal = failing(gw, `/app/v1/apps/${APP}/integrations/audit`);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const audit = page.getByTestId("audit-card");
+    await expect(audit.getByTestId("error-state")).toContainText("req-1234", { timeout: 20_000 });
+    await expect(audit.getByTestId("audit-empty")).toHaveCount(0);
+
+    heal();
+    await audit.getByTestId("error-retry").click();
+    await expect(audit.getByTestId("audit-event-100")).toBeVisible();
+    await expect(audit.getByTestId("error-state")).toHaveCount(0);
+  });
+
+  test("an owner's test of an e-invoice account shows what went wrong", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw, { accounts: [nilveraRow("", true)] });
+    gw.on((c) => (c.method === "POST" && c.path === `/app/v1/apps/${APP}/integrations/e-invoice/test` ? { status: 503, body: { error: { code: "UNAVAILABLE", key: "", message: "the integrator did not answer" } } } : undefined));
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+    await card.getByTestId("account-nilvera").getByTestId("row-actions").click();
+    await page.getByTestId("row-action-test").click();
+    await expect(card).toContainText("the integrator did not answer");
+  });
+
+  test("disconnecting an own e-mail account says which account and what happens to the mail", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    extras(gw, { mails: [nafruRow("", true), nafruRow("eu", false)] });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+    const dialog = page.getByTestId("confirm-dialog");
+    // Another account remains: the built-in sender does not take over, the default account does.
+    await card.getByTestId("account-manage-mail:nafru~eu").click();
+    await page.getByTestId("integration-disconnect").click();
+    await expect(dialog).toContainText("Nafru Email (eu)");
+    await expect(dialog).toContainText("default account");
+    await expect(dialog).not.toContainText("Payrudder again");
+    await confirmDialog(page, "yes");
+    await expect(card.getByTestId("account-mail:nafru~eu")).toHaveCount(0);
+    // The last one: the live mail goes out from Payrudder again.
+    await card.getByTestId("account-manage-mail:nafru").click();
+    await page.getByTestId("integration-disconnect").click();
+    await expect(dialog).toContainText("Nafru Email");
+    await expect(dialog).toContainText("Payrudder again");
+    await confirmDialog(page, "no");
   });
 });

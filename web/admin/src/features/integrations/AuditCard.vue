@@ -5,7 +5,8 @@ import { useAccount } from "@/features/product/api";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { ErrorState } from "@/shared/ui/error-state";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { auditActor } from "./accounts";
 import { useIntegrationAudit } from "./api";
@@ -17,7 +18,13 @@ import { useIntegrationAudit } from "./api";
 const props = defineProps<{ appId: string }>();
 const { t } = useI18n();
 const fmt = useFormat();
+/** Which kind of account the trail shows; a choice waits for Apply, like every filter of the console. */
 const kind = ref("");
+const kinds = computed(() => [
+  { value: "", label: t("common.all") },
+  { value: "payment", label: t("product.integrations.accounts.kinds.payment") },
+  { value: "einvoice", label: t("product.integrations.accounts.kinds.einvoice") },
+]);
 const audit = useIntegrationAudit(() => props.appId, kind);
 const account = useAccount();
 const names = computed(() => new Map((account.data.value?.members ?? []).map((m) => [m.user_id ?? "", m.display_name || m.email || ""])));
@@ -32,14 +39,11 @@ const who = (actor: string) => auditActor(actor, names.value, t("product.integra
         <h2 class="text-base font-semibold tracking-tight">{{ t("product.integrations.accounts.audit.title") }}</h2>
         <p class="text-muted-foreground max-w-2xl text-sm">{{ t("product.integrations.accounts.audit.intro") }}</p>
       </div>
-      <NativeSelect v-model="kind" class="w-44" :aria-label="t('product.integrations.accounts.kind')" data-testid="audit-kind">
-        <option value="">{{ t("common.all") }}</option>
-        <option value="payment">{{ t("product.integrations.accounts.kinds.payment") }}</option>
-        <option value="einvoice">{{ t("product.integrations.accounts.kinds.einvoice") }}</option>
-      </NativeSelect>
+      <FilterSelect v-model="kind" :label="t('product.integrations.accounts.kind')" :options="kinds" />
     </div>
+    <Skeleton v-if="audit.isLoading.value" class="h-16 rounded-xl" />
     <ErrorState :error="audit.error.value" :retrying="audit.isFetching.value" compact @retry="audit.refetch()" />
-    <p v-if="!audit.isPending.value && events.length === 0" class="text-muted-foreground text-sm" data-testid="audit-empty">{{ t("product.integrations.accounts.audit.empty") }}</p>
+    <p v-if="!audit.isPending.value && !audit.error.value && events.length === 0" class="text-muted-foreground text-sm" data-testid="audit-empty">{{ t("product.integrations.accounts.audit.empty") }}</p>
     <ol v-else class="divide-border flex flex-col divide-y" :aria-label="t('product.integrations.accounts.audit.title')">
       <li v-for="e in events" :key="e.id" class="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm" :data-testid="`audit-event-${e.id}`">
         <span>

@@ -4784,7 +4784,7 @@
           "from": "Ein Name und eine Adresse auf einer bei Nafru Email verifizierten Domain."
         },
         "checkAndConnect": "Prüfen und verbinden",
-        "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
+        "confirmRemove": "{name} trennen? Es ist Ihr einziges eigenes E-Mail-Konto, daher gehen die Live-E-Mails wieder von Payrudder aus.",
         "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird.",
         "identity": {
           "title": "Absenderidentität",
@@ -4824,7 +4824,9 @@
             "revoked": "Der Schlüssel wurde widerrufen (leeres p=)"
           },
           "note": "Dies liest nur das öffentliche DNS. Es sagt nicht, ob die Einträge Ihren Anbieter nennen, und nicht, ob Ihr Anbieter die Domain verifiziert hat. Eine Änderung kann Stunden brauchen, bis sie überall gilt."
-        }
+        },
+        "confirmRemoveOther": "{name} trennen? Ihre anderen E-Mail-Konten bleiben bestehen. Die Regeln, die E-Mails über {name} senden, werden entfernt; diese E-Mails gehen stattdessen über das Standardkonto.",
+        "confirmRemoveDefault": "{name} trennen? Es ist das Standardkonto; solange es andere Konten gibt, wird das abgelehnt: Machen Sie zuerst ein anderes zum Standard."
       },
       "accounts": {
         "title": "Konten",
@@ -4929,7 +4931,8 @@
           "remove": "Ausfallumschaltung entfernen",
           "noTargets": "Fügen Sie ein zweites Zahlungskonto hinzu, um zu wählen, wohin Abbuchungen ausweichen können."
         }
-      }
+      },
+      "unread": "Konnte nicht gelesen werden"
     },
     "envSwitch": {
       "open": "Umgebung: {env}. Umgebung wechseln",

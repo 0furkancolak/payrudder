@@ -4784,7 +4784,7 @@
           "from": "Un nom et une adresse sur un domaine vérifié chez Nafru Email."
         },
         "checkAndConnect": "Vérifier et connecter",
-        "confirmRemove": "Déconnecter votre propre fournisseur d'e-mail ? Les e-mails live repartent de Payrudder.",
+        "confirmRemove": "Déconnecter {name} ? C'est votre seul compte e-mail propre : les e-mails live repartent donc de Payrudder.",
         "templatesNote": "Envie de votre propre style ? Dans Nafru Email, ajoutez Payrudder sous Applications et modifiez les modèles là-bas. Chaque e-mail porte son nom dans l'étiquette payrudder_template, pour que le bon modèle s'applique.",
         "identity": {
           "title": "Identité de l'expéditeur",
@@ -4824,7 +4824,9 @@
             "revoked": "La clé a été révoquée (p= vide)"
           },
           "note": "Cela ne lit que le DNS public. On ne sait pas si les enregistrements désignent votre fournisseur, ni si votre fournisseur a vérifié le domaine. Une modification peut mettre des heures à se propager."
-        }
+        },
+        "confirmRemoveOther": "Déconnecter {name} ? Vos autres comptes e-mail restent. Les règles qui envoient des e-mails par {name} sont supprimées, et ces e-mails passent par le compte par défaut.",
+        "confirmRemoveDefault": "Déconnecter {name} ? C'est le compte par défaut : tant que d'autres comptes existent, c'est refusé. Définissez d'abord un autre compte par défaut."
       },
       "accounts": {
         "title": "Comptes",
@@ -4929,7 +4931,8 @@
           "remove": "Supprimer le basculement",
           "noTargets": "Ajoutez un second compte de paiement pour choisir vers où les débits peuvent basculer."
         }
-      }
+      },
+      "unread": "Lecture impossible"
     },
     "envSwitch": {
       "open": "Environnement : {env}. Changer d'environnement",
