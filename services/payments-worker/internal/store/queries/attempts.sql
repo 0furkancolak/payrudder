@@ -28,3 +28,12 @@ SELECT count(*) FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_i
 SELECT command_id, status, reply FROM payment_attempts
 WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'refund' AND idempotency_key = @idempotency_key AND command_id <> @except_command_id
 ORDER BY created_at;
+
+-- name: SetAttemptRef :exec
+-- The provider's reference of the charge, from the first response that has one; the first one stays.
+UPDATE payment_attempts SET provider_ref = @provider_ref WHERE command_id = @command_id AND provider_ref IS NULL;
+
+-- name: GetChargeAttemptRef :one
+-- What the attempts of a charge under one key hold: the provider's reference (empty when none answered with one), when the first was started, and how many there are.
+SELECT COALESCE(max(provider_ref), '')::text AS provider_ref, COALESCE(min(created_at), now())::timestamptz AS started_at, count(*) AS attempts
+FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND idempotency_key = @idempotency_key;

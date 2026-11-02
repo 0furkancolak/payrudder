@@ -7632,7 +7632,7 @@ components:
         provider: { type: string }
         currency: { type: string }
         total_minor: { type: string, format: int64 }
-        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE] }
+        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, PAYMENT_HELD, UNCOLLECTIBLE] }
         dunning_attempt: { type: integer }
         next_attempt_time: { type: string, format: date-time, nullable: true }
         last_error: { type: string }

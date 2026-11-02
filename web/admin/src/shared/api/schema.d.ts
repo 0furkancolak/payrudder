@@ -8520,7 +8520,7 @@ export interface components {
             /** Format: int64 */
             total_minor: string;
             /** @enum {string} */
-            state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
+            state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "PAYMENT_ACTION_REQUIRED" | "PAYMENT_HELD" | "UNCOLLECTIBLE";
             dunning_attempt: number;
             /** Format: date-time */
             next_attempt_time: string | null;

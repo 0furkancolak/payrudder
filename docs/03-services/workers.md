@@ -177,7 +177,7 @@ Plan 22 G7 adds the reconciliation workflow ([`docs/reconciliation.md`](../recon
 that tell "paid" from "settled", and the lag after which a payment the provider never reported is a finding (`PAYMENTS_SETTLEMENT_LAG`, 7d).
 
 Plan 22 G8 adds [`docs/provider-health.md`](../provider-health.md): a circuit breaker per provider account (`PAYMENTS_BREAKER_FAILURES` 5, `PAYMENTS_BREAKER_OPEN_FOR` 30s) that
-makes new charges fail fast while the provider is down, a periodic health check of every account (`PAYMENTS_HEALTH_INTERVAL` 5m, 0 turns it off; `PAYMENTS_HEALTH_TIMEOUT` 10s),
+makes new charges fail fast while the provider is down (the open window is shared by the replicas through Redis when `PAYRUDDER_REDIS_URL` is set), a periodic health check of every account (`PAYMENTS_HEALTH_INTERVAL` 5m, 0 turns it off; `PAYMENTS_HEALTH_TIMEOUT` 10s),
 and a failover to a second configured account that happens only when the first provider definitely did not process the charge, never after a timeout.
 
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions

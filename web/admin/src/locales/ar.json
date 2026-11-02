@@ -153,7 +153,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "مرفوض، تُعاد المحاولة",
       "PAYMENT_UNKNOWN": "النتيجة مجهولة",
-      "UNCOLLECTIBLE": "تم التخلي"
+      "UNCOLLECTIBLE": "تم التخلي",
+      "PAYMENT_ACTION_REQUIRED": "بانتظار تأكيد العميل",
+      "PAYMENT_HELD": "الخصم الأول معلّق"
     },
     "sagaState": {
       "PAYMENT_PENDING": "بانتظار الحوالة",
@@ -174,7 +176,9 @@
       "REFUND_FAILED": "فشل الاسترداد",
       "REFUNDED": "تم الاسترداد",
       "VOIDED": "ملغاة",
-      "AWAITING_PAYMENT": "بانتظار الدفع"
+      "AWAITING_PAYMENT": "بانتظار الدفع",
+      "PAYMENT_ACTION_REQUIRED": "بانتظار تأكيد العميل",
+      "PAYMENT_HELD": "الخصم الأول معلّق"
     },
     "paymentMethod": {
       "bank_transfer": "حوالة مصرفية",

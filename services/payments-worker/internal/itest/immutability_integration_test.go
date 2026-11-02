@@ -93,8 +93,33 @@ func TestLedgerAndReceiptsAreNotDeletedExceptByAResetOrAMove(t *testing.T) {
 			t.Errorf("%s of a sandbox tenant was deleted in a transaction that names no reset: %v", table, err)
 		}
 	}
+	// TRUNCATE is refused too (migration 00009), also for the table owner, also in a transaction that names a reset or a move, and also when it reaches the table through
+	// CASCADE. The statement runs on the migrator because nobody else holds the privilege.
+	owner, err := pgx.Connect(ctx, w.PooledMigrator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = owner.Close(ctx) }()
+	for _, table := range []string{"manual_receipts", "payment_ledger"} {
+		for _, setting := range []string{"", "payrudder.sandbox_reset", "payrudder.tenant_move"} {
+			err := pgx.BeginFunc(ctx, owner, func(tx pgx.Tx) error {
+				if setting != "" {
+					if _, err := tx.Exec(ctx, `SELECT set_config($1, $2, true)`, setting, sandbox.String()); err != nil {
+						return err
+					}
+				}
+				// table is one of the constants above, never input.
+				_, err := tx.Exec(ctx, `TRUNCATE `+table+` CASCADE`)
+				return err
+			})
+			var pe *pgconn.PgError
+			if !errors.As(err, &pe) || pe.Code != pgxx.CodeRaiseException || pe.Hint != "ledger_table_truncate" {
+				t.Errorf("TRUNCATE %s CASCADE by the owner (setting %q): %v, want the ledger_table_truncate refusal", table, setting, err)
+			}
+		}
+	}
 	// A setting that names another tenant is no leave.
-	err := store.Tx(ctx, w.DB, sandbox, func(tx pgx.Tx, _ *sqlc.Queries, _ string) error {
+	err = store.Tx(ctx, w.DB, sandbox, func(tx pgx.Tx, _ *sqlc.Queries, _ string) error {
 		if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.sandbox_reset', $1, true), set_config('payrudder.tenant_move', $1, true)`, live.String()); err != nil {
 			return err
 		}
