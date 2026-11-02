@@ -34,7 +34,7 @@ func TestPlansProvidersBuildsTheSenderAndCaches(t *testing.T) {
 		if err != nil || p == nil || p.From != "Acme <a@acme.example>" {
 			t.Fatalf("provider %+v err %v", p, err)
 		}
-		if r, ok := p.Sender.(mailx.Resend); !ok || r.BaseURL != "https://api.nafru.example" || r.APIKey != "nk" {
+		if r, ok := p.Sender.(mailx.Nafru); !ok || r.BaseURL != "https://api.nafru.example" || r.APIKey != "nk" {
 			t.Fatalf("sender %+v", p.Sender)
 		}
 	}

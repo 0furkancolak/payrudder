@@ -1,0 +1,1 @@
+{"type":"bounced","message_id":"fake-2","recipient":"bob@example.com","bounce_type":"soft","occurred_at":"2026-11-03T10:16:00Z","detail":"452 4.2.2 Mailbox full"}

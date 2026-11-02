@@ -24,9 +24,15 @@ type Message struct {
 	Text    string
 	// ID is the Message-ID local part (the dedup key makes it traceable).
 	ID string
-	// Template names the Payrudder mail this is ("invoice_issued", "payment_failed"...). A provider that keeps templates of its own can route on it.
+	// Template names the Payrudder mail this is ("invoice_paid.v1", "payment_failed.v1"...). Nafru adds it as a tag and a header (see Nafru).
 	Template string
+	// Tags and Headers are sent by a provider that has them (Resend's `tags` and `headers`); SMTP ignores them.
+	Tags    []Tag
+	Headers map[string]string
 }
+
+// Tag labels a message at the provider.
+type Tag struct{ Name, Value string }
 
 // NotSentError means the message was certainly not accepted (the failure came before the end of DATA), so the caller may
 // send it again without risking a duplicate.

@@ -4333,7 +4333,7 @@ export interface paths {
         get?: never;
         /**
          * Put an organisation on a plan without a checkout, and/or give it limits of its own
-         * @description The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, apps, members, api_keys) to a limit that replaces the plan's, `0` meaning unlimited. Resources not named keep what they have.
+         * @description The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, mails, apps, members, api_keys) to a limit that replaces the plan's, `0` meaning unlimited. Resources not named keep what they have.
          */
         put: operations["adminSetOrganizationPlan"];
         post?: never;
@@ -6567,7 +6567,7 @@ export interface components {
         };
         PlanLimit: {
             /** @enum {string} */
-            resource: "events" | "apps" | "members" | "api_keys";
+            resource: "events" | "mails" | "apps" | "members" | "api_keys";
             /**
              * Format: int64
              * @description 0 is unlimited
@@ -6591,7 +6591,7 @@ export interface components {
         };
         PlanQuota: {
             /** @enum {string} */
-            resource: "events" | "apps" | "members" | "api_keys";
+            resource: "events" | "mails" | "apps" | "members" | "api_keys";
             /** Format: int64 */
             used: number;
             /** Format: int64 */

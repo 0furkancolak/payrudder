@@ -105,8 +105,10 @@ func TestQuotaErrorKeys(t *testing.T) {
 			t.Errorf("QuotaError(%s) = %v key %q", r, status.Code(err), errkey.Of(err))
 		}
 	}
-	if errkey.Of(QuotaError(Events)) != "plans.saas.bad_resource" {
-		t.Error("the events quota is not refused through the guard")
+	for _, r := range []Resource{Events, Mails} {
+		if errkey.Of(QuotaError(r)) != "plans.saas.bad_resource" {
+			t.Errorf("the %s quota is not refused through the guard", r)
+		}
 	}
 }
 
@@ -144,5 +146,23 @@ func TestEveryResourceHasAMeter(t *testing.T) {
 		if !have[r.Meter()] {
 			t.Errorf("resource %s has no meter", r)
 		}
+	}
+}
+
+// The mails allowance is the default (not agreed) one of plan 11: Free stops at 100 a month, the paid plans only tell.
+func TestDefaultMailsAllowance(t *testing.T) {
+	want := map[string]Limit{PlanFree: {Units: 100, Mode: Hard}, PlanPro: {Units: 5_000, Mode: Notify}, PlanScale: {Units: 50_000, Mode: Notify}}
+	for _, p := range DefaultPlans() {
+		if got := p.Limits.Of(Mails); got != want[p.Code] {
+			t.Errorf("%s: mails = %+v, want %+v", p.Code, got, want[p.Code])
+		}
+	}
+	for _, m := range Meters() {
+		if m.Code == "mails" && (m.Count || m.Unit != "mails") {
+			t.Errorf("the mails meter sums the mails sent: %+v", m)
+		}
+	}
+	if r, ok := ParseResource("mails"); !ok || r != Mails {
+		t.Error("mails is a resource an operator can override")
 	}
 }

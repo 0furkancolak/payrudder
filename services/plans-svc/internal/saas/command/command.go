@@ -422,7 +422,7 @@ func (c *Commands) SetLimits(ctx context.Context, account uuid.UUID, limits map[
 	}
 	for name, n := range limits {
 		if _, ok := model.ParseResource(name); !ok {
-			return errkey.Newf(codes.InvalidArgument, "plans.saas.bad_resource", "%q is not a limited resource: events, apps, members or api_keys", name)
+			return errkey.Newf(codes.InvalidArgument, "plans.saas.bad_resource", "%q is not a limited resource: events, mails, apps, members or api_keys", name)
 		}
 		if n < 0 {
 			return domain.Invalid("limits", "a limit is zero (unlimited) or more")

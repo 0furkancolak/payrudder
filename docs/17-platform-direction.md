@@ -33,7 +33,7 @@ An application integrates Payrudder to take **payments through a provider** (iyz
 
 The owner may sell Payrudder as a service ([ADR 0019](adr/0019-license.md)), so the product sells itself with its own engine ([ADR 0024](adr/0024-payrudder-as-a-saas.md)) and not with a side system.
 
-- **A platform tenant** (an account marked `platform`, created at start when `PAYRUDDER_SAAS=on`, hidden from the operator's tenant list) owns the plans **Free, Pro and Scale**: a monthly fee in the platform currency (`PAYRUDDER_SAAS_CURRENCY`) and entitlements on four meters: `events` (a calendar month), `apps`, `members`, `api_keys`. Seeded once; after that the operator edits them as the packages of that tenant (a new version applies to organisations that move to the plan afterwards).
+- **A platform tenant** (an account marked `platform`, created at start when `PAYRUDDER_SAAS=on`, hidden from the operator's tenant list) owns the plans **Free, Pro and Scale**: a monthly fee in the platform currency (`PAYRUDDER_SAAS_CURRENCY`) and entitlements on five meters: `events` and `mails` (a calendar month; the notifier counts the mails it sends), `apps`, `members`, `api_keys`. Seeded once; after that the operator edits them as the packages of that tenant (a new version applies to organisations that move to the plan afterwards).
 
   | | Free | Pro | Scale |
   |---|---|---|---|

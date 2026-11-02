@@ -3829,7 +3829,7 @@ paths:
       operationId: adminSetOrganizationPlan
       summary: Put an organisation on a plan without a checkout, and/or give it limits of its own
       description: >
-        The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, apps, members, api_keys) to a
+        The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, mails, apps, members, api_keys) to a
         limit that replaces the plan's, `0` meaning unlimited. Resources not named keep what they have.
       security: [{ operatorToken: [] }]
       parameters: [{ name: account_id, in: path, required: true, schema: { type: string, format: uuid } }]
@@ -5836,7 +5836,7 @@ components:
       type: object
       required: [resource, limit, mode]
       properties:
-        resource: { type: string, enum: [events, apps, members, api_keys] }
+        resource: { type: string, enum: [events, mails, apps, members, api_keys] }
         limit: { type: integer, format: int64, description: 0 is unlimited }
         mode: { type: string, enum: [hard, soft, notify] }
     PlanOffer:
@@ -5856,7 +5856,7 @@ components:
       type: object
       required: [resource, used, limit, unlimited, mode, over_limit, overridden]
       properties:
-        resource: { type: string, enum: [events, apps, members, api_keys] }
+        resource: { type: string, enum: [events, mails, apps, members, api_keys] }
         used: { type: integer, format: int64 }
         limit: { type: integer, format: int64 }
         unlimited: { type: boolean }

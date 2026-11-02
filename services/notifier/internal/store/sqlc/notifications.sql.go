@@ -14,8 +14,8 @@ import (
 
 const claimNotification = `-- name: ClaimNotification :execrows
 
-INSERT INTO sent_notifications (dedup_key, command_id, kind, template, recipient, status)
-VALUES ($1, $2, $3, $4, $5, 'SENDING')
+INSERT INTO sent_notifications (dedup_key, command_id, kind, template, recipient, tenant_id, status)
+VALUES ($1, $2, $3, $4, $5, $6, 'SENDING')
 ON CONFLICT (dedup_key) DO NOTHING
 `
 
@@ -25,6 +25,7 @@ type ClaimNotificationParams struct {
 	Kind      string
 	Template  string
 	Recipient string
+	TenantID  *uuid.UUID
 }
 
 // The dedup record of every email. notifier runs as notifier_system.
@@ -35,6 +36,7 @@ func (q *Queries) ClaimNotification(ctx context.Context, arg ClaimNotificationPa
 		arg.Kind,
 		arg.Template,
 		arg.Recipient,
+		arg.TenantID,
 	)
 	if err != nil {
 		return 0, err
@@ -82,6 +84,23 @@ type MarkNotificationSentParams struct {
 func (q *Queries) MarkNotificationSent(ctx context.Context, arg MarkNotificationSentParams) error {
 	_, err := q.db.Exec(ctx, markNotificationSent, arg.DedupKey, arg.SmtpMessageID)
 	return err
+}
+
+const notificationByMessageID = `-- name: NotificationByMessageID :one
+SELECT tenant_id, recipient FROM sent_notifications WHERE smtp_message_id = $1 AND status = 'SENT' ORDER BY sent_at LIMIT 1
+`
+
+type NotificationByMessageIDRow struct {
+	TenantID  *uuid.UUID
+	Recipient string
+}
+
+// The mail a provider's bounce or complaint is about: the tenant it was sent for and the address it went to.
+func (q *Queries) NotificationByMessageID(ctx context.Context, smtpMessageID *string) (NotificationByMessageIDRow, error) {
+	row := q.db.QueryRow(ctx, notificationByMessageID, smtpMessageID)
+	var i NotificationByMessageIDRow
+	err := row.Scan(&i.TenantID, &i.Recipient)
+	return i, err
 }
 
 const releaseNotification = `-- name: ReleaseNotification :exec

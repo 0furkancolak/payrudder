@@ -18,6 +18,15 @@ type KafkaOffset struct {
 	UpdatedAt     time.Time
 }
 
+type MailSuppression struct {
+	TenantID  uuid.UUID
+	Address   string
+	Reason    string
+	Source    string
+	Detail    string
+	CreatedAt time.Time
+}
+
 type SentNotification struct {
 	DedupKey      string
 	CommandID     *uuid.UUID
@@ -28,4 +37,5 @@ type SentNotification struct {
 	ClaimedAt     time.Time
 	SentAt        *time.Time
 	SmtpMessageID *string
+	TenantID      *uuid.UUID
 }

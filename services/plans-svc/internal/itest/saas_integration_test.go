@@ -91,8 +91,21 @@ func testSaas(t *testing.T) {
 			}
 		}
 		pro, err := e.plans.GetPlanVersion(as(pt.GetId()), &plansv1.GetPlanVersionRequest{PlanCode: "pro"})
-		if err != nil || pro.GetPlanVersion().GetBaseFeeMinor() != 2900 || len(pro.GetPlanVersion().GetEntitlements()) != 4 {
+		if err != nil || pro.GetPlanVersion().GetBaseFeeMinor() != 2900 || len(pro.GetPlanVersion().GetEntitlements()) != 5 {
 			t.Errorf("pro = %v, %v", pro, err)
+		}
+		// The mails meter (plan 11) exists and the plans carry the default allowance: Pro 5,000 a month, notify.
+		mails := false
+		for _, en := range pro.GetPlanVersion().GetEntitlements() {
+			if en.GetMeterCode() == "mails" {
+				mails = en.GetLimit() == "5000" && en.GetMode() == plansv1.QuotaMode_QUOTA_MODE_NOTIFY
+			}
+		}
+		if !mails {
+			t.Errorf("pro has no mails allowance of 5000 (notify): %v", pro.GetPlanVersion().GetEntitlements())
+		}
+		if m, err := e.plans.GetMeter(as(pt.GetId()), &plansv1.GetMeterRequest{Code: "mails"}); err != nil || m.GetMeter().GetAggregation() != plansv1.Aggregation_AGGREGATION_SUM {
+			t.Errorf("the mails meter = %v, %v; want a SUM meter", m, err)
 		}
 		// An operator's edit is kept: a new version of Free is not overwritten by the next start.
 		_, err = e.plans.PublishPlanVersion(as(pt.GetId()), &plansv1.PublishPlanVersionRequest{PlanCode: "free", BaseFeeMinor: 0,
@@ -128,6 +141,10 @@ func testSaas(t *testing.T) {
 		}
 		if q := quotaOf(p, "members"); q.GetLimit() != 2 || q.GetUsed() != 1 {
 			t.Errorf("members quota = %v", q)
+		}
+		// The operator's version of Free (published above) predates the mails meter and names no mails entitlement: no limit until a new version has one.
+		if q := quotaOf(p, "mails"); q == nil || !q.GetUnlimited() {
+			t.Errorf("mails quota on a plan version without the entitlement = %v, want unlimited", q)
 		}
 		pt := e.platformOf(t)
 		cust, err := e.plans.GetCustomer(as(pt.GetId()), &plansv1.GetCustomerRequest{ExternalId: ada.account})

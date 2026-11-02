@@ -17,6 +17,9 @@ type Resource string
 const (
 	// Events are the usage events the organisation's live tenants accept in a calendar month (counted by limits-svc).
 	Events Resource = "events"
+	// Mails are the e-mails the notifier sends for the organisation's live tenants in a calendar month (counted by limits-svc; the notifier meters each one
+	// it sent, see ADR 0024). Mail through a tenant's own e-mail provider and sandbox mail are not counted.
+	Mails Resource = "mails"
 	// Apps are the applications of the account.
 	Apps Resource = "apps"
 	// Members are the people of the account plus its open invitations.
@@ -26,7 +29,7 @@ const (
 )
 
 // Resources lists them in the order they are shown.
-var Resources = []Resource{Events, Apps, Members, APIKeys}
+var Resources = []Resource{Events, Mails, Apps, Members, APIKeys}
 
 // Meter is the code of the platform-tenant meter of the resource.
 func (r Resource) Meter() string { return string(r) }
@@ -137,7 +140,7 @@ func QuotaError(r Resource) error {
 	case APIKeys:
 		return errkey.New(codes.ResourceExhausted, "plans.saas.quota.api_keys", "the plan's limit of API keys is reached: revoke a key or upgrade the plan")
 	}
-	// The events quota is the quota engine's and is answered by the gateway at ingest; no other resource is created through the guard.
+	// The events and mails quotas are the quota engine's and are answered at ingest and by the notifier; no other resource is created through the guard.
 	return errkey.New(codes.InvalidArgument, "plans.saas.bad_resource", fmt.Sprintf("%q is not a resource a plan refuses to create", r))
 }
 
@@ -162,11 +165,11 @@ type PlanSpec struct {
 func DefaultPlans() []PlanSpec {
 	return []PlanSpec{
 		{Code: PlanFree, Name: "Free", MonthlyFee: 0, Limits: Limits{
-			Events: {Units: 10_000, Mode: Hard}, Apps: {Units: 1, Mode: Hard}, Members: {Units: 2, Mode: Hard}, APIKeys: {Units: 4, Mode: Hard}}},
+			Events: {Units: 10_000, Mode: Hard}, Mails: {Units: 100, Mode: Hard}, Apps: {Units: 1, Mode: Hard}, Members: {Units: 2, Mode: Hard}, APIKeys: {Units: 4, Mode: Hard}}},
 		{Code: PlanPro, Name: "Pro", MonthlyFee: 2900, Limits: Limits{
-			Events: {Units: 1_000_000, Mode: Hard}, Apps: {Units: 5, Mode: Hard}, Members: {Units: 10, Mode: Hard}, APIKeys: {Units: 20, Mode: Hard}}},
+			Events: {Units: 1_000_000, Mode: Hard}, Mails: {Units: 5_000, Mode: Notify}, Apps: {Units: 5, Mode: Hard}, Members: {Units: 10, Mode: Hard}, APIKeys: {Units: 20, Mode: Hard}}},
 		{Code: PlanScale, Name: "Scale", MonthlyFee: 9900, Limits: Limits{
-			Events: {Units: 10_000_000, Mode: Notify}, Apps: {Units: 25, Mode: Hard}, Members: {Units: 50, Mode: Hard}, APIKeys: {Units: 100, Mode: Hard}}},
+			Events: {Units: 10_000_000, Mode: Notify}, Mails: {Units: 50_000, Mode: Notify}, Apps: {Units: 25, Mode: Hard}, Members: {Units: 50, Mode: Hard}, APIKeys: {Units: 100, Mode: Hard}}},
 	}
 }
 
@@ -177,10 +180,11 @@ type Meter struct {
 	Unit  string
 }
 
-// Meters are the four meters of the platform tenant.
+// Meters are the five meters of the platform tenant.
 func Meters() []Meter {
 	return []Meter{
 		{Code: Events.Meter(), Unit: "events"},
+		{Code: Mails.Meter(), Unit: "mails"},
 		{Code: Apps.Meter(), Count: true, Unit: "apps"},
 		{Code: Members.Meter(), Count: true, Unit: "members"},
 		{Code: APIKeys.Meter(), Count: true, Unit: "keys"},

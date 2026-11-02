@@ -69,7 +69,7 @@ func (s *PlansProviders) For(ctx context.Context, tenantID uuid.UUID) (*Provider
 	}
 	var p *Provider
 	if resp.GetConnected() {
-		p = &Provider{Sender: mailx.Resend{BaseURL: resp.GetBaseUrl(), APIKey: resp.GetApiKey(), Client: s.HTTP}, From: resp.GetFrom()}
+		p = &Provider{Sender: mailx.Nafru{Resend: mailx.Resend{BaseURL: resp.GetBaseUrl(), APIKey: resp.GetApiKey(), Client: s.HTTP}}, From: resp.GetFrom()}
 	}
 	s.mu.Lock()
 	if s.cache == nil || len(s.cache) >= maxCached {

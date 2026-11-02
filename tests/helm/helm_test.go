@@ -259,9 +259,13 @@ func TestNetworkPolicies(t *testing.T) {
 		}
 		return out
 	}
-	if got := strings.Join(callers("allow-ingest-svc"), ","); got != "gateway,billing-svc,plans-svc" {
-		// plans-svc is there for the sandbox reset (phase 45 E): it asks every service that keeps tenant data to empty a sandbox.
-		t.Errorf("ingest-svc accepts calls from %q, want gateway,billing-svc,plans-svc", got)
+	if got := strings.Join(callers("allow-ingest-svc"), ","); got != "gateway,billing-svc,plans-svc,notifier" {
+		// plans-svc is there for the sandbox reset (phase 45 E): it asks every service that keeps tenant data to empty a sandbox. The notifier meters the mails it
+		// sends into the platform tenant (plan 11, ADR 0024).
+		t.Errorf("ingest-svc accepts calls from %q, want gateway,billing-svc,plans-svc,notifier", got)
+	}
+	if got := strings.Join(callers("allow-limits-svc"), ","); got != "gateway,notifier" {
+		t.Errorf("limits-svc accepts calls from %q, want gateway,notifier (the notifier asks a plan's mails allowance)", got)
 	}
 	if got := strings.Join(callers("allow-mockpsp"), ","); got != "payments-worker" {
 		t.Errorf("mockpsp accepts calls from %q, want only payments-worker", got)

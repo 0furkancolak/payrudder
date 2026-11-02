@@ -5,12 +5,16 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
+	"net/http"
 	"time"
 
+	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
+	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -22,6 +26,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/mailevents"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/pricechange"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
@@ -37,7 +42,11 @@ type Config struct {
 	RabbitMQURL  string   `env:"PAYRUDDER_RABBITMQ_URL,required"`
 	KafkaBrokers []string `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
 	PlansAddr    string   `env:"PAYRUDDER_PLANS_ADDR"`
-	SMTPAddr     string   `env:"SMTP_ADDR"`
+	// IngestAddr and LimitsAddr let the notifier meter the mails it sends into the platform tenant and ask its allowance (the `mails` meter, ADR 0024). Both or
+	// neither: with neither, no mail is limited or counted.
+	IngestAddr string `env:"PAYRUDDER_INGEST_ADDR"`
+	LimitsAddr string `env:"PAYRUDDER_LIMITS_ADDR"`
+	SMTPAddr   string `env:"SMTP_ADDR"`
 	// NafruBaseURL and NafruAPIKey make Nafru Email the sender of Payrudder's own mail (the default every plan includes, nothing for a customer to set up). Both
 	// or neither: with neither, mail goes to SMTP_ADDR (a development mail catcher). A tenant that connected its own Nafru account still sends through that.
 	NafruBaseURL  string        `env:"NAFRU_BASE_URL"`
@@ -47,7 +56,14 @@ type Config struct {
 	SendingStale  time.Duration `env:"NOTIFIER_SENDING_STALE"`
 	MailSwitchTTL time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
 	// MailAllowPrivate lets a tenant's own e-mail provider be http:// and on a private address. For development and tests; never in production.
-	MailAllowPrivate bool   `env:"NOTIFIER_MAIL_ALLOW_PRIVATE"`
+	MailAllowPrivate bool `env:"NOTIFIER_MAIL_ALLOW_PRIVATE"`
+	// MailRatePerMinute and MailRateBurst cap how fast the platform's sender sends one tenant's live mail, per replica; 0 per minute switches the cap off.
+	MailRatePerMinute int `env:"NOTIFIER_MAIL_RATE_PER_MINUTE"`
+	MailRateBurst     int `env:"NOTIFIER_MAIL_RATE_BURST"`
+	// EventsAddr is where the notifier listens for the provider's bounce and complaint notices and the operator's suppression-list calls (/v1/mail-events,
+	// /v1/mail-suppressions); empty switches the listener off. Every request is signed with MailEventsSecret (pkg/webhooksig).
+	EventsAddr       string `env:"NOTIFIER_EVENTS_ADDR"`
+	MailEventsSecret string `env:"NOTIFIER_MAIL_EVENTS_SECRET"`
 	Group            string `env:"PAYRUDDER_CONSUMER_GROUP"`
 	DLQTopic         string `env:"PAYRUDDER_DLQ_TOPIC"`
 	// TrialDLQTopic receives the trial-ending facts that can never be mailed; the Kafka group of that consumer is the group with "-trials" appended.
@@ -64,6 +80,15 @@ func (c *Config) Validate() error {
 	errs = append(errs, c.CheckMigration())
 	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
 		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))
+	}
+	if (c.IngestAddr == "") != (c.LimitsAddr == "") {
+		errs = append(errs, errors.New("PAYRUDDER_INGEST_ADDR and PAYRUDDER_LIMITS_ADDR go together: set both, or neither"))
+	}
+	if c.MailRatePerMinute < 0 || c.MailRateBurst < 0 {
+		errs = append(errs, errors.New("NOTIFIER_MAIL_RATE_PER_MINUTE and NOTIFIER_MAIL_RATE_BURST cannot be negative"))
+	}
+	if c.EventsAddr != "" && len(c.MailEventsSecret) < 16 {
+		errs = append(errs, errors.New("NOTIFIER_EVENTS_ADDR needs NOTIFIER_MAIL_EVENTS_SECRET of at least 16 characters: the endpoint can suppress a tenant's mail"))
 	}
 	return errors.Join(errs...)
 }
@@ -91,9 +116,12 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	var platform mailx.Sender = mailx.SMTP{Addr: cfg.SMTPAddr}
 	if cfg.NafruBaseURL != "" {
 		// Payrudder's own mail goes through Nafru Email; its address is the operator's, but the same guard that protects a tenant's provider applies.
-		platform = mailx.Resend{BaseURL: cfg.NafruBaseURL, APIKey: cfg.NafruAPIKey, Client: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}
+		platform = mailx.Nafru{Resend: mailx.Resend{BaseURL: cfg.NafruBaseURL, APIKey: cfg.NafruAPIKey, Client: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}}
 	}
-	mailer := &delivery.Mailer{Default: platform, From: cfg.MailFrom, Notes: notes}
+	suppressions := store.Suppressions{DB: pool}
+	mailer := &delivery.Mailer{Default: platform, From: cfg.MailFrom, Notes: notes, Suppress: suppressions}
+	// One tenant cannot spend the sending domain's reputation: the platform's sender is rate limited per tenant.
+	mailer.Limit = &delivery.Limiter{PerMinute: cfg.MailRatePerMinute, Burst: cfg.MailRateBurst}
 	// A tenant's mail switch (plans-svc) is read before every send.
 	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
 	// A tenant the operator has suspended, frozen or banned sends its customers no mail; the status is read through the short cache the usage consumers use.
@@ -102,6 +130,20 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	mailer.Providers = &delivery.PlansProviders{Client: plansv1.NewMailIntegrationServiceClient(plansConn), TTL: cfg.MailSwitchTTL, HTTP: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}
 	if cfg.SandboxSMTP != "" {
 		mailer.Sandbox = mailx.SMTP{Addr: cfg.SandboxSMTP}
+	}
+	// The mails an organisation's plan includes: asked before a live send and counted after it (ADR 0024). Off without ingest-svc and limits-svc.
+	if cfg.IngestAddr != "" {
+		ingestConn, err := grpcx.NewTenantClient("ingest-svc", cfg.IngestAddr)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = ingestConn.Close() }()
+		limitsConn, err := grpcx.NewTenantClient("limits-svc", cfg.LimitsAddr)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = limitsConn.Close() }()
+		mailer.Quota = &delivery.SaasQuota{Plans: plansv1.NewSaasServiceClient(plansConn), Limits: limitsv1.NewLimitsServiceClient(limitsConn), Ingest: ingestv1.NewIngestServiceClient(ingestConn), Log: log}
 	}
 	w := &workerx.Worker{URL: cfg.RabbitMQURL, Handler: &handler.Handler{Mailer: mailer}, Inbox: notes, Log: log,
 		Queues: []string{rabbitx.QueueNotificationSend}}
@@ -168,5 +210,12 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return trialConsumer.Run(gctx) })
 	g.Go(func() error { return priceConsumer.Run(gctx) })
 	g.Go(func() error { return contractConsumer.Run(gctx) })
+	if cfg.EventsAddr != "" {
+		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, Notes: notes, List: suppressions, Log: log}
+		g.Go(func() error {
+			log.Info("notifier listening for mail events", "addr", cfg.EventsAddr)
+			return health.ServeServer(gctx, &http.Server{Addr: cfg.EventsAddr, Handler: events.Routes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second})
+		})
+	}
 	return g.Wait()
 }
