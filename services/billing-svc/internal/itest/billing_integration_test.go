@@ -133,6 +133,7 @@ func TestBilling(t *testing.T) {
 		{"SandboxResetKeepsConfigurationAndOtherTenants", testSandboxResetKeepsConfigurationAndOtherTenants},
 		{"RowLevelSecurityIsForcedOnEveryTenantTable", testRowLevelSecurityIsForcedOnEveryTenantTable},
 		{"FinancialRowsAreImmutableInTheDatabase", testFinancialRowsAreImmutable},
+		{"ExpenseInboxesAreScopedToTheirTenant", testExpenseInboxesAreScopedToTheirTenant},
 		{"CreditLedgerKeyIsUsedOncePerLot", testCreditLedgerKeyIsUsedOncePerLot},
 		{"RepeatedLedgerKeysAreRenamedByTheMigration", testRepeatedLedgerKeysAreRenamedByTheMigration},
 		{"EnvironmentIdsAreNotFoundInTheOtherEnvironment", testEnvironmentIdsAreNotFoundInTheOtherEnvironment},

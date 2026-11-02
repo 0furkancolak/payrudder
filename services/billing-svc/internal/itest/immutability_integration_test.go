@@ -16,6 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
 
@@ -43,6 +44,7 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 		"subtotal": `subtotal_minor = 1`, "total": `total_minor = 1`, "currency": `currency = 'EUR'`, "customer": `customer_id = gen_random_uuid()`, "period": `period_id = '2030-01'`,
 		"number": `number = 'INV-2026-009999'`, "snapshot": `snapshot = snapshot || '{"customer_name":"Mallory"}'`,
 		"environment": `snapshot = jsonb_set(snapshot, '{environment}', '"sandbox"')`, "finalized_at": `finalized_at = now()`, "back to draft": `status = 'draft'`,
+		"coupon and target": `coupon_code = 'C', promotion_target = 'payment'`, "promotion code": `promotion_code = 'PROMO'`, "bonus credits": `bonus_credits = 5`,
 	} {
 		// set is one of the constants above, never input.
 		_, err := shared.sql.Exec(ctx, `UPDATE invoices SET `+set+` WHERE tenant_id = $1 AND id = $2`, live, open)
@@ -50,20 +52,22 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 			t.Errorf("open invoice, %s: %v, want the invoice_frozen refusal", name, err)
 		}
 	}
-	// What still changes on it: the saga's status, the PDF, the payment method the customer chose, the promotion it used.
+	// What still changes on it: the saga's status, the PDF and the payment method the customer chose.
 	for name, set := range map[string]string{
-		"pdf": `pdf_object_key = 'acme/inv.pdf'`, "payment method": `snapshot = jsonb_set(snapshot, '{payment_method}', '"pm_x"')`,
-		"promotion": `coupon_code = 'C', promotion_target = 'payment', bonus_credits = 5`, "paid": `status = 'paid'`, "void": `status = 'void'`,
+		"pdf": `pdf_object_key = 'acme/inv.pdf'`, "payment method": `snapshot = jsonb_set(snapshot, '{payment_method}', '"pm_x"')`, "paid": `status = 'paid'`, "void": `status = 'void'`,
 	} {
 		if _, err := shared.sql.Exec(ctx, `UPDATE invoices SET `+set+` WHERE tenant_id = $1 AND id = $2`, live, open); err != nil {
 			t.Errorf("open invoice, %s: %v", name, err)
 		}
 	}
-	// A draft is still being made: totals, snapshot, and then number, status and finalized_at when it is opened.
+	// A draft is still being made: totals, snapshot, lines and the promotion it used (SetInvoicePromotion, in the transaction that makes a payment link's invoice), and
+	// then number, status and finalized_at when it is opened.
 	draft := seedOne(t, live, uuid.New(), "cus_d", "draft", "USD", "", 700, "live")
 	// In this order: once it is opened it is no longer a draft (a map would run them in a random one).
 	for _, step := range []struct{ name, stmt string }{
 		{"totals", `UPDATE invoices SET subtotal_minor = 600, total_minor = 650 WHERE tenant_id = $1 AND id = $2`},
+		{"lines", `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',650,'Base fee')`},
+		{"promotion", `UPDATE invoices SET coupon_code = 'C', promotion_code = 'PROMO', promotion_target = 'payment', bonus_credits = 5 WHERE tenant_id = $1 AND id = $2`},
 		{"opening", `UPDATE invoices SET number = 'INV-2026-000502', status = 'open', finalized_at = now() WHERE tenant_id = $1 AND id = $2`},
 	} {
 		if _, err := shared.sql.Exec(ctx, step.stmt, live, draft); err != nil {
@@ -72,6 +76,35 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 	}
 	if _, err := shared.sql.Exec(ctx, `UPDATE invoices SET total_minor = 1 WHERE tenant_id = $1 AND id = $2`, live, draft); !triggerRefusal(err, "invoice_frozen") {
 		t.Errorf("the invoice that was a draft a moment ago: %v, want the invoice_frozen refusal", err)
+	}
+	// An invoice that is no longer a draft takes no new line, whoever writes it; only a tenant move, which copies the lines after the invoices, may.
+	line := `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,2,'BASE_FEE',1,'added later')`
+	for name, inv := range map[string]uuid.UUID{"the invoice that was a draft a moment ago": draft, "an open invoice": open} {
+		if _, err := shared.sql.Exec(ctx, line, live, inv); !triggerRefusal(err, "invoice_lines_frozen") {
+			t.Errorf("a line into %s: %v, want the invoice_lines_frozen refusal", name, err)
+		}
+	}
+	err := shared.system.InTx(ctx, live, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.tenant_move', $1, true)`, live.String()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, line, live, draft); err != nil {
+			return err
+		}
+		return errRollBack
+	})
+	if !errors.Is(err, errRollBack) {
+		t.Errorf("a move copying a line into an open invoice: %v", err)
+	}
+	err = shared.system.InTx(ctx, live, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.tenant_move', $1, true)`, uuid.NewString()); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, line, live, draft)
+		return err
+	})
+	if !triggerRefusal(err, "invoice_lines_frozen") {
+		t.Errorf("a line into an open invoice in a transaction that names another tenant: %v, want the invoice_lines_frozen refusal", err)
 	}
 
 	// Rows of every table the deletes are refused on, for a live tenant.
@@ -148,7 +181,7 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 		}
 	}
 	// The setting names a tenant: another tenant's name is no leave to delete.
-	err := shared.system.InTx(ctx, live, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = shared.system.InTx(ctx, live, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.tenant_move', $1, true), set_config('payrudder.sandbox_reset', $1, true)`, uuid.NewString()); err != nil {
 			return err
 		}
@@ -191,6 +224,69 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 		if _, err := shared.sql.Exec(ctx, stmt, live); pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
 			t.Errorf("billing_system: %s: %v, want permission denied", stmt, err)
 		}
+	}
+}
+
+// testExpenseInboxesAreScopedToTheirTenant: expense_inboxes has the tenant policy (migration 00006). billing_app, the role of the request path that writes it, reads and
+// writes the inbox of its own tenant only, even by a statement that forgets the tenant; billing_system (BYPASSRLS) still finds a token without naming one, as mail
+// arrives.
+func testExpenseInboxesAreScopedToTheirTenant(t *testing.T) {
+	infra(t)
+	ctx := context.Background()
+	mine, theirs := uuid.New(), uuid.New()
+	mineToken, theirToken := uuid.NewString(), uuid.NewString()
+	for tid, token := range map[uuid.UUID]string{mine: mineToken, theirs: theirToken} {
+		// Each tenant makes its own inbox, as the request path does (billing_system only reads this table).
+		err := pgxx.InTenantTx(ctx, shared.app, tid, func(tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `INSERT INTO expense_inboxes (tenant_id, scope, token) VALUES ($1,'',$2)`, tid, token)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	err := pgxx.InTenantTx(ctx, shared.app, mine, func(tx pgx.Tx) error {
+		var seen []string
+		rows, err := tx.Query(ctx, `SELECT token FROM expense_inboxes WHERE token IN ($1, $2)`, mineToken, theirToken)
+		if err != nil {
+			return err
+		}
+		if seen, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+			return err
+		}
+		if len(seen) != 1 || seen[0] != mineToken {
+			t.Errorf("billing_app reads the inboxes %v, want only its own", seen)
+		}
+		// A statement that forgets the tenant touches the tenant's own row only.
+		tag, err := tx.Exec(ctx, `UPDATE expense_inboxes SET token = $1 WHERE token IN ($2, $3)`, uuid.NewString(), mineToken, theirToken)
+		if err != nil || tag.RowsAffected() != 1 {
+			t.Errorf("billing_app updated %d inboxes (%v), want its own only", tag.RowsAffected(), err)
+		}
+		return errRollBack
+	})
+	if !errors.Is(err, errRollBack) {
+		t.Fatal(err)
+	}
+	// It cannot write the inbox of another tenant.
+	err = pgxx.InTenantTx(ctx, shared.app, mine, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO expense_inboxes (tenant_id, scope, token) VALUES ($1,'app-1',$2)`, theirs, uuid.NewString())
+		return err
+	})
+	if pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
+		t.Errorf("billing_app wrote another tenant's inbox: %v, want the row-level security refusal", err)
+	}
+	// The lookup of ReceiveInboxMail: billing_system, in every place a tenant's rows can be, without naming a tenant.
+	var found sqlc.ResolveInboxTokenRow
+	ok, err := shared.system.Find(ctx, func(ctx context.Context, q *sqlc.Queries) (bool, error) {
+		r, err := q.ResolveInboxToken(ctx, theirToken)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		found = r
+		return err == nil, err
+	})
+	if err != nil || !ok || found.TenantID != theirs {
+		t.Errorf("billing_system looking a token up without a tenant: %v, %t, %v", found, ok, err)
 	}
 }
 
