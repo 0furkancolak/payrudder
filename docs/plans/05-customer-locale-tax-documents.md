@@ -8,10 +8,10 @@ Second step in PR `feat/customer-documents`: the invoice PDF in five languages w
 
 ## Where we are
 - #240: `customers.locale` (en, tr, de, fr, es, ar) and `customers.customer_type` (individual, business) in the API, SDKs and console; mails (5 templates × 6 languages) chosen by the customer's locale; hosted pages use `?lang=` → the customer's locale → the browser.
-- Unchanged: the customer type does not yet drive any behaviour.
+- ~~Unchanged: the customer type does not yet drive any behaviour.~~ It now drives the **e-invoice buyer** (an e-arşiv buyer without a tax id is the consumer placeholder for an individual and refused for a business: `payments-worker/internal/einvoice`, see "Done in the second step"), the labels on the invoice PDF (a VKN, a TCKN or a VAT id by what the number is) and, since 2026-11-02, the customer form (see "The customer form").
 
 ## Gaps
-- **The customer type changes nothing.** Not the e-invoice buyer rules (TCKN 11 digits for an individual, VKN 10 digits for a business in Turkey; VAT id and B2B reverse charge in the EU), not tax display, not which invoice template/series, not validation of the tax id, not the e-fatura vs e-arşiv choice (Turkey).
+- ~~**The customer type changes nothing.**~~ It now decides the e-invoice buyer (individual: the consumer placeholder when there is no tax id; business: refused without one), the tax id's label on the PDF, the check of the tax id (TCKN for an individual, VKN for a business in Turkey, VAT id check digits in the EU; a hint, never a refusal) and the customer form. **Still not driven by it:** B2B reverse charge and OSS (no tax engine, by default), the invoice series, and the e-fatura versus e-arşiv choice (the integrator's, by the buyer's registration).
 - Invoice **PDFs and the hosted invoice** are in the customer's language only partly (the page chrome; labels, number/date/currency formats, legal lines, tax breakdown wording are not locale-aware beyond what the six translations hold).
 - Six languages are a fixed set; a country → language/format default (a customer in Brazil, Japan, Poland…) is not modelled. No locale fallback chain, no number/date format by locale on documents, no right-to-left layout check of the PDF.
 - Tax: a per-country engine does not exist (the tenant has `tax_rates`; no VAT-by-place-of-supply, no OSS, no tax id validation by VIES, no Turkish KDV/stopaj specifics beyond what e-invoice adapters need).
