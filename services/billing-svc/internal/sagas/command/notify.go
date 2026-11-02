@@ -2,6 +2,7 @@ package command
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
@@ -48,4 +49,20 @@ func (e *Engine) transferNotification(s *saga) *commandsv1.SendNotification {
 	data := mailData(s)
 	instructionData(s, data)
 	return &commandsv1.SendNotification{Template: "invoice_transfer.v1", To: s.Snap.CustomerEmail, Data: data}
+}
+
+// actionNotification is the mail that asks the customer to come back and confirm a payment their bank wants them present for (3-D Secure): the amount, the invoice and a link
+// to the invoice's page, where the Pay button starts the provider's own hosted checkout. A link that cannot be made is left out and the mail says so in words: it must go
+// out, because the customer is the only one who can finish the payment.
+func (e *Engine) actionNotification(ctx context.Context, s *saga) *commandsv1.SendNotification {
+	data := mailData(s)
+	if e.cfg.PayLink != nil {
+		link, err := e.cfg.PayLink(ctx, s.TenantID, s.InvoiceID)
+		if err != nil {
+			e.cfg.Log.WarnContext(ctx, "the link to the invoice page could not be made for the mail asking the customer to confirm the payment", "tenant", s.TenantID, "invoice", s.InvoiceID, "err", err)
+		} else if link != "" {
+			data["pay_url"] = link
+		}
+	}
+	return &commandsv1.SendNotification{Template: "payment_action_required.v1", To: s.Snap.CustomerEmail, Data: data}
 }

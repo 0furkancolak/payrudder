@@ -12,6 +12,11 @@ import "google/protobuf/timestamp.proto";
 // answers the operator, the operators are mailed once (not again until the operator has answered). The operator's side also has tags on tickets, an assignee chosen
 // from the operators, canned replies (snippets the operators share), and a report of the queue and of the first-answer times.
 //
+// A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
+// the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
+// does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
+// messages only.
+//
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
 service SupportService {
@@ -41,6 +46,14 @@ service SupportService {
   // SaveSupportCannedReply makes a canned reply, or changes the one named by id.
   rpc SaveSupportCannedReply(SaveSupportCannedReplyRequest) returns (SaveSupportCannedReplyResponse);
   rpc DeleteSupportCannedReply(DeleteSupportCannedReplyRequest) returns (DeleteSupportCannedReplyResponse);
+
+  // AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
+  // the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
+  rpc AuthorizeSupportAttachment(AuthorizeSupportAttachmentRequest) returns (AuthorizeSupportAttachmentResponse);
+  // AddSupportAttachment records an uploaded file on the message, checking the limits again under the ticket's lock. Same caller rules as the call above.
+  rpc AddSupportAttachment(AddSupportAttachmentRequest) returns (AddSupportAttachmentResponse);
+  // GetSupportAttachment says where a file is stored. With user_id it is the person's call and refuses the files of internal notes; without, the operator's.
+  rpc GetSupportAttachment(GetSupportAttachmentRequest) returns (GetSupportAttachmentResponse);
 }
 
 message SupportTicket {
@@ -105,6 +118,27 @@ message SupportMessage {
   // An operator's note the person does not see.
   bool internal = 5;
   google.protobuf.Timestamp create_time = 6;
+  repeated SupportAttachment attachments = 7;
+}
+
+// SupportAttachment is a file on a message. Its bytes are fetched through the download call, never through this message.
+message SupportAttachment {
+  string id = 1;
+  string filename = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+// SupportAttachmentTarget is where a file is (or is to be) stored: the tenant that holds it in assets-svc, as the gateway must present it, and for a stored file
+// its asset and name.
+message SupportAttachmentTarget {
+  string tenant_id = 1;
+  string environment = 2;
+  string timezone = 3;
+  string tier = 4;
+  string asset_id = 5;
+  string filename = 6;
 }
 
 message OpenMySupportTicketRequest {
@@ -119,6 +153,8 @@ message OpenMySupportTicketRequest {
 }
 message OpenMySupportTicketResponse {
   SupportTicket ticket = 1;
+  // The first message, the one files may be attached to.
+  SupportMessage message = 2;
 }
 
 message ListMySupportTicketsRequest {
@@ -148,6 +184,7 @@ message ReplyMySupportTicketRequest {
 }
 message ReplyMySupportTicketResponse {
   SupportTicket ticket = 1;
+  SupportMessage message = 2;
 }
 
 message SetMySupportTicketStatusRequest {
@@ -196,6 +233,7 @@ message ReplySupportTicketRequest {
 }
 message ReplySupportTicketResponse {
   SupportTicket ticket = 1;
+  SupportMessage message = 2;
 }
 
 message UpdateSupportTicketRequest {
@@ -281,3 +319,36 @@ message DeleteSupportCannedReplyRequest {
   string id = 1;
 }
 message DeleteSupportCannedReplyResponse {}
+
+message AuthorizeSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string message_id = 3;
+}
+message AuthorizeSupportAttachmentResponse {
+  SupportAttachmentTarget target = 1;
+}
+
+message AddSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string message_id = 3;
+  // Where the gateway stored it (the target of the Authorize call) and what it stored.
+  string tenant_id = 4;
+  string asset_id = 5;
+  string filename = 6;
+  string content_type = 7;
+  int64 size_bytes = 8;
+}
+message AddSupportAttachmentResponse {
+  SupportAttachment attachment = 1;
+}
+
+message GetSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string attachment_id = 3;
+}
+message GetSupportAttachmentResponse {
+  SupportAttachmentTarget target = 1;
+}

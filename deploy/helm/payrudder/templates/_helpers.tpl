@@ -58,7 +58,7 @@ see the schema owner's password while the Job still loads the service's complete
   {{- else if eq . "operatorToken" -}}
     {{- $_ := set $out "PAYRUDDER_OPERATOR_TOKEN" $root.Values.operatorToken -}}
   {{- else if eq . "otpPepper" -}}
-    {{- $_ := set $out "PAYRUDDER_OTP_PEPPER" $root.Values.auth.otpPepper -}}
+    {{- $_ := set $out "PAYRUDDER_OTP_PEPPER" (include "payrudder.otpPepper" $root) -}}
   {{- else if eq . "google" -}}
     {{- if and $root.Values.auth.google.clientId $root.Values.auth.google.clientSecret -}}
       {{- $_ := set $out "PAYRUDDER_GOOGLE_CLIENT_ID" $root.Values.auth.google.clientId -}}
@@ -88,6 +88,18 @@ see the schema owner's password while the Job still loads the service's complete
 {{- /* A DSN holds a key, so it goes in the Secret of every service (not the migration Job's); empty renders nothing and error tracking stays off. */ -}}
 {{- if and $root.Values.errorTracking.url (not .migrate) -}}{{- $_ := set $out "PAYRUDDER_ERROR_TRACKING_URL" $root.Values.errorTracking.url -}}{{- end -}}
 {{- toJson $out -}}
+{{- end -}}
+
+{{/* The pepper that keys the hash of the sign-in and recovery codes. Set in the values, that is it. Empty in a development environment (global.environment local, ci or kind):
+the public local value of the compose stack. Empty anywhere else: no chart without one (plans-svc would refuse to start), unless the Secrets are yours (secrets.existingSecrets). */}}
+{{- define "payrudder.otpPepper" -}}
+{{- if .Values.auth.otpPepper -}}
+{{- .Values.auth.otpPepper -}}
+{{- else if has .Values.global.environment (list "local" "ci" "kind") -}}
+local-otp-pepper-change-me-0123456789
+{{- else if not .Values.secrets.existingSecrets -}}
+{{- required "auth.otpPepper is required when global.environment is not local, ci or kind: put it in your secrets file (`openssl rand -hex 32`, see values-secrets.example.yaml)" .Values.auth.otpPepper -}}
+{{- end -}}
 {{- end -}}
 
 {{/* The secrets key of payments-worker and plans-svc, and while it is being replaced (docs/runbooks/secrets-key-rotation.md) its id and the key it replaces with its id.

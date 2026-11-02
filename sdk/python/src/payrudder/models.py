@@ -131,6 +131,31 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
+class StoredCard(TypedDict):
+    token: str
+    alias: str
+    bin: str
+    last4: str
+    type: str
+    association: str
+    family: str
+    bank: str
+    expire_month: str
+    expire_year: str
+    in_use: bool
+
+
+class CustomerCards(TypedDict):
+    provider: str
+    cards: list[StoredCard]
+
+
+class DeletedCustomerCard(TypedDict):
+    provider: str
+    deleted: bool
+    was_in_use: bool
+
+
 class _CustomerContactRequired(TypedDict):
     name: str
     email: str
@@ -1659,7 +1684,7 @@ class GetDunningReportInvoice(TypedDict):
     provider: str
     currency: str
     total_minor: int
-    state: Literal["PAYMENT_DECLINED", "PAYMENT_UNKNOWN", "PAYMENT_PENDING", "UNCOLLECTIBLE"]
+    state: Literal["PAYMENT_DECLINED", "PAYMENT_UNKNOWN", "PAYMENT_PENDING", "PAYMENT_ACTION_REQUIRED", "PAYMENT_HELD", "UNCOLLECTIBLE"]
     dunning_attempt: int
     next_attempt_time: str | None
     last_error: str

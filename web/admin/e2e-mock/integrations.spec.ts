@@ -479,6 +479,57 @@ test.describe("several accounts at one provider", () => {
   });
 });
 
+test.describe("iyzico", () => {
+  test("takes the instalment counts of the account as a list, refuses a count iyzico does not list, and sends them as numbers", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    await page.getByTestId("integration-open-iyzico").click();
+    const sheet = page.getByTestId("provider-sheet");
+    const fill = async () => {
+      await sheet.getByTestId("lp-api_key").fill("iyz_live_key");
+      await sheet.getByTestId("lp-secret_key").fill("iyz_live_secret");
+      for (const [f, v] of Object.entries({ name: "Ada", surname: "Lovelace", identity_number: "11111111110", email: "ada@example.com", address: "Bagdat Cd. 1", city: "Istanbul", country: "Turkey", zip_code: "34000", ip: "85.34.78.112" })) {
+        await sheet.getByTestId(`lp-buyer_${f}`).fill(v);
+      }
+    };
+    await fill();
+    await expect(sheet.getByTestId("lp-enabled_installments")).toBeVisible();
+    await expect(sheet.getByText("Counts from 1, 2, 3, 6, 9 and 12")).toBeVisible();
+    // A count iyzico's pages do not list is refused before anything is sent.
+    await sheet.getByTestId("lp-enabled_installments").fill("1, 4");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(sheet.getByRole("alert").first()).toContainText("This does not look right.");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/iyzico`)).toHaveLength(0);
+    await sheet.getByTestId("lp-enabled_installments").fill("6, 1 3");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toBeVisible();
+    const sent = gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/iyzico`)[0]?.body as { enabled_installments?: number[]; api_key?: string };
+    expect(sent.enabled_installments).toEqual([1, 3, 6]);
+    expect(sent.api_key).toBe("iyz_live_key");
+  });
+
+  test("leaves the field out when it is empty: single payments", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    await page.getByTestId("integration-open-iyzico").click();
+    const sheet = page.getByTestId("provider-sheet");
+    await sheet.getByTestId("lp-api_key").fill("iyz_live_key");
+    await sheet.getByTestId("lp-secret_key").fill("iyz_live_secret");
+    for (const [f, v] of Object.entries({ name: "Ada", surname: "Lovelace", identity_number: "11111111110", email: "ada@example.com", address: "Bagdat Cd. 1", city: "Istanbul", country: "Turkey", zip_code: "34000", ip: "85.34.78.112" })) {
+      await sheet.getByTestId(`lp-buyer_${f}`).fill(v);
+    }
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toBeVisible();
+    expect(Object.keys(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/iyzico`)[0]?.body ?? {})).not.toContain("enabled_installments");
+  });
+});
+
 test.describe("Stripe", () => {
   test("is connected with a secret key and the webhook's signing secret, shown by its name with a general icon", async ({ page }) => {
     const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });

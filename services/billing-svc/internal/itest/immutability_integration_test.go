@@ -148,6 +148,34 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 			t.Errorf("%s: %d rows, want %d: the refused delete still deleted", table, got, before)
 		}
 	}
+	// TRUNCATE is refused too (migration 00009), also for the table owner, also in a transaction that names a reset or a move, and also when it reaches the table through
+	// CASCADE. The statement runs on the migrator because nobody else holds the privilege.
+	owner, err := pgx.Connect(ctx, shared.db.Migrator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = owner.Close(ctx) }()
+	for _, table := range tables {
+		for _, setting := range []string{"", "payrudder.sandbox_reset", "payrudder.tenant_move"} {
+			before := remaining(table)
+			err := pgx.BeginFunc(ctx, owner, func(tx pgx.Tx) error {
+				if setting != "" {
+					if _, err := tx.Exec(ctx, `SELECT set_config($1, $2, true)`, setting, live.String()); err != nil {
+						return err
+					}
+				}
+				// table is one of the constants above, never input.
+				_, err := tx.Exec(ctx, `TRUNCATE `+table+` CASCADE`)
+				return err
+			})
+			if !triggerRefusal(err, "financial_table_truncate") {
+				t.Errorf("TRUNCATE %s CASCADE by the owner (setting %q): %v, want the financial_table_truncate refusal", table, setting, err)
+			}
+			if got := remaining(table); got != before {
+				t.Errorf("%s: %d rows, want %d: the refused TRUNCATE still truncated", table, got, before)
+			}
+		}
+	}
 	// The one delete of live data the product does: a voided invoice gives back the credit it consumed.
 	if _, err := shared.sql.Exec(ctx, `UPDATE invoices SET status = 'void' WHERE tenant_id = $1 AND id = $2`, live, paid); err != nil {
 		t.Fatal(err)

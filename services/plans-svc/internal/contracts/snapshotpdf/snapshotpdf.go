@@ -115,6 +115,7 @@ func Render(page string, created time.Time) ([]byte, error) {
 	pdf.SetCatalogSort(true)
 	pdf.SetCreator("Payrudder", true)
 	pdf.SetCreationDate(created.UTC())
+	pdf.SetModificationDate(created.UTC()) // fpdf stamps time.Now() otherwise: the same page must give the same bytes
 	pdf.SetTitle(title, true)
 	pdf.AddUTF8FontFromBytes(family, "", pdffont.Regular)
 	pdf.AddUTF8FontFromBytes(family, "B", pdffont.Bold)
