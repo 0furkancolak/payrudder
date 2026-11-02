@@ -48,3 +48,31 @@ func TestMailDataWritesTheDayInTheMailsLanguage(t *testing.T) {
 		}
 	}
 }
+
+// What the customer typed is mailed back in their own acknowledgement and shown to the seller: whatever it holds, the mail has it as text. This is html/template's doing, and
+// this test is what keeps it so (a template that printed the statement as trusted HTML would pass every other test).
+func TestWhatTheCustomerTypedIsMailedAsTextInEveryLanguage(t *testing.T) {
+	hostile := "Name: <script>alert(1)</script> \"quoted\" 'single' &amp; <img src=x onerror=alert(1)>\nI withdraw: </blockquote><h1>sign here</h1> <a href=\"javascript:alert(2)\">click</a>"
+	ev := &eventsv1.ContractWithdrawalReceived{Statement: hostile, ReceivedAt: timestamppb.New(time.Date(2026, 11, 2, 7, 30, 0, 0, time.UTC))}
+	d := MailData(ev, "Ada <b>Lovelace</b>", "Acme <i>Ltd</i>", "UTC", "")
+	for _, loc := range []string{"", "en", "tr", "de", "fr", "es", "ar"} {
+		d["locale"] = loc
+		r, err := templates.Render(Template, d, false)
+		if err != nil {
+			t.Fatalf("%q: %v", loc, err)
+		}
+		for _, raw := range []string{"<script", "<img", "<h1>", "</blockquote><", "<a href", "<b>Lovelace", "<i>Ltd", `"quoted"`} {
+			if strings.Contains(r.HTML, raw) {
+				t.Errorf("%q: the mail holds %q as markup:\n%s", loc, raw, r.HTML)
+			}
+		}
+		for _, want := range []string{"&lt;script&gt;alert(1)&lt;/script&gt;", "&#34;quoted&#34;", "&amp;amp;", "&lt;img src=x onerror=alert(1)&gt;", "&lt;/blockquote&gt;&lt;h1&gt;sign here&lt;/h1&gt;"} {
+			if !strings.Contains(r.HTML, want) {
+				t.Errorf("%q: the mail lacks the escaped %q", loc, want)
+			}
+		}
+		if strings.Contains(r.Subject, "<") {
+			t.Errorf("%q: the subject %q", loc, r.Subject)
+		}
+	}
+}
