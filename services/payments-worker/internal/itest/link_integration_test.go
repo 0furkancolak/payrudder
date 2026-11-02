@@ -63,6 +63,7 @@ type recBilling struct {
 	settled []*billingv1.SettleInvoicePaymentRequest
 	err     error
 	answer  bool
+	repeat  bool // billing says this very payment settled the invoice before
 }
 
 func (b *recBilling) ListInvoices(context.Context, uuid.UUID, *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error) {
@@ -78,7 +79,7 @@ func (b *recBilling) SettleInvoicePayment(_ context.Context, _ uuid.UUID, req *b
 		return nil, b.err
 	}
 	b.settled = append(b.settled, req)
-	return &billingv1.SettleInvoicePaymentResponse{Settled: b.answer}, nil
+	return &billingv1.SettleInvoicePaymentResponse{Settled: b.answer, Repeat: b.repeat}, nil
 }
 func (b *recBilling) count() int {
 	b.mu.Lock()
@@ -301,6 +302,49 @@ func TestHostedPaymentsThroughTheWorker(t *testing.T) {
 		req, _ := http.NewRequest("POST", api.URL+base+"/ledger/lookup", strings.NewReader(`{}`))
 		if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode != 401 {
 			t.Errorf("without the token: %v %v", resp, err)
+		}
+	})
+
+	t.Run("a payment for an invoice paid another way is alerted once, also on the retry of a settle call that failed first", func(t *testing.T) {
+		other := uuid.New()
+		body := strings.NewReplacer(invoice.String(), other.String()).Replace(pay)
+		if code, out := call("POST", base+"/invoice-payments", body); code != 201 || out["url"] != "https://pay.example/txn_03" {
+			t.Fatalf("checkout = %d %v", code, out)
+		}
+		key := "link:" + other.String() + ":1"
+		billing.mu.Lock()
+		billing.answer, billing.err = false, errors.New("billing is down") // by the retry the invoice is paid, by something else
+		billing.mu.Unlock()
+		defer func() {
+			billing.mu.Lock()
+			billing.answer, billing.err, billing.repeat = true, nil, false
+			billing.mu.Unlock()
+		}()
+		alerts := counted(t, "payment_discrepancies")
+		event := txEvent("evt_double", "transaction.completed", "txn_03", key)
+		if code := hook(event); code != 503 {
+			t.Fatalf("hook with billing down = %d, want 503", code)
+		}
+		// The ledger row is written already, so the retry's row is not new: the alert must not depend on that.
+		billing.mu.Lock()
+		billing.err = nil
+		billing.mu.Unlock()
+		if code := hook(event); code != 200 {
+			t.Fatalf("retried hook = %d", code)
+		}
+		if got := counted(t, "payment_discrepancies") - alerts; got != 1 {
+			t.Fatalf("alerts after the retry = %d, want 1", got)
+		}
+		// The same notification again is a duplicate of a processed one: no second alert.
+		if hook(event); counted(t, "payment_discrepancies")-alerts != 1 {
+			t.Errorf("a duplicate notification alerted again")
+		}
+		// A notification of another id for a payment that billing says settled the invoice is a repeat, not a second payment.
+		billing.mu.Lock()
+		billing.repeat = true
+		billing.mu.Unlock()
+		if hook(txEvent("evt_double_2", "transaction.completed", "txn_03", key)); counted(t, "payment_discrepancies")-alerts != 1 {
+			t.Errorf("a repeat of the payment that settled the invoice alerted")
 		}
 	})
 }

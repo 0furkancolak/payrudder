@@ -15,6 +15,8 @@ Python client for the [Payrudder](../../README.md) tenant API (`/v1/*`) and for 
 Scope: the tenant API authenticated with an API key (`qk_test_...` for the sandbox, `qk_live_...` for live). The operator
 (`/admin/v1`) and console (`/app/v1`, `/auth`) routes are not part of this SDK.
 
+Runnable programs (send a usage event, create a customer, list invoices, verify a webhook) are in [`examples/`](examples/README.md).
+
 ## Quickstart
 
 ```python

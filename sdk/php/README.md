@@ -24,6 +24,8 @@ Until the package is released, require it from a path or a VCS checkout of this 
 
 or, on the command line, `composer config repositories.payrudder path /path/to/payrudder/sdk/php && composer require payrudder/payrudder-php:"*@dev"`.
 
+Runnable programs (send a usage event, create a customer, list invoices, verify a webhook) are in [`examples/`](examples/README.md).
+
 ## Quickstart
 
 ```php

@@ -2467,20 +2467,21 @@ var SandboxService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	BillingAdminService_ClosePeriod_FullMethodName           = "/payrudder.billing.v1.BillingAdminService/ClosePeriod"
-	BillingAdminService_GetBillingRun_FullMethodName         = "/payrudder.billing.v1.BillingAdminService/GetBillingRun"
-	BillingAdminService_RetryInvoiceSaga_FullMethodName      = "/payrudder.billing.v1.BillingAdminService/RetryInvoiceSaga"
-	BillingAdminService_VoidInvoice_FullMethodName           = "/payrudder.billing.v1.BillingAdminService/VoidInvoice"
-	BillingAdminService_RecordInvoicePayment_FullMethodName  = "/payrudder.billing.v1.BillingAdminService/RecordInvoicePayment"
-	BillingAdminService_CreateCreditNote_FullMethodName      = "/payrudder.billing.v1.BillingAdminService/CreateCreditNote"
-	BillingAdminService_RetryCreditNoteRefund_FullMethodName = "/payrudder.billing.v1.BillingAdminService/RetryCreditNoteRefund"
-	BillingAdminService_RetryEInvoice_FullMethodName         = "/payrudder.billing.v1.BillingAdminService/RetryEInvoice"
-	BillingAdminService_CancelEInvoice_FullMethodName        = "/payrudder.billing.v1.BillingAdminService/CancelEInvoice"
-	BillingAdminService_StartRerating_FullMethodName         = "/payrudder.billing.v1.BillingAdminService/StartRerating"
-	BillingAdminService_GetReratingJob_FullMethodName        = "/payrudder.billing.v1.BillingAdminService/GetReratingJob"
-	BillingAdminService_GetInvoiceSaga_FullMethodName        = "/payrudder.billing.v1.BillingAdminService/GetInvoiceSaga"
-	BillingAdminService_ListDeadLetters_FullMethodName       = "/payrudder.billing.v1.BillingAdminService/ListDeadLetters"
-	BillingAdminService_RedriveDeadLetters_FullMethodName    = "/payrudder.billing.v1.BillingAdminService/RedriveDeadLetters"
+	BillingAdminService_ClosePeriod_FullMethodName             = "/payrudder.billing.v1.BillingAdminService/ClosePeriod"
+	BillingAdminService_GetBillingRun_FullMethodName           = "/payrudder.billing.v1.BillingAdminService/GetBillingRun"
+	BillingAdminService_RetryInvoiceSaga_FullMethodName        = "/payrudder.billing.v1.BillingAdminService/RetryInvoiceSaga"
+	BillingAdminService_VoidInvoice_FullMethodName             = "/payrudder.billing.v1.BillingAdminService/VoidInvoice"
+	BillingAdminService_RecordInvoicePayment_FullMethodName    = "/payrudder.billing.v1.BillingAdminService/RecordInvoicePayment"
+	BillingAdminService_CreateCreditNote_FullMethodName        = "/payrudder.billing.v1.BillingAdminService/CreateCreditNote"
+	BillingAdminService_RetryCreditNoteRefund_FullMethodName   = "/payrudder.billing.v1.BillingAdminService/RetryCreditNoteRefund"
+	BillingAdminService_ResolveCreditNoteRefund_FullMethodName = "/payrudder.billing.v1.BillingAdminService/ResolveCreditNoteRefund"
+	BillingAdminService_RetryEInvoice_FullMethodName           = "/payrudder.billing.v1.BillingAdminService/RetryEInvoice"
+	BillingAdminService_CancelEInvoice_FullMethodName          = "/payrudder.billing.v1.BillingAdminService/CancelEInvoice"
+	BillingAdminService_StartRerating_FullMethodName           = "/payrudder.billing.v1.BillingAdminService/StartRerating"
+	BillingAdminService_GetReratingJob_FullMethodName          = "/payrudder.billing.v1.BillingAdminService/GetReratingJob"
+	BillingAdminService_GetInvoiceSaga_FullMethodName          = "/payrudder.billing.v1.BillingAdminService/GetInvoiceSaga"
+	BillingAdminService_ListDeadLetters_FullMethodName         = "/payrudder.billing.v1.BillingAdminService/ListDeadLetters"
+	BillingAdminService_RedriveDeadLetters_FullMethodName      = "/payrudder.billing.v1.BillingAdminService/RedriveDeadLetters"
 )
 
 // BillingAdminServiceClient is the client API for BillingAdminService service.
@@ -2505,6 +2506,9 @@ type BillingAdminServiceClient interface {
 	CreateCreditNote(ctx context.Context, in *CreateCreditNoteRequest, opts ...grpc.CallOption) (*CreateCreditNoteResponse, error)
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(ctx context.Context, in *RetryCreditNoteRefundRequest, opts ...grpc.CallOption) (*RetryCreditNoteRefundResponse, error)
+	// ResolveCreditNoteRefund settles a refund that failed (above all one whose outcome is unknown) with what the operator found out at the provider: it was made (its
+	// reference is recorded in the ledger and the note becomes refunded) or it was not (the refund is asked again under a new idempotency key). Written to the audit log.
+	ResolveCreditNoteRefund(ctx context.Context, in *ResolveCreditNoteRefundRequest, opts ...grpc.CallOption) (*ResolveCreditNoteRefundResponse, error)
 	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
 	RetryEInvoice(ctx context.Context, in *RetryEInvoiceRequest, opts ...grpc.CallOption) (*RetryEInvoiceResponse, error)
 	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
@@ -2594,6 +2598,16 @@ func (c *billingAdminServiceClient) RetryCreditNoteRefund(ctx context.Context, i
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RetryCreditNoteRefundResponse)
 	err := c.cc.Invoke(ctx, BillingAdminService_RetryCreditNoteRefund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingAdminServiceClient) ResolveCreditNoteRefund(ctx context.Context, in *ResolveCreditNoteRefundRequest, opts ...grpc.CallOption) (*ResolveCreditNoteRefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveCreditNoteRefundResponse)
+	err := c.cc.Invoke(ctx, BillingAdminService_ResolveCreditNoteRefund_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2692,6 +2706,9 @@ type BillingAdminServiceServer interface {
 	CreateCreditNote(context.Context, *CreateCreditNoteRequest) (*CreateCreditNoteResponse, error)
 	// RetryCreditNoteRefund asks the provider again for a refund that failed.
 	RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error)
+	// ResolveCreditNoteRefund settles a refund that failed (above all one whose outcome is unknown) with what the operator found out at the provider: it was made (its
+	// reference is recorded in the ledger and the note becomes refunded) or it was not (the refund is asked again under a new idempotency key). Written to the audit log.
+	ResolveCreditNoteRefund(context.Context, *ResolveCreditNoteRefundRequest) (*ResolveCreditNoteRefundResponse, error)
 	// RetryEInvoice sends a failed e-document again, with the seller's and buyer's data read afresh. Lines, amounts, number and date stay as they were.
 	RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*RetryEInvoiceResponse, error)
 	// CancelEInvoice cancels an issued e-document where the provider and the law allow it.
@@ -2737,6 +2754,9 @@ func (UnimplementedBillingAdminServiceServer) CreateCreditNote(context.Context, 
 }
 func (UnimplementedBillingAdminServiceServer) RetryCreditNoteRefund(context.Context, *RetryCreditNoteRefundRequest) (*RetryCreditNoteRefundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryCreditNoteRefund not implemented")
+}
+func (UnimplementedBillingAdminServiceServer) ResolveCreditNoteRefund(context.Context, *ResolveCreditNoteRefundRequest) (*ResolveCreditNoteRefundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveCreditNoteRefund not implemented")
 }
 func (UnimplementedBillingAdminServiceServer) RetryEInvoice(context.Context, *RetryEInvoiceRequest) (*RetryEInvoiceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RetryEInvoice not implemented")
@@ -2906,6 +2926,24 @@ func _BillingAdminService_RetryCreditNoteRefund_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingAdminService_ResolveCreditNoteRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveCreditNoteRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingAdminServiceServer).ResolveCreditNoteRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingAdminService_ResolveCreditNoteRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingAdminServiceServer).ResolveCreditNoteRefund(ctx, req.(*ResolveCreditNoteRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingAdminService_RetryEInvoice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RetryEInvoiceRequest)
 	if err := dec(in); err != nil {
@@ -3066,6 +3104,10 @@ var BillingAdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RetryCreditNoteRefund",
 			Handler:    _BillingAdminService_RetryCreditNoteRefund_Handler,
+		},
+		{
+			MethodName: "ResolveCreditNoteRefund",
+			Handler:    _BillingAdminService_ResolveCreditNoteRefund_Handler,
 		},
 		{
 			MethodName: "RetryEInvoice",

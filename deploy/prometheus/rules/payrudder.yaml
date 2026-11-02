@@ -169,7 +169,7 @@ groups:
           summary: "{{ $labels.provider }}: a {{ $labels.kind }} happened at the provider but its ledger row was not written (the books are short until the webhook or a reconciliation writes it)"
 
       # A refund that was started before and whose outcome nothing records is not sent again (a provider that does not dedupe by key could refund twice); the credit note
-      # stays failed with REFUND_OUTCOME_UNKNOWN until an operator checks it at the provider. A resend of the same refund counts again.
+      # stays failed with REFUND_OUTCOME_UNKNOWN until an operator checks it at the provider and resolves it on the note (Resolve refund). A resend of the same refund counts again.
       - alert: RefundOutcomeUnknown
         expr: |
           sum by (provider) (increase(refund_outcome_unknown_total[10m])) > 0

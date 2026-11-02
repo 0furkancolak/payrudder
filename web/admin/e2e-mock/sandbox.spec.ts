@@ -190,6 +190,7 @@ test.describe("the owner's own steps", () => {
     expect(gw.called("PUT", `/app/v1/apps/${APP}/billing-profile`)[0]?.body).toEqual({
       legal: { legal_name: "Shop GmbH", tax_id: "DE123456789" },
       address: { line1: "Hauptstr. 1", city: "Berlin", country: "DE" },
+      default_language: "en",
     });
     await expect(page.getByTestId("go-live-legal_profile")).toHaveAttribute("data-done", "true");
   });

@@ -50,7 +50,10 @@ var refundNS = uuid.MustParse("5e1f0a64-8c37-5d29-b0a1-3f6c2d9e7b48")
 // requestRefund sends (or resends, with a higher attempt) the RefundPayment command of a credit note and marks the note requested. The command id changes
 // with the attempt so the outbox does not swallow a resend; the idempotency key does not, so a provider that dedupes refunds once and payments-worker guards one that
 // does not.
-func (c *Commands) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, cn *model.CreditNote, environment string, attempt, runFrom, generation int) error {
+//
+// confirmed is the reference of a refund an operator has confirmed was made (resolveRefund): the worker then records it instead of asking the provider. It is kept on the
+// note while the command is out, so that a resend carries it too.
+func (c *Commands) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, cn *model.CreditNote, environment string, attempt, runFrom, generation int, confirmed string) error {
 	q := c.q.WithTx(tx)
 	sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: cn.InvoiceID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -67,10 +70,10 @@ func (c *Commands) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.U
 	}
 	envelope := &commandsv1.CommandEnvelope{
 		Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{
-			InvoiceId: cn.InvoiceID.String(), AmountMinor: cn.TotalMinor, Currency: cn.Currency, IdempotencyKey: key}},
+			InvoiceId: cn.InvoiceID.String(), AmountMinor: cn.TotalMinor, Currency: cn.Currency, IdempotencyKey: key, ConfirmedRefundId: confirmed}},
 	}
 	if err := q.MarkRefundRequested(ctx, sqlc.MarkRefundRequestedParams{RefundAttempt: store.I32(attempt), RefundCommandID: cmdID, RefundRequestedAt: now,
-		RefundRunFrom: store.I32(runFrom), RefundGeneration: store.I32(generation), TenantID: tenantID, ID: cn.ID}); err != nil {
+		RefundRunFrom: store.I32(runFrom), RefundGeneration: store.I32(generation), RefundRef: confirmed, TenantID: tenantID, ID: cn.ID}); err != nil {
 		return err
 	}
 	cn.RefundState = model.RefundRequested
@@ -117,7 +120,7 @@ func SettleRefund(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, comma
 type pendingRefund struct {
 	tenant                       uuid.UUID
 	cn                           model.CreditNote
-	env                          string
+	env, confirmed               string
 	attempt, runFrom, generation int
 }
 
@@ -134,7 +137,8 @@ func (c *Commands) sweepRefunds(ctx context.Context, s tenantdb.Scope) error {
 	}
 	for _, r := range rows {
 		p := pendingRefund{tenant: r.TenantID, cn: model.CreditNote{ID: r.ID, InvoiceID: r.InvoiceID, Currency: r.Currency, TotalMinor: r.TotalMinor, TaxMinor: r.TaxMinor}, env: r.Environment,
-			attempt: int(r.RefundAttempt), runFrom: int(r.RefundRunFrom), generation: int(r.RefundGeneration)}
+			confirmed: r.RefundRef,
+			attempt:   int(r.RefundAttempt), runFrom: int(r.RefundRunFrom), generation: int(r.RefundGeneration)}
 		err := s.InTx(ctx, p.tenant, pgx.TxOptions{}, func(tx pgx.Tx) error { return c.resendRefund(ctx, tx, &p) })
 		if tenantdb.Skippable(err) {
 			continue // the tenant is moving: the next pass finds the note again
@@ -158,7 +162,7 @@ func (c *Commands) resendRefund(ctx context.Context, tx pgx.Tx, p *pendingRefund
 	if attempt-p.runFrom >= refundMaxAttempts {
 		return c.failUnanswered(ctx, tx, p, attempt)
 	}
-	return c.requestRefund(ctx, tx, p.tenant, &p.cn, p.env, attempt+1, p.runFrom, p.generation)
+	return c.requestRefund(ctx, tx, p.tenant, &p.cn, p.env, attempt+1, p.runFrom, p.generation, p.confirmed)
 }
 
 func (c *Commands) failUnanswered(ctx context.Context, tx pgx.Tx, p *pendingRefund, attempt int) error {
@@ -175,34 +179,80 @@ func (c *Commands) failUnanswered(ctx context.Context, tx pgx.Tx, p *pendingRefu
 	return creditNoteEvent(ctx, tx, p.tenant, tenantevents.EventCreditNoteRefundFailed, fmt.Sprintf("%s|gen%d|%d", p.cn.ID, p.generation, attempt), c.cfg.Now(), &p.cn)
 }
 
+// lockFailedRefund locks a credit note whose refund failed and returns it, as the operator's retry and resolution both need it.
+func (c *Commands) lockFailedRefund(ctx context.Context, tx pgx.Tx, tenantID, creditNoteID uuid.UUID) (*model.CreditNote, sqlc.LockRefundForRetryRow, error) {
+	row, err := c.q.WithTx(tx).LockRefundForRetry(ctx, sqlc.LockRefundForRetryParams{TenantID: tenantID, ID: creditNoteID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, row, model.ErrNoteNotFound
+	}
+	if err != nil {
+		return nil, row, err
+	}
+	if row.RefundState != model.RefundFailed {
+		return nil, row, model.ErrRefundNotFailed
+	}
+	return &model.CreditNote{ID: creditNoteID, Refund: true, InvoiceID: row.InvoiceID, CustomerID: row.CustomerID, Number: row.Number, Currency: row.Currency,
+		TotalMinor: row.TotalMinor, TaxMinor: row.TaxMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}, row, nil
+}
+
 // retryRefund asks again for a refund that failed: a new run of attempts.
 func (c *Commands) retryRefund(ctx context.Context, tenantID, creditNoteID uuid.UUID) (*model.CreditNote, error) {
 	var out *model.CreditNote
 	err := c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		row, err := c.q.WithTx(tx).LockRefundForRetry(ctx, sqlc.LockRefundForRetryParams{TenantID: tenantID, ID: creditNoteID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return model.ErrNoteNotFound
-		}
+		cn, row, err := c.lockFailedRefund(ctx, tx, tenantID, creditNoteID)
 		if err != nil {
 			return err
 		}
-		if row.RefundState != model.RefundFailed {
-			return model.ErrRefundNotFailed
-		}
-		cn := &model.CreditNote{ID: creditNoteID, Refund: true, InvoiceID: row.InvoiceID, CustomerID: row.CustomerID, Number: row.Number, Currency: row.Currency,
-			TotalMinor: row.TotalMinor, TaxMinor: row.TaxMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
 		generation := int(row.RefundGeneration)
 		if !mayHaveHappened(row.RefundError) {
 			generation++
 		}
 		attempt := int(row.RefundAttempt)
-		if err := c.requestRefund(ctx, tx, tenantID, cn, row.Environment, attempt+1, attempt, generation); err != nil {
+		if err := c.requestRefund(ctx, tx, tenantID, cn, row.Environment, attempt+1, attempt, generation, ""); err != nil {
 			return err
 		}
 		out = cn
 		return audit.Record(ctx, tx, audit.Event{TenantID: tenantID, Action: "credit_note.refund_retried", TargetType: "credit_note", TargetID: creditNoteID.String(),
 			Summary: fmt.Sprintf("asked again for the refund of the credit note %s (%d %s)", cn.Number, cn.TotalMinor, cn.Currency),
 			Detail:  map[string]any{"number": cn.Number, "amount_minor": cn.TotalMinor, "currency": cn.Currency, "same_key": generation == int(row.RefundGeneration)}})
+	})
+	return out, err
+}
+
+// resolveRefund settles a failed refund with what an operator found out at the provider (plan 22 G1): the way out of REFUND_OUTCOME_UNKNOWN, which payments-worker never
+// resolves by asking a provider that does not dedupe. Refunded keeps the key the refund was asked under and has the worker record the reference in its ledger under it, so
+// any later resend is answered from the ledger; the note becomes refunded when the worker answers. Not refunded takes a new key (a generation up) and asks again.
+// Nothing here is done until the operator says which, and each is written to the audit log with what they checked.
+func (c *Commands) resolveRefund(ctx context.Context, tenantID, creditNoteID uuid.UUID, resolution, refundID, note string) (*model.CreditNote, error) {
+	var out *model.CreditNote
+	err := c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		cn, row, err := c.lockFailedRefund(ctx, tx, tenantID, creditNoteID)
+		if err != nil {
+			return err
+		}
+		generation, confirmed := int(row.RefundGeneration), ""
+		if resolution == model.ResolutionRefunded {
+			confirmed = refundID
+		} else {
+			generation++
+		}
+		attempt := int(row.RefundAttempt)
+		if err := c.requestRefund(ctx, tx, tenantID, cn, row.Environment, attempt+1, attempt, generation, confirmed); err != nil {
+			return err
+		}
+		out = cn
+		detail := map[string]any{"number": cn.Number, "amount_minor": cn.TotalMinor, "currency": cn.Currency, "resolution": resolution, "refund_error": row.RefundError,
+			"same_key": generation == int(row.RefundGeneration)}
+		summary := fmt.Sprintf("the refund of the credit note %s (%d %s) was not made: asked again under a new key", cn.Number, cn.TotalMinor, cn.Currency)
+		if confirmed != "" {
+			detail["provider_refund_id"] = confirmed
+			summary = fmt.Sprintf("the refund of the credit note %s (%d %s) was made (%s): recorded", cn.Number, cn.TotalMinor, cn.Currency, confirmed)
+		}
+		if note != "" {
+			detail["note"] = note
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: tenantID, Action: "credit_note.refund_resolved", TargetType: "credit_note", TargetID: creditNoteID.String(),
+			Summary: summary, Detail: detail})
 	})
 	return out, err
 }

@@ -513,7 +513,7 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.waitUntilPayable(r.Context(), resp.GetInvoiceToken())
 		hostedHeaders(w)
-		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+		http.Redirect(w, r, withWait("/i/"+resp.GetInvoiceToken()+langSuffix(r)), http.StatusSeeOther)
 	}
 }
 

@@ -4,6 +4,7 @@ package command
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -94,8 +95,15 @@ func Confirm(ctx context.Context, d Deps, in Receipt) (Confirmation, error) {
 	if strings.ToUpper(strings.TrimSpace(in.Currency)) != st.Currency {
 		return Confirmation{}, errkey.Newf(codes.InvalidArgument, "payments.transfer.bad_currency", "the invoice is in %s", st.Currency)
 	}
-	if err := d.checkOpen(ctx, in.Tenant, in.Invoice); err != nil {
+	// A bank reference confirmed before is answered from the record whatever the invoice has become since (usually paid, by that very receipt): checkOpen is for new money.
+	known, err := d.knownReference(ctx, in.Tenant, in.Invoice, ref)
+	if err != nil {
 		return Confirmation{}, err
+	}
+	if !known {
+		if err := d.checkOpen(ctx, in.Tenant, in.Invoice); err != nil {
+			return Confirmation{}, err
+		}
 	}
 	res, err := d.Transfers.Record(ctx, store.NewReceipt{TenantID: in.Tenant, InvoiceID: in.Invoice, Provider: banktransfer.Name, Environment: st.Charge.Environment,
 		AmountMinor: in.AmountMinor, Currency: st.Currency, BankReference: ref, ReceivedAt: in.ReceivedAt.UTC(), Note: strings.TrimSpace(in.Note), RecordedBy: actor(in.Actor)}, st.TotalMinor)
@@ -118,6 +126,16 @@ func Confirm(ctx context.Context, d Deps, in Receipt) (Confirmation, error) {
 		return Confirmation{}, err
 	}
 	return out, nil
+}
+
+// knownReference reports whether a receipt with this bank reference is recorded for the invoice. Record decides what a repeat means (a duplicate, or a refusal when the
+// amount differs).
+func (d Deps) knownReference(ctx context.Context, tenant, invoice uuid.UUID, ref string) (bool, error) {
+	receipts, err := d.Transfers.Receipts(ctx, tenant, invoice)
+	if err != nil {
+		return false, err
+	}
+	return slices.ContainsFunc(receipts, func(r store.Receipt) bool { return r.BankReference == ref }), nil
 }
 
 // Close is the decision to give up on a pending transfer.

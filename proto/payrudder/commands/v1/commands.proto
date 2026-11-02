@@ -202,6 +202,9 @@ message RefundPayment {
   string currency = 3;
   string psp_charge_id = 4;
   string idempotency_key = 5;
+  // Set when an operator has confirmed that this refund was made (at the provider or outside Payrudder) and gave its reference: the provider is not asked, the worker
+  // writes the fact to its ledger under idempotency_key and answers PaymentRefunded with this reference.
+  string confirmed_refund_id = 6;
 }
 
 message QueryPaymentStatus {

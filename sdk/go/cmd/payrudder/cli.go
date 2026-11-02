@@ -77,8 +77,11 @@ usage: payrudder <command> [flags]
   webhooks list               your webhook endpoints
   webhooks deliveries         deliveries to your endpoints and how each went; --watch follows them
   webhooks trigger ping       send a test event to an endpoint and report how it answered
+  webhooks redeliver          send a delivery again from the start
   webhooks listen             receive deliveries on this machine, verify them and forward them to your app
   customers list              your customers
+  customers create            make a customer
+  plans create                make a plan (its prices are a version, published through the API)
   invoices list               your invoices
   version                     the version of this program and of the SDK it is built on
 
@@ -106,10 +109,12 @@ func (c *cli) dispatch(ctx context.Context, args []string) error {
 		return c.group(ctx, "events", rest, map[string]func(context.Context, []string) error{"send": c.eventsSend, "tail": c.eventsTail})
 	case "webhooks":
 		return c.group(ctx, "webhooks", rest, map[string]func(context.Context, []string) error{
-			"list": c.webhooksList, "deliveries": c.webhooksDeliveries, "trigger": c.webhooksTrigger, "listen": c.webhooksListen,
+			"list": c.webhooksList, "deliveries": c.webhooksDeliveries, "trigger": c.webhooksTrigger, "listen": c.webhooksListen, "redeliver": c.webhooksRedeliver,
 		})
 	case "customers":
-		return c.group(ctx, "customers", rest, map[string]func(context.Context, []string) error{"list": c.customersList})
+		return c.group(ctx, "customers", rest, map[string]func(context.Context, []string) error{"list": c.customersList, "create": c.customersCreate})
+	case "plans":
+		return c.group(ctx, "plans", rest, map[string]func(context.Context, []string) error{"create": c.plansCreate})
 	case "invoices":
 		return c.group(ctx, "invoices", rest, map[string]func(context.Context, []string) error{"list": c.invoicesList})
 	}

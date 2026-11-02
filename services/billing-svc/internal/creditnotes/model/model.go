@@ -35,6 +35,12 @@ const (
 	RefundFailed    = "failed"
 )
 
+// How an operator resolves a failed refund (ResolveRefund): the customer was paid back, or was not.
+const (
+	ResolutionRefunded    = "refunded"
+	ResolutionNotRefunded = "not_refunded"
+)
+
 // CreditNote is a numbered correction of a paid invoice.
 type CreditNote struct {
 	ID, CustomerID, InvoiceID uuid.UUID

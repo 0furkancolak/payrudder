@@ -1306,7 +1306,25 @@
       "new": "New credit note",
       "hint": "Credits a paid invoice in full or in part. The credit goes to the customer's balance, or back to the card.",
       "allWhere": "Anywhere",
-      "taxGiven": "Tax given back"
+      "taxGiven": "Tax given back",
+      "resolve": {
+        "action": "Resolve refund",
+        "title": "Resolve the refund of {number}",
+        "description": "Use this when a refund failed or its outcome is unknown. The provider is not asked again until you say what you found: check there first whether the customer was paid back.",
+        "formLabel": "resolve refund",
+        "found": "What did you find at the provider?",
+        "refunded": "Paid back",
+        "notRefunded": "Not paid back",
+        "refundId": "Refund reference",
+        "refundIdHint": "The provider's reference of the refund, or of the transfer you made outside Payrudder. It is written to the payment ledger.",
+        "notRefundedHint": "The refund will be asked of the provider again under a new key. If the first one did go through, the customer is paid twice, so only choose this after checking.",
+        "note": "What you checked",
+        "noteHint": "Optional. Kept in the audit log.",
+        "submitRefunded": "Record as refunded",
+        "submitNotRefunded": "Ask again",
+        "confirmRefunded": "Record {number} ({amount}) as refunded, with the reference {ref}? The credit note becomes refunded and the refund is written to the payment ledger.",
+        "confirmNotRefunded": "You are saying that {number} ({amount}) was not paid back. The refund is asked of the provider again under a new key; if the first one went through, the customer is paid twice. Continue?"
+      }
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2786,7 +2804,10 @@
         "bad_page_size": "The page size must be between 1 and 200.",
         "bad_page_token": "The page token is not valid. Start the list again.",
         "not_found": "This credit note was not found.",
-        "reason_too_long": "The reason can be at most 500 characters."
+        "reason_too_long": "The reason can be at most 500 characters.",
+        "bad_refund_id": "Give the provider's reference of the refund (one line, at most 200 characters) when the refund was made, and none when it was not.",
+        "bad_resolution": "Choose whether the customer was paid back or not.",
+        "note_too_long": "The note can be at most 500 characters."
       },
       "dunning": {
         "bad_delay": "Each retry delay must be between 1 and 720 hours.",

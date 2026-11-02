@@ -104,6 +104,8 @@ func TestBilling(t *testing.T) {
 		{"ProviderConfirmedPaymentsSettleTheSaga", testSettleInvoicePayment},
 		{"InvoiceAndCreditNoteEventsAreHandedToPlansOnce", testTenantEvents},
 		{"CreditNoteRefundsToTheCardAndIsRetriedUntilAnswered", testCreditNoteRefundToCard},
+		{"AnUnknownRefundIsResolvedByTheOperator", testResolveCreditNoteRefund},
+		{"ACreditNoteThatFailsMidwayLeavesNothingBehind", testCreditNoteRollsBackWhole},
 		{"FeeInvoiceCarriesTheCouponAndServicePeriod", testFeeInvoiceCarriesTheCouponAndServicePeriod},
 		{"TaxIsAddedOnTopOfTheInvoicesPayrudderRaises", testTaxIsAddedOnTopOfTheInvoicesPayrudderRaises},
 		{"FeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit", testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit},

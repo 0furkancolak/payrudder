@@ -33,6 +33,9 @@ WHERE tenant_id = @tenant_id AND id = @id;
 -- name: NextSagaEventSeq :one
 SELECT (COALESCE(max(seq), 0) + 1)::int AS seq FROM saga_events WHERE tenant_id = @tenant_id AND saga_id = @saga_id;
 
+-- name: SagaEventCauseExists :one
+SELECT EXISTS (SELECT 1 FROM saga_events WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND cause = @cause::text);
+
 -- name: InsertSagaEvent :exec
 INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, command_id, at)
 VALUES (@tenant_id, @saga_id, @seq, @from_state, @to_state, @cause, sqlc.narg('command_id'), @at);
