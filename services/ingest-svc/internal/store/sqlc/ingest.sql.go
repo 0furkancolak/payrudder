@@ -49,7 +49,7 @@ func (q *Queries) EnqueueOutbox(ctx context.Context, arg EnqueueOutboxParams) er
 }
 
 const findIdempotencyKeys = `-- name: FindIdempotencyKeys :many
-SELECT idempotency_key, event_id, payload_hash, created_at
+SELECT idempotency_key, event_id, payload_hash, created_at, customer_id, meter_code, event_time, quantity_units
 FROM idempotency_keys
 WHERE tenant_id = $1::uuid
   AND idempotency_key = ANY($2::text[])
@@ -67,6 +67,10 @@ type FindIdempotencyKeysRow struct {
 	EventID        string
 	PayloadHash    []byte
 	CreatedAt      time.Time
+	CustomerID     *uuid.UUID
+	MeterCode      *string
+	EventTime      *time.Time
+	QuantityUnits  *int64
 }
 
 func (q *Queries) FindIdempotencyKeys(ctx context.Context, arg FindIdempotencyKeysParams) ([]FindIdempotencyKeysRow, error) {
@@ -83,6 +87,10 @@ func (q *Queries) FindIdempotencyKeys(ctx context.Context, arg FindIdempotencyKe
 			&i.EventID,
 			&i.PayloadHash,
 			&i.CreatedAt,
+			&i.CustomerID,
+			&i.MeterCode,
+			&i.EventTime,
+			&i.QuantityUnits,
 		); err != nil {
 			return nil, err
 		}
@@ -95,24 +103,33 @@ func (q *Queries) FindIdempotencyKeys(ctx context.Context, arg FindIdempotencyKe
 }
 
 const insertIdempotencyKeys = `-- name: InsertIdempotencyKeys :many
-INSERT INTO idempotency_keys (tenant_id, idempotency_key, event_id, payload_hash, created_at)
-SELECT $1::uuid, k.key, e.id, h.hash, $2::timestamptz
+INSERT INTO idempotency_keys (tenant_id, idempotency_key, event_id, payload_hash, created_at, customer_id, meter_code, event_time, quantity_units)
+SELECT $1::uuid, k.key, e.id, h.hash, $2::timestamptz, c.id, m.code, t.at, q.units
 FROM unnest($3::text[]) WITH ORDINALITY AS k(key, n)
 JOIN unnest($4::text[]) WITH ORDINALITY AS e(id, n) USING (n)
 JOIN unnest($5::bytea[]) WITH ORDINALITY AS h(hash, n) USING (n)
+JOIN unnest($6::uuid[]) WITH ORDINALITY AS c(id, n) USING (n)
+JOIN unnest($7::text[]) WITH ORDINALITY AS m(code, n) USING (n)
+JOIN unnest($8::timestamptz[]) WITH ORDINALITY AS t(at, n) USING (n)
+JOIN unnest($9::bigint[]) WITH ORDINALITY AS q(units, n) USING (n)
 ON CONFLICT DO NOTHING
 RETURNING idempotency_key
 `
 
 type InsertIdempotencyKeysParams struct {
-	TenantID  uuid.UUID
-	CreatedAt time.Time
-	Keys      []string
-	EventIds  []string
-	Hashes    [][]byte
+	TenantID    uuid.UUID
+	CreatedAt   time.Time
+	Keys        []string
+	EventIds    []string
+	Hashes      [][]byte
+	CustomerIds []uuid.UUID
+	MeterCodes  []string
+	EventTimes  []time.Time
+	Quantities  []int64
 }
 
-// Returns the keys that were new. Rows that already exist in this month's bucket are skipped silently.
+// Returns the keys that were new. Rows that already exist in this month's bucket are skipped silently. The customer, meter, time and quantity of the event are kept
+// with the key, so that a correction of the event (ADR 0027) can find what it corrects.
 func (q *Queries) InsertIdempotencyKeys(ctx context.Context, arg InsertIdempotencyKeysParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, insertIdempotencyKeys,
 		arg.TenantID,
@@ -120,6 +137,10 @@ func (q *Queries) InsertIdempotencyKeys(ctx context.Context, arg InsertIdempoten
 		arg.Keys,
 		arg.EventIds,
 		arg.Hashes,
+		arg.CustomerIds,
+		arg.MeterCodes,
+		arg.EventTimes,
+		arg.Quantities,
 	)
 	if err != nil {
 		return nil, err

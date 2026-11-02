@@ -49,6 +49,7 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 	return []Route{
 		// Usage events
 		{"POST", "/v1/events", AccessTenant, ratelimit.ClassIngest, s.ingestEvents},
+		{"POST", "/v1/events/corrections", AccessTenant, ratelimit.ClassIngest, s.correctEvents},
 		// Customers
 		{"POST", "/v1/customers", AccessTenant, ratelimit.ClassWrite, s.createCustomer},
 		{"GET", "/v1/customers", AccessTenant, ratelimit.ClassRead, s.listCustomers},

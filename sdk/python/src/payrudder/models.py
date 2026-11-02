@@ -32,12 +32,28 @@ class _EventResultRequired(TypedDict):
 
 class EventResult(_EventResultRequired, total=False):
     event_id: str
-    error_code: Literal["UNKNOWN_METER", "UNKNOWN_CUSTOMER", "EVENT_TOO_OLD", "EVENT_IN_FUTURE", "INVALID_EVENT_TIME", "INVALID_QUANTITY", "INVALID_QUANTITY_PRECISION", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_KEY_REUSED", "INVALID_PROPERTIES"]
+    error_code: Literal["UNKNOWN_METER", "UNKNOWN_CUSTOMER", "EVENT_TOO_OLD", "EVENT_IN_FUTURE", "INVALID_EVENT_TIME", "INVALID_QUANTITY", "INVALID_QUANTITY_PRECISION", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_KEY_REUSED", "INVALID_PROPERTIES", "INVALID_CORRECTION", "CORRECTION_UNKNOWN_EVENT", "CORRECTION_MISMATCH", "CORRECTION_UNSUPPORTED_METER", "CORRECTION_OF_CORRECTION"]
     error_message: str
 
 
 class IngestEventsResponse(TypedDict):
     results: list[EventResult]
+
+
+class _EventCorrectionRequired(TypedDict):
+    corrects: str
+    reason: str
+    customer_external_id: str
+    meter_code: str
+    quantity: str | int | Decimal
+
+
+class EventCorrection(_EventCorrectionRequired, total=False):
+    idempotency_key: str
+
+
+class CorrectEventsRequest(TypedDict):
+    corrections: list[EventCorrection]
 
 
 class Address(TypedDict):

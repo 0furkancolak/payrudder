@@ -11,6 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+const resetEventCorrections = `-- name: ResetEventCorrections :execrows
+DELETE FROM event_corrections WHERE tenant_id = $1
+`
+
+// The record of the corrections made to the tenant's events (ADR 0027).
+func (q *Queries) ResetEventCorrections(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetEventCorrections, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetIdempotencyKeys = `-- name: ResetIdempotencyKeys :execrows
 
 DELETE FROM idempotency_keys WHERE tenant_id = $1

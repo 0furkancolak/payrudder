@@ -44,6 +44,8 @@ type Event struct {
 	IngestedAt         time.Time
 	Period             string
 	Props              map[string]string
+	// Corrects is the event_id of the event this one corrects (ADR 0027); empty for any other event. Units is then a signed difference to add to that event's period.
+	Corrects string
 }
 
 // DecodeError marks a record that can never be applied, however often it is retried. It goes to the DLQ.
@@ -57,7 +59,7 @@ func (e *DecodeError) Unwrap() error { return e.Err }
 
 // Decode parses and validates a usage.events.v1 record. Every error is a *DecodeError. The rules:
 // tenant_id and customer_id are UUIDs; event_id is 1 to 64 characters of [A-Za-z0-9_-]; meter_code is set; period_id is
-// YYYY-MM; quantity_scale is at most 6; quantity_units is not negative; event_time and ingested_at are valid timestamps.
+// YYYY-MM; quantity_scale is at most 6; quantity_units is not negative, unless the event is a correction (a difference may be); event_time and ingested_at are valid timestamps.
 func Decode(rec *kgo.Record) (Event, error) {
 	var pb eventsv1.UsageEvent
 	if err := proto.Unmarshal(rec.Value, &pb); err != nil {
@@ -83,8 +85,10 @@ func Decode(rec *kgo.Record) (Event, error) {
 		return bad("period_id %q is malformed", pb.GetPeriodId())
 	case pb.GetQuantityScale() > MaxScale:
 		return bad("quantity_scale %d is out of range", pb.GetQuantityScale())
-	case pb.GetQuantityUnits() < 0:
+	case pb.GetQuantityUnits() < 0 && pb.GetCorrection() == nil:
 		return bad("quantity_units %d is negative", pb.GetQuantityUnits())
+	case pb.GetCorrection() != nil && !eventIDRe.MatchString(pb.GetCorrection().GetCorrectsEventId()):
+		return bad("corrects_event_id %q is malformed", pb.GetCorrection().GetCorrectsEventId())
 	case pb.GetEventTime() == nil || pb.GetEventTime().CheckValid() != nil:
 		return bad("event_time is missing or invalid")
 	case pb.GetIngestedAt() == nil || pb.GetIngestedAt().CheckValid() != nil:
@@ -94,7 +98,7 @@ func Decode(rec *kgo.Record) (Event, error) {
 		EventID: pb.GetEventId(), TenantID: tenant, CustomerID: customer, CustomerExternalID: pb.GetCustomerExternalId(),
 		Meter: pb.GetMeterCode(), Units: pb.GetQuantityUnits(), Scale: int(pb.GetQuantityScale()),
 		EventTime: pb.GetEventTime().AsTime(), IngestedAt: pb.GetIngestedAt().AsTime(),
-		Period: pb.GetPeriodId(), Props: pb.GetProperties(),
+		Period: pb.GetPeriodId(), Props: pb.GetProperties(), Corrects: pb.GetCorrection().GetCorrectsEventId(),
 	}, nil
 }
 
@@ -163,11 +167,18 @@ func (m Meter) Matches(props map[string]string) bool {
 	return true
 }
 
-// Value is what an event contributes to its meter's aggregate: its quantity, 1 for COUNT, and nothing for UNIQUE (it counts the distinct values of a
-// property, see DistinctValue).
+// AcceptsCorrection reports whether the meter can take a correction of an event (ADR 0027): it adds (SUM, COUNT), so a signed difference means something, and it has no
+// property filter, so the original was counted whatever it carried. Ingest refuses the others; the consumers ignore a correction of them that arrives anyway.
+func (m Meter) AcceptsCorrection() bool { return m.Aggregation.Additive() && len(m.Filter) == 0 }
+
+// Value is what an event contributes to its meter's aggregate: its quantity, 1 for COUNT (a correction of a COUNT event is -1, 0 or +1, already worked out by ingest),
+// and nothing for UNIQUE (it counts the distinct values of a property, see DistinctValue).
 func (m Meter) Value(e Event) int64 {
 	switch m.Aggregation {
 	case Count:
+		if e.Corrects != "" {
+			return e.Units
+		}
 		return 1
 	case Unique:
 		return 0

@@ -44,6 +44,11 @@ func TestIngestSvc(t *testing.T) {
 	t.Run("RoleSeparationAndRLS", testRoleSeparation)
 	t.Run("RelayCrashAfterProduceNeverLosesEvents", testRelayCrash)
 	t.Run("KafkaPausedLosesNothing", testKafkaPaused)
+	t.Run("ACorrectionReplacesTheQuantityOfAnEventOnce", testCorrectionReplacesTheQuantity)
+	t.Run("ACorrectionIsRefusedWithoutClaimingItsKey", testCorrectionRefusals)
+	t.Run("ConcurrentCorrectionsOfOneEventSeeEachOther", testConcurrentCorrections)
+	t.Run("ACorrectionOfACountEventCancelsOrCountsItAgain", testCountCorrections)
+	t.Run("ACorrectionNeedsTheKeyOfTheOriginalToBeRemembered", testCorrectionWindow)
 	t.Run("PartitionMaintenance", testPartitionMaintenance) // drops old partitions
 	t.Run("KeyRetentionOutlivesTheLateWindow", testKeyRetentionOutlivesTheLateWindow)
 }
@@ -439,7 +444,7 @@ func testRoleSeparation(t *testing.T) {
 		t.Fatalf("forced RLS: %v", err)
 	}
 	tables, err := pgxx.TenantTables(ctx, shared.system, []string{"outbox"})
-	if err != nil || len(tables) != 1 || tables[0] != "idempotency_keys" {
+	if err != nil || len(tables) != 2 || tables[0] != "event_corrections" || tables[1] != "idempotency_keys" {
 		t.Fatalf("tenant tables = %v, %v", tables, err)
 	}
 

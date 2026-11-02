@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Check, CircleCheck, Copy, CreditCard, Coins, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
+import { Ban, Check, CircleCheck, Copy, CreditCard, Coins, Link2, MapPin, Pencil, Plus, Undo2, UserPen } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { addressLine, useCustomerBlockEvents } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
+import CorrectUsageSheet from "./CorrectUsageSheet.vue";
 import CustomerPaymentPage from "./CustomerPaymentPage.vue";
 import UpcomingInvoiceCard from "./UpcomingInvoiceCard.vue";
 import { countryName, flagOf, headline, isBlocked, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
@@ -55,6 +56,7 @@ const blockEvents = useCustomerBlockEvents(() => props.tenantId, () => (tab.valu
 const categoryText = (c?: string) => (c ? t(`billing.customers.block.categories.${c}`) : "");
 
 const granting = ref(false);
+const correcting = ref(false);
 const copied = ref(false);
 async function copyId() {
   copied.value = await copyText(id.value);
@@ -111,6 +113,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />
+      <Button size="sm" variant="outline" data-testid="customer-correct-usage" @click="correcting = true"><Undo2 aria-hidden="true" />{{ t("billing.corrections.action") }}</Button>
       <Button v-if="!blocked" size="sm" variant="outline" data-testid="customer-block" @click="emit('block')"><Ban aria-hidden="true" />{{ t("billing.customers.block.action") }}</Button>
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -152,6 +155,8 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         </dd>
       </div>
     </dl>
+
+    <CorrectUsageSheet v-if="!readonly" v-model:open="correcting" :tenant-id="tenantId" :customer="id" />
 
     <Tabs v-model="tab" class="min-w-0 gap-4">
       <TabsList class="border-border/70 w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b" :aria-label="t('billing.customers.sheet.sections')">

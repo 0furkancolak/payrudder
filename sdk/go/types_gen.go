@@ -632,6 +632,11 @@ type ContractWithdrawal struct {
 	RefundTime  *time.Time `json:"refund_time"`
 }
 
+// CorrectEventsRequest is the request body of CorrectEvents.
+type CorrectEventsRequest struct {
+	Corrections []EventCorrection `json:"corrections"`
+}
+
 // Coupon is an object of the API; see components.schemas.Coupon in api/openapi/v1.yaml.
 type Coupon struct {
 	// 2–40 letters, digits, - or _
@@ -1359,6 +1364,23 @@ type EntitlementTerms struct {
 	Mode               string `json:"mode,omitempty"`
 }
 
+// EventCorrection is an object of the API; see components.schemas.EventCorrection in api/openapi/v1.yaml.
+type EventCorrection struct {
+	// The correction's own key. Required for live keys. Optional in sandbox (then no dedup).
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	// The idempotency_key of the event to correct, as it was sent
+	Corrects string `json:"corrects"`
+	// Why. Kept with the correction
+	Reason string `json:"reason"`
+	// The customer of the event being corrected
+	CustomerExternalID string `json:"customer_external_id"`
+	// The meter of the event being corrected
+	MeterCode string `json:"meter_code"`
+	// The quantity the corrected event should have had, a non-negative decimal with at most the meter's
+	// quantity_scale decimal places. A string or a JSON number. 0 cancels the event.
+	Quantity Decimal `json:"quantity"`
+}
+
 // EventResult is an object of the API; see components.schemas.EventResult in api/openapi/v1.yaml.
 type EventResult struct {
 	// One of: accepted, duplicate, rejected.
@@ -1367,7 +1389,8 @@ type EventResult struct {
 	EventID string `json:"event_id,omitempty"`
 	// One of: UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME,
 	// INVALID_QUANTITY, INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID,
-	// IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES.
+	// IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES, INVALID_CORRECTION, CORRECTION_UNKNOWN_EVENT,
+	// CORRECTION_MISMATCH, CORRECTION_UNSUPPORTED_METER, CORRECTION_OF_CORRECTION.
 	ErrorCode    string `json:"error_code,omitempty"`
 	ErrorMessage string `json:"error_message,omitempty"`
 }

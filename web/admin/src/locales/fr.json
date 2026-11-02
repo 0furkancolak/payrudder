@@ -2073,6 +2073,38 @@
       "expected": "attendu {fee}",
       "batch": "Virement / lot",
       "empty": "Aucun paiement réussi du fournisseur sur cette période."
+    },
+    "corrections": {
+      "action": "Corriger l'utilisation",
+      "title": "Corriger un événement d'utilisation",
+      "hint": "Corrigez une quantité envoyée par votre application pour {customer}. L'événement lui-même n'est pas modifié : la différence est ajoutée à la période à laquelle il appartient, et si cette période est close, elle est facturée sur la prochaine facture.",
+      "formLabel": "corriger l'utilisation",
+      "meter": "Compteur",
+      "pickMeter": "Choisir un compteur",
+      "corrects": "Clé de l'événement",
+      "correctsHint": "La clé d'idempotence que votre application a envoyée avec l'événement.",
+      "quantity": "Quantité correcte",
+      "quantityHint": "0 annule l'événement. Pour un compteur de comptage, tout nombre supérieur à 0 le compte de nouveau.",
+      "reason": "Motif",
+      "submit": "Corriger l'utilisation",
+      "errors": {
+        "meter": "Choisissez un compteur.",
+        "corrects": "Saisissez la clé d'idempotence de l'événement.",
+        "quantity": "Saisissez un nombre supérieur ou égal à 0.",
+        "reason": "Indiquez le motif."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "La correction n'est pas valide : il faut un motif de 500 caractères au plus et la clé de l'événement à corriger.",
+        "CORRECTION_UNKNOWN_EVENT": "Cet événement est inconnu. Vérifiez la clé ; un événement peut être corrigé pendant au moins 45 jours après son envoi.",
+        "CORRECTION_MISMATCH": "Cet événement appartient à un autre client ou compteur.",
+        "CORRECTION_UNSUPPORTED_METER": "Ce compteur ne peut pas être corrigé : seuls les compteurs de somme et de comptage sans filtre de propriété le peuvent.",
+        "CORRECTION_OF_CORRECTION": "Cette clé appartient à une correction. Corrigez plutôt l'événement d'origine.",
+        "UNKNOWN_METER": "Ce compteur n'existe pas.",
+        "UNKNOWN_CUSTOMER": "Ce client n'existe pas.",
+        "INVALID_QUANTITY": "La quantité doit être un nombre supérieur ou égal à 0.",
+        "INVALID_QUANTITY_PRECISION": "La quantité a plus de décimales que le compteur n'en autorise.",
+        "IDEMPOTENCY_KEY_REUSED": "Cette correction a déjà été faite avec d'autres valeurs."
+      }
     }
   },
   "affiliates": {

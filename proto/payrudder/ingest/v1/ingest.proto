@@ -17,6 +17,8 @@ service IngestService {
 message IngestEventsRequest {
   // 1..500 events.
   repeated IncomingEvent events = 1;
+  // Who is calling, for the record of a correction: the signed-in person's address, or "key:<api key id>". The gateway sets it; nothing else reads it.
+  string actor = 2;
 }
 
 message IncomingEvent {
@@ -29,6 +31,11 @@ message IncomingEvent {
   google.protobuf.Timestamp event_time = 5;
   // At most 32 entries, 4 KiB in total.
   map<string, string> properties = 6;
+  // A correction (ADR 0027): the idempotency key of the event this one corrects. Then `quantity` is the quantity that event should have had (0 cancels it), `reason` is
+  // required, customer and meter must be the original's, and event_time and properties are omitted (it lands at the original's time).
+  string corrects = 7;
+  // 1..500 characters; only with `corrects`.
+  string reason = 8;
 }
 
 message IngestEventsResponse {
@@ -46,8 +53,9 @@ message EventResult {
   Status status = 1;
   // Set for ACCEPTED and DUPLICATE (the original id for a duplicate).
   string event_id = 2;
-  // UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION,
-  // IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES.
+  // UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION,
+  // IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES and, for a correction, INVALID_CORRECTION,
+  // CORRECTION_UNKNOWN_EVENT, CORRECTION_MISMATCH, CORRECTION_UNSUPPORTED_METER, CORRECTION_OF_CORRECTION.
   string error_code = 3;
   string error_message = 4;
 }

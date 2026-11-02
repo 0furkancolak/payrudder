@@ -34,4 +34,16 @@ message UsageEvent {
   string period_id = 13;
   // Version of the meter the event was validated against.
   int32 meter_version = 14;
+  // Set when this event corrects an earlier one (ADR 0027). Then quantity_units is the signed difference to add to the original's period (it may be negative; for any
+  // other event it may not), event_time and period_id are the original's, and only meters that add (SUM, COUNT) take it.
+  Correction correction = 20;
+}
+
+// Correction says which event a correcting event adjusts, and why.
+message Correction {
+  // The event_id of the event corrected (ingest-svc assigned it; the client knows the idempotency key).
+  string corrects_event_id = 1;
+  string reason = 2;
+  // The signed-in person's address, or "key:<api key id>".
+  string corrected_by = 3;
 }

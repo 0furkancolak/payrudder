@@ -43,6 +43,13 @@ class EventsResource:
             results.extend(response.get("results", []))
         return results
 
+    def correct_events(self, body: m.CorrectEventsRequest, *, options: RequestOptions | None = None) -> m.IngestEventsResponse:
+        """Correct usage events (1..500 per request, at most 1 MiB).
+
+        ``POST /v1/events/corrections``
+        """
+        return cast("m.IngestEventsResponse", self._client._request("POST", "/v1/events/corrections", body=body, options=options))
+
 
 class CustomersResource:
     """``/v1/customers`` and related operations."""
@@ -1777,6 +1784,13 @@ class AsyncEventsResource:
             response = await self.ingest_events({"events": batch}, options=options)
             results.extend(response.get("results", []))
         return results
+
+    async def correct_events(self, body: m.CorrectEventsRequest, *, options: RequestOptions | None = None) -> m.IngestEventsResponse:
+        """Correct usage events (1..500 per request, at most 1 MiB).
+
+        ``POST /v1/events/corrections``
+        """
+        return cast("m.IngestEventsResponse", await self._client._request("POST", "/v1/events/corrections", body=body, options=options))
 
 
 class AsyncCustomersResource:

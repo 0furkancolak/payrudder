@@ -400,6 +400,13 @@ MODELS: dict[str, dict[str, Any]] = {
     'SetContractWithdrawalStatusRequest': {
         'refund_amount_minor': ('int',),
     },
+    'UpcomingInvoice': {
+        'lines': ('list', ('model', 'InvoiceLine')),
+        'subtotal_minor': ('int',),
+        'tax_minor': ('int',),
+        'credit_minor': ('int',),
+        'total_minor': ('int',),
+    },
     'UploadAssetsResponse': {
         'results': ('list', ('model', 'UploadAssetsResult')),
     },

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 OPERATIONS: dict[str, tuple[str, str, str]] = {
     "ingestEvents": ("events", "ingest_events", "POST /v1/events"),
+    "correctEvents": ("events", "correct_events", "POST /v1/events/corrections"),
     "listCustomers": ("customers", "list_customers", "GET /v1/customers"),
     "createCustomer": ("customers", "create_customer", "POST /v1/customers"),
     "getCustomer": ("customers", "get_customer", "GET /v1/customers/{external_id}"),

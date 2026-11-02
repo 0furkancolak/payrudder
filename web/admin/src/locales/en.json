@@ -2073,6 +2073,38 @@
       "expected": "expected {fee}",
       "batch": "Payout / batch",
       "empty": "No successful provider payments in this period."
+    },
+    "corrections": {
+      "action": "Correct usage",
+      "title": "Correct a usage event",
+      "hint": "Fix a quantity your app sent for {customer}. The event itself is not changed: the difference is added to the period it belongs to, and once that period is closed it is billed on the next invoice.",
+      "formLabel": "correct usage",
+      "meter": "Meter",
+      "pickMeter": "Choose a meter",
+      "corrects": "Event key",
+      "correctsHint": "The idempotency key your app sent with the event.",
+      "quantity": "Quantity it should have been",
+      "quantityHint": "0 cancels the event. For a count meter, any number above 0 counts it again.",
+      "reason": "Reason",
+      "submit": "Correct usage",
+      "errors": {
+        "meter": "Choose a meter.",
+        "corrects": "Enter the idempotency key of the event.",
+        "quantity": "Enter a number, 0 or more.",
+        "reason": "Say why."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "The correction is not valid: it needs a reason of up to 500 characters and the key of the event to correct.",
+        "CORRECTION_UNKNOWN_EVENT": "No such event is known. Check the key; an event can be corrected for at least 45 days after it was sent.",
+        "CORRECTION_MISMATCH": "That event belongs to another customer or meter.",
+        "CORRECTION_UNSUPPORTED_METER": "This meter cannot be corrected: only sum and count meters without a property filter can.",
+        "CORRECTION_OF_CORRECTION": "That key belongs to a correction. Correct the original event again instead.",
+        "UNKNOWN_METER": "That meter does not exist.",
+        "UNKNOWN_CUSTOMER": "That customer does not exist.",
+        "INVALID_QUANTITY": "The quantity must be a number, 0 or more.",
+        "INVALID_QUANTITY_PRECISION": "The quantity has more decimal places than the meter allows.",
+        "IDEMPOTENCY_KEY_REUSED": "This correction was already made with different values."
+      }
     }
   },
   "affiliates": {

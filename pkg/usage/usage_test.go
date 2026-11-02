@@ -118,3 +118,48 @@ func TestFromProto(t *testing.T) {
 		t.Fatal("unspecified aggregation is SUM, COUNT stays COUNT, no filter is nil")
 	}
 }
+
+// A correction (ADR 0027) is the only event whose quantity may be negative, and it says which event it corrects; a COUNT meter takes its difference as it is, where an
+// ordinary event counts one.
+func TestCorrectionsMayBeNegative(t *testing.T) {
+	c := valid()
+	c.QuantityUnits = -3
+	if _, err := Decode(rec(t, c)); err == nil {
+		t.Fatal("a negative quantity without a correction was accepted")
+	}
+	c.Correction = &eventsv1.Correction{CorrectsEventId: "ev_0", Reason: "typo", CorrectedBy: "key:k1"}
+	ev, err := Decode(rec(t, c))
+	if err != nil || ev.Units != -3 || ev.Corrects != "ev_0" {
+		t.Fatalf("decoded %+v, %v; want units -3 correcting ev_0", ev, err)
+	}
+	c.Correction.CorrectsEventId = "not valid!"
+	if _, err := Decode(rec(t, c)); err == nil {
+		t.Fatal("a correction of a malformed event id was accepted")
+	}
+
+	count := Meter{Aggregation: Count}
+	if v := count.Value(Event{Units: 5}); v != 1 {
+		t.Errorf("an ordinary COUNT event counts %d, want 1", v)
+	}
+	if v := count.Value(Event{Units: -1, Corrects: "ev_0"}); v != -1 {
+		t.Errorf("a cancelling COUNT correction counts %d, want -1", v)
+	}
+	if v := (Meter{Aggregation: Sum}).Value(Event{Units: -3, Corrects: "ev_0"}); v != -3 {
+		t.Errorf("a SUM correction adds %d, want -3", v)
+	}
+}
+
+func TestOnlyMetersThatAddAcceptCorrections(t *testing.T) {
+	for _, c := range []struct {
+		m    Meter
+		want bool
+	}{
+		{Meter{Aggregation: Sum}, true}, {Meter{Aggregation: Count}, true},
+		{Meter{Aggregation: Max}, false}, {Meter{Aggregation: Last}, false}, {Meter{Aggregation: Unique, ValueProperty: "u"}, false},
+		{Meter{Aggregation: Sum, Filter: map[string][]string{"region": {"eu"}}}, false},
+	} {
+		if got := c.m.AcceptsCorrection(); got != c.want {
+			t.Errorf("%+v accepts a correction: %v, want %v", c.m, got, c.want)
+		}
+	}
+}

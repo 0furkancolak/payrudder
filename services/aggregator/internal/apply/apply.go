@@ -109,7 +109,7 @@ type Handler struct {
 
 type metrics struct {
 	applied, duplicates, late, filtered, frozen, dlq, fenced metric.Int64Counter
-	missingValue, lateLast                                   metric.Int64Counter
+	missingValue, lateLast, unsupportedCorrections           metric.Int64Counter
 	batchSecs                                                metric.Float64Histogram
 }
 
@@ -141,6 +141,7 @@ func (h *Handler) init() {
 		h.m.fenced = b.Counter(prefix+"fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
 		h.m.missingValue = b.Counter(prefix+"missing_value_events", "Events of a UNIQUE meter that don't carry its value property, which count nothing")
 		h.m.lateLast = b.Counter(prefix+"late_last_events", "Late events of a LAST meter, which never change the closed period and are not stored")
+		h.m.unsupportedCorrections = b.Counter(prefix+"unsupported_corrections", "Corrections of an event of a meter that cannot take one (it does not add, or it has a filter), which change nothing")
 		h.m.batchSecs = b.Histogram(prefix+"batch_seconds", "", metric.WithUnit("s"))
 		if err := b.Err(); err != nil {
 			panic(err) // only on duplicate instrument names with different kinds: a programming error
@@ -565,6 +566,11 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 	locs := map[string]*time.Location{}
 	for _, f := range fresh {
 		it := items[f.idx]
+		if it.ev.Corrects != "" && !it.meter.AcceptsCorrection() {
+			// Ingest refuses these (ADR 0027); this is for a meter that changed under an event in flight. A difference means nothing to a maximum, a latest value or a set.
+			h.m.unsupportedCorrections.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+			continue
+		}
 		if !it.meter.Matches(it.ev.Props) {
 			h.m.filtered.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 			continue

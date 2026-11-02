@@ -2073,6 +2073,38 @@
       "expected": "beklenen {fee}",
       "batch": "Ödeme / parti",
       "empty": "Bu dönemde sağlayıcıdan başarılı ödeme yok."
+    },
+    "corrections": {
+      "action": "Kullanımı düzelt",
+      "title": "Bir kullanım olayını düzelt",
+      "hint": "Uygulamanızın {customer} için gönderdiği bir miktarı düzeltin. Olayın kendisi değişmez: fark, ait olduğu döneme eklenir; dönem kapandıysa bir sonraki faturada yansıtılır.",
+      "formLabel": "kullanımı düzelt",
+      "meter": "Sayaç",
+      "pickMeter": "Bir sayaç seçin",
+      "corrects": "Olay anahtarı",
+      "correctsHint": "Uygulamanızın olayla birlikte gönderdiği idempotency anahtarı.",
+      "quantity": "Olması gereken miktar",
+      "quantityHint": "0 olayı iptal eder. Sayım sayaçlarında 0'dan büyük herhangi bir sayı olayı yeniden sayar.",
+      "reason": "Neden",
+      "submit": "Kullanımı düzelt",
+      "errors": {
+        "meter": "Bir sayaç seçin.",
+        "corrects": "Olayın idempotency anahtarını girin.",
+        "quantity": "0 veya daha büyük bir sayı girin.",
+        "reason": "Nedenini yazın."
+      },
+      "codes": {
+        "INVALID_CORRECTION": "Düzeltme geçerli değil: en fazla 500 karakterlik bir neden ve düzeltilecek olayın anahtarı gerekir.",
+        "CORRECTION_UNKNOWN_EVENT": "Böyle bir olay bilinmiyor. Anahtarı kontrol edin; bir olay, gönderilmesinden sonra en az 45 gün düzeltilebilir.",
+        "CORRECTION_MISMATCH": "Bu olay başka bir müşteriye veya sayaca ait.",
+        "CORRECTION_UNSUPPORTED_METER": "Bu sayaç düzeltilemez: yalnızca özellik filtresi olmayan toplam ve sayım sayaçları düzeltilebilir.",
+        "CORRECTION_OF_CORRECTION": "Bu anahtar bir düzeltmeye ait. Bunun yerine asıl olayı yeniden düzeltin.",
+        "UNKNOWN_METER": "Böyle bir sayaç yok.",
+        "UNKNOWN_CUSTOMER": "Böyle bir müşteri yok.",
+        "INVALID_QUANTITY": "Miktar 0 veya daha büyük bir sayı olmalıdır.",
+        "INVALID_QUANTITY_PRECISION": "Miktarın ondalık basamağı sayacın izin verdiğinden fazla.",
+        "IDEMPOTENCY_KEY_REUSED": "Bu düzeltme daha önce farklı değerlerle yapılmış."
+      }
     }
   },
   "affiliates": {

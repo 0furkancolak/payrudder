@@ -49,7 +49,10 @@ type UsageEvent struct {
 	// Billing period of event_time in the tenant's time zone, "YYYY-MM". Stable under replay.
 	PeriodId string `protobuf:"bytes,13,opt,name=period_id,json=periodId,proto3" json:"period_id,omitempty"`
 	// Version of the meter the event was validated against.
-	MeterVersion  int32 `protobuf:"varint,14,opt,name=meter_version,json=meterVersion,proto3" json:"meter_version,omitempty"`
+	MeterVersion int32 `protobuf:"varint,14,opt,name=meter_version,json=meterVersion,proto3" json:"meter_version,omitempty"`
+	// Set when this event corrects an earlier one (ADR 0027). Then quantity_units is the signed difference to add to the original's period (it may be negative; for any
+	// other event it may not), event_time and period_id are the original's, and only meters that add (SUM, COUNT) take it.
+	Correction    *Correction `protobuf:"bytes,20,opt,name=correction,proto3" json:"correction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -175,11 +178,81 @@ func (x *UsageEvent) GetMeterVersion() int32 {
 	return 0
 }
 
+func (x *UsageEvent) GetCorrection() *Correction {
+	if x != nil {
+		return x.Correction
+	}
+	return nil
+}
+
+// Correction says which event a correcting event adjusts, and why.
+type Correction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The event_id of the event corrected (ingest-svc assigned it; the client knows the idempotency key).
+	CorrectsEventId string `protobuf:"bytes,1,opt,name=corrects_event_id,json=correctsEventId,proto3" json:"corrects_event_id,omitempty"`
+	Reason          string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The signed-in person's address, or "key:<api key id>".
+	CorrectedBy   string `protobuf:"bytes,3,opt,name=corrected_by,json=correctedBy,proto3" json:"corrected_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Correction) Reset() {
+	*x = Correction{}
+	mi := &file_payrudder_events_v1_usage_event_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Correction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Correction) ProtoMessage() {}
+
+func (x *Correction) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_events_v1_usage_event_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Correction.ProtoReflect.Descriptor instead.
+func (*Correction) Descriptor() ([]byte, []int) {
+	return file_payrudder_events_v1_usage_event_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Correction) GetCorrectsEventId() string {
+	if x != nil {
+		return x.CorrectsEventId
+	}
+	return ""
+}
+
+func (x *Correction) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *Correction) GetCorrectedBy() string {
+	if x != nil {
+		return x.CorrectedBy
+	}
+	return ""
+}
+
 var File_payrudder_events_v1_usage_event_proto protoreflect.FileDescriptor
 
 const file_payrudder_events_v1_usage_event_proto_rawDesc = "" +
 	"\n" +
-	"%payrudder/events/v1/usage_event.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x83\x05\n" +
+	"%payrudder/events/v1/usage_event.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc4\x05\n" +
 	"\n" +
 	"UsageEvent\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1b\n" +
@@ -201,10 +274,18 @@ const file_payrudder_events_v1_usage_event_proto_rawDesc = "" +
 	"\x0equantity_units\x18\v \x01(\x03R\rquantityUnits\x12%\n" +
 	"\x0equantity_scale\x18\f \x01(\rR\rquantityScale\x12\x1b\n" +
 	"\tperiod_id\x18\r \x01(\tR\bperiodId\x12#\n" +
-	"\rmeter_version\x18\x0e \x01(\x05R\fmeterVersion\x1a=\n" +
+	"\rmeter_version\x18\x0e \x01(\x05R\fmeterVersion\x12?\n" +
+	"\n" +
+	"correction\x18\x14 \x01(\v2\x1f.payrudder.events.v1.CorrectionR\n" +
+	"correction\x1a=\n" +
 	"\x0fPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\a\x10\bJ\x04\b\x0f\x10\x14B\xdf\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\a\x10\bJ\x04\b\x0f\x10\x14\"s\n" +
+	"\n" +
+	"Correction\x12*\n" +
+	"\x11corrects_event_id\x18\x01 \x01(\tR\x0fcorrectsEventId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12!\n" +
+	"\fcorrected_by\x18\x03 \x01(\tR\vcorrectedByB\xdf\x01\n" +
 	"\x17com.payrudder.events.v1B\x0fUsageEventProtoP\x01ZEgithub.com/0furkancolak/payrudder/gen/go/payrudder/events/v1;eventsv1\xa2\x02\x03PEX\xaa\x02\x13Payrudder.Events.V1\xca\x02\x13Payrudder\\Events\\V1\xe2\x02\x1fPayrudder\\Events\\V1\\GPBMetadata\xea\x02\x15Payrudder::Events::V1b\x06proto3"
 
 var (
@@ -219,21 +300,23 @@ func file_payrudder_events_v1_usage_event_proto_rawDescGZIP() []byte {
 	return file_payrudder_events_v1_usage_event_proto_rawDescData
 }
 
-var file_payrudder_events_v1_usage_event_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_payrudder_events_v1_usage_event_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_payrudder_events_v1_usage_event_proto_goTypes = []any{
 	(*UsageEvent)(nil),            // 0: payrudder.events.v1.UsageEvent
-	nil,                           // 1: payrudder.events.v1.UsageEvent.PropertiesEntry
-	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*Correction)(nil),            // 1: payrudder.events.v1.Correction
+	nil,                           // 2: payrudder.events.v1.UsageEvent.PropertiesEntry
+	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
 var file_payrudder_events_v1_usage_event_proto_depIdxs = []int32{
-	2, // 0: payrudder.events.v1.UsageEvent.event_time:type_name -> google.protobuf.Timestamp
-	2, // 1: payrudder.events.v1.UsageEvent.ingested_at:type_name -> google.protobuf.Timestamp
-	1, // 2: payrudder.events.v1.UsageEvent.properties:type_name -> payrudder.events.v1.UsageEvent.PropertiesEntry
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: payrudder.events.v1.UsageEvent.event_time:type_name -> google.protobuf.Timestamp
+	3, // 1: payrudder.events.v1.UsageEvent.ingested_at:type_name -> google.protobuf.Timestamp
+	2, // 2: payrudder.events.v1.UsageEvent.properties:type_name -> payrudder.events.v1.UsageEvent.PropertiesEntry
+	1, // 3: payrudder.events.v1.UsageEvent.correction:type_name -> payrudder.events.v1.Correction
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_events_v1_usage_event_proto_init() }
@@ -247,7 +330,7 @@ func file_payrudder_events_v1_usage_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_events_v1_usage_event_proto_rawDesc), len(file_payrudder_events_v1_usage_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

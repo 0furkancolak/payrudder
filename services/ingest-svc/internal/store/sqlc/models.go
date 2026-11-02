@@ -11,12 +11,30 @@ import (
 	"github.com/google/uuid"
 )
 
+type EventCorrection struct {
+	TenantID        uuid.UUID
+	EventID         string
+	CorrectionKey   string
+	CorrectsKey     string
+	CorrectsEventID string
+	CustomerID      uuid.UUID
+	MeterCode       string
+	DeltaUnits      int64
+	Reason          string
+	CorrectedBy     string
+	CreatedAt       time.Time
+}
+
 type IdempotencyKey struct {
 	TenantID       uuid.UUID
 	IdempotencyKey string
 	EventID        string
 	PayloadHash    []byte
 	CreatedAt      time.Time
+	CustomerID     *uuid.UUID
+	MeterCode      *string
+	EventTime      *time.Time
+	QuantityUnits  *int64
 }
 
 type Outbox struct {

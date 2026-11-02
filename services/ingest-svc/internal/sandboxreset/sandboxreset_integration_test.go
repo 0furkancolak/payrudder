@@ -48,6 +48,10 @@ func TestResetDeletesOnlyTheTenantsKeysAndEvents(t *testing.T) {
 					return err
 				}
 			}
+			if _, err := tx.Exec(ctx, `INSERT INTO event_corrections (tenant_id, event_id, correction_key, corrects_key, corrects_event_id, customer_id, meter_code, delta_units, reason, corrected_by)
+				VALUES (app_tenant_id(), 'c1', 'fix-1', 'k1', 'e', gen_random_uuid(), 'calls', -2, 'typo', 'key:k')`); err != nil {
+				return err
+			}
 			_, err := tx.Exec(ctx, `SELECT enqueue_outbox(app_tenant_id(), 'usage', 'k', ARRAY['\x01'::bytea, '\x02'::bytea], ARRAY['{}', '{}'], now())`)
 			return err
 		}); err != nil {
@@ -57,7 +61,8 @@ func TestResetDeletesOnlyTheTenantsKeysAndEvents(t *testing.T) {
 	count := func(table string, tid uuid.UUID) int {
 		t.Helper()
 		var n int
-		q := map[string]string{"idempotency_keys": `SELECT count(*) FROM idempotency_keys WHERE tenant_id = $1`, "outbox": `SELECT count(*) FROM outbox WHERE tenant_id = $1`}[table]
+		q := map[string]string{"idempotency_keys": `SELECT count(*) FROM idempotency_keys WHERE tenant_id = $1`, "outbox": `SELECT count(*) FROM outbox WHERE tenant_id = $1`,
+			"event_corrections": `SELECT count(*) FROM event_corrections WHERE tenant_id = $1`}[table]
 		if err := system.QueryRow(ctx, q, tid).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
@@ -68,13 +73,13 @@ func TestResetDeletesOnlyTheTenantsKeysAndEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if deleted["idempotency_keys"] != 3 || deleted["outbox"] != 2 {
+	if deleted["idempotency_keys"] != 3 || deleted["outbox"] != 2 || deleted["event_corrections"] != 1 {
 		t.Errorf("deleted = %v", deleted)
 	}
-	if count("idempotency_keys", sbx) != 0 || count("outbox", sbx) != 0 {
+	if count("idempotency_keys", sbx) != 0 || count("outbox", sbx) != 0 || count("event_corrections", sbx) != 0 {
 		t.Error("the reset tenant still has rows")
 	}
-	if count("idempotency_keys", other) != 3 || count("outbox", other) != 2 {
+	if count("idempotency_keys", other) != 3 || count("outbox", other) != 2 || count("event_corrections", other) != 1 {
 		t.Error("another tenant's rows were deleted")
 	}
 	if again, err := r.Reset(ctx, sbx); err != nil || len(again) != 0 {

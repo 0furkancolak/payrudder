@@ -7,3 +7,7 @@ DELETE FROM idempotency_keys WHERE tenant_id = $1;
 -- Events accepted but not yet on the topic.
 -- name: ResetOutbox :execrows
 DELETE FROM outbox WHERE tenant_id = $1;
+
+-- The record of the corrections made to the tenant's events (ADR 0027).
+-- name: ResetEventCorrections :execrows
+DELETE FROM event_corrections WHERE tenant_id = $1;

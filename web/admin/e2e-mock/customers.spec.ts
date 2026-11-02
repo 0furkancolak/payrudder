@@ -23,7 +23,22 @@ const subscriptions = [
 
 function customerGateway() {
   return baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "POST" && c.path === "/v1/events/corrections") {
+      const first = (c.body?.corrections as { corrects: string }[])[0];
+      return { status: 202, body: { results: [first?.corrects === "evt-404" ? { status: "rejected", error_code: "CORRECTION_UNKNOWN_EVENT", error_message: "no" } : { status: "accepted", event_id: "01CORR" }] } };
+    }
     if (c.method !== "GET" && !(c.method === "POST" && c.path === "/v1/subscriptions")) return undefined;    if (c.path === "/v1/customers") return { body: { customers } };
+    if (c.path === "/v1/meters") {
+      return {
+        body: {
+          meters: [
+            { code: "api_calls", aggregation: "AGGREGATION_SUM", value_property: "", filter: {}, quantity_scale: 0, unit_label: "calls", category: "", version: 1 },
+            { code: "peak_seats", aggregation: "AGGREGATION_MAX", value_property: "", filter: {}, quantity_scale: 0, unit_label: "seats", category: "", version: 1 },
+            { code: "eu_calls", aggregation: "AGGREGATION_SUM", value_property: "", filter: { region: { values: ["eu"] } }, quantity_scale: 0, unit_label: "calls", category: "", version: 1 },
+          ],
+        },
+      };
+    }
     if (c.path === "/v1/invoices") {
       const who = c.query.get("customer");
       return { body: { invoices: who ? invoices.filter((i) => i.customer_external_id === who) : invoices } };
@@ -290,6 +305,41 @@ test.describe("customer sheet", () => {
     await expect(sheet.getByTestId("upcoming-none")).toBeVisible();
     await sheet.getByTestId("customer-tab-payments").click();
     await expect(sheet).toContainText("No payments yet.");
+  });
+
+  test("usage is corrected from the sheet: only meters that add are offered, a refusal says why and an accepted correction closes the sheet", async ({ page }) => {
+    const gw = await openCustomers(page);
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-correct-usage").click();
+    const form = page.getByRole("form", { name: "correct usage" });
+    await expect(form.getByLabel("Meter").locator("option")).toHaveText(["Choose a meter", "api_calls"]); // not the maximum, not the filtered one
+
+    // Nothing is sent until the form is whole, and the fields that are not say so.
+    await page.getByTestId("correct-submit").click();
+    await expect(form).toContainText("Choose a meter.");
+    await expect(form).toContainText("Enter the idempotency key of the event.");
+    await expect(form).toContainText("Enter a number, 0 or more.");
+    await expect(form).toContainText("Say why.");
+    expect(gw.called("POST", "/v1/events/corrections")).toHaveLength(0);
+
+    // An event the service does not know is refused with the reason in the reader's words, and the form stays for another try.
+    await form.getByLabel("Meter").selectOption("api_calls");
+    await form.getByLabel("Event key").fill("evt-404");
+    await form.getByLabel("Quantity it should have been").fill("80");
+    await form.getByLabel("Reason").fill("imported twice");
+    await page.getByTestId("correct-submit").click();
+    await expect(page.getByTestId("correct-refusal")).toContainText("No such event is known");
+    await form.getByLabel("Event key").fill("evt-123");
+    await page.getByTestId("correct-submit").click();
+    await expect.poll(() => gw.called("POST", "/v1/events/corrections").length).toBe(2);
+    expect(gw.called("POST", "/v1/events/corrections")[1]?.body).toMatchObject({
+      corrections: [{ corrects: "evt-123", reason: "imported twice", customer_external_id: "cus_1", meter_code: "api_calls", quantity: "80" }],
+    });
+    // The same attempt keeps its key: a retry corrects once. A sheet that closed after success is gone.
+    const keys = gw.called("POST", "/v1/events/corrections").map((c) => (c.body?.corrections as { idempotency_key: string }[])[0]?.idempotency_key);
+    expect(keys[0]).toMatch(/^corr_/);
+    expect(keys[1]).toBe(keys[0]);
+    await expect(form).toHaveCount(0);
   });
 
   test("a subscription is started from the sheet for that customer", async ({ page }) => {

@@ -55,6 +55,40 @@ paths:
         "413": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /v1/events/corrections:
+    post:
+      operationId: correctEvents
+      summary: Correct usage events (1..500 per request, at most 1 MiB)
+      description: |
+        A correction is a new event, never an edit: it names the `idempotency_key` of the event it corrects and the `quantity` that event should have had (`0` cancels it), with a
+        `reason`. The service works out the difference between that and what the event stands at now (its own quantity plus every earlier correction of it) and adds it to the
+        **period of the original event**, by the rules every event follows: while that period is open, or closed but inside its grace period, the usage of the period changes
+        exactly; once it has passed its cutoff or been rated, the difference becomes **late usage** of that period, a (negative, for less) `LATE_USAGE` line on the invoice of the
+        period the correction was accepted in. A finalized invoice is never changed.
+
+        Only events of meters that add (`SUM`, `COUNT`) and have no property filter can be corrected (`CORRECTION_UNSUPPORTED_METER` otherwise). For a `COUNT` meter an event is
+        one whatever its quantity, so the only corrections are `0` (cancel it) and any positive quantity (count it again). An event can be corrected as long as its idempotency
+        key is remembered, which is at least 45 and less than 76 days after it was first seen (`CORRECTION_UNKNOWN_EVENT` after). A correction cannot be corrected: send the
+        original's key again with the quantity it should have. `customer_external_id` and `meter_code` must be the original's.
+
+        The answer is `202` with one result per correction, in request order, like `POST /v1/events`; the correction has its own `idempotency_key`, and a retry with the same key and
+        payload is a `duplicate` and changes nothing. A refused correction claims no key. Who made it (the signed-in person, or the API key) and the reason are kept.
+        The `ingest` rate limit is charged per correction. A correction is not usage and is not metered as events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorrectEventsRequest" }
+      responses:
+        "202":
+          description: Accepted for processing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestEventsResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/customers:
     post:
       operationId: createCustomer
@@ -6085,6 +6119,27 @@ components:
           oneOf: [{ type: string, examples: ["1500", "1.250"] }, { type: number }]
         event_time: { type: string, format: date-time, description: "Not older than 35 days, not more than 5 minutes ahead." }
         properties: { type: object, additionalProperties: { type: string }, description: At most 32 entries and 4 KiB in total. }
+    CorrectEventsRequest:
+      type: object
+      required: [corrections]
+      properties:
+        corrections:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/EventCorrection" }
+    EventCorrection:
+      type: object
+      required: [corrects, reason, customer_external_id, meter_code, quantity]
+      properties:
+        idempotency_key: { type: string, pattern: "^[A-Za-z0-9_.:-]{1,128}$", description: "The correction's own key. Required for live keys. Optional in sandbox (then no dedup)." }
+        corrects: { type: string, pattern: "^[A-Za-z0-9_.:-]{1,128}$", description: "The idempotency_key of the event to correct, as it was sent" }
+        reason: { type: string, minLength: 1, maxLength: 500, description: Why. Kept with the correction }
+        customer_external_id: { type: string, description: The customer of the event being corrected }
+        meter_code: { type: string, description: The meter of the event being corrected }
+        quantity:
+          description: The quantity the corrected event should have had, a non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number. 0 cancels the event.
+          oneOf: [{ type: string, examples: ["1500", "1.250"] }, { type: number }]
     IngestEventsResponse:
       type: object
       required: [results]
@@ -6101,7 +6156,7 @@ components:
         event_id: { type: string, description: Set for accepted and duplicate (the original id). }
         error_code:
           type: string
-          enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES]
+          enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES, INVALID_CORRECTION, CORRECTION_UNKNOWN_EVENT, CORRECTION_MISMATCH, CORRECTION_UNSUPPORTED_METER, CORRECTION_OF_CORRECTION]
         error_message: { type: string }
     AuthUser:
       type: object

@@ -316,6 +316,11 @@ export const EVENT_CODES = {
   IDEMPOTENCY_KEY_INVALID: "The idempotency_key is not 1 to 128 characters of letters, digits and _ . : -.",
   IDEMPOTENCY_KEY_REUSED: "The idempotency_key was used before for a different event.",
   INVALID_PROPERTIES: "The properties are too many or too large, or a UNIQUE meter's property is missing.",
+  INVALID_CORRECTION: "A correction needs a reason of 1 to 500 characters, and the key of the event it corrects (not its own).",
+  CORRECTION_UNKNOWN_EVENT: "No event with the key in corrects is known: it was never accepted, or it is older than idempotency keys are kept (at least 45 days).",
+  CORRECTION_MISMATCH: "The customer or the meter is not that of the event being corrected.",
+  CORRECTION_UNSUPPORTED_METER: "Only events of SUM and COUNT meters without a property filter can be corrected.",
+  CORRECTION_OF_CORRECTION: "The event is itself a correction: correct the original again, with the quantity it should have.",
 };
 
 async function errorCatalogue({ doc, files }) {

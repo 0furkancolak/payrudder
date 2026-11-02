@@ -11,6 +11,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/cachex"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
 // Meter is what ingest needs of a meter.
@@ -20,6 +21,9 @@ type Meter struct {
 	Scale   int
 	// DistinctProperty is the event property a UNIQUE meter counts the distinct values of; empty for every other aggregation.
 	DistinctProperty string
+	// AcceptsCorrection says an event of the meter can be corrected (ADR 0027): it adds (SUM, COUNT) and has no property filter. Counts says it is a COUNT meter, where
+	// an event is one whatever its quantity.
+	AcceptsCorrection, Counts bool
 }
 
 // Customer is what ingest needs of a customer.
@@ -74,6 +78,7 @@ func NewPlans(client plansv1.PlansServiceClient, o Options) *Plans {
 			}
 			m := resp.GetMeter()
 			out := Meter{Code: m.GetCode(), Version: m.GetVersion(), Scale: int(m.GetQuantityScale())}
+			out.AcceptsCorrection, out.Counts = usage.FromProto(m).AcceptsCorrection(), m.GetAggregation() == plansv1.Aggregation_AGGREGATION_COUNT
 			if m.GetAggregation() == plansv1.Aggregation_AGGREGATION_UNIQUE {
 				out.DistinctProperty = m.GetValueProperty()
 			}

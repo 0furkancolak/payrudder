@@ -569,6 +569,10 @@ export interface ContractWithdrawal {
   refund_time: string | null;
 }
 
+export interface CorrectEventsRequest {
+  corrections: Array<EventCorrection>;
+}
+
 export interface Coupon {
   /** 2–40 letters, digits, - or _ */
   code: string;
@@ -1301,11 +1305,26 @@ export interface EntitlementTerms {
   mode?: QuotaMode;
 }
 
+export interface EventCorrection {
+  /** The correction's own key. Required for live keys. Optional in sandbox (then no dedup). */
+  idempotency_key?: string;
+  /** The idempotency_key of the event to correct, as it was sent */
+  corrects: string;
+  /** Why. Kept with the correction */
+  reason: string;
+  /** The customer of the event being corrected */
+  customer_external_id: string;
+  /** The meter of the event being corrected */
+  meter_code: string;
+  /** The quantity the corrected event should have had, a non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number. 0 cancels the event. */
+  quantity: string;
+}
+
 export interface EventResult {
   status: "accepted" | "duplicate" | "rejected";
   /** Set for accepted and duplicate (the original id). */
   event_id?: string;
-  error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES";
+  error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES" | "INVALID_CORRECTION" | "CORRECTION_UNKNOWN_EVENT" | "CORRECTION_MISMATCH" | "CORRECTION_UNSUPPORTED_METER" | "CORRECTION_OF_CORRECTION";
   error_message?: string;
 }
 
