@@ -17,6 +17,9 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight, FileText } from "@lucide/vue";
+import { DisputesTab } from "@/features/disputes";
+import { useTabParam } from "@/shared/lib/useSearchValue";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -34,6 +37,9 @@ import { useRouteTenantId } from "@/shared/lib/routeTenant";
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
 const tenantId = useRouteTenantId();
+// The cases customers opened with their banks about these payments are a tab of their own, kept in the address (?tab=disputes).
+const TABS = ["payments", "disputes"] as const;
+const tab = useTabParam("tab", TABS, "payments");
 const payments = usePayments(tenantId);
 const all = computed(() => payments.data.value?.payments ?? []);
 const range = ref<DateRange>(thisMonth());
@@ -65,55 +71,65 @@ const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
 
 <template>
-  <Card class="p-3" role="region" :aria-label="t('product.billing.payments.title')">
-    <ErrorState :error="payments.error.value" :retrying="payments.isFetching.value" compact @retry="payments.refetch()" />
-    <DataToolbar v-if="all.length > 0" v-model:search="table.search.value" :active="filtering" @clear="clear()">
-      <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.payments.status')" :options="[{ value: '', label: t('product.payments.allStatuses') }, ...statuses.map((s) => ({ value: s, label: t(`product.status.${s}`) }))]" />
-      <FilterSelect v-model="table.filters.value.kind" multiple :label="t('product.billing.payments.kind')" :options="[{ value: '', label: t('product.payments.allKinds') }, ...kinds.map((k) => ({ value: k, label: t(`product.billing.payments.kinds.${k}`) }))]" />
-      <DateRangePicker v-model="range" />
-      <template #actions>
-        <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
-      </template>
-      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
-    </DataToolbar>
-    <Skeleton v-if="payments.isPending.value" class="mx-3 h-40 rounded-2xl" />
-    <p v-else-if="all.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
-    <template v-else-if="all.length > 0">
-      <Table>
-        <TableHeader>
-          <TableRow class="hover:bg-transparent">
-            <TableHead>{{ t("product.payments.when") }}</TableHead>
-            <TableHead>{{ t("product.billing.payments.kind") }}</TableHead>
-            <TableHead>{{ t("product.payments.status") }}</TableHead>
-            <TableHead class="max-md:hidden">{{ t("product.payments.provider") }}</TableHead>
-            <TableHead class="text-end">{{ t("product.payments.amount") }}</TableHead>
-            <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="(p, i) in table.items.value" :key="p.id" class="cursor-pointer" data-testid="payment-row" @click="table.open(i)">
-            <TableCell class="font-medium whitespace-nowrap">{{ when(p.occurred_at) }}</TableCell>
-            <TableCell>{{ t(`product.billing.payments.kinds.${p.kind}`) }}</TableCell>
-            <TableCell><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></TableCell>
-            <TableCell class="text-muted-foreground max-md:hidden">{{ label(t, te, "provider", p.provider) }}</TableCell>
-            <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ signed(p) }}</TableCell>
-            <TableCell>
-              <RowActions
-                :actions="[
-                  { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) },
-                  ...(p.invoice_id ? [{ key: 'invoice', label: t('product.billing.payments.viewInvoice'), icon: FileText, onSelect: () => toInvoice(p.invoice_id) }] : []),
-                ]"
-              />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-      <p v-if="table.total.value === 0" class="text-muted-foreground py-10 text-center text-sm">{{ t("common.noMatches") }}</p>
-    </template>
-    <DataPagination v-if="all.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
-  </Card>
+  <div class="flex flex-col gap-4">
+    <Tabs :model-value="tab" @update:model-value="tab = String($event) as (typeof TABS)[number]">
+      <TabsList class="h-auto w-full flex-wrap justify-start" :aria-label="t('disputes.tabsLabel')">
+        <TabsTrigger v-for="x in TABS" :key="x" :value="x" class="flex-none" :data-testid="`payments-tab-${x}`">{{ t(`disputes.tabs.${x}`) }}</TabsTrigger>
+      </TabsList>
+    </Tabs>
+    <DisputesTab v-if="tab === 'disputes'" :tenant-id="tenantId" />
+    <template v-else>
+      <Card class="p-3" role="region" :aria-label="t('product.billing.payments.title')">
+        <ErrorState :error="payments.error.value" :retrying="payments.isFetching.value" compact @retry="payments.refetch()" />
+        <DataToolbar v-if="all.length > 0" v-model:search="table.search.value" :active="filtering" @clear="clear()">
+          <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.payments.status')" :options="[{ value: '', label: t('product.payments.allStatuses') }, ...statuses.map((s) => ({ value: s, label: t(`product.status.${s}`) }))]" />
+          <FilterSelect v-model="table.filters.value.kind" multiple :label="t('product.billing.payments.kind')" :options="[{ value: '', label: t('product.payments.allKinds') }, ...kinds.map((k) => ({ value: k, label: t(`product.billing.payments.kinds.${k}`) }))]" />
+          <DateRangePicker v-model="range" />
+          <template #actions>
+            <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
+          </template>
+          <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
+        </DataToolbar>
+        <Skeleton v-if="payments.isPending.value" class="mx-3 h-40 rounded-2xl" />
+        <p v-else-if="all.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
+        <template v-else-if="all.length > 0">
+          <Table>
+            <TableHeader>
+              <TableRow class="hover:bg-transparent">
+                <TableHead>{{ t("product.payments.when") }}</TableHead>
+                <TableHead>{{ t("product.billing.payments.kind") }}</TableHead>
+                <TableHead>{{ t("product.payments.status") }}</TableHead>
+                <TableHead class="max-md:hidden">{{ t("product.payments.provider") }}</TableHead>
+                <TableHead class="text-end">{{ t("product.payments.amount") }}</TableHead>
+                <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="(p, i) in table.items.value" :key="p.id" class="cursor-pointer" data-testid="payment-row" @click="table.open(i)">
+                <TableCell class="font-medium whitespace-nowrap">{{ when(p.occurred_at) }}</TableCell>
+                <TableCell>{{ t(`product.billing.payments.kinds.${p.kind}`) }}</TableCell>
+                <TableCell><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></TableCell>
+                <TableCell class="text-muted-foreground max-md:hidden">{{ label(t, te, "provider", p.provider) }}</TableCell>
+                <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ signed(p) }}</TableCell>
+                <TableCell>
+                  <RowActions
+                    :actions="[
+                      { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) },
+                      ...(p.invoice_id ? [{ key: 'invoice', label: t('product.billing.payments.viewInvoice'), icon: FileText, onSelect: () => toInvoice(p.invoice_id) }] : []),
+                    ]"
+                  />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <p v-if="table.total.value === 0" class="text-muted-foreground py-10 text-center text-sm">{{ t("common.noMatches") }}</p>
+        </template>
+        <DataPagination v-if="all.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+      </Card>
 
-  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current ? signed(current) : ''" :description="current ? when(current.occurred_at) : undefined">
-    <PaymentDetail v-if="current" :key="current.id" :tenant-id="tenantId" :payment="current" />
-  </DetailSheet>
+      <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current ? signed(current) : ''" :description="current ? when(current.occurred_at) : undefined">
+        <PaymentDetail v-if="current" :key="current.id" :tenant-id="tenantId" :payment="current" />
+      </DetailSheet>
+    </template>
+  </div>
 </template>

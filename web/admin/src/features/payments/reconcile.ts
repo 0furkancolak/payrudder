@@ -16,6 +16,7 @@ export const KINDS = [
   "duplicate_charge",
   "charge_without_paid",
   "conflicting_outcomes",
+  "payment_disputed",
   "settlement_missing",
   "settlement_mismatch",
   "fee_mismatch",

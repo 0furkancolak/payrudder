@@ -135,7 +135,7 @@ func Emit(ctx context.Context, baseURL, secret string, e mailx.Event) (int, erro
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(webhooksig.Header(), webhooksig.Sign(time.Now(), body, secret))
+	req.Header.Set(webhooksig.Header(), webhooksig.SignRequest(time.Now(), http.MethodPost, req.URL, body, secret))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err

@@ -36,6 +36,7 @@ const (
 	PaymentLinkCreated          = "payment_link.created"
 	PaymentLinkPaid             = "payment_link.paid"
 	PaymentLinkExpired          = "payment_link.expired"
+	PaymentDisputed             = "payment.disputed"
 	CreditsPurchased            = "credits.purchased"
 	CreditsLow                  = "credits.low"
 	CustomerBlocked             = "customer.blocked"
@@ -53,7 +54,7 @@ var Types = []string{
 	CreditNoteCreated, CreditNoteRefunded, CreditNoteRefundFailed,
 	SubscriptionCreated, SubscriptionChanged, SubscriptionChangeScheduled, SubscriptionCancelled, SubscriptionCancelScheduled, SubscriptionCancelWithdrawn,
 	SubscriptionPaused, SubscriptionResumed, SubscriptionMovedToProvider, SubscriptionTrialWillEnd,
-	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired,
+	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired, PaymentDisputed,
 	CreditsPurchased, CreditsLow,
 	CustomerBlocked, CustomerUnblocked,
 	PriceChangeScheduled,

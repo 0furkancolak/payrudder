@@ -72,8 +72,11 @@ type Config struct {
 	// /v1/mail-suppressions); empty switches the listener off. Every request is signed with MailEventsSecret (pkg/webhooksig).
 	EventsAddr       string `env:"NOTIFIER_EVENTS_ADDR"`
 	MailEventsSecret string `env:"NOTIFIER_MAIL_EVENTS_SECRET"`
-	Group            string `env:"PAYRUDDER_CONSUMER_GROUP"`
-	DLQTopic         string `env:"PAYRUDDER_DLQ_TOPIC"`
+	// MailEventsAcceptV1 also accepts the old request signature (timestamp and body only) on that listener, for the length of a rollout from a gateway that does not sign v2
+	// yet. Off by default: a v1 signature of an empty body is good for any other empty-bodied route for five minutes.
+	MailEventsAcceptV1 bool   `env:"NOTIFIER_MAIL_EVENTS_ACCEPT_V1"`
+	Group              string `env:"PAYRUDDER_CONSUMER_GROUP"`
+	DLQTopic           string `env:"PAYRUDDER_DLQ_TOPIC"`
 	// TrialDLQTopic receives the trial-ending facts that can never be mailed; the Kafka group of that consumer is the group with "-trials" appended.
 	TrialDLQTopic string `env:"PAYRUDDER_TRIAL_DLQ_TOPIC"`
 	// PriceChangeDLQTopic receives the price-change facts that can never be mailed; the Kafka group of that consumer is the group with "-price-change" appended.
@@ -256,7 +259,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return renewalConsumer.Run(gctx) })
 	g.Go(func() error { return withdrawalConsumer.Run(gctx) })
 	if cfg.EventsAddr != "" {
-		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, Notes: notes, List: suppressions, Messages: notes, PreviewPriceChange: pricechange.Preview, Log: log}
+		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, AcceptV1: cfg.MailEventsAcceptV1, Notes: notes, List: suppressions, Messages: notes, PreviewPriceChange: pricechange.Preview, Log: log}
 		g.Go(func() error {
 			log.Info("notifier listening for mail events", "addr", cfg.EventsAddr)
 			return health.ServeServer(gctx, &http.Server{Addr: cfg.EventsAddr, Handler: events.Routes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second})

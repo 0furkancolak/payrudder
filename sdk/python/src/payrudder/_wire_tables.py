@@ -186,6 +186,9 @@ MODELS: dict[str, dict[str, Any]] = {
     'CustomerPayment': {
         'amount_minor': ('int',),
     },
+    'Dispute': {
+        'amount_minor': ('int',),
+    },
     'EInvoiceList': {
         'total': ('int',),
     },
@@ -316,6 +319,9 @@ MODELS: dict[str, dict[str, Any]] = {
     'ListCustomerPaymentsResponse': {
         'invoices': ('list', ('model', 'Invoice')),
         'payments': ('list', ('model', 'CustomerPayment')),
+    },
+    'ListDisputesResponse': {
+        'disputes': ('list', ('model', 'Dispute')),
     },
     'ListExpenseRulesResponse': {
         'rules': ('list', ('model', 'ExpenseRule')),

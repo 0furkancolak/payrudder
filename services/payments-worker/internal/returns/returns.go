@@ -98,7 +98,7 @@ func Complete(ctx context.Context, d Deps, key string, form url.Values) (Outcome
 	if err != nil {
 		return Outcome{}, err
 	}
-	st, err := rc.ConfirmReturn(ctx, payments.ReturnRequest{IdempotencyKey: key, InvoiceID: at.InvoiceID.String(), AmountMinor: at.AmountMinor, Currency: at.Currency, ProviderRef: ref, Form: form})
+	st, err := rc.ConfirmReturn(ctx, payments.ReturnRequest{IdempotencyKey: key, InvoiceID: at.InvoiceID.String(), AmountMinor: at.AmountMinor, Currency: at.Currency, ProviderRef: ref, Form: form, PaidMinor: at.PaidMinor})
 	var pending *payments.PendingError
 	switch {
 	case errors.Is(err, payments.ErrUnverified):

@@ -63,6 +63,8 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 		{"PUT", "/v1/customers/{external_id}/entitlement-overrides/{meter}", AccessTenant, ratelimit.ClassWrite, s.setEntitlementOverride},
 		{"DELETE", "/v1/customers/{external_id}/entitlement-overrides/{meter}", AccessTenant, ratelimit.ClassWrite, s.deleteEntitlementOverride},
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
+		{"GET", "/v1/customers/{external_id}/cards", AccessTenant, ratelimit.ClassRead, s.customerCards(false)},
+		{"DELETE", "/v1/customers/{external_id}/cards/{token}", AccessTenant, ratelimit.ClassWrite, s.customerCards(true)},
 		{"PUT", "/v1/customers/{external_id}/address", AccessTenant, ratelimit.ClassWrite, s.setCustomerAddress},
 		{"PUT", "/v1/customers/{external_id}/contact", AccessTenant, ratelimit.ClassWrite, s.setCustomerContact},
 		{"POST", "/v1/customers/{external_id}/block", AccessTenant, ratelimit.ClassWrite, s.blockCustomer},
@@ -184,6 +186,7 @@ func (s *Server) billingReadAndSandboxRoutes() []Route {
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
 		// The payment ledger as the tenant reads it (charges and refunds, folded); the operator's /admin/v1/tenants/{id}/ledger stays operator-only.
 		{"GET", "/v1/payments", AccessTenant, ratelimit.ClassRead, s.listPayments},
+		{"GET", "/v1/disputes", AccessTenant, ratelimit.ClassRead, s.listDisputes},
 		{"GET", "/v1/e-invoices", AccessTenant, ratelimit.ClassRead, s.listEInvoices},
 		{"GET", "/v1/e-invoices/{id}", AccessTenant, ratelimit.ClassRead, s.getEInvoice},
 		{"GET", "/v1/e-invoices/{id}/files/{kind}", AccessTenant, ratelimit.ClassRead, s.getEInvoiceFile},

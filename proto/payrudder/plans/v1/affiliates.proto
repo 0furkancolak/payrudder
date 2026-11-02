@@ -69,7 +69,8 @@ message AffiliateProgram {
   // Code of the coupon a referred customer gets on their next checkout; empty for none.
   string referred_coupon_code = 10;
   int32 daily_click_cap = 11;
-  // Where /r/<code> sends the visitor afterwards; empty shows a plain page.
+  // Where /r/<code> sends the visitor afterwards; empty shows a plain page. A public http(s) address (a host name, no IP address, no localhost, no user name or
+  // password); the visitor is redirected straight there only for a tenant that is live, active and vouched for by a verified owner (see TrackAffiliateClickResponse).
   string landing_url = 12;
   // A partner who applies is active at once instead of waiting for approval.
   bool auto_approve = 13;
@@ -217,6 +218,10 @@ message TrackAffiliateClickResponse {
   string landing_url = 4;
   // The click was counted; false once the affiliate's daily cap is reached (the cookie is still set, the visitor is not turned away).
   bool counted = 5;
+  // The program's tenant is one the gateway may redirect straight to its landing page from our own domain: the live environment, active, with an owner of its
+  // account whose e-mail address is verified. Otherwise (a sandbox, a live app not yet activated, nobody verified) the gateway shows a page with the destination
+  // host and a link instead of redirecting, so that a throwaway tenant cannot use the link as an open redirect.
+  bool landing_trusted = 6;
 }
 
 message AffiliateCommission {

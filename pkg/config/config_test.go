@@ -87,9 +87,18 @@ func TestPort(t *testing.T) {
 			t.Fatalf("got %v", err)
 		}
 	})
-	t.Run("railway is a known environment", func(t *testing.T) {
-		if _, err := config.LoadFrom[svcConfig](with("PAYRUDDER_ENV", "railway")); err != nil {
-			t.Fatal(err)
+	t.Run("railway and production are known environments", func(t *testing.T) {
+		for _, e := range []string{"railway", "production"} {
+			if _, err := config.LoadFrom[svcConfig](with("PAYRUDDER_ENV", e)); err != nil {
+				t.Fatalf("%s: %v", e, err)
+			}
+		}
+	})
+	t.Run("only local, ci and kind are development environments", func(t *testing.T) {
+		for e, want := range map[config.Environment]bool{config.EnvLocal: true, config.EnvCI: true, config.EnvKind: true, config.EnvRailway: false, config.EnvProduction: false, "": false, "prod": false} {
+			if e.Development() != want {
+				t.Errorf("%q.Development() = %v, want %v", e, e.Development(), want)
+			}
 		}
 	})
 }

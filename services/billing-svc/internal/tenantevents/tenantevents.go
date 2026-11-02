@@ -25,10 +25,18 @@ const (
 // Write puts an event for the tenant's endpoints into the outbox in tx. key says which occurrence it is: the same (tenant, type, key) is one event however often
 // it is written.
 func Write(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, data map[string]any) error {
+	_, err := WriteNew(ctx, tx, tenantID, typ, key, at, data)
+	return err
+}
+
+// WriteNew is Write that says whether the event was new in the outbox. Once plans-svc has taken an event the outbox forgets it, so false means "still waiting to be handed
+// over", not "never written": a caller that must not repeat a side effect keeps its own record.
+func WriteNew(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, key string, at time.Time, data map[string]any) (bool, error) {
 	b, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return false, err
 	}
 	id := uuid.NewSHA1(namespace, fmt.Appendf(nil, "%s|%s|%s", tenantID, typ, key))
-	return sqlc.New(tx).InsertTenantEvent(ctx, sqlc.InsertTenantEventParams{TenantID: tenantID, EventID: id, Type: typ, Data: b, OccurredAt: at})
+	n, err := sqlc.New(tx).InsertTenantEvent(ctx, sqlc.InsertTenantEventParams{TenantID: tenantID, EventID: id, Type: typ, Data: b, OccurredAt: at})
+	return n == 1, err
 }

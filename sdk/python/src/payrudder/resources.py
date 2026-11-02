@@ -95,6 +95,20 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
+    def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
+        """The cards the payment provider holds for the customer.
+
+        ``GET /v1/customers/{external_id}/cards``
+        """
+        return cast("m.CustomerCards", self._client._request("GET", f"/v1/customers/{_p(external_id)}/cards", options=options))
+
+    def delete_customer_card(self, external_id: str, token: str, *, options: RequestOptions | None = None) -> m.DeletedCustomerCard:
+        """Delete one of the customer's stored cards at the provider.
+
+        ``DELETE /v1/customers/{external_id}/cards/{token}``
+        """
+        return cast("m.DeletedCustomerCard", self._client._request("DELETE", f"/v1/customers/{_p(external_id)}/cards/{_p(token)}", options=options))
+
     def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.
 
@@ -1598,6 +1612,20 @@ class PaymentsResource:
         return cast("m.ListPaymentsResponse", self._client._request("GET", "/v1/payments", query={"limit": limit}, response_wire='ListPaymentsResponse', options=options))
 
 
+class DisputesResource:
+    """``/v1/disputes`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_disputes(self, *, invoice_id: str | None = None, outcome: Literal["open", "won", "lost"] | None = None, limit: int | None = None, options: RequestOptions | None = None) -> m.ListDisputesResponse:
+        """The cases customers opened with their banks about a payment, newest first.
+
+        ``GET /v1/disputes``
+        """
+        return cast("m.ListDisputesResponse", self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
+
+
 class AssetsResource:
     """``/v1/assets`` and related operations."""
 
@@ -1808,6 +1836,7 @@ class Resources:
     payment_links: PaymentLinksResource
     audit_events: AuditEventsResource
     payments: PaymentsResource
+    disputes: DisputesResource
     assets: AssetsResource
     tenant: TenantResource
     analytics: AnalyticsResource
@@ -1850,6 +1879,7 @@ class Resources:
         self.payment_links = PaymentLinksResource(client)
         self.audit_events = AuditEventsResource(client)
         self.payments = PaymentsResource(client)
+        self.disputes = DisputesResource(client)
         self.assets = AssetsResource(client)
         self.tenant = TenantResource(client)
         self.analytics = AnalyticsResource(client)
@@ -1932,6 +1962,20 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/payment-method``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
+
+    async def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
+        """The cards the payment provider holds for the customer.
+
+        ``GET /v1/customers/{external_id}/cards``
+        """
+        return cast("m.CustomerCards", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/cards", options=options))
+
+    async def delete_customer_card(self, external_id: str, token: str, *, options: RequestOptions | None = None) -> m.DeletedCustomerCard:
+        """Delete one of the customer's stored cards at the provider.
+
+        ``DELETE /v1/customers/{external_id}/cards/{token}``
+        """
+        return cast("m.DeletedCustomerCard", await self._client._request("DELETE", f"/v1/customers/{_p(external_id)}/cards/{_p(token)}", options=options))
 
     async def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.
@@ -3456,6 +3500,20 @@ class AsyncPaymentsResource:
         return cast("m.ListPaymentsResponse", await self._client._request("GET", "/v1/payments", query={"limit": limit}, response_wire='ListPaymentsResponse', options=options))
 
 
+class AsyncDisputesResource:
+    """``/v1/disputes`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_disputes(self, *, invoice_id: str | None = None, outcome: Literal["open", "won", "lost"] | None = None, limit: int | None = None, options: RequestOptions | None = None) -> m.ListDisputesResponse:
+        """The cases customers opened with their banks about a payment, newest first.
+
+        ``GET /v1/disputes``
+        """
+        return cast("m.ListDisputesResponse", await self._client._request("GET", "/v1/disputes", query={"invoice_id": invoice_id, "outcome": outcome, "limit": limit}, response_wire='ListDisputesResponse', options=options))
+
+
 class AsyncAssetsResource:
     """``/v1/assets`` and related operations."""
 
@@ -3667,6 +3725,7 @@ class AsyncResources:
     payment_links: AsyncPaymentLinksResource
     audit_events: AsyncAuditEventsResource
     payments: AsyncPaymentsResource
+    disputes: AsyncDisputesResource
     assets: AsyncAssetsResource
     tenant: AsyncTenantResource
     analytics: AsyncAnalyticsResource
@@ -3709,6 +3768,7 @@ class AsyncResources:
         self.payment_links = AsyncPaymentLinksResource(client)
         self.audit_events = AsyncAuditEventsResource(client)
         self.payments = AsyncPaymentsResource(client)
+        self.disputes = AsyncDisputesResource(client)
         self.assets = AsyncAssetsResource(client)
         self.tenant = AsyncTenantResource(client)
         self.analytics = AsyncAnalyticsResource(client)

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -230,19 +232,22 @@ func (c *cli) saveConfig(cfg storedConfig) (string, error) {
 		return "", err
 	}
 	b, _ := json.MarshalIndent(cfg, "", "  ") //nolint:gosec // storing the key is the purpose of this file (mode 0600)
-	// Written next to the file and renamed, with the mode set at creation, so the key is never on disk readable by others, not even for a moment.
-	tmp, err := os.OpenFile(p+".tmp", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // see above
+	// Written next to the file and renamed, in a file that did not exist (a fresh random name, created with O_EXCL and mode 0600), so the key is never on disk readable
+	// by others, not even for a moment, and a link that somebody planted at a name the program would have used (config.json.tmp) is not followed.
+	tmp, err := os.CreateTemp(filepath.Dir(p), ".config-*.tmp")
 	if err != nil {
 		return "", err
 	}
-	if _, err := tmp.Write(append(b, '\n')); err != nil {
-		_ = tmp.Close()
+	_, werr := tmp.Write(append(b, '\n'))
+	if err := errors.Join(werr, tmp.Close()); err != nil {
+		_ = os.Remove(tmp.Name())
 		return "", err
 	}
-	if err := tmp.Close(); err != nil {
+	if err := os.Rename(tmp.Name(), p); err != nil {
+		_ = os.Remove(tmp.Name())
 		return "", err
 	}
-	return p, os.Rename(p+".tmp", p)
+	return p, nil
 }
 
 // client builds the SDK client from the environment, the stored login and the --base-url flag (in that order of weakness: flag, then environment, then login).
@@ -258,7 +263,27 @@ func (c *cli) client(baseFlag string) (*payrudder.Client, error) {
 	return c.newClient(key, firstNonEmpty(baseFlag, c.getenv(payrudder.EnvBaseURL), cfg.BaseURL))
 }
 
+// refuseLiveKeyInTheClear stops a live key (qk_live_) from being sent over plain http to anything but this machine: on the way anyone could read it. The address the
+// SDK falls back to (an empty base) is http://localhost, so it passes; so do localhost, *.localhost and a loopback address. A sandbox key may go over http.
+func refuseLiveKeyInTheClear(key, base string) error {
+	if !strings.HasPrefix(key, "qk_live_") || base == "" {
+		return nil
+	}
+	u, err := url.Parse(base)
+	if err != nil || u.Scheme != "http" {
+		return nil // https is what it should be, and anything that is not http(s) the SDK refuses itself
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if ip, err := netip.ParseAddr(host); (err == nil && ip.Unmap().IsLoopback()) || host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return nil
+	}
+	return fmt.Errorf("refusing to send a live API key over plain http to %s: use an https:// address (http is allowed only for localhost, 127.0.0.1 and ::1)", u.Host)
+}
+
 func (c *cli) newClient(key, base string) (*payrudder.Client, error) {
+	if err := refuseLiveKeyInTheClear(key, base); err != nil {
+		return nil, err
+	}
 	opts := []payrudder.Option{payrudder.WithAPIKey(key), payrudder.WithUserAgent("payrudder-cli/" + payrudder.Version)}
 	if base != "" {
 		opts = append(opts, payrudder.WithBaseURL(base))

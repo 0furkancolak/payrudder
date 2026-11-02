@@ -60,8 +60,10 @@ import type {
   CreditSettings,
   CreditSettingsInputParams,
   Customer,
+  CustomerCards,
   CustomerContact,
   CustomerTax,
+  DeletedCustomerCard,
   DunningSettings,
   DunningSettingsInput,
   EInvoiceDocument,
@@ -146,6 +148,8 @@ import type {
   ListCustomerPaymentsResponse,
   ListCustomersQuery,
   ListCustomersResponse,
+  ListDisputesQuery,
+  ListDisputesResponse,
   ListEInvoicesQuery,
   ListEntitlementOverridesResponse,
   ListEntitlementsQuery,
@@ -664,7 +668,7 @@ export class ContractWithdrawalsResource {
   /**
    * Decide a withdrawal request, or mark an accepted one refunded
    *
-   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
+   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded. Needs customers:write. A key that does not also hold invoices:write cannot accept a withdrawal while the settings say `withdrawal_refund: full` (403 gateway.auth.permission_denied, nothing is decided): the refund is a credit note, and creating one needs invoices:write everywhere. Rejecting, or accepting while the setting is `none`, needs customers:write only.
    *
    * `PUT /v1/contract-withdrawals/{id}/status`
    */
@@ -675,7 +679,7 @@ export class ContractWithdrawalsResource {
   /**
    * Ask for the refund of an accepted withdrawal
    *
-   * For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+   * For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`. Needs invoices:write, not only customers:write: it returns money to a card.
    *
    * `POST /v1/contract-withdrawals/{id}/refund`
    */
@@ -952,6 +956,28 @@ export class CustomersResource {
   }
 
   /**
+   * The cards the payment provider holds for the customer
+   *
+   * The cards of the provider's card storage (iyzico) under the user key the customer's payment method names, never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+   *
+   * `GET /v1/customers/{external_id}/cards`
+   */
+  listCustomerCards(externalId: string, options?: RequestOptions): Promise<CustomerCards> {
+    return this.t.request<CustomerCards>({ method: "GET", path: `/v1/customers/${seg(externalId)}/cards`, response: "json" }, options);
+  }
+
+  /**
+   * Delete one of the customer's stored cards at the provider
+   *
+   * The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and nothing is sent to the provider). The customer's payment method is not changed: when the card was `in_use` the answer says so, and the next charge fails until a new payment method is set.
+   *
+   * `DELETE /v1/customers/{external_id}/cards/{token}`
+   */
+  deleteCustomerCard(externalId: string, token: string, options?: RequestOptions): Promise<DeletedCustomerCard> {
+    return this.t.request<DeletedCustomerCard>({ method: "DELETE", path: `/v1/customers/${seg(externalId)}/cards/${seg(token)}`, response: "json" }, options);
+  }
+
+  /**
    * Replace the customer's billing address
    *
    * The address is printed on the customer's invoices (PDF and hosted page). Its country becomes the customer's country, which provider routing and tax read. An empty object clears the address and keeps the country.
@@ -1061,7 +1087,7 @@ export class CustomersResource {
   /**
    * Record that the customer withdrew from a contract
    *
-   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund.
+   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund. Needs customers:write.
    *
    * `POST /v1/customers/{external_id}/contract-withdrawals`
    */
@@ -1255,6 +1281,21 @@ export class CustomersResource {
    */
   listCustomerPayments(externalId: string, query?: ListCustomerPaymentsQuery, options?: RequestOptions): Promise<ListCustomerPaymentsResponse> {
     return this.t.request<ListCustomerPaymentsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/payments`, query, response: "json" }, options);
+  }
+}
+
+export class DisputesResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The cases customers opened with their banks about a payment, newest first
+   *
+   * A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it: `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won. Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live account. `503` when the payment service does not answer.
+   *
+   * `GET /v1/disputes`
+   */
+  listDisputes(query?: ListDisputesQuery, options?: RequestOptions): Promise<ListDisputesResponse> {
+    return this.t.request<ListDisputesResponse>({ method: "GET", path: `/v1/disputes`, query, response: "json" }, options);
   }
 }
 

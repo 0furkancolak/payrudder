@@ -544,6 +544,44 @@ type adjustmentData struct {
 	} `json:"totals"`
 }
 
+// disputeOfAdjustment reads the adjustments Paddle makes by itself when a customer disputes a payment (developer.paddle.com/webhooks/adjustments/adjustment-created, read
+// 2026-11-02): "chargeback" ("created automatically by Paddle when a customer successfully disputes a charge"), "chargeback_warning" ("warning of an upcoming chargeback"),
+// and their reversals "chargeback_reverse" and "chargeback_warning_reverse" ("created when Paddle successfully contests"). Paddle gives a case no id of its own, so
+// the case is the transaction and the kind (cb_ or cbw_ and the transaction id), which is shared by an adjustment and its reversal. A chargeback is open from the
+// moment it is approved: the documentation names no adjustment for "lost", so a case is open until it is reversed (UNVERIFIED that nothing else ends it). Anything
+// else, and a rejected adjustment, is not a dispute notification.
+func disputeOfAdjustment(n payments.Notification, a adjustmentData) payments.Notification {
+	var prefix string
+	var reversal bool
+	switch a.Action {
+	case "chargeback":
+		prefix = "cb_"
+	case "chargeback_warning":
+		prefix = "cbw_"
+	case "chargeback_reverse":
+		prefix, reversal = "cb_", true
+	case "chargeback_warning_reverse":
+		prefix, reversal = "cbw_", true
+	default:
+		return n
+	}
+	if a.TransactionID == "" {
+		return n
+	}
+	var outcome payments.DisputeOutcome
+	switch {
+	case reversal && a.Status == "approved", !reversal && a.Status == "reversed":
+		outcome = payments.DisputeWon
+	case !reversal && (a.Status == "pending_approval" || a.Status == "approved"):
+		outcome = payments.DisputeOpen
+	default: // rejected, or a reversal that is not approved: nothing changed
+		return n
+	}
+	n.Kind, n.ProviderRef, n.Currency, n.AmountMinor = payments.KindDispute, a.TransactionID, a.CurrencyCode, minor(a.Totals.Total)
+	n.Dispute = &payments.DisputeEvent{ID: prefix + a.TransactionID, Status: a.Action + "/" + a.Status, Outcome: outcome, Formal: prefix == "cb_"}
+	return n
+}
+
 func minor(s string) int64 {
 	n, _ := strconv.ParseInt(s, 10, 64)
 	return n
@@ -625,7 +663,7 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 			return n, fmt.Errorf("paddle: adjustment: %w", err)
 		}
 		if a.Action != "refund" {
-			return n, nil
+			return disputeOfAdjustment(n, a), nil
 		}
 		switch a.Status {
 		case "approved":
