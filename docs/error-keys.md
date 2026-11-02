@@ -349,6 +349,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.two_factor.not_enabled`
 - `identity.two_factor.required_by_organisation`
 - `identity.two_factor.setup_required`
+- `identity.user.not_found`
 - `identity.verify.throttled`
 - `ingest.backlog.full`
 - `ingest.batch.bad_size`

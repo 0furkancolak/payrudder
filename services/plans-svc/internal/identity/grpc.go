@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
@@ -367,6 +368,18 @@ func (h *Handler) RegenerateRecoveryCodes(ctx context.Context, req *plansv1.Rege
 		return nil, err
 	}
 	return &plansv1.RegenerateRecoveryCodesResponse{RecoveryCodes: codes}, nil
+}
+
+// ResetUserTwoFactor is the operator's: the gateway only routes it for an operator, and the check is repeated here, since the service is also reachable on its own port.
+func (h *Handler) ResetUserTwoFactor(ctx context.Context, req *plansv1.ResetUserTwoFactorRequest) (*plansv1.ResetUserTwoFactorResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	was, err := h.cmd.ResetTwoFactor(ctx, req.GetEmail(), req.GetReason())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ResetUserTwoFactorResponse{WasEnabled: was}, nil
 }
 
 func (h *Handler) SetAccountSecurity(ctx context.Context, req *plansv1.SetAccountSecurityRequest) (*plansv1.SetAccountSecurityResponse, error) {

@@ -3434,6 +3434,9 @@
         "not_configured": "Ce déploiement ne peut pas encore proposer la connexion en deux étapes : il n'a pas de clé de secrets.",
         "required_by_organisation": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes : vous ne pouvez donc pas la désactiver.",
         "setup_required": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la d'abord sur la page Sécurité."
+      },
+      "user": {
+        "not_found": "Aucune personne ne se connecte avec cette adresse."
       }
     },
     "gateway": {
@@ -5483,7 +5486,19 @@
       "clear": "Retirer les limites propres",
       "save": "Enregistrer",
       "saved": "Enregistré.",
-      "cleared": "Limites propres retirées."
+      "cleared": "Limites propres retirées.",
+      "twoFactor": {
+        "title": "Second facteur perdu",
+        "hint": "Pour une personne qui a perdu à la fois son application d'authentification et ses codes de récupération. Vérifiez d'abord qui fait la demande. La connexion en deux étapes de la personne est désactivée, elle est déconnectée partout et reçoit un e-mail ; la réinitialisation est inscrite au journal d'audit avec votre motif.",
+        "email": "Adresse de connexion de la personne",
+        "reason": "Motif (conservé dans le journal d'audit)",
+        "reset": "Désactiver la connexion en deux étapes",
+        "confirmTitle": "Désactiver la connexion en deux étapes ?",
+        "confirmBody": "{email} sera déconnecté partout et pourra se connecter avec son seul mot de passe jusqu'à ce qu'il la configure de nouveau. La personne reçoit un e-mail ; la réinitialisation est enregistrée avec votre nom et votre motif.",
+        "confirm": "Désactiver",
+        "done": "La connexion en deux étapes de {email} est désactivée. La personne a reçu un e-mail.",
+        "nothing": "{email} n'avait pas activé la connexion en deux étapes ; rien n'a été modifié."
+      }
     }
   },
   "support": {
@@ -6093,7 +6108,9 @@
       "two_factor": {
         "enabled": "Connexion en deux étapes activée",
         "disabled": "Connexion en deux étapes désactivée",
-        "recovery_codes_regenerated": "Codes de récupération régénérés"
+        "recovery_codes_replaced": "Codes de récupération régénérés",
+        "recovery_code_used": "Code de récupération utilisé",
+        "reset_by_operator": "Connexion en deux étapes réinitialisée par le support"
       }
     }
   }

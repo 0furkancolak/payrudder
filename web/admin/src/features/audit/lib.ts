@@ -23,7 +23,7 @@ export const KNOWN_ACTIONS: readonly string[] = [
   "credit_note.issued", "credit_note.refunded", "credit_note.refund_failed", "credit_note.refund_retried",
   "provider_account.connected", "provider_account.replaced", "provider_account.removed", "provider_account.default_changed",
   "tenant.status_requested", "tenant.status_changed", "tenant.settings_updated",
-  "two_factor.enabled", "two_factor.disabled", "two_factor.recovery_codes_regenerated",
+  "two_factor.enabled", "two_factor.disabled", "two_factor.recovery_codes_replaced", "two_factor.recovery_code_used", "two_factor.reset_by_operator",
   "price_change.scheduled", "price_change.withdrawn",
   "coupon.created", "coupon.deactivated", "promotion_code.created", "promotion_code.deactivated",
   "routing_rules.changed", "tax_rates.changed", "mail_settings.changed", "mail_integration.saved", "mail_integration.removed",

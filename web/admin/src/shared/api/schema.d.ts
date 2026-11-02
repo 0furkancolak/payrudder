@@ -6016,6 +6016,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/users/two-factor/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn off a person's two-factor sign-in after they lost the device and the recovery codes
+         * @description For a person who cannot sign in because they have neither their authenticator app nor a recovery code. Check who is asking by other means first; Payrudder cannot.
+         *     The secret, the recovery codes and the open second-step challenges are removed, every session of the person ends, the lock from failed sign-ins is cleared, the person
+         *     is mailed (in their language) and the reset is written to the audit log (`two_factor.reset_by_operator`) with your `reason` and name. `was_enabled` is false when
+         *     nothing was on: then nothing is changed, recorded or mailed. An owner of an account that requires two-factor sign-in must set it up again at the next sign-in.
+         */
+        post: operations["adminResetUserTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/status-events": {
         parameters: {
             query?: never;
@@ -8817,6 +8840,18 @@ export interface components {
             organizations: components["schemas"]["OrganizationRow"][];
             next_page_token: string;
             platform: components["schemas"]["PlatformInfo"];
+        };
+        AdminResetUserTwoFactorRequest: {
+            /**
+             * Format: email
+             * @description The person's sign-in address
+             */
+            email: string;
+            /** @description Why; kept in the audit log */
+            reason: string;
+        };
+        AdminResetUserTwoFactorResponse: {
+            was_enabled: boolean;
         };
         AdminSetOrganizationPlanRequest: {
             plan_code?: string;
@@ -23468,6 +23503,32 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    adminResetUserTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResetUserTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminResetUserTwoFactorResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     listTenantStatusEvents: {

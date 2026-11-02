@@ -3434,6 +3434,9 @@
         "not_configured": "Este despliegue aún no puede ofrecer el inicio de sesión en dos pasos: no tiene clave de secretos.",
         "required_by_organisation": "Una organización de la que es propietario exige el inicio de sesión en dos pasos, por lo que no puede desactivarlo.",
         "setup_required": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo primero en la página de seguridad."
+      },
+      "user": {
+        "not_found": "Ninguna persona inicia sesión con esa dirección."
       }
     },
     "gateway": {
@@ -5483,7 +5486,19 @@
       "clear": "Quitar los límites propios",
       "save": "Guardar",
       "saved": "Guardado.",
-      "cleared": "Límites propios quitados."
+      "cleared": "Límites propios quitados.",
+      "twoFactor": {
+        "title": "Segundo factor perdido",
+        "hint": "Para una persona que ha perdido tanto su aplicación de autenticación como sus códigos de recuperación. Comprueba primero quién lo pide. Se desactiva su inicio de sesión en dos pasos, se cierran sus sesiones en todas partes, se le envía un correo y el restablecimiento queda en el registro de auditoría con tu motivo.",
+        "email": "Dirección de inicio de sesión de la persona",
+        "reason": "Motivo (se guarda en el registro de auditoría)",
+        "reset": "Desactivar el inicio de sesión en dos pasos",
+        "confirmTitle": "¿Desactivar el inicio de sesión en dos pasos?",
+        "confirmBody": "{email} se desconectará en todas partes y podrá iniciar sesión solo con su contraseña hasta que lo configure de nuevo. Se le envía un correo y el restablecimiento se registra con tu nombre y tu motivo.",
+        "confirm": "Desactivar",
+        "done": "El inicio de sesión en dos pasos de {email} está desactivado. Se le ha enviado un correo.",
+        "nothing": "{email} no tenía el inicio de sesión en dos pasos activado; no se cambió nada."
+      }
     }
   },
   "support": {
@@ -6093,7 +6108,9 @@
       "two_factor": {
         "enabled": "Inicio de sesión en dos pasos activado",
         "disabled": "Inicio de sesión en dos pasos desactivado",
-        "recovery_codes_regenerated": "Códigos de recuperación regenerados"
+        "recovery_codes_replaced": "Códigos de recuperación regenerados",
+        "recovery_code_used": "Código de recuperación usado",
+        "reset_by_operator": "Inicio de sesión en dos pasos restablecido por el soporte"
       }
     }
   }

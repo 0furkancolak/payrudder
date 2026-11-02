@@ -3434,6 +3434,9 @@
         "not_configured": "Diese Installation kann die Zwei-Faktor-Anmeldung noch nicht anbieten: Es ist kein Geheimnisschlüssel gesetzt.",
         "required_by_organisation": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung, daher können Sie sie nicht ausschalten.",
         "setup_required": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie zuerst auf der Sicherheitsseite ein."
+      },
+      "user": {
+        "not_found": "Mit dieser Adresse meldet sich keine Person an."
       }
     },
     "gateway": {
@@ -5483,7 +5486,19 @@
       "clear": "Eigene Limits entfernen",
       "save": "Speichern",
       "saved": "Gespeichert.",
-      "cleared": "Eigene Limits entfernt."
+      "cleared": "Eigene Limits entfernt.",
+      "twoFactor": {
+        "title": "Verlorener zweiter Faktor",
+        "hint": "Für eine Person, die sowohl ihre Authenticator-App als auch ihre Wiederherstellungscodes verloren hat. Prüfen Sie zuerst, wer anfragt. Die Zwei-Faktor-Anmeldung der Person wird ausgeschaltet, sie wird überall abgemeldet und per E-Mail informiert; das Zurücksetzen wird mit Ihrer Begründung im Audit-Log festgehalten.",
+        "email": "Anmelde-Adresse der Person",
+        "reason": "Begründung (wird im Audit-Log gespeichert)",
+        "reset": "Zwei-Faktor-Anmeldung ausschalten",
+        "confirmTitle": "Zwei-Faktor-Anmeldung ausschalten?",
+        "confirmBody": "{email} wird überall abgemeldet und kann sich nur mit dem Passwort anmelden, bis die Zwei-Faktor-Anmeldung neu eingerichtet ist. Die Person wird per E-Mail informiert; das Zurücksetzen wird mit Ihrem Namen und Ihrer Begründung festgehalten.",
+        "confirm": "Ausschalten",
+        "done": "Die Zwei-Faktor-Anmeldung von {email} ist ausgeschaltet. Die Person wurde per E-Mail informiert.",
+        "nothing": "{email} hatte keine Zwei-Faktor-Anmeldung; es wurde nichts geändert."
+      }
     }
   },
   "support": {
@@ -6093,7 +6108,9 @@
       "two_factor": {
         "enabled": "Zwei-Faktor-Anmeldung eingeschaltet",
         "disabled": "Zwei-Faktor-Anmeldung ausgeschaltet",
-        "recovery_codes_regenerated": "Wiederherstellungscodes neu erzeugt"
+        "recovery_codes_replaced": "Wiederherstellungscodes neu erzeugt",
+        "recovery_code_used": "Wiederherstellungscode verwendet",
+        "reset_by_operator": "Zwei-Faktor-Anmeldung vom Support zurückgesetzt"
       }
     }
   }

@@ -14,7 +14,8 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useClearOverrides, useOrganizations, useSetOrganizationPlan } from "./api";
+import { askConfirm } from "@/shared/lib/confirm";
+import { useClearOverrides, useOrganizations, useResetTwoFactor, useSetOrganizationPlan } from "./api";
 import { RESOURCES, isUnlimited, parseLimit, stateTone, type OrganizationRow } from "./lib";
 
 /** The operator's view of the organisations: plan, state and usage of each, and the manual override (a plan without a checkout, limits of its own). */
@@ -51,13 +52,35 @@ const limits = ref<Record<string, string>>({});
 const bad = ref(false);
 const set = useSetOrganizationPlan();
 const clear = useClearOverrides();
+// A person who lost the device and the recovery codes: the operator turns their second factor off (the owner's address is the first guess).
+const reset = useResetTwoFactor();
+const resetEmail = ref("");
+const resetReason = ref("");
+const canReset = computed(() => resetEmail.value.trim() !== "" && resetReason.value.trim() !== "" && !reset.isPending.value);
 watch(chosen, (row) => {
   planCode.value = row?.plan_code ?? "";
   limits.value = {};
   bad.value = false;
   set.reset();
   clear.reset();
+  resetEmail.value = row?.owner_email ?? "";
+  resetReason.value = "";
+  reset.reset();
 });
+async function resetTwoFactor() {
+  const email = resetEmail.value.trim();
+  const ok = await askConfirm({ title: t("saas.admin.twoFactor.confirmTitle"), body: t("saas.admin.twoFactor.confirmBody", { email }), confirmLabel: t("saas.admin.twoFactor.confirm") });
+  if (!ok) return;
+  reset.mutate(
+    { email, reason: resetReason.value.trim() },
+    {
+      onSuccess: (r) => {
+        toast.success(t(r.was_enabled ? "saas.admin.twoFactor.done" : "saas.admin.twoFactor.nothing", { email }));
+        resetReason.value = "";
+      },
+    },
+  );
+}
 // The plans on offer come from the first organisation's plan page in the platform tenant; the three seeded codes are the fallback above.
 const planOptions = computed(() => {
   const codes = new Set(plans.value.map((p) => p.code));
@@ -180,6 +203,20 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
             <ErrorText v-if="bad" :message="t('saas.admin.badLimit')" />
             <ErrorText :error="firstError(set, clear)" box />
           </form>
+          <section class="mt-6 flex flex-col gap-3 border-t pt-4" data-testid="org-two-factor">
+            <h3 class="text-sm font-medium">{{ t("saas.admin.twoFactor.title") }}</h3>
+            <p class="text-muted-foreground text-xs">{{ t("saas.admin.twoFactor.hint") }}</p>
+            <FormField for="org-2fa-email" :label="t('saas.admin.twoFactor.email')">
+              <Input id="org-2fa-email" v-model="resetEmail" type="email" autocomplete="off" />
+            </FormField>
+            <FormField for="org-2fa-reason" :label="t('saas.admin.twoFactor.reason')">
+              <Input id="org-2fa-reason" v-model="resetReason" maxlength="500" autocomplete="off" />
+            </FormField>
+            <ErrorText :error="firstError(reset)" box />
+            <div>
+              <Button type="button" variant="outline" :disabled="!canReset" data-testid="org-2fa-reset" @click="resetTwoFactor">{{ t("saas.admin.twoFactor.reset") }}</Button>
+            </div>
+          </section>
         </SheetBody>
         <SheetFooter>
           <Button variant="ghost" type="button" :disabled="clear.isPending.value || !chosen?.overridden" data-testid="org-clear" @click="clearAll">{{ t("saas.admin.clear") }}</Button>

@@ -3434,6 +3434,9 @@
         "not_configured": "This deployment cannot offer two-factor sign-in yet: it has no secrets key.",
         "required_by_organisation": "An organisation you own requires two-factor sign-in, so you cannot turn it off.",
         "setup_required": "An organisation you own requires two-factor sign-in. Set it up on the security page first."
+      },
+      "user": {
+        "not_found": "No person signs in with that address."
       }
     },
     "gateway": {
@@ -5483,7 +5486,19 @@
       "clear": "Clear own limits",
       "save": "Save",
       "saved": "Saved.",
-      "cleared": "Own limits cleared."
+      "cleared": "Own limits cleared.",
+      "twoFactor": {
+        "title": "Lost second factor",
+        "hint": "For a person who has lost both their authenticator app and their recovery codes. Check who is asking first. Their two-factor sign-in is turned off, they are signed out everywhere and mailed, and the reset is written to the audit log with your reason.",
+        "email": "Person's sign-in address",
+        "reason": "Reason (kept in the audit log)",
+        "reset": "Turn off two-factor sign-in",
+        "confirmTitle": "Turn off two-factor sign-in?",
+        "confirmBody": "{email} will be signed out everywhere and can sign in with the password alone until they set it up again. They are mailed, and the reset is recorded with your name and reason.",
+        "confirm": "Turn it off",
+        "done": "Two-factor sign-in of {email} is off. They have been mailed.",
+        "nothing": "{email} had no two-factor sign-in; nothing was changed."
+      }
     }
   },
   "support": {
@@ -6093,7 +6108,9 @@
       "two_factor": {
         "enabled": "Two-factor sign-in turned on",
         "disabled": "Two-factor sign-in turned off",
-        "recovery_codes_regenerated": "Recovery codes regenerated"
+        "recovery_codes_replaced": "Recovery codes regenerated",
+        "recovery_code_used": "Recovery code used",
+        "reset_by_operator": "Two-factor sign-in reset by support"
       }
     }
   }
