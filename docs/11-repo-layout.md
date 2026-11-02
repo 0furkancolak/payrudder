@@ -59,7 +59,7 @@ payrudder/
 ├── tools/
 │   ├── go.mod                      # pinned dev tools (tools directive)
 │   ├── mockpsp/                    # fake payment provider (HTTP)
-│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed, cells
+│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed, cells, secrets, audit
 │   └── eventgen/                   # load + correctness generator (shared with tests/chaos)
 ├── tests/
 │   ├── go.mod

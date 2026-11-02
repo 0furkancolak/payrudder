@@ -342,6 +342,16 @@ func testContracts(t *testing.T) {
 		if pgxx.ErrCode(err) != pgxx.CodeRaiseException {
 			t.Errorf("the system role deleted evidence of a live tenant: %v", err)
 		}
+		// Neither table is truncated: the owner is stopped by a statement trigger (a row trigger does not fire on TRUNCATE) and the system role holds no such privilege.
+		for _, table := range []string{"contract_acceptances", "contract_snapshots"} {
+			err := pgxx.InTenantTx(context.Background(), e.ownerDB(t), uuid.MustParse(live), func(tx pgx.Tx) error { _, err := tx.Exec(context.Background(), `TRUNCATE `+table); return err })
+			if pgxx.ErrCode(err) != pgxx.CodeRaiseException {
+				t.Errorf("the owner truncated %s: %v", table, err)
+			}
+			if err := e.exec(context.Background(), live, `TRUNCATE `+table); pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
+				t.Errorf("the system role truncating %s: want 42501, got %v", table, err)
+			}
+		}
 		before, _ := c.GetContractSnapshot(ctx, &plansv1.GetContractSnapshotRequest{AcceptanceId: id})
 
 		log := slog.New(slog.NewTextHandler(io.Discard, nil))

@@ -120,10 +120,16 @@ func (c *Commands) SetAddress(ctx context.Context, req *plansv1.SetCustomerAddre
 		params.Country = &c
 	}
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		var err error
-		out, err = q.SetCustomerAddress(ctx, params)
-		return err
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if out, err = q.SetCustomerAddress(ctx, params); err != nil {
+			return err
+		}
+		// The address is printed on the customer's invoices: who changed it and that it changed is in the log, the address itself is not (it is personal data).
+		return recordCustomer(ctx, tx, out, "customer.address_changed", "changed the address of the customer "+out.ExternalID, []string{"address"}, string(cur.Address), string(out.Address))
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -145,10 +151,29 @@ func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerConta
 		number = &n
 	}
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		var err error
-		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(), Phone: number})
-		return err
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(), Phone: number}); err != nil {
+			return err
+		}
+		var fields []string
+		for _, f := range []struct {
+			name      string
+			was, will string
+		}{{"name", cur.Name, out.Name}, {"email", cur.Email, out.Email}, {"phone", cur.Phone, out.Phone}, {"locale", cur.Locale, out.Locale}, {"customer_type", cur.CustomerType, out.CustomerType}} {
+			if f.was != f.will {
+				fields = append(fields, f.name)
+			}
+		}
+		if len(fields) == 0 {
+			return nil // nothing changed, nothing to say
+		}
+		// Names and addresses of people stay out of the log: the entry says which fields changed, and the hashes say that two entries saw the same state.
+		return recordCustomer(ctx, tx, out, "customer.contact_changed", "changed the contact details of the customer "+out.ExternalID, fields,
+			[]string{cur.Name, cur.Email, cur.Phone, cur.Locale, cur.CustomerType}, []string{out.Name, out.Email, out.Phone, out.Locale, out.CustomerType})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -286,6 +311,19 @@ func liftBlock(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, cur sqlc.Custome
 	return out, emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)
 }
 
+// recordCustomer writes the entry of a change of the customer's own data: the names of the fields that changed, and the hashes of the state before and after.
+func recordCustomer(ctx context.Context, tx pgx.Tx, c sqlc.Customer, action, summary string, fields []string, before, after any) error {
+	return audit.Record(ctx, tx, audit.Event{TenantID: c.TenantID, Action: action, TargetType: "customer", TargetID: c.ID.String(), Summary: summary,
+		Before: before, After: after, Detail: map[string]any{"external_id": c.ExternalID, "fields": fields}})
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // emit queues a customer event for the tenant's webhook endpoints, in the caller's transaction.
 func emit(ctx context.Context, q *sqlc.Queries, typ string, data map[string]any, at time.Time) error {
 	b, err := json.Marshal(data)
@@ -311,11 +349,17 @@ func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxReques
 		validated = &now
 	}
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		var err error
-		out, err = q.SetCustomerTax(ctx, sqlc.SetCustomerTaxParams{ExternalID: req.GetExternalId(), TaxID: req.GetTaxId(), TaxOffice: req.GetTaxOffice(),
-			EInvoiceRegistered: req.GetEInvoiceRegistered(), TaxIDValidatedAt: validated})
-		return err
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if out, err = q.SetCustomerTax(ctx, sqlc.SetCustomerTaxParams{ExternalID: req.GetExternalId(), TaxID: req.GetTaxId(), TaxOffice: req.GetTaxOffice(),
+			EInvoiceRegistered: req.GetEInvoiceRegistered(), TaxIDValidatedAt: validated}); err != nil {
+			return err
+		}
+		return recordCustomer(ctx, tx, out, "customer.tax_changed", "changed the tax data of the customer "+out.ExternalID, []string{"tax_id", "tax_office", "e_invoice_registered"},
+			[]any{cur.TaxID, cur.TaxOffice, cur.EInvoiceRegistered}, []any{out.TaxID, out.TaxOffice, out.EInvoiceRegistered})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -326,7 +370,7 @@ func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxReques
 // SetPaymentMethod replaces the customer's payment method.
 func (c *Commands) SetPaymentMethod(ctx context.Context, req *plansv1.SetPaymentMethodRequest) (*plansv1.Customer, error) {
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		t, err := tenantsqry.Current(ctx, q)
 		if err != nil {
 			return err
@@ -337,8 +381,16 @@ func (c *Commands) SetPaymentMethod(ctx context.Context, req *plansv1.SetPayment
 		if err := domain.ValidatePaymentMethod(t.Environment, req.GetPaymentMethod()); err != nil {
 			return domain.Invalid("payment_method", err.Error())
 		}
-		out, err = q.SetPaymentMethod(ctx, sqlc.SetPaymentMethodParams{ExternalID: req.GetExternalId(), PaymentMethod: &req.PaymentMethod})
-		return err
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if out, err = q.SetPaymentMethod(ctx, sqlc.SetPaymentMethodParams{ExternalID: req.GetExternalId(), PaymentMethod: &req.PaymentMethod}); err != nil {
+			return err
+		}
+		// The token is what the customer is charged with: it is never in the log, only that it was replaced (and the hashes of the two).
+		return recordCustomer(ctx, tx, out, "customer.payment_method_changed", "changed the payment method of the customer "+out.ExternalID, []string{"payment_method"},
+			deref(cur.PaymentMethod), deref(out.PaymentMethod))
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
