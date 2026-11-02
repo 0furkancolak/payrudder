@@ -257,6 +257,7 @@ Full profile only.
 | `PAYRUDDER_PG_MIGRATOR_DSN` | PGDSN(`payments`, migrator) | |
 | `PAYRUDDER_MIGRATE_ON_START` | `true` | |
 | `PAYRUDDER_RABBITMQ_URL` | AMQP | |
+| `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the circuit breaker of a provider account is shared by the replicas; without it each replica keeps its own |
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `PAYRUDDER_BILLING_ADDR` | `dns:///billing-svc.railway.internal:7005` | |
 | `MOCKPSP_URL` | `http://mockpsp.railway.internal:8090` | sandbox tenants always use the mock provider |

@@ -34,7 +34,7 @@ The charge is recorded under the **account key** of the account that took it (`s
 
 ## The circuit breaker
 
-One per account (tenant, account key, environment), in the worker's memory (`payments.Breaker`):
+One per account (tenant, account key, environment), counted in the worker's memory (`payments.Breaker`); the replicas can share whether it is open (below):
 
 | State | Meaning |
 |---|---|
@@ -44,7 +44,13 @@ One per account (tenant, account key, environment), in the worker's memory (`pay
 
 All four numbers are **defaults, not agreed**. An *outage* is a timeout, an unreachable provider or an HTTP 5xx / 429 (`payments.IsOutage`). A decline, a refusal of the request and a pending payment are the provider working: they reset the count and close the circuit. Only new charges are guarded: status queries and refunds are not (they are how an unknown outcome is resolved), and they are paced by the saga's backoff.
 
-A charge that finds the circuit open is **not sent**: `Allow` returns a `*TransientError` wrapping `payments.ErrCircuitOpen` with `RetryAfter` set to what is left of the cool-down. The handler returns it, so the command goes through the delay queues like any transient failure (no reply, no ledger row), and the metric `provider_breaker_rejections` counts it. If a failover is set and this is the first delivery, the charge goes to the other account instead: the first was not called, so the rule holds. State is kept for people to read (`provider_account_health.breaker`, `consecutive_failures`, `opened_at`) and a **restart begins closed** (replicas do not share breakers). *Shortcut:* with several replicas each learns of an outage by itself, and the health monitor (below) helps all of them.
+A charge that finds the circuit open is **not sent**: `Allow` returns a `*TransientError` wrapping `payments.ErrCircuitOpen` with `RetryAfter` set to what is left of the cool-down. The handler returns it, so the command goes through the delay queues like any transient failure (no reply, no ledger row), and the metric `provider_breaker_rejections` counts it. If a failover is set and this is the first delivery, the charge goes to the other account instead: the first was not called, so the rule holds. State is kept for people to read (`provider_account_health.breaker`, `consecutive_failures`, `opened_at`) and a **restart begins closed**.
+
+### Shared between replicas (Redis)
+
+With `PAYRUDDER_REDIS_URL` set (compose, Helm and Railway set it) the replicas share the open window of each account (`health.RedisBreakers`, behind `payments.SharedBreaker`): one key per account, `pw:breaker:{tenant}:{account key}:{environment}`, written when a replica opens the circuit and **expiring after the open window** (`PAYMENTS_BREAKER_OPEN_FOR`), so nothing has to close it. A replica whose own circuit is closed asks the key before a charge and **refuses while it exists** (the same circuit-open error, `RetryAfter` the key's time to live). So the outage one replica found, after its five failures, stops the others at once instead of each spending five charges. A second key (`...:probe`, set with NX for the open window) is the lease on the **one probe** of the half-open state across the replicas that were open; a good probe, or a health check that finds the provider answering on any replica, deletes both keys; a failed probe writes the open key again.
+
+Without Redis, or when it cannot be reached (each call is bounded by 250 ms), nothing fails: every decision is the replica's own, as before, and the fallback is counted in `provider_breaker_shared_fallback_total{provider}` and logged at most once a minute. *Shortcut:* the **count** of failures is not shared, only the open window and the probe lease: a replica that was closed when the window ended lets charges through without a probe until its own count (or a probing replica's failed probe) opens the circuit again. Share the count too if that leak matters (not agreed). Tested on a real Redis (`TestCircuitBreakerIsSharedThroughRedis`) and against a clock-driven fake in `pkg/payments` (`TestBreakerIsSharedBetweenReplicas`, `TestOnlyOneReplicaProbes`).
 
 ## Health
 
@@ -67,5 +73,5 @@ Metrics (payments-worker): `provider_health_checks{provider,result}`, `provider_
 - A 5xx is never "definite" until an adapter has a documented signal for it; so for an HTTP outage the only defence is the breaker and the saga's own retry (a failover happens only when the connection did not open, the circuit is open, or a provider says so).
 - Routing preview: `previewRouting` (plans-svc) does not mention health or failover; `billing-svc` and `plans-svc` were not changed. The routing rule still names one account; the failover is the worker's.
 - The console shows health and sets the failover on the seller's integrations page (live accounts only; the sandbox's test-mode accounts are not shown); the operator has no screen of its own for it, only the admin API. `account_id` (plan 10) does not exist, rows are keyed by the account key.
-- Breaker state is per process; the health monitor runs in every replica (a check each, every interval).
+- Without `PAYRUDDER_REDIS_URL` the breaker is per process; the health monitor runs in every replica (a check each, every interval).
 - The failover of a subscription that the provider itself renews (Paddle) is out of the question and not attempted: only Payrudder-driven charges go through the handler.

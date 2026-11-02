@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/proto"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
@@ -747,8 +748,8 @@ func TestMovesOfPaymentsTenants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Rows() != 4 {
-		t.Fatalf("copied %d rows, want the attempt, the pending and the manual ledger row, and the receipt", rep.Rows())
+	if rep.Rows() != 5 {
+		t.Fatalf("copied %d rows, want the attempt, the pending and the manual ledger row, the receipt and its audit entry", rep.Rows())
 	}
 	var indexed int
 	if err := w.pools["c1"].QueryRow(ctx, `SELECT count(*) FROM shared.charge_keys WHERE tenant_id = $1 AND idempotency_key = $2`, tn, key).Scan(&indexed); err != nil || indexed != 1 {
@@ -777,5 +778,45 @@ func TestMovesOfPaymentsTenants(t *testing.T) {
 	// Back into the pooled database: refused before anything is written.
 	if _, err := move("c2", "").Copy(ctx); err == nil || !strings.Contains(err.Error(), "identity") {
 		t.Fatalf("a move into the pooled database: %v; want the refusal about the identity column the receipts refer to", err)
+	}
+}
+
+// TRUNCATE in a tenant's schema of a cell is refused like anywhere else, except for the move of that tenant (pkg/pgxx Move empties the destination schema before it
+// copies the rows): the setting must name the tenant whose schema it is.
+func TestTruncateInATenantSchemaIsForItsMoveOnly(t *testing.T) {
+	ctx := testkit.Ctx(t)
+	pg := testkit.StartPostgres(t)
+	_ = testkit.MigratedDB(t, pg, "payments", migrations.FS) // the roles the cell grants to
+	cell := testkit.CreateCellDB(t, pg, "payments", "c1")
+	id := uuid.New()
+	if _, err := pgxx.ProvisionTenant(ctx, cell.Migrator, tenantSchemas(), id, nil); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := pgx.Connect(ctx, cell.Migrator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close(ctx) }()
+	truncate := func(setting string) error {
+		return pgx.BeginFunc(ctx, conn, func(tx pgx.Tx) error {
+			if setting != "" {
+				if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.tenant_move', $1, true)`, setting); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.Exec(ctx, "TRUNCATE "+tenantdir.Schema(id)+".payment_ledger CASCADE"); err != nil {
+				return err
+			}
+			return errRollBack // it only looked
+		})
+	}
+	for name, setting := range map[string]string{"no setting": "", "another tenant's move": uuid.NewString()} {
+		var pe *pgconn.PgError
+		if err := truncate(setting); !errors.As(err, &pe) || pe.Hint != "ledger_table_truncate" {
+			t.Errorf("TRUNCATE in the tenant's schema with %s: %v, want the ledger_table_truncate refusal", name, err)
+		}
+	}
+	if err := truncate(id.String()); !errors.Is(err, errRollBack) {
+		t.Errorf("TRUNCATE in the tenant's schema by its own move: %v", err)
 	}
 }

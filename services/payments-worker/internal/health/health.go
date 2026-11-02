@@ -37,11 +37,14 @@ func counter(name, desc string) metric.Int64Counter {
 	return c
 }
 
-// Breakers holds the circuit breaker of every account a worker has charged through, made on first use. A breaker is in this process's memory: another replica has its
-// own, and a restart begins closed. What it persists is for people to read (store.ProviderHealth), not for the next process to start from.
+// Breakers holds the circuit breaker of every account a worker has charged through, made on first use. A breaker counts in this process's memory and a restart begins
+// closed; with Shared set, replicas also share whether the circuit is open (see payments.SharedBreaker). What it persists in the database is for people to read
+// (store.ProviderHealth), not for the next process to start from.
 type Breakers struct {
 	// Settings are the numbers of every breaker (payments.DefaultBreaker where zero).
 	Settings payments.BreakerSettings
+	// Shared, when set (Redis), makes every account's circuit one for all replicas; nil keeps each replica's breaker its own.
+	Shared SharedStates
 	// Store, when its DB is set, keeps the state of a breaker when it changes.
 	Store store.ProviderHealth
 	Log   *slog.Logger
@@ -63,6 +66,9 @@ func (b *Breakers) For(ref Ref) *payments.Breaker {
 		b.m = map[Ref]*payments.Breaker{}
 	}
 	br := payments.NewBreaker(b.Settings, b.Now, func(to payments.BreakerState, failures int) { b.changed(ref, to, failures) })
+	if b.Shared != nil {
+		br.Shared = b.Shared.For(ref)
+	}
 	b.m[ref] = br
 	return br
 }
