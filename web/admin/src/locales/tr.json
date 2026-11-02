@@ -2753,7 +2753,7 @@
         "tr_any": "Türkiye'de vergi numarası 10 haneli VKN ya da 11 haneli TCKN'dir. Bu ikisine de benzemiyor; yine de kaydedebilirsiniz.",
         "tr_is_tckn": "Bu bir TCKN, yani bireyin numarası; ama müşteri bir işletme (VKN'si olur). Yine de kaydedebilirsiniz.",
         "tr_is_vkn": "Bu bir VKN, yani işletmenin numarası; ama müşteri bir birey (TCKN'si olur). Yine de kaydedebilirsiniz.",
-        "eu_vat": "AB'deki bir işletmenin KDV numarası ülke koduyla başlar (örneğin DE123456789). Bu öyle görünmüyor; yine de kaydedebilirsiniz."
+        "eu_vat": "AB'deki bir işletmenin KDV numarası ülke koduyla başlar (örneğin DE136695976). Bu öyle görünmüyor; yine de kaydedebilirsiniz."
       },
       "warned": "Bu numara bu müşteri için doğru görünmüyor. Nedenini görmek için vergi bilgisini açın."
     },

@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: snippets-${{ github.ref }}
+  group: snippets-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: true
 
 jobs:

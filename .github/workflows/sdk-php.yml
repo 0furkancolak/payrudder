@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sdk-php-${{ github.ref }}
+  group: sdk-php-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: true
 
 defaults:
