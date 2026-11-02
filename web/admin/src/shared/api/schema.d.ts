@@ -169,7 +169,10 @@ export interface paths {
          *     a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
          *     yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
          *     stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
-         *     (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
+         *     (the end of a block by itself sends none). Usage ingestion is not affected, and entitlements are unless you set `suspend_service`: then every entitlement
+         *     check of this customer answers `allowed: false` and `suspended: true` (the limits and the counted usage are untouched, and the events you send are still
+         *     accepted and counted) until you lift the block or it ends by itself. The service is suspended only when the block is new: a block already in force is kept
+         *     as it is, so lift it first to change it.
          */
         post: operations["blockCustomer"];
         delete?: never;
@@ -4492,6 +4495,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/integrations/payment-accounts/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How each live payment account is doing - the last periodic check, the circuit breaker and the account a charge fails over to
+         * @description What payments-worker last saw, not a check now: a periodic check keeps `status`, the circuit breaker keeps `breaker` and `consecutive_failures`. The breaker is in each worker's
+         *     memory, so a worker that has just started shows what the last one left. Any member reads it. See docs/provider-health.md.
+         */
+        get: operations["appPaymentAccountHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the account a new charge goes to when this one definitely did not process it (the owner only)
+         * @description Only a failure that is proven (the connection never opened, an adapter or provider that says "not processed", or an open circuit) lets a new charge go to the other account,
+         *     as a new attempt under a new key. A timeout never does. One account, one hop, the live environment; both accounts must exist and a bank transfer cannot take part
+         *     (400 `payments.failover.bad_target`, 404 `payments.account.not_found`). Recorded for the person.
+         */
+        put: operations["appPutPaymentAccountFailover"];
+        post?: never;
+        /** Remove the failover of a live payment account (the owner only) */
+        delete: operations["appDeletePaymentAccountFailover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/integrations/mail": {
         parameters: {
             query?: never;
@@ -6324,6 +6371,8 @@ export interface components {
              * @description When the block ends by itself; must be in the future. Absent: until you lift it.
              */
             blocked_until?: string;
+            /** @description Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false. */
+            suspend_service?: boolean;
         };
         /**
          * @description Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open.
@@ -6340,6 +6389,8 @@ export interface components {
             reason: string;
             /** Format: date-time */
             blocked_until?: string | null;
+            /** @description On a block: whether it also suspended the customer's service */
+            suspend_service: boolean;
             /** @description A person's address, key:<api key id>, or operator */
             actor: string;
             /** Format: date-time */
@@ -6824,7 +6875,7 @@ export interface components {
              */
             limit: string | null;
             unlimited: boolean;
-            /** @description unlimited, used < limit, or a soft or notify limit */
+            /** @description (unlimited, used < limit, or a soft or notify limit) and not suspended */
             allowed: boolean;
             /** Format: date-time */
             as_of: string | null;
@@ -6849,6 +6900,8 @@ export interface components {
             over_limit: boolean;
             /** @description The limit is the customer's own override, not its package's */
             overridden: boolean;
+            /** @description You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with or without a limit. Usage is still accepted and counted. */
+            suspended: boolean;
         };
         IngestEventsRequest: {
             events: components["schemas"]["IncomingEvent"][];
@@ -9961,6 +10014,8 @@ export interface components {
              * @description Absent: until lifted
              */
             blocked_until?: string;
+            /** @description The block also suspended the customer's service. Absent on an event queued before this field existed: read it as false. */
+            suspend_service?: boolean;
         };
         /** @description The body of a delivery of type customer.blocked */
         CustomerBlockedEvent: {
@@ -10717,6 +10772,8 @@ export interface components {
              * @description When the block ends by itself; absent: until it is lifted.
              */
             blocked_until?: string | null;
+            /** @description The block also suspends the customer's service: every entitlement check answers allowed false. Read it with block_time and blocked_until, it holds only while the block does. */
+            service_suspended: boolean;
             /** @description The customer's mobile number as E.164 (+905321234567); empty when none. */
             phone: string;
             /**
@@ -20488,6 +20545,86 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPaymentAccountHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProviderAccountHealthResponse"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPutPaymentAccountFailover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                /** @description The account key, such as stripe or stripe~eu */
+                account: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderAccountFailoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutProviderAccountFailoverResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appDeletePaymentAccountFailover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                account: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

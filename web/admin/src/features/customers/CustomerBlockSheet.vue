@@ -7,12 +7,14 @@ import { FormField } from "@/shared/ui/form-field";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { Switch } from "@/shared/ui/switch";
 import { Textarea } from "@/shared/ui/textarea";
 import { useBlockCustomer } from "./api";
 import { BLOCK_CATEGORIES, type BlockCategory, type Customer } from "./lib";
 
 /**
- * The form that blocks a customer: why (a category), the seller's own note and, if the block should end by itself, the day it ends. The model holds the customer being
+ * The form that blocks a customer: why (a category), the seller's own note, if the block should end by itself the day it ends, and whether their service is suspended
+ * too (entitlement checks answer "not allowed"; usage is still counted). The model holds the customer being
  * blocked (null is closed). What the block does is said above the form; the history of blocks and lifts is on the customer's sheet.
  */
 const props = defineProps<{ tenantId: string }>();
@@ -23,12 +25,14 @@ const blocking = useBlockCustomer(() => props.tenantId);
 const category = ref<BlockCategory | "">("");
 const reason = ref("");
 const until = ref("");
+const suspend = ref(false);
 const open = computed({ get: () => target.value !== null, set: (v) => !v && (target.value = null) });
 watch(target, (c) => {
   if (!c) return;
   category.value = "";
   reason.value = "";
   until.value = "";
+  suspend.value = false;
   blocking.block.reset();
 });
 
@@ -45,7 +49,7 @@ function save() {
   const c = target.value;
   if (!c) return;
   blocking.block.mutate(
-    { externalId: c.external_id ?? "", reason: reason.value.trim(), category: category.value || undefined, until: untilIso.value },
+    { externalId: c.external_id ?? "", reason: reason.value.trim(), category: category.value || undefined, until: untilIso.value, suspend: suspend.value },
     { onSuccess: () => (target.value = null) },
   );
 }
@@ -71,6 +75,9 @@ function save() {
           </FormField>
           <FormField :label="t('billing.customers.block.until')" for="block-until" :hint="t('billing.customers.block.untilHint')">
             <Input id="block-until" v-model="until" type="date" :min="tomorrow" data-testid="block-until" />
+          </FormField>
+          <FormField :label="t('billing.customers.block.suspend')" for="block-suspend" :hint="t('billing.customers.block.suspendHint')">
+            <Switch id="block-suspend" v-model="suspend" data-testid="block-suspend" />
           </FormField>
           <ErrorText :error="blocking.block.error.value" />
         </form>

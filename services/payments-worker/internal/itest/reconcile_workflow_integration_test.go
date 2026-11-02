@@ -155,6 +155,23 @@ func errorKey(m map[string]any) string {
 
 // A run keeps what it finds, once: the same run again changes nothing (no new row, no new event), a payment that is fixed is cleared by the next run, and one that
 // was resolved and is found again is reopened, because resolving it did not make it go away.
+// wantOpen checks the counts the gauge of the alerts reads.
+func (f *workflow) wantOpen(want map[string]int64) {
+	f.t.Helper()
+	got, err := f.disc.OpenCounts(context.Background())
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if len(got) != len(want) {
+		f.t.Fatalf("open discrepancies = %v, want %v", got, want)
+	}
+	for k, n := range want {
+		if got[k] != n {
+			f.t.Fatalf("open discrepancies = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestReconciliationRunKeepsEachDiscrepancyOnce(t *testing.T) {
 	f := newWorkflow(t, "live")
 	first := f.run(command.ByOperator)
@@ -165,6 +182,11 @@ func TestReconciliationRunKeepsEachDiscrepancyOnce(t *testing.T) {
 	if again.Opened != 0 || again.Reopened != 0 || again.Cleared != 0 || again.Found != 4 {
 		t.Fatalf("a second run = %+v, want nothing changed", again)
 	}
+	// The gauge of the alerts counts the live ones waiting for an operator, by kind: one tenant's four, and not a sandbox tenant's.
+	if _, err := f.disc.Sync(context.Background(), uuid.New(), "sandbox", "2026-10", []store.Finding{{Kind: query.PaidWithoutCharge, InvoiceID: uuid.NewString(), Provider: "mockpsp", ProviderRef: "x"}}, false); err != nil {
+		t.Fatal(err)
+	}
+	f.wantOpen(map[string]int64{query.PaidWithoutCharge: 1, query.AmountMismatch: 1, query.DuplicateCharge: 1, query.ChargeWithoutPaid: 1})
 	rows := f.list(store.Filter{Period: "2026-10"})
 	if len(rows) != 4 {
 		t.Fatalf("%d rows kept, want 4", len(rows))
@@ -191,6 +213,7 @@ func TestReconciliationRunKeepsEachDiscrepancyOnce(t *testing.T) {
 	if res := f.run(command.BySchedule); res.Cleared != 1 || res.Found != 3 {
 		t.Fatalf("after the fix: %+v, want one cleared", res)
 	}
+	f.wantOpen(map[string]int64{query.AmountMismatch: 1, query.DuplicateCharge: 1, query.ChargeWithoutPaid: 1}) // a cleared one is not waiting for anybody
 	got, _, _ := f.disc.Get(context.Background(), f.tenant, b.ID)
 	if got.Status != store.DiscResolved || got.Resolution != store.ResolvedCleared || got.ResolvedAt == nil {
 		t.Errorf("cleared row = %+v", got)
@@ -204,9 +227,11 @@ func TestReconciliationRunKeepsEachDiscrepancyOnce(t *testing.T) {
 	if _, err := command.Resolve(context.Background(), f.deps, f.tenant, d.ID, command.ResolveInput{Resolution: command.NotAnError, Note: "believed fine", Actor: "ops"}); err != nil {
 		t.Fatal(err)
 	}
+	f.wantOpen(map[string]int64{query.AmountMismatch: 1, query.ChargeWithoutPaid: 1}) // resolved
 	if res := f.run(command.BySchedule); res.Reopened != 1 || res.Opened != 0 {
 		t.Fatalf("after a resolution that did not hold: %+v", res)
 	}
+	f.wantOpen(map[string]int64{query.AmountMismatch: 1, query.DuplicateCharge: 1, query.ChargeWithoutPaid: 1}) // and open again
 	if ev := f.events(d.ID); strings.Join(ev, ",") != "detected,resolved,reopened" {
 		t.Errorf("events = %v", ev)
 	}

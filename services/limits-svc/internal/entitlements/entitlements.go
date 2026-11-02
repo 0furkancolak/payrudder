@@ -50,7 +50,18 @@ func (s State) Active(t time.Time) bool {
 	return !t.Before(s.From) && (s.Until.IsZero() || t.Before(s.Until))
 }
 
-// MirrorKey is the Redis key mirroring the entitlement.
+// Suspension is a customer the seller has suspended: no meter is allowed while it holds. It is not a limit, so it is kept apart from the entitlements.
+type Suspension struct {
+	From  time.Time
+	Until time.Time // zero = until a tombstone
+}
+
+// Active reports whether the suspension holds at t.
+func (s Suspension) Active(t time.Time) bool {
+	return !t.Before(s.From) && (s.Until.IsZero() || t.Before(s.Until))
+}
+
+// MirrorKey is the Redis key mirroring the entitlement. An empty meter is the mirror of the customer's suspension.
 func MirrorKey(tenant, customer uuid.UUID, meter string) string {
 	return fmt.Sprintf("lim:ent:%s:%s:%s", tenant, customer, meter)
 }
@@ -63,6 +74,7 @@ type Store struct {
 	mu         sync.RWMutex
 	byKey      map[string]State
 	byCustomer map[string]map[string]struct{} // "tenant/customer" -> meters
+	suspended  map[string]Suspension          // "tenant/customer" -> suspension
 	next       map[int32]int64                // partition -> next offset to read
 	targets    map[int32]int64                // partition -> end offset at start; nil until known
 }
@@ -72,7 +84,7 @@ func New(rdb *redis.Client, log *slog.Logger) *Store {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Store{rdb: rdb, log: log, byKey: map[string]State{}, byCustomer: map[string]map[string]struct{}{}, next: map[int32]int64{}}
+	return &Store{rdb: rdb, log: log, byKey: map[string]State{}, byCustomer: map[string]map[string]struct{}{}, suspended: map[string]Suspension{}, next: map[int32]int64{}}
 }
 
 func key(tenant, customer uuid.UUID, meter string) string {
@@ -103,6 +115,10 @@ func (s *Store) Apply(ctx context.Context, partition int32, recs []*kgo.Record) 
 			s.log.Warn("skipping undecodable entitlement", "key", string(rec.Key), "offset", rec.Offset, "error", err)
 			continue
 		}
+		if pb.GetMeterCode() == "" {
+			s.suspend(ctx, &pb, rec)
+			continue
+		}
 		st, err := fromProto(&pb)
 		if err != nil {
 			s.log.Warn("skipping invalid entitlement", "key", string(rec.Key), "offset", rec.Offset, "error", err)
@@ -131,6 +147,36 @@ func (s *Store) Apply(ctx context.Context, partition int32, recs []*kgo.Record) 
 	return nil
 }
 
+// suspend applies a record on the empty meter, the customer's suspension: one that says suspended holds from its valid_from until its valid_until (open-ended when
+// unset), one that does not lifts it.
+func (s *Store) suspend(ctx context.Context, pb *eventsv1.EntitlementState, rec *kgo.Record) {
+	t, err1 := uuid.Parse(pb.GetTenantId())
+	c, err2 := uuid.Parse(pb.GetCustomerId())
+	if err1 != nil || err2 != nil {
+		s.log.Warn("skipping invalid suspension", "key", string(rec.Key), "offset", rec.Offset)
+		return
+	}
+	if !pb.GetSuspended() {
+		s.remove(ctx, string(rec.Key))
+		return
+	}
+	sp := Suspension{}
+	if pb.GetValidFrom() != nil {
+		sp.From = pb.GetValidFrom().AsTime()
+	}
+	if pb.GetValidUntil() != nil {
+		sp.Until = pb.GetValidUntil().AsTime()
+	}
+	s.mu.Lock()
+	s.suspended[custKey(t, c)] = sp
+	s.mu.Unlock()
+	if s.rdb != nil {
+		if err := s.rdb.Set(ctx, MirrorKey(t, c, ""), rec.Value, 0).Err(); err != nil {
+			s.log.Warn("suspension mirror write failed", "error", err)
+		}
+	}
+}
+
 func (s *Store) remove(ctx context.Context, k string) {
 	parts := strings.SplitN(k, "/", 3)
 	if len(parts) != 3 {
@@ -142,6 +188,9 @@ func (s *Store) remove(ctx context.Context, k string) {
 		return
 	}
 	s.mu.Lock()
+	if parts[2] == "" {
+		delete(s.suspended, custKey(t, c))
+	}
 	delete(s.byKey, k)
 	if m := s.byCustomer[custKey(t, c)]; m != nil {
 		delete(m, parts[2])
@@ -200,6 +249,14 @@ func (s *Store) Get(tenantID, customer uuid.UUID, meter string, now time.Time) (
 		return State{}, false
 	}
 	return st, true
+}
+
+// Suspended reports whether the seller has suspended the customer at now: every meter of that customer answers "not allowed".
+func (s *Store) Suspended(tenantID, customer uuid.UUID, now time.Time) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	sp, ok := s.suspended[custKey(tenantID, customer)]
+	return ok && sp.Active(now)
 }
 
 // ForCustomer returns the entitlements of the customer that apply at now, ordered by meter code.

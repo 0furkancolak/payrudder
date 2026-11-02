@@ -35,7 +35,7 @@
 | `contract.withdrawal-received.v1` | `{tenant_id}/{customer_id}` | `ContractWithdrawalReceived` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-withdrawals`) |
 | `contract.withdrawal-received.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `subscription.trial-will-end.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
-| `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}` | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
+| `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}`; `{tenant_id}/{customer_id}/` (empty meter) for the customer's suspension | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
 | `billing.invoices.v1` | `tenant_id` | `InvoiceFact` (`oneof`: finalized / paid / voided / corrected) | 6 | `delete`, 400 days | billing-svc (outbox) | analytics-svc (`analytics`) |
 | `billing.invoices.dlq.v1` | `tenant_id` | original bytes | 1 | `delete`, 30 days | analytics-svc | operator |
 

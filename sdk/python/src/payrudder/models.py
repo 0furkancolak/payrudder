@@ -83,6 +83,7 @@ class _CustomerRequired(TypedDict):
     customer_type: str
     block_reason: str
     block_category: str
+    service_suspended: bool
     phone: str
     tax_id_warning: str
 
@@ -148,6 +149,7 @@ class BlockCustomerRequest(TypedDict, total=False):
     reason: str
     category: CustomerBlockCategory
     blocked_until: str | datetime
+    suspend_service: bool
 
 
 class _CustomerBlockEventRequired(TypedDict):
@@ -155,6 +157,7 @@ class _CustomerBlockEventRequired(TypedDict):
     action: Literal["blocked", "unblocked"]
     category: str
     reason: str
+    suspend_service: bool
     actor: str
     create_time: str
 
@@ -517,6 +520,7 @@ class EntitlementStatus(TypedDict):
     mode: Literal["hard", "soft", "notify"]
     over_limit: bool
     overridden: bool
+    suspended: bool
 
 
 class ListEntitlementsResponse(TypedDict):

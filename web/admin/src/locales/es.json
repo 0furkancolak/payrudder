@@ -682,7 +682,11 @@
           "blocked": "Bloqueado",
           "unblocked": "Levantado"
         },
-        "by": "por {actor}"
+        "by": "por {actor}",
+        "suspend": "Suspender también su servicio",
+        "suspendHint": "Las comprobaciones de derechos de este cliente responden «no permitido» en cada medidor hasta que se levante el bloqueo o termine. El uso que envíe se sigue aceptando y contando.",
+        "bannerSuspended": "Servicio suspendido: las comprobaciones de derechos responden «no permitido».",
+        "suspended": "Servicio suspendido"
       },
       "upcoming": {
         "title": "Próxima factura",
@@ -2104,6 +2108,38 @@
         "INVALID_QUANTITY": "La cantidad debe ser un número igual o mayor que 0.",
         "INVALID_QUANTITY_PRECISION": "La cantidad tiene más decimales de los que permite el medidor.",
         "IDEMPOTENCY_KEY_REUSED": "Esta corrección ya se hizo con otros valores."
+      }
+    },
+    "feeRules": {
+      "title": "Comisiones esperadas de los proveedores",
+      "hint": "Lo que se espera que cada proveedor retenga de un pago, por moneda: un porcentaje y un importe fijo. Payrudder no conoce los precios de ningún proveedor, así que los introduce un operador. Una comisión que el informe del proveedor muestre distinta en más de una unidad menor se convierte en una discrepancia en la cola de revisión.",
+      "add": "Añadir regla",
+      "provider": "Proveedor",
+      "account": "Proveedor o clave de cuenta",
+      "accountHint": "Un proveedor como stripe, o una sola cuenta como stripe~eu. La regla se aplica a los pagos cobrados con exactamente esa clave.",
+      "currency": "Moneda",
+      "currencyHint": "Tres letras, por ejemplo USD. Una regla es para una sola moneda.",
+      "rate": "Tasa",
+      "rateInput": "Tasa (%)",
+      "rateHint": "La parte del pago que retiene el proveedor, con hasta dos decimales: 2.9 para 2,9 %.",
+      "fixed": "Comisión fija",
+      "fixedInput": "Comisión fija",
+      "fixedHint": "Se suma a cada pago, en la moneda de la regla, por ejemplo 0.30. Déjelo vacío si no hay.",
+      "environment": "Entorno",
+      "updated": "Actualizada",
+      "empty": "No hay reglas de comisión. Sin una, las comisiones de un proveedor se muestran pero no se comparan.",
+      "detailHint": "La comisión que se espera que un proveedor retenga de un pago.",
+      "editTitle": "Editar la regla de {provider} en {currency}",
+      "formHint": "Guardar un proveedor y una moneda que ya tienen una regla la sustituye.",
+      "confirmRemove": "¿Quitar la regla de comisión de {provider} en {currency}? Las comisiones de esos pagos dejarán de compararse.",
+      "edit": "Editar",
+      "remove": "Quitar",
+      "save": "Guardar",
+      "errors": {
+        "provider": "Use un proveedor o una clave de cuenta en minúsculas, como stripe o stripe~eu.",
+        "currency": "La moneda son tres letras, por ejemplo USD.",
+        "rate": "La tasa va de 0 a 100 con un máximo de dos decimales.",
+        "fixed": "La comisión fija es un importe con no más decimales de los que tiene la moneda."
       }
     }
   },
@@ -4556,6 +4592,49 @@
             "routing_changed": "{actor} cambió las reglas de enrutamiento"
           }
         }
+      },
+      "health": {
+        "label": "Estado de salud",
+        "never": "Nunca",
+        "failsOver": "Conmuta a {name}",
+        "states": {
+          "healthy": "Accesible",
+          "down": "No accesible",
+          "bad_credentials": "Credenciales rechazadas",
+          "circuit_open": "Circuito abierto",
+          "recovering": "Recuperándose",
+          "unknown": "Sin comprobar"
+        },
+        "breaker": {
+          "closed": "Cerrado (los cobros pasan)",
+          "open": "Abierto (los cobros se rechazan sin llamar)",
+          "half_open": "Semiabierto (un cobro a la vez sondea)"
+        },
+        "detail": {
+          "state": "Última comprobación",
+          "breaker": "Cortacircuitos",
+          "failures": "Caídas seguidas",
+          "checked": "Comprobado",
+          "ok": "Última respuesta",
+          "error": "Último problema"
+        },
+        "errors": {
+          "unreachable": "No se pudo contactar al proveedor",
+          "bad_credentials": "El proveedor rechazó las credenciales",
+          "unusable": "Los ajustes guardados no se pueden usar",
+          "circuit_open": "El circuito estaba abierto",
+          "no_remote_check": "Este proveedor no tiene comprobación de salud"
+        },
+        "failover": {
+          "action": "Conmutación por error…",
+          "title": "Conmutación por error para {name}",
+          "intro": "Cuando esta cuenta con toda seguridad no procesó un cobro nuevo (la conexión nunca se abrió, o su circuito está abierto), el cobro pasa a la cuenta que elija, como un intento nuevo. Un tiempo de espera agotado nunca conmuta: primero se pregunta el resultado a esta cuenta, para no cobrar dos veces a un cliente.",
+          "target": "Conmutar a",
+          "choose": "Elija una cuenta",
+          "save": "Guardar la conmutación",
+          "remove": "Quitar la conmutación",
+          "noTargets": "Añada una segunda cuenta de pago para elegir a dónde pueden conmutar los cobros."
+        }
       }
     },
     "envSwitch": {
@@ -5406,7 +5485,7 @@
     "steps": {
       "key": {
         "title": "Una clave de API",
-        "todo": "Cree una en la página de claves de API de la app; se muestra una vez.",
+        "todo": "Cree una abajo (o en la página Claves de API de la aplicación); se muestra una sola vez.",
         "done": "Tiene una clave."
       },
       "meter": {
@@ -5447,6 +5526,31 @@
       "queued": "Esperando la respuesta de su servidor.",
       "delivered": "Su servidor lo aceptó ({answer}).",
       "failed": "Su servidor no lo aceptó: {answer}. Corrija su manejador y envíe otro; Payrudder también reintenta por su cuenta."
+    },
+    "key": {
+      "title": "Crear una clave de API",
+      "help": "Crea una clave que solo puede enviar eventos de uso, para el entorno que está viendo. Se muestra una sola vez, aquí: esta página la guarda en memoria solo hasta que diga que la ha copiado.",
+      "create": "Crear una clave de ingesta",
+      "once": "Cópiela ahora. No se mostrará de nuevo y esta página no la conserva. Póngala en PAYRUDDER_API_KEY.",
+      "done": "Ya la he copiado"
+    },
+    "sample": {
+      "create": "Crear un medidor y un cliente de ejemplo",
+      "help": "Solo sandbox. Crea el medidor {meter} y el cliente {customer}, según lo que falte, para que el código de abajo funcione tal cual."
+    },
+    "testEvent": {
+      "title": "Enviar un evento de prueba",
+      "help": "Envía desde esta página un evento de cantidad 1 para {customer} en {meter}. Solo sandbox.",
+      "need": "Elija primero un medidor y escriba un id de cliente.",
+      "send": "Enviar un evento de prueba",
+      "badge": {
+        "accepted": "Aceptado",
+        "duplicate": "Ya contado",
+        "rejected": "Rechazado"
+      },
+      "accepted": "El evento fue aceptado. La lista se pone en verde cuando se cuente, en unos segundos.",
+      "duplicate": "Ya se contó un evento con esta clave; no se añadió nada.",
+      "rejected": "El evento fue rechazado: {code}. {message}"
     }
   },
   "contracts": {

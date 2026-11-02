@@ -96,7 +96,7 @@ type LimitStatus struct {
 	QuantityScale uint32 `protobuf:"varint,8,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	// No entitlement, or an entitlement with limit 0.
 	Unlimited bool `protobuf:"varint,9,opt,name=unlimited,proto3" json:"unlimited,omitempty"`
-	// unlimited || used < limit || mode is "soft" or "notify".
+	// (unlimited || used < limit || mode is "soft" or "notify") && !suspended.
 	Allowed bool `protobuf:"varint,10,opt,name=allowed,proto3" json:"allowed,omitempty"`
 	// Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
 	AsOf *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
@@ -111,7 +111,10 @@ type LimitStatus struct {
 	// !unlimited && used >= limit, whatever the mode.
 	OverLimit bool `protobuf:"varint,16,opt,name=over_limit,json=overLimit,proto3" json:"over_limit,omitempty"`
 	// The limit is the customer's own override, not its plan version's.
-	Overridden    bool `protobuf:"varint,17,opt,name=overridden,proto3" json:"overridden,omitempty"`
+	Overridden bool `protobuf:"varint,17,opt,name=overridden,proto3" json:"overridden,omitempty"`
+	// The seller has suspended this customer's service (a block with suspend_service): allowed is false on every meter, whatever the limit and the usage. Usage is
+	// still ingested and counted.
+	Suspended     bool `protobuf:"varint,18,opt,name=suspended,proto3" json:"suspended,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -261,6 +264,13 @@ func (x *LimitStatus) GetOverLimit() bool {
 func (x *LimitStatus) GetOverridden() bool {
 	if x != nil {
 		return x.Overridden
+	}
+	return false
+}
+
+func (x *LimitStatus) GetSuspended() bool {
+	if x != nil {
+		return x.Suspended
 	}
 	return false
 }
@@ -512,7 +522,7 @@ const file_payrudder_limits_v1_limits_proto_rawDesc = "" +
 	"customerId\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x1b\n" +
-	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\"\xa5\x04\n" +
+	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\"\xc3\x04\n" +
 	"\vLimitStatus\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -538,7 +548,8 @@ const file_payrudder_limits_v1_limits_proto_rawDesc = "" +
 	"over_limit\x18\x10 \x01(\bR\toverLimit\x12\x1e\n" +
 	"\n" +
 	"overridden\x18\x11 \x01(\bR\n" +
-	"overridden\"T\n" +
+	"overridden\x12\x1c\n" +
+	"\tsuspended\x18\x12 \x01(\bR\tsuspended\"T\n" +
 	"\x18CheckEntitlementResponse\x128\n" +
 	"\x06status\x18\x01 \x01(\v2 .payrudder.limits.v1.LimitStatusR\x06status\"U\n" +
 	"\x15GetLimitStatusRequest\x12\x1f\n" +

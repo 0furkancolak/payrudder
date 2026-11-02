@@ -125,6 +125,8 @@ export interface CustomerBlockEventData {
   reason?: string;
   /** `customer.blocked`: when the block ends by itself (RFC 3339); absent: until lifted. */
   blocked_until?: string;
+  /** `customer.blocked`: the block also suspended the customer's service (entitlement checks answer not allowed). Absent: false. */
+  suspend_service?: boolean;
 }
 
 /** A price change in an event: as the API returns it, without the fields at their zero value. Times are RFC 3339. */

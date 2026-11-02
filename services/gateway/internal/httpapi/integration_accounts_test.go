@@ -126,6 +126,83 @@ func TestEInvoiceAccountsOfAnApp(t *testing.T) {
 	}
 }
 
+// The health of the live payment accounts and their failover, from the integrations page: any member reads what payments-worker last saw, only the owner sets or
+// removes a failover, everything goes to the live tenant of the app (the environment is not the caller's to name), and a request that is not allowed or not
+// well-formed never reaches payments-worker.
+func TestPaymentAccountHealthAndFailoverOfAnApp(t *testing.T) {
+	var mu sync.Mutex
+	var seen []workerCall
+	pw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		seen = append(seen, workerCall{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("X-Payrudder-Actor"), string(b)})
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Method {
+		case http.MethodGet:
+			_, _ = io.WriteString(w, `{"accounts":[{"provider":"stripe","environment":"live","is_default":true,"status":"down","breaker":"open","consecutive_failures":5,"last_error":"circuit_open","failover_to":"stripe~eu"},`+
+				`{"provider":"stripe~eu","environment":"live","is_default":false,"status":"healthy","breaker":"closed","consecutive_failures":0}]}`)
+		case http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			_, _ = io.WriteString(w, `{"provider":"stripe","environment":"live","failover_to":"stripe~eu"}`)
+		}
+	}))
+	defer pw.Close()
+	u, _ := url.Parse(pw.URL)
+	p := newProduct(t, nil, func(d *Deps) { d.PaymentsURL = u; d.PaymentsToken = "internal-token" })
+	base := "/app/v1/apps/" + adaApp + "/integrations/payment-accounts"
+	last := func() workerCall { mu.Lock(); defer mu.Unlock(); return seen[len(seen)-1] }
+	count := func() int { mu.Lock(); defer mu.Unlock(); return len(seen) }
+
+	// Any member reads the health of the live tenant's accounts; nothing the caller puts in the query reaches the worker.
+	resp, m := p.call(t, "GET", base+"/health?environment=sandbox", tokViewer, "", "")
+	accounts, _ := m["accounts"].([]any)
+	first, _ := accounts[0].(map[string]any)
+	if resp.StatusCode != 200 || len(accounts) != 2 || first["breaker"] != "open" || first["failover_to"] != "stripe~eu" {
+		t.Fatalf("health: %d %v", resp.StatusCode, m)
+	}
+	if w := last(); w.method != "GET" || w.path != "/admin/tenants/"+adaLive+"/account-health" || w.query != "" {
+		t.Errorf("health asked %+v", w)
+	}
+
+	// The owner sets a failover: the account in the path, the body as typed, the live environment and this person.
+	put := `{"failover_to":"stripe~eu"}`
+	if resp, m := p.call(t, "PUT", base+"/stripe/failover?environment=sandbox", tokAda, "", put); resp.StatusCode != 200 || m["failover_to"] != "stripe~eu" {
+		t.Fatalf("put: %d %v", resp.StatusCode, m)
+	}
+	if w := last(); w.method != "PUT" || w.path != "/admin/tenants/"+adaLive+"/provider-accounts/stripe/failover" || w.query != "environment=live" || w.body != put || w.actor != "user:"+adaUser {
+		t.Errorf("put forwarded %+v", w)
+	}
+	if resp, _ := p.call(t, "DELETE", base+"/stripe~eu/failover", tokAda, "", ""); resp.StatusCode != 204 {
+		t.Fatalf("delete: %d", resp.StatusCode)
+	}
+	if w := last(); w.method != "DELETE" || w.path != "/admin/tenants/"+adaLive+"/provider-accounts/stripe~eu/failover" || w.query != "environment=live" || w.actor != "user:"+adaUser {
+		t.Errorf("delete forwarded %+v", w)
+	}
+
+	// A viewer changes nothing, a malformed key goes nowhere, and another account's app is not found: payments-worker is not bothered.
+	before := count()
+	for name, c := range map[string]struct {
+		method, path, token string
+		want                int
+	}{
+		"a viewer's put":        {"PUT", base + "/stripe/failover", tokViewer, 403},
+		"a viewer's delete":     {"DELETE", base + "/stripe/failover", tokViewer, 403},
+		"a key with two labels": {"PUT", base + "/a~b~c/failover", tokAda, 400},
+		"another account's app": {"GET", "/app/v1/apps/" + bobApp + "/integrations/payment-accounts/health", tokAda, 404},
+		"another account's put": {"PUT", "/app/v1/apps/" + bobApp + "/integrations/payment-accounts/stripe/failover", tokAda, 404},
+		"a sandbox health read": {"GET", base + "/health", "", 401},
+	} {
+		if resp, _ := p.call(t, c.method, c.path, c.token, "", put); resp.StatusCode != c.want {
+			t.Errorf("%s: %d, want %d", name, resp.StatusCode, c.want)
+		}
+	}
+	if count() != before {
+		t.Errorf("payments-worker was bothered %d times", count()-before)
+	}
+}
+
 // The tester of the integrations page: which live account would take a customer of a country paying in a currency. Any member asks, for the app's live tenant.
 func TestLiveRoutingPreview(t *testing.T) {
 	p := newProduct(t, nil, nil)

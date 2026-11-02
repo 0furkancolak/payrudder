@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/audit"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
@@ -56,6 +57,7 @@ func NewServer(o ServerOptions) (*grpc.Server, *health.Server) {
 }
 
 func recovered(ctx context.Context, log *slog.Logger, method string, p any) error {
+	errtrack.CapturePanic(ctx, p, errtrack.Tag("grpc.method", method))
 	log.ErrorContext(ctx, "grpc handler panic", "method", method, "panic", p, "stack", string(debug.Stack()))
 	return status.Error(codes.Internal, "internal error")
 }

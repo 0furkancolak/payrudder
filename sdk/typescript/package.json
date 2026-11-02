@@ -2,8 +2,24 @@
   "name": "@payrudder/sdk",
   "version": "0.0.0",
   "description": "TypeScript/JavaScript SDK of the Payrudder billing API (pre-release)",
+  "keywords": [
+    "payrudder",
+    "billing",
+    "usage-based-billing",
+    "metering",
+    "sdk"
+  ],
+  "homepage": "https://github.com/0furkancolak/payrudder/tree/main/sdk/typescript#readme",
+  "bugs": {
+    "url": "https://github.com/0furkancolak/payrudder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0furkancolak/payrudder.git",
+    "directory": "sdk/typescript"
+  },
   "private": true,
-  "license": "SEE LICENSE IN ../../LICENSE",
+  "license": "Elastic-2.0",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -24,7 +40,9 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
@@ -48,5 +66,9 @@
     "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.5",
     "yaml": "^2.9.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

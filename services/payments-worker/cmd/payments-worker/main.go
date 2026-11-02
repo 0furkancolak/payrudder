@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -41,6 +42,7 @@ import (
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	accounthealth "github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
+	reconcilecmd "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/schedule"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
@@ -236,6 +238,11 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		Queues: []string{rabbitx.QueuePaymentCharge, rabbitx.QueuePaymentRefund, rabbitx.QueuePaymentStatus, rabbitx.QueueEInvoiceIssue},
 	}
 
+	// The number of live discrepancies waiting for an operator is read on every scrape, whether or not this process runs the schedule (an operator's run, or another
+	// replica's, keeps them): plan 22 G6 alerts on it.
+	if err := reconcilecmd.RegisterOpenGauge(otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker/reconciliation"), store.Discrepancies{DB: db}.OpenCounts, log); err != nil {
+		return err
+	}
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
 	return serve(ctx, cfg, log, hh, w, httpHandler, reconcile, monitor)

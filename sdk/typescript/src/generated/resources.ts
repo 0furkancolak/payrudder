@@ -972,7 +972,10 @@ export class CustomersResource {
    * a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
    * yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
    * stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
-   * (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
+   * (the end of a block by itself sends none). Usage ingestion is not affected, and entitlements are unless you set `suspend_service`: then every entitlement
+   * check of this customer answers `allowed: false` and `suspended: true` (the limits and the counted usage are untouched, and the events you send are still
+   * accepted and counted) until you lift the block or it ends by itself. The service is suspended only when the block is new: a block already in force is kept
+   * as it is, so lift it first to change it.
    *
    * `POST /v1/customers/{external_id}/block`
    */

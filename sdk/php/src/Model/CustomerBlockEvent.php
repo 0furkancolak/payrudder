@@ -21,6 +21,7 @@ final class CustomerBlockEvent implements Model
      * @param string|null $category
      * @param string|null $reason
      * @param string|null $blockedUntil
+     * @param bool|null $suspendService
      * @param string|null $actor
      * @param string|null $createTime
      */
@@ -30,6 +31,7 @@ final class CustomerBlockEvent implements Model
         public readonly ?string $category = null,
         public readonly ?string $reason = null,
         public readonly ?string $blockedUntil = null,
+        public readonly ?bool $suspendService = null,
         public readonly ?string $actor = null,
         public readonly ?string $createTime = null,
     ) {}
@@ -45,6 +47,7 @@ final class CustomerBlockEvent implements Model
             category: Cast::string($data['category'] ?? null),
             reason: Cast::string($data['reason'] ?? null),
             blockedUntil: Cast::string($data['blocked_until'] ?? null),
+            suspendService: Cast::bool($data['suspend_service'] ?? null),
             actor: Cast::string($data['actor'] ?? null),
             createTime: Cast::string($data['create_time'] ?? null),
         );
@@ -61,6 +64,7 @@ final class CustomerBlockEvent implements Model
             'category' => $this->category,
             'reason' => $this->reason,
             'blocked_until' => $this->blockedUntil,
+            'suspend_service' => $this->suspendService,
             'actor' => $this->actor,
             'create_time' => $this->createTime,
         ]);

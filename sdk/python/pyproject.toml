@@ -24,6 +24,12 @@ classifiers = [
 ]
 dependencies = ["httpx>=0.27,<1"]
 
+[project.urls]
+Homepage = "https://github.com/0furkancolak/payrudder/tree/main/sdk/python"
+Repository = "https://github.com/0furkancolak/payrudder"
+Changelog = "https://github.com/0furkancolak/payrudder/blob/main/sdk/python/CHANGELOG.md"
+Issues = "https://github.com/0furkancolak/payrudder/issues"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8",
@@ -39,7 +45,7 @@ dev = [
 packages = ["src/payrudder"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/payrudder", "README.md", "pyproject.toml", "tools"]
+include = ["src/payrudder", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

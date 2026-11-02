@@ -682,7 +682,11 @@
           "blocked": "Bloqué",
           "unblocked": "Levé"
         },
-        "by": "par {actor}"
+        "by": "par {actor}",
+        "suspend": "Suspendre aussi son service",
+        "suspendHint": "Les vérifications de droits de ce client répondent « non autorisé » sur chaque compteur jusqu'à la levée ou la fin du blocage. L'usage que vous envoyez reste accepté et compté.",
+        "bannerSuspended": "Service suspendu : les vérifications de droits répondent « non autorisé ».",
+        "suspended": "Service suspendu"
       },
       "upcoming": {
         "title": "Prochaine facture",
@@ -2104,6 +2108,38 @@
         "INVALID_QUANTITY": "La quantité doit être un nombre supérieur ou égal à 0.",
         "INVALID_QUANTITY_PRECISION": "La quantité a plus de décimales que le compteur n'en autorise.",
         "IDEMPOTENCY_KEY_REUSED": "Cette correction a déjà été faite avec d'autres valeurs."
+      }
+    },
+    "feeRules": {
+      "title": "Frais attendus des fournisseurs",
+      "hint": "Ce que chaque fournisseur doit retenir sur un paiement, par devise : un pourcentage et un montant fixe. Payrudder ne connaît les tarifs d'aucun fournisseur, c'est donc un opérateur qui les saisit. Des frais qui diffèrent de plus d'une unité mineure dans le rapport du fournisseur deviennent un écart dans la file de revue.",
+      "add": "Ajouter une règle",
+      "provider": "Fournisseur",
+      "account": "Fournisseur ou clé de compte",
+      "accountHint": "Un fournisseur comme stripe, ou un seul compte comme stripe~eu. La règle s'applique aux paiements pris avec exactement cette clé.",
+      "currency": "Devise",
+      "currencyHint": "Trois lettres, par exemple USD. Une règle vaut pour une seule devise.",
+      "rate": "Taux",
+      "rateInput": "Taux (%)",
+      "rateHint": "La part du paiement que retient le fournisseur, avec au plus deux décimales : 2.9 pour 2,9 %.",
+      "fixed": "Frais fixes",
+      "fixedInput": "Frais fixes",
+      "fixedHint": "Ajoutés à chaque paiement, dans la devise de la règle, par exemple 0.30. Laissez vide s'il n'y en a pas.",
+      "environment": "Environnement",
+      "updated": "Mis à jour",
+      "empty": "Aucune règle de frais. Sans règle, les frais d'un fournisseur sont affichés mais pas comparés.",
+      "detailHint": "Les frais qu'un fournisseur doit retenir sur un paiement.",
+      "editTitle": "Modifier la règle de {provider} en {currency}",
+      "formHint": "Enregistrer un fournisseur et une devise qui ont déjà une règle la remplace.",
+      "confirmRemove": "Supprimer la règle de frais de {provider} en {currency} ? Les frais de ces paiements ne seront plus comparés.",
+      "edit": "Modifier",
+      "remove": "Supprimer",
+      "save": "Enregistrer",
+      "errors": {
+        "provider": "Utilisez un fournisseur ou une clé de compte en minuscules, par exemple stripe ou stripe~eu.",
+        "currency": "La devise est composée de trois lettres, par exemple USD.",
+        "rate": "Le taux est compris entre 0 et 100, avec au plus deux décimales.",
+        "fixed": "Les frais fixes sont un montant avec au plus autant de décimales que la devise."
       }
     }
   },
@@ -4556,6 +4592,49 @@
             "routing_changed": "{actor} a modifié les règles de routage"
           }
         }
+      },
+      "health": {
+        "label": "État",
+        "never": "Jamais",
+        "failsOver": "Bascule sur {name}",
+        "states": {
+          "healthy": "Joignable",
+          "down": "Injoignable",
+          "bad_credentials": "Identifiants refusés",
+          "circuit_open": "Disjoncteur ouvert",
+          "recovering": "Rétablissement",
+          "unknown": "Non vérifié"
+        },
+        "breaker": {
+          "closed": "Fermé (les débits passent)",
+          "open": "Ouvert (les débits sont refusés sans appel)",
+          "half_open": "Semi-ouvert (un débit à la fois sert de sonde)"
+        },
+        "detail": {
+          "state": "Dernière vérification",
+          "breaker": "Disjoncteur",
+          "failures": "Pannes consécutives",
+          "checked": "Vérifié",
+          "ok": "Dernière réponse",
+          "error": "Dernier problème"
+        },
+        "errors": {
+          "unreachable": "Le fournisseur était injoignable",
+          "bad_credentials": "Le fournisseur a refusé les identifiants",
+          "unusable": "Les réglages enregistrés sont inutilisables",
+          "circuit_open": "Le disjoncteur était ouvert",
+          "no_remote_check": "Ce fournisseur n'a pas de vérification d'état"
+        },
+        "failover": {
+          "action": "Basculement…",
+          "title": "Basculement pour {name}",
+          "intro": "Quand ce compte n'a certainement pas traité un nouveau débit (la connexion ne s'est jamais ouverte, ou son disjoncteur est ouvert), le débit part vers le compte choisi, comme une nouvelle tentative. Un délai dépassé ne bascule jamais : le résultat est d'abord demandé à ce compte, pour qu'un client ne soit pas débité deux fois.",
+          "target": "Basculer sur",
+          "choose": "Choisissez un compte",
+          "save": "Enregistrer le basculement",
+          "remove": "Supprimer le basculement",
+          "noTargets": "Ajoutez un second compte de paiement pour choisir vers où les débits peuvent basculer."
+        }
       }
     },
     "envSwitch": {
@@ -5406,7 +5485,7 @@
     "steps": {
       "key": {
         "title": "Une clé d'API",
-        "todo": "Créez-en une sur la page Clés API de l'app ; elle n'est montrée qu'une fois.",
+        "todo": "Créez-en une ci-dessous (ou sur la page Clés d'API de l'application) ; elle n'est affichée qu'une fois.",
         "done": "Vous avez une clé."
       },
       "meter": {
@@ -5447,6 +5526,31 @@
       "queued": "En attente de la réponse de votre serveur.",
       "delivered": "Votre serveur l'a accepté ({answer}).",
       "failed": "Votre serveur ne l'a pas accepté : {answer}. Corrigez votre gestionnaire puis envoyez-en un autre ; Payrudder réessaie aussi de lui-même."
+    },
+    "key": {
+      "title": "Créer une clé d'API",
+      "help": "Crée une clé qui ne peut qu'envoyer des événements d'usage, pour l'environnement que vous regardez. Elle est affichée une seule fois, ici : cette page ne la garde en mémoire que jusqu'à ce que vous disiez l'avoir copiée.",
+      "create": "Créer une clé d'envoi",
+      "once": "Copiez-la maintenant. Elle ne sera plus affichée et cette page ne la conserve pas. Placez-la dans PAYRUDDER_API_KEY.",
+      "done": "Je l'ai copiée"
+    },
+    "sample": {
+      "create": "Créer un compteur et un client d'exemple",
+      "help": "Bac à sable uniquement. Crée le compteur {meter} et le client {customer}, selon ce qui manque, pour que le code ci-dessous fonctionne tel quel."
+    },
+    "testEvent": {
+      "title": "Envoyer un événement de test",
+      "help": "Envoie depuis cette page un événement de quantité 1 pour {customer} sur {meter}. Bac à sable uniquement.",
+      "need": "Choisissez d'abord un compteur et saisissez un identifiant de client.",
+      "send": "Envoyer un événement de test",
+      "badge": {
+        "accepted": "Accepté",
+        "duplicate": "Déjà compté",
+        "rejected": "Rejeté"
+      },
+      "accepted": "L'événement a été accepté. La liste passe au vert dès qu'il est compté, dans quelques secondes.",
+      "duplicate": "Un événement avec cette clé a déjà été compté ; rien n'a été ajouté.",
+      "rejected": "L'événement a été rejeté : {code}. {message}"
     }
   },
   "contracts": {

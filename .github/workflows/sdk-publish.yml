@@ -1,0 +1,271 @@
+name: sdk-publish
+
+# THE ONLY WAY AN SDK LEAVES THIS REPOSITORY, AND IT IS NOT USED YET. The owner's rule is: no releases, tags or published packages until the app is complete (docs/plans/22,
+# G16). So this workflow
+#   - has no trigger but workflow_dispatch (a person presses the button);
+#   - is a DRY RUN unless dry_run is switched off by hand: it then builds, tests and packs each SDK exactly as a release would, prints what would be published, and uploads
+#     the packages as artifacts, and publishes nothing;
+#   - refuses a real run while the version is 0.0.0 (the pre-release marker; `node scripts/sdk-release.mjs bump X.Y.Z` sets a real one), from any branch but main, and
+#     when a changelog still has unreleased entries;
+#   - publishes from separate jobs that need the "release" environment (Settings > Environments > release: add required reviewers), so a second person approves.
+#
+# Never run with dry_run off before the owner has lifted the rule. Nothing below the dry run has ever been executed: it needs registry accounts and secrets that do not
+# exist yet (NOT VERIFIED). What each registry needs, once, before the first real run:
+#   typescript  npm: the @payrudder scope and the secret NPM_TOKEN (an automation token); --provenance needs this repository to be public.
+#   python      PyPI: a "trusted publisher" for this repository, workflow sdk-publish.yml, environment release (no secret).
+#   php         Packagist reads git tags of a repository whose root is the package, but the SDK lives in sdk/php: this job pushes a split of that directory and its tag to a
+#               mirror repository (repository variable PHP_SPLIT_REPO, for example payrudder/payrudder-php; secret PHP_SPLIT_TOKEN with push access); register the mirror on Packagist once.
+#   go          nothing to register: the release is the tag sdk/go/vX.Y.Z (a tag for a module in a subdirectory carries that prefix). The proxy fetches it on first use; the
+#               repository must be public for that, and pkg.go.dev shows no documentation for a licence it does not list as redistributable (Elastic-2.0 is not).
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: Which SDK (all four release together)
+        type: choice
+        options: [all, go, typescript, python, php]
+        default: all
+      dry_run:
+        description: Dry run - build, test and pack, publish nothing (leave this on)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-publish
+  cancel-in-progress: false
+
+env:
+  # The Go SDK is its own module and must build without the workspace.
+  GOWORK: "off"
+
+jobs:
+  verify:
+    name: release readiness
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node --test scripts/sdk-release.test.mjs
+      - name: Dry run - the SDKs are consistent
+        if: ${{ inputs.dry_run }}
+        run: node scripts/sdk-release.mjs check
+      - name: Real run - publishable, from main
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then echo "::error::publishing runs from main only"; exit 1; fi
+          node scripts/sdk-release.mjs check --publish
+      - id: version
+        run: echo "version=$(node scripts/sdk-release.mjs version)" >> "$GITHUB_OUTPUT"
+      - name: Say what this run is
+        run: |
+          {
+            echo "### SDK publish: ${{ inputs.dry_run && 'DRY RUN, nothing is published' || 'REAL RUN' }}"
+            echo "Version \`$(node scripts/sdk-release.mjs version)\`, SDK \`${{ inputs.sdk }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --- Go: the release is a tag. The build job checks the module and the command line and that the tag is free.
+  go:
+    name: go
+    needs: verify
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'go' }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+          cache-dependency-path: sdk/go/go.mod
+      - working-directory: sdk/go
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+          go build -o "$RUNNER_TEMP/payrudder" ./cmd/payrudder
+          "$RUNNER_TEMP/payrudder" version
+      - name: The tag is free
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/sdk/go/v$VERSION" >/dev/null; then
+            echo "::error::the tag sdk/go/v$VERSION exists already"; exit 1
+          fi
+          echo "Would tag sdk/go/v$VERSION at $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
+
+  go-publish:
+    name: go (tag)
+    needs: [verify, go]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "sdk/go/v$VERSION" -m "Payrudder Go SDK $VERSION" "$GITHUB_SHA"
+          git push origin "refs/tags/sdk/go/v$VERSION"
+      - name: Ask the module proxy for it (warms the cache; fails for a private repository)
+        continue-on-error: true
+        working-directory: sdk/go
+        run: go list -m "github.com/0furkancolak/payrudder/sdk/go@v$VERSION"
+
+  # --- TypeScript: npm pack, then publish exactly that tarball.
+  typescript:
+    name: typescript
+    needs: verify
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'typescript' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - name: Pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm"
+          npm pack --pack-destination "$RUNNER_TEMP/npm"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          for f in "$RUNNER_TEMP"/npm/*.tgz; do tar tzf "$f" | sort; done >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-typescript
+          path: ${{ runner.temp }}/npm/*.tgz
+          retention-days: 14
+
+  typescript-publish:
+    name: typescript (npm)
+    needs: typescript
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-typescript
+          path: pkg
+      - run: npm publish pkg/*.tgz --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # --- Python: sdist and wheel, checked by twine, published with trusted publishing.
+  python:
+    name: python
+    needs: verify
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'python' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: sdk/python/pyproject.toml
+      - run: python -m pip install -e '.[dev]' twine
+      - run: pytest
+      - run: python -m build
+      - run: twine check dist/*
+      - name: Contents
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -1 dist >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-python
+          path: sdk/python/dist/*
+          retention-days: 14
+
+  python-publish:
+    name: python (PyPI)
+    needs: python
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-python
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # --- PHP: Composer reads the version from a git tag of the package's own repository, so the release is a split of sdk/php pushed to a mirror.
+  php:
+    name: php
+    needs: verify
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'php' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/php
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: curl, json, mbstring
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - run: composer update --no-interaction --no-progress --prefer-dist
+      - run: composer cs
+      - run: composer stan
+      - run: composer test
+      - name: Would push the split of sdk/php
+        run: echo "Would push the split of sdk/php to \`${{ vars.PHP_SPLIT_REPO || '(PHP_SPLIT_REPO is not set)' }}\` as tag v${{ needs.verify.outputs.version }}." >> "$GITHUB_STEP_SUMMARY"
+
+  php-publish:
+    name: php (mirror and tag)
+    needs: [verify, php]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+      PHP_SPLIT_REPO: ${{ vars.PHP_SPLIT_REPO }}
+      PHP_SPLIT_TOKEN: ${{ secrets.PHP_SPLIT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Split sdk/php and push it with the tag
+        run: |
+          set -euo pipefail
+          test -n "$PHP_SPLIT_REPO" -a -n "$PHP_SPLIT_TOKEN" || { echo "::error::PHP_SPLIT_REPO and PHP_SPLIT_TOKEN are not set"; exit 1; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git subtree split --prefix=sdk/php -b php-split
+          remote="https://x-access-token:${PHP_SPLIT_TOKEN}@github.com/${PHP_SPLIT_REPO}.git"
+          git push "$remote" php-split:refs/heads/main --force
+          git push "$remote" "php-split:refs/tags/v${VERSION}"

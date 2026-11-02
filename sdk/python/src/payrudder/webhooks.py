@@ -176,13 +176,15 @@ class CustomerBlockEventData(_CustomerBlockEventDataRequired, total=False):
 
     ``category`` (fraud, chargeback, abuse, request, other, or empty), ``reason`` (the seller's own note) and
     ``blocked_until`` (an RFC 3339 time, absent when the
-    block lasts until it is lifted) are set on ``customer.blocked`` only.
+    block lasts until it is lifted) are set on ``customer.blocked`` only, and so is ``suspend_service`` (the block also
+    suspended the customer's service; absent means false).
     """
 
     customer_external_id: str
     category: str
     reason: str
     blocked_until: str
+    suspend_service: bool
 
 
 class _WebhookPriceChangeRequired(TypedDict):

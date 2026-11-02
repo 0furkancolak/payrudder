@@ -103,6 +103,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       <div class="flex min-w-0 flex-col gap-0.5">
         <span class="inline-flex items-center gap-2 font-medium"><Ban class="size-4 shrink-0" aria-hidden="true" />{{ blocked ? t("billing.customers.block.banner", { date: fmt.date(customer.block_time, "day") }) : t("billing.customers.block.ended", { date: fmt.date(customer.blocked_until, "day") }) }}</span>
         <span v-if="blocked && customer.blocked_until" class="text-xs">{{ t("billing.customers.block.bannerUntil", { date: fmt.date(customer.blocked_until, "day") }) }}</span>
+        <span v-if="blocked && customer.service_suspended" class="text-xs font-medium" data-testid="customer-suspended">{{ t("billing.customers.block.bannerSuspended") }}</span>
         <span v-if="customer.block_category || customer.block_reason" class="text-xs break-words" dir="auto">{{ [categoryText(customer.block_category), customer.block_reason].filter(Boolean).join(" · ") }}</span>
       </div>
       <Button v-if="!readonly" size="sm" variant="outline" data-testid="customer-unblock" @click="emit('unblock')"><CircleCheck aria-hidden="true" />{{ t("billing.customers.block.lift") }}</Button>
@@ -266,6 +267,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <li v-for="e in blockEvents.data.value?.events" :key="e.id" class="flex flex-col gap-0.5 py-2" data-testid="customer-block-event">
               <span class="font-medium">{{ t(`billing.customers.block.actions.${e.action}`) }}<template v-if="e.category"> · {{ categoryText(e.category) }}</template></span>
               <span v-if="e.reason" class="text-muted-foreground break-words" dir="auto">{{ e.reason }}</span>
+              <span v-if="e.suspend_service" class="text-muted-foreground text-xs">{{ t("billing.customers.block.suspended") }}</span>
               <span v-if="e.blocked_until" class="text-muted-foreground text-xs">{{ t("billing.customers.block.bannerUntil", { date: fmt.date(e.blocked_until, "day") }) }}</span>
               <span class="text-muted-foreground text-xs">{{ fmt.date(e.create_time, "dateTime") }}<template v-if="e.actor"> · {{ t("billing.customers.block.by", { actor: e.actor }) }}</template></span>
             </li>

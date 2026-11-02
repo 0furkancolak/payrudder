@@ -25,8 +25,10 @@ from payrudder import (
 from .conftest import FakeGateway, err, new_customer, ok
 
 
-def test_version_is_prerelease() -> None:
-    assert __version__ == "0.0.0"
+def test_version_is_the_one_in_pyproject() -> None:
+    from importlib.metadata import version
+
+    assert __version__ == version("payrudder")
 
 
 def test_api_key_and_base_url_come_from_the_environment(monkeypatch: pytest.MonkeyPatch, gateway: FakeGateway) -> None:
@@ -60,7 +62,7 @@ def test_headers_path_and_query(client: Payrudder, gateway: FakeGateway) -> None
     assert req.path == "/v1/customers"
     assert req.query == {"page_size": "50", "page_token": "tok/1"}
     assert req.headers["authorization"] == "Bearer qk_test_abcd1234_secret"
-    assert req.headers["user-agent"] == "payrudder-python/0.0.0"
+    assert req.headers["user-agent"] == f"payrudder-python/{__version__}"
     assert req.headers["accept"] == "application/json"
 
 
