@@ -26,6 +26,14 @@ on:
       - "sdk/typescript/src/errors.ts"
       - "sdk/python/src/payrudder/errors.py"
       - "sdk/php/src/Exception/**"
+      # The versioning page is checked against the pinned provider versions, the SDK versions and the proto compatibility rule; the templates against their workflow.
+      - "pkg/payments/stripe/stripe.go"
+      - "pkg/payments/paddle/paddle.go"
+      - "sdk/go/client.go"
+      - "sdk/typescript/src/version.ts"
+      - "buf.yaml"
+      - "examples/**"
+      - ".github/workflows/examples.yml"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
@@ -41,6 +49,14 @@ on:
       - "sdk/typescript/src/errors.ts"
       - "sdk/python/src/payrudder/errors.py"
       - "sdk/php/src/Exception/**"
+      # The versioning page is checked against the pinned provider versions, the SDK versions and the proto compatibility rule; the templates against their workflow.
+      - "pkg/payments/stripe/stripe.go"
+      - "pkg/payments/paddle/paddle.go"
+      - "sdk/go/client.go"
+      - "sdk/typescript/src/version.ts"
+      - "buf.yaml"
+      - "examples/**"
+      - ".github/workflows/examples.yml"
       - ".github/workflows/docs.yml"
 
 permissions:

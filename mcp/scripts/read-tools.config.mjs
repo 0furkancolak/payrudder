@@ -76,6 +76,14 @@ export const UNTRUSTED = [
 ];
 
 /**
+ * Of the UNTRUSTED keys, the ones that identify or reach a person: their contact data, tax identity and address. They are replaced by a marker in every answer unless the
+ * person who starts the server sets PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1 (src/privacy.ts). `name` is not listed: a plan's or a meter's name is the seller's own, so src/privacy.ts
+ * redacts it only beside an `email` or an `external_id` (a customer), and everything under an `address` except its country. Staff's free text (notes, reasons, block_reason)
+ * is not in this list on purpose: it is the seller's own record, and redacting it would stop an assistant explaining a block or a credit note.
+ */
+export const PERSONAL = ["email", "phone", "tax_id", "tax_office", "line1", "line2", "city", "region", "postal_code"];
+
+/**
  * Free-text fields of the answers that are not people's words: identifiers, codes and numbers the API makes or constrains, which the model has to copy exactly into the
  * next call (so they are not tagged). `external_id` and `customer_external_id` are chosen by the account's own app; the tools' arguments bound their length.
  * The generator fails when an allow-listed operation's answer has a free-text field in neither list, so a new field is classified before it reaches a model.

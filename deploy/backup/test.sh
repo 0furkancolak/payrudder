@@ -39,6 +39,27 @@ out="$(run sh /scripts/invariants.sh billing_db payments_db)" || fail "invariant
 echo "$out" | grep -q '^counts billing_db credit_ledger=20 credit_lots=10 invoice_lines=30 invoices=10 $' || fail "unexpected counts: $out"
 echo "$out" | grep -q '^counts payments_db manual_receipts=2 payment_ledger=12 $' || fail "unexpected counts: $out"
 
+step "migrations-version.sh: equal when the database has what the code ships, behind or ahead otherwise"
+out="$(run sh /scripts/migrations-version.sh billing_db /m/billing)" || fail "equal versions failed: $out"
+echo "$out" | grep -qE '^migrations billing_db applied=([0-9]+) shipped=\1 equal$' || fail "equal: $out"
+latest="$(sql billing_db 'SELECT max(version_id) FROM goose_db_version')"
+sql billing_db "DELETE FROM goose_db_version WHERE version_id = $latest" >/dev/null
+out="$(run sh /scripts/migrations-version.sh billing_db /m/billing)" || fail "a database behind the code must not fail (the migration hook brings it up): $out"
+echo "$out" | grep -q ' behind$' || fail "behind: $out"
+mustnot env STRICT=1 sh /scripts/migrations-version.sh billing_db /m/billing
+sql billing_db "INSERT INTO goose_db_version (version_id, is_applied) VALUES ($latest, true), (9999, true)" >/dev/null
+out="$(run sh /scripts/migrations-version.sh billing_db /m/billing)" && fail "a database ahead of the code passed: $out"
+echo "$out" | grep -q ' ahead$' || fail "ahead: $out"
+sql billing_db "DELETE FROM goose_db_version WHERE version_id = 9999" >/dev/null
+mustnot sh /scripts/migrations-version.sh billing_db /nonexistent
+mustnot sh /scripts/migrations-version.sh postgres /m/billing
+
+step "roles.sh: the services' roles work on the data (row-level security for the app role, the system role sees everything)"
+out="$(run sh /scripts/testdata/roles.sh 11111111-1111-1111-1111-111111111111 10)" || fail "roles on good data: $out"
+echo "$out" | grep -q '^roles ok: billing_app sees 10 invoices' || fail "roles output: $out"
+mustnot sh /scripts/testdata/roles.sh 11111111-1111-1111-1111-111111111111 11
+mustnot sh /scripts/testdata/roles.sh 22222222-2222-2222-2222-222222222222 10
+
 step "backup.sh writes a readable dump per database and keeps the newest BACKUP_KEEP"
 for n in 1 2 3; do must env BACKUP_KEEP=2 sh /scripts/backup.sh; sleep 1; done
 [ "$(dumps billing_db)" = 2 ] && [ "$(dumps payments_db)" = 2 ] || fail "retention: billing_db $(dumps billing_db) dumps, payments_db $(dumps payments_db), want 2 each"

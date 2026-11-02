@@ -1,6 +1,6 @@
 # Command line
 
-`payrudder` is a command line for the tenant API. It is the [Go SDK](sdks.html) behind a small set of commands, so it talks to the same `/v1` routes your code does, with an API key. Use it to send a usage event by hand, watch a customer's usage move, receive webhooks on your own machine, and look at customers and invoices without opening the console.
+`payrudder` is a command line for the tenant API. It is the [Go SDK](sdks.html) behind a small set of commands, so it talks to the same `/v1` routes your code does, with an API key. Use it to send a usage event by hand, watch a customer's usage move, receive webhooks on your own machine, set up endpoints, meters, plan versions and subscriptions, and look at customers and invoices without opening the console.
 
 ## Install
 
@@ -115,7 +115,36 @@ payrudder customers create --id cus_42 --name "Ada Lovelace" --email ada@example
 payrudder plans create --code pro --name Pro
 ```
 
-`customers create` needs `--id` (your own id for the customer, the `external_id`), `--name` and `--email`; `--country`, `--currency`, `--locale` and `--type` are sent only when given. Creating a customer is not deduplicated by a key: the external id is the natural key, so running the command again answers `409` and exits 1 instead of making a second customer. `plans create` makes the plan itself, a code and a name; its prices and entitlements are a **version**, which is published with `POST /v1/plans/{code}/versions` (see [the API reference](api/plans.html)), not from flags. Both take `--json`.
+`customers create` needs `--id` (your own id for the customer, the `external_id`), `--name` and `--email`; `--country`, `--currency`, `--locale` and `--type` are sent only when given. Creating a customer is not deduplicated by a key: the external id is the natural key, so running the command again answers `409` and exits 1 instead of making a second customer. `plans create` makes the plan itself, a code and a name; its prices and entitlements are a **version**, published with `plans publish` (next section). Both take `--json`.
+
+## Set up billing from the terminal
+
+The commands that make the things a product is built from. All take `--json` and `--base-url`.
+
+```sh
+payrudder webhooks create --url https://example.com/webhooks/payrudder --events invoice.paid,invoice.voided
+payrudder meters create --code api_calls --aggregation sum --value-property n --unit calls --filter model=gpt-x,gpt-y
+payrudder plans publish --code pro -f pro-v1.json
+payrudder subscriptions create --customer cus_42 --plan pro --interval year --trial-days 14
+```
+
+- **`webhooks create`** registers an endpoint (`--url` must be https and public; `--events` is a comma-separated list, all events when left out; `--description` is shown in the console). The signing secret `whsec_…` is in the answer **once** and is printed once: store it, it cannot be read again, only rotated. The key needs `webhooks:write`.
+- **`meters create`** needs `--code`, `--aggregation` (`sum`, `count`, `max`, `unique` or `last`) and `--unit`. `--value-property` names the event property that holds the quantity (for `unique`, the property whose distinct values are counted), `--scale` the decimal places (fixed per code; `0` is a choice, left out is the API's default), `--category` a group to file it under, and `--filter property=value1,value2` (repeatable) counts only the events whose property has one of the values. Creating a meter whose code exists makes its **next version**, it is not a `409`.
+- **`plans publish`** reads a JSON file that is exactly the body of `POST /v1/plans/{code}/versions` (see [the API reference](api/plans.html)) and publishes the **next version** of the plan. `-f -` reads the standard input; `--file` is the same as `-f`. A version is immutable and cannot be undone, so the file is checked before anything is sent: a field the API does not know (a typo like `base_fee` would otherwise publish a free version), a second document, or a file that is not JSON stops the command with exit 1.
+
+  ```json
+  {
+    "base_fee_minor": "1900",
+    "trial_days": 14,
+    "prices": [{ "meter_code": "api_calls", "per_unit": { "unit_price": "0.002" } }],
+    "entitlements": [{ "meter_code": "api_calls", "limit": "100000" }],
+    "fees": [{ "currency": "EUR", "base_fee_minor": "1900", "interval": "SUBSCRIPTION_INTERVAL_YEAR" }]
+  }
+  ```
+
+- **`subscriptions create`** needs `--customer` and `--plan`; `--plan-version` (default: the latest), `--interval month|year`, `--currency`, `--trial-days` (`0` is no trial; left out is the version's own), `--quantity` (seats), `--fee-timing advance|arrears`, `--provider`, `--coupon` and `--start-time` are sent only when given. A customer has at most one overlapping subscription, so a repeat is the API's `409` (exit 1).
+
+These calls have **no idempotency key** (see [Idempotency](idempotency.html)), and for `webhooks create`, `meters create` and `plans publish` a repeat would make a second endpoint or another version. The command therefore does **not retry** them after a timeout or a `5xx`: it prints the error and exits 1, and you look (`payrudder webhooks list`, the console) before running it again.
 
 Tables show the first `--limit` rows (25 by default). Invoice totals are in the currency's **minor units**, as the API sends them.
 
@@ -129,4 +158,4 @@ Tables show the first `--limit` rows (25 by default). Invoice totals are in the 
 
 ## Not in it
 
-Publishing a plan version, creating webhook endpoints (apart from the temporary endpoint of `listen`), meters, subscriptions or coupons, the operator and console routes, and a `trigger` for events other than `ping`. This command line is pre-release like the SDKs.
+Changing or deleting what you created (endpoints, meters, plans, subscriptions), coupons, listing meters and plans, the operator and console routes, and a `trigger` for events other than `ping`. Those are in the API, the SDKs and the console. This command line is pre-release like the SDKs.

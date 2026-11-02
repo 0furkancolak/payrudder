@@ -1733,8 +1733,8 @@ paths:
       summary: The addresses the tenant's mail is not sent to
       description: |
         An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
-        In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
-        deployment whose gateway is not connected to the notifier.
+        In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). On a deployment whose gateway is not connected to
+        the notifier the answer is 200 with an empty list and `connected` false (lifting an address, which is an action, answers 503 `gateway.mail.unavailable` there).
       parameters:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
@@ -1760,6 +1760,7 @@ paths:
       description: |
         The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
         `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+        On a deployment whose gateway is not connected to the notifier the answer is 200 with an empty list and `connected` false.
       parameters:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
@@ -5989,10 +5990,11 @@ components:
         create_time: { type: string, format: date-time }
     ListMailSuppressionsResponse:
       type: object
-      required: [suppressions, next_page_token]
+      required: [suppressions, next_page_token, connected]
       properties:
         suppressions: { type: array, items: { $ref: "#/components/schemas/MailSuppression" } }
         next_page_token: { type: string }
+        connected: { type: boolean, description: "False when this deployment's gateway is not connected to the notifier (the list is then empty because nothing was asked, not because nothing is suppressed)." }
     MailMessage:
       type: object
       required: [key, kind, template, recipient, state, claim_time, send_time]
@@ -6006,10 +6008,11 @@ components:
         send_time: { type: string, format: date-time, nullable: true }
     ListMailMessagesResponse:
       type: object
-      required: [messages, next_page_token]
+      required: [messages, next_page_token, connected]
       properties:
         messages: { type: array, items: { $ref: "#/components/schemas/MailMessage" } }
         next_page_token: { type: string }
+        connected: { type: boolean, description: "False when this deployment's gateway is not connected to the notifier (the log is then empty because nothing was asked, not because no mail was sent)." }
     PriceChangeMailPreviewRequest:
       type: object
       required: [plan_code, effective_time, new_renewal_minor]

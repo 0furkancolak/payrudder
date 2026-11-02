@@ -17,10 +17,12 @@ final class ListMailMessagesResponse implements Model
     /**
      * @param list<MailMessage>|null $messages
      * @param string|null $nextPageToken
+     * @param bool|null $connected
      */
     public function __construct(
         public readonly ?array $messages = null,
         public readonly ?string $nextPageToken = null,
+        public readonly ?bool $connected = null,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ final class ListMailMessagesResponse implements Model
         return new static(
             messages: Cast::models(MailMessage::class, $data['messages'] ?? null),
             nextPageToken: Cast::string($data['next_page_token'] ?? null),
+            connected: Cast::bool($data['connected'] ?? null),
         );
     }
 
@@ -42,6 +45,7 @@ final class ListMailMessagesResponse implements Model
         return Cast::compact([
             'messages' => Cast::wire($this->messages),
             'next_page_token' => $this->nextPageToken,
+            'connected' => $this->connected,
         ]);
     }
 }
