@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
@@ -193,17 +194,33 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
 	}, 0)
-	// A tenant the operator has suspended, frozen or banned is charged nothing by dunning; the status is read through the same short cache the usage consumers use.
+	// The payment gate for an invoice that is out (pkg/paymentgate): a tenant the operator has suspended, frozen or banned is charged nothing, and a customer the seller blocked
+	// for fraud or a chargeback is not charged either; the status of the tenant is read through the same short cache the usage consumers use, the customer from plans-svc
+	// (once the modules exist).
 	tenantSettings := tenantinfo.New(adminClient, time.Minute)
-	onHold := func(ctx context.Context, id uuid.UUID) (bool, error) {
-		s, err := tenantSettings.Tenant(ctx, id)
-		return s.OnHold(), err
+	var customerOf func(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error)
+	gate := func(ctx context.Context, tenantID uuid.UUID, externalID string) (paymentgate.Verdict, error) {
+		s, err := tenantSettings.Tenant(ctx, tenantID)
+		if err != nil {
+			return paymentgate.Allowed, err
+		}
+		var blk paymentgate.Block
+		if externalID != "" && !s.OnHold() && customerOf != nil {
+			cu, found, err := customerOf(ctx, tenantID, externalID)
+			if err != nil {
+				return paymentgate.Allowed, err
+			}
+			if found {
+				blk = paymentgate.BlockOf(cu)
+			}
+		}
+		return paymentgate.Check(paymentgate.OpPayInvoice, s.Status, blk, time.Now()), nil
 	}
 	// The link in the mail that asks a customer to confirm a payment is made by the hosted pages' own command, which needs the engine this is the config of: it is set once
 	// the modules exist, before anything runs.
 	var payLink func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error)
 	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox,
-		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs, Hold: onHold,
+		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs, Gate: gate,
 		PayLink: func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error) {
 			if payLink == nil || cfg.PublicURL == "" {
 				return "", nil
@@ -217,6 +234,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
+	customerOf = mods.inputs.Customer
 	payLink = func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error) {
 		token, _, err := hostedcmd.CreateInvoiceLink(ctx, hostedcmd.Deps{App: appDB, System: db, Engine: eng, Dir: mods.hosted}, tenantID, invoiceID, payLinkDays)
 		if err != nil {

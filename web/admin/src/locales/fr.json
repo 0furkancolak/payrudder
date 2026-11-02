@@ -154,7 +154,8 @@
       "PAYMENT_DECLINED": "refusé, nouvelle tentative",
       "PAYMENT_UNKNOWN": "issue inconnue",
       "UNCOLLECTIBLE": "abandonné",
-      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client"
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client",
+      "PAYMENT_HELD": "premier prélèvement retenu"
     },
     "sagaState": {
       "PAYMENT_PENDING": "virement attendu",
@@ -176,7 +177,8 @@
       "REFUNDED": "remboursée",
       "VOIDED": "annulée",
       "AWAITING_PAYMENT": "en attente de paiement",
-      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client"
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client",
+      "PAYMENT_HELD": "premier prélèvement retenu"
     },
     "paymentMethod": {
       "bank_transfer": "Virement bancaire",

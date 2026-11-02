@@ -154,7 +154,8 @@
       "PAYMENT_DECLINED": "rechazado, reintentando",
       "PAYMENT_UNKNOWN": "resultado desconocido",
       "UNCOLLECTIBLE": "abandonado",
-      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente"
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "sagaState": {
       "PAYMENT_PENDING": "esperando la transferencia",
@@ -176,7 +177,8 @@
       "REFUNDED": "reembolsada",
       "VOIDED": "anulada",
       "AWAITING_PAYMENT": "pendiente de pago",
-      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente"
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "paymentMethod": {
       "bank_transfer": "Transferencia bancaria",

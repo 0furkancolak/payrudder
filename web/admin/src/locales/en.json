@@ -154,7 +154,8 @@
       "PAYMENT_DECLINED": "declined, retrying",
       "PAYMENT_UNKNOWN": "outcome unknown",
       "UNCOLLECTIBLE": "given up",
-      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm"
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "sagaState": {
       "PAYMENT_PENDING": "waiting for transfer",
@@ -176,7 +177,8 @@
       "REFUNDED": "refunded",
       "VOIDED": "voided",
       "AWAITING_PAYMENT": "awaiting payment",
-      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm"
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "paymentMethod": {
       "bank_transfer": "Bank transfer",

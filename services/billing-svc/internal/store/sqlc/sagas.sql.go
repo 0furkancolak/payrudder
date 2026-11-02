@@ -124,7 +124,7 @@ type HoldSagaDunningParams struct {
 	ID       uuid.UUID
 }
 
-// The retry of a tenant that is on hold is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
+// The retry of a payment the gate refuses (a tenant on hold, a customer blocked for fraud) is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
 func (q *Queries) HoldSagaDunning(ctx context.Context, arg HoldSagaDunningParams) error {
 	_, err := q.db.Exec(ctx, holdSagaDunning, arg.Until, arg.TenantID, arg.ID)
 	return err
@@ -261,7 +261,7 @@ func (q *Queries) ListSagaEvents(ctx context.Context, arg ListSagaEventsParams) 
 }
 
 const listSagasDueForDunning = `-- name: ListSagasDueForDunning :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_DECLINED' AND next_attempt_at <= $1::timestamptz ORDER BY next_attempt_at LIMIT $2
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= $1::timestamptz ORDER BY next_attempt_at LIMIT $2
 `
 
 type ListSagasDueForDunningParams struct {
@@ -364,7 +364,7 @@ func (q *Queries) ListSagasPastDeadline(ctx context.Context, arg ListSagasPastDe
 
 const lockSagaDueForDunning = `-- name: LockSagaDueForDunning :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = $1 AND id = $2 AND state = 'PAYMENT_DECLINED' AND next_attempt_at <= $3::timestamptz
+WHERE tenant_id = $1 AND id = $2 AND state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= $3::timestamptz
 FOR UPDATE SKIP LOCKED
 `
 
