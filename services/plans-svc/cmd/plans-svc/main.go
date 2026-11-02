@@ -95,6 +95,10 @@ type Config struct {
 	// SupportAutoCloseAfter is how long a ticket may wait for the person before it closes by itself; 0 switches it off. SupportAutoCloseEvery is how often the job looks.
 	SupportAutoCloseAfter time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER"`
 	SupportAutoCloseEvery time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY"`
+	// SupportOpensPerHour is the most tickets one account may open in an hour, solved ones included; 0 allows any number. SupportMailBurst is how many new tickets the
+	// operators are mailed one by one within ten minutes: the next is one digest mail and the rest are not mailed; 0 mails every one. Both default (not agreed).
+	SupportOpensPerHour int `env:"PAYRUDDER_SUPPORT_OPENS_PER_HOUR"`
+	SupportMailBurst    int `env:"PAYRUDDER_SUPPORT_MAIL_BURST"`
 	// The services a sandbox reset empties besides plans-svc itself (phase 45 E). An empty address skips that step, so a deployment without the service still resets
 	// the rest. The gRPC ones are the services' usual addresses; payments-worker is HTTP and takes the internal token the gateway also uses.
 	IngestAddr     string `env:"PAYRUDDER_INGEST_ADDR"`
@@ -141,9 +145,10 @@ func (c *Config) saasConfig() saascmd.Config {
 var publicPeppers = []string{"local-otp-pepper-change-me-0123456789", "CHANGE-ME-32-characters-or-more-xxxxxxxxx"}
 
 // checkPepper refuses a missing, short or published pepper unless this is a development environment. The codes it keys have a million (sign-in) and about 2^50
-// (recovery) values, so a hash of them under a key everybody knows is no protection once the table leaks.
+// (recovery) values, so a hash of them under a key everybody knows is no protection once the table leaks. A migrate-only run (the Helm migration Job, which exits before it
+// issues a code) needs none: with secrets.existingSecrets the pepper is in the operator's own Secret, not in the hook Secret the Job reads.
 func (c *Config) checkPepper() error {
-	if c.Env.Development() {
+	if c.Env.Development() || c.MigrateOnly {
 		return nil
 	}
 	const how = ": generate one with `openssl rand -hex 32` (it keys the hash of the sign-in and recovery codes; a development environment, PAYRUDDER_ENV local, ci or kind, may go without)"
@@ -159,7 +164,7 @@ func (c *Config) checkPepper() error {
 }
 
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate(), c.checkPepper()}
+	errs := []error{c.Base.Validate(), c.checkPepper(), c.CheckSecret("PAYRUDDER_SECRETS_KEY", c.Secrets.SecretsKey), c.CheckSecret("PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", c.PaymentsToken)}
 	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
 		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))
@@ -180,6 +185,9 @@ func (c *Config) Validate() error {
 	}
 	if c.TrialReminderDays < 1 || c.TrialReminderDays > 30 {
 		errs = append(errs, errors.New("PAYRUDDER_TRIAL_REMINDER_DAYS must be between 1 and 30"))
+	}
+	if c.SupportOpensPerHour < 0 || c.SupportMailBurst < 0 {
+		errs = append(errs, errors.New("PAYRUDDER_SUPPORT_OPENS_PER_HOUR and PAYRUDDER_SUPPORT_MAIL_BURST cannot be negative (0 switches the limit off)"))
 	}
 	if c.SupportAutoCloseAfter != 0 && c.SupportAutoCloseAfter < time.Hour {
 		errs = append(errs, errors.New("PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER must be at least an hour, or 0 to switch it off"))
@@ -404,7 +412,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
 		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, DefaultRegion: cfg.DefaultRegion, BanApproval: cfg.BanApproval, BanRetentionDays: cfg.BanRetentionDays, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
-		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, SupportOpensPerHour: cfg.SupportOpensPerHour, SupportMailBurst: cfg.SupportMailBurst, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
 	return srv, grpcHealth, box, saasCmd, nil

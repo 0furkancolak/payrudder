@@ -17,8 +17,8 @@ import (
 // KEDA is off in every profile that ships but its own, and the default install autoscales nothing: every Deployment states its replicas.
 func TestAutoscalingIsOffByDefault(t *testing.T) {
 	for _, v := range []string{"values.yaml", "values-small.yaml", "values-kind.yaml", "values-sandbox.yaml"} {
-		// values-small is a production profile: it renders only with the pepper that its secrets file would hold.
-		for _, d := range render(t, "payrudder", "-f", values(t, "payrudder", v), "--set", "auth.otpPepper=0123456789abcdef0123456789abcdef") {
+		// values-small is a production profile: it renders only with the secrets that its secrets file would hold.
+		for _, d := range render(t, "payrudder", append([]string{"-f", values(t, "payrudder", v)}, productionValues()...)...) {
 			if d.kind() == "ScaledObject" {
 				t.Errorf("%s renders the ScaledObject %s by default", v, d.name())
 			}

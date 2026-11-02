@@ -7,6 +7,8 @@ payments:
   liveProvider: ""
 smtp:
   addr: mailpit:1025
+mail:
+  eventsSecret: local-mail-events-secret-change-me-0123456789   # the local value; the chart default is empty (the mail page off)
 services:
   mockpsp:
     nodePort: 30090

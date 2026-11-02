@@ -33,6 +33,14 @@ service AdminService {
   rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
   // ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
   rpc ListTenantStatusEvents(ListTenantStatusEventsRequest) returns (ListTenantStatusEventsResponse);
+  // ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
+  // except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
+  rpc ListPlatformBlocklist(ListPlatformBlocklistRequest) returns (ListPlatformBlocklistResponse);
+  // AddPlatformBlocklistEntry adds an entry to the platform-wide list (adding one that is there returns it). It is recorded in the audit log without the value.
+  rpc AddPlatformBlocklistEntry(AddPlatformBlocklistEntryRequest) returns (AddPlatformBlocklistEntryResponse);
+  // RemovePlatformBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+  rpc RemovePlatformBlocklistEntry(RemovePlatformBlocklistEntryRequest) returns (RemovePlatformBlocklistEntryResponse);
+
   // GetTenantLifecycle returns a live tenant's retention deadline (a banned tenant's data is kept until then; a job marks it due and deletes nothing) and the status change
   // scheduled for it.
   rpc GetTenantLifecycle(GetTenantLifecycleRequest) returns (GetTenantLifecycleResponse);
@@ -210,6 +218,30 @@ message SetTenantStatusRequest {
 message SetTenantStatusResponse {
   Tenant tenant = 1;
 }
+
+message ListPlatformBlocklistRequest {}
+
+message ListPlatformBlocklistResponse {
+  repeated BlocklistEntry entries = 1;
+}
+
+message AddPlatformBlocklistEntryRequest {
+  string kind = 1;
+  string value = 2;
+  string note = 3;
+  string actor = 4;
+}
+
+message AddPlatformBlocklistEntryResponse {
+  BlocklistEntry entry = 1;
+}
+
+message RemovePlatformBlocklistEntryRequest {
+  string id = 1;
+  string actor = 2;
+}
+
+message RemovePlatformBlocklistEntryResponse {}
 
 message GetTenantLifecycleRequest {
   string tenant_id = 1;

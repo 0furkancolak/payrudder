@@ -62,8 +62,6 @@ MODELS: dict[str, dict[str, Any]] = {
     },
     'AffiliateFunnel': {
         'clicks': ('int',),
-        'referrals': ('int',),
-        'paying_customers': ('int',),
         'commissions': ('list', ('model', 'AffiliateFunnelCommissionsItem')),
     },
     'AffiliateFunnelCommissionsItem': {
@@ -261,7 +259,6 @@ MODELS: dict[str, dict[str, Any]] = {
         'mrr_minor': ('int',),
         'new_subscriptions': ('int',),
         'new_mrr_minor': ('int',),
-        'churned': ('int',),
         'churned_mrr_minor': ('int',),
     },
     'GetTopCustomersCustomer': {

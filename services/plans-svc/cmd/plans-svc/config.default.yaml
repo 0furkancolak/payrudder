@@ -27,6 +27,10 @@ PAYRUDDER_OPERATOR_EMAILS: ""
 # looks this often.
 PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER: "168h"
 PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY: "1h"
+# The most tickets one account may open in an hour (solved ones count: solving frees a place among the ones waiting, not here), and how many new tickets the operators
+# are mailed one by one within ten minutes (the next one is a single digest mail, the rest are not mailed). 0 switches either off. Defaults, not agreed.
+PAYRUDDER_SUPPORT_OPENS_PER_HOUR: "10"
+PAYRUDDER_SUPPORT_MAIL_BURST: "5"
 # A sandbox nobody has touched for this long (no key used, no customer or subscription made, no reset) has its customers' side deleted: usage, invoices, payments.
 # Its configuration stays. 0 switches it off.
 PAYRUDDER_SANDBOX_RETENTION: "2160h"

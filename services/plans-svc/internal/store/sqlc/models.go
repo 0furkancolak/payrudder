@@ -408,6 +408,16 @@ type CustomerBlockEvent struct {
 	SuspendService bool
 }
 
+type CustomerBlocklist struct {
+	TenantID  uuid.UUID
+	ID        uuid.UUID
+	Kind      string
+	Value     string
+	Note      string
+	CreatedBy string
+	CreatedAt time.Time
+}
+
 type CustomerCoupon struct {
 	TenantID             uuid.UUID
 	ID                   uuid.UUID
@@ -537,6 +547,15 @@ type PlanVersionFee struct {
 	Currency      string
 	BaseFeeMinor  int64
 	Interval      string
+}
+
+type PlatformBlocklist struct {
+	ID        uuid.UUID
+	Kind      string
+	Value     string
+	Note      string
+	CreatedBy string
+	CreatedAt time.Time
 }
 
 type PriceChange struct {

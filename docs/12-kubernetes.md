@@ -37,7 +37,11 @@ kubectl -n payrudder port-forward svc/gateway 8000:8000                   # or p
 make k8s-uninstall                                                      # the volumes stay until you delete the namespace
 ```
 
-`values-small.yaml` sets `global.environment: production` (`PAYRUDDER_ENV`: `local`, `ci` and `kind` are development environments, where a secret may be left unset or at the public local value; `production` and `railway` are not). The chart ships **no** `auth.otpPepper` (it keys the hash of the sign-in and recovery codes): in a development environment it hands plans-svc the public local value, anywhere else `helm template` fails with "auth.otpPepper is required" until your secrets file sets one (`openssl rand -hex 32`), and plans-svc itself refuses to start without one of 32 characters or more that is not a value from this repository. With `secrets.existingSecrets` the Secret you made must hold `PAYRUDDER_OTP_PEPPER`.
+`values-small.yaml` sets `global.environment: production` (`PAYRUDDER_ENV`: `local`, `ci` and `kind` are development environments, where a secret may be left unset or at the public local value; `production` and `railway` are not). The chart ships **no** `auth.otpPepper` (it keys the hash of the sign-in and recovery codes): in a development environment it hands plans-svc the public local value, anywhere else `helm template` fails with "auth.otpPepper is required" until your secrets file sets one (`openssl rand -hex 32`), and plans-svc itself refuses to start without one of 32 characters or more that is not a value from this repository. With `secrets.existingSecrets` the Secret you made must hold `PAYRUDDER_OTP_PEPPER`; the migration Job reads the chart's own hook Secret, which holds none, and needs none (it runs migrate-only, and plans-svc checks the pepper only when it serves).
+
+The same goes for `global.publicURL`, the address customers reach the gateway at (`https://api.example.com`): the hosted invoice links and the mail that asks a customer to confirm a payment (3-D Secure) start with it, and billing-svc sends that mail without a link, and logs nothing, when it is empty. In a development environment it may stay empty; anywhere else `helm template` fails with "global.publicURL is required" until the secrets file sets it (`values-secrets.example.yaml` does).
+
+The same holds for the other secrets the chart ships a public local default for: `operatorToken` (the operator API's machine credential: whoever knows the default is an operator), `payments.secretsKey` (seals the tenants' provider credentials) and `payments.internalToken`. Outside a development environment `helm template` fails ("... is a value that is published") while one of them is empty, the chart's default or a `CHANGE-ME` placeholder of `values-secrets.example.yaml`, and the gateway, payments-worker, plans-svc and notifier refuse to start on the same values (with `secrets.existingSecrets` the Secrets are yours and only the services check). `mail.eventsSecret` is empty by default (the mail page is off); set your own to turn it on. The kind profiles (`values-kind.yaml`, `values-kind-min.yaml`, `values-sandbox.yaml`) set the local value.
 
 `k8s-install` applies `payrudder-infra` (single replica of everything, or add `-f deploy/helm/payrudder-infra/values-ha.yaml` through `HELM_ARGS` for three Redpanda and RabbitMQ nodes) and then `payrudder` with `values-small.yaml`: one replica, 128 MiB limits, the gateway as a ClusterIP Service,
 no mock provider. The cluster is the one `kubectl` points at (`kubectl config use-context`). Build and push the images first (`docker compose --profile app build`, then tag `payrudder/<service>` with your registry and push); a managed Postgres, Redis, Kafka, RabbitMQ or S3 replaces its part of `payrudder-infra` through values (see below).
@@ -63,6 +67,9 @@ Each service reads its container memory limit and tells the Go runtime to collec
   get that role at all (`PAYRUDDER_MIGRATE_ON_START=false`).
 - **Secrets**: one Secret per service, rendered from values (role DSNs with URL-escaped passwords, broker and S3 credentials, the operator token). The
   defaults are the local `*_local` passwords; set `postgres.passwords.<role>`, `rabbitmq.password`, `s3.secretKey`, `operatorToken` for anything real.
+- **Mail delivery events**: the mail provider's webhook of bounces and complaints (`POST /inbound/mail-events` on the gateway, [runbook](runbooks/mail-suppression.md#the-providers-webhook-translated-by-the-gateway))
+  is off until `mail.webhookSecret` holds the `whsec_...` secret the provider shows for it; the route then answers 404 and the gateway logs at start that it is off. The secret is rendered into the gateway's Secret only
+  (with `secrets.existingSecrets`, add `PAYRUDDER_MAIL_WEBHOOK_SECRET` to that Secret yourself), and it needs `mail.eventsSecret` (the gateway hands the event to the notifier): without it the chart fails to render.
 - **gRPC balancing**: the gRPC Services are headless, so `dns:///plans-svc:7001` resolves to every pod and the client's round-robin policy spreads calls.
 - **Probes** are `/healthz` and `/readyz` on each service's metrics port (mock-psp serves `/healthz` on its API port). Pods run as the distroless
   `nonroot` user (65532), read-only root filesystem, no capabilities, with a `/tmp` emptyDir.
@@ -79,11 +86,18 @@ Each service reads its container memory limit and tells the Go runtime to collec
   re-resolution interval from 30 s to 2 s, and the services on the synchronous path of `POST /v1/events` (gateway, ingest-svc, plans-svc) run two
   replicas. `make rollout-test` upgrades to a new image tag under k6 load and fails on a single failed request. On the shared two-vCPU GitHub runner, with twelve services restarting on four kind nodes, the first runs lost 1.25% of 1270 requests (p99 5 s; probably CPU starvation, not root-caused, and the one-node run on a laptop lost nothing), so CI allows 3% (`ROLLOUT_MAX_FAIL_RATE`); the default budget stays zero, and a bigger machine is the way to hold the strict bar.
 
+## Upgrade notes
+
+- **Roll plans-svc before using the mail accounts page** (migration 00027, several e-mail accounts per app). The pre-upgrade migration Job changes the primary key of `tenant_mail_integrations` from `(tenant_id)` to `(tenant_id, provider)`
+  before any new pod starts, and the plans-svc pods of the old version save an account with `ON CONFLICT (tenant_id)`, which no longer matches a constraint: until the rollout has replaced them (and for an older image run against the
+  migrated schema), saving a mail account fails with an internal error and writes nothing. `helm upgrade --wait` returns when the new pods are ready; use the page after that. Not tested on a cluster: the cause is read from the old query and the migration.
+- **`global.publicURL` is required outside a development environment** (this change): an upgrade of a `production` or `railway` release that never set it fails at `helm upgrade`, before anything changes, until the value is set.
+
 ## Tests
 
 - `tests/helm` renders both charts with `bin/helm` and asserts the safety properties: the sandbox profile has no live provider and allows only sandbox,
   external S3 has no MinIO, the NetworkPolicies name the right callers, migrations are hooks and their role never reaches a running pod, probes,
-  resources, PDBs and HPAs exist, role passwords are URL-escaped, and the copies of shared files in the infra chart match their sources.
+  resources, PDBs and HPAs exist, role passwords are URL-escaped, the copies of shared files in the infra chart match their sources, a non-development install needs its own pepper and `global.publicURL` while one with `secrets.existingSecrets` still renders migration Jobs that run migrate-only, and the mail webhook secret reaches the gateway's Secret and nothing else.
 - CI runs `make helm-lint` (`helm lint` + `kubeconform` for every values file; the KEDA `ScaledObject` kind has no schema there and is skipped, `tests/helm` checks it), `ct lint`, those render tests, and a `kind` job that does the
   three-worker install and runs `netpol-test` and `e2e-kind`.
 
@@ -97,7 +111,7 @@ Each service reads its container memory limit and tells the Go runtime to collec
 
 payments-worker is an `http` service in the chart (port 8095, only the gateway may call it) besides consuming RabbitMQ. It needs `payments.secretsKey` (32 bytes, base64, which seals tenants' provider credentials) and
 `payments.internalToken` (shared with the gateway): both are secret-backed settings, rendered into the services' Secrets like the other secrets and replaceable with `secrets.existingSecrets`. The chart's values are local
-defaults: generate your own (`openssl rand -base64 32`). It reaches plans-svc and billing-svc, whose policies accept it. Without a secrets key the worker starts with provider accounts and webhooks off. While the key is being replaced, `payments.secretsKeyId`, `payments.secretsKeyPrevious` and `payments.secretsKeyPreviousId` carry the second key to payments-worker and plans-svc ([runbook](runbooks/secrets-key-rotation.md)); they are empty otherwise.
+defaults that only a development environment may keep (the chart and the services refuse them elsewhere): generate your own (`openssl rand -base64 32`). It reaches plans-svc and billing-svc, whose policies accept it. Without a secrets key the worker starts with provider accounts and webhooks off. While the key is being replaced, `payments.secretsKeyId`, `payments.secretsKeyPrevious` and `payments.secretsKeyPreviousId` carry the second key to payments-worker and plans-svc ([runbook](runbooks/secrets-key-rotation.md)); they are empty otherwise.
 
 ## Backups and alerts
 

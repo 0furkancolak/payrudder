@@ -607,8 +607,9 @@ func (s *Server) followSubscription(ctx context.Context, e subscriptionEvent, li
 
 // recordDispute keeps a step of a dispute: it is announced to billing first (webhook, audit entry, the block of the customer), then written to the ledger and to the table of
 // cases, so that a notification that fails on the way is retried by the provider from the top. A step the ledger already holds was announced then, and only refreshes the
-// case (Stripe sends created and funds_withdrawn for the same step). A payment Payrudder did not make (no charge in the ledger under that reference) is kept in the ledger
-// and the table without an invoice, and nobody is told: there is nobody to tell.
+// case (Stripe sends created and funds_withdrawn for the same step); but an inquiry that becomes a chargeback (Stripe: warning_needs_response, then needs_response) is a step
+// of its own and is announced, so that the chargeback reaches the seller's webhook and block_on_chargeback. A payment Payrudder did not make (no charge in the ledger under
+// that reference) is kept in the ledger and the table without an invoice, and nobody is told: there is nobody to tell.
 func (d *delivery) recordDispute(ctx context.Context, conf payments.Notification) error {
 	ev := conf.Dispute
 	invoice, _, _, found, err := d.s.Ledger.PaymentOf(ctx, d.tenant, d.name, conf.ProviderRef)
@@ -616,7 +617,7 @@ func (d *delivery) recordDispute(ctx context.Context, conf payments.Notification
 		return err
 	}
 	status := store.DisputeStatus(string(ev.Outcome))
-	known, err := d.s.Ledger.DisputeStepKnown(ctx, d.tenant, d.name, ev.ID, status)
+	known, err := d.s.Ledger.DisputeStepKnown(ctx, d.tenant, d.name, ev.ID, status, ev.Formal)
 	if err != nil {
 		return err
 	}

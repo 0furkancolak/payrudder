@@ -2,6 +2,8 @@
 global:
   environment: kind
   topologySpread: false
+mail:
+  eventsSecret: local-mail-events-secret-change-me-0123456789   # the local value; the chart default is empty (the mail page off)
 defaults:
   resources:
     requests: { cpu: 10m, memory: 16Mi }

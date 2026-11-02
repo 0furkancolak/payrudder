@@ -125,7 +125,8 @@ func (c *Config) operatorRequireTwoFactor() bool {
 }
 
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate()}
+	errs := []error{c.Base.Validate(), c.CheckSecret("PAYRUDDER_OPERATOR_TOKEN", c.OperatorToken), c.CheckSecret("PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", c.PaymentsToken),
+		c.CheckSecret("PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", c.NotifierSecret)}
 	if _, err := config.ParseSwitch("PAYRUDDER_OPERATOR_REQUIRE_2FA", c.OperatorRequire2FA); err != nil {
 		errs = append(errs, err)
 	}
@@ -288,6 +289,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 			return nil, fmt.Errorf("PAYRUDDER_PAYMENTS_URL: %w", err)
 		}
 	}
+	logMailWebhook(log, cfg)
 	var mail httpapi.MailAdmin
 	if cfg.NotifierURL != "" {
 		c, err := mailadmin.New(cfg.NotifierURL, cfg.NotifierSecret, nil)
@@ -336,6 +338,14 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
 		TrustedProxies: proxies, TrustedProxySecret: cfg.TrustedProxySecret,
 	}), nil
+}
+
+// logMailWebhook says at start when the mail provider's delivery webhook is off: its route answers 404 then, and nothing else shows that bounces and complaints never reach the
+// suppression list.
+func logMailWebhook(log *slog.Logger, cfg *Config) {
+	if cfg.MailWebhookSecret == "" {
+		log.Info("the mail provider's delivery webhook (/inbound/mail-events) is off, so bounces and complaints do not reach the suppression list: set PAYRUDDER_MAIL_WEBHOOK_SECRET (and PAYRUDDER_NOTIFIER_EVENTS_URL) to switch it on")
+	}
 }
 
 // addReadinessChecks registers what readiness depends on.

@@ -46,6 +46,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("CustomerBlock", testCustomerBlock)
 	t.Run("CustomerBlockDetails", testCustomerBlockDetails)
 	t.Run("CustomerBlockSweep", testCustomerBlockSweep)
+	t.Run("Blocklist", testBlocklist)
 	t.Run("TenantStatus", testTenantStatus)
 	t.Run("TenantStatusApproval", testTenantStatusApproval)
 	t.Run("TenantLifecycle", testTenantLifecycle)
@@ -83,6 +84,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SupportDeskExtras", testSupportDeskExtras)
 	t.Run("SupportLeftovers", testSupportLeftovers)
 	t.Run("SupportAttachments", testSupportAttachments)
+	t.Run("SupportLimits", testSupportLimits)
+	t.Run("SupportViewer", testSupportViewer)
 	t.Run("Contracts", testContracts)
 	t.Run("ContractFollowups", testContractFollowups)
 	t.Run("ContractRefundResultAndLog", testContractRefundResultAndLog)
@@ -130,6 +133,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		}
 	}
 	must(e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_" + suffix, Name: "Ada " + suffix, Email: "ada@example.com"}))
+	must(e.plans.AddBlocklistEntry(ctx, &plansv1.AddBlocklistEntryRequest{Kind: "email", Value: "banned-" + suffix + "@example.com", Note: "seed"}))
 	must(e.plans.CreateMeter(ctx, &plansv1.CreateMeterRequest{Code: "gb_hours", Aggregation: plansv1.Aggregation_AGGREGATION_SUM,
 		ValueProperty: "gb_h", QuantityScale: 3, UnitLabel: "GB-h"}))
 	must(e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: "pro", Name: "Pro"}))

@@ -262,6 +262,40 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCustomerBlockEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/blocklist:
+    get:
+      operationId: listBlocklist
+      summary: Your blocklist, newest first
+      description: >
+        The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail address or tax id, may not match (error key
+        `plans.customer.blocklisted`, on creating a customer and on changing the contact details or the tax data). At most 1000 entries, so the list is not paged.
+        Customers that exist when an entry is added are not touched: block them from the customer list. The operator keeps a platform-wide list of its own that holds
+        the same gates for every app; it is not shown here and a refusal does not say which list it was. Needs customers:read.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListBlocklistResponse" } } } }
+    post:
+      operationId: addBlocklistEntry
+      summary: Put an e-mail address, a tax id or an external customer id on your blocklist
+      description: >
+        The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an external id as it is. An entry that is there is returned
+        as it is. The note is yours and is never shown to the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full` at 1000 entries.
+        Needs customers:write.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddBlocklistEntryRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BlocklistEntry" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/blocklist/{id}:
+    delete:
+      operationId: removeBlocklistEntry
+      summary: Take an entry off your blocklist
+      description: Needs customers:write.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/tax:
     put:
       operationId: setCustomerTax
@@ -4808,7 +4842,7 @@ paths:
       summary: Open a support ticket for an account (and optionally one of its apps)
       description: |
         The first answer is due by the priority and the plan of the ticket's app (free, standard or enterprise; a default table, not agreed), counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC, not on the app's days off). For a free app (the plan every new app starts on): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
-        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
+        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`. An account can also open at most 10 tickets an hour, solved and closed ones included (a default, not agreed; `PAYRUDDER_SUPPORT_OPENS_PER_HOUR`, 0 switches it off): one more is refused with `429 support.tickets.too_many_recent`.
         `links` may point at up to five customers, invoices or subscriptions of the account's apps (`404 support.app.not_found` for an app that is not the account's); only the pointer is kept, whether the object exists is not checked.
       security: [{ sessionToken: [] }]
       requestBody:
@@ -6119,6 +6153,34 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantStatusEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/blocklist:
+    get:
+      operationId: listPlatformBlocklist
+      summary: The operator's platform-wide blocklist, newest first
+      description: The same kinds of entry as an app's own list (plan 13), held against every app except the platform's own (the SaaS customers). At most 1000 entries. An app is never told which list refused a customer.
+      security: [{ operatorToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListBlocklistResponse" } } } }
+    post:
+      operationId: addPlatformBlocklistEntry
+      summary: Put a value on the platform-wide blocklist
+      description: Normalised as an app's entry is. Recorded in the audit log without the value (the kind only). Error key `plans.blocklist.full` at 1000 entries.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddBlocklistEntryRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BlocklistEntry" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/blocklist/{id}:
+    delete:
+      operationId: removePlatformBlocklistEntry
+      summary: Take an entry off the platform-wide blocklist
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/lifecycle:
     get:
       operationId: getTenantLifecycle
@@ -6703,6 +6765,28 @@ components:
         suspend_service: { type: boolean, description: "On a block: whether it also suspended the customer's service" }
         actor: { type: string, description: "A person's address, key:<api key id>, or operator" }
         create_time: { type: string, format: date-time }
+    BlocklistEntry:
+      type: object
+      required: [id, kind, value, note, created_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [email, tax_id, external_id] }
+        value: { type: string, description: "The normalised value" }
+        note: { type: string, description: "The owner's own note; never shown to the person the entry is about" }
+        created_by: { type: string, description: "A person's address, key:<api key id>, or operator" }
+        create_time: { type: string, format: date-time }
+    ListBlocklistResponse:
+      type: object
+      required: [entries]
+      properties:
+        entries: { type: array, items: { $ref: "#/components/schemas/BlocklistEntry" } }
+    AddBlocklistEntryRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [email, tax_id, external_id] }
+        value: { type: string, maxLength: 320 }
+        note: { type: string, maxLength: 500 }
     ListCustomerBlockEventsResponse:
       type: object
       required: [events]
@@ -7105,7 +7189,7 @@ components:
         quantity: { type: string, examples: ["1.250"] }
         amount_minor: { type: string, format: int64 }
         description: { type: string }
-        service_from: { type: string, format: date-time, description: The service period the line covers, nullable: true }
+        service_from: { type: string, format: date-time, description: "The service period the line covers, nullable: true" }
         service_to: { type: string, format: date-time, nullable: true }
     UpcomingInvoice:
       type: object
@@ -7170,7 +7254,7 @@ components:
       properties:
         payment: { allOf: [{ $ref: "#/components/schemas/InvoicePayment" }], nullable: true }
         duplicate: { type: boolean }
-        paid_minor: { type: string, description: The sum of the payments recorded by hand, format: int64 }
+        paid_minor: { type: string, description: "The sum of the payments recorded by hand, format: int64" }
         outstanding_minor: { type: string, format: int64 }
         settled: { type: boolean, description: The invoice is paid }
     BankTransferInstructions:
@@ -7186,7 +7270,7 @@ components:
       type: object
       required: [id, amount_minor, currency, received_at, bank_reference, recorded_by, recorded_at]
       properties:
-        id: { type: integer, description: The ledger row, format: int64 }
+        id: { type: integer, description: "The ledger row, format: int64" }
         amount_minor: { type: integer, format: int64 }
         currency: { type: string }
         received_at: { type: string, format: date-time }
@@ -7229,8 +7313,8 @@ components:
         customer_external_id: { type: string }
         meter_code: { type: string }
         period_id: { type: string, examples: ["2026-11"] }
-        used: { type: string, description: Exact decimal with the meter's scale, examples: ["10.500"] }
-        limit: { type: [string, "null"], description: Exact decimal; null when unlimited, examples: ["10.500"] }
+        used: { type: string, description: "Exact decimal with the meter's scale, examples: [\"10.500\"]" }
+        limit: { type: [string, "null"], description: "Exact decimal; null when unlimited, examples: [\"10.500\"]" }
         unlimited: { type: boolean }
         allowed: { type: boolean, description: "(unlimited, used < limit, or a soft or notify limit) and not suspended" }
         as_of: { type: [string, "null"], format: date-time }
@@ -7334,7 +7418,7 @@ components:
         invited_by_email: { type: string }
         invited_by_name: { type: string }
         create_time: { type: string, format: date-time, nullable: true }
-        send_time: { type: string, format: date-time, description: When the mail last went out, nullable: true }
+        send_time: { type: string, format: date-time, description: "When the mail last went out, nullable: true" }
         expire_time: { type: string, format: date-time, nullable: true }
     InvitationLookup:
       type: object
@@ -8210,13 +8294,13 @@ components:
         country: { type: string }
         currency: { type: string }
         invoices: { type: string, format: int64 }
-        billed_minor: { type: string, description: Finalized invoices that are not void, format: int64 }
-        collected_minor: { type: string, description: Paid, format: int64 }
-        refunded_minor: { type: string, description: Invoices that were refunded, format: int64 }
-        outstanding_minor: { type: string, description: Open, format: int64 }
+        billed_minor: { type: string, description: "Finalized invoices that are not void, format: int64" }
+        collected_minor: { type: string, description: "Paid, format: int64" }
+        refunded_minor: { type: string, description: "Invoices that were refunded, format: int64" }
+        outstanding_minor: { type: string, description: "Open, format: int64" }
         uncollectible_minor: { type: string, format: int64 }
         void_minor: { type: string, format: int64 }
-        credited_minor: { type: string, description: Credit notes issued against these invoices, format: int64 }
+        credited_minor: { type: string, description: "Credit notes issued against these invoices, format: int64" }
     GetDunningReportResponse:
       type: object
       required: [invoices, summary]
@@ -8270,10 +8354,10 @@ components:
         trialing: { type: string, format: int64 }
         paused: { type: string, format: int64 }
         past_due: { type: string, format: int64 }
-        mrr_minor: { type: string, description: Fixed fees per month of active and past due subscriptions, format: int64 }
+        mrr_minor: { type: string, description: "Fixed fees per month of active and past due subscriptions, format: int64" }
         new_subscriptions: { type: string, format: int64 }
         new_mrr_minor: { type: string, format: int64 }
-        churned: { type: string, description: Ended with no successor; a plan change or provider migration is not churn, format: int64 }
+        churned: { type: string, description: "Ended with no successor; a plan change or provider migration is not churn, format: int64" }
         churned_mrr_minor: { type: string, format: int64 }
         plan_code: { type: string }
     PreviewRoutingRequest:
@@ -8374,7 +8458,7 @@ components:
         fee_currency: { type: string, description: The currency of `fee_minor` }
         handled: { type: boolean, description: "Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider" }
         handled_time: { type: string, format: date-time, description: Absent when the case is not marked }
-        handled_by: { type: string, description: "Who marked it; absent when it is not marked and for a viewer of the account" }
+        handled_by: { type: string, description: "Who marked it; absent when it is not marked, for a viewer of the account, and for an API key that holds no audit:read (the read_only and billing roles)" }
         note_count: { type: integer, format: int64, description: "How many notes you wrote (`GET /v1/disputes/{id}/history`)" }
     DisputeEvent:
       type: object
@@ -9071,7 +9155,7 @@ components:
       properties:
         connected: { type: boolean, description: At least one account is connected. }
         integration: { allOf: [{ $ref: "#/components/schemas/MailIntegration" }], nullable: true, description: The default account. }
-        accounts: { type: array, items: { $ref: "#/components/schemas/MailIntegration" }, description: Every account, the default first. }
+        accounts: { type: array, items: { $ref: "#/components/schemas/MailIntegration" }, description: "Every account, the default first." }
     AppPutMailIntegrationRequest:
       type: object
       required: [provider, base_url, api_key, from]
@@ -9099,7 +9183,7 @@ components:
       properties:
         status: { type: string, enum: [ok, weak, missing, invalid, unchecked, error] }
         detail: { type: string, description: 'hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked' }
-        record: { type: string, description: The record that was found, clipped. }
+        record: { type: string, description: "The record that was found, clipped." }
         selector: { type: string }
     MailIdentity:
       type: object
@@ -9294,7 +9378,7 @@ components:
       required: [provider, price_ref]
       properties:
         provider: { type: string, examples: [paddle] }
-        price_ref: { type: string, description: The provider's id of what is sold, examples: [pri_01] }
+        price_ref: { type: string, description: "The provider's id of what is sold, examples: [pri_01]" }
         quantity: { type: integer, minimum: 1 }
         quotify_subscription_id: { type: string, format: uuid, description: Ties the provider's subscription to ours }
     CreateProviderCheckoutResponse:
@@ -10654,7 +10738,7 @@ components:
         invoice_total_minor: { type: string, description: "What the invoice came to, tax included", format: int64 }
         net_minor: { type: string, description: "The base: the net, pre-tax amount actually paid", format: int64 }
         amount_minor: { type: string, description: "The commission; negative on a reversal row", format: int64 }
-        reversed_minor: { type: string, description: How much of the commission has been taken back, format: int64 }
+        reversed_minor: { type: string, description: "How much of the commission has been taken back, format: int64" }
         status: { type: string, enum: [pending, approved, paid, reversed] }
         parent_id: { type: string, format: uuid }
         earn_time: { type: string, format: date-time, nullable: true }
@@ -10679,8 +10763,8 @@ components:
         from_date: { type: string, format: date }
         to_date: { type: string, format: date }
         clicks: { type: string, format: int64 }
-        referrals: { type: string, description: Customers attributed in the period, format: int64 }
-        paying_customers: { type: string, description: Customers with a commission earned in the period, format: int64 }
+        referrals: { type: string, description: "Customers attributed in the period, format: int64" }
+        paying_customers: { type: string, description: "Customers with a commission earned in the period, format: int64" }
         commissions: { type: array, items: { type: object, required: [currency, earned_minor, reversed_minor], properties: { currency: { type: string }, earned_minor: { type: string, format: int64 }, reversed_minor: { type: string, format: int64 } } } }
     AffiliatePayout:
       type: object
@@ -11845,7 +11929,7 @@ components:
         bonus_credits: { type: string, format: int64 }
         currency: { type: string }
         create_time: { type: string, format: date-time, nullable: true }
-        reverse_time: { type: string, format: date-time, description: Set when a void or a full refund reversed it, nullable: true }
+        reverse_time: { type: string, format: date-time, description: "Set when a void or a full refund reversed it, nullable: true" }
     PromotionQuoteRequest:
       type: object
       required: [target, currency]
@@ -11853,7 +11937,7 @@ components:
         code: { type: string }
         customer_external_id: { type: string, description: "Needed by codes that are first-purchase-only or one per customer" }
         target: { type: string, enum: [COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT] }
-        amount_minor: { type: string, description: The price before the discount, format: int64 }
+        amount_minor: { type: string, description: "The price before the discount, format: int64" }
         currency: { type: string }
         item: { type: string, description: "The credit pack id, for codes restricted to some packs" }
         credits: { type: string, description: "The credits sold, for a bonus coupon" }
@@ -11891,7 +11975,7 @@ components:
         period_start: { type: string, format: date-time, nullable: true }
         period_end: { type: string, format: date-time, nullable: true }
         credit_minor: { type: string, description: "The unused, prepaid part of the old fee", format: int64 }
-        charge_minor: { type: string, description: What the new plan costs from the change, format: int64 }
+        charge_minor: { type: string, description: "What the new plan costs from the change, format: int64" }
         net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance", format: int64 }
         currency: { type: string }
         next_renewal_time: { type: string, format: date-time, nullable: true }
@@ -11909,7 +11993,7 @@ components:
         period_start: { type: string, format: date-time }
         period_end: { type: string, format: date-time }
         credit_minor: { type: string, description: "The unused, prepaid part of the old fee", format: int64 }
-        charge_minor: { type: string, description: What the new plan costs from the change, format: int64 }
+        charge_minor: { type: string, description: "What the new plan costs from the change, format: int64" }
         net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance", format: int64 }
         currency: { type: string }
         next_renewal_time: { type: string, format: date-time }
@@ -11925,7 +12009,7 @@ components:
       properties:
         timing: { type: string, enum: [CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END] }
         credit_minor: { type: string, description: "The unused, prepaid part of the old fee", format: int64 }
-        charge_minor: { type: string, description: What the new plan costs from the change, format: int64 }
+        charge_minor: { type: string, description: "What the new plan costs from the change, format: int64" }
         net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance", format: int64 }
         currency: { type: string }
         next_renewal_time: { type: string, format: date-time }
@@ -12105,7 +12189,7 @@ components:
         slug: { type: string }
         tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
         create_time: { type: string, format: date-time, nullable: true }
-        archive_time: { type: string, format: date-time, description: Set once the app was deleted (archived); only the operator API lists such an app., nullable: true }
+        archive_time: { type: string, format: date-time, description: "Set once the app was deleted (archived); only the operator API lists such an app., nullable: true" }
     ApiKeyRole:
       type: string
       enum: [admin, billing, read_only, ingest_only, custom]
@@ -12349,7 +12433,7 @@ components:
         from: { type: string }
         key_hint: { type: string, description: The last four characters of the stored key }
         update_time: { type: string, format: date-time, nullable: true }
-        checked_time: { type: string, format: date-time, description: When the provider last accepted the key, nullable: true }
+        checked_time: { type: string, format: date-time, description: "When the provider last accepted the key, nullable: true" }
         check_problem: { type: string, enum: ["", unreachable, refused] }
     ApiKey:
       type: object
@@ -12365,5 +12449,5 @@ components:
         scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older summary of the role: INGEST for ingest_only, READ for read_only, FULL for the rest. Nothing enforces it; the permissions do." }
         role: { $ref: "#/components/schemas/ApiKeyRole" }
         permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "What the key may do. A request that needs one the key lacks is 403 gateway.auth.permission_denied." }
-        last_used_time: { type: string, format: date-time, description: Kept to within a few minutes., nullable: true }
-        expire_time: { type: string, format: date-time, description: The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true }
+        last_used_time: { type: string, format: date-time, description: "Kept to within a few minutes., nullable: true" }
+        expire_time: { type: string, format: date-time, description: "The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true" }

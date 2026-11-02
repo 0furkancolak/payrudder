@@ -16,6 +16,8 @@ import { createServer } from "./server.js";
 // PAYRUDDER_MCP_HTTP_PORT  set it to serve streamable HTTP on /mcp instead of stdio; each caller sends its own key as a bearer token, so PAYRUDDER_API_KEY is not used
 // PAYRUDDER_MCP_HTTP_HOST  the address to listen on in that mode (default 127.0.0.1: put a TLS-terminating proxy in front before listening on anything else)
 // PAYRUDDER_MCP_AUDIT      0 to stop the audit log (one JSON line per tool call on stderr)
+// PAYRUDDER_MCP_EDGE_SECRET   (HTTP) the gateway's PAYRUDDER_TRUSTED_PROXY_SECRET, at least 32 characters: the caller's address goes to the API, which counts a refused key against it and not against this server
+// PAYRUDDER_MCP_TRUST_FORWARDED_FOR  (HTTP) 1 when a proxy in front writes the caller's address as the last X-Forwarded-For entry; otherwise the connection's address is sent
 // PAYRUDDER_MCP_RATE_PER_MINUTE  tool calls a minute for each key (default 60, a burst of 10; 0 for no limit): the API limits per tenant, so this is the key's own share
 const baseUrl = process.env.PAYRUDDER_BASE_URL ?? "http://localhost:42800";
 const writes = process.env.PAYRUDDER_MCP_WRITES === "1";
@@ -36,7 +38,12 @@ if (httpPort !== undefined) {
     process.exit(1);
   }
   const host = process.env.PAYRUDDER_MCP_HTTP_HOST ?? "127.0.0.1";
-  const http = createHttpServer({ baseUrl, allowWrites: writes, allowLive, allowPersonalData, ratePerMinute, ...(audit ? { audit } : {}) });
+  const edgeSecret = process.env.PAYRUDDER_MCP_EDGE_SECRET;
+  if (edgeSecret !== undefined && edgeSecret.length < 32) {
+    console.error("payrudder-mcp: PAYRUDDER_MCP_EDGE_SECRET must be the gateway's PAYRUDDER_TRUSTED_PROXY_SECRET, at least 32 characters.");
+    process.exit(1);
+  }
+  const http = createHttpServer({ baseUrl, allowWrites: writes, allowLive, allowPersonalData, ratePerMinute, ...(edgeSecret ? { edgeSecret } : {}), trustForwardedFor: process.env.PAYRUDDER_MCP_TRUST_FORWARDED_FOR === "1", ...(audit ? { audit } : {}) });
   http.listen(port, host, () => {
     console.error(`payrudder-mcp: serving streamable HTTP on http://${host}:${(http.address() as AddressInfo).port}/mcp (${writes ? "reads and writes" : "read only"}, the caller's key in every request)`);
   });

@@ -119,7 +119,7 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate()}
+	errs := []error{c.Base.Validate(), c.CheckSecret("PAYRUDDER_SECRETS_KEY", c.Secrets.SecretsKey), c.CheckSecret("PAYMENTS_INTERNAL_TOKEN", c.InternalToken)}
 	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	if c.Enabled() && c.PlansAddr == "" {
 		errs = append(errs, errors.New("PAYRUDDER_CELLS needs PAYRUDDER_PLANS_ADDR: the tenant directory is plans-svc's"))

@@ -36,6 +36,10 @@ type Config struct {
 	Operators []string
 	// AppURL is the console's address; the links in the notices open the ticket in it.
 	AppURL string
+	// OpensPerHour is the most tickets one account may open in an hour, solved and closed ones included (solving a ticket frees its place among the ones waiting, so
+	// the waiting limit alone does not stop a loop of open and solve); 0 allows any number. MailBurst is how many new tickets the operators are mailed one by one
+	// within domain.SupportMailWindow: the next one is mailed as one digest and the ones after it are not mailed (they are in the inbox); 0 mails every one.
+	OpensPerHour, MailBurst int
 }
 
 // Service implements plansv1.SupportServiceServer.
@@ -71,15 +75,27 @@ func parse(id string) (uuid.UUID, error) {
 	return u, nil
 }
 
-// member reports whether the user belongs (not as an affiliate) to the account.
-func member(ctx context.Context, q *sqlc.Queries, user, account uuid.UUID) error {
-	if _, err := q.SupportRoleOf(ctx, sqlc.SupportRoleOfParams{AccountID: account, UserID: user}); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return notFound() // not the person's ticket: the same answer as a ticket that is not there
-		}
-		return err
+// member reports the user's role in the account, and an error when they do not belong to it (an affiliate of a program does not, for the help desk).
+func member(ctx context.Context, q *sqlc.Queries, user, account uuid.UUID) (string, error) {
+	role, err := q.SupportRoleOf(ctx, sqlc.SupportRoleOfParams{AccountID: account, UserID: user})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", notFound() // not the person's ticket: the same answer as a ticket that is not there
 	}
-	return nil
+	return role, err
+}
+
+// readOnly is the answer to a viewer of the account who writes: a viewer reads (docs/13-admin-ui.md, "A viewer reads"), as everywhere else in the account.
+func readOnly() error {
+	return errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account does not allow this")
+}
+
+// writer is member for a call that writes: opening a ticket, answering, changing its status, rating it, attaching a file. A viewer of the account is refused.
+func writer(ctx context.Context, q *sqlc.Queries, user, account uuid.UUID) error {
+	role, err := member(ctx, q, user, account)
+	if err == nil && role == "viewer" {
+		return readOnly()
+	}
+	return err
 }
 
 func ts(t *time.Time) *timestamppb.Timestamp {
@@ -252,8 +268,12 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		if err := member(ctx, q, user, account); err != nil {
+		role, err := member(ctx, q, user, account)
+		if err != nil {
 			return errkey.New(codes.PermissionDenied, "support.account.not_member", "you are not a member of this account")
+		}
+		if role == "viewer" {
+			return readOnly()
 		}
 		if appID != nil {
 			ok, err := q.SupportAppInAccount(ctx, sqlc.SupportAppInAccountParams{ID: *appID, AccountID: account})
@@ -272,6 +292,13 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 			return err
 		} else if n >= domain.SupportMaxOpen {
 			return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many", "an account can have at most %d tickets waiting at once: wait for an answer or mark one solved", domain.SupportMaxOpen)
+		}
+		if s.cfg.OpensPerHour > 0 {
+			if n, err := q.SupportOpenedByAccountSince(ctx, sqlc.SupportOpenedByAccountSinceParams{AccountID: account, Since: s.now().Add(-time.Hour)}); err != nil {
+				return err
+			} else if int(n) >= s.cfg.OpensPerHour {
+				return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many_recent", "an account can open at most %d tickets an hour: wait a while, or write in a ticket that is open", s.cfg.OpensPerHour)
+			}
 		}
 		clock, err := q.SupportClockFor(ctx, sqlc.SupportClockForParams{AccountID: account, AppID: appID})
 		if err != nil {
@@ -304,7 +331,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		if out.Links, err = linksOf(ctx, q, id); err != nil {
 			return err
 		}
-		mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketNew)
+		mails, err = s.newTicketMails(ctx, q, id)
 		return err
 	})
 	if err != nil {
@@ -345,7 +372,7 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 		return nil, err
 	}
 	account, _ := uuid.Parse(t.GetAccountId())
-	if err := member(ctx, q, user, account); err != nil {
+	if _, err := member(ctx, q, user, account); err != nil {
 		return nil, err
 	}
 	// Opening the ticket is reading it: the "new" mark of the person who opened it goes (another member's reading leaves it).
@@ -371,7 +398,7 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events, true)}, nil
 }
 
-// lockedFor locks the ticket and, for a person, checks they belong to its account.
+// lockedFor locks the ticket for a change and, for a person, checks they belong to its account and are not only a viewer of it.
 func lockedFor(ctx context.Context, q *sqlc.Queries, id uuid.UUID, user *uuid.UUID) (sqlc.LockSupportTicketRow, error) {
 	row, err := q.LockSupportTicket(ctx, id)
 	if err != nil {
@@ -381,7 +408,7 @@ func lockedFor(ctx context.Context, q *sqlc.Queries, id uuid.UUID, user *uuid.UU
 		return row, err
 	}
 	if user != nil {
-		if err := member(ctx, q, *user, row.AccountID); err != nil {
+		if err := writer(ctx, q, *user, row.AccountID); err != nil {
 			return row, err
 		}
 	}

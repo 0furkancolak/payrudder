@@ -3206,7 +3206,8 @@
       "customer": {
         "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide.",
         "quota_reached": "La limite de clients du forfait de ce compte est atteinte.",
-        "blocked": "Ce client est bloqué : rien de nouveau ne peut être lancé pour lui."
+        "blocked": "Ce client est bloqué : rien de nouveau ne peut être lancé pour lui.",
+        "blocklisted": "Ce client figure sur une liste de blocage : il ne peut pas être créé ou modifié ainsi."
       },
       "common": {
         "not_found": "Élément introuvable.",
@@ -3316,6 +3317,9 @@
         "version_stale": "Une version plus récente de ce texte a été publiée. Affichez la version actuelle et demandez à nouveau.",
         "withdrawal_decided": "Cette demande de rétractation ne peut pas passer à ce statut.",
         "withdrawal_not_found": "Cette demande de rétractation n'existe pas."
+      },
+      "blocklist": {
+        "full": "Une liste de blocage contient au plus 1000 entrées. Supprimez-en avant d'en ajouter."
       },
       "appeal": {
         "not_held": "On ne peut faire appel que pour une app que l'opérateur a suspendue, gelée ou bannie.",
@@ -3890,7 +3894,8 @@
         "not_solved": "Vous pouvez noter un ticket une fois qu'il est résolu."
       },
       "tickets": {
-        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
+        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez.",
+        "too_many_recent": "Votre organisation a ouvert trop de tickets au cours de la dernière heure. Patientez un moment ou écrivez dans un ticket déjà ouvert."
       },
       "canned_reply": {
         "not_found": "Cette réponse type n'existe plus."
@@ -5101,7 +5106,9 @@
       "connect": "Connecter votre app",
       "contracts": "Contrats",
       "audit": "Journal d'audit",
-      "auditLog": "Journal d'audit"
+      "auditLog": "Journal d'audit",
+      "blocklist": "Liste de blocage",
+      "platformBlocklist": "Liste de blocage de la plateforme"
     },
     "newApp": "Nouvelle application"
   },
@@ -5518,6 +5525,12 @@
       "einvoice": {
         "intro": "Connectez l'intégrateur qui signe et envoie vos factures électroniques, et réglez la façon dont les documents sont établis.",
         "list": "Les comptes connectés pour ce locataire, un par environnement. Un compte de production envoie de vrais documents ; celui du sandbox ne fait que simuler."
+      },
+      "blocklist": {
+        "intro": "Les adresses e-mail, numéros fiscaux et identifiants clients que vous avez écartés. Un nouveau client correspondant est refusé : personne ne revient sous un autre identifiant."
+      },
+      "platformBlocklist": {
+        "intro": "La liste de blocage de l'opérateur, appliquée à toutes les apps. Une app ne sait jamais quelle liste a refusé un client."
       }
     }
   },
@@ -6536,6 +6549,44 @@
         "handled": "Marqué comme traité",
         "unhandled": "Marque « traité » retirée"
       }
+    }
+  },
+  "blocklist": {
+    "new": "Ajouter à la liste de blocage",
+    "hint": "Un nouveau client, ou la nouvelle adresse e-mail ou le nouveau numéro fiscal d'un client, qui correspond à une entrée ici est refusé. Vos clients actuels ne sont pas touchés : bloquez-les depuis la liste des clients. L'opérateur tient sa propre liste pour toutes les apps ; elle n'est pas affichée ici.",
+    "hintPlatform": "S'applique à toutes les apps : un nouveau client, ou la nouvelle adresse e-mail ou le nouveau numéro fiscal d'un client, qui correspond à une entrée ici est refusé, sans que l'app sache quelle liste l'a refusé. Les propres clients de la plateforme (les organisations) n'y sont pas soumis.",
+    "search": "Rechercher dans la liste",
+    "empty": "La liste de blocage est vide",
+    "emptyHint": "Ajoutez l'adresse e-mail, le numéro fiscal ou l'identifiant client d'une personne que vous avez écartée, pour qu'elle ne revienne pas sous un autre identifiant.",
+    "emptyHintPlatform": "Ajoutez ce que l'opérateur veut voir refusé dans toutes les apps.",
+    "kinds": {
+      "email": "Adresse e-mail",
+      "tax_id": "Numéro fiscal",
+      "external_id": "Identifiant client"
+    },
+    "columns": {
+      "value": "Valeur",
+      "kind": "Type",
+      "note": "Note",
+      "addedBy": "Ajouté par",
+      "added": "Ajouté"
+    },
+    "remove": "Retirer",
+    "removeConfirm": "Retirer {value} de la liste de blocage ? Un nouveau client avec cette valeur pourra être recréé.",
+    "add": {
+      "title": "Ajouter à la liste de blocage",
+      "description": "Un nouveau client qui correspond, ou un client qui passe à une adresse e-mail ou un numéro fiscal correspondant, est refusé. Vos clients actuels ne sont pas touchés.",
+      "descriptionPlatform": "S'applique à toutes les apps. Elle est enregistrée dans le journal d'audit sans la valeur.",
+      "kind": "De quoi il s'agit",
+      "value": "Valeur",
+      "valueHint": {
+        "email": "Comparée en minuscules.",
+        "tax_id": "Les espaces et les tirets sont ignorés.",
+        "external_id": "Comparé exactement, majuscules comprises."
+      },
+      "note": "Votre note",
+      "noteHint": "Pour vous seul ; jamais montrée à la personne.",
+      "submit": "Ajouter"
     }
   }
 }

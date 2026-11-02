@@ -91,6 +91,14 @@ type AccountingSummary struct {
 	Currencies []AccountingCurrency `json:"currencies"`
 }
 
+// AddBlocklistEntryRequest is the request body of AddBlocklistEntry.
+type AddBlocklistEntryRequest struct {
+	// One of: email, tax_id, external_id.
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+	Note  string `json:"note,omitempty"`
+}
+
 // AddDisputeNoteRequest is the request body of AddDisputeNote.
 type AddDisputeNoteRequest struct {
 	Note string `json:"note"`
@@ -171,7 +179,7 @@ type AffiliateCommission struct {
 	NetMinor Int64 `json:"net_minor"`
 	// The commission; negative on a reversal row
 	AmountMinor Int64 `json:"amount_minor"`
-	// How much of the commission has been taken back
+	// How much of the commission has been taken back, format: int64
 	ReversedMinor Int64 `json:"reversed_minor"`
 	// One of: pending, approved, paid, reversed.
 	Status           string     `json:"status"`
@@ -188,10 +196,10 @@ type AffiliateFunnel struct {
 	FromDate string `json:"from_date"`
 	ToDate   string `json:"to_date"`
 	Clicks   string `json:"clicks"`
-	// Customers attributed in the period
-	Referrals string `json:"referrals"`
-	// Customers with a commission earned in the period
-	PayingCustomers string                       `json:"paying_customers"`
+	// Customers attributed in the period, format: int64
+	Referrals Int64 `json:"referrals"`
+	// Customers with a commission earned in the period, format: int64
+	PayingCustomers Int64                        `json:"paying_customers"`
 	Commissions     []AffiliateFunnelCommissions `json:"commissions"`
 }
 
@@ -403,6 +411,20 @@ type BlockCustomerRequest struct {
 	SuspendService *bool `json:"suspend_service,omitempty"`
 }
 
+// BlocklistEntry is an object of the API; see components.schemas.BlocklistEntry in api/openapi/v1.yaml.
+type BlocklistEntry struct {
+	ID string `json:"id"`
+	// One of: email, tax_id, external_id.
+	Kind string `json:"kind"`
+	// The normalised value
+	Value string `json:"value"`
+	// The owner's own note; never shown to the person the entry is about
+	Note string `json:"note"`
+	// A person's address, key:<api key id>, or operator
+	CreatedBy  string    `json:"created_by"`
+	CreateTime time.Time `json:"create_time"`
+}
+
 // CancelSubscriptionResponse is the response of CancelSubscription.
 type CancelSubscriptionResponse struct {
 	Subscription Subscription `json:"subscription"`
@@ -441,7 +463,7 @@ type ChangeQuote struct {
 	PeriodEnd     *time.Time `json:"period_end"`
 	// The unused, prepaid part of the old fee
 	CreditMinor Int64 `json:"credit_minor"`
-	// What the new plan costs from the change
+	// What the new plan costs from the change, format: int64
 	ChargeMinor Int64 `json:"charge_minor"`
 	// charge - credit: positive is invoiced, negative becomes a credit balance
 	NetMinor         Int64      `json:"net_minor"`
@@ -734,8 +756,8 @@ type CouponRedemption struct {
 	BonusCredits  string     `json:"bonus_credits"`
 	Currency      string     `json:"currency"`
 	CreateTime    *time.Time `json:"create_time"`
-	// Set when a void or a full refund reversed it
-	ReverseTime *time.Time `json:"reverse_time"`
+	// Set when a void or a full refund reversed it, nullable: true
+	ReverseTime time.Time `json:"reverse_time"`
 }
 
 // CreateAffiliatePayoutsRequest is the request body of CreateAffiliatePayouts.
@@ -1454,9 +1476,9 @@ type EntitlementStatus struct {
 	CustomerExternalID string `json:"customer_external_id"`
 	MeterCode          string `json:"meter_code"`
 	PeriodID           string `json:"period_id"`
-	// Exact decimal with the meter's scale
+	// Exact decimal with the meter's scale, examples: ["10.500"]
 	Used string `json:"used"`
-	// Exact decimal; null when unlimited
+	// Exact decimal; null when unlimited, examples: ["10.500"]
 	Limit     *string `json:"limit"`
 	Unlimited bool    `json:"unlimited"`
 	// (unlimited, used < limit, or a soft or notify limit) and not suspended
@@ -1733,17 +1755,17 @@ type GetRevenueReportRow struct {
 	Country  string `json:"country"`
 	Currency string `json:"currency"`
 	Invoices string `json:"invoices"`
-	// Finalized invoices that are not void
+	// Finalized invoices that are not void, format: int64
 	BilledMinor Int64 `json:"billed_minor"`
-	// Paid
+	// Paid, format: int64
 	CollectedMinor Int64 `json:"collected_minor"`
-	// Invoices that were refunded
+	// Invoices that were refunded, format: int64
 	RefundedMinor Int64 `json:"refunded_minor"`
-	// Open
+	// Open, format: int64
 	OutstandingMinor   Int64 `json:"outstanding_minor"`
 	UncollectibleMinor Int64 `json:"uncollectible_minor"`
 	VoidMinor          Int64 `json:"void_minor"`
-	// Credit notes issued against these invoices
+	// Credit notes issued against these invoices, format: int64
 	CreditedMinor Int64 `json:"credited_minor"`
 }
 
@@ -1763,12 +1785,12 @@ type GetSubscriptionReportRow struct {
 	Trialing string `json:"trialing"`
 	Paused   string `json:"paused"`
 	PastDue  string `json:"past_due"`
-	// Fixed fees per month of active and past due subscriptions
+	// Fixed fees per month of active and past due subscriptions, format: int64
 	MrrMinor         Int64  `json:"mrr_minor"`
 	NewSubscriptions string `json:"new_subscriptions"`
 	NewMrrMinor      Int64  `json:"new_mrr_minor"`
-	// Ended with no successor; a plan change or provider migration is not churn
-	Churned         string `json:"churned"`
+	// Ended with no successor; a plan change or provider migration is not churn, format: int64
+	Churned         Int64  `json:"churned"`
 	ChurnedMrrMinor Int64  `json:"churned_mrr_minor"`
 	PlanCode        string `json:"plan_code"`
 }
@@ -1887,8 +1909,8 @@ type InvoiceLine struct {
 	Quantity       string `json:"quantity"`
 	AmountMinor    Int64  `json:"amount_minor"`
 	Description    string `json:"description"`
-	// The service period the line covers
-	ServiceFrom *time.Time `json:"service_from"`
+	// The service period the line covers, nullable: true
+	ServiceFrom time.Time  `json:"service_from"`
 	ServiceTo   *time.Time `json:"service_to"`
 }
 
@@ -1980,6 +2002,11 @@ type ListAuditEventsResponse struct {
 	// A service that keeps part of the log did not answer: the page may lack its entries
 	Incomplete         bool     `json:"incomplete"`
 	UnavailableSources []string `json:"unavailable_sources"`
+}
+
+// ListBlocklistResponse is the response of ListBlocklist.
+type ListBlocklistResponse struct {
+	Entries []BlocklistEntry `json:"entries"`
 }
 
 // ListContractAcceptancesResponse is the response of ListContractAcceptances.
@@ -2580,7 +2607,7 @@ type PromotionQuoteRequest struct {
 	CustomerExternalID string `json:"customer_external_id,omitempty"`
 	// One of: COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT.
 	Target string `json:"target"`
-	// The price before the discount
+	// The price before the discount, format: int64
 	AmountMinor *Int64 `json:"amount_minor,omitempty"`
 	Currency    string `json:"currency"`
 	// The credit pack id, for codes restricted to some packs

@@ -114,7 +114,7 @@ variables; `<role>` below is `app`, `system` or `migrator`. The names here are t
 `cmd/*/config.default.yaml`.
 
 **Error tracking** (optional): `ERROR_TRACKING_URL=https://<public key>@host/<project id> deploy/railway/bootstrap.sh ...` sets `PAYRUDDER_ERROR_TRACKING_URL` on every Go service
-(panics and unexpected errors go to a GlitchTip or Sentry project; [docs/08-observability.md](../../docs/08-observability.md#error-tracking)); unset, nothing is sent. The DSN holds a key,
+(panics and unexpected errors go to a GlitchTip or Sentry project; [docs/08-observability.md](../../docs/08-observability.md#error-tracking-off-by-default)); unset, nothing is sent. The DSN holds a key,
 so it lives in Railway's variables only. Not exercised against a real server.
 
 Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<ROLE>_PASSWORD}}@${{Postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/<db>_db`,
@@ -146,6 +146,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_PUBLIC_URL` | `https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}` | |
 | `PAYRUDDER_NOTIFIER_EVENTS_URL` | `http://notifier.railway.internal:9111` | the notifier's signed listener, for the console's mail page; set with the next row or not at all (the gateway refuses to start with one) |
 | `PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET` | `${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}` | |
+| `PAYRUDDER_MAIL_WEBHOOK_SECRET` | from the mail provider, `whsec_...` | optional: the signing secret of the provider's webhook of delivery events, which points at `https://<gateway domain>/inbound/mail-events`; unset, the route answers 404 and bounces and complaints never reach the suppression list. Needs the two rows above. `MAIL_WEBHOOK_SECRET=whsec_... deploy/railway/bootstrap.sh ...` sets it ([runbook](../../docs/runbooks/mail-suppression.md#the-providers-webhook-translated-by-the-gateway)) |
 
 ### plans-svc
 
@@ -274,6 +275,7 @@ Full profile only.
 | `PAYRUDDER_SECRETS_KEY` | generated | 32 bytes, base64 |
 | `PAYRUDDER_SECRETS_KEY_ID`, `PAYRUDDER_SECRETS_KEY_PREVIOUS`, `PAYRUDDER_SECRETS_KEY_PREVIOUS_ID` | unset | only while the key is being replaced: the id of the key above, the key it replaces and that key's id ([runbook](../../docs/runbooks/secrets-key-rotation.md)); not exercised on Railway |
 | `PAYMENTS_INTERNAL_TOKEN` | generated | shared with the gateway |
+| `PAYMENTS_WEBHOOK_RECLAIM_AFTER` | unset (`10m`) | optional: how long a provider notification may stay `received` or `failed` in the inbox before the provider's retry takes it over and processes it again; at least `1m` |
 
 Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account they configure (iyzico, Paddle), never the mock.
 
@@ -390,6 +392,9 @@ That is right for demo and sandbox; **real customers will not receive receipts**
 private network without a login (a Postfix or Haraka service in the project, or a provider's authenticated-relay-to-open-relay bridge), and set `MAIL_FROM`.
 Adding SMTP authentication to the notifier is not done.
 
+Bounces and complaints reach the suppression list through the provider's webhook of delivery events: make it at `https://<gateway domain>/inbound/mail-events` and give the gateway the
+`whsec_...` secret it shows (`MAIL_WEBHOOK_SECRET`, the gateway's `PAYRUDDER_MAIL_WEBHOOK_SECRET` above). Until then the route answers 404 and the gateway logs that it is off.
+
 ## Profiles and what is lost
 
 | | full | small (`--profile small`) |
@@ -418,7 +423,7 @@ Verified (static checks, `make railway-check`, run in CI as part of `make test`)
 - every built compose service has a config file; each names a Dockerfile that exists, rooted watch patterns, a health path the service serves,
   a restart policy; only keys of Railway's published JSON schema are used;
 - every `env:"...,required"` setting of every service is in its table above and set by `bootstrap.sh`; every `go_service` directory has its main package;
-- `bootstrap.sh --dry-run` runs for both profiles and names every service.
+- `bootstrap.sh --dry-run` runs for both profiles and names every service; `MAIL_WEBHOOK_SECRET` reaches the gateway's `PAYRUDDER_MAIL_WEBHOOK_SECRET` and no other service.
 
 Run locally with Docker (not on Railway):
 
@@ -430,6 +435,7 @@ Run locally with Docker (not on Railway):
 **Not verified: everything that needs Railway itself.** In particular:
 
 - that the gateway reaches the notifier's mail-events listener on `notifier.railway.internal:9111` (the same private-network question as above);
+- that a mail provider's delivery webhook reaches `https://<gateway domain>/inbound/mail-events` and verifies against `MAIL_WEBHOOK_SECRET` (no provider was involved);
 - no deploy has happened; the CLI commands in `bootstrap.sh` follow the CLI's `--help` (v5.55) but were never run against an account, and the shape of
   `railway service list --json` / `volume list --json` / `domain list --json` that the script matches for idempotency is assumed;
 - that `service source connect` deploys a service whose variables are already set, and the order and waits of the staged deploy;

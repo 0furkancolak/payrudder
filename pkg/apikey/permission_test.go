@@ -80,6 +80,13 @@ func TestRequiredPermission(t *testing.T) {
 		{http.MethodPut, "/v1/contract-withdrawals/{id}/status", PermCustomersWrite},
 		{http.MethodPost, "/v1/contract-withdrawals/{id}/refund", PermInvoicesWrite},
 		{http.MethodPost, "/v1/credit-notes", PermInvoicesWrite},
+		// The mail log and the suppression list are customers' e-mail addresses: what reads customers reads them, not settings:read (a read_only key holds both, a custom key
+		// need not). The price-change preview and the mail switches are settings.
+		{http.MethodGet, "/v1/mail-messages", PermCustomersRead},
+		{http.MethodGet, "/v1/mail-suppressions", PermCustomersRead},
+		{http.MethodDelete, "/v1/mail-suppressions/{address}", PermCustomersWrite},
+		{http.MethodPost, "/v1/mail-previews/price-change", PermSettingsWrite},
+		{http.MethodGet, "/v1/mail-settings", PermSettingsRead},
 	}
 	for _, c := range cases {
 		got, ok := RequiredPermission(c.method, c.path)

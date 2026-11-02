@@ -23,6 +23,8 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 | `PAYRUDDER_MCP_HTTP_PORT` | serve streamable HTTP on this port instead of stdio, see “Over HTTP” below; unset by default |
 | `PAYRUDDER_MCP_HTTP_HOST` | the address to listen on in that mode; default `127.0.0.1` |
 | `PAYRUDDER_MCP_AUDIT` | `0` stops the audit log (below); on by default |
+| `PAYRUDDER_MCP_EDGE_SECRET` | HTTP mode: the gateway's `PAYRUDDER_TRUSTED_PROXY_SECRET`, at least 32 characters; the caller's address goes to the API with it (see “Over HTTP”). Unset by default |
+| `PAYRUDDER_MCP_TRUST_FORWARDED_FOR` | HTTP mode: `1` when a proxy in front writes the caller's address as the last `X-Forwarded-For` entry; otherwise the connection's address is used |
 | `PAYRUDDER_MCP_RATE_PER_MINUTE` | tool calls a minute for each key (see “Rate limits”); default `60`, `0` for no limit |
 
 **Claude Code:** `claude mcp add payrudder -e PAYRUDDER_API_KEY=qk_test_... -e PAYRUDDER_BASE_URL=https://YOUR-API-ADDRESS -- node /path/to/mcp/dist/main.js`
@@ -90,6 +92,7 @@ For an assistant that is not on your machine, start the server with `PAYRUDDER_M
 - The API address is the server's `PAYRUDDER_BASE_URL`; a caller cannot change it.
 - It listens on `127.0.0.1` unless you set `PAYRUDDER_MCP_HTTP_HOST`. There is no TLS here: put a proxy that terminates TLS in front of it before it is reachable from anywhere else, or the keys travel in the clear.
 - `PAYRUDDER_MCP_WRITES=1` applies to every caller of the server; each caller's key still decides what succeeds.
+- **Refused keys are counted against the caller, not against the server.** The gateway refuses a request outright once an address has had 30 keys refused in a minute, and every caller of this server reaches the gateway from the server's address: without more, one flood of junk keys would lock out everybody who shares the server. Set `PAYRUDDER_MCP_EDGE_SECRET` to the gateway's `PAYRUDDER_TRUSTED_PROXY_SECRET` (the same value on both) and the server sends the caller's address (`X-Forwarded-For`) with it (`X-Edge-Auth`), which the gateway believes; a caller cannot choose the address (the server never forwards the header it received, except the last entry a proxy of yours wrote, with `PAYRUDDER_MCP_TRUST_FORWARDED_FOR=1`). Without the secret nothing is sent, and the lock-out is possible. **Not run against a real gateway**: the header is checked in the server's tests and the gateway's side (`proxyTrusted`) has its own, not the two together.
 - Every tool call is written to the audit log (below) with the caller's key prefix, so you can tell who did what when several people share one server.
 - Each key has a limit of its own on the calls it makes through this server (below, "Rate limits"). Not built yet: sign-in with OAuth instead of a key (the design is in `docs/plans/20-mcp.md`). Until then, hand out keys of the narrowest role (`read_only`).
 

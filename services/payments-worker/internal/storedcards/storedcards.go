@@ -171,6 +171,10 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.Reply(h.Log, w, r, &refuse.Provider{What: "delete the stored card", Err: err})
 		return
 	}
+	// The card is gone at the provider, so a failed entry does not fail the answer (a retry would find no card); it is an error in the log, which error tracking reads.
+	if err := h.Accounts.CardDeleted(r.Context(), t, hd.provider, r.PathValue("external_id"), found.Last4, found.InUse); err != nil {
+		h.Log.ErrorContext(r.Context(), "a stored card was deleted but the audit entry was not written", "tenant", t, "provider", hd.provider, "error", err)
+	}
 	h.Log.InfoContext(r.Context(), "a stored card was deleted", "tenant", t, "provider", hd.provider, "customer", r.PathValue("external_id"), "last4", found.Last4, "in_use", found.InUse)
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"provider": hd.provider, "deleted": true, "was_in_use": found.InUse})
 }

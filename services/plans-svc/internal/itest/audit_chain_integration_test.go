@@ -359,4 +359,47 @@ func testAuditChain(t *testing.T) {
 		}
 		whole(head - 1)
 	})
+
+	// Retention anchors on the stored hash of the last entry it deletes, so a change inside the prefix that it did not look for would vanish with the prefix and the
+	// verifier would never find it. It verifies the chain first, under the chain's lock, and deletes nothing from a chain that has any problem.
+	t.Run("retention refuses a chain that does not verify and deletes nothing", func(t *testing.T) {
+		pr := e.account(t, "Audit prune refused")[plansv1.Environment_ENVIRONMENT_LIVE].GetId()
+		_, schema := e.auditPlace(pr)
+		e.writeEntries(t, pr, 6, "test.prune")
+		for name, change := range map[string]string{
+			"a changed entry inside the prefix":     `UPDATE audit_events SET summary = 'nothing happened here' WHERE tenant_id = $1 AND seq = 2`,
+			"an entry taken out of the prefix":      `DELETE FROM audit_events WHERE tenant_id = $1 AND seq = 2`,
+			"a changed entry that stays":            `UPDATE audit_events SET summary = 'nothing happened here' WHERE tenant_id = $1 AND seq = (SELECT max(seq) FROM audit_events WHERE tenant_id = $1)`,
+			"the beginning taken away without word": `DELETE FROM audit_events WHERE tenant_id = $1 AND seq = 1`,
+		} {
+			err := pgxx.InTenantTx(ctx, e.ownerDB(t), uuid.MustParse(pr), func(tx pgx.Tx) error {
+				for _, q := range []string{`ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only`, `SELECT set_config('payrudder.tenant_move', '` + pr + `', true)`, strings.ReplaceAll(change, "$1", "'"+pr+"'")} {
+					if _, err := tx.Exec(ctx, q); err != nil {
+						return err
+					}
+				}
+				var before, after int
+				count := func(into *int) error {
+					return tx.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE tenant_id = $1`, pr).Scan(into)
+				}
+				if err := count(&before); err != nil {
+					return err
+				}
+				res, err := audit.Prune(ctx, tx.Begin, schema, time.Now().Add(time.Hour), false, pr)
+				if err == nil || !strings.Contains(err.Error(), "does not verify") || len(res) != 0 {
+					t.Errorf("%s: prune = %+v, %v; want a refusal that says the chain does not verify", name, res, err)
+				}
+				if err := count(&after); err != nil {
+					return err
+				}
+				if after != before {
+					t.Errorf("%s: %d entries before the refused prune, %d after", name, before, after)
+				}
+				return errRollBack
+			})
+			if !errors.Is(err, errRollBack) {
+				t.Fatalf("%s: %v", name, err)
+			}
+		}
+	})
 }

@@ -1,0 +1,14 @@
+{{- /* Renders nothing; it only refuses. A value this chart ships (or a CHANGE-ME placeholder of values-secrets.example.yaml) is public, so it is no secret: outside a development
+environment (global.environment local, ci, kind) the operator token, the secrets key and the internal token must be your own, and the mail listener's secret must be your own or empty
+(off). With secrets.existingSecrets the Secrets are yours and nothing is rendered from these values; the services refuse the same values at startup (pkg/config CheckSecret). */ -}}
+{{- if not (or .Values.secrets.existingSecrets (has .Values.global.environment (list "local" "ci" "kind"))) -}}
+{{- range $name, $v := dict "operatorToken" .Values.operatorToken "payments.secretsKey" .Values.payments.secretsKey "payments.internalToken" .Values.payments.internalToken "mail.eventsSecret" .Values.mail.eventsSecret -}}
+{{- $v = toString $v -}}
+{{- if and (eq $v "") (ne $name "mail.eventsSecret") -}}
+{{- fail (printf "%s is required when global.environment is not local, ci or kind: put your own in your secrets file (`openssl rand -base64 32`, see values-secrets.example.yaml)" $name) -}}
+{{- end -}}
+{{- if or (contains "change-me" (lower $v)) (eq $v "bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=") -}}
+{{- fail (printf "%s is a value that is published (this chart's default or a placeholder of values-secrets.example.yaml), so it protects nothing: put your own in your secrets file (`openssl rand -base64 32`, see values-secrets.example.yaml)%s" $name (ternary "; or leave it empty to switch the mail page off" "" (eq $name "mail.eventsSecret"))) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

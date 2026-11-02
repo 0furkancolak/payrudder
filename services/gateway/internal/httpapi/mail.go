@@ -44,10 +44,15 @@ func (s *Server) mailRoutes() []Route {
 // inboundMailEvents is the webhook of the mail provider's delivery events (bounces, complaints, deliveries): the translating layer between a provider and the notifier's
 // neutral endpoint. The body is a Resend webhook, signed with Svix (pkg/mailx: ParseResendWebhook, VerifySvix; UNVERIFIED that Nafru's webhooks are the same); a request
 // that does not verify is 401, an event that says nothing about delivery is 200 and ignored, and a notifier that cannot be reached is 503 so that the provider sends it
-// again (the notifier's side is idempotent). 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET is set (with the notifier's address).
+// again (the notifier's side is idempotent). 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET is set (with the notifier's address). Limited per address like the other public
+// webhooks and pages (hostedAllowed): 429 over the limit.
 func (s *Server) inboundMailEvents(w http.ResponseWriter, r *http.Request) {
 	if s.d.MailWebhookSecret == "" || s.d.Mail == nil {
 		http.NotFound(w, r)
+		return
+	}
+	// Before the body is read: it can be checked only after, and a public route that reads 64 KiB per request for anybody is a free way to spend the gateway's memory.
+	if !s.hostedAllowed(w, r) {
 		return
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, mailWebhookLimit+1))

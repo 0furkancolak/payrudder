@@ -113,6 +113,8 @@ NOT VERIFIED: a PDF opened in Acrobat, Preview or a print shop's software (it wa
 
 ### The gate matrix: every path that starts a payment or grants access
 
+This table is for the agreement gate. The list of paths itself, and the table for the payment gate (a blocked customer, a tenant held), are in [plan 13's path by gate](13-customer-ban.md#path-by-gate); a new path gets a row in both.
+
 | # | Path | Gate | Test |
 |---|---|---|---|
 | 1 | `POST /v1/subscriptions` (API, embedded checkout) | `contracts.Check` inside `CreateSubscription`, after the block check | `itest` Contracts: "the gate" |
@@ -206,7 +208,7 @@ A wrong default text exposes sellers: banner, disclaimer, no machine-translated 
 ## Review addendum (2026-11-01)
 - **Corrections:** grant tests (SQLSTATE 42501) exist only in ingest-svc and aggregator, so this plan adds its own grants test; the portal does not offer plan change today (only credit purchase and invoice pay); the gate belongs at subscription creation or first payment, **not** at off-session renewals and dunning charges (nobody is present).
 - **Append-only vs erasure:** acceptances are INSERT-only with `UPDATE (ip, user_agent)` granted to the erasure job only; a new grants test is part of the plan.
-- **Boundaries:** tables in plans-svc (migrations public 00008 and tenant 00006 as built: the lower numbers went to PRs merged meanwhile, #282, #287 and #289), gate in the gateway and in `CreateSubscription`. The shared gate of plan 13 (`pkg/paymentgate`, merged while this was built) is a pure function of the customer's block and the tenant's status; the contracts gate has to read acceptances, so it is its own function at the same call sites (in `CreateSubscription` right after `domain.Gate`; on the hosted pages in front of billing's own refusal). A blocked customer who ticks the boxes therefore leaves an acceptance behind before billing refuses the payment: harmless evidence, noted. The sandbox reset needs a decision about contract rows (`plans-svc/internal/sandbox/steps.go`, "neither listed nor kept" test): default = sandbox acceptances are cleared, live ones never. `promote` copies templates and versions, never acceptances.
+- **Boundaries:** tables in plans-svc (plans-svc migrations `00009_contracts.sql` and `tenant/00007_contracts.sql` as built: the lower numbers went to PRs merged meanwhile, #282, #287 and #289), gate in the gateway and in `CreateSubscription`. The shared gate of plan 13 (`pkg/paymentgate`, merged while this was built) is a pure function of the customer's block and the tenant's status; the contracts gate has to read acceptances, so it is its own function at the same call sites (in `CreateSubscription` right after `domain.Gate`; on the hosted pages in front of billing's own refusal). A blocked customer who ticks the boxes therefore leaves an acceptance behind before billing refuses the payment: harmless evidence, noted. The sandbox reset needs a decision about contract rows (`plans-svc/internal/sandbox/steps.go`, "neither listed nor kept" test): default = sandbox acceptances are cleared, live ones never. `promote` copies templates and versions, never acceptances.
 - **Also add:** ~~assets-svc purpose `contract_snapshot` (html, pdf) and quota~~ (the PDF is drawn on request, nothing is stored); mail `contract_accepted` in six languages; hosted i18n; permission names; the webhook checklist from the README.
 - **Defaults (not agreed):** retention 3 years pending verification; starter texts for tr and en marked "template"; the withdrawal flow ships in a second PR.
 

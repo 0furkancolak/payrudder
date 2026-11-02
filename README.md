@@ -179,7 +179,7 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 | `web/admin/` | the operator console (Vue 3, TypeScript, feature-based; Playwright) |
 | `deploy/` | Compose, Helm charts (`payrudder`, `payrudder-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
 | `tests/` | e2e, the chaos and correctness suite, k6 scenarios, benchmarks, Helm render tests |
-| `docs/` | design, 14 ADRs, the phase plan, [benchmarks](docs/benchmarks.md) |
+| `docs/` | design, 28 ADRs, the phase plan, [benchmarks](docs/benchmarks.md) |
 
 | Concern | Choice |
 |---|---|

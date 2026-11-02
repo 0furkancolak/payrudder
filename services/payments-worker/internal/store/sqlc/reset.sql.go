@@ -45,6 +45,10 @@ SELECT count(*) FROM (
   SELECT 1 FROM einvoice_issuances i WHERE i.tenant_id = $1 AND i.environment <> 'sandbox'
   UNION ALL
   SELECT 1 FROM provider_subscriptions p WHERE p.tenant_id = $1 AND p.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM payment_disputes x WHERE x.tenant_id = $1 AND x.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM payment_dispute_events n WHERE n.tenant_id = $1 AND n.environment <> 'sandbox'
   -- A notification has no environment of its own. A tenant that has a live provider account is a live tenant (a sandbox tenant's accounts are stored for the sandbox), and the
   -- notifications it has received are live data.
   UNION ALL
@@ -53,7 +57,8 @@ SELECT count(*) FROM (
 `
 
 // The ledger and the receipts refuse every DELETE (migration 00002) unless the transaction names the tenant as being reset. ResetLiveRowCount is asked first, before
-// ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no row of the live environment is ever deleted. Every table the reset deletes from is asked about.
+// ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no row of the live environment is ever deleted. Every table the reset deletes from that has an
+// environment is asked about, except the reconciliation's runs and events: their delete trigger refuses a live row (an error, nothing deleted).
 func (q *Queries) ResetLiveRowCount(ctx context.Context, tenantID uuid.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, resetLiveRowCount, tenantID)
 	var count int64

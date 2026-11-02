@@ -1,6 +1,7 @@
 # 13 — Customer block and ban
 
-**Status (2026-11-02): built, with the defaults below (not agreed), including "suspend service" (entitlement checks deny), a sweep that clears a block that ran out and sends `customer.unblocked`, and (2026-11-02, branch `feat/leftovers-4-block-tenant`) the notice to the customer when they are blocked or the block is lifted, off until the app switches it on. Open: a blocklist and a platform-wide list; an appeal; ingestion is deliberately not refused.**
+**Status (2026-11-02): built, with the defaults below (not agreed), including "suspend service" (entitlement checks deny), a sweep that clears a block that ran out and sends `customer.unblocked`, the notice to the customer when they are blocked or the block is lifted, off until the app switches it on (2026-11-02, branch `feat/leftovers-4-block-tenant`), and (2026-11-02, branch `feat/leftovers-4-blocklist`) a per-app blocklist and the operator's platform-wide list. Open: an appeal; ingestion is deliberately not refused.**
+
 
 ## The request
 List 2 (11): customers can be **banned** and similar.
@@ -12,7 +13,7 @@ List 2 (11): customers can be **banned** and similar.
 - ~~**Enforcement is one place** (subscription creation).~~ One gate, `pkg/paymentgate`, now decides every path that starts a payment or grants access (the matrix below): hosted checkout, payment links, credit packs, plan changes and price-change scheduling, and entitlement checks when the block suspends the service. **Deliberately not refused:** usage ingestion (a banned customer's events are still counted; the seller's service has to ask before it serves).
 - "Ban" has several meanings that were not separated: (1) **block new purchases**, (2) **suspend service** (entitlements deny, limits-svc returns not allowed), (3) **end everything** (cancel subscriptions, void open invoices), (4) **blocklist** (email/tax id/card fingerprint so the same person cannot come back under another id), (5) fraud flag with reasons. Only (1) exists.
 - ~~No reason categories, no audit trail, no webhook event (`customer.blocked`), no expiry ("blocked until").~~ Built: categories, `customer_block_events` and `audit_events`, `customer.blocked` / `customer.unblocked`, `blocked_until` with a sweep that clears a block that ran out. **Still not there:** an appeal. ~~A notice to the customer~~ built, see "Leftovers built (branch `feat/leftovers-4-block-tenant`)" at the end.
-- The operator cannot block across tenants (platform-wide fraud list).
+- ~~The operator cannot block across tenants (platform-wide fraud list).~~ Built as a platform-wide blocklist, see "Leftovers built (branch `feat/leftovers-4-blocklist`)" at the end.
 
 ## Research first
 1. Decide the meanings above with the owner; read how Stripe Radar, Paddle (blocks, fraud) and Chargebee handle it.
@@ -61,6 +62,8 @@ Defaults the implementer chose, because the owner said not to ask (**default, no
 6. **Out of scope, as the review addendum said:** the blocklist across customers, the platform-wide fraud list, notices to the customer, appeals, cancelling everything.
 
 ### Path by gate
+
+This is the canonical list of paths (working agreement 9 in the [plans README](README.md)) and the table for the payment gate. The agreement gate of plan 21 has its own table over the same paths: [the gate matrix](21-contracts.md#the-gate-matrix-every-path-that-starts-a-payment-or-grants-access).
 
 Every path that starts a payment or grants access, the gate it asks, and the test that holds the row. "Held" is a tenant the operator has suspended, frozen or banned.
 
@@ -113,7 +116,7 @@ Defaults the implementer chose (**default, not agreed**):
 2. **Row 12 has tests.** The seller's own calls are not gated, and now a test holds that: billing `TheGateRefusesPayments` (credits granted to a customer blocked for fraud), `OfflinePaymentsSettleAnInvoice` (a payment recorded while the customer is blocked for fraud) and plans-svc `CustomerBlockSweep` (a coupon applied by hand). They are pin tests: the cells were already allowed by absence of a check, and a future gate would break them.
 3. **The first charge of an invoice finalized before a freeze stays as the plan says** (documented above, **default, not agreed**): it needs a hold outcome in the payment saga's transition table, which is not small. Not built.
 
-Tests: plans-svc integration `TestPlansSvc/CustomerBlockSweep` (ended block cleared, running and unending blocks left, history by `system`, one tombstone, one webhook, second pass nothing, coupon by hand), `TestCellsJobs/{pooled,cells,mixed}/BlockSweep` (every serving tenant visited once, a moving tenant left until it is released); billing `TestBilling/TheGateRefusesPayments`, `OfflinePaymentsSettleAnInvoice`. **Not verified here:** the sweep against a production-size customer table; its list reads a partial index (migration 00018, tenant 00014) that holds only blocked customers with an end.
+Tests: plans-svc integration `TestPlansSvc/CustomerBlockSweep` (ended block cleared, running and unending blocks left, history by `system`, one tombstone, one webhook, second pass nothing, coupon by hand), `TestCellsJobs/{pooled,cells,mixed}/BlockSweep` (every serving tenant visited once, a moving tenant left until it is released); billing `TestBilling/TheGateRefusesPayments`, `OfflinePaymentsSettleAnInvoice`. **Not verified here:** the sweep against a production-size customer table; its list reads a partial index (plans-svc migration 00019, tenant 00015) that holds only blocked customers with an end.
 
 ## Leftovers built (2026-11-02, branch `feat/payments-hold-first-charge`): the held first charge
 
@@ -133,6 +136,20 @@ Defaults the implementer chose (**default, not agreed**):
 3. **What the seller does about the case** (`feat/leftovers-4-payments-disputes`, default, not agreed): notes and a "handled" mark of their own, shown on the invoice's dispute card; the mark does **not** lift the block, change the finding, or tell the provider. See [plan 08](08-more-payment-providers.md).
 
 Tests: billing `PaymentDisputesAreAnnouncedOncePerStepAndBlockWhenAsked` (off by default, on blocks once for the formal dispute that opens, an inquiry / a win / a loss never block, the setting is kept by a request that does not name it). The dispute itself: [reconciliation.md](../reconciliation.md#disputes-payment_disputed) and the Stripe matrix, finding 13.
+
+## Leftovers built (2026-11-02, branch `feat/leftovers-4-blocklist`): the blocklists
+
+Defaults the implementer chose (**default, not agreed**; the owner may overturn any of them):
+
+1. **Kinds: e-mail address, tax id, external customer id.** A card fingerprint is **not built, because the data does not exist**: no service of Payrudder stores one for a customer (payments-worker keeps provider references and reconciliation fingerprints of findings, never a card), and what a provider's API calls a fingerprint (Stripe's `card.fingerprint`, for one) is UNVERIFIED here and was not read from a real response. It needs a decision on holding provider card data first (plan 08).
+2. **Two lists, one gate.** `customer_blocklist` is the app's (the tenant API `GET/POST /v1/blocklist`, `DELETE /v1/blocklist/{id}`, `customers:read` / `customers:write`, four SDKs; the console page *Blocklist* in the sidebar after Customers). `platform_blocklist` is the operator's (`/admin/v1/blocklist`, the console's *Platform blocklist*), held against every app except the platform's own SaaS customers, and an app is never told which list refused. Both are checked by one function (`blocklist.Lists.Check`) where the matrix's paths that **make or re-identify a customer** are: creating a customer, changing the e-mail address of the contact and changing the tax id. Refusal: `plans.customer.blocklisted` (FAILED_PRECONDITION; six locales).
+3. **Only what is new is checked on a change**, and **nothing that exists is touched**: a customer who was listed after they came can still change their name, keep their subscriptions and pay what they owe (the matrix of "Path by gate" is for a *blocked* customer, and a blocklist entry does not block one). To act on a customer who matches, block them from the customer list. (Auto-blocking the matches of a new entry is not built: **default, not agreed**.)
+4. **No other path creates a customer.** Hosted pages, payment links and the portal need an existing customer; the only other creator is the SaaS sweep (the platform tenant's customers), which skips the operator's list on purpose so that a banned person cannot stop the billing of their organisation. Usage ingestion is unchanged (it never creates a customer).
+5. **Normalisation is plain**: lower case for an address (no removal of `+tag` or of dots: a person can still vary the address; that is a limit, not a decision), `pkg/taxid.Normalize` for a tax id, exact for an id. At most 1000 entries per list (`plans.blocklist.full`), so lists are not paged; the console reads the whole list and filters it in the browser.
+6. **Audit** (plan 22 G4): `blocklist.entry_added` / `entry_removed` and `platform_blocklist.entry_added` / `entry_removed` through `pkg/audit`, in the transaction of the change, **without the value** (the kind only; an address or a tax id is personal data). The note is the owner's own and is never shown to the person.
+7. **A sandbox reset keeps the list** (it is configuration, like coupons and webhook endpoints).
+
+Tests: `internal/blocklist` (`Normalize`, the subject), plans-svc integration `Blocklist` (normalised and idempotent add, list, another app does not see it; a listed e-mail address in other capitals and a listed external id refused at creation with no customer made; a new listed address or tax id refused on a change while a name change of a listed customer is not; removing; the platform list refused in two apps, not shown to an app, the SaaS skip, removing it; fails without the gate: checked once), `RLSIsolationEveryTable` and the cells tests (`customer_blocklist` is a tenant table and moves with the tenant; `platform_blocklist` is a global table); console mock e2e `blocklist.spec.ts` (read, filter on its button, add, remove after a question, a viewer, the operator's page) and the `blocklist` entry of `list-contract.spec.ts`. **Not verified here:** the pages in a real browser by a person (the mock e2e ran in Chrome), Arabic right to left on these two pages, an upgrade with an older plans-svc running (it has no table to read: roll plans-svc out first, then add entries).
 
 ## Leftover built (2026-11-02, branch `feat/leftovers-4-payments`): the invoice's sheet says why a first charge is held, and the seller can release or void it
 

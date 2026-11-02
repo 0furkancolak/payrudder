@@ -24,7 +24,7 @@ func testSupportLeftovers(t *testing.T) {
 	ada := e.verified(t, "left-ada@example.com", "Leftovers Co")
 	stranger := e.verified(t, "left-stranger@example.com", "Stranger Co")
 	colleague := e.signUp(t, "left-colleague@example.com", "Colleague Co")
-	if _, err := e.system.Exec(ctx, `INSERT INTO account_members (account_id, user_id, role) VALUES ($1::uuid, $2::uuid, 'viewer')`, ada.account, colleague.GetUser().GetId()); err != nil {
+	if _, err := e.system.Exec(ctx, `INSERT INTO account_members (account_id, user_id, role) VALUES ($1::uuid, $2::uuid, 'admin')`, ada.account, colleague.GetUser().GetId()); err != nil {
 		t.Fatal(err)
 	}
 	app, err := e.ident.CreateMyApp(ctx, &plansv1.CreateMyAppRequest{UserId: ada.id, AccountId: ada.account, Name: "Shop", Currency: "EUR", Timezone: "Europe/Berlin"})

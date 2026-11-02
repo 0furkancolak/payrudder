@@ -198,6 +198,27 @@ func TestARefundWithoutAChargeIdFindsTheChargeInTheLedger(t *testing.T) {
 				}
 			})
 
+			t.Run("a resend of a refund that was made is answered with it, though a second charge of the same amount has appeared since", func(t *testing.T) {
+				s := start(t)
+				resend := func() (*commandsv1.ReplyEnvelope, error) {
+					return h.Handle(ctx, &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: s.tenant.String(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
+						Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{InvoiceId: s.invoice.String(), AmountMinor: 1116, Currency: "USD",
+							IdempotencyKey: s.invoice.String() + ":refund"}}})
+				}
+				first, err := resend()
+				if err != nil || first.GetPaymentRefunded() == nil {
+					t.Fatalf("refund = %v, %v", first, err)
+				}
+				s.chargeNotified(t, ledger, p.name, p.other, 1116, s.invoice.String()+":charge:1") // the charge the customer was refunded for is not the only one any more
+				again, err := resend()
+				if err != nil || again.GetPaymentRefunded().GetPspRefundId() != first.GetPaymentRefunded().GetPspRefundId() {
+					t.Fatalf("the resend = %v, %v; want the refund %v that was made", again, err, first)
+				}
+				if got := fake.asked(); len(got) != 1 {
+					t.Fatalf("the provider was asked %d times (%v), want once", len(got), got)
+				}
+			})
+
 			t.Run("two charges of the same amount are ambiguous too", func(t *testing.T) {
 				s := start(t)
 				s.chargeNotified(t, ledger, p.name, p.other, 1116, s.invoice.String()+":charge:1")
@@ -220,5 +241,47 @@ func (s chargeScenario) chargeNotified(t *testing.T, ledger store.Ledger, provid
 	if _, err := ledger.Append(context.Background(), store.LedgerEntry{TenantID: s.tenant, InvoiceID: s.invoice, Provider: provider, Environment: "live", Kind: store.KindCharge,
 		Status: store.StatusSucceeded, AmountMinor: amount, Currency: "USD", ProviderRef: ref, IdempotencyKey: key, Source: store.SourceWebhook}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// An account with a label (stripe~eu) is the name its charge rows and its notifications' rows carry. The refund the command makes is written under that name too, so the
+// notification of the same refund is the same row, not a second one.
+func TestARefundThroughALabelledAccountIsOneLedgerRowWithItsNotification(t *testing.T) {
+	pg := testkit.StartPostgres(t)
+	cdb := openDB(t, pg)
+	ctx := context.Background()
+	fake := newChargeFake(t)
+	box, _ := secretbox.New(bytes.Repeat([]byte{6}, 32))
+	registry := payments.NewRegistry()
+	stripe.Register(registry)
+	accounts := store.Accounts{DB: cdb.DB, Box: box}
+	ledger := store.Ledger{DB: cdb.DB}
+	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://unused", 0), Attempts: store.Attempts{DB: cdb.DB}, Ledger: ledger, Resolver: &handler.Resolver{Registry: registry, Accounts: accounts},
+		Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	tenant, invoice := uuid.New(), uuid.New()
+	if err := accounts.Put(ctx, tenant, "stripe~eu", "live", []byte(`{"api_key":"sk_live_abc","base_url":"`+fake.srv.URL+`"}`), true); err != nil {
+		t.Fatal(err)
+	}
+	handle := func(cmd *commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+		t.Helper()
+		cmd.CommandId, cmd.TenantId, cmd.Environment = uuid.NewString(), tenant.String(), plansv1.Environment_ENVIRONMENT_LIVE
+		reply, err := h.Handle(ctx, cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return reply
+	}
+	if r := handle(&commandsv1.CommandEnvelope{Command: &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{InvoiceId: invoice.String(), AmountMinor: 1116,
+		Currency: "USD", PaymentMethod: "cus_1:pm_1", IdempotencyKey: invoice.String() + ":charge:0"}}}); r.GetPaymentSucceeded() == nil {
+		t.Fatalf("charge = %v", r)
+	}
+	if r := handle(&commandsv1.CommandEnvelope{Command: &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{InvoiceId: invoice.String(), AmountMinor: 1116,
+		Currency: "USD", IdempotencyKey: invoice.String() + ":refund"}}}); r.GetPaymentRefunded().GetPspRefundId() != "re_1" {
+		t.Fatalf("refund = %v", r)
+	}
+	// The notification of the same refund, as the webhook writes it (under the account's key).
+	if fresh, err := ledger.Append(ctx, store.LedgerEntry{TenantID: tenant, InvoiceID: invoice, Provider: "stripe~eu", Environment: "live", Kind: store.KindRefund, Status: store.StatusSucceeded,
+		AmountMinor: 1116, Currency: "USD", ProviderRef: "re_1", Source: store.SourceWebhook}); err != nil || fresh {
+		t.Fatalf("the notification of the refund was written as a row of its own (%v, %v): the command wrote it under another name", fresh, err)
 	}
 }
