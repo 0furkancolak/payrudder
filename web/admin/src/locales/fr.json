@@ -3756,6 +3756,9 @@
       },
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
+      },
+      "canned_reply": {
+        "not_found": "Cette réponse type n'existe plus."
       }
     },
     "audit": {
@@ -5627,7 +5630,43 @@
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord",
     "unread": "Nouveau",
-    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application."
+    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application.",
+    "tags": {
+      "title": "Étiquettes",
+      "filter": "Étiquette",
+      "add": "Ajouter une étiquette",
+      "remove": "Retirer l'étiquette {tag}",
+      "hint": "Seule l'équipe voit les étiquettes. 5 au plus, minuscules, chiffres et tirets."
+    },
+    "canned": {
+      "title": "Réponses types",
+      "hint": "Des textes que toute l'équipe peut coller dans une réponse. Une modification vaut pour tous.",
+      "manage": "Réponses types…",
+      "insert": "Insérer une réponse type",
+      "empty": "Il n'y en a pas encore.",
+      "fieldTitle": "Titre",
+      "fieldBody": "Texte",
+      "add": "Ajouter",
+      "save": "Enregistrer",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer la réponse type « {title} » ?"
+    },
+    "report": {
+      "title": "La file d'attente",
+      "waiting": "En attente de nous",
+      "late": "En retard",
+      "median": "Première réponse, médiane sur {days} jours",
+      "average": "moyenne {time}",
+      "onTime": "Réponses dans les temps",
+      "answeredOf": "{answered} répondus sur {opened} ouverts",
+      "byStatus": "Tous les tickets, par statut",
+      "byPriority": "Encore en attente, par priorité"
+    },
+    "badge": {
+      "unread": "Tickets avec du nouveau : {n}",
+      "waiting": "En attente de nous : {n}"
+    }
   },
   "connect": {
     "nav": "Connecter votre app",

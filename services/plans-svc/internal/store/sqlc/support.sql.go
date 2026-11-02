@@ -12,6 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
+const deleteSupportCannedReply = `-- name: DeleteSupportCannedReply :execrows
+DELETE FROM support_canned_replies WHERE id = $1
+`
+
+func (q *Queries) DeleteSupportCannedReply(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSupportCannedReply, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getSupportTicket = `-- name: GetSupportTicket :one
 
 SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(p.name, '')::text AS app_name, t.opened_by,
@@ -19,7 +31,7 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -56,6 +68,7 @@ type GetSupportTicketRow struct {
 	SlaBreached      bool
 	MessageCount     int32
 	Unread           bool
+	Tags             []string
 }
 
 // The help desk (SupportService). Run as plans_system from internal/support only.
@@ -87,6 +100,44 @@ func (q *Queries) GetSupportTicket(ctx context.Context, arg GetSupportTicketPara
 		&i.SlaBreached,
 		&i.MessageCount,
 		&i.Unread,
+		&i.Tags,
+	)
+	return i, err
+}
+
+const insertSupportCannedReply = `-- name: InsertSupportCannedReply :one
+INSERT INTO support_canned_replies (id, title, body, updated_by) VALUES ($1, $2, $3, $4) RETURNING id, title, body, updated_by, updated_at
+`
+
+type InsertSupportCannedReplyParams struct {
+	ID        uuid.UUID
+	Title     string
+	Body      string
+	UpdatedBy string
+}
+
+type InsertSupportCannedReplyRow struct {
+	ID        uuid.UUID
+	Title     string
+	Body      string
+	UpdatedBy string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) InsertSupportCannedReply(ctx context.Context, arg InsertSupportCannedReplyParams) (InsertSupportCannedReplyRow, error) {
+	row := q.db.QueryRow(ctx, insertSupportCannedReply,
+		arg.ID,
+		arg.Title,
+		arg.Body,
+		arg.UpdatedBy,
+	)
+	var i InsertSupportCannedReplyRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Body,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -177,6 +228,44 @@ func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTick
 		arg.SlaZone,
 	)
 	return err
+}
+
+const listSupportCannedReplies = `-- name: ListSupportCannedReplies :many
+SELECT id, title, body, updated_by, updated_at FROM support_canned_replies ORDER BY lower(title), id
+`
+
+type ListSupportCannedRepliesRow struct {
+	ID        uuid.UUID
+	Title     string
+	Body      string
+	UpdatedBy string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) ListSupportCannedReplies(ctx context.Context) ([]ListSupportCannedRepliesRow, error) {
+	rows, err := q.db.Query(ctx, listSupportCannedReplies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSupportCannedRepliesRow{}
+	for rows.Next() {
+		var i ListSupportCannedRepliesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSupportEvents = `-- name: ListSupportEvents :many
@@ -274,7 +363,7 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -283,8 +372,9 @@ WHERE ($1::uuid IS NULL OR t.account_id IN (SELECT m.account_id FROM account_mem
   AND ($2::text = '' OR t.status = $2::text OR ($2::text = 'active' AND t.status IN ('open', 'pending')))
   AND ($3::text = '' OR t.priority = $3::text)
   AND ($4::text = '' OR t.assignee = $4::text)
-  AND ($5::text = '' OR t.subject ILIKE '%' || $5::text || '%' OR t.number::text = ltrim($5::text, '#'))
-  AND (NOT $6::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
+  AND ($5::text = '' OR $5::text = ANY(t.tags))
+  AND ($6::text = '' OR t.subject ILIKE '%' || $6::text || '%' OR t.number::text = ltrim($6::text, '#'))
+  AND (NOT $7::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
 LIMIT 200
 `
@@ -294,6 +384,7 @@ type ListSupportTicketsParams struct {
 	Status      string
 	Priority    string
 	Assignee    string
+	Tag         string
 	Search      string
 	SlaBreached bool
 }
@@ -322,6 +413,7 @@ type ListSupportTicketsRow struct {
 	SlaBreached      bool
 	MessageCount     int32
 	Unread           bool
+	Tags             []string
 }
 
 // A person's tickets are those of the accounts they are a (non-affiliate) member of; the operator passes no user and sees all.
@@ -331,6 +423,7 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 		arg.Status,
 		arg.Priority,
 		arg.Assignee,
+		arg.Tag,
 		arg.Search,
 		arg.SlaBreached,
 	)
@@ -365,6 +458,7 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 			&i.SlaBreached,
 			&i.MessageCount,
 			&i.Unread,
+			&i.Tags,
 		); err != nil {
 			return nil, err
 		}
@@ -377,7 +471,7 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 }
 
 const lockSupportTicket = `-- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone
+SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, tags, last_author
 FROM support_tickets WHERE id = $1 FOR UPDATE
 `
 
@@ -392,6 +486,8 @@ type LockSupportTicketRow struct {
 	SolvedAt         *time.Time
 	CreatedAt        time.Time
 	SlaZone          string
+	Tags             []string
+	LastAuthor       string
 }
 
 // Locks the ticket for a change.
@@ -409,6 +505,8 @@ func (q *Queries) LockSupportTicket(ctx context.Context, id uuid.UUID) (LockSupp
 		&i.SolvedAt,
 		&i.CreatedAt,
 		&i.SlaZone,
+		&i.Tags,
+		&i.LastAuthor,
 	)
 	return i, err
 }
@@ -440,16 +538,17 @@ func (q *Queries) MarkSupportTicketUnseen(ctx context.Context, id uuid.UUID) err
 
 const saveSupportTicket = `-- name: SaveSupportTicket :exec
 UPDATE support_tickets
-SET status = $1, priority = $2, assignee = $3, last_author = $4, first_response_due = $5,
-    first_responded_at = $6::timestamptz, solved_at = $7::timestamptz,
-    last_message_at = CASE WHEN $8::boolean THEN now() ELSE last_message_at END, updated_at = now()
-WHERE id = $9
+SET status = $1, priority = $2, assignee = $3, tags = $4::text[], last_author = $5, first_response_due = $6,
+    first_responded_at = $7::timestamptz, solved_at = $8::timestamptz,
+    last_message_at = CASE WHEN $9::boolean THEN now() ELSE last_message_at END, updated_at = now()
+WHERE id = $10
 `
 
 type SaveSupportTicketParams struct {
 	Status           string
 	Priority         string
 	Assignee         string
+	Tags             []string
 	LastAuthor       string
 	FirstResponseDue time.Time
 	FirstRespondedAt *time.Time
@@ -464,6 +563,7 @@ func (q *Queries) SaveSupportTicket(ctx context.Context, arg SaveSupportTicketPa
 		arg.Status,
 		arg.Priority,
 		arg.Assignee,
+		arg.Tags,
 		arg.LastAuthor,
 		arg.FirstResponseDue,
 		arg.FirstRespondedAt,
@@ -472,6 +572,35 @@ func (q *Queries) SaveSupportTicket(ctx context.Context, arg SaveSupportTicketPa
 		arg.ID,
 	)
 	return err
+}
+
+const supportActiveCountsByPriority = `-- name: SupportActiveCountsByPriority :many
+SELECT priority::text AS value, count(*)::int AS count FROM support_tickets WHERE status IN ('open', 'pending') GROUP BY priority ORDER BY priority
+`
+
+type SupportActiveCountsByPriorityRow struct {
+	Value string
+	Count int32
+}
+
+func (q *Queries) SupportActiveCountsByPriority(ctx context.Context) ([]SupportActiveCountsByPriorityRow, error) {
+	rows, err := q.db.Query(ctx, supportActiveCountsByPriority)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportActiveCountsByPriorityRow{}
+	for rows.Next() {
+		var i SupportActiveCountsByPriorityRow
+		if err := rows.Scan(&i.Value, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const supportAppInAccount = `-- name: SupportAppInAccount :one
@@ -501,6 +630,37 @@ func (q *Queries) SupportAuthorName(ctx context.Context, id uuid.UUID) (string, 
 	var name string
 	err := row.Scan(&name)
 	return name, err
+}
+
+const supportBreachedByPriority = `-- name: SupportBreachedByPriority :many
+SELECT priority::text AS priority, count(*)::int AS count FROM support_tickets
+WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now() GROUP BY priority
+`
+
+type SupportBreachedByPriorityRow struct {
+	Priority string
+	Count    int32
+}
+
+// The tickets that wait for an answer past their deadline, by priority: the gauge an alert watches.
+func (q *Queries) SupportBreachedByPriority(ctx context.Context) ([]SupportBreachedByPriorityRow, error) {
+	rows, err := q.db.Query(ctx, supportBreachedByPriority)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportBreachedByPriorityRow{}
+	for rows.Next() {
+		var i SupportBreachedByPriorityRow
+		if err := rows.Scan(&i.Priority, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const supportCloseStale = `-- name: SupportCloseStale :many
@@ -540,6 +700,65 @@ func (q *Queries) SupportCloseStale(ctx context.Context, arg SupportCloseStalePa
 		return nil, err
 	}
 	return items, nil
+}
+
+const supportCountsByStatus = `-- name: SupportCountsByStatus :many
+SELECT status::text AS value, count(*)::int AS count FROM support_tickets GROUP BY status ORDER BY status
+`
+
+type SupportCountsByStatusRow struct {
+	Value string
+	Count int32
+}
+
+func (q *Queries) SupportCountsByStatus(ctx context.Context) ([]SupportCountsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, supportCountsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportCountsByStatusRow{}
+	for rows.Next() {
+		var i SupportCountsByStatusRow
+		if err := rows.Scan(&i.Value, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supportFirstAnswerStats = `-- name: SupportFirstAnswerStats :one
+SELECT count(*)::int AS opened, count(first_responded_at)::int AS answered,
+       (count(*) FILTER (WHERE first_responded_at IS NOT NULL AND first_responded_at <= first_response_due))::int AS answered_on_time,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM first_responded_at - created_at)), 0)::bigint AS median_seconds,
+       COALESCE(avg(extract(epoch FROM first_responded_at - created_at)), 0)::bigint AS average_seconds
+FROM support_tickets WHERE created_at >= now() - make_interval(days => $1::int)
+`
+
+type SupportFirstAnswerStatsRow struct {
+	Opened         int32
+	Answered       int32
+	AnsweredOnTime int32
+	MedianSeconds  int64
+	AverageSeconds int64
+}
+
+// The first answers of the tickets opened in the last @days days: wall-clock seconds from opening to the operator's first public answer.
+func (q *Queries) SupportFirstAnswerStats(ctx context.Context, days int32) (SupportFirstAnswerStatsRow, error) {
+	row := q.db.QueryRow(ctx, supportFirstAnswerStats, days)
+	var i SupportFirstAnswerStatsRow
+	err := row.Scan(
+		&i.Opened,
+		&i.Answered,
+		&i.AnsweredOnTime,
+		&i.MedianSeconds,
+		&i.AverageSeconds,
+	)
+	return i, err
 }
 
 const supportLockAccount = `-- name: SupportLockAccount :exec
@@ -626,6 +845,55 @@ func (q *Queries) SupportOperatorLocales(ctx context.Context, emails []string) (
 	return items, nil
 }
 
+const supportOperatorNames = `-- name: SupportOperatorNames :many
+SELECT lower(email)::text AS email, COALESCE(NULLIF(display_name, ''), '')::text AS name FROM users WHERE lower(email) = ANY($1::text[])
+`
+
+type SupportOperatorNamesRow struct {
+	Email string
+	Name  string
+}
+
+// The addresses an operator is known by, with the name of the user who has one (the others have none).
+func (q *Queries) SupportOperatorNames(ctx context.Context, emails []string) ([]SupportOperatorNamesRow, error) {
+	rows, err := q.db.Query(ctx, supportOperatorNames, emails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportOperatorNamesRow{}
+	for rows.Next() {
+		var i SupportOperatorNamesRow
+		if err := rows.Scan(&i.Email, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supportQueueCounts = `-- name: SupportQueueCounts :one
+SELECT (count(*) FILTER (WHERE status = 'open'))::int AS waiting,
+       (count(*) FILTER (WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now()))::int AS breached
+FROM support_tickets
+`
+
+type SupportQueueCountsRow struct {
+	Waiting  int32
+	Breached int32
+}
+
+// The queue: what waits for the operator (open), and how much of it has no first answer past its deadline.
+func (q *Queries) SupportQueueCounts(ctx context.Context) (SupportQueueCountsRow, error) {
+	row := q.db.QueryRow(ctx, supportQueueCounts)
+	var i SupportQueueCountsRow
+	err := row.Scan(&i.Waiting, &i.Breached)
+	return i, err
+}
+
 const supportRoleOf = `-- name: SupportRoleOf :one
 SELECT role FROM account_members WHERE account_id = $1 AND user_id = $2 AND role <> 'affiliate'
 `
@@ -641,6 +909,20 @@ func (q *Queries) SupportRoleOf(ctx context.Context, arg SupportRoleOfParams) (s
 	var role string
 	err := row.Scan(&role)
 	return role, err
+}
+
+const supportUnreadCount = `-- name: SupportUnreadCount :one
+SELECT count(*)::int FROM support_tickets
+WHERE opened_by = $1 AND opener_seen_at IS NULL
+  AND account_id IN (SELECT m.account_id FROM account_members m WHERE m.user_id = $1 AND m.role <> 'affiliate')
+`
+
+// Tickets the person opened that have news they have not read: the badge on the help page's link.
+func (q *Queries) SupportUnreadCount(ctx context.Context, userID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, supportUnreadCount, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const supportZoneFor = `-- name: SupportZoneFor :one
@@ -662,4 +944,41 @@ func (q *Queries) SupportZoneFor(ctx context.Context, arg SupportZoneForParams) 
 	var zone string
 	err := row.Scan(&zone)
 	return zone, err
+}
+
+const updateSupportCannedReply = `-- name: UpdateSupportCannedReply :one
+UPDATE support_canned_replies SET title = $1, body = $2, updated_by = $3, updated_at = now() WHERE id = $4 RETURNING id, title, body, updated_by, updated_at
+`
+
+type UpdateSupportCannedReplyParams struct {
+	Title     string
+	Body      string
+	UpdatedBy string
+	ID        uuid.UUID
+}
+
+type UpdateSupportCannedReplyRow struct {
+	ID        uuid.UUID
+	Title     string
+	Body      string
+	UpdatedBy string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) UpdateSupportCannedReply(ctx context.Context, arg UpdateSupportCannedReplyParams) (UpdateSupportCannedReplyRow, error) {
+	row := q.db.QueryRow(ctx, updateSupportCannedReply,
+		arg.Title,
+		arg.Body,
+		arg.UpdatedBy,
+		arg.ID,
+	)
+	var i UpdateSupportCannedReplyRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Body,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

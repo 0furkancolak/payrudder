@@ -3756,6 +3756,9 @@
       },
       "tickets": {
         "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
+      },
+      "canned_reply": {
+        "not_found": "Esa respuesta predefinida ya no existe."
       }
     },
     "audit": {
@@ -5627,7 +5630,43 @@
     "sortPriority": "Mayor prioridad primero",
     "sortDue": "Vence antes primero",
     "unread": "Nuevo",
-    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación."
+    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación.",
+    "tags": {
+      "title": "Etiquetas",
+      "filter": "Etiqueta",
+      "add": "Añadir una etiqueta",
+      "remove": "Quitar la etiqueta {tag}",
+      "hint": "Solo el equipo ve las etiquetas. Hasta 5, minúsculas, cifras y guiones."
+    },
+    "canned": {
+      "title": "Respuestas predefinidas",
+      "hint": "Textos que todo el equipo puede pegar en una respuesta. Un cambio es de todos.",
+      "manage": "Respuestas predefinidas…",
+      "insert": "Insertar una respuesta predefinida",
+      "empty": "Todavía no hay ninguna.",
+      "fieldTitle": "Título",
+      "fieldBody": "Texto",
+      "add": "Añadir",
+      "save": "Guardar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar la respuesta predefinida «{title}»?"
+    },
+    "report": {
+      "title": "La cola",
+      "waiting": "Esperando a que respondamos",
+      "late": "Con retraso",
+      "median": "Primera respuesta, mediana de {days} días",
+      "average": "media {time}",
+      "onTime": "Respondidas a tiempo",
+      "answeredOf": "{answered} respondidos de {opened} abiertos",
+      "byStatus": "Todos los tickets, por estado",
+      "byPriority": "Aún pendientes, por prioridad"
+    },
+    "badge": {
+      "unread": "Tickets con novedades: {n}",
+      "waiting": "Esperando a que respondamos: {n}"
+    }
   },
   "connect": {
     "nav": "Conectar su app",

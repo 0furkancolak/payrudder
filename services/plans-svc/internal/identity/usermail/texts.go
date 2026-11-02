@@ -53,6 +53,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "If you did not ask for this code, ignore this message: nobody can sign in without it.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} replied",
+			Lines:   []string{"{account} replied on ticket {ticket}: {subject}", "Open the ticket in the operator console to answer it."},
+			Button:  "Open the ticket",
+			Ignore:  "You get this because your address is listed as a Payrudder operator.",
+		},
 		KindTicketNew: {
 			Subject: "New support ticket {ticket}: {subject}",
 			Lines:   []string{"{account} opened ticket {ticket} ({priority} priority): {subject}", "Open the ticket in the operator console to answer it."},
@@ -150,6 +156,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder'a giriş yapmak için bu kodu kullanın: {code}", "Kod yalnızca bir kez çalışır ve 10 dakika sonra geçersiz olur. Kimseyle paylaşmayın."},
 			Button:  "",
 			Ignore:  "Bu kodu siz istemediyseniz iletiyi yok sayın: kod olmadan kimse giriş yapamaz.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "{ticket} numaralı talep: {account} yanıt yazdı",
+			Lines:   []string{"{account}, {ticket} numaralı talebe yanıt yazdı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
+			Button:  "Talebi aç",
+			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
 		},
 		KindTicketNew: {
 			Subject: "Yeni destek talebi {ticket}: {subject}",
@@ -249,6 +261,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Wenn Sie diesen Code nicht angefordert haben, ignorieren Sie diese Nachricht: Ohne ihn kann sich niemand anmelden.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} hat geantwortet",
+			Lines:   []string{"{account} hat auf das Ticket {ticket} geantwortet: {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
+			Button:  "Ticket öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
+		},
 		KindTicketNew: {
 			Subject: "Neues Support-Ticket {ticket}: {subject}",
 			Lines:   []string{"{account} hat das Ticket {ticket} eröffnet (Priorität {priority}): {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
@@ -346,6 +364,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Utilisez ce code pour vous connecter à Payrudder : {code}", "Le code ne fonctionne qu'une fois et expire au bout de 10 minutes. Ne le communiquez à personne."},
 			Button:  "",
 			Ignore:  "Si vous n'avez pas demandé ce code, ignorez ce message : personne ne peut se connecter sans lui.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket} : {account} a répondu",
+			Lines:   []string{"{account} a répondu sur le ticket {ticket} : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
+			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
 		},
 		KindTicketNew: {
 			Subject: "Nouveau ticket de support {ticket} : {subject}",
@@ -445,6 +469,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Si no solicitó este código, ignore este mensaje: nadie puede iniciar sesión sin él.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} respondió",
+			Lines:   []string{"{account} respondió en el ticket {ticket}: {subject}", "Abre el ticket en la consola de operadores para responder."},
+			Button:  "Abrir el ticket",
+			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
+		},
 		KindTicketNew: {
 			Subject: "Nuevo ticket de soporte {ticket}: {subject}",
 			Lines:   []string{"{account} abrió el ticket {ticket} (prioridad {priority}): {subject}", "Abre el ticket en la consola de operadores para responder."},
@@ -542,6 +572,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"استخدم هذا الرمز لتسجيل الدخول إلى Payrudder: {code}", "يعمل الرمز مرة واحدة فقط وتنتهي صلاحيته بعد 10 دقائق. لا تشاركه مع أحد."},
 			Button:  "",
 			Ignore:  "إذا لم تطلب هذا الرمز فتجاهل هذه الرسالة: لا يستطيع أحد تسجيل الدخول بدونه.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "التذكرة {ticket}: ردّت {account}",
+			Lines:   []string{"ردّت {account} على التذكرة {ticket}: {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
+			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
 		},
 		KindTicketNew: {
 			Subject: "تذكرة دعم جديدة {ticket}: {subject}",

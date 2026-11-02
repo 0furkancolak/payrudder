@@ -3756,6 +3756,9 @@
       },
       "tickets": {
         "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
+      },
+      "canned_reply": {
+        "not_found": "Bu hazır yanıt artık yok."
       }
     },
     "audit": {
@@ -5627,7 +5630,43 @@
     "sortPriority": "Önce en yüksek öncelik",
     "sortDue": "Yanıt süresi en yakın önce",
     "unread": "Yeni",
-    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde."
+    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde.",
+    "tags": {
+      "title": "Etiketler",
+      "filter": "Etiket",
+      "add": "Etiket ekle",
+      "remove": "{tag} etiketini kaldır",
+      "hint": "Etiketleri yalnızca ekip görür. En fazla 5, küçük harf, rakam ve tire."
+    },
+    "canned": {
+      "title": "Hazır yanıtlar",
+      "hint": "Tüm ekibin bir yanıta yapıştırabileceği metinler. Yapılan değişiklik herkes için geçerlidir.",
+      "manage": "Hazır yanıtlar…",
+      "insert": "Hazır yanıt ekle",
+      "empty": "Henüz yok.",
+      "fieldTitle": "Başlık",
+      "fieldBody": "Metin",
+      "add": "Ekle",
+      "save": "Kaydet",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "confirmDelete": "“{title}” hazır yanıtı silinsin mi?"
+    },
+    "report": {
+      "title": "Kuyruk",
+      "waiting": "Bizi bekleyen",
+      "late": "Gecikmiş",
+      "median": "İlk yanıt, {days} günün ortancası",
+      "average": "ortalama {time}",
+      "onTime": "Zamanında yanıtlanan",
+      "answeredOf": "{opened} açılandan {answered} yanıtlandı",
+      "byStatus": "Tüm talepler, duruma göre",
+      "byPriority": "Hâlâ bekleyenler, önceliğe göre"
+    },
+    "badge": {
+      "unread": "Yenilik olan talepler: {n}",
+      "waiting": "Bizi bekleyen: {n}"
+    }
   },
   "connect": {
     "nav": "Uygulamanı bağla",
