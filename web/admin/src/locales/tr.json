@@ -3802,6 +3802,16 @@
       },
       "canned_reply": {
         "not_found": "Bu hazır yanıt artık yok."
+      },
+      "attachment": {
+        "account_full": "Kuruluşunuz 50 MB'lık destek dosyası sınırına ulaştı.",
+        "bad_type": "Yalnızca png, jpeg, pdf ve düz metin dosyaları eklenebilir.",
+        "no_app": "Dosyalar bir uygulamayla saklanır: önce bir uygulama oluşturun, sonra dosyayı ekleyin.",
+        "not_found": "Bu dosya bulunamadı.",
+        "rejected": "Dosya eklenemiyor.",
+        "storage_full": "Destek dosyalarının saklandığı alan dolu. Uygulamanızın dosyalarında yer açın ya da dosyayı eklemeden yazın.",
+        "too_large": "Bir dosya en fazla 5 MB olabilir.",
+        "too_many": "Bir talepte en fazla 10 dosya olabilir."
       }
     },
     "audit": {
@@ -5713,6 +5723,14 @@
     "badge": {
       "unread": "Yenilik olan talepler: {n}",
       "waiting": "Bizi bekleyen: {n}"
+    },
+    "attach": {
+      "add": "Dosya ekle",
+      "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",
+      "remove": "{name} dosyasını kaldır",
+      "failed": "Bu dosyalar eklenemedi:",
+      "openedButFailed": "Talebiniz açıldı ancak bazı dosyalar eklenemedi. Dosyaları bir yanıta ekleyebilirsiniz.",
+      "download": "{name} dosyasını indir"
     }
   },
   "connect": {

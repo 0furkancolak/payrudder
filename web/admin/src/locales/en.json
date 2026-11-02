@@ -3802,6 +3802,16 @@
       },
       "canned_reply": {
         "not_found": "That canned reply is not there any more."
+      },
+      "attachment": {
+        "account_full": "Your organisation has reached the limit of 50 MB of support files.",
+        "bad_type": "Only png, jpeg, pdf and plain text files can be attached.",
+        "no_app": "Files are stored with an app: create an app first, then attach the file.",
+        "not_found": "That file is not there.",
+        "rejected": "The file cannot be attached.",
+        "storage_full": "The storage that holds support files is full. Free some space in your app's files, or write to us without the file.",
+        "too_large": "A file can be at most 5 MB.",
+        "too_many": "A ticket can hold at most 10 files."
       }
     },
     "audit": {
@@ -5713,6 +5723,14 @@
     "badge": {
       "unread": "Tickets with news: {n}",
       "waiting": "Waiting for us: {n}"
+    },
+    "attach": {
+      "add": "Attach files",
+      "hint": "png, jpeg, pdf or text; up to 5 MB each, 10 per ticket.",
+      "remove": "Remove {name}",
+      "failed": "These files were not attached:",
+      "openedButFailed": "Your ticket was opened, but some files were not attached. You can attach them to a reply.",
+      "download": "Download {name}"
     }
   },
   "connect": {

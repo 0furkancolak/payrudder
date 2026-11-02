@@ -3802,6 +3802,16 @@
       },
       "canned_reply": {
         "not_found": "Diese Textvorlage gibt es nicht mehr."
+      },
+      "attachment": {
+        "account_full": "Ihre Organisation hat das Limit von 50 MB an Support-Dateien erreicht.",
+        "bad_type": "Es können nur PNG-, JPEG-, PDF- und reine Textdateien angehängt werden.",
+        "no_app": "Dateien werden bei einer App gespeichert: Legen Sie zuerst eine App an und hängen Sie die Datei dann an.",
+        "not_found": "Diese Datei gibt es nicht.",
+        "rejected": "Die Datei kann nicht angehängt werden.",
+        "storage_full": "Der Speicher für Support-Dateien ist voll. Geben Sie Platz in den Dateien Ihrer App frei oder schreiben Sie uns ohne die Datei.",
+        "too_large": "Eine Datei darf höchstens 5 MB groß sein.",
+        "too_many": "Ein Ticket kann höchstens 10 Dateien enthalten."
       }
     },
     "audit": {
@@ -5713,6 +5723,14 @@
     "badge": {
       "unread": "Tickets mit Neuigkeiten: {n}",
       "waiting": "Warten auf uns: {n}"
+    },
+    "attach": {
+      "add": "Dateien anhängen",
+      "hint": "PNG, JPEG, PDF oder Text; je höchstens 5 MB, 10 pro Ticket.",
+      "remove": "{name} entfernen",
+      "failed": "Diese Dateien wurden nicht angehängt:",
+      "openedButFailed": "Ihr Ticket wurde eröffnet, aber einige Dateien wurden nicht angehängt. Sie können sie an eine Antwort anhängen.",
+      "download": "{name} herunterladen"
     }
   },
   "connect": {

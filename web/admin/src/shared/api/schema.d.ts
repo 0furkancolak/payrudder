@@ -5162,6 +5162,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/support/tickets/{id}/messages/{message_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach one file to a message the person wrote (multipart, field `file`)
+         * @description png, jpeg, pdf or plain text, at most 5 MiB; a ticket holds at most 10 files and an organisation keeps at most 50 MiB of them. The file is stored under the first tenant of the organisation's oldest app (`409 support.attachment.no_app` before one exists) with the purpose `support_attachment`, which the tenant API never lists. Refusals: `400 support.attachment.bad_type`, `400 support.attachment.too_large`, `429 support.attachment.too_many`, `429 support.attachment.account_full`, `429 support.attachment.storage_full`, `409 support.ticket.closed`.
+         */
+        post: operations["appAttachToSupportMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link that downloads a file of a ticket (never one of the operator's internal notes) */
+        get: operations["appSupportAttachmentLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/support/tickets/{id}/status": {
         parameters: {
             query?: never;
@@ -5319,6 +5356,40 @@ export interface paths {
         post?: never;
         /** Delete a canned reply (operator) */
         delete: operations["deleteSupportCannedReply"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/messages/{message_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach one file to an operator message or note (multipart, field `file`; same types and limits as the person's) */
+        post: operations["attachToSupportMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A presigned link that downloads a file of a ticket, internal notes included (operator) */
+        get: operations["getSupportAttachmentLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6981,12 +7052,27 @@ export interface components {
             internal: boolean;
             /** Format: date-time */
             create_time: string;
+            /** @description Files on the message; the person sees those of public messages only */
+            attachments?: components["schemas"]["SupportAttachment"][];
+        };
+        SupportAttachment: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            /** @enum {string} */
+            content_type: "image/png" | "image/jpeg" | "application/pdf" | "text/plain";
+            /** Format: int64 */
+            size_bytes: number;
+            /** Format: date-time */
+            create_time: string;
         };
         SupportTicketList: {
             tickets: components["schemas"]["SupportTicket"][];
         };
         SupportTicketResult: {
             ticket: components["schemas"]["SupportTicket"];
+            /** @description The message that was written (when a message was): files are attached to it */
+            message?: components["schemas"]["SupportMessage"];
         };
         SupportTicketThread: {
             ticket: components["schemas"]["SupportTicket"];
@@ -22321,6 +22407,66 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    appAttachToSupportMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attached */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachment"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    appSupportAttachmentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrl"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appSetSupportTicketStatus: {
         parameters: {
             query?: never;
@@ -22611,6 +22757,64 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    attachToSupportMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attached */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachment"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    getSupportAttachmentLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrl"];
+                };
             };
             404: components["responses"]["Error"];
         };

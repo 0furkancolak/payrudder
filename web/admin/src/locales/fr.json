@@ -3802,6 +3802,16 @@
       },
       "canned_reply": {
         "not_found": "Cette réponse type n'existe plus."
+      },
+      "attachment": {
+        "account_full": "Votre organisation a atteint la limite de 50 Mo de fichiers de support.",
+        "bad_type": "Seuls les fichiers png, jpeg, pdf et texte brut peuvent être joints.",
+        "no_app": "Les fichiers sont stockés avec une application : créez-en une d'abord, puis joignez le fichier.",
+        "not_found": "Ce fichier n'existe pas.",
+        "rejected": "Le fichier ne peut pas être joint.",
+        "storage_full": "Le stockage des fichiers de support est plein. Libérez de l'espace dans les fichiers de votre application, ou écrivez-nous sans le fichier.",
+        "too_large": "Un fichier ne peut pas dépasser 5 Mo.",
+        "too_many": "Un ticket peut contenir au plus 10 fichiers."
       }
     },
     "audit": {
@@ -5713,6 +5723,14 @@
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",
       "waiting": "En attente de nous : {n}"
+    },
+    "attach": {
+      "add": "Joindre des fichiers",
+      "hint": "png, jpeg, pdf ou texte ; 5 Mo au plus chacun, 10 par ticket.",
+      "remove": "Retirer {name}",
+      "failed": "Ces fichiers n'ont pas été joints :",
+      "openedButFailed": "Votre ticket a été ouvert, mais certains fichiers n'ont pas été joints. Vous pouvez les joindre à une réponse.",
+      "download": "Télécharger {name}"
     }
   },
   "connect": {

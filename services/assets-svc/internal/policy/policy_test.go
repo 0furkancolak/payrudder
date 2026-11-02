@@ -36,6 +36,11 @@ func TestCheck(t *testing.T) {
 	if ct, v := p.Check(assetsv1.Purpose_PURPOSE_INVOICE_LOGO, "IMAGE/PNG; charset=binary", 1*MiB); v != nil || ct != "image/png" {
 		t.Fatalf("logo png: %q %v", ct, v)
 	}
+	for _, ct := range []string{"image/png", "image/jpeg", "application/pdf", "text/plain; charset=utf-8"} {
+		if _, v := p.Check(assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, ct, 5*MiB); v != nil {
+			t.Errorf("support attachment %s at the limit: %v", ct, v)
+		}
+	}
 	for name, tc := range map[string]struct {
 		purpose assetsv1.Purpose
 		ct      string
@@ -48,6 +53,9 @@ func TestCheck(t *testing.T) {
 		"general exe":     {assetsv1.Purpose_PURPOSE_GENERAL, "application/x-msdownload", 1, UnsupportedContentType},
 		"general huge":    {assetsv1.Purpose_PURPOSE_GENERAL, "application/zip", 6 * GiB, FileTooLarge},
 		"no purpose":      {assetsv1.Purpose_PURPOSE_UNSPECIFIED, "image/png", 1, UnsupportedContentType},
+		"support zip":     {assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, "application/zip", 1, UnsupportedContentType},
+		"support svg":     {assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, "image/svg+xml", 1, UnsupportedContentType},
+		"support big":     {assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, "application/pdf", 6 * MiB, FileTooLarge},
 	} {
 		if _, v := p.Check(tc.purpose, tc.ct, tc.size); v == nil || v.Code != tc.code {
 			t.Errorf("%s: %v, want %s", name, v, tc.code)
