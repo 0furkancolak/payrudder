@@ -507,7 +507,7 @@ func TestAdhocLinkPage(t *testing.T) {
 
 	// Continue makes the invoice and goes on its page.
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhoc+"/start?lang=de", url.Values{}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=de" {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=de&wait=1" {
 		t.Errorf("start = %d %q", r.StatusCode, r.Header.Get("Location"))
 	}
 	if r, body := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocUsed+"/start", url.Values{}, nil); r.StatusCode != http.StatusConflict || !strings.Contains(body, "already been used") {
@@ -923,7 +923,7 @@ func TestStartWaitsForTheInvoiceToOpen(t *testing.T) {
 	billingMu.Unlock()
 	t0 := time.Now()
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocSlow+"/start", url.Values{}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokSlowInvoice {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokSlowInvoice+"?wait=1" {
 		t.Fatalf("start = %d %q", r.StatusCode, r.Header.Get("Location"))
 	}
 	billingMu.Lock()
@@ -938,7 +938,7 @@ func TestStartWaitsForTheInvoiceToOpen(t *testing.T) {
 
 	t1 := time.Now()
 	r, _ = send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocStuck+"/start", url.Values{}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokProcessing {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokProcessing+"?wait=1" {
 		t.Errorf("stuck start = %d %q", r.StatusCode, r.Header.Get("Location"))
 	}
 	if d := time.Since(t1); d < startWait-200*time.Millisecond || d > startWait+time.Second {

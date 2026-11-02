@@ -91,7 +91,7 @@ func TestPortalShowsCreditsAndBuysAPack(t *testing.T) {
 
 	// Buy: the form carries only the pack and a quantity; the price is billing's.
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy", url.Values{"pack_id": {"pack-1"}, "quantity": {"3"}, "price_minor": {"1"}}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?wait=1" {
 		t.Fatalf("buy = %d %v", r.StatusCode, r.Header)
 	}
 	purchaseMu.Lock()
