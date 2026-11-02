@@ -106,7 +106,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | analytics-svc | 42706 | — | 42916 |
 | invoice-worker | — | — | 42917 |
 | payments-worker | — | 42895 (internal API, used by the gateway) | 42918 |
-| notifier | — | — | 42919 |
+| notifier | — | 42920 (loopback only: the signed mail-events listener, `NOTIFIER_EVENTS_ADDR`; the gateway's `PAYRUDDER_NOTIFIER_EVENTS_URL` points at it, so the console's mail page is connected) | 42919 |
 | assets-svc | 42707 | — | 42921 |
 | mock-psp | — | 42890 | 9110 | (sandbox payment provider, also used for live tenants in the local demo)
 
@@ -138,6 +138,15 @@ S3_FORCE_PATH_STYLE=true
 MOCKPSP_URL=http://mock-psp:8090
 PAYMENTS_LIVE_PROVIDER=mockpsp                 # local demo only; unset → live charges fail with PROVIDER_NOT_CONFIGURED
 PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: payments-worker refuses live → mock otherwise
+
+# notifier + gateway: the signed mail-events listener behind the console's mail page (both ends, or neither; the secret is the same, 16+ characters)
+NOTIFIER_EVENTS_ADDR=:9111                     # notifier
+NOTIFIER_MAIL_EVENTS_SECRET=…                  # notifier; the compose file defaults it, override in .env
+PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier:9111          # gateway
+PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=…        # gateway, the same value
+
+# every service: panics and unexpected errors to a Sentry-compatible server (off when empty; docs/08-observability.md)
+PAYRUDDER_ERROR_TRACKING_URL=https://<public key>@glitchtip.example.com/1
 ```
 
 `.env.example` is committed. `.env` is git-ignored.

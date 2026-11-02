@@ -1742,6 +1742,7 @@ class MailSuppression(TypedDict):
 class ListMailSuppressionsResponse(TypedDict):
     suppressions: list[MailSuppression]
     next_page_token: str
+    connected: bool
 
 
 class MailMessage(TypedDict):
@@ -1757,6 +1758,7 @@ class MailMessage(TypedDict):
 class ListMailMessagesResponse(TypedDict):
     messages: list[MailMessage]
     next_page_token: str
+    connected: bool
 
 
 class _PriceChangeMailPreviewRequestRequired(TypedDict):
