@@ -31,11 +31,11 @@ const title = (i: number) => {
       </g>
     </svg>
     <!-- The first and last date under the bars, and the legend on a line of its own: on a phone the three did not fit on one line and overlapped. -->
-    <div class="text-muted-foreground mt-1 flex items-center justify-between gap-2 text-xs">
+    <div class="text-muted-foreground mt-1 flex items-center justify-between gap-2 text-xs" data-testid="bars-axis">
       <span>{{ points.length ? label(points[0]?.bucket ?? "") : "" }}</span>
       <span>{{ points.length ? label(points[points.length - 1]?.bucket ?? "") : "" }}</span>
     </div>
-    <div class="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+    <div class="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" data-testid="bars-legend">
       <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-(--chart-income)" aria-hidden="true" />{{ t("billing.accounting.bars.income") }}</span>
       <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-(--chart-expense)" aria-hidden="true" />{{ t("billing.accounting.bars.expense") }}</span>
     </div>

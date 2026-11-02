@@ -97,3 +97,25 @@ func (h *Handler) SetPriceChangePause(ctx context.Context, req *plansv1.SetPrice
 	}
 	return &plansv1.SetPriceChangePauseResponse{Pause: p}, nil
 }
+
+func (h *Handler) GetPriceChangeNotice(ctx context.Context, _ *plansv1.GetPriceChangeNoticeRequest) (*plansv1.GetPriceChangeNoticeResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	n, err := h.cmd.GetPriceChangeNotice(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetPriceChangeNoticeResponse{Notice: n}, nil
+}
+
+func (h *Handler) SetPriceChangeNotice(ctx context.Context, req *plansv1.SetPriceChangeNoticeRequest) (*plansv1.SetPriceChangeNoticeResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	n, err := h.cmd.SetPriceChangeNotice(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetPriceChangeNoticeResponse{Notice: n}, nil
+}

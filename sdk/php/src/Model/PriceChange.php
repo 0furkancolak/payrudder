@@ -22,6 +22,7 @@ final class PriceChange implements Model
      * @param int|null $toVersion
      * @param int|null $noticeDays
      * @param string|null $effectiveTime
+     * @param string|null $effectiveFrom
      * @param PriceChangeState|string|null $state
      * @param string|null $createdBy
      * @param string|null $createTime
@@ -39,6 +40,7 @@ final class PriceChange implements Model
         public readonly ?int $toVersion = null,
         public readonly ?int $noticeDays = null,
         public readonly ?string $effectiveTime = null,
+        public readonly ?string $effectiveFrom = null,
         public readonly PriceChangeState|string|null $state = null,
         public readonly ?string $createdBy = null,
         public readonly ?string $createTime = null,
@@ -62,6 +64,7 @@ final class PriceChange implements Model
             toVersion: Cast::int($data['to_version'] ?? null),
             noticeDays: Cast::int($data['notice_days'] ?? null),
             effectiveTime: Cast::string($data['effective_time'] ?? null),
+            effectiveFrom: Cast::string($data['effective_from'] ?? null),
             state: Cast::enum(PriceChangeState::class, $data['state'] ?? null),
             createdBy: Cast::string($data['created_by'] ?? null),
             createTime: Cast::string($data['create_time'] ?? null),
@@ -86,6 +89,7 @@ final class PriceChange implements Model
             'to_version' => $this->toVersion,
             'notice_days' => $this->noticeDays,
             'effective_time' => $this->effectiveTime,
+            'effective_from' => $this->effectiveFrom,
             'state' => Cast::wire($this->state),
             'created_by' => $this->createdBy,
             'create_time' => $this->createTime,

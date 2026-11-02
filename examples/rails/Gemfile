@@ -1,0 +1,5 @@
+source "https://rubygems.org"
+
+# Exact versions of the top level, like the other templates; no Gemfile.lock is committed (add yours). Ruby 3.2 or newer.
+gem "rails", "8.1.4"
+gem "puma", "8.0.2"

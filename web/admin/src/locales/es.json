@@ -261,6 +261,22 @@
       "resume": "Reanudar los cambios de precio",
       "confirmPause": "¿Pausar todos los cambios de precio de la plataforma? Ningún vendedor podrá programar ni reintentar uno hasta que reanudes, y los avisos ya en cola esperan.",
       "confirmResume": "¿Reanudar los cambios de precio? Los vendedores podrán volver a programar y reintentar, y los avisos que esperaban se enviarán."
+    },
+    "priceNotice": {
+      "title": "Aviso de cambios de precio",
+      "unverified": "Sin verificar, no es asesoría legal",
+      "hint": "El aviso que usa el cambio de precio de un vendedor cuando no indica ninguno, y el aviso mínimo por país. Nadie ha comprobado estas filas con las normas de ningún país: son lo que usted escribe. Un país puede subir el mínimo, nunca bajar los 14 días que la plataforma mantiene para todos. Un cliente de un país con un mínimo mayor recibe el aviso con esa antelación, o queda fuera de la ejecución por renovarse demasiado pronto.",
+      "defaultDays": "Aviso por defecto, en días",
+      "defaultHint": "Se usa cuando un cambio de precio no indica aviso. De 14 a 365.",
+      "rules": "Aviso mínimo por país",
+      "country": "País (código ISO o *)",
+      "days": "Días",
+      "note": "Nota (fuente, fecha, quién lo comprobó)",
+      "remove": "Quitar",
+      "add": "Añadir un país",
+      "save": "Guardar las reglas de aviso",
+      "star": "La fila * vale para cualquier país sin fila propia (y para un cliente sin país). Sin ella, la plataforma mantiene 14 días.",
+      "updated": "Guardado por última vez por {who} el {date}."
     }
   },
   "tenant": {
@@ -452,6 +468,43 @@
       "coupon": "Cupón {code}",
       "usage": "Uso — {meter} — {rest}",
       "late": "Uso tardío — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Primer cobro retenido",
+      "heldPill": "Retenido",
+      "heldHint": "Esta factura estaba lista para cobrarse, pero Payrudder no envió el cobro al proveedor de pagos.",
+      "reason": {
+        "customer_blocked": "El cliente está bloqueado por fraude o contracargo. La factura sigue abierta y se cobrará en cuanto se levante el bloqueo.",
+        "tenant_on_hold": "Payrudder ha puesto este entorno en espera (suspendido, congelado o vetado); mientras dure, no se cobra nada. La factura se cobrará cuando el entorno vuelva; escriba a soporte desde la página de ayuda.",
+        "none": "Nada retiene ya esta factura. Se cobrará en la próxima comprobación, o puede liberarla ahora.",
+        "unknown": "Payrudder no pudo comprobar ahora por qué está retenida. Inténtelo de nuevo en un momento."
+      },
+      "since": "Retenido desde",
+      "next": "Próxima comprobación",
+      "release": "Liberar el cobro",
+      "void": "Anular factura",
+      "viewerNote": "Solo un propietario o un administrador puede liberarla o anularla.",
+      "confirmRelease": {
+        "title": "¿Liberar el cobro de {number}?",
+        "body": "Payrudder vuelve a comprobar si se pueden cobrar {amount} a {customer}. Si el cliente sigue bloqueado, la factura sigue retenida y no se cobra nada.",
+        "accept": "Liberar"
+      },
+      "confirmVoid": {
+        "title": "¿Anular {number}?",
+        "body": "No se cobrarán {amount}. La factura queda anulada y ya no se puede pagar. Esta acción no se puede deshacer.",
+        "accept": "Anular factura"
+      },
+      "released": "Liberado: el cobro de {amount} se envió al proveedor de pagos.",
+      "stillHeld": "Sigue retenida: el cliente continúa bloqueado o el entorno está en espera. No se cobró nada.",
+      "voided": "La factura está anulada.",
+      "actionTitle": "Esperando a que el cliente confirme el pago",
+      "actionPill": "El cliente debe confirmar",
+      "actionHint": "El banco del cliente le pide que confirme este pago (3-D Secure), así que no se puede cobrar sin él.",
+      "mailedHint": "Payrudder pidió que se enviara al cliente un correo con un enlace a la página de la factura. La página Correo indica si llegó.",
+      "mailed": "Cliente avisado por correo",
+      "nextAsk": "Próxima consulta al proveedor",
+      "windowEnds": "Se dará por rechazado el",
+      "windowHint": "Si el cliente no lo ha confirmado para entonces, el pago se da por rechazado y empiezan los reintentos."
     }
   },
   "deadLetters": {
@@ -720,6 +773,26 @@
         "deleteInUse": "Es la tarjeta con la que se cobran las facturas del cliente. Tras eliminarla, el próximo cobro falla hasta que se defina un nuevo método de pago para el cliente. Se elimina en el proveedor de pagos y no se puede deshacer.",
         "deletedInUse": "La tarjeta se eliminó. Era la que se usa para cobrar las facturas del cliente: define un nuevo método de pago para el cliente.",
         "hint": "Payrudder no guarda números de tarjeta: una tarjeta se guarda donde el pagador la escribe, y el método de pago del cliente la nombra. Aquí ves las tarjetas y puedes eliminar una."
+      },
+      "askCard": {
+        "action": "Pedir una tarjeta",
+        "title": "Pedir una tarjeta al cliente",
+        "hint": "Stripe abre su propia página donde el cliente guarda una tarjeta para cobros posteriores. Ahora no se cobra nada y ningún número de tarjeta pasa por Payrudder. Usted le envía el enlace.",
+        "consent": "En este flujo Payrudder no recoge ni guarda ningún consentimiento. La guía de Stripe pide que obtenga el acuerdo explícito del cliente para cobrarle sin que esté presente (importe y momento, cómo se decide el importe, cómo cancelar) y que conserve un registro. Envíe el enlace junto con sus condiciones y conserve usted mismo su conformidad.",
+        "returnUrl": "Dirección de retorno",
+        "returnUrlHint": "A dónde envía Stripe al cliente después de la página: una dirección suya, solo https.",
+        "errors": {
+          "required": "Escriba la dirección a la que vuelve el cliente.",
+          "notHttps": "La dirección debe empezar por https:// e indicar un sitio.",
+          "tooLong": "La dirección es demasiado larga (2000 caracteres como máximo)."
+        },
+        "made": "El enlace está listo. Envíeselo al cliente.",
+        "link": "Enlace a la página de Stripe",
+        "copy": "Copiar",
+        "after": "Cuando el cliente ha guardado la tarjeta, Stripe se lo comunica a Payrudder y la tarjeta pasa a ser su método de pago: las facturas siguientes se cobran con ella. No hay nada más que hacer aquí. Si el enlace deja de funcionar, cree otro.",
+        "close": "Cerrar",
+        "make": "Crear el enlace",
+        "again": "Crear otro enlace"
       }
     },
     "packages": {
@@ -876,7 +949,10 @@
           "tenantDefault": "Idioma por defecto de esta aplicación",
           "show": "Ver el correo",
           "subject": "Asunto:"
-        }
+        },
+        "fromDate": "Desde el (opcional)",
+        "fromDateHelp": "Déjelo vacío para mover cada suscripción en su próxima renovación. Con una fecha, cada una pasa en su primera renovación en esa fecha o después: un plan mensual en la primera, un plan anual quizá meses después. Como mínimo el plazo de aviso, como máximo dos años.",
+        "startsFrom": "desde el {date}"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -2875,7 +2951,8 @@
         "bad_page_size": "El tamaño de página debe estar entre 1 y 500.",
         "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
         "pdf_sign_failed": "No se pudo crear el enlace de descarga del PDF. Inténtalo de nuevo en un momento.",
-        "pdf_failed": "No se pudo generar el PDF de la factura. Revisa los datos de la factura."
+        "pdf_failed": "No se pudo generar el PDF de la factura. Revisa los datos de la factura.",
+        "not_held": "El primer cobro de esta factura no está retenido, así que no hay nada que liberar o anular aquí."
       },
       "invoice_link": {
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",
@@ -3139,7 +3216,8 @@
       "price_change": {
         "not_found": "Cambio de precio no encontrado.",
         "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo.",
-        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde."
+        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde.",
+        "date_differs": "Un cambio de precio abierto para estas versiones empieza en otra fecha. Retírelo para hacer uno nuevo."
       },
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",
@@ -3328,6 +3406,12 @@
       },
       "refund": {
         "charge_unclear": "La factura tiene varios cobros correctos y el reembolso no identifica ninguno. Reembolse al cliente en el proveedor de pago y regístrelo después en la nota de crédito."
+      },
+      "dispute": {
+        "bad_id": "Este no es el id de una disputa.",
+        "not_found": "No se encontró la disputa.",
+        "note_required": "Escriba algo en la nota.",
+        "note_too_long": "Una nota tiene como máximo 2000 caracteres."
       }
     },
     "einvoice": {
@@ -6365,6 +6449,29 @@
     "opened": "Abierta",
     "closed": "Cerrada",
     "reference": "Caso",
-    "case": "Caso"
+    "case": "Caso",
+    "fee": "Comisión por disputa",
+    "handled": "Gestionada",
+    "handledLabel": "Gestión",
+    "allHandled": "Todas",
+    "handledYes": "Gestionada",
+    "handledNo": "Sin gestionar",
+    "due": {
+      "overdue": "vencido",
+      "soon": "pronto"
+    },
+    "notes": {
+      "title": "Notas",
+      "hint": "Para usted y sus compañeros; Payrudder no la envía a ningún sitio. Las pruebas se presentan en su proveedor de pagos, no aquí.",
+      "mark": "Marcar como gestionada",
+      "lift": "Quitar la marca de gestionada",
+      "empty": "Aún no hay notas.",
+      "placeholder": "Escriba una nota sobre este caso",
+      "add": "Añadir nota",
+      "event": {
+        "handled": "Marcada como gestionada",
+        "unhandled": "Marca de gestionada quitada"
+      }
+    }
   }
 }

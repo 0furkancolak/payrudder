@@ -232,6 +232,9 @@ test.describe("settings", () => {
   });
 });
 
+/** The buttons that decide a withdrawal: the row's customer id is a button too (it opens the customer's sheet), and is not one of them. */
+const actionsOf = (page: import("@playwright/test").Page, id: string) => page.getByTestId(`withdrawal-${id}`).locator("button:not([data-testid^='withdrawal-customer-'])");
+
 test.describe("withdrawals", () => {
   const rows = () => [
     withdrawal("w1", "cus_1", "received", "I want to cancel my order"),
@@ -249,7 +252,7 @@ test.describe("withdrawals", () => {
     await expect(page.getByTestId("withdrawal-refunded-w1")).toHaveCount(0);
     await expect(page.getByTestId("withdrawal-refunded-w2")).toBeVisible();
     await expect(page.getByTestId("withdrawal-accepted-w2")).toHaveCount(0);
-    await expect(page.getByTestId("withdrawal-w3").getByRole("button")).toHaveCount(0);
+    await expect(actionsOf(page, "w3")).toHaveCount(0);
 
     await page.getByTestId("withdrawal-accepted-w1").click();
     await expect(page.getByTestId("withdrawal-dialog")).toContainText("cannot be undone");
@@ -269,7 +272,24 @@ test.describe("withdrawals", () => {
     await expect.poll(() => gw.called("PUT", "/v1/contract-withdrawals/w1/status").length).toBe(2);
     expect(gw.called("PUT", "/v1/contract-withdrawals/w1/status")[1]?.body).toEqual({ status: "refunded", note: "" });
     expect(contracts.withdrawals.find((w) => w.id === "w1")?.status).toBe("refunded");
-    await expect(page.getByTestId("withdrawal-w1").getByRole("button")).toHaveCount(0);
+    await expect(actionsOf(page, "w1")).toHaveCount(0);
+  });
+
+  test("the customer of a withdrawal opens as a sheet over the list, without leaving the page", async ({ page }) => {
+    const customer = { id: "c1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", billing_currency: "TRY", country: "TR", create_time: "2026-10-20T09:00:00Z" };
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [customer] } };
+      if (c.method === "GET" && c.path === "/v1/customers/cus_1") return { body: customer };
+      return undefined;
+    });
+    contractsGateway(gw, { withdrawals: rows() });
+    await gw.install(page);
+    await openTenantPage(page, "/contracts?tab=withdrawals");
+    const here = new URL(page.url()).pathname;
+    await page.getByTestId("withdrawal-customer-w1").click();
+    await expect(page.getByTestId("customer-detail")).toBeVisible();
+    await expect(page.getByTestId("customer-detail")).toContainText("ada@example.com");
+    expect(new URL(page.url()).pathname).toBe(here);
   });
 
   test("a rejection is final, and the list narrows to one status when the filter is applied", async ({ page }) => {
@@ -278,7 +298,7 @@ test.describe("withdrawals", () => {
     await page.getByTestId("withdrawal-confirm").click();
     await expect.poll(() => gw.called("PUT", "/v1/contract-withdrawals/w1/status").length).toBe(1);
     expect(gw.called("PUT", "/v1/contract-withdrawals/w1/status")[0]?.body).toEqual({ status: "rejected", note: "" });
-    await expect(page.getByTestId("withdrawal-w1").getByRole("button")).toHaveCount(0);
+    await expect(actionsOf(page, "w1")).toHaveCount(0);
 
     await pickFilters(page, "Status", "Rejected");
     await expect(page.getByTestId("withdrawal-w3")).toBeVisible();

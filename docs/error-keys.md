@@ -157,6 +157,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.invoice.bad_page_size`
 - `billing.invoice.bad_page_token`
 - `billing.invoice.not_found`
+- `billing.invoice.not_held`
 - `billing.invoice.pdf_failed`
 - `billing.invoice.pdf_not_ready`
 - `billing.invoice.pdf_sign_failed`
@@ -392,6 +393,10 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.checkout.fields_required`
 - `payments.checkout.unsupported`
 - `payments.customer.not_ready`
+- `payments.dispute.bad_id`
+- `payments.dispute.not_found`
+- `payments.dispute.note_required`
+- `payments.dispute.note_too_long`
 - `payments.failover.bad_target`
 - `payments.failover.not_found`
 - `payments.invoice.amount_required`
@@ -521,6 +526,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.override.not_found`
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
+- `plans.price_change.date_differs`
 - `plans.price_change.not_found`
 - `plans.price_change.paused`
 - `plans.price_change.withdrawn`

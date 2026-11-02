@@ -120,6 +120,7 @@ func TestBilling(t *testing.T) {
 		{"BankTransferSagaWaitsForTheMoneyAndSettlesOnANudge", testBankTransferSagaWaitsForTheMoney},
 		{"ASagaWaitsForTheCustomerToConfirmAPayment", testSagaWaitsForTheCustomerToConfirmAPayment},
 		{"TheFirstChargeIsHeldByThePaymentGate", testTheFirstChargeIsHeldByThePaymentGate},
+		{"TheSellerReadsAndEndsAHeldCharge", testTheSellerReadsAndEndsAHeldCharge},
 		{"PaymentDisputesAreAnnouncedOncePerStepAndBlockWhenAsked", testPaymentDisputesAreAnnouncedOncePerStepAndBlockWhenAsked},
 		{"ExpiredBankTransferFollowsDunning", testExpiredTransferFollowsDunning},
 		{"OfflinePaymentsSettleAnInvoice", testOfflinePaymentsSettleAnInvoice},

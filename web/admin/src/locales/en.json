@@ -261,6 +261,22 @@
       "resume": "Resume price changes",
       "confirmPause": "Pause every price change on the platform? No seller can schedule or retry one until you resume, and the notices already queued wait.",
       "confirmResume": "Resume price changes? Sellers can schedule and retry again, and the notices that waited go out."
+    },
+    "priceNotice": {
+      "title": "Notice of price changes",
+      "unverified": "Unverified, not legal advice",
+      "hint": "The notice a seller's price change gives when it names none, and the least notice per country. Nobody has checked these rows against any country's rules: they are what you type. A country can raise the floor, never lower the 14 days the platform keeps for everyone. A customer in a country with a longer minimum is told that much earlier, or left out of the run as renewing too soon.",
+      "defaultDays": "Default notice, in days",
+      "defaultHint": "Used when a price change names no notice. 14 to 365.",
+      "rules": "Least notice per country",
+      "country": "Country (ISO code or *)",
+      "days": "Days",
+      "note": "Note (source, date, who checked)",
+      "remove": "Remove",
+      "add": "Add a country",
+      "save": "Save notice rules",
+      "star": "The row * holds for any country without a row of its own (and for a customer with no country). Without it the platform keeps 14 days.",
+      "updated": "Last saved by {who} on {date}."
     }
   },
   "tenant": {
@@ -452,6 +468,43 @@
       "coupon": "Coupon {code}",
       "usage": "Usage — {meter} — {rest}",
       "late": "Late usage — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "First charge on hold",
+      "heldPill": "On hold",
+      "heldHint": "This invoice was ready to be charged, but Payrudder did not send the charge to the payment provider.",
+      "reason": {
+        "customer_blocked": "The customer is blocked for fraud or a chargeback. The invoice stays open and is charged as soon as the block is lifted.",
+        "tenant_on_hold": "Payrudder has put this environment on hold (suspended, frozen or banned), and nothing is charged while it lasts. The invoice is charged when the environment is back; write to support from the help page.",
+        "none": "Nothing holds this invoice now. It is charged at the next check, or you can release it now.",
+        "unknown": "Payrudder could not check right now why it is on hold. Try again in a moment."
+      },
+      "since": "On hold since",
+      "next": "Next check",
+      "release": "Release the charge",
+      "void": "Void invoice",
+      "viewerNote": "Only an owner or an administrator can release or void it.",
+      "confirmRelease": {
+        "title": "Release the charge of {number}?",
+        "body": "Payrudder asks again whether {amount} may be charged to {customer}. If the customer is still blocked, the invoice stays on hold and nothing is charged.",
+        "accept": "Release"
+      },
+      "confirmVoid": {
+        "title": "Void {number}?",
+        "body": "{amount} will not be charged. The invoice becomes void and can no longer be paid. This cannot be undone.",
+        "accept": "Void invoice"
+      },
+      "released": "Released: the charge of {amount} was sent to the payment provider.",
+      "stillHeld": "Still on hold: the customer is still blocked or the environment is on hold. Nothing was charged.",
+      "voided": "The invoice is void.",
+      "actionTitle": "Waiting for the customer to confirm the payment",
+      "actionPill": "Customer must confirm",
+      "actionHint": "The customer's bank asks them to confirm this payment (3-D Secure), so it cannot be charged without them.",
+      "mailedHint": "Payrudder asked for a mail with a link to the invoice page to be sent to the customer. The E-mail page says whether it arrived.",
+      "mailed": "Customer mailed",
+      "nextAsk": "Next check with the provider",
+      "windowEnds": "Counts as declined on",
+      "windowHint": "If the customer has not confirmed by then, the payment counts as declined and the retries begin."
     }
   },
   "deadLetters": {
@@ -720,6 +773,26 @@
         "deleteInUse": "This is the card the customer's invoices are charged with. After it is deleted the next charge fails until a new payment method is set for the customer. It is deleted at the payment provider and this cannot be undone.",
         "deletedInUse": "The card was deleted. It was the one the customer's invoices are charged with: set a new payment method for the customer.",
         "hint": "Payrudder holds no card numbers: a card is saved where the payer types it, and the customer's payment method names it. Here you can see the cards and delete one."
+      },
+      "askCard": {
+        "action": "Ask for a card",
+        "title": "Ask the customer for a card",
+        "hint": "Stripe opens its own page where the customer saves a card for later charges. Nothing is charged now and no card number passes through Payrudder. You send them the link.",
+        "consent": "Payrudder collects and keeps no consent in this flow. Stripe's guide asks you to get the customer's explicit agreement to be charged without them present (the amount and when, how the amount is decided, how to cancel) and to keep a record of it. Send the link together with your terms and keep their agreement yourself.",
+        "returnUrl": "Return address",
+        "returnUrlHint": "Where Stripe sends the customer after the page: an address of yours, https only.",
+        "errors": {
+          "required": "Enter the address the customer returns to.",
+          "notHttps": "The address must start with https:// and name a site.",
+          "tooLong": "The address is too long (2000 characters at most)."
+        },
+        "made": "The link is ready. Send it to the customer.",
+        "link": "Link to Stripe's page",
+        "copy": "Copy",
+        "after": "When the customer has saved the card, Stripe tells Payrudder and the card becomes their payment method: later invoices are charged with it. There is nothing more to do here. If the link stops working, make another.",
+        "close": "Close",
+        "make": "Make the link",
+        "again": "Make another link"
       }
     },
     "packages": {
@@ -876,7 +949,10 @@
           "tenantDefault": "This app's default language",
           "show": "Preview the mail",
           "subject": "Subject:"
-        }
+        },
+        "fromDate": "Start from (optional)",
+        "fromDateHelp": "Leave empty to move each subscription at its next renewal. With a date, each subscription moves on its first renewal on or after it: a monthly plan on the first one, a yearly plan possibly months later. At least the notice away, at most two years.",
+        "startsFrom": "from {date}"
       },
       "prorateAfterTrial": "Charge the first period from the end of the trial",
       "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",
@@ -2875,7 +2951,8 @@
         "bad_page_size": "The page size must be between 1 and 500.",
         "bad_page_token": "The page token is not valid. Start the list again.",
         "pdf_sign_failed": "The PDF download link could not be created. Try again shortly.",
-        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data."
+        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data.",
+        "not_held": "This invoice's first charge is not held, so there is nothing to release or void here."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",
@@ -3139,7 +3216,8 @@
       "price_change": {
         "not_found": "Price change not found.",
         "withdrawn": "This price change was withdrawn. Make a new one.",
-        "paused": "Price changes are paused by the operator. Try again later."
+        "paused": "Price changes are paused by the operator. Try again later.",
+        "date_differs": "An open price change for these versions starts on another date. Withdraw it to make a new one."
       },
       "override": {
         "customer_required": "Say which customer the limit is for.",
@@ -3328,6 +3406,12 @@
       },
       "refund": {
         "charge_unclear": "The invoice has several successful charges and the refund does not single out one of them. Refund the customer at the payment provider, then record it on the credit note."
+      },
+      "dispute": {
+        "bad_id": "This is not the id of a dispute.",
+        "not_found": "The dispute was not found.",
+        "note_required": "Write something in the note.",
+        "note_too_long": "A note is at most 2000 characters."
       }
     },
     "einvoice": {
@@ -6365,6 +6449,29 @@
     "opened": "Opened",
     "closed": "Closed",
     "reference": "Case",
-    "case": "Case"
+    "case": "Case",
+    "fee": "Dispute fee",
+    "handled": "Handled",
+    "handledLabel": "Handled",
+    "allHandled": "All",
+    "handledYes": "Handled",
+    "handledNo": "Not handled",
+    "due": {
+      "overdue": "overdue",
+      "soon": "soon"
+    },
+    "notes": {
+      "title": "Notes",
+      "hint": "For you and your colleagues; Payrudder sends it nowhere. The evidence itself is sent at your payment provider, not here.",
+      "mark": "Mark as handled",
+      "lift": "Lift the handled mark",
+      "empty": "No notes yet.",
+      "placeholder": "Write a note about this case",
+      "add": "Add note",
+      "event": {
+        "handled": "Marked as handled",
+        "unhandled": "Handled mark lifted"
+      }
+    }
   }
 }

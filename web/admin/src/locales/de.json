@@ -261,6 +261,22 @@
       "resume": "Preisänderungen fortsetzen",
       "confirmPause": "Alle Preisänderungen der Plattform pausieren? Kein Verkäufer kann eine planen oder wiederholen, bis Sie fortsetzen, und bereits eingereihte Hinweise warten.",
       "confirmResume": "Preisänderungen fortsetzen? Verkäufer können wieder planen und wiederholen, und die wartenden Hinweise werden versendet."
+    },
+    "priceNotice": {
+      "title": "Mitteilung von Preisänderungen",
+      "unverified": "Ungeprüft, keine Rechtsberatung",
+      "hint": "Die Frist, die die Preisänderung eines Verkäufers verwendet, wenn sie keine nennt, und die kürzeste Frist je Land. Niemand hat diese Zeilen mit den Regeln eines Landes abgeglichen: es ist, was Sie eintragen. Ein Land kann die Untergrenze anheben, nie die 14 Tage unterschreiten, die die Plattform für alle hält. Ein Kunde in einem Land mit längerer Mindestfrist wird entsprechend früher informiert oder als zu bald erneuernd aus dem Lauf genommen.",
+      "defaultDays": "Standardfrist in Tagen",
+      "defaultHint": "Gilt, wenn eine Preisänderung keine Frist nennt. 14 bis 365.",
+      "rules": "Kürzeste Frist je Land",
+      "country": "Land (ISO-Code oder *)",
+      "days": "Tage",
+      "note": "Notiz (Quelle, Datum, wer geprüft hat)",
+      "remove": "Entfernen",
+      "add": "Land hinzufügen",
+      "save": "Fristen speichern",
+      "star": "Die Zeile * gilt für jedes Land ohne eigene Zeile (und für Kunden ohne Land). Ohne sie hält die Plattform 14 Tage.",
+      "updated": "Zuletzt gespeichert von {who} am {date}."
     }
   },
   "tenant": {
@@ -452,6 +468,43 @@
       "coupon": "Gutschein {code}",
       "usage": "Nutzung — {meter} — {rest}",
       "late": "Verspätete Nutzung — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Erste Abbuchung angehalten",
+      "heldPill": "Angehalten",
+      "heldHint": "Diese Rechnung war zur Abbuchung bereit, aber Payrudder hat die Abbuchung nicht an den Zahlungsanbieter geschickt.",
+      "reason": {
+        "customer_blocked": "Der Kunde ist wegen Betrugs oder einer Rückbuchung gesperrt. Die Rechnung bleibt offen und wird abgebucht, sobald die Sperre aufgehoben ist.",
+        "tenant_on_hold": "Payrudder hat diese Umgebung angehalten (gesperrt, eingefroren oder verbannt); solange das gilt, wird nichts abgebucht. Die Rechnung wird abgebucht, wenn die Umgebung wieder freigegeben ist; schreiben Sie dem Support über die Hilfeseite.",
+        "none": "Nichts hält diese Rechnung jetzt noch an. Sie wird bei der nächsten Prüfung abgebucht, oder Sie geben sie jetzt frei.",
+        "unknown": "Payrudder konnte gerade nicht prüfen, warum sie angehalten ist. Versuchen Sie es gleich noch einmal."
+      },
+      "since": "Angehalten seit",
+      "next": "Nächste Prüfung",
+      "release": "Abbuchung freigeben",
+      "void": "Rechnung stornieren",
+      "viewerNote": "Nur ein Inhaber oder Administrator kann sie freigeben oder stornieren.",
+      "confirmRelease": {
+        "title": "Abbuchung von {number} freigeben?",
+        "body": "Payrudder prüft erneut, ob {amount} bei {customer} abgebucht werden darf. Ist der Kunde weiterhin gesperrt, bleibt die Rechnung angehalten und es wird nichts abgebucht.",
+        "accept": "Freigeben"
+      },
+      "confirmVoid": {
+        "title": "{number} stornieren?",
+        "body": "{amount} werden nicht abgebucht. Die Rechnung wird storniert und kann nicht mehr bezahlt werden. Das lässt sich nicht rückgängig machen.",
+        "accept": "Rechnung stornieren"
+      },
+      "released": "Freigegeben: Die Abbuchung von {amount} wurde an den Zahlungsanbieter geschickt.",
+      "stillHeld": "Weiterhin angehalten: Der Kunde ist noch gesperrt oder die Umgebung ist angehalten. Es wurde nichts abgebucht.",
+      "voided": "Die Rechnung ist storniert.",
+      "actionTitle": "Warten auf die Bestätigung der Zahlung durch den Kunden",
+      "actionPill": "Kunde muss bestätigen",
+      "actionHint": "Die Bank des Kunden verlangt eine Bestätigung dieser Zahlung (3-D Secure); ohne den Kunden kann sie nicht abgebucht werden.",
+      "mailedHint": "Payrudder hat veranlasst, dass dem Kunden eine E-Mail mit einem Link zur Rechnungsseite geschickt wird. Die Seite „E-Mail“ zeigt, ob sie angekommen ist.",
+      "mailed": "Kunde per E-Mail gebeten",
+      "nextAsk": "Nächste Abfrage beim Anbieter",
+      "windowEnds": "Gilt als abgelehnt am",
+      "windowHint": "Hat der Kunde bis dahin nicht bestätigt, gilt die Zahlung als abgelehnt und die Wiederholungen beginnen."
     }
   },
   "deadLetters": {
@@ -720,6 +773,26 @@
         "deleteInUse": "Das ist die Karte, mit der die Rechnungen des Kunden belastet werden. Nach dem Löschen schlägt die nächste Abbuchung fehl, bis für den Kunden eine neue Zahlungsmethode gesetzt ist. Die Karte wird beim Zahlungsanbieter gelöscht, das lässt sich nicht rückgängig machen.",
         "deletedInUse": "Die Karte wurde gelöscht. Es war die Karte, mit der die Rechnungen des Kunden belastet werden: Setzen Sie eine neue Zahlungsmethode für den Kunden.",
         "hint": "Payrudder speichert keine Kartennummern: eine Karte wird dort gespeichert, wo der Zahler sie eingibt, und die Zahlungsmethode des Kunden benennt sie. Hier sehen Sie die Karten und können eine löschen."
+      },
+      "askCard": {
+        "action": "Karte anfordern",
+        "title": "Kunden um eine Karte bitten",
+        "hint": "Stripe öffnet seine eigene Seite, auf der der Kunde eine Karte für spätere Abbuchungen speichert. Jetzt wird nichts abgebucht und keine Kartennummer läuft über Payrudder. Den Link schicken Sie dem Kunden.",
+        "consent": "In diesem Ablauf holt und speichert Payrudder keine Einwilligung. Stripes Leitfaden verlangt, dass Sie die ausdrückliche Zustimmung des Kunden zur Abbuchung in seiner Abwesenheit einholen (Betrag und Zeitpunkt, wie der Betrag bestimmt wird, wie gekündigt wird) und diese festhalten. Schicken Sie den Link zusammen mit Ihren Bedingungen und bewahren Sie die Zustimmung selbst auf.",
+        "returnUrl": "Rücksprungadresse",
+        "returnUrlHint": "Wohin Stripe den Kunden nach der Seite schickt: eine Adresse von Ihnen, nur https.",
+        "errors": {
+          "required": "Geben Sie die Adresse ein, zu der der Kunde zurückkehrt.",
+          "notHttps": "Die Adresse muss mit https:// beginnen und eine Website nennen.",
+          "tooLong": "Die Adresse ist zu lang (höchstens 2000 Zeichen)."
+        },
+        "made": "Der Link ist fertig. Schicken Sie ihn dem Kunden.",
+        "link": "Link zur Stripe-Seite",
+        "copy": "Kopieren",
+        "after": "Hat der Kunde die Karte gespeichert, meldet Stripe das an Payrudder und die Karte wird sein Zahlungsmittel: spätere Rechnungen werden damit abgebucht. Hier ist nichts weiter zu tun. Funktioniert der Link nicht mehr, erstellen Sie einen neuen.",
+        "close": "Schließen",
+        "make": "Link erstellen",
+        "again": "Neuen Link erstellen"
       }
     },
     "packages": {
@@ -876,7 +949,10 @@
           "tenantDefault": "Standardsprache dieser App",
           "show": "Mail ansehen",
           "subject": "Betreff:"
-        }
+        },
+        "fromDate": "Gültig ab (optional)",
+        "fromDateHelp": "Leer lassen, damit jedes Abonnement bei seiner nächsten Verlängerung wechselt. Mit Datum wechselt jedes bei seiner ersten Verlängerung an oder nach diesem Tag: ein Monatsplan bei der ersten, ein Jahresplan möglicherweise erst Monate später. Mindestens die Mitteilungsfrist entfernt, höchstens zwei Jahre.",
+        "startsFrom": "ab {date}"
       },
       "prorateAfterTrial": "Die erste Periode ab dem Ende der Testphase berechnen",
       "prorateAfterTrialHelp": "Endet eine Testphase mitten in einer Abrechnungsperiode, wird die Grundgebühr dieser Periode nur vom Ende der Testphase bis zum Periodenende berechnet. Aus: Die Gebühr der ganzen Periode wird berechnet, wie bei Paketen, die vor dieser Option veröffentlicht wurden.",
@@ -2875,7 +2951,8 @@
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
         "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut.",
-        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten."
+        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten.",
+        "not_held": "Die erste Abbuchung dieser Rechnung ist nicht angehalten; hier gibt es nichts freizugeben oder zu stornieren."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -3139,7 +3216,8 @@
       "price_change": {
         "not_found": "Preisänderung nicht gefunden.",
         "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an.",
-        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut."
+        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut.",
+        "date_differs": "Eine offene Preisänderung für diese Versionen beginnt an einem anderen Datum. Ziehen Sie sie zurück, um eine neue anzulegen."
       },
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
@@ -3328,6 +3406,12 @@
       },
       "refund": {
         "charge_unclear": "Die Rechnung hat mehrere erfolgreiche Abbuchungen, und die Erstattung bestimmt keine davon eindeutig. Erstatten Sie den Kunden beim Zahlungsanbieter und erfassen Sie es dann auf der Gutschrift."
+      },
+      "dispute": {
+        "bad_id": "Das ist keine Dispute-ID.",
+        "not_found": "Der Dispute wurde nicht gefunden.",
+        "note_required": "Schreiben Sie etwas in die Notiz.",
+        "note_too_long": "Eine Notiz darf höchstens 2000 Zeichen lang sein."
       }
     },
     "einvoice": {
@@ -6365,6 +6449,29 @@
     "opened": "Eröffnet",
     "closed": "Geschlossen",
     "reference": "Fall",
-    "case": "Fall"
+    "case": "Fall",
+    "fee": "Gebühr für die Zahlungsanfechtung",
+    "handled": "Erledigt",
+    "handledLabel": "Erledigt",
+    "allHandled": "Alle",
+    "handledYes": "Erledigt",
+    "handledNo": "Nicht erledigt",
+    "due": {
+      "overdue": "überfällig",
+      "soon": "bald fällig"
+    },
+    "notes": {
+      "title": "Notizen",
+      "hint": "Für Sie und Ihre Kolleginnen und Kollegen; Payrudder schickt sie nirgendwohin. Die Nachweise selbst reichen Sie bei Ihrem Zahlungsanbieter ein, nicht hier.",
+      "mark": "Als erledigt markieren",
+      "lift": "Erledigt-Markierung aufheben",
+      "empty": "Noch keine Notizen.",
+      "placeholder": "Notiz zu diesem Fall schreiben",
+      "add": "Notiz hinzufügen",
+      "event": {
+        "handled": "Als erledigt markiert",
+        "unhandled": "Erledigt-Markierung aufgehoben"
+      }
+    }
   }
 }

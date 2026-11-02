@@ -68,6 +68,10 @@ export interface AccountingSummary {
   currencies: Array<AccountingCurrency>;
 }
 
+export interface AddDisputeNoteRequest {
+  note: string;
+}
+
 /** A postal address as printed on an invoice. Every part is optional. */
 export interface Address {
   line1: string;
@@ -867,6 +871,13 @@ export interface CreatePaymentLinkRequestParams {
   idempotency_key?: string;
 }
 
+export interface CreatePaymentMethodSetupRequest {
+  /** The provider whose page it is; only Stripe has one */
+  provider?: "stripe";
+  /** Where the provider sends the customer after the page. `https` only */
+  return_url: string;
+}
+
 export interface CreatePlanRequest {
   code: string;
   name: string;
@@ -1244,6 +1255,29 @@ export interface Dispute {
   opened_time: string;
   /** Absent while the case is open */
   closed_time?: string;
+  /** What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee */
+  fee_minor?: Int64;
+  /** The currency of `fee_minor` */
+  fee_currency?: string;
+  /** Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider */
+  handled: boolean;
+  /** Absent when the case is not marked */
+  handled_time?: string;
+  /** Who marked it; absent when it is not marked and for a viewer of the account */
+  handled_by?: string;
+  /** How many notes you wrote (`GET /v1/disputes/{id}/history`) */
+  note_count: Int64;
+}
+
+export interface DisputeEvent {
+  id: string;
+  /** A note, the mark that the case was handled, or that mark lifted */
+  action: "note" | "handled" | "unhandled";
+  /** The text of a note; absent for a mark */
+  note?: string;
+  /** Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account */
+  actor?: string;
+  create_time: string;
 }
 
 export interface DunningSettings {
@@ -1887,6 +1921,16 @@ export interface InvoicePayment {
   recorded_at: string | null;
 }
 
+export interface InvoiceSaga {
+  id: string;
+  invoice_id: string;
+  state: string;
+  attempt: number;
+  dunning_attempt: number;
+  last_error: string;
+  version: number;
+}
+
 export interface LinkAffiliatePromotionCodeRequest {
   promotion_code: string;
 }
@@ -2106,6 +2150,10 @@ export interface ListCustomersQuery {
 export interface ListCustomersResponse {
   customers: Array<Customer>;
   next_page_token: string;
+}
+
+export interface ListDisputeEventsResponse {
+  events: Array<DisputeEvent>;
 }
 
 export interface ListDisputesQuery {
@@ -2388,6 +2436,26 @@ export interface PaymentLink {
   idempotency_key: string;
 }
 
+export interface PaymentMethodSetup {
+  /** The provider's page: send it to the customer */
+  url: string;
+  /** The provider's reference of the page (Stripe's Checkout Session id) */
+  ref: string;
+}
+
+export interface PaymentWait {
+  /** The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED */
+  state: string;
+  /** When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered) */
+  since_time?: string;
+  /** When Payrudder looks again (the next pass over held charges, or the next question to the provider) */
+  next_check_time?: string;
+  /** PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked */
+  hold_reason?: "customer_blocked" | "tenant_on_hold" | "none";
+  /** PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer */
+  window_ends_time?: string;
+}
+
 export interface Plan {
   id: string;
   code: string;
@@ -2483,6 +2551,8 @@ export interface PriceChange {
   notice_days: number;
   /** The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice) */
   effective_time: string;
+  /** The date the seller chose the new price to start from; null when each subscription moves on its next renewal */
+  effective_from: string | null;
   state: "open" | "withdrawn";
   /** The signed-in person's address, key:<id> for an API key, or the operator */
   created_by: string;
@@ -2903,8 +2973,10 @@ export interface SchedulePriceChangeRequest {
   from_version: number;
   /** The version they move to; 0 or absent is the latest published */
   to_version?: number;
-  /** Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+  /** Days before the new price starts that the customer must be told at the least: absent or 0 is the platform's default (30 until the operator changes it), otherwise at least 14. A customer in a country with a longer minimum (the operator's table) is told that much earlier, or skipped as `renews_soon`. */
   notice_days?: number;
+  /** The date the new price starts from. Each subscription then moves on its first period start on or after it (a monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next renewal. At least `notice_days` from now and at most two years. A run that continues an open price change must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`). */
+  effective_from?: string | null;
   /** Only count; change nothing and mail nobody */
   dry_run?: boolean;
 }
@@ -2949,6 +3021,10 @@ export interface SetContractWithdrawalStatusRequestParams {
   note?: string;
   /** Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice. */
   refund_amount_minor?: Int64Input;
+}
+
+export interface SetDisputeHandledRequest {
+  handled: boolean;
 }
 
 export interface SetInvoiceLogoRequest {

@@ -261,6 +261,22 @@
       "resume": "Reprendre les changements de prix",
       "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
       "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    },
+    "priceNotice": {
+      "title": "Préavis des changements de prix",
+      "unverified": "Non vérifié, pas un avis juridique",
+      "hint": "Le préavis que le changement de prix d'un vendeur utilise quand il n'en indique pas, et le préavis minimal par pays. Personne n'a vérifié ces lignes au regard des règles d'un pays : c'est ce que vous saisissez. Un pays peut relever le plancher, jamais descendre sous les 14 jours que la plateforme garde pour tous. Un client d'un pays au minimum plus long est prévenu d'autant plus tôt, ou écarté de l'exécution car il se renouvelle trop tôt.",
+      "defaultDays": "Préavis par défaut, en jours",
+      "defaultHint": "Utilisé quand un changement de prix n'indique pas de préavis. De 14 à 365.",
+      "rules": "Préavis minimal par pays",
+      "country": "Pays (code ISO ou *)",
+      "days": "Jours",
+      "note": "Note (source, date, qui a vérifié)",
+      "remove": "Retirer",
+      "add": "Ajouter un pays",
+      "save": "Enregistrer les règles de préavis",
+      "star": "La ligne * vaut pour tout pays sans ligne propre (et pour un client sans pays). Sans elle, la plateforme garde 14 jours.",
+      "updated": "Dernier enregistrement par {who} le {date}."
     }
   },
   "tenant": {
@@ -452,6 +468,43 @@
       "coupon": "Coupon {code}",
       "usage": "Consommation — {meter} — {rest}",
       "late": "Consommation tardive — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Premier prélèvement retenu",
+      "heldPill": "Retenu",
+      "heldHint": "Cette facture était prête à être prélevée, mais Payrudder n'a pas envoyé le prélèvement au prestataire de paiement.",
+      "reason": {
+        "customer_blocked": "Le client est bloqué pour fraude ou rétrofacturation. La facture reste ouverte et sera prélevée dès que le blocage sera levé.",
+        "tenant_on_hold": "Payrudder a mis cet environnement en attente (suspendu, gelé ou banni) ; rien n'est prélevé tant que cela dure. La facture sera prélevée quand l'environnement sera rétabli ; écrivez au support depuis la page d'aide.",
+        "none": "Plus rien ne retient cette facture. Elle sera prélevée à la prochaine vérification, ou vous pouvez la libérer maintenant.",
+        "unknown": "Payrudder n'a pas pu vérifier pour le moment pourquoi elle est retenue. Réessayez dans un instant."
+      },
+      "since": "Retenu depuis",
+      "next": "Prochaine vérification",
+      "release": "Libérer le prélèvement",
+      "void": "Annuler la facture",
+      "viewerNote": "Seul un propriétaire ou un administrateur peut la libérer ou l'annuler.",
+      "confirmRelease": {
+        "title": "Libérer le prélèvement de {number} ?",
+        "body": "Payrudder vérifie à nouveau si {amount} peuvent être prélevés chez {customer}. Si le client est toujours bloqué, la facture reste retenue et rien n'est prélevé.",
+        "accept": "Libérer"
+      },
+      "confirmVoid": {
+        "title": "Annuler {number} ?",
+        "body": "{amount} ne seront pas prélevés. La facture devient nulle et ne peut plus être payée. Cette action est irréversible.",
+        "accept": "Annuler la facture"
+      },
+      "released": "Libéré : le prélèvement de {amount} a été envoyé au prestataire de paiement.",
+      "stillHeld": "Toujours retenu : le client est encore bloqué ou l'environnement est en attente. Rien n'a été prélevé.",
+      "voided": "La facture est annulée.",
+      "actionTitle": "En attente de la confirmation du paiement par le client",
+      "actionPill": "Le client doit confirmer",
+      "actionHint": "La banque du client lui demande de confirmer ce paiement (3-D Secure) : il ne peut pas être prélevé sans lui.",
+      "mailedHint": "Payrudder a demandé l'envoi au client d'un e-mail avec un lien vers la page de la facture. La page E-mail indique s'il est arrivé.",
+      "mailed": "Client prévenu par e-mail",
+      "nextAsk": "Prochaine interrogation du prestataire",
+      "windowEnds": "Considéré comme refusé le",
+      "windowHint": "Si le client n'a pas confirmé d'ici là, le paiement est considéré comme refusé et les nouvelles tentatives commencent."
     }
   },
   "deadLetters": {
@@ -720,6 +773,26 @@
         "deleteInUse": "C'est la carte avec laquelle les factures du client sont débitées. Une fois supprimée, le prochain prélèvement échoue tant qu'un nouveau moyen de paiement n'est pas défini pour le client. Elle est supprimée chez le prestataire de paiement, c'est irréversible.",
         "deletedInUse": "La carte a été supprimée. C'était celle des prélèvements des factures du client : définissez un nouveau moyen de paiement pour le client.",
         "hint": "Payrudder ne conserve aucun numéro de carte : une carte est enregistrée là où le payeur la saisit, et le moyen de paiement du client la désigne. Ici, vous voyez les cartes et pouvez en supprimer une."
+      },
+      "askCard": {
+        "action": "Demander une carte",
+        "title": "Demander une carte au client",
+        "hint": "Stripe ouvre sa propre page où le client enregistre une carte pour des prélèvements ultérieurs. Rien n'est prélevé maintenant et aucun numéro de carte ne passe par Payrudder. Vous envoyez le lien au client.",
+        "consent": "Dans ce parcours, Payrudder ne recueille ni ne conserve aucun consentement. Le guide de Stripe demande que vous obteniez l'accord explicite du client pour être prélevé en son absence (montant et moment, comment le montant est déterminé, comment résilier) et que vous en gardiez une trace. Envoyez le lien avec vos conditions et conservez vous-même leur accord.",
+        "returnUrl": "Adresse de retour",
+        "returnUrlHint": "Où Stripe renvoie le client après la page : une adresse à vous, https uniquement.",
+        "errors": {
+          "required": "Saisissez l'adresse à laquelle le client revient.",
+          "notHttps": "L'adresse doit commencer par https:// et désigner un site.",
+          "tooLong": "L'adresse est trop longue (2000 caractères au plus)."
+        },
+        "made": "Le lien est prêt. Envoyez-le au client.",
+        "link": "Lien vers la page de Stripe",
+        "copy": "Copier",
+        "after": "Quand le client a enregistré la carte, Stripe le signale à Payrudder et la carte devient son moyen de paiement : les factures suivantes sont prélevées dessus. Il n'y a rien d'autre à faire ici. Si le lien ne fonctionne plus, créez-en un autre.",
+        "close": "Fermer",
+        "make": "Créer le lien",
+        "again": "Créer un autre lien"
       }
     },
     "packages": {
@@ -876,7 +949,10 @@
           "tenantDefault": "Langue par défaut de cette application",
           "show": "Aperçu de l'e-mail",
           "subject": "Objet :"
-        }
+        },
+        "fromDate": "À partir du (facultatif)",
+        "fromDateHelp": "Laissez vide pour déplacer chaque abonnement à son prochain renouvellement. Avec une date, chaque abonnement passe à son premier renouvellement à cette date ou après : un plan mensuel au premier, un plan annuel parfois des mois plus tard. Au moins le délai de préavis, au plus deux ans.",
+        "startsFrom": "à partir du {date}"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -2875,7 +2951,8 @@
         "bad_page_size": "La taille de page doit être comprise entre 1 et 500.",
         "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
         "pdf_sign_failed": "Le lien de téléchargement du PDF n'a pas pu être créé. Réessayez dans un instant.",
-        "pdf_failed": "Le PDF de la facture n'a pas pu être généré. Vérifiez les données de la facture."
+        "pdf_failed": "Le PDF de la facture n'a pas pu être généré. Vérifiez les données de la facture.",
+        "not_held": "Le premier prélèvement de cette facture n'est pas retenu : il n'y a rien à libérer ou à annuler ici."
       },
       "invoice_link": {
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
@@ -3139,7 +3216,8 @@
       "price_change": {
         "not_found": "Modification de prix introuvable.",
         "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
-        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard.",
+        "date_differs": "Un changement de prix ouvert pour ces versions commence à une autre date. Retirez-le pour en faire un nouveau."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",
@@ -3328,6 +3406,12 @@
       },
       "refund": {
         "charge_unclear": "La facture a plusieurs encaissements réussis et le remboursement n'en désigne aucun avec certitude. Remboursez le client chez le prestataire de paiement, puis enregistrez-le sur l'avoir."
+      },
+      "dispute": {
+        "bad_id": "Ce n'est pas l'identifiant d'un litige.",
+        "not_found": "Le litige est introuvable.",
+        "note_required": "Écrivez quelque chose dans la note.",
+        "note_too_long": "Une note fait 2000 caractères au plus."
       }
     },
     "einvoice": {
@@ -6365,6 +6449,29 @@
     "opened": "Ouvert le",
     "closed": "Clos le",
     "reference": "Dossier",
-    "case": "Dossier"
+    "case": "Dossier",
+    "fee": "Frais de litige",
+    "handled": "Traité",
+    "handledLabel": "Traitement",
+    "allHandled": "Tous",
+    "handledYes": "Traité",
+    "handledNo": "Non traité",
+    "due": {
+      "overdue": "en retard",
+      "soon": "bientôt"
+    },
+    "notes": {
+      "title": "Notes",
+      "hint": "Pour vous et vos collègues ; Payrudder ne l'envoie nulle part. Les preuves elles-mêmes se soumettent chez votre prestataire de paiement, pas ici.",
+      "mark": "Marquer comme traité",
+      "lift": "Retirer la marque « traité »",
+      "empty": "Aucune note pour le moment.",
+      "placeholder": "Écrire une note sur ce dossier",
+      "add": "Ajouter la note",
+      "event": {
+        "handled": "Marqué comme traité",
+        "unhandled": "Marque « traité » retirée"
+      }
+    }
   }
 }

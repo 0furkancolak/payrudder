@@ -3,6 +3,7 @@ import type { RequestOptions, Transport } from "../transport";
 import { seg } from "../transport";
 import type {
   AccountingSummary,
+  AddDisputeNoteRequest,
   AddressInput,
   Affiliate,
   AffiliateFunnel,
@@ -39,6 +40,7 @@ import type {
   CreateInvoiceLinkResponse,
   CreateMeterRequest,
   CreatePaymentLinkRequestParams,
+  CreatePaymentMethodSetupRequest,
   CreatePlanRequest,
   CreatePortalLinkRequest,
   CreatePortalLinkResponse,
@@ -64,6 +66,8 @@ import type {
   CustomerContact,
   CustomerTax,
   DeletedCustomerCard,
+  Dispute,
+  DisputeEvent,
   DunningSettings,
   DunningSettingsInput,
   EInvoiceDocument,
@@ -115,6 +119,7 @@ import type {
   IngestEventsRequest,
   IngestEventsResponse,
   Invoice,
+  InvoiceSaga,
   LinkAffiliatePromotionCodeRequest,
   ListAffiliateCommissionsQuery,
   ListAffiliateCommissionsResponse,
@@ -148,6 +153,7 @@ import type {
   ListCustomerPaymentsResponse,
   ListCustomersQuery,
   ListCustomersResponse,
+  ListDisputeEventsResponse,
   ListDisputesQuery,
   ListDisputesResponse,
   ListEInvoicesQuery,
@@ -183,6 +189,8 @@ import type {
   MarkAffiliatePayoutPaidRequest,
   Meter,
   PaymentLink,
+  PaymentMethodSetup,
+  PaymentWait,
   Plan,
   PlanVersion,
   PresignPartsQuery,
@@ -217,6 +225,7 @@ import type {
   SchedulePriceChangeResponse,
   SetContractSettingsRequest,
   SetContractWithdrawalStatusRequestParams,
+  SetDisputeHandledRequest,
   SetInvoiceLogoRequest,
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
@@ -956,6 +965,17 @@ export class CustomersResource {
   }
 
   /**
+   * Make the link to the provider's page where the customer saves a card for later charges
+   *
+   * For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+   *
+   * `POST /v1/customers/{external_id}/payment-method-setup`
+   */
+  createPaymentMethodSetup(externalId: string, body: CreatePaymentMethodSetupRequest, options?: RequestOptions): Promise<PaymentMethodSetup> {
+    return this.t.request<PaymentMethodSetup>({ method: "POST", path: `/v1/customers/${seg(externalId)}/payment-method-setup`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
    * The cards the payment provider holds for the customer
    *
    * The cards of the provider's card storage (iyzico) under the user key the customer's payment method names, never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
@@ -1297,6 +1317,39 @@ export class DisputesResource {
   listDisputes(query?: ListDisputesQuery, options?: RequestOptions): Promise<ListDisputesResponse> {
     return this.t.request<ListDisputesResponse>({ method: "GET", path: `/v1/disputes`, query, response: "json" }, options);
   }
+
+  /**
+   * The notes and marks you made on a dispute, newest first
+   *
+   * What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+   *
+   * `GET /v1/disputes/{id}/history`
+   */
+  listDisputeHistory(id: string, options?: RequestOptions): Promise<ListDisputeEventsResponse> {
+    return this.t.request<ListDisputeEventsResponse>({ method: "GET", path: `/v1/disputes/${seg(id)}/history`, response: "json" }, options);
+  }
+
+  /**
+   * Write a note on a dispute
+   *
+   * A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+   *
+   * `POST /v1/disputes/{id}/notes`
+   */
+  addDisputeNote(id: string, body: AddDisputeNoteRequest, options?: RequestOptions): Promise<DisputeEvent> {
+    return this.t.request<DisputeEvent>({ method: "POST", path: `/v1/disputes/${seg(id)}/notes`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Mark a dispute as handled in Payrudder, or lift the mark
+   *
+   * Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+   *
+   * `PUT /v1/disputes/{id}/handled`
+   */
+  setDisputeHandled(id: string, body: SetDisputeHandledRequest, options?: RequestOptions): Promise<Dispute> {
+    return this.t.request<Dispute>({ method: "PUT", path: `/v1/disputes/${seg(id)}/handled`, body, bodyKind: "json", response: "json" }, options);
+  }
 }
 
 export class DunningSettingsResource {
@@ -1595,6 +1648,39 @@ export class InvoicesResource {
   getInvoicePdf(id: string, options?: RequestOptions): Promise<SignedUrl> {
     return this.t.request<SignedUrl>({ method: "GET", path: `/v1/invoices/${seg(id)}/pdf`, response: "json" }, options);
   }
+
+  /**
+   * What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+   *
+   * Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+   *
+   * `GET /v1/invoices/{id}/payment-wait`
+   */
+  getInvoicePaymentWait(id: string, options?: RequestOptions): Promise<PaymentWait> {
+    return this.t.request<PaymentWait>({ method: "GET", path: `/v1/invoices/${seg(id)}/payment-wait`, response: "json" }, options);
+  }
+
+  /**
+   * Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+   *
+   * Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+   *
+   * `POST /v1/invoices/{id}/release`
+   */
+  releaseHeldInvoice(id: string, options?: RequestOptions): Promise<InvoiceSaga> {
+    return this.t.request<InvoiceSaga>({ method: "POST", path: `/v1/invoices/${seg(id)}/release`, response: "json" }, options);
+  }
+
+  /**
+   * Void an invoice whose first charge is held
+   *
+   * Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+   *
+   * `POST /v1/invoices/{id}/void`
+   */
+  voidHeldInvoice(id: string, options?: RequestOptions): Promise<InvoiceSaga> {
+    return this.t.request<InvoiceSaga>({ method: "POST", path: `/v1/invoices/${seg(id)}/void`, response: "json" }, options);
+  }
 }
 
 export class MailMessagesResource {
@@ -1823,6 +1909,8 @@ export class PlansResource {
    *
    * For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
    * (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+   * With `effective_from` the subscription moves on its first period start on or after that date instead (the customer is still mailed when the run schedules it, so at
+   * least `notice_days` before). The notice is the longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
    * The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
    * `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
    * Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.

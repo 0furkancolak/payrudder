@@ -161,6 +161,8 @@ export interface WebhookPriceChange {
   notice_days: number;
   /** The first date a customer's price changes. */
   effective_time: string;
+  /** The date the seller chose the new price to start from; absent when each subscription moves on its next renewal. */
+  effective_from?: string;
   state: "open" | "withdrawn";
   created_by?: string;
   create_time: string;

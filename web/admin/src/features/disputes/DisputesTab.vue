@@ -32,7 +32,7 @@ const all = computed(() => disputes.data.value?.disputes ?? []);
 const table = useTableState(all, {
   sorts: () => [newest(t, (d) => time(d.opened_time)), oldest(t, (d) => time(d.opened_time)), amountHigh(t, (d) => amount(d.amount_minor)), amountLow(t, (d) => amount(d.amount_minor))],
   searchFields: (d) => [d.dispute_id, d.invoice_id, d.payment_ref, d.provider, d.reason],
-  url: "disputes-", filters: { outcome: (d, v) => d.outcome === v, kind: (d, v) => disputeKind(d) === v },
+  url: "disputes-", filters: { outcome: (d, v) => d.outcome === v, kind: (d, v) => disputeKind(d) === v, handled: (d, v) => (d.handled ? "yes" : "no") === v },
 });
 const toInvoice = (d: Dispute) => d.invoice_id && peek("invoice", props.tenantId, d.invoice_id);
 const money = (d: Dispute) => formatMinor(d.amount_minor, d.currency, locale.value);
@@ -44,6 +44,7 @@ const money = (d: Dispute) => formatMinor(d.amount_minor, d.currency, locale.val
     <DataToolbar v-if="all.length > 0" v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.outcome" multiple :label="t('disputes.outcomeLabel')" :options="[{ value: '', label: t('disputes.allOutcomes') }, ...OUTCOMES.map((o) => ({ value: o, label: t(`disputes.outcome.${o}`) }))]" />
       <FilterSelect v-model="table.filters.value.kind" multiple :label="t('disputes.kindLabel')" :options="[{ value: '', label: t('disputes.allKinds') }, ...(['chargeback', 'inquiry'] as const).map((k) => ({ value: k, label: t(`disputes.kind.${k}`) }))]" />
+      <FilterSelect v-model="table.filters.value.handled" multiple :label="t('disputes.handledLabel')" :options="[{ value: '', label: t('disputes.allHandled') }, { value: 'yes', label: t('disputes.handledYes') }, { value: 'no', label: t('disputes.handledNo') }]" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Skeleton v-if="disputes.isPending.value" class="mx-3 h-40 rounded-2xl" />
@@ -67,7 +68,12 @@ const money = (d: Dispute) => formatMinor(d.amount_minor, d.currency, locale.val
               <div class="font-medium">{{ t(`disputes.kind.${disputeKind(d)}`) }}</div>
               <div class="text-muted-foreground mono text-xs">{{ d.dispute_id }}</div>
             </TableCell>
-            <TableCell><StatusPill :tone="disputeTone(d.outcome)">{{ t(`disputes.outcome.${d.outcome}`) }}</StatusPill></TableCell>
+            <TableCell>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <StatusPill :tone="disputeTone(d.outcome)">{{ t(`disputes.outcome.${d.outcome}`) }}</StatusPill>
+                <StatusPill v-if="d.handled" tone="info" data-testid="dispute-handled-pill">{{ t("disputes.handled") }}</StatusPill>
+              </div>
+            </TableCell>
             <TableCell class="text-muted-foreground max-md:hidden">{{ label(t, te, "provider", d.provider) }}</TableCell>
             <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ money(d) }}</TableCell>
             <TableCell>

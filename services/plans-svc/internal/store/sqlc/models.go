@@ -540,18 +540,19 @@ type PlanVersionFee struct {
 }
 
 type PriceChange struct {
-	TenantID    uuid.UUID
-	ID          uuid.UUID
-	PlanCode    string
-	FromVersion int32
-	ToVersion   int32
-	NoticeDays  int32
-	EffectiveAt time.Time
-	State       string
-	CreatedBy   string
-	CreatedAt   time.Time
-	WithdrawnAt *time.Time
-	WithdrawnBy string
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+	PlanCode      string
+	FromVersion   int32
+	ToVersion     int32
+	NoticeDays    int32
+	EffectiveAt   time.Time
+	State         string
+	CreatedBy     string
+	CreatedAt     time.Time
+	WithdrawnAt   *time.Time
+	WithdrawnBy   string
+	EffectiveFrom *time.Time
 }
 
 type PriceChangeItem struct {
@@ -563,6 +564,19 @@ type PriceChangeItem struct {
 	EffectiveAt    *time.Time
 	NotifiedAt     *time.Time
 	UpdatedAt      time.Time
+}
+
+type PriceChangeNoticeRule struct {
+	Country       string
+	MinNoticeDays int32
+	Note          string
+}
+
+type PriceChangeNoticeSetting struct {
+	Singleton         bool
+	DefaultNoticeDays int32
+	UpdatedBy         string
+	UpdatedAt         *time.Time
 }
 
 type PriceChangePause struct {

@@ -1,6 +1,6 @@
 // Smoke test of a framework template: node examples/smoke.mjs <example directory> <command> [args...]   (the command is run in that directory)
 // It starts the app next to docs-site/fakeapi.mjs (a stand-in for the API made from api/openapi/v1.yaml), then checks over HTTP what a developer relies on:
-//   - a delivery signed the documented way (Payrudder-Signature: t=<unix>,v1=<HMAC-SHA256 of "<t>.<raw body>">) is answered 200;
+//   - a delivery signed the documented way (Payrudder-Signature: t=<unix>,v1=<HMAC-SHA256 of "<t>.<raw body>">), whose body is indented and has non-ASCII text, is answered 200;
 //   - the same delivery with a changed body, a wrong secret, an old timestamp or no header is answered 400;
 //   - POST /usage reaches the API as a usage event that fits the contract, with the app's key, and the API's answer comes back.
 // It proves the template runs and uses the SDK correctly; it does not prove anything about a real gateway. Needs Node 22.18+ and `npm ci` in docs-site.
@@ -57,7 +57,9 @@ try {
     if (i === 299) throw new Error("the app did not answer /healthz in 30 s");
   }
 
-  const body = JSON.stringify({ id: "0192f0b4-0000-7000-8000-000000000001", type: "ping", created: "2026-11-03T10:15:00Z", tenant_id: "0192f0b4-0000-7000-8000-000000000002", data: {} });
+  // Indented, with a non-ASCII character: a handler that parses the body and writes it out again (a framework's params, json_encode, a decoded string) produces other bytes,
+  // so the signature of the original no longer fits. A compact ASCII body would survive that round trip in most languages and hide the mistake.
+  const body = JSON.stringify({ id: "0192f0b4-0000-7000-8000-000000000001", type: "ping", created: "2026-11-03T10:15:00Z", tenant_id: "0192f0b4-0000-7000-8000-000000000002", data: { message: "Çok güzel: café" } }, null, 2);
   const sig = (h) => ({ "Payrudder-Signature": h });
   expect("a correctly signed delivery", (await post("/webhooks/payrudder", body, sig(sign(body)))).status, 200);
   expect("a changed body", (await post("/webhooks/payrudder", body.replace("ping", "pong"), sig(sign(body)))).status, 400);

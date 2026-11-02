@@ -2,11 +2,13 @@
 -- subscription_changes row (pending = scheduled, applied, cancelled = withdrawn), so it is joined, never copied.
 
 -- A run continues the open price change of the same plan and versions, else makes one. effective_at is only the end of the notice until the first renewal is scheduled.
+-- effective_from is the date the seller chose (null: each subscription's next renewal); a run that continues an open price change keeps the date it has, and the caller
+-- refuses a run that names another.
 -- name: UpsertOpenPriceChange :one
-INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, created_by)
-VALUES (app_tenant_id(), @id, @plan_code, @from_version, @to_version, @notice_days, @effective_at, @created_by)
+INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, created_by)
+VALUES (app_tenant_id(), @id, @plan_code, @from_version, @to_version, @notice_days, @effective_at, sqlc.narg('effective_from')::timestamptz, @created_by)
 ON CONFLICT (tenant_id, plan_code, from_version, to_version) WHERE state = 'open' DO UPDATE SET notice_days = EXCLUDED.notice_days
-RETURNING id;
+RETURNING id, effective_from;
 
 -- name: GetOpenPriceChangeID :one
 SELECT id FROM price_changes
@@ -33,7 +35,7 @@ WHERE tenant_id = app_tenant_id() AND id = @id;
 
 -- Newest first, with the number of subscriptions in each state; one by id, or the ones of a plan.
 -- name: ListPriceChanges :many
-SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
+SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
        COALESCE(n.scheduled, 0)::int AS scheduled, COALESCE(n.applied, 0)::int AS applied, COALESCE(n.withdrawn, 0)::int AS withdrawn, COALESCE(n.skipped, 0)::int AS skipped
 FROM price_changes pc
 LEFT JOIN LATERAL (
@@ -84,3 +86,20 @@ SELECT paused, reason, updated_by, updated_at FROM price_change_pause;
 
 -- name: SetPriceChangePause :one
 UPDATE price_change_pause SET paused = @paused, reason = @reason, updated_by = @updated_by, updated_at = now() RETURNING paused, reason, updated_by, updated_at;
+
+-- The notice rules of price changes (migration 00029): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
+-- data on the system pool; the operator replaces the whole table in one transaction.
+-- name: GetPriceChangeNoticeSettings :one
+SELECT default_notice_days, updated_by, updated_at FROM price_change_notice_settings;
+
+-- name: SetPriceChangeNoticeSettings :one
+UPDATE price_change_notice_settings SET default_notice_days = @default_notice_days, updated_by = @updated_by, updated_at = now() RETURNING default_notice_days, updated_by, updated_at;
+
+-- name: ListPriceChangeNoticeRules :many
+SELECT country, min_notice_days, note FROM price_change_notice_rules ORDER BY (country = '*') DESC, country;
+
+-- name: DeletePriceChangeNoticeRules :exec
+DELETE FROM price_change_notice_rules;
+
+-- name: InsertPriceChangeNoticeRule :exec
+INSERT INTO price_change_notice_rules (country, min_notice_days, note) VALUES (@country, @min_notice_days, @note);

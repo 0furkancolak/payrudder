@@ -163,3 +163,14 @@ func (a Attempts) ChargeRef(ctx context.Context, tenant, invoice uuid.UUID, key 
 	})
 	return r.ProviderRef, r.StartedAt, r.Attempts > 0, err
 }
+
+// LatestChargeStart says when the newest charge key of an invoice was first tried, and whether the invoice has any charge attempt.
+func (a Attempts) LatestChargeStart(ctx context.Context, tenant, invoice uuid.UUID) (started time.Time, found bool, err error) {
+	if err := requireTenant(a.DB, tenant); err != nil {
+		return time.Time{}, false, err
+	}
+	r, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetLatestChargeStartRow, error) {
+		return q.GetLatestChargeStart(ctx, sqlc.GetLatestChargeStartParams{TenantID: tenant, InvoiceID: invoice})
+	})
+	return r.StartedAt, r.Attempts > 0, err
+}

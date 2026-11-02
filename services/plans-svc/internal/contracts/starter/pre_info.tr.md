@@ -23,6 +23,8 @@ Bu form, mesafeli sözleşmeyle bağlanmadan önce kanunen size verilmesi gereke
 ## 4. Cayma hakkı
 Hiçbir gerekçe göstermeden ve cezai şart ödemeden, sözleşmenin kurulduğu günden itibaren (hizmet sözleşmelerinde) on dört gün içinde cayma hakkınız vardır. Cayma bildirimini şu adrese yöneltin: [satıcı: e-posta veya posta adresi]. Yönetmelikteki örnek cayma formunu veya cayma kararınızı bildiren açık bir beyanı kullanabilirsiniz.
 
+Cayma bildirimini çevrimiçi de yapabilirsiniz: ödenmiş her faturanın sayfasında ve müşteri portalınızda bulunan "Sözleşmeden buradan cayın" bağlantısını kullanın. [satıcı: ayarlarınızda cayma işlevini kapattıysanız bu paragrafı silin]
+
 On dört gün dolmadan hizmetin başlamasını istedikten sonra cayarsanız, o ana kadar sunulan hizmetin bedelini ödersiniz. Hizmet, onayınızla başlayıp tamamen ifa edildiğinde cayma hakkınız sona erer.
 
 ## 5. Cayma hakkının kullanılamadığı haller
