@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
+import type { ApiLocale } from "@/shared/lib/locale";
 
 /**
  * The integrations of an app that are not payment providers (those are in features/providers/connectApi.ts): the e-invoice integrator and the e-mail provider
@@ -11,6 +12,7 @@ export const integrationKeys = {
   eInvoice: (appId: string) => ["app", "apps", appId, "integrations", "e-invoice"] as const,
   eInvoiceRouting: (appId: string) => ["app", "apps", appId, "integrations", "e-invoice", "routing"] as const,
   mail: (appId: string) => ["app", "apps", appId, "integrations", "mail"] as const,
+  mailRouting: (appId: string) => ["app", "apps", appId, "integrations", "mail", "routing"] as const,
   audit: (appId: string, kind: string) => ["app", "apps", appId, "integrations", "audit", kind] as const,
   health: (appId: string) => ["app", "apps", appId, "integrations", "payment-accounts", "health"] as const,
 };
@@ -95,20 +97,43 @@ export function useMailIntegration(appId: MaybeRefOrGetter<string>, on: MaybeRef
   });
 }
 
+/** The own e-mail accounts, the default first. The key of an account names it ("nafru", "nafru~eu"); empty names "the default". */
 export function useMailActions(appId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
-  const done = () => queries.invalidateQueries({ queryKey: integrationKeys.mail(toValue(appId)) });
+  const done = () => Promise.all([queries.invalidateQueries({ queryKey: integrationKeys.mail(toValue(appId)) })]);
   const path = () => ({ params: { path: { id: toValue(appId) } } });
   return {
     save: useMutation({
-      mutationFn: (v: { baseUrl: string; apiKey: string; from: string }) =>
-        unwrap(api.PUT("/app/v1/apps/{id}/integrations/mail", { ...path(), body: { provider: "nafru", base_url: v.baseUrl, api_key: v.apiKey, from: v.from } })),
+      mutationFn: (v: { baseUrl: string; apiKey: string; from: string; label?: string; makeDefault?: boolean }) =>
+        unwrap(api.PUT("/app/v1/apps/{id}/integrations/mail", { ...path(), body: { provider: "nafru", base_url: v.baseUrl, api_key: v.apiKey, from: v.from, ...(v.label ? { label: v.label } : {}), ...(v.makeDefault ? { make_default: true } : {}) } })),
       onSuccess: done,
     }),
-    remove: useMutation({ mutationFn: () => unwrap(api.DELETE("/app/v1/apps/{id}/integrations/mail", path())), onSuccess: done }),
-    // A test records what it found (the status shows it), so the connection is read again after it.
-    test: useMutation({ mutationFn: (to: string) => unwrap(api.POST("/app/v1/apps/{id}/integrations/mail/test", { ...path(), body: { to } })), onSettled: done }),
+    remove: useMutation({
+      mutationFn: (account: string) => unwrap(api.DELETE("/app/v1/apps/{id}/integrations/mail", { params: { path: { id: toValue(appId) }, query: account ? { account } : {} } })),
+      onSuccess: done,
+    }),
+    // A test records what it found (the status shows it), so the accounts are read again after it.
+    test: useMutation({ mutationFn: (v: { to: string; account: string }) => unwrap(api.POST("/app/v1/apps/{id}/integrations/mail/test", { ...path(), body: { to: v.to, ...(v.account ? { account: v.account } : {}) } })), onSettled: done }),
+    setDefault: useMutation({ mutationFn: (account: string) => unwrap(api.POST("/app/v1/apps/{id}/integrations/mail/default", { ...path(), body: { account } })), onSuccess: done }),
   };
+}
+
+/** The rules that send the mail of a language through an account. */
+export function useMailRouting(appId: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => integrationKeys.mailRouting(toValue(appId))),
+    queryFn: async () => (await unwrap(api.GET("/app/v1/apps/{id}/integrations/mail/routing", { params: { path: { id: toValue(appId) } } }))).rules ?? [],
+    enabled: computed(() => toValue(appId) !== "" && toValue(on)),
+  });
+}
+
+export function useSetMailRouting(appId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (rules: readonly { language: ApiLocale; account: string }[]) =>
+      unwrap(api.PUT("/app/v1/apps/{id}/integrations/mail/routing", { params: { path: { id: toValue(appId) } }, body: { rules: [...rules] } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: integrationKeys.mailRouting(toValue(appId)) }),
+  });
 }
 
 /**

@@ -3151,7 +3151,9 @@
         "unreachable": "Le fournisseur d'e-mail est injoignable. Vérifiez l'adresse et réessayez.",
         "not_configured": "Les fournisseurs d'e-mail ne sont pas configurés sur ce déploiement.",
         "not_connected": "Aucun fournisseur d'e-mail n'est connecté.",
-        "seal_failed": "La clé n'a pas pu être enregistrée. Réessayez."
+        "seal_failed": "La clé n'a pas pu être enregistrée. Réessayez.",
+        "default_in_use": "Ce compte e-mail est le compte par défaut. Définissez d'abord un autre compte par défaut, puis supprimez celui-ci.",
+        "unknown_account": "Une règle désigne un compte e-mail qui n'est pas connecté."
       },
       "saas": {
         "disabled": "Les offres ne sont pas activées sur cette installation.",
@@ -4642,7 +4644,7 @@
         "intro": "Tous les comptes de cette application dans une seule liste : paiements, facture électronique et e-mail. Chaque type peut avoir plusieurs comptes, l'un d'eux est le compte par défaut, et les règles ci-dessous disent quel compte prend quels clients.",
         "add": "Ajouter une intégration",
         "addIntro": "Choisissez ce que vous connectez : d'abord le type, puis le fournisseur. L'étape suivante demande ses identifiants.",
-        "mailNote": "Une application peut avoir son propre fournisseur d'e-mail en plus de l'expéditeur intégré de Payrudder.",
+        "mailNote": "Une application peut connecter plusieurs comptes e-mail chez Nafru Email en plus de l'expéditeur intégré de Payrudder. Le premier est le compte par défaut.",
         "continue": "Continuer",
         "search": "Rechercher des comptes",
         "kind": "Type",
@@ -4664,15 +4666,16 @@
         },
         "tester": {
           "title": "Qui prend ce client ?",
-          "intro": "Saisissez un pays et une devise pour voir quel compte de paiement facturerait le client, quel compte de facture électronique émettrait ses documents et quel expéditeur lui écrirait. Rien n'est créé.",
+          "intro": "Saisissez un pays, une devise et la langue de l'e-mail pour voir quel compte de paiement facturerait le client, quel compte de facture électronique émettrait ses documents et quel expéditeur lui écrirait. Rien n'est créé.",
           "run": "Vérifier",
           "byRule": "{account}, selon la règle {n}",
           "byDefault": "Le compte par défaut, aucune règle ne correspond.",
           "byRuleCountry": "{account}, selon la règle pour {country}",
           "eDefault": "{account}, le compte par défaut",
           "eNone": "Aucun compte : aucun compte par défaut n'est défini et aucune règle ne nomme ce pays.",
-          "mailOwn": "Votre propre fournisseur d'e-mail",
-          "mailBuiltIn": "L'expéditeur intégré de Payrudder"
+          "mailBuiltIn": "L'expéditeur intégré de Payrudder",
+          "mailByRule": "{account}, d'après la règle pour {language}",
+          "mailDefault": "{account}, le compte par défaut"
         },
         "audit": {
           "title": "Qui a modifié les comptes",
@@ -4688,6 +4691,13 @@
             "default_set": "{actor} a fait de {account} le compte par défaut",
             "routing_changed": "{actor} a modifié les règles de routage"
           }
+        },
+        "mRouting": {
+          "title": "Quel compte e-mail envoie dans quelle langue",
+          "intro": "La langue de l'e-mail décide (celle du client, sinon celle de l'application par défaut, sinon l'anglais) : les e-mails dans une langue listée ici partent par ce compte, tous les autres par le compte par défaut. La langue plutôt que le pays, car c'est la seule information sur le destinataire que porte chaque e-mail.",
+          "language": "Langue",
+          "duplicate": "Une langue ne peut figurer qu'une fois.",
+          "mailLanguage": "Langue de l'e-mail"
         }
       },
       "health": {
@@ -6166,7 +6176,9 @@
       },
       "mail_integration": {
         "saved": "Fournisseur d'e-mails connecté",
-        "removed": "Fournisseur d'e-mails déconnecté"
+        "removed": "Fournisseur d'e-mails déconnecté",
+        "default_set": "Compte e-mail par défaut modifié",
+        "routing_changed": "Routage des e-mails modifié"
       },
       "go_live": {
         "billing_profile_saved": "Profil de facturation enregistré",

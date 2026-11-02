@@ -19,7 +19,7 @@ import { BRANDS, CONNECTABLE, GROUPS, IN_GROUP, type IntegrationId } from "./bra
 import AccountsCard from "./AccountsCard.vue";
 import AuditCard from "./AuditCard.vue";
 import RoutingTester from "./RoutingTester.vue";
-import { eInvoiceAccounts } from "./accounts";
+import { eInvoiceAccounts, mailAccounts } from "./accounts";
 import EInvoiceSheet from "./EInvoiceSheet.vue";
 import MailSheet from "./MailSheet.vue";
 import ProviderLogo from "./ProviderLogo.vue";
@@ -90,7 +90,8 @@ function card(id: IntegrationId): { state: CardState; line: string } {
       if (!inApp.value) return { state: "none", line: t("product.integrations.lines.perApp") };
       const s = ownMailState(mail.data.value);
       const problem = mail.data.value?.integration?.check_problem;
-      return { state: s, line: s === "problem" && problem ? t(`product.integrations.testFailed.${problem}`) : s === "working" ? t("product.integrations.lines.mailOwn", { from: mail.data.value?.integration?.from ?? "" }) : t("product.providers.notConnectedLine") };
+      const n = mailAccounts(mail.data.value).length;
+      return { state: s, line: s === "problem" && problem ? t(`product.integrations.testFailed.${problem}`) : s === "working" ? (n > 1 ? t("product.integrations.einvoice.accountsLine", { count: n }) : t("product.integrations.lines.mailOwn", { from: mail.data.value?.integration?.from ?? "" })) : t("product.providers.notConnectedLine") };
     }
   }
 }
@@ -158,6 +159,8 @@ const eInvoiceProvider = ref<EInvoiceProvider | "">("");
 const eInvoiceAccount = ref("");
 const mailOpen = ref(false);
 const mailKind = ref<"payrudderMail" | "nafru" | "">("");
+/** The key of the e-mail account the sheet manages; empty when it adds one. */
+const mailAccount = ref("");
 
 /** The e-invoice sheet for an account of an integrator (its key), or for a new one (empty). */
 function openEInvoice(provider: EInvoiceProvider, account: string) {
@@ -169,10 +172,14 @@ function openEInvoice(provider: EInvoiceProvider, account: string) {
 function open(id: IntegrationId) {
   if ((LIVE_PROVIDERS as readonly string[]).includes(id)) return fromPaymentCard(id as LiveProviderName);
   if (id === "nilvera" || id === "webhook") openEInvoice(id, eAccounts.value.find((a) => a.provider === id)?.account ?? "");
-  else if (id === "payrudderMail" || id === "nafru") {
-    mailKind.value = id;
-    mailOpen.value = true;
-  }
+  else if (id === "payrudderMail" || id === "nafru") openMail(id, mailAccounts(mail.data.value).find((a) => a.is_default)?.account ?? "");
+}
+
+/** The e-mail sheet for an account of the own provider (its key), or for a new one (empty). */
+function openMail(kind: "payrudderMail" | "nafru", account: string) {
+  mailKind.value = kind;
+  mailAccount.value = account;
+  mailOpen.value = true;
 }
 
 // What a sheet is open for is in the address (`connect-provider:stripe`), so a reload brings it back once the apps have loaded.
@@ -262,7 +269,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
       </section>
 
       <template v-if="inApp">
-        <AccountsCard :app-id="appId" :apps="rows" :is-owner="isOwner" @einvoice="openEInvoice" @mail="(k) => open(k)" />
+        <AccountsCard :app-id="appId" :apps="rows" :is-owner="isOwner" @einvoice="openEInvoice" @mail="openMail" />
         <RoutingTester :app-id="appId" />
         <AuditCard :app-id="appId" />
       </template>
@@ -302,6 +309,6 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
 
     <ProviderSheet v-model:open="sheetOpen" :provider="sheetProvider" :app-id="sheetApp" :apps="rows" :scope="sheetScope" :can-org="canOrg" :is-owner="isOwner" :environment="sheetEnv" @done="onDone" />
     <EInvoiceSheet v-model:open="eInvoiceOpen" :provider="eInvoiceProvider" :app-id="appId" :account="eInvoiceAccount" :accounts="eAccounts" :is-owner="isOwner" :tax-id="taxId" />
-    <MailSheet v-model:open="mailOpen" :kind="mailKind" :app-id="appId" :is-owner="isOwner" />
+    <MailSheet v-model:open="mailOpen" :kind="mailKind" :app-id="appId" :is-owner="isOwner" :account="mailAccount" />
   </section>
 </template>

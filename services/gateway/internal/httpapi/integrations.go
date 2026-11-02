@@ -42,6 +42,9 @@ func (s *Server) integrationRoutes() []Route {
 		{"PUT", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailPut},
 		{"DELETE", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailDelete},
 		{"POST", "/app/v1/apps/{id}/integrations/mail/test", AccessSession, ratelimit.ClassWrite, s.appMailTest},
+		{"POST", "/app/v1/apps/{id}/integrations/mail/default", AccessSession, ratelimit.ClassWrite, s.appMailDefault},
+		{"GET", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassRead, s.appMailRoutingGet},
+		{"PUT", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassWrite, s.appMailRoutingPut},
 	}
 }
 
@@ -329,7 +332,7 @@ func (s *Server) mailTenant(r *http.Request) (uuid.UUID, error) {
 	return uuid.Parse(id)
 }
 
-// appMailGet is the connection of the live environment (no key in it). Any member reads it.
+// appMailGet is the e-mail accounts of the live environment (no key in them), the default first. Any member reads it.
 func (s *Server) appMailGet(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
@@ -363,13 +366,19 @@ func (s *Server) appMailPut(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
+// appMailDelete disconnects the account named by ?account= (the default when absent).
 func (s *Server) appMailDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := s.mailTenant(r)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if _, err := s.d.MailIntegration.DeleteMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.DeleteMailIntegrationRequest{}); err != nil {
+	account, err := accountParam(r.URL.Query().Get("account"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if _, err := s.d.MailIntegration.DeleteMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.DeleteMailIntegrationRequest{Account: account}); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -389,5 +398,58 @@ func (s *Server) appMailTest(w http.ResponseWriter, r *http.Request) {
 	}
 	noStore(w)
 	resp, err := s.d.MailIntegration.TestMailIntegration(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailDefault makes one of the live e-mail accounts the default: the one a mail goes through when no rule names its language. The account is not touched, so no
+// key is sent. Only the owner.
+func (s *Server) appMailDefault(w http.ResponseWriter, r *http.Request) {
+	id, err := s.mailTenant(r)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req := &plansv1.SetDefaultMailIntegrationRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.MailIntegration.SetDefaultMailIntegration(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailRoutingGet is the rules that send the mail of a language through an account. Any member reads them.
+func (s *Server) appMailRoutingGet(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	resp, err := s.d.MailIntegration.GetMailRouting(tenant.OutgoingFor(r.Context(), id), &plansv1.GetMailRoutingRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailRoutingPut replaces the rules. Only the owner.
+func (s *Server) appMailRoutingPut(w http.ResponseWriter, r *http.Request) {
+	id, err := s.mailTenant(r)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req := &plansv1.PutMailRoutingRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.MailIntegration.PutMailRouting(tenant.OutgoingFor(r.Context(), id), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

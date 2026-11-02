@@ -7,6 +7,10 @@ import "google/protobuf/timestamp.proto";
 // MailIntegrationService lets a live tenant send its customer mail (invoices, receipts, alerts) through its own e-mail provider instead of Payrudder's built-in
 // sender. The one provider so far is Nafru Email (provider "nafru"), which speaks the Resend API: a base URL and an API key. The tenant comes from gRPC metadata.
 // A sandbox tenant has none: its mail always goes to the sandbox sink.
+//
+// A tenant can connect several accounts (docs/plans/10, ADR 0026). An account is named by its key, as a payment account is: the provider alone ("nafru", the primary
+// account) or with a label ("nafru~eu"). One is the default; the language of a mail can name the account that sends it (routing), and a mail in any other language goes
+// through the default. A tenant with no account sends through Payrudder's built-in sender.
 service MailIntegrationService {
   // GetMailIntegration returns the connection without its key; connected is false when the tenant has none.
   rpc GetMailIntegration(GetMailIntegrationRequest) returns (GetMailIntegrationResponse);
@@ -17,6 +21,12 @@ service MailIntegrationService {
   rpc TestMailIntegration(TestMailIntegrationRequest) returns (TestMailIntegrationResponse);
   // ResolveMailSender is for the notifier: the connection with its key in plaintext, to send one tenant's mail. Not reachable from the public API.
   rpc ResolveMailSender(ResolveMailSenderRequest) returns (ResolveMailSenderResponse);
+  // SetDefaultMailIntegration makes one of the connected accounts the default. The account is not touched, so no key is sent.
+  rpc SetDefaultMailIntegration(SetDefaultMailIntegrationRequest) returns (SetDefaultMailIntegrationResponse);
+  // GetMailRouting lists the rules that send the mail of a language through an account.
+  rpc GetMailRouting(GetMailRoutingRequest) returns (GetMailRoutingResponse);
+  // PutMailRouting replaces all the rules.
+  rpc PutMailRouting(PutMailRoutingRequest) returns (PutMailRoutingResponse);
 }
 
 message MailIntegration {
@@ -32,13 +42,23 @@ message MailIntegration {
   google.protobuf.Timestamp checked_time = 6;
   // Why the last check failed: "unreachable", "refused" or empty. The provider's own words are not kept.
   string check_problem = 7;
+  // The account's key: "nafru" for the primary account, "nafru~eu" for one with a label.
+  string account = 8;
+  // The part of the key after the tilde; empty for the primary account.
+  string label = 9;
+  // The account a mail goes through when no rule names its language.
+  bool is_default = 10;
 }
 
 message GetMailIntegrationRequest {}
 
 message GetMailIntegrationResponse {
+  // True when the tenant has at least one account.
   bool connected = 1;
+  // The default account; unset when not connected.
   MailIntegration integration = 2;
+  // Every account, the default first.
+  repeated MailIntegration accounts = 3;
 }
 
 message PutMailIntegrationRequest {
@@ -46,19 +66,28 @@ message PutMailIntegrationRequest {
   string base_url = 2;
   string api_key = 3;
   string from = 4;
+  // A label connects a further account at the same provider (lower-case letters, digits and dashes); empty is the primary account. Saving an existing key replaces it.
+  string label = 5;
+  // Make this account the default. The first account of a tenant is the default whatever this says.
+  bool make_default = 6;
 }
 
 message PutMailIntegrationResponse {
   MailIntegration integration = 1;
 }
 
-message DeleteMailIntegrationRequest {}
+message DeleteMailIntegrationRequest {
+  // The account's key; empty is the default account. The default account cannot be removed while others exist.
+  string account = 1;
+}
 
 message DeleteMailIntegrationResponse {}
 
 message TestMailIntegrationRequest {
   // Where the test mail goes.
   string to = 1;
+  // The account's key; empty is the default account.
+  string account = 2;
 }
 
 message TestMailIntegrationResponse {
@@ -68,7 +97,10 @@ message TestMailIntegrationResponse {
   string message_id = 3;
 }
 
-message ResolveMailSenderRequest {}
+message ResolveMailSenderRequest {
+  // The language of the mail (en, tr, de, fr, es, ar; empty is English): the account a rule names for it, else the default.
+  string language = 1;
+}
 
 message ResolveMailSenderResponse {
   bool connected = 1;
@@ -76,4 +108,33 @@ message ResolveMailSenderResponse {
   string base_url = 3;
   string api_key = 4;
   string from = 5;
+  // The key of the account that was chosen.
+  string account = 6;
+}
+
+message SetDefaultMailIntegrationRequest {
+  string account = 1;
+}
+
+message SetDefaultMailIntegrationResponse {}
+
+// MailRoutingRule sends the mail of one language through one account.
+message MailRoutingRule {
+  string language = 1;
+  string account = 2;
+}
+
+message GetMailRoutingRequest {}
+
+message GetMailRoutingResponse {
+  repeated MailRoutingRule rules = 1;
+}
+
+message PutMailRoutingRequest {
+  // At most one rule per language; each account must be connected.
+  repeated MailRoutingRule rules = 1;
+}
+
+message PutMailRoutingResponse {
+  repeated MailRoutingRule rules = 1;
 }

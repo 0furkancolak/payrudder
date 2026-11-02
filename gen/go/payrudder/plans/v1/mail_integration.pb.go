@@ -35,7 +35,13 @@ type MailIntegration struct {
 	// When the provider last accepted the key (a save or a test); empty when it never did.
 	CheckedTime *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=checked_time,json=checkedTime,proto3" json:"checked_time,omitempty"`
 	// Why the last check failed: "unreachable", "refused" or empty. The provider's own words are not kept.
-	CheckProblem  string `protobuf:"bytes,7,opt,name=check_problem,json=checkProblem,proto3" json:"check_problem,omitempty"`
+	CheckProblem string `protobuf:"bytes,7,opt,name=check_problem,json=checkProblem,proto3" json:"check_problem,omitempty"`
+	// The account's key: "nafru" for the primary account, "nafru~eu" for one with a label.
+	Account string `protobuf:"bytes,8,opt,name=account,proto3" json:"account,omitempty"`
+	// The part of the key after the tilde; empty for the primary account.
+	Label string `protobuf:"bytes,9,opt,name=label,proto3" json:"label,omitempty"`
+	// The account a mail goes through when no rule names its language.
+	IsDefault     bool `protobuf:"varint,10,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,6 +125,27 @@ func (x *MailIntegration) GetCheckProblem() string {
 	return ""
 }
 
+func (x *MailIntegration) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *MailIntegration) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *MailIntegration) GetIsDefault() bool {
+	if x != nil {
+		return x.IsDefault
+	}
+	return false
+}
+
 type GetMailIntegrationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -156,9 +183,13 @@ func (*GetMailIntegrationRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetMailIntegrationResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Connected     bool                   `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
-	Integration   *MailIntegration       `protobuf:"bytes,2,opt,name=integration,proto3" json:"integration,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when the tenant has at least one account.
+	Connected bool `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
+	// The default account; unset when not connected.
+	Integration *MailIntegration `protobuf:"bytes,2,opt,name=integration,proto3" json:"integration,omitempty"`
+	// Every account, the default first.
+	Accounts      []*MailIntegration `protobuf:"bytes,3,rep,name=accounts,proto3" json:"accounts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -207,12 +238,23 @@ func (x *GetMailIntegrationResponse) GetIntegration() *MailIntegration {
 	return nil
 }
 
+func (x *GetMailIntegrationResponse) GetAccounts() []*MailIntegration {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
 type PutMailIntegrationRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,2,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	ApiKey        string                 `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
-	From          string                 `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Provider string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	BaseUrl  string                 `protobuf:"bytes,2,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	ApiKey   string                 `protobuf:"bytes,3,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	From     string                 `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
+	// A label connects a further account at the same provider (lower-case letters, digits and dashes); empty is the primary account. Saving an existing key replaces it.
+	Label string `protobuf:"bytes,5,opt,name=label,proto3" json:"label,omitempty"`
+	// Make this account the default. The first account of a tenant is the default whatever this says.
+	MakeDefault   bool `protobuf:"varint,6,opt,name=make_default,json=makeDefault,proto3" json:"make_default,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -275,6 +317,20 @@ func (x *PutMailIntegrationRequest) GetFrom() string {
 	return ""
 }
 
+func (x *PutMailIntegrationRequest) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *PutMailIntegrationRequest) GetMakeDefault() bool {
+	if x != nil {
+		return x.MakeDefault
+	}
+	return false
+}
+
 type PutMailIntegrationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Integration   *MailIntegration       `protobuf:"bytes,1,opt,name=integration,proto3" json:"integration,omitempty"`
@@ -320,7 +376,9 @@ func (x *PutMailIntegrationResponse) GetIntegration() *MailIntegration {
 }
 
 type DeleteMailIntegrationRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The account's key; empty is the default account. The default account cannot be removed while others exist.
+	Account       string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -353,6 +411,13 @@ func (x *DeleteMailIntegrationRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeleteMailIntegrationRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMailIntegrationRequest) Descriptor() ([]byte, []int) {
 	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DeleteMailIntegrationRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
 }
 
 type DeleteMailIntegrationResponse struct {
@@ -394,7 +459,9 @@ func (*DeleteMailIntegrationResponse) Descriptor() ([]byte, []int) {
 type TestMailIntegrationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Where the test mail goes.
-	To            string `protobuf:"bytes,1,opt,name=to,proto3" json:"to,omitempty"`
+	To string `protobuf:"bytes,1,opt,name=to,proto3" json:"to,omitempty"`
+	// The account's key; empty is the default account.
+	Account       string `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -432,6 +499,13 @@ func (*TestMailIntegrationRequest) Descriptor() ([]byte, []int) {
 func (x *TestMailIntegrationRequest) GetTo() string {
 	if x != nil {
 		return x.To
+	}
+	return ""
+}
+
+func (x *TestMailIntegrationRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
 	}
 	return ""
 }
@@ -498,7 +572,9 @@ func (x *TestMailIntegrationResponse) GetMessageId() string {
 }
 
 type ResolveMailSenderRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The language of the mail (en, tr, de, fr, es, ar; empty is English): the account a rule names for it, else the default.
+	Language      string `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -533,13 +609,22 @@ func (*ResolveMailSenderRequest) Descriptor() ([]byte, []int) {
 	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{9}
 }
 
+func (x *ResolveMailSenderRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
 type ResolveMailSenderResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Connected     bool                   `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
-	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	ApiKey        string                 `protobuf:"bytes,4,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
-	From          string                 `protobuf:"bytes,5,opt,name=from,proto3" json:"from,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Connected bool                   `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
+	Provider  string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	BaseUrl   string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	ApiKey    string                 `protobuf:"bytes,4,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	From      string                 `protobuf:"bytes,5,opt,name=from,proto3" json:"from,omitempty"`
+	// The key of the account that was chosen.
+	Account       string `protobuf:"bytes,6,opt,name=account,proto3" json:"account,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -609,11 +694,320 @@ func (x *ResolveMailSenderResponse) GetFrom() string {
 	return ""
 }
 
+func (x *ResolveMailSenderResponse) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+type SetDefaultMailIntegrationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       string                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetDefaultMailIntegrationRequest) Reset() {
+	*x = SetDefaultMailIntegrationRequest{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetDefaultMailIntegrationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetDefaultMailIntegrationRequest) ProtoMessage() {}
+
+func (x *SetDefaultMailIntegrationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetDefaultMailIntegrationRequest.ProtoReflect.Descriptor instead.
+func (*SetDefaultMailIntegrationRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SetDefaultMailIntegrationRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+type SetDefaultMailIntegrationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetDefaultMailIntegrationResponse) Reset() {
+	*x = SetDefaultMailIntegrationResponse{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetDefaultMailIntegrationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetDefaultMailIntegrationResponse) ProtoMessage() {}
+
+func (x *SetDefaultMailIntegrationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetDefaultMailIntegrationResponse.ProtoReflect.Descriptor instead.
+func (*SetDefaultMailIntegrationResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{12}
+}
+
+// MailRoutingRule sends the mail of one language through one account.
+type MailRoutingRule struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Language      string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
+	Account       string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MailRoutingRule) Reset() {
+	*x = MailRoutingRule{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MailRoutingRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MailRoutingRule) ProtoMessage() {}
+
+func (x *MailRoutingRule) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MailRoutingRule.ProtoReflect.Descriptor instead.
+func (*MailRoutingRule) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *MailRoutingRule) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *MailRoutingRule) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+type GetMailRoutingRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMailRoutingRequest) Reset() {
+	*x = GetMailRoutingRequest{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMailRoutingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMailRoutingRequest) ProtoMessage() {}
+
+func (x *GetMailRoutingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMailRoutingRequest.ProtoReflect.Descriptor instead.
+func (*GetMailRoutingRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{14}
+}
+
+type GetMailRoutingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rules         []*MailRoutingRule     `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMailRoutingResponse) Reset() {
+	*x = GetMailRoutingResponse{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMailRoutingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMailRoutingResponse) ProtoMessage() {}
+
+func (x *GetMailRoutingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMailRoutingResponse.ProtoReflect.Descriptor instead.
+func (*GetMailRoutingResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetMailRoutingResponse) GetRules() []*MailRoutingRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+type PutMailRoutingRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// At most one rule per language; each account must be connected.
+	Rules         []*MailRoutingRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PutMailRoutingRequest) Reset() {
+	*x = PutMailRoutingRequest{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PutMailRoutingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutMailRoutingRequest) ProtoMessage() {}
+
+func (x *PutMailRoutingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutMailRoutingRequest.ProtoReflect.Descriptor instead.
+func (*PutMailRoutingRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PutMailRoutingRequest) GetRules() []*MailRoutingRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+type PutMailRoutingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rules         []*MailRoutingRule     `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PutMailRoutingResponse) Reset() {
+	*x = PutMailRoutingResponse{}
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PutMailRoutingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PutMailRoutingResponse) ProtoMessage() {}
+
+func (x *PutMailRoutingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_mail_integration_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PutMailRoutingResponse.ProtoReflect.Descriptor instead.
+func (*PutMailRoutingResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *PutMailRoutingResponse) GetRules() []*MailRoutingRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
 var File_payrudder_plans_v1_mail_integration_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_mail_integration_proto_rawDesc = "" +
 	"\n" +
-	")payrudder/plans/v1/mail_integration.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x98\x02\n" +
+	")payrudder/plans/v1/mail_integration.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe7\x02\n" +
 	"\x0fMailIntegration\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x19\n" +
 	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x12\x12\n" +
@@ -622,40 +1016,68 @@ const file_payrudder_plans_v1_mail_integration_proto_rawDesc = "" +
 	"\vupdate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"updateTime\x12=\n" +
 	"\fchecked_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vcheckedTime\x12#\n" +
-	"\rcheck_problem\x18\a \x01(\tR\fcheckProblem\"\x1b\n" +
-	"\x19GetMailIntegrationRequest\"\x81\x01\n" +
+	"\rcheck_problem\x18\a \x01(\tR\fcheckProblem\x12\x18\n" +
+	"\aaccount\x18\b \x01(\tR\aaccount\x12\x14\n" +
+	"\x05label\x18\t \x01(\tR\x05label\x12\x1d\n" +
+	"\n" +
+	"is_default\x18\n" +
+	" \x01(\bR\tisDefault\"\x1b\n" +
+	"\x19GetMailIntegrationRequest\"\xc2\x01\n" +
 	"\x1aGetMailIntegrationResponse\x12\x1c\n" +
 	"\tconnected\x18\x01 \x01(\bR\tconnected\x12E\n" +
-	"\vintegration\x18\x02 \x01(\v2#.payrudder.plans.v1.MailIntegrationR\vintegration\"\x7f\n" +
+	"\vintegration\x18\x02 \x01(\v2#.payrudder.plans.v1.MailIntegrationR\vintegration\x12?\n" +
+	"\baccounts\x18\x03 \x03(\v2#.payrudder.plans.v1.MailIntegrationR\baccounts\"\xb8\x01\n" +
 	"\x19PutMailIntegrationRequest\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x19\n" +
 	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x12\x17\n" +
 	"\aapi_key\x18\x03 \x01(\tR\x06apiKey\x12\x12\n" +
-	"\x04from\x18\x04 \x01(\tR\x04from\"c\n" +
+	"\x04from\x18\x04 \x01(\tR\x04from\x12\x14\n" +
+	"\x05label\x18\x05 \x01(\tR\x05label\x12!\n" +
+	"\fmake_default\x18\x06 \x01(\bR\vmakeDefault\"c\n" +
 	"\x1aPutMailIntegrationResponse\x12E\n" +
-	"\vintegration\x18\x01 \x01(\v2#.payrudder.plans.v1.MailIntegrationR\vintegration\"\x1e\n" +
-	"\x1cDeleteMailIntegrationRequest\"\x1f\n" +
-	"\x1dDeleteMailIntegrationResponse\",\n" +
+	"\vintegration\x18\x01 \x01(\v2#.payrudder.plans.v1.MailIntegrationR\vintegration\"8\n" +
+	"\x1cDeleteMailIntegrationRequest\x12\x18\n" +
+	"\aaccount\x18\x01 \x01(\tR\aaccount\"\x1f\n" +
+	"\x1dDeleteMailIntegrationResponse\"F\n" +
 	"\x1aTestMailIntegrationRequest\x12\x0e\n" +
-	"\x02to\x18\x01 \x01(\tR\x02to\"f\n" +
+	"\x02to\x18\x01 \x01(\tR\x02to\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\"f\n" +
 	"\x1bTestMailIntegrationResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x18\n" +
 	"\aproblem\x18\x02 \x01(\tR\aproblem\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x03 \x01(\tR\tmessageId\"\x1a\n" +
-	"\x18ResolveMailSenderRequest\"\x9d\x01\n" +
+	"message_id\x18\x03 \x01(\tR\tmessageId\"6\n" +
+	"\x18ResolveMailSenderRequest\x12\x1a\n" +
+	"\blanguage\x18\x01 \x01(\tR\blanguage\"\xb7\x01\n" +
 	"\x19ResolveMailSenderResponse\x12\x1c\n" +
 	"\tconnected\x18\x01 \x01(\bR\tconnected\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x19\n" +
 	"\bbase_url\x18\x03 \x01(\tR\abaseUrl\x12\x17\n" +
 	"\aapi_key\x18\x04 \x01(\tR\x06apiKey\x12\x12\n" +
-	"\x04from\x18\x05 \x01(\tR\x04from2\xea\x04\n" +
+	"\x04from\x18\x05 \x01(\tR\x04from\x12\x18\n" +
+	"\aaccount\x18\x06 \x01(\tR\aaccount\"<\n" +
+	" SetDefaultMailIntegrationRequest\x12\x18\n" +
+	"\aaccount\x18\x01 \x01(\tR\aaccount\"#\n" +
+	"!SetDefaultMailIntegrationResponse\"G\n" +
+	"\x0fMailRoutingRule\x12\x1a\n" +
+	"\blanguage\x18\x01 \x01(\tR\blanguage\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\"\x17\n" +
+	"\x15GetMailRoutingRequest\"S\n" +
+	"\x16GetMailRoutingResponse\x129\n" +
+	"\x05rules\x18\x01 \x03(\v2#.payrudder.plans.v1.MailRoutingRuleR\x05rules\"R\n" +
+	"\x15PutMailRoutingRequest\x129\n" +
+	"\x05rules\x18\x01 \x03(\v2#.payrudder.plans.v1.MailRoutingRuleR\x05rules\"S\n" +
+	"\x16PutMailRoutingResponse\x129\n" +
+	"\x05rules\x18\x01 \x03(\v2#.payrudder.plans.v1.MailRoutingRuleR\x05rules2\xc7\a\n" +
 	"\x16MailIntegrationService\x12s\n" +
 	"\x12GetMailIntegration\x12-.payrudder.plans.v1.GetMailIntegrationRequest\x1a..payrudder.plans.v1.GetMailIntegrationResponse\x12s\n" +
 	"\x12PutMailIntegration\x12-.payrudder.plans.v1.PutMailIntegrationRequest\x1a..payrudder.plans.v1.PutMailIntegrationResponse\x12|\n" +
 	"\x15DeleteMailIntegration\x120.payrudder.plans.v1.DeleteMailIntegrationRequest\x1a1.payrudder.plans.v1.DeleteMailIntegrationResponse\x12v\n" +
 	"\x13TestMailIntegration\x12..payrudder.plans.v1.TestMailIntegrationRequest\x1a/.payrudder.plans.v1.TestMailIntegrationResponse\x12p\n" +
-	"\x11ResolveMailSender\x12,.payrudder.plans.v1.ResolveMailSenderRequest\x1a-.payrudder.plans.v1.ResolveMailSenderResponseB\xdd\x01\n" +
+	"\x11ResolveMailSender\x12,.payrudder.plans.v1.ResolveMailSenderRequest\x1a-.payrudder.plans.v1.ResolveMailSenderResponse\x12\x88\x01\n" +
+	"\x19SetDefaultMailIntegration\x124.payrudder.plans.v1.SetDefaultMailIntegrationRequest\x1a5.payrudder.plans.v1.SetDefaultMailIntegrationResponse\x12g\n" +
+	"\x0eGetMailRouting\x12).payrudder.plans.v1.GetMailRoutingRequest\x1a*.payrudder.plans.v1.GetMailRoutingResponse\x12g\n" +
+	"\x0ePutMailRouting\x12).payrudder.plans.v1.PutMailRoutingRequest\x1a*.payrudder.plans.v1.PutMailRoutingResponseB\xdd\x01\n" +
 	"\x16com.payrudder.plans.v1B\x14MailIntegrationProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
 
 var (
@@ -670,41 +1092,58 @@ func file_payrudder_plans_v1_mail_integration_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_mail_integration_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_mail_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_payrudder_plans_v1_mail_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_payrudder_plans_v1_mail_integration_proto_goTypes = []any{
-	(*MailIntegration)(nil),               // 0: payrudder.plans.v1.MailIntegration
-	(*GetMailIntegrationRequest)(nil),     // 1: payrudder.plans.v1.GetMailIntegrationRequest
-	(*GetMailIntegrationResponse)(nil),    // 2: payrudder.plans.v1.GetMailIntegrationResponse
-	(*PutMailIntegrationRequest)(nil),     // 3: payrudder.plans.v1.PutMailIntegrationRequest
-	(*PutMailIntegrationResponse)(nil),    // 4: payrudder.plans.v1.PutMailIntegrationResponse
-	(*DeleteMailIntegrationRequest)(nil),  // 5: payrudder.plans.v1.DeleteMailIntegrationRequest
-	(*DeleteMailIntegrationResponse)(nil), // 6: payrudder.plans.v1.DeleteMailIntegrationResponse
-	(*TestMailIntegrationRequest)(nil),    // 7: payrudder.plans.v1.TestMailIntegrationRequest
-	(*TestMailIntegrationResponse)(nil),   // 8: payrudder.plans.v1.TestMailIntegrationResponse
-	(*ResolveMailSenderRequest)(nil),      // 9: payrudder.plans.v1.ResolveMailSenderRequest
-	(*ResolveMailSenderResponse)(nil),     // 10: payrudder.plans.v1.ResolveMailSenderResponse
-	(*timestamppb.Timestamp)(nil),         // 11: google.protobuf.Timestamp
+	(*MailIntegration)(nil),                   // 0: payrudder.plans.v1.MailIntegration
+	(*GetMailIntegrationRequest)(nil),         // 1: payrudder.plans.v1.GetMailIntegrationRequest
+	(*GetMailIntegrationResponse)(nil),        // 2: payrudder.plans.v1.GetMailIntegrationResponse
+	(*PutMailIntegrationRequest)(nil),         // 3: payrudder.plans.v1.PutMailIntegrationRequest
+	(*PutMailIntegrationResponse)(nil),        // 4: payrudder.plans.v1.PutMailIntegrationResponse
+	(*DeleteMailIntegrationRequest)(nil),      // 5: payrudder.plans.v1.DeleteMailIntegrationRequest
+	(*DeleteMailIntegrationResponse)(nil),     // 6: payrudder.plans.v1.DeleteMailIntegrationResponse
+	(*TestMailIntegrationRequest)(nil),        // 7: payrudder.plans.v1.TestMailIntegrationRequest
+	(*TestMailIntegrationResponse)(nil),       // 8: payrudder.plans.v1.TestMailIntegrationResponse
+	(*ResolveMailSenderRequest)(nil),          // 9: payrudder.plans.v1.ResolveMailSenderRequest
+	(*ResolveMailSenderResponse)(nil),         // 10: payrudder.plans.v1.ResolveMailSenderResponse
+	(*SetDefaultMailIntegrationRequest)(nil),  // 11: payrudder.plans.v1.SetDefaultMailIntegrationRequest
+	(*SetDefaultMailIntegrationResponse)(nil), // 12: payrudder.plans.v1.SetDefaultMailIntegrationResponse
+	(*MailRoutingRule)(nil),                   // 13: payrudder.plans.v1.MailRoutingRule
+	(*GetMailRoutingRequest)(nil),             // 14: payrudder.plans.v1.GetMailRoutingRequest
+	(*GetMailRoutingResponse)(nil),            // 15: payrudder.plans.v1.GetMailRoutingResponse
+	(*PutMailRoutingRequest)(nil),             // 16: payrudder.plans.v1.PutMailRoutingRequest
+	(*PutMailRoutingResponse)(nil),            // 17: payrudder.plans.v1.PutMailRoutingResponse
+	(*timestamppb.Timestamp)(nil),             // 18: google.protobuf.Timestamp
 }
 var file_payrudder_plans_v1_mail_integration_proto_depIdxs = []int32{
-	11, // 0: payrudder.plans.v1.MailIntegration.update_time:type_name -> google.protobuf.Timestamp
-	11, // 1: payrudder.plans.v1.MailIntegration.checked_time:type_name -> google.protobuf.Timestamp
+	18, // 0: payrudder.plans.v1.MailIntegration.update_time:type_name -> google.protobuf.Timestamp
+	18, // 1: payrudder.plans.v1.MailIntegration.checked_time:type_name -> google.protobuf.Timestamp
 	0,  // 2: payrudder.plans.v1.GetMailIntegrationResponse.integration:type_name -> payrudder.plans.v1.MailIntegration
-	0,  // 3: payrudder.plans.v1.PutMailIntegrationResponse.integration:type_name -> payrudder.plans.v1.MailIntegration
-	1,  // 4: payrudder.plans.v1.MailIntegrationService.GetMailIntegration:input_type -> payrudder.plans.v1.GetMailIntegrationRequest
-	3,  // 5: payrudder.plans.v1.MailIntegrationService.PutMailIntegration:input_type -> payrudder.plans.v1.PutMailIntegrationRequest
-	5,  // 6: payrudder.plans.v1.MailIntegrationService.DeleteMailIntegration:input_type -> payrudder.plans.v1.DeleteMailIntegrationRequest
-	7,  // 7: payrudder.plans.v1.MailIntegrationService.TestMailIntegration:input_type -> payrudder.plans.v1.TestMailIntegrationRequest
-	9,  // 8: payrudder.plans.v1.MailIntegrationService.ResolveMailSender:input_type -> payrudder.plans.v1.ResolveMailSenderRequest
-	2,  // 9: payrudder.plans.v1.MailIntegrationService.GetMailIntegration:output_type -> payrudder.plans.v1.GetMailIntegrationResponse
-	4,  // 10: payrudder.plans.v1.MailIntegrationService.PutMailIntegration:output_type -> payrudder.plans.v1.PutMailIntegrationResponse
-	6,  // 11: payrudder.plans.v1.MailIntegrationService.DeleteMailIntegration:output_type -> payrudder.plans.v1.DeleteMailIntegrationResponse
-	8,  // 12: payrudder.plans.v1.MailIntegrationService.TestMailIntegration:output_type -> payrudder.plans.v1.TestMailIntegrationResponse
-	10, // 13: payrudder.plans.v1.MailIntegrationService.ResolveMailSender:output_type -> payrudder.plans.v1.ResolveMailSenderResponse
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	0,  // 3: payrudder.plans.v1.GetMailIntegrationResponse.accounts:type_name -> payrudder.plans.v1.MailIntegration
+	0,  // 4: payrudder.plans.v1.PutMailIntegrationResponse.integration:type_name -> payrudder.plans.v1.MailIntegration
+	13, // 5: payrudder.plans.v1.GetMailRoutingResponse.rules:type_name -> payrudder.plans.v1.MailRoutingRule
+	13, // 6: payrudder.plans.v1.PutMailRoutingRequest.rules:type_name -> payrudder.plans.v1.MailRoutingRule
+	13, // 7: payrudder.plans.v1.PutMailRoutingResponse.rules:type_name -> payrudder.plans.v1.MailRoutingRule
+	1,  // 8: payrudder.plans.v1.MailIntegrationService.GetMailIntegration:input_type -> payrudder.plans.v1.GetMailIntegrationRequest
+	3,  // 9: payrudder.plans.v1.MailIntegrationService.PutMailIntegration:input_type -> payrudder.plans.v1.PutMailIntegrationRequest
+	5,  // 10: payrudder.plans.v1.MailIntegrationService.DeleteMailIntegration:input_type -> payrudder.plans.v1.DeleteMailIntegrationRequest
+	7,  // 11: payrudder.plans.v1.MailIntegrationService.TestMailIntegration:input_type -> payrudder.plans.v1.TestMailIntegrationRequest
+	9,  // 12: payrudder.plans.v1.MailIntegrationService.ResolveMailSender:input_type -> payrudder.plans.v1.ResolveMailSenderRequest
+	11, // 13: payrudder.plans.v1.MailIntegrationService.SetDefaultMailIntegration:input_type -> payrudder.plans.v1.SetDefaultMailIntegrationRequest
+	14, // 14: payrudder.plans.v1.MailIntegrationService.GetMailRouting:input_type -> payrudder.plans.v1.GetMailRoutingRequest
+	16, // 15: payrudder.plans.v1.MailIntegrationService.PutMailRouting:input_type -> payrudder.plans.v1.PutMailRoutingRequest
+	2,  // 16: payrudder.plans.v1.MailIntegrationService.GetMailIntegration:output_type -> payrudder.plans.v1.GetMailIntegrationResponse
+	4,  // 17: payrudder.plans.v1.MailIntegrationService.PutMailIntegration:output_type -> payrudder.plans.v1.PutMailIntegrationResponse
+	6,  // 18: payrudder.plans.v1.MailIntegrationService.DeleteMailIntegration:output_type -> payrudder.plans.v1.DeleteMailIntegrationResponse
+	8,  // 19: payrudder.plans.v1.MailIntegrationService.TestMailIntegration:output_type -> payrudder.plans.v1.TestMailIntegrationResponse
+	10, // 20: payrudder.plans.v1.MailIntegrationService.ResolveMailSender:output_type -> payrudder.plans.v1.ResolveMailSenderResponse
+	12, // 21: payrudder.plans.v1.MailIntegrationService.SetDefaultMailIntegration:output_type -> payrudder.plans.v1.SetDefaultMailIntegrationResponse
+	15, // 22: payrudder.plans.v1.MailIntegrationService.GetMailRouting:output_type -> payrudder.plans.v1.GetMailRoutingResponse
+	17, // 23: payrudder.plans.v1.MailIntegrationService.PutMailRouting:output_type -> payrudder.plans.v1.PutMailRoutingResponse
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_mail_integration_proto_init() }
@@ -718,7 +1157,7 @@ func file_payrudder_plans_v1_mail_integration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_mail_integration_proto_rawDesc), len(file_payrudder_plans_v1_mail_integration_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

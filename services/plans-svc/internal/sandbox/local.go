@@ -16,7 +16,7 @@ var (
 	Tables = []string{"contract_renewal_notices", "contract_acceptances", "contract_snapshots", "contract_withdrawals", "affiliate_reversals", "affiliate_commissions", "affiliate_journal", "affiliate_payouts", "affiliate_attributions", "affiliate_attribution_rejections", "affiliate_clicks_daily", "customer_coupons", "customer_entitlement_overrides", "coupon_redemptions", "subscription_adjustments", "price_change_items", "price_changes", "subscription_changes", "subscription_coupons", "provider_migrations", "subscription_trial_notices",
 		"subscriptions", "customer_block_events", "customers", "webhook_deliveries", "webhook_events", "outbox"}
 	Kept = []string{"contract_versions", "contract_settings", "meters", "plans", "plan_versions", "plan_prices", "plan_entitlements", "plan_version_fees", "plan_currency_prices", "routing_rules", "tax_rates",
-		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "tenant_mail_integrations", "api_keys", "sandbox_resets", "audit_events"}
+		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "tenant_mail_integrations", "tenant_mail_routing", "api_keys", "sandbox_resets", "audit_events"}
 )
 
 // Local is plans-svc's own part of a reset, on the system role: each statement names the tenant, and runs where the tenant's rows are (in its schema when it is in a

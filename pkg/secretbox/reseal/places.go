@@ -28,8 +28,13 @@ var Payments = []Column{
 var Plans = []Column{
 	{Table: "webhook_endpoints", Column: "secret_enc", Tenant: true, Key: []KeyColumn{tenantID, {"id", "uuid"}}, AAD: webhookAAD},
 	{Table: "webhook_endpoints", Column: "prev_secret_enc", Tenant: true, Key: []KeyColumn{tenantID, {"id", "uuid"}}, AAD: webhookAAD},
-	{Table: "tenant_mail_integrations", Column: "api_key_enc", Tenant: true, Key: []KeyColumn{tenantID},
-		AAD: func(k []string) []byte { return []byte("mail-integration:" + k[0]) }},
+	{Table: "tenant_mail_integrations", Column: "api_key_enc", Tenant: true, Key: []KeyColumn{tenantID, provider},
+		AAD: func(k []string) []byte {
+			if payments.AccountLabel(k[1]) == "" {
+				return []byte("mail-integration:" + k[0]) // the form of the one account there was before labels
+			}
+			return []byte("mail-integration:" + k[0] + ":" + k[1])
+		}},
 	{Table: "user_totp", Column: "secret_enc", Key: []KeyColumn{{"user_id", "uuid"}}, AAD: func(k []string) []byte { return []byte("totp|" + k[0]) }},
 }
 

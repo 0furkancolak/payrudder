@@ -4815,18 +4815,71 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The tenant's own e-mail provider (Nafru Email) for the app's live environment, if one is connected (any member; the key is never in the answer) */
+        /**
+         * The tenant's own e-mail provider accounts (Nafru Email) for the app's live environment, the default first (any member; the key is never in the answer)
+         * @description An app can connect several accounts at one provider, each named by a key (`nafru`, or `nafru~eu` with a label). `integration` is the default account and `accounts`
+         *     lists every one. With none connected the mail goes through Payrudder's built-in sender.
+         */
         get: operations["appGetMailIntegration"];
         /**
-         * Connect (or replace) the live environment's own e-mail provider (the owner only)
+         * Connect (or replace) one of the live environment's own e-mail accounts (the owner only)
          * @description From then on the customer mail of the live environment (invoices, receipts, alerts) is sent through it, from the given address. The provider is asked
          *     to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed, shown once
-         *     and never echoed back. The sandbox has none: its mail always goes to the sandbox inbox.
+         *     and never echoed back. A `label` connects a further account at the same provider; saving a key that exists replaces it. The first account is the default, and so is
+         *     one saved with `make_default`. The sandbox has none: its mail always goes to the sandbox inbox. Recorded in the audit trail of the person's account.
          */
         put: operations["appPutMailIntegration"];
         post?: never;
-        /** Disconnect the own e-mail provider; the mail goes through Payrudder's built-in sender again (the owner only) */
+        /**
+         * Disconnect an own e-mail account; with none left the mail goes through Payrudder's built-in sender again (the owner only)
+         * @description The account named by `account` (the default when absent). The default account cannot be removed while others exist (409 plans.mail_integration.default_in_use). The rules that name the account go with it.
+         */
         delete: operations["appRemoveMailIntegration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make one of the live e-mail accounts the default (the owner only)
+         * @description The default is the account a mail goes through when no rule names its language. The account is not touched, so no key is sent. The move is recorded for the person.
+         */
+        post: operations["appSetMailDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The rules that send the mail of a language through an e-mail account
+         * @description Any member reads it. A mail in a language no rule names goes through the default account.
+         */
+        get: operations["appMailRouting"];
+        /**
+         * Replace the e-mail routing rules (the owner only)
+         * @description A language is named once and every rule names an account the app has (400 plans.mail_integration.unknown_account). The language of a mail is the customer's, else the
+         *     app's default language, else English. DEFAULT (not agreed): by language; the country of a customer is not on the mail. The change is recorded for the person.
+         */
+        put: operations["appSetMailRouting"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4842,8 +4895,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Check the stored key at the provider and send one test mail through it (the owner only)
-         * @description A provider problem is ok false with its kind, not an HTTP error.
+         * Check the stored key of an account at the provider and send one test mail through it (the owner only)
+         * @description The account named by `account` (the default when absent). A provider problem is ok false with its kind, not an HTTP error.
          */
         post: operations["appTestMailIntegration"];
         delete?: never;
@@ -9341,13 +9394,36 @@ export interface components {
             /** @enum {string} */
             problem?: "refused" | "unreachable";
         };
+        /** @description An e-mail account: the provider alone (nafru) or with a label (nafru~eu). */
+        MailAccountKey: string;
+        AppSetMailDefaultRequest: {
+            account: components["schemas"]["MailAccountKey"];
+        };
+        MailRoutingRules: {
+            rules: {
+                /**
+                 * @description The language of the mail.
+                 * @enum {string}
+                 */
+                language: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                account: components["schemas"]["MailAccountKey"];
+            }[];
+        };
         AppGetMailIntegrationResponse: {
+            /** @description At least one account is connected. */
             connected: boolean;
+            /** @description The default account. */
             integration: components["schemas"]["MailIntegration"] | null;
+            /** @description Every account */
+            accounts: components["schemas"]["MailIntegration"][];
         };
         AppPutMailIntegrationRequest: {
             /** @enum {string} */
             provider: "nafru";
+            /** @description Connects a further account at the same provider; empty is the primary account. */
+            label?: string;
+            /** @description Make this account the default. The first account is the default whatever this says. */
+            make_default?: boolean;
             /**
              * @description The Resend-compatible API address (https)
              * @example https://api.nafru.example
@@ -9363,6 +9439,7 @@ export interface components {
         AppTestMailIntegrationRequest: {
             /** Format: email */
             to: string;
+            account?: components["schemas"]["MailAccountKey"];
         };
         AppTestMailIntegrationResponse: {
             ok: boolean;
@@ -13619,10 +13696,15 @@ export interface components {
          * @enum {string}
          */
         ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write" | "contracts:read" | "contracts:write" | "audit:read";
-        /** @description The tenant's own e-mail provider. The key is never returned. */
+        /** @description One of the tenant's own e-mail provider accounts. The key is never returned. */
         MailIntegration: {
             /** @enum {string} */
             provider: "nafru";
+            account: components["schemas"]["MailAccountKey"];
+            /** @description The part of the key after the tilde; empty for the primary account. */
+            label: string;
+            /** @description The account a mail goes through when no rule names its language. */
+            is_default: boolean;
             base_url: string;
             from: string;
             /** @description The last four characters of the stored key */
@@ -21981,7 +22063,9 @@ export interface operations {
     };
     appRemoveMailIntegration: {
         parameters: {
-            query?: never;
+            query?: {
+                account?: components["schemas"]["MailAccountKey"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -21997,6 +22081,92 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appSetMailDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppSetMailDefaultRequest"];
+            };
+        };
+        responses: {
+            /** @description The default has moved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appMailRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailRoutingRules"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetMailRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailRoutingRules"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailRoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];

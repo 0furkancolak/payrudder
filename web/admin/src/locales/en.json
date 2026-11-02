@@ -3151,7 +3151,9 @@
         "unreachable": "The e-mail provider could not be reached. Check the address and try again.",
         "not_configured": "E-mail providers are not set up on this deployment.",
         "not_connected": "No e-mail provider is connected.",
-        "seal_failed": "The key could not be stored. Try again."
+        "seal_failed": "The key could not be stored. Try again.",
+        "default_in_use": "This is the default e-mail account. Make another account the default first, then remove this one.",
+        "unknown_account": "A rule names an e-mail account that is not connected."
       },
       "saas": {
         "disabled": "Plans are not enabled on this installation.",
@@ -4642,7 +4644,7 @@
         "intro": "Every account of this app in one list: payments, e-invoice and e-mail. Each kind can hold several accounts, one of them is the default, and rules below say which account takes which customers.",
         "add": "Add integration",
         "addIntro": "Choose what you connect: first the kind, then the provider. The next step asks for its credentials.",
-        "mailNote": "An app has one e-mail provider of its own besides Payrudder's built-in sender.",
+        "mailNote": "An app can connect several e-mail accounts at Nafru Email besides Payrudder's built-in sender. The first one is the default.",
         "continue": "Continue",
         "search": "Search accounts",
         "kind": "Kind",
@@ -4664,15 +4666,16 @@
         },
         "tester": {
           "title": "Who takes this customer?",
-          "intro": "Enter a country and a currency to see which payment account would charge the customer, which e-invoice account would issue their documents and which sender would mail them. Nothing is created.",
+          "intro": "Enter a country and a currency, and the language of the mail, to see which payment account would charge the customer, which e-invoice account would issue their documents and which sender would mail them. Nothing is created.",
           "run": "Check",
           "byRule": "{account}, by rule {n}",
           "byDefault": "The default account, no rule matches.",
           "byRuleCountry": "{account}, by the rule for {country}",
           "eDefault": "{account}, the default account",
           "eNone": "No account: no default is set and no rule names this country.",
-          "mailOwn": "Your own e-mail provider",
-          "mailBuiltIn": "Payrudder's built-in sender"
+          "mailBuiltIn": "Payrudder's built-in sender",
+          "mailByRule": "{account}, by the rule for {language}",
+          "mailDefault": "{account}, the default account"
         },
         "audit": {
           "title": "Who changed the accounts",
@@ -4688,6 +4691,13 @@
             "default_set": "{actor} made {account} the default",
             "routing_changed": "{actor} changed the routing rules"
           }
+        },
+        "mRouting": {
+          "title": "Which e-mail account sends which language",
+          "intro": "The language of the mail decides (the customer's, else the app's default, else English): mail in a language listed here goes out through that account, every other mail through the default account. The language, not the country, because it is the one thing about the recipient that every mail carries.",
+          "language": "Language",
+          "duplicate": "A language can be listed once.",
+          "mailLanguage": "Language of the mail"
         }
       },
       "health": {
@@ -6166,7 +6176,9 @@
       },
       "mail_integration": {
         "saved": "Mail provider connected",
-        "removed": "Mail provider disconnected"
+        "removed": "Mail provider disconnected",
+        "default_set": "Default mail account changed",
+        "routing_changed": "Mail routing changed"
       },
       "go_live": {
         "billing_profile_saved": "Billing profile saved",

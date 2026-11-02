@@ -3151,7 +3151,9 @@
         "unreachable": "E-posta sağlayıcısına ulaşılamadı. Adresi kontrol edip yeniden deneyin.",
         "not_configured": "Bu kurulumda e-posta sağlayıcıları ayarlanmamış.",
         "not_connected": "Bağlı bir e-posta sağlayıcısı yok.",
-        "seal_failed": "Anahtar saklanamadı. Yeniden deneyin."
+        "seal_failed": "Anahtar saklanamadı. Yeniden deneyin.",
+        "default_in_use": "Bu, varsayılan e-posta hesabı. Önce başka bir hesabı varsayılan yapın, sonra bunu kaldırın.",
+        "unknown_account": "Bir kural, bağlı olmayan bir e-posta hesabını gösteriyor."
       },
       "saas": {
         "disabled": "Bu kurulumda planlar etkin değil.",
@@ -4642,7 +4644,7 @@
         "intro": "Bu uygulamanın tüm hesapları tek listede: ödeme, e-fatura ve e-posta. Her türde birden çok hesap olabilir, biri varsayılandır ve aşağıdaki kurallar hangi hesabın hangi müşterileri aldığını söyler.",
         "add": "Entegrasyon ekle",
         "addIntro": "Neyi bağlayacağınızı seçin: önce tür, sonra sağlayıcı. Sonraki adımda kimlik bilgileri istenir.",
-        "mailNote": "Bir uygulamanın, Payrudder'ın yerleşik göndericisinin yanında kendi e-posta sağlayıcısı olabilir.",
+        "mailNote": "Bir uygulama, Payrudder'ın yerleşik göndericisinin yanında Nafru Email'de birden çok e-posta hesabı bağlayabilir. İlki varsayılandır.",
         "continue": "Devam",
         "search": "Hesaplarda ara",
         "kind": "Tür",
@@ -4664,15 +4666,16 @@
         },
         "tester": {
           "title": "Bu müşteriyi kim alır?",
-          "intro": "Bir ülke ve para birimi girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
+          "intro": "Bir ülke, bir para birimi ve e-postanın dilini girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
           "run": "Kontrol et",
           "byRule": "{account}, {n}. kurala göre",
           "byDefault": "Varsayılan hesap, hiçbir kural eşleşmiyor.",
           "byRuleCountry": "{account}, {country} kuralına göre",
           "eDefault": "{account}, varsayılan hesap",
           "eNone": "Hesap yok: varsayılan belirlenmemiş ve hiçbir kural bu ülkeyi söylemiyor.",
-          "mailOwn": "Kendi e-posta sağlayıcınız",
-          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi"
+          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi",
+          "mailByRule": "{account}, {language} kuralına göre",
+          "mailDefault": "{account}, varsayılan hesap"
         },
         "audit": {
           "title": "Hesapları kim değiştirdi",
@@ -4688,6 +4691,13 @@
             "default_set": "{actor}, {account} hesabını varsayılan yaptı",
             "routing_changed": "{actor} yönlendirme kurallarını değiştirdi"
           }
+        },
+        "mRouting": {
+          "title": "Hangi e-posta hesabı hangi dilde gönderir",
+          "intro": "E-postanın dili belirler (müşterinin dili, yoksa uygulamanın varsayılanı, yoksa İngilizce): burada listelenen bir dildeki e-postalar o hesaptan, diğer tüm e-postalar varsayılan hesaptan gider. Ülke değil dil, çünkü her e-postanın taşıdığı tek alıcı bilgisi budur.",
+          "language": "Dil",
+          "duplicate": "Bir dil yalnızca bir kez listelenebilir.",
+          "mailLanguage": "E-postanın dili"
         }
       },
       "health": {
@@ -6166,7 +6176,9 @@
       },
       "mail_integration": {
         "saved": "E-posta sağlayıcısı bağlandı",
-        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı"
+        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı",
+        "default_set": "Varsayılan e-posta hesabı değişti",
+        "routing_changed": "E-posta yönlendirmesi değişti"
       },
       "go_live": {
         "billing_profile_saved": "Fatura profili kaydedildi",

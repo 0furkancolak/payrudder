@@ -27,7 +27,7 @@ export const KNOWN_ACTIONS: readonly string[] = [
   "two_factor.enabled", "two_factor.disabled", "two_factor.recovery_codes_replaced", "two_factor.recovery_code_used", "two_factor.reset_by_operator",
   "price_change.scheduled", "price_change.withdrawn",
   "coupon.created", "coupon.deactivated", "promotion_code.created", "promotion_code.deactivated",
-  "routing_rules.changed", "tax_rates.changed", "mail_settings.changed", "mail_integration.saved", "mail_integration.removed",
+  "routing_rules.changed", "tax_rates.changed", "mail_settings.changed", "mail_integration.saved", "mail_integration.removed", "mail_integration.default_set", "mail_integration.routing_changed",
   "go_live.billing_profile_saved", "go_live.terms_accepted", "go_live.activated",
   "contract.version_published", "contract.settings_changed", "support.status_changed", "dunning.settings_changed",
   "invoice_payment.recorded", "bank_transfer.receipt_recorded", "user.password_reset", "user.sign_in_locked",
