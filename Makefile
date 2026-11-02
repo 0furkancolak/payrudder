@@ -86,7 +86,7 @@ alert-test: ## Fire a test page and a test warning at the running Alertmanager (
 
 .PHONY: test-integration
 test-integration: ## Integration tests (build tag integration; needs Docker)
-	@for m in $(MODULES); do (cd $$m && go test -race -count=1 -tags integration ./...); done
+	@for m in $(MODULES); do (cd $$m && go test -race -count=1 -timeout 30m -tags integration ./...); done
 
 .PHONY: e2e
 e2e: ## End-to-end tests against the running compose stack (make up first)
