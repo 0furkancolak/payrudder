@@ -414,23 +414,51 @@ SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id();
 INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), @disabled::text[], now())
 ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at;
 
--- The tenant's own e-mail provider (phase 53). The key is sealed; plans-svc's own commands open it.
--- name: GetMailIntegration :one
-SELECT * FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id();
+-- The tenant's own e-mail provider accounts (phase 53, plan 10). The key is sealed; plans-svc's own commands open it. An account is named by its key in `provider`
+-- ("nafru", "nafru~eu"); one is the default.
+-- name: ListMailIntegrations :many
+SELECT * FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() ORDER BY is_default DESC, provider;
 
+-- name: GetMailIntegration :one
+SELECT * FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = @account;
+
+-- name: GetDefaultMailIntegration :one
+SELECT * FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND is_default;
+
+-- Replacing an account keeps what it was (the default or not); the caller clears the old default first when this one is to be it.
 -- name: UpsertMailIntegration :one
-INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem)
-VALUES (app_tenant_id(), @provider, @base_url, @api_key_enc, @key_hint, @from_address, now(), '')
-ON CONFLICT (tenant_id) DO UPDATE SET provider = EXCLUDED.provider, base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
-  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now()
+INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, is_default)
+VALUES (app_tenant_id(), @provider, @base_url, @api_key_enc, @key_hint, @from_address, now(), '', @is_default)
+ON CONFLICT (tenant_id, provider) DO UPDATE SET base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
+  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now(),
+  is_default = tenant_mail_integrations.is_default OR EXCLUDED.is_default
 RETURNING *;
 
+-- name: ClearDefaultMailIntegration :exec
+UPDATE tenant_mail_integrations SET is_default = false WHERE tenant_id = app_tenant_id() AND is_default;
+
+-- name: SetDefaultMailIntegration :execrows
+UPDATE tenant_mail_integrations SET is_default = true WHERE tenant_id = app_tenant_id() AND provider = @account;
+
+-- A routing rule that names the account goes with it (ON DELETE CASCADE).
 -- name: DeleteMailIntegration :execrows
-DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id();
+DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = @account;
 
 -- name: MarkMailIntegrationChecked :exec
 UPDATE tenant_mail_integrations SET checked_at = CASE WHEN @problem::text = '' THEN now() ELSE checked_at END, check_problem = @problem::text
-WHERE tenant_id = app_tenant_id();
+WHERE tenant_id = app_tenant_id() AND provider = @account;
+
+-- name: ListMailRouting :many
+SELECT * FROM tenant_mail_routing WHERE tenant_id = app_tenant_id() ORDER BY language;
+
+-- name: GetMailRoutingFor :one
+SELECT * FROM tenant_mail_routing WHERE tenant_id = app_tenant_id() AND language = @language;
+
+-- name: DeleteMailRouting :exec
+DELETE FROM tenant_mail_routing WHERE tenant_id = app_tenant_id();
+
+-- name: InsertMailRouting :exec
+INSERT INTO tenant_mail_routing (tenant_id, language, account) VALUES (app_tenant_id(), @language, @account);
 
 -- The subscriptions a price change looks at: Payrudder-run, not ended, on one plan version.
 -- name: ListLiveSubscriptionsOnVersion :many

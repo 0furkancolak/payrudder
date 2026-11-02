@@ -46,7 +46,7 @@ The job opens a box with the associated data its writer used, so the data is wri
 | payments-worker | `provider_accounts.settings_enc` | `tenant\|provider\|environment` (`store/accounts.go`; `provider` is the account key, `stripe~eu` for a labelled one) | pooled database, tenant schemas |
 | payments-worker | `einvoice_accounts.settings_enc` | `tenant\|einvoice\|environment` for an integrator's primary account, `tenant\|einvoice\|environment\|key` for a labelled one (`store/einvoice.go`) | pooled database, tenant schemas |
 | plans-svc | `webhook_endpoints.secret_enc`, `prev_secret_enc` | `webhook:<endpoint id>` (`webhooks/model.SecretAAD`) | pooled database, tenant schemas |
-| plans-svc | `tenant_mail_integrations.api_key_enc` | `mail-integration:<tenant id>` (`mailintegration/query.AAD`) | pooled database, tenant schemas |
+| plans-svc | `tenant_mail_integrations.api_key_enc` | `mail-integration:<tenant id>` for the primary account, `mail-integration:<tenant id>:<account key>` for a labelled one such as `nafru~eu` (`mailintegration/query.AAD`) | pooled database, tenant schemas |
 | plans-svc | `user_totp.secret_enc` (two-factor sign-in, plan 22 G9) | `totp\|<user id>` (`identity/command/twofactor.go`) | pooled database only |
 
 ## If the key is lost (break-glass)

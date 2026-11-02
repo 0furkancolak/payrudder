@@ -1490,6 +1490,27 @@ class InvoicesResource:
         """
         return cast("m.SignedUrl", self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
 
+    def get_invoice_payment_wait(self, id: str, *, options: RequestOptions | None = None) -> m.PaymentWait:
+        """What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it).
+
+        ``GET /v1/invoices/{id}/payment-wait``
+        """
+        return cast("m.PaymentWait", self._client._request("GET", f"/v1/invoices/{_p(id)}/payment-wait", options=options))
+
+    def release_held_invoice(self, id: str, *, options: RequestOptions | None = None) -> m.InvoiceSaga:
+        """Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more.
+
+        ``POST /v1/invoices/{id}/release``
+        """
+        return cast("m.InvoiceSaga", self._client._request("POST", f"/v1/invoices/{_p(id)}/release", options=options))
+
+    def void_held_invoice(self, id: str, *, options: RequestOptions | None = None) -> m.InvoiceSaga:
+        """Void an invoice whose first charge is held.
+
+        ``POST /v1/invoices/{id}/void``
+        """
+        return cast("m.InvoiceSaga", self._client._request("POST", f"/v1/invoices/{_p(id)}/void", options=options))
+
 
 class CreditNotesResource:
     """``/v1/credit-notes`` and related operations."""
@@ -3374,6 +3395,27 @@ class AsyncInvoicesResource:
         ``GET /v1/invoices/{id}/pdf``
         """
         return cast("m.SignedUrl", await self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
+
+    async def get_invoice_payment_wait(self, id: str, *, options: RequestOptions | None = None) -> m.PaymentWait:
+        """What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it).
+
+        ``GET /v1/invoices/{id}/payment-wait``
+        """
+        return cast("m.PaymentWait", await self._client._request("GET", f"/v1/invoices/{_p(id)}/payment-wait", options=options))
+
+    async def release_held_invoice(self, id: str, *, options: RequestOptions | None = None) -> m.InvoiceSaga:
+        """Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more.
+
+        ``POST /v1/invoices/{id}/release``
+        """
+        return cast("m.InvoiceSaga", await self._client._request("POST", f"/v1/invoices/{_p(id)}/release", options=options))
+
+    async def void_held_invoice(self, id: str, *, options: RequestOptions | None = None) -> m.InvoiceSaga:
+        """Void an invoice whose first charge is held.
+
+        ``POST /v1/invoices/{id}/void``
+        """
+        return cast("m.InvoiceSaga", await self._client._request("POST", f"/v1/invoices/{_p(id)}/void", options=options))
 
 
 class AsyncCreditNotesResource:

@@ -452,6 +452,43 @@
       "coupon": "Kupon {code}",
       "usage": "Kullanım — {meter} — {rest}",
       "late": "Geç gelen kullanım — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "İlk tahsilat beklemede",
+      "heldPill": "Beklemede",
+      "heldHint": "Bu fatura tahsil edilmeye hazırdı, ancak Payrudder tahsilatı ödeme sağlayıcısına göndermedi.",
+      "reason": {
+        "customer_blocked": "Müşteri dolandırıcılık veya itiraz (chargeback) nedeniyle engellenmiş. Fatura açık kalır ve engel kaldırılır kaldırılmaz tahsil edilir.",
+        "tenant_on_hold": "Payrudder bu ortamı beklemeye aldı (askıya alındı, dondurulmuş veya yasaklanmış); bu sürece hiçbir tahsilat yapılmaz. Ortam geri geldiğinde fatura tahsil edilir; yardım sayfasından destek ekibine yazın.",
+        "none": "Şu anda bu faturayı hiçbir şey tutmuyor. Bir sonraki kontrolde tahsil edilir; isterseniz şimdi serbest bırakabilirsiniz.",
+        "unknown": "Payrudder şu anda neden beklemede olduğunu kontrol edemedi. Biraz sonra tekrar deneyin."
+      },
+      "since": "Beklemede olduğu tarih",
+      "next": "Sonraki kontrol",
+      "release": "Tahsilatı serbest bırak",
+      "void": "Faturayı iptal et",
+      "viewerNote": "Yalnızca sahip veya yönetici serbest bırakabilir ya da iptal edebilir.",
+      "confirmRelease": {
+        "title": "{number} tahsilatı serbest bırakılsın mı?",
+        "body": "Payrudder, {amount} tutarının {customer} müşterisinden tahsil edilip edilemeyeceğini yeniden sorar. Müşteri hâlâ engelliyse fatura beklemede kalır ve hiçbir şey tahsil edilmez.",
+        "accept": "Serbest bırak"
+      },
+      "confirmVoid": {
+        "title": "{number} iptal edilsin mi?",
+        "body": "{amount} tahsil edilmeyecek. Fatura iptal olur ve artık ödenemez. Bu işlem geri alınamaz.",
+        "accept": "Faturayı iptal et"
+      },
+      "released": "Serbest bırakıldı: {amount} tutarındaki tahsilat ödeme sağlayıcısına gönderildi.",
+      "stillHeld": "Hâlâ beklemede: müşteri hâlâ engelli ya da ortam beklemede. Hiçbir şey tahsil edilmedi.",
+      "voided": "Fatura iptal edildi.",
+      "actionTitle": "Müşterinin ödemeyi onaylaması bekleniyor",
+      "actionPill": "Müşteri onaylamalı",
+      "actionHint": "Müşterinin bankası bu ödemeyi onaylamasını istiyor (3-D Secure); bu yüzden müşteri olmadan tahsil edilemez.",
+      "mailedHint": "Payrudder, müşteriye fatura sayfasına giden bir bağlantı içeren bir e-posta gönderilmesini istedi. E-postanın ulaşıp ulaşmadığını E-posta sayfası gösterir.",
+      "mailed": "Müşteriye e-posta",
+      "nextAsk": "Sağlayıcıya sonraki sorgu",
+      "windowEnds": "Reddedilmiş sayılacağı tarih",
+      "windowHint": "Müşteri o zamana kadar onaylamazsa ödeme reddedilmiş sayılır ve yeniden denemeler başlar."
     }
   },
   "deadLetters": {
@@ -2875,7 +2912,8 @@
         "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
         "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
         "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin.",
-        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin."
+        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin.",
+        "not_held": "Bu faturanın ilk tahsilatı beklemede değil; burada serbest bırakılacak ya da iptal edilecek bir şey yok."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
@@ -3151,7 +3189,9 @@
         "unreachable": "E-posta sağlayıcısına ulaşılamadı. Adresi kontrol edip yeniden deneyin.",
         "not_configured": "Bu kurulumda e-posta sağlayıcıları ayarlanmamış.",
         "not_connected": "Bağlı bir e-posta sağlayıcısı yok.",
-        "seal_failed": "Anahtar saklanamadı. Yeniden deneyin."
+        "seal_failed": "Anahtar saklanamadı. Yeniden deneyin.",
+        "default_in_use": "Bu, varsayılan e-posta hesabı. Önce başka bir hesabı varsayılan yapın, sonra bunu kaldırın.",
+        "unknown_account": "Bir kural, bağlı olmayan bir e-posta hesabını gösteriyor."
       },
       "saas": {
         "disabled": "Bu kurulumda planlar etkin değil.",
@@ -4635,14 +4675,53 @@
         },
         "checkAndConnect": "Denetle ve bağla",
         "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
-        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
+        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır.",
+        "identity": {
+          "title": "Gönderen kimliği",
+          "intro": "Posta sağlayıcıları e-postayı göndericinin alan adının DNS'te yayımladıklarına göre değerlendirir. Bu araç, e-postanın gönderildiği adres için SPF, DKIM ve DMARC kayıtlarına bakar.",
+          "selector": "DKIM seçicisi (isteğe bağlı)",
+          "selectorHelp": "Sağlayıcınızın DKIM anahtarını yayımladığı ad. DKIM'i atlamak için boş bırakın.",
+          "check": "DNS'i denetle",
+          "checking": "Denetleniyor…",
+          "domain": "Alan adı: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Yayımlanmış",
+            "weak": "Yayımlanmış ama zayıf",
+            "missing": "Bulunamadı",
+            "invalid": "Geçersiz",
+            "unchecked": "Denetlenmedi",
+            "error": "Denetlenemedi"
+          },
+          "detail": {
+            "hard_fail": "Diğer göndericileri reddeder (-all)",
+            "soft_fail": "Diğer göndericileri şüpheli işaretler (~all)",
+            "neutral": "Diğer göndericiler hakkında bir şey söylemez (?all)",
+            "pass_all": "Her göndericiye izin verir (+all)",
+            "no_all": "Kapanış kuralı yok",
+            "multiple": "Birden fazla SPF kaydı var: alıcılar bunu hata sayar",
+            "policy_none": "Politika none: hatalar yalnızca raporlanır",
+            "policy_none_inherited": "Politika none, üst alan adından",
+            "quarantine": "Politika: quarantine",
+            "quarantine_inherited": "Politika: quarantine, üst alan adından",
+            "reject": "Politika: reject",
+            "reject_inherited": "Politika: reject, üst alan adından",
+            "no_selector": "Denetlemek için seçiciyi girin",
+            "revoked": "Anahtar iptal edilmiş (boş p=)"
+          },
+          "note": "Bu yalnızca herkese açık DNS'i okur. Kayıtların sağlayıcınızı gösterip göstermediğini ya da sağlayıcınızın alan adını doğrulayıp doğrulamadığını söylemez. Bir değişikliğin yayılması saatler sürebilir."
+        }
       },
       "accounts": {
         "title": "Hesaplar",
         "intro": "Bu uygulamanın tüm hesapları tek listede: ödeme, e-fatura ve e-posta. Her türde birden çok hesap olabilir, biri varsayılandır ve aşağıdaki kurallar hangi hesabın hangi müşterileri aldığını söyler.",
         "add": "Entegrasyon ekle",
         "addIntro": "Neyi bağlayacağınızı seçin: önce tür, sonra sağlayıcı. Sonraki adımda kimlik bilgileri istenir.",
-        "mailNote": "Bir uygulamanın, Payrudder'ın yerleşik göndericisinin yanında kendi e-posta sağlayıcısı olabilir.",
+        "mailNote": "Bir uygulama, Payrudder'ın yerleşik göndericisinin yanında Nafru Email'de birden çok e-posta hesabı bağlayabilir. İlki varsayılandır.",
         "continue": "Devam",
         "search": "Hesaplarda ara",
         "kind": "Tür",
@@ -4664,15 +4743,16 @@
         },
         "tester": {
           "title": "Bu müşteriyi kim alır?",
-          "intro": "Bir ülke ve para birimi girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
+          "intro": "Bir ülke, bir para birimi ve e-postanın dilini girin: müşteriyi hangi ödeme hesabının çekeceğini, belgelerini hangi e-fatura hesabının keseceğini ve hangi göndericinin e-posta atacağını görün. Hiçbir şey oluşturulmaz.",
           "run": "Kontrol et",
           "byRule": "{account}, {n}. kurala göre",
           "byDefault": "Varsayılan hesap, hiçbir kural eşleşmiyor.",
           "byRuleCountry": "{account}, {country} kuralına göre",
           "eDefault": "{account}, varsayılan hesap",
           "eNone": "Hesap yok: varsayılan belirlenmemiş ve hiçbir kural bu ülkeyi söylemiyor.",
-          "mailOwn": "Kendi e-posta sağlayıcınız",
-          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi"
+          "mailBuiltIn": "Payrudder'ın yerleşik göndericisi",
+          "mailByRule": "{account}, {language} kuralına göre",
+          "mailDefault": "{account}, varsayılan hesap"
         },
         "audit": {
           "title": "Hesapları kim değiştirdi",
@@ -4688,6 +4768,13 @@
             "default_set": "{actor}, {account} hesabını varsayılan yaptı",
             "routing_changed": "{actor} yönlendirme kurallarını değiştirdi"
           }
+        },
+        "mRouting": {
+          "title": "Hangi e-posta hesabı hangi dilde gönderir",
+          "intro": "E-postanın dili belirler (müşterinin dili, yoksa uygulamanın varsayılanı, yoksa İngilizce): burada listelenen bir dildeki e-postalar o hesaptan, diğer tüm e-postalar varsayılan hesaptan gider. Ülke değil dil, çünkü her e-postanın taşıdığı tek alıcı bilgisi budur.",
+          "language": "Dil",
+          "duplicate": "Bir dil yalnızca bir kez listelenebilir.",
+          "mailLanguage": "E-postanın dili"
         }
       },
       "health": {
@@ -6166,7 +6253,9 @@
       },
       "mail_integration": {
         "saved": "E-posta sağlayıcısı bağlandı",
-        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı"
+        "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı",
+        "default_set": "Varsayılan e-posta hesabı değişti",
+        "routing_changed": "E-posta yönlendirmesi değişti"
       },
       "go_live": {
         "billing_profile_saved": "Fatura profili kaydedildi",

@@ -452,6 +452,43 @@
       "coupon": "Gutschein {code}",
       "usage": "Nutzung — {meter} — {rest}",
       "late": "Verspätete Nutzung — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Erste Abbuchung angehalten",
+      "heldPill": "Angehalten",
+      "heldHint": "Diese Rechnung war zur Abbuchung bereit, aber Payrudder hat die Abbuchung nicht an den Zahlungsanbieter geschickt.",
+      "reason": {
+        "customer_blocked": "Der Kunde ist wegen Betrugs oder einer Rückbuchung gesperrt. Die Rechnung bleibt offen und wird abgebucht, sobald die Sperre aufgehoben ist.",
+        "tenant_on_hold": "Payrudder hat diese Umgebung angehalten (gesperrt, eingefroren oder verbannt); solange das gilt, wird nichts abgebucht. Die Rechnung wird abgebucht, wenn die Umgebung wieder freigegeben ist; schreiben Sie dem Support über die Hilfeseite.",
+        "none": "Nichts hält diese Rechnung jetzt noch an. Sie wird bei der nächsten Prüfung abgebucht, oder Sie geben sie jetzt frei.",
+        "unknown": "Payrudder konnte gerade nicht prüfen, warum sie angehalten ist. Versuchen Sie es gleich noch einmal."
+      },
+      "since": "Angehalten seit",
+      "next": "Nächste Prüfung",
+      "release": "Abbuchung freigeben",
+      "void": "Rechnung stornieren",
+      "viewerNote": "Nur ein Inhaber oder Administrator kann sie freigeben oder stornieren.",
+      "confirmRelease": {
+        "title": "Abbuchung von {number} freigeben?",
+        "body": "Payrudder prüft erneut, ob {amount} bei {customer} abgebucht werden darf. Ist der Kunde weiterhin gesperrt, bleibt die Rechnung angehalten und es wird nichts abgebucht.",
+        "accept": "Freigeben"
+      },
+      "confirmVoid": {
+        "title": "{number} stornieren?",
+        "body": "{amount} werden nicht abgebucht. Die Rechnung wird storniert und kann nicht mehr bezahlt werden. Das lässt sich nicht rückgängig machen.",
+        "accept": "Rechnung stornieren"
+      },
+      "released": "Freigegeben: Die Abbuchung von {amount} wurde an den Zahlungsanbieter geschickt.",
+      "stillHeld": "Weiterhin angehalten: Der Kunde ist noch gesperrt oder die Umgebung ist angehalten. Es wurde nichts abgebucht.",
+      "voided": "Die Rechnung ist storniert.",
+      "actionTitle": "Warten auf die Bestätigung der Zahlung durch den Kunden",
+      "actionPill": "Kunde muss bestätigen",
+      "actionHint": "Die Bank des Kunden verlangt eine Bestätigung dieser Zahlung (3-D Secure); ohne den Kunden kann sie nicht abgebucht werden.",
+      "mailedHint": "Payrudder hat veranlasst, dass dem Kunden eine E-Mail mit einem Link zur Rechnungsseite geschickt wird. Die Seite „E-Mail“ zeigt, ob sie angekommen ist.",
+      "mailed": "Kunde per E-Mail gebeten",
+      "nextAsk": "Nächste Abfrage beim Anbieter",
+      "windowEnds": "Gilt als abgelehnt am",
+      "windowHint": "Hat der Kunde bis dahin nicht bestätigt, gilt die Zahlung als abgelehnt und die Wiederholungen beginnen."
     }
   },
   "deadLetters": {
@@ -2875,7 +2912,8 @@
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
         "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut.",
-        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten."
+        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten.",
+        "not_held": "Die erste Abbuchung dieser Rechnung ist nicht angehalten; hier gibt es nichts freizugeben oder zu stornieren."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",
@@ -3151,7 +3189,9 @@
         "unreachable": "Der E-Mail-Anbieter ist nicht erreichbar. Prüfen Sie die Adresse und versuchen Sie es erneut.",
         "not_configured": "E-Mail-Anbieter sind in dieser Installation nicht eingerichtet.",
         "not_connected": "Es ist kein E-Mail-Anbieter verbunden.",
-        "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut."
+        "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+        "default_in_use": "Dies ist das Standard-E-Mail-Konto. Machen Sie zuerst ein anderes Konto zum Standard und entfernen Sie dann dieses.",
+        "unknown_account": "Eine Regel nennt ein E-Mail-Konto, das nicht verbunden ist."
       },
       "saas": {
         "disabled": "Tarife sind in dieser Installation nicht aktiviert.",
@@ -4635,14 +4675,53 @@
         },
         "checkAndConnect": "Prüfen und verbinden",
         "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
-        "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird."
+        "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird.",
+        "identity": {
+          "title": "Absenderidentität",
+          "intro": "Mailanbieter beurteilen E-Mails nach dem, was die Domain des Absenders im DNS veröffentlicht. Diese Prüfung sucht SPF, DKIM und DMARC für die Adresse, von der Ihre E-Mails kommen.",
+          "selector": "DKIM-Selektor (optional)",
+          "selectorHelp": "Der Name, unter dem Ihr Anbieter den DKIM-Schlüssel veröffentlicht. Leer lassen, um DKIM zu überspringen.",
+          "check": "DNS prüfen",
+          "checking": "Wird geprüft…",
+          "domain": "Domain: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Veröffentlicht",
+            "weak": "Veröffentlicht, aber schwach",
+            "missing": "Nicht gefunden",
+            "invalid": "Ungültig",
+            "unchecked": "Nicht geprüft",
+            "error": "Konnte nicht geprüft werden"
+          },
+          "detail": {
+            "hard_fail": "Weist andere Absender ab (-all)",
+            "soft_fail": "Markiert andere Absender als verdächtig (~all)",
+            "neutral": "Sagt nichts über andere Absender (?all)",
+            "pass_all": "Erlaubt jeden Absender (+all)",
+            "no_all": "Hat keine abschließende Regel",
+            "multiple": "Mehr als ein SPF-Eintrag: Empfänger werten das als Fehler",
+            "policy_none": "Richtlinie none: Fehlschläge werden nur gemeldet",
+            "policy_none_inherited": "Richtlinie none, von der übergeordneten Domain",
+            "quarantine": "Richtlinie: quarantine",
+            "quarantine_inherited": "Richtlinie: quarantine, von der übergeordneten Domain",
+            "reject": "Richtlinie: reject",
+            "reject_inherited": "Richtlinie: reject, von der übergeordneten Domain",
+            "no_selector": "Selektor eingeben, um zu prüfen",
+            "revoked": "Der Schlüssel wurde widerrufen (leeres p=)"
+          },
+          "note": "Dies liest nur das öffentliche DNS. Es sagt nicht, ob die Einträge Ihren Anbieter nennen, und nicht, ob Ihr Anbieter die Domain verifiziert hat. Eine Änderung kann Stunden brauchen, bis sie überall gilt."
+        }
       },
       "accounts": {
         "title": "Konten",
         "intro": "Alle Konten dieser App in einer Liste: Zahlungen, E-Rechnung und E-Mail. Jede Art kann mehrere Konten haben, eines ist der Standard, und die Regeln darunter bestimmen, welches Konto welche Kunden übernimmt.",
         "add": "Integration hinzufügen",
         "addIntro": "Wählen Sie, was Sie verbinden: zuerst die Art, dann den Anbieter. Der nächste Schritt fragt die Zugangsdaten ab.",
-        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder einen eigenen E-Mail-Anbieter haben.",
+        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder mehrere E-Mail-Konten bei Nafru Email verbinden. Das erste ist der Standard.",
         "continue": "Weiter",
         "search": "Konten durchsuchen",
         "kind": "Art",
@@ -4664,15 +4743,16 @@
         },
         "tester": {
           "title": "Wer übernimmt diesen Kunden?",
-          "intro": "Geben Sie ein Land und eine Währung ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
+          "intro": "Geben Sie ein Land, eine Währung und die Sprache der E-Mail ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
           "run": "Prüfen",
           "byRule": "{account}, nach Regel {n}",
           "byDefault": "Das Standardkonto, keine Regel passt.",
           "byRuleCountry": "{account}, nach der Regel für {country}",
           "eDefault": "{account}, das Standardkonto",
           "eNone": "Kein Konto: Es ist kein Standard gesetzt und keine Regel nennt dieses Land.",
-          "mailOwn": "Ihr eigener E-Mail-Anbieter",
-          "mailBuiltIn": "Der eingebaute Absender von Payrudder"
+          "mailBuiltIn": "Der eingebaute Absender von Payrudder",
+          "mailByRule": "{account}, nach der Regel für {language}",
+          "mailDefault": "{account}, das Standardkonto"
         },
         "audit": {
           "title": "Wer die Konten geändert hat",
@@ -4688,6 +4768,13 @@
             "default_set": "{actor} hat {account} zum Standard gemacht",
             "routing_changed": "{actor} hat die Routing-Regeln geändert"
           }
+        },
+        "mRouting": {
+          "title": "Welches E-Mail-Konto in welcher Sprache sendet",
+          "intro": "Die Sprache der E-Mail entscheidet (die des Kunden, sonst die Standardsprache der App, sonst Englisch): E-Mails in einer hier genannten Sprache gehen über dieses Konto, alle anderen über das Standardkonto. Die Sprache und nicht das Land, weil sie das Einzige ist, was jede E-Mail über den Empfänger mitbringt.",
+          "language": "Sprache",
+          "duplicate": "Eine Sprache kann nur einmal vorkommen.",
+          "mailLanguage": "Sprache der E-Mail"
         }
       },
       "health": {
@@ -6166,7 +6253,9 @@
       },
       "mail_integration": {
         "saved": "E-Mail-Anbieter verbunden",
-        "removed": "E-Mail-Anbieter getrennt"
+        "removed": "E-Mail-Anbieter getrennt",
+        "default_set": "Standard-E-Mail-Konto geändert",
+        "routing_changed": "E-Mail-Zuordnung geändert"
       },
       "go_live": {
         "billing_profile_saved": "Rechnungsprofil gespeichert",

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -72,6 +73,21 @@ func buyer(typ einvoice.DocumentType) einvoice.Party {
 		EInvoiceRegistered: typ == einvoice.TypeEFatura}
 }
 
+// CreditNoteRequest builds a valid issue request for a credit note of the type that corrects the invoice issued under originalNumber, the way the worker would send
+// it: Kind credit note, a Reference to the original's legal number, the credited lines.
+func CreditNoteRequest(t testing.TB, typ einvoice.DocumentType, docUUID, originalNumber string) einvoice.IssueRequest {
+	t.Helper()
+	req := Request(t, typ, docUUID)
+	doc := req.Doc
+	doc.Kind, doc.Number, doc.Reason = einvoice.KindCreditNote, "CN-2026-000001", "conformance: a refund"
+	doc.Reference = &einvoice.Reference{Number: originalNumber, IssueDate: doc.IssueDate}
+	body, err := ubl.Build(doc)
+	if err != nil {
+		t.Fatalf("conformance: the sample credit note does not build: %v", err)
+	}
+	return einvoice.IssueRequest{Doc: doc, UBL: body}
+}
+
 // failure is the unwinding signal of check.Fatalf.
 type failure struct{}
 
@@ -104,6 +120,9 @@ func checks(caps einvoice.Capabilities) []struct {
 		out = append(out, entry{"issue-" + string(typ), func(c *check) { issueCheck(c, typ) }})
 	}
 	return append(out,
+		entry{"issue-concurrent-is-one-document", concurrentIssueCheck},
+		entry{"credit-note", creditNoteCheck},
+		entry{"cancel-unknown-is-not-found", cancelUnknownCheck},
 		entry{"issue-unsupported-type", unsupportedTypeCheck},
 		entry{"status-unknown-is-not-found", unknownCheck},
 		entry{"async-confirmation", asyncCheck},
@@ -411,5 +430,97 @@ func contextCheck(c *check) {
 	var perm *einvoice.PermanentError
 	if err == nil || errors.As(err, &perm) {
 		c.Errorf("an issue with a cancelled context must fail but not as a *PermanentError, got %v", err)
+	}
+}
+
+// concurrentIssueCheck (contract 2): the worker may deliver the same command twice at the same moment (a redelivery, two replicas). Issuing one UUID from several
+// goroutines at once must leave one document at the integrator, and every caller must be told about the same one: a second legal document under one UUID is the failure
+// this contract exists to prevent. It needs Created (the fake's count of documents).
+func concurrentIssueCheck(c *check) {
+	if c.h.Created == nil {
+		return
+	}
+	p := c.h.New(c.tb)
+	typ := p.Capabilities().Types[0]
+	req := Request(c.tb, typ, newUUID(c, "concurrent"))
+	const callers = 8
+	results := make([]einvoice.IssueResult, callers)
+	errs := make([]error, callers)
+	var wg sync.WaitGroup
+	for i := range callers {
+		wg.Add(1)
+		go func() { // no errtrack: test support; a panic in the adapter under test fails the test run
+			defer wg.Done()
+			results[i], errs[i] = p.Issue(ctxBg(), req)
+		}()
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			c.Fatalf("a concurrent Issue (caller %d): %v", i, err)
+		}
+	}
+	if n := c.h.Created(); n != 1 {
+		c.Errorf("%d callers issuing one UUID at once left %d documents at the integrator, want 1", callers, n)
+	}
+	for i, r := range results {
+		if r.UUID != results[0].UUID || r.ExternalID != results[0].ExternalID || (r.LegalNumber != "" && results[0].LegalNumber != "" && r.LegalNumber != results[0].LegalNumber) {
+			c.Errorf("caller %d was told about another document than caller 0: %+v and %+v", i, r.Ref, results[0].Ref)
+		}
+	}
+}
+
+// creditNoteCheck (contract 5): a credit note is issued like an invoice, under a UUID of its own, with a Reference to the legal number of the original, for every type the
+// adapter sends; it is a second document at the integrator, never the original again, and it has the shape of any answer.
+func creditNoteCheck(c *check) {
+	p := c.h.New(c.tb)
+	for _, typ := range p.Capabilities().Types {
+		inv, err := p.Issue(ctxBg(), Request(c.tb, typ, newUUID(c, "credit-original-"+string(typ))))
+		if err != nil {
+			c.Fatalf("Issue %s: %v", typ, err)
+		}
+		before := 0
+		if c.h.Created != nil {
+			before = c.h.Created()
+		}
+		original := inv.LegalNumber
+		if original == "" {
+			original = "INV-2026-000001" // pending: the worker would not send the credit note yet, the reference is Payrudder's own number then
+		}
+		req := CreditNoteRequest(c.tb, typ, newUUID(c, "credit-note-"+string(typ)), original)
+		cn, err := p.Issue(ctxBg(), req)
+		if err != nil {
+			c.Errorf("%s: Issue of a credit note: %v", typ, err)
+			continue
+		}
+		if cn.UUID != req.Doc.UUID || cn.UUID == inv.UUID || cn.Type != typ || cn.ExternalID == "" || cn.ExternalID == inv.ExternalID {
+			c.Errorf("%s: a credit note is a document of its own: %+v, the invoice %+v", typ, cn.Ref, inv.Ref)
+		}
+		if cn.State != einvoice.StatePending && cn.State != einvoice.StateIssued {
+			c.Errorf("%s: a credit note's answer is pending or issued, not %q", typ, cn.State)
+		}
+		if cn.State == einvoice.StateIssued && cn.LegalNumber == "" {
+			c.Errorf("%s: an issued credit note has a legal number", typ)
+		}
+		if cn.LegalNumber != "" && cn.LegalNumber == inv.LegalNumber {
+			c.Errorf("%s: the credit note has the invoice's legal number %q", typ, cn.LegalNumber)
+		}
+		if c.h.Created != nil && c.h.Created() != before+1 {
+			c.Errorf("%s: a credit note is one more document at the integrator: %d before, %d after", typ, before, c.h.Created())
+		}
+	}
+}
+
+// cancelUnknownCheck (contract 1 and 5): cancelling a document the integrator does not know is ErrNotFound (or ErrUnsupported where the adapter cannot cancel at all),
+// never a success, which would record a cancel of nothing, and never a permanent failure of the call.
+func cancelUnknownCheck(c *check) {
+	p := c.h.New(c.tb)
+	caps := p.Capabilities()
+	err := p.Cancel(ctxBg(), einvoice.Ref{UUID: newUUID(c, "cancel-unknown"), ExternalID: "unknown", Type: caps.Types[0]}, "conformance")
+	if !errors.Is(err, einvoice.ErrNotFound) && !errors.Is(err, einvoice.ErrUnsupported) {
+		c.Errorf("Cancel of a document nobody issued must be ErrNotFound (or ErrUnsupported), got %v", err)
+	}
+	if !caps.CanCancel && !errors.Is(err, einvoice.ErrUnsupported) {
+		c.Errorf("CanCancel is false: Cancel must be ErrUnsupported even for an unknown document, got %v", err)
 	}
 }

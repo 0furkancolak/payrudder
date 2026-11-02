@@ -1473,6 +1473,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inbound/mail-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The mail provider's webhook of delivery events (bounces, complaints, deliveries). Public; protected by the provider's signature
+         * @description The webhook of the mail provider's events (Resend, or Nafru if its webhooks are the same: UNVERIFIED), signed with Svix (`svix-id`, `svix-timestamp`, `svix-signature`; the secret is `PAYRUDDER_MAIL_WEBHOOK_SECRET`, `whsec_...`; a timestamp more than five minutes from the clock is refused). `email.bounced` (a `bounce.type` of `Permanent` is a hard bounce, anything else soft), `email.complained`, `email.delivered` and `email.delivery_delayed` become the notifier's events, one for each recipient: a hard bounce and a complaint put the address on the suppression list of the tenant the mail was sent for. Every other event type is accepted and ignored. 401 when the signature does not verify, 503 when the notifier cannot be reached (the provider sends it again), 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET and the notifier's address are set.
+         */
+        post: operations["inboundMailEvents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/accounting/summary": {
         parameters: {
             query?: never;
@@ -3000,6 +3020,66 @@ export interface paths {
         get: operations["getInvoicePdf"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{id}/payment-wait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+         * @description Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+         */
+        get: operations["getInvoicePaymentWait"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+         * @description Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+         */
+        post: operations["releaseHeldInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void an invoice whose first charge is held
+         * @description Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+         */
+        post: operations["voidHeldInvoice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4815,18 +4895,71 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The tenant's own e-mail provider (Nafru Email) for the app's live environment, if one is connected (any member; the key is never in the answer) */
+        /**
+         * The tenant's own e-mail provider accounts (Nafru Email) for the app's live environment, the default first (any member; the key is never in the answer)
+         * @description An app can connect several accounts at one provider, each named by a key (`nafru`, or `nafru~eu` with a label). `integration` is the default account and `accounts`
+         *     lists every one. With none connected the mail goes through Payrudder's built-in sender.
+         */
         get: operations["appGetMailIntegration"];
         /**
-         * Connect (or replace) the live environment's own e-mail provider (the owner only)
+         * Connect (or replace) one of the live environment's own e-mail accounts (the owner only)
          * @description From then on the customer mail of the live environment (invoices, receipts, alerts) is sent through it, from the given address. The provider is asked
          *     to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed, shown once
-         *     and never echoed back. The sandbox has none: its mail always goes to the sandbox inbox.
+         *     and never echoed back. A `label` connects a further account at the same provider; saving a key that exists replaces it. The first account is the default, and so is
+         *     one saved with `make_default`. The sandbox has none: its mail always goes to the sandbox inbox. Recorded in the audit trail of the person's account.
          */
         put: operations["appPutMailIntegration"];
         post?: never;
-        /** Disconnect the own e-mail provider; the mail goes through Payrudder's built-in sender again (the owner only) */
+        /**
+         * Disconnect an own e-mail account; with none left the mail goes through Payrudder's built-in sender again (the owner only)
+         * @description The account named by `account` (the default when absent). The default account cannot be removed while others exist (409 plans.mail_integration.default_in_use). The rules that name the account go with it.
+         */
         delete: operations["appRemoveMailIntegration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make one of the live e-mail accounts the default (the owner only)
+         * @description The default is the account a mail goes through when no rule names its language. The account is not touched, so no key is sent. The move is recorded for the person.
+         */
+        post: operations["appSetMailDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The rules that send the mail of a language through an e-mail account
+         * @description Any member reads it. A mail in a language no rule names goes through the default account.
+         */
+        get: operations["appMailRouting"];
+        /**
+         * Replace the e-mail routing rules (the owner only)
+         * @description A language is named once and every rule names an account the app has (400 plans.mail_integration.unknown_account). The language of a mail is the customer's, else the
+         *     app's default language, else English. DEFAULT (not agreed): by language; the country of a customer is not on the mail. The change is recorded for the person.
+         */
+        put: operations["appSetMailRouting"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4842,10 +4975,33 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Check the stored key at the provider and send one test mail through it (the owner only)
-         * @description A provider problem is ok false with its kind, not an HTTP error.
+         * Check the stored key of an account at the provider and send one test mail through it (the owner only)
+         * @description The account named by `account` (the default when absent). A provider problem is ok false with its kind, not an HTTP error.
          */
         post: operations["appTestMailIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the domain of the app's own e-mail sender publishes in DNS (SPF, DKIM, DMARC)
+         * @description Looks up three names for the domain of the address the live environment's own e-mail provider sends from, and changes nothing. Any member may ask; it is limited like a write because each
+         *     call is outbound lookups. `selector` is the DKIM selector the provider publishes its key under (the DKIM check is `unchecked` without one: it is not guessed, and Nafru's selector is
+         *     UNVERIFIED). Each check has a `status` (`ok`, `weak`, `missing`, `invalid`, `unchecked`, `error`) and a `detail` word. It says nothing about whether the records name the provider that sends,
+         *     nor about the provider's own verification of the domain. 404 `plans.mail_integration.not_connected` for an app that sends through Payrudder's own sender.
+         */
+        get: operations["appMailIdentity"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7355,6 +7511,33 @@ export interface components {
             last_error: string;
             version: number;
         };
+        PaymentWait: {
+            /**
+             * @description The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED
+             * @example PAYMENT_HELD
+             */
+            state: string;
+            /**
+             * Format: date-time
+             * @description When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered)
+             */
+            since_time?: string;
+            /**
+             * Format: date-time
+             * @description When Payrudder looks again (the next pass over held charges, or the next question to the provider)
+             */
+            next_check_time?: string;
+            /**
+             * @description PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked
+             * @enum {string}
+             */
+            hold_reason?: "customer_blocked" | "tenant_on_hold" | "none";
+            /**
+             * Format: date-time
+             * @description PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer
+             */
+            window_ends_time?: string;
+        };
         InvoiceLine: {
             line_no: number;
             /** @enum {string} */
@@ -9341,13 +9524,36 @@ export interface components {
             /** @enum {string} */
             problem?: "refused" | "unreachable";
         };
+        /** @description An e-mail account: the provider alone (nafru) or with a label (nafru~eu). */
+        MailAccountKey: string;
+        AppSetMailDefaultRequest: {
+            account: components["schemas"]["MailAccountKey"];
+        };
+        MailRoutingRules: {
+            rules: {
+                /**
+                 * @description The language of the mail.
+                 * @enum {string}
+                 */
+                language: "en" | "tr" | "de" | "fr" | "es" | "ar";
+                account: components["schemas"]["MailAccountKey"];
+            }[];
+        };
         AppGetMailIntegrationResponse: {
+            /** @description At least one account is connected. */
             connected: boolean;
+            /** @description The default account. */
             integration: components["schemas"]["MailIntegration"] | null;
+            /** @description Every account */
+            accounts: components["schemas"]["MailIntegration"][];
         };
         AppPutMailIntegrationRequest: {
             /** @enum {string} */
             provider: "nafru";
+            /** @description Connects a further account at the same provider; empty is the primary account. */
+            label?: string;
+            /** @description Make this account the default. The first account is the default whatever this says. */
+            make_default?: boolean;
             /**
              * @description The Resend-compatible API address (https)
              * @example https://api.nafru.example
@@ -9363,6 +9569,25 @@ export interface components {
         AppTestMailIntegrationRequest: {
             /** Format: email */
             to: string;
+            account?: components["schemas"]["MailAccountKey"];
+        };
+        MailIdentityCheck: {
+            /** @enum {string} */
+            status: "ok" | "weak" | "missing" | "invalid" | "unchecked" | "error";
+            /** @description hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked */
+            detail?: string;
+            /** @description The record that was found */
+            record?: string;
+            selector?: string;
+        };
+        MailIdentity: {
+            from: string;
+            domain: string;
+            /** Format: date-time */
+            checked_time: string;
+            spf: components["schemas"]["MailIdentityCheck"];
+            dkim: components["schemas"]["MailIdentityCheck"];
+            dmarc: components["schemas"]["MailIdentityCheck"];
         };
         AppTestMailIntegrationResponse: {
             ok: boolean;
@@ -13619,10 +13844,15 @@ export interface components {
          * @enum {string}
          */
         ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write" | "contracts:read" | "contracts:write" | "audit:read";
-        /** @description The tenant's own e-mail provider. The key is never returned. */
+        /** @description One of the tenant's own e-mail provider accounts. The key is never returned. */
         MailIntegration: {
             /** @enum {string} */
             provider: "nafru";
+            account: components["schemas"]["MailAccountKey"];
+            /** @description The part of the key after the tilde; empty for the primary account. */
+            label: string;
+            /** @description The account a mail goes through when no rule names its language. */
+            is_default: boolean;
             base_url: string;
             from: string;
             /** @description The last four characters of the stored key */
@@ -16003,6 +16233,43 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["Error"];
+        };
+    };
+    inboundMailEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Understood */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How many delivery events the body held */
+                        events: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            /** @description The signature is missing or does not verify */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     getAccountingSummary: {
@@ -18946,6 +19213,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignedUrl"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getInvoicePaymentWait: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentWait"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    releaseHeldInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSaga"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    voidHeldInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSaga"];
                 };
             };
             404: components["responses"]["Error"];
@@ -21981,7 +22319,9 @@ export interface operations {
     };
     appRemoveMailIntegration: {
         parameters: {
-            query?: never;
+            query?: {
+                account?: components["schemas"]["MailAccountKey"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -21997,6 +22337,92 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appSetMailDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppSetMailDefaultRequest"];
+            };
+        };
+        responses: {
+            /** @description The default has moved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appMailRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailRoutingRules"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetMailRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailRoutingRules"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailRoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
@@ -22029,6 +22455,33 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appMailIdentity: {
+        parameters: {
+            query?: {
+                selector?: string;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailIdentity"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

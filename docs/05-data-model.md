@@ -160,8 +160,11 @@ CREATE TABLE api_keys (
   revoked_at  timestamptz
 );  -- a trigger refuses a key whose env disagrees with its tenant's, and a live key of a tenant that is not active
 CREATE INDEX ON api_keys (tenant_id);
--- phase 53: a live tenant's own e-mail provider (Nafru Email), one row per tenant, forced RLS. The API key is sealed (secretbox, AAD "mail-integration:<tenant>").
-CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text);
+-- phase 53, plan 10: a live tenant's own e-mail provider accounts (Nafru Email), forced RLS. An account is named by its key in `provider` ("nafru", "nafru~eu"); one per tenant is the
+-- default (partial unique index). The API key is sealed (secretbox, AAD "mail-integration:<tenant>", for a labelled account "...:<tenant>:<key>"). Migration 00027.
+CREATE TABLE tenant_mail_integrations (tenant_id uuid, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text, is_default boolean, PRIMARY KEY (tenant_id, provider));
+-- which account sends the mail of a language (en tr de fr es ar); a rule is deleted with the account it names. A language with no rule goes through the default account.
+CREATE TABLE tenant_mail_routing (tenant_id uuid, language text, account text, updated_at timestamptz, PRIMARY KEY (tenant_id, language), FOREIGN KEY (tenant_id, account) REFERENCES tenant_mail_integrations ON DELETE CASCADE);
 -- the trial-ending reminder's "already reminded" marker, forced RLS. Keyed by the customer and the end of the trial, so a plan change that keeps the end does not remind again
 -- and an extended trial does. Customer-side history: a sandbox reset deletes it.
 CREATE TABLE subscription_trial_notices (tenant_id uuid NOT NULL, customer_id uuid NOT NULL, trial_ends_at timestamptz NOT NULL, subscription_id uuid NOT NULL, notified_at timestamptz NOT NULL DEFAULT now(),
@@ -667,6 +670,10 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 -- unless the transaction names the tenant in payrudder.sandbox_reset (the sandbox reset, after it found no attempt or ledger row of the live environment; a row whose environment
 -- is not 'sandbox' is refused even then) or payrudder.tenant_move (pkg/pgxx Move). payments_system has no UPDATE on them either. Neither table can be truncated
 -- (statement trigger ledger_no_truncate, hint ledger_table_truncate, migration 00009, tenant 00010), whoever asks.
+-- einvoice_issuances refuses every DELETE the same way (migration 00014, tenant 00015, plan 22 review finding 8): only payrudder.sandbox_reset for a row of the sandbox environment,
+-- or payrudder.tenant_move. The reset asks the database first (ResetLiveRowCount) whether the tenant has a row of a live environment in the ledger, the attempts, the kept
+-- discrepancies, the settlement lines, the e-invoice issuances or the provider subscriptions, or any notification while it has a live provider account (a notification has no
+-- environment of its own), and refuses (admin.sandbox.live_refused) before it deletes anything.
 -- payments_app holds no privilege on any table of payments_db (migration 00007, tenant 00008): payments-worker connects as payments_system only, and these tables have no
 -- row-level security, so a SELECT of the app role would read every tenant's rows. The role exists because the init scripts make one per service; the integration test lists the tables it can read: none.
 

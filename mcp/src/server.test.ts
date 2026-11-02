@@ -14,14 +14,14 @@ interface Seen {
   body: string | null;
 }
 
-async function connect(opts: { allowWrites?: boolean; allowPersonalData?: boolean; answer?: (u: URL, init: RequestInit) => Response; audit?: (r: AuditRecord) => void }) {
+async function connect(opts: { allowWrites?: boolean; allowPersonalData?: boolean; answer?: (u: URL, init: RequestInit) => Response; audit?: (r: AuditRecord) => void; rateLimit?: () => number }) {
   const seen: Seen[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     const url = new URL(String(input));
     seen.push({ method: init.method ?? "GET", url: url.pathname + url.search, auth: new Headers(init.headers).get("Authorization"), body: (init.body as string | undefined) ?? null });
     return opts.answer ? opts.answer(url, init) : new Response(JSON.stringify({ ok: true }), { status: 200 });
   }) as typeof fetch;
-  const server = createServer({ api: createApi({ baseUrl: "https://api.example/", apiKey: "qk_test_SECRET", fetch: fakeFetch }), allowWrites: opts.allowWrites, allowPersonalData: opts.allowPersonalData, keyHint: "qk_test_SECRET", ...(opts.audit ? { audit: opts.audit } : {}) });
+  const server = createServer({ api: createApi({ baseUrl: "https://api.example/", apiKey: "qk_test_SECRET", fetch: fakeFetch }), allowWrites: opts.allowWrites, allowPersonalData: opts.allowPersonalData, keyHint: "qk_test_SECRET", ...(opts.audit ? { audit: opts.audit } : {}), ...(opts.rateLimit ? { rateLimit: opts.rateLimit } : {}) });
   const [a, b] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(a), client.connect(b)]);
@@ -34,7 +34,7 @@ describe("tools offered", () => {
     const { client } = await connect({});
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(READ_TOOL_SPECS.map((t) => t.name).sort());
-    expect(tools).toHaveLength(25);
+    expect(tools).toHaveLength(30);
     expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
   });
 
@@ -239,7 +239,8 @@ describe("resources", () => {
   it("offers no internal document", async () => {
     const { client } = await connect({});
     const uris = (await client.listResources()).resources.map((r) => r.uri);
-    for (const internal of ["architecture", "data-model", "vision", "plans"]) expect(uris.join(" ")).not.toContain(internal);
+    // By the whole name of the page: "plans" is the repository's folder of work plans, and a public page may have the word in its name (plans-and-packages).
+    for (const internal of ["architecture", "data-model", "vision", "plans"]) expect(uris).not.toContain(`payrudder://docs/${internal}`);
   });
 });
 
@@ -291,5 +292,29 @@ describe("the audit log", () => {
     const { client, seen } = await connect({ audit: () => { throw new Error("disk full"); } });
     expect((await client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
     expect(seen).toHaveLength(1);
+  });
+});
+
+describe("the limit per key", () => {
+  it("refuses a call over the limit with the seconds to wait, does not call the API, and writes an audit record", async () => {
+    const records: AuditRecord[] = [];
+    let wait = 0;
+    const { client, seen } = await connect({ audit: (r) => records.push(r), rateLimit: () => wait });
+    expect((await client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
+    wait = 7;
+    const r = await client.callTool({ name: "list_meters", arguments: {} });
+    expect(r.isError).toBe(true);
+    expect(text(r)).toMatch(/^mcp\.rate_limited: .*Wait 7 s/);
+    expect(seen).toHaveLength(1);
+    expect(records.map((x) => [x.ok, x.error])).toEqual([[true, undefined], [false, "mcp.rate_limited"]]);
+    wait = 0;
+    expect((await client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
+    expect(seen).toHaveLength(2);
+  });
+
+  it("limits a write too", async () => {
+    const { client, seen } = await connect({ allowWrites: true, rateLimit: () => 3 });
+    expect((await client.callTool({ name: "create_customer", arguments: { external_id: "x", name: "X", email: "x@example.com" } })).isError).toBe(true);
+    expect(seen).toHaveLength(0);
   });
 });

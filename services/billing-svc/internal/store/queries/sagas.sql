@@ -6,6 +6,15 @@ SELECT id FROM invoice_sagas WHERE tenant_id = @tenant_id AND invoice_id = @invo
 -- name: GetSaga :one
 SELECT id, invoice_id, state, version, attempt, dunning_attempt, last_error FROM invoice_sagas WHERE tenant_id = @tenant_id AND id = @id;
 
+-- name: GetSagaWait :one
+-- What the payment of an invoice waits for: the saga's state, when Payrudder looks again, when the saga entered the state (the latest entry from another state) and the customer
+-- the payment gate is asked about.
+SELECT s.id, s.state, s.next_attempt_at,
+       COALESCE((SELECT max(e.at) FROM saga_events e WHERE e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = s.state AND e.from_state <> s.state), s.updated_at)::timestamptz AS since,
+       COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id
+FROM invoice_sagas s JOIN invoices i ON i.tenant_id = s.tenant_id AND i.id = s.invoice_id
+WHERE s.tenant_id = @tenant_id AND s.invoice_id = @invoice_id;
+
 -- name: ListSagaEvents :many
 SELECT seq, from_state, to_state, cause, command_id, at FROM saga_events WHERE tenant_id = @tenant_id AND saga_id = @saga_id ORDER BY seq;
 

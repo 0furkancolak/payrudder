@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -25,6 +26,9 @@ type Deps struct {
 	Ledger store.Ledger
 	// Disputes lists the cases a customer opened with their bank.
 	Disputes store.Disputes
+	// Attempts and Window answer how long a payment that waits for the customer has: Window is PAYMENTS_TRANSFER_WINDOW_DAYS, the one the status query judges by.
+	Attempts store.Attempts
+	Window   time.Duration
 }
 
 // Limit reads the ?limit= of a listing: 1 to 1000, 100 when absent.
@@ -87,4 +91,34 @@ func Disputes(ctx context.Context, d Deps, tenant uuid.UUID, invoice, outcome st
 		return nil, fmt.Errorf("list the disputes: %w", err)
 	}
 	return rows, nil
+}
+
+// ChargeWindow is the window a payment that waits for the customer (3-D Secure) has: when the invoice's newest charge was first tried and when the status query starts to
+// judge it declined (authentication_required), the same moment handler.providerStatus uses. Found is false for an invoice with no charge attempt.
+type ChargeWindow struct {
+	Found      bool       `json:"found"`
+	Started    *time.Time `json:"started_time,omitempty"`
+	WindowEnds *time.Time `json:"window_ends_time,omitempty"`
+}
+
+// Window reads the window of an invoice's newest charge.
+func Window(ctx context.Context, d Deps, tenant uuid.UUID, invoice string) (ChargeWindow, error) {
+	inv, err := uuid.Parse(invoice)
+	if err != nil {
+		return ChargeWindow{}, refuse.New(http.StatusBadRequest, "payments.invoice.bad_ids", "the invoice must be a UUID")
+	}
+	started, found, err := d.Attempts.LatestChargeStart(ctx, tenant, inv)
+	if err != nil {
+		return ChargeWindow{}, fmt.Errorf("read the start of the newest charge: %w", err)
+	}
+	if !found {
+		return ChargeWindow{}, nil
+	}
+	started = started.UTC()
+	out := ChargeWindow{Found: true, Started: &started}
+	if d.Window > 0 {
+		end := started.Add(d.Window)
+		out.WindowEnds = &end
+	}
+	return out, nil
 }

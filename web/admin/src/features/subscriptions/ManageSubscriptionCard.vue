@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useCanWrite } from "@/shared/lib/access";
 import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -29,6 +30,8 @@ import ProviderRunPanel from "./ProviderRunPanel.vue";
 const props = defineProps<{ tenantId: string; subscription: Subscription; packages: Package[]; environment: Environment; operator: boolean; act: SubscriptionActions }>();
 const { t, te } = useI18n();
 const fmt = useFormat();
+// A viewer reads the subscription and its usage; every control that changes it is the owner's and the administrator's (the server refuses a viewer's write).
+const canWrite = useCanWrite();
 
 const can = computed(() => subscriptionAbilities(props.subscription));
 const trialLeft = computed(() => trialDaysLeft(props.subscription));
@@ -69,7 +72,7 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
     </p>
     <p v-if="can.providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: label(t, te, "provider", subscription.provider) }) }}</p>
     <ProviderRunPanel v-if="can.providerRuns && operator && !subscription.end_time" :subscription="subscription" :packages="packages" :tenant-id="tenantId" :environment="environment" />
-    <div v-else-if="!can.providerRuns" class="flex flex-wrap gap-2">
+    <div v-else-if="!can.providerRuns && canWrite" class="flex flex-wrap gap-2">
       <Button v-if="state === 'active'" variant="outline" :disabled="act.pause.isPending.value" @click="act.pause.mutate(id)">{{ t("billing.subscriptions.pause") }}</Button>
       <Button v-if="state === 'paused'" variant="outline" :disabled="act.resume.isPending.value" @click="act.resume.mutate(id)">{{ t("billing.subscriptions.resume") }}</Button>
       <Button v-if="!subscription.end_time || subscription.cancel_at_period_end" variant="outline" @click="subscription.cancel_at_period_end ? act.withdrawCancel.mutate(id) : act.scheduleCancel.mutate(id)">
@@ -82,10 +85,10 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
       {{ t("billing.subscriptions.credited", { amount: fmt.money(credited, subscription.currency) }) }}
     </p>
 
-    <div v-if="can.advanceActions" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.subscriptions.coupon.label')">
+    <div v-if="can.advanceActions && (canWrite || subscription.coupon_code)" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.subscriptions.coupon.label')">
       <template v-if="subscription.coupon_code">
         <Badge variant="secondary" class="mono">{{ subscription.coupon_code }}</Badge>
-        <Button size="sm" variant="outline" :disabled="act.removeCoupon.isPending.value" @click="act.removeCoupon.mutate(id)">{{ t("billing.subscriptions.coupon.remove") }}</Button>
+        <Button v-if="canWrite" size="sm" variant="outline" :disabled="act.removeCoupon.isPending.value" @click="act.removeCoupon.mutate(id)">{{ t("billing.subscriptions.coupon.remove") }}</Button>
       </template>
       <template v-else>
         <Input v-model="couponToApply" class="w-48" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
@@ -94,8 +97,8 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
         </Button>
       </template>
     </div>
-    <ChangePanel v-if="can.advanceActions" :subscription="subscription" :packages="packages" :tenant-id="tenantId" />
-    <div v-else-if="can.manageHere" class="grid gap-3 sm:grid-cols-[1fr_auto]">
+    <ChangePanel v-if="can.advanceActions && (canWrite || subscription.scheduled_change)" :subscription="subscription" :packages="packages" :tenant-id="tenantId" />
+    <div v-else-if="canWrite && can.manageHere" class="grid gap-3 sm:grid-cols-[1fr_auto]">
       <PackageSelect v-model="newPlan" :packages="packages" lock-placeholder :disabled-code="subscription.plan_code" :label="t('billing.subscriptions.newPackage')" :placeholder="t('billing.subscriptions.newPackage')" />
       <Button variant="outline" :disabled="newPlan === '' || act.changePlan.isPending.value" @click="act.changePlan.mutate({ id, plan_code: newPlan })">
         {{ t("billing.subscriptions.changePlan") }}
