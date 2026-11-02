@@ -45,7 +45,7 @@ const BUYER: ProviderField[] = [
 export const PROVIDER_FIELDS: Record<FieldedProvider, readonly ProviderField[]> = {
   iyzico: [{ path: "api_key", secret: true }, { path: "secret_key", secret: true }, ...BUYER],
   paddle: [{ path: "api_key", secret: true }, { path: "webhook_secret", secret: true }, { path: "usage_product_id", pattern: /^pro_[A-Za-z0-9]+$/ }],
-  stripe: [{ path: "api_key", secret: true, pattern: /^[sr]k_(live|test)_[A-Za-z0-9]+$/ }, { path: "webhook_secret", secret: true, pattern: /^whsec_[A-Za-z0-9]+$/ }],
+  stripe: [{ path: "api_key", secret: true, pattern: /^[sr]k_(live|test)_[A-Za-z0-9]+$/ }, { path: "webhook_secret", secret: true, optional: true, pattern: /^whsec_[A-Za-z0-9]+$/ }],
 };
 
 export type FieldProblem = "required" | "badFormat";

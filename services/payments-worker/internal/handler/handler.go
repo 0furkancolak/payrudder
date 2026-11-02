@@ -396,8 +396,8 @@ func succeededReply(chargeID string) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: chargeID}}}
 }
 
-func declinedReply(code string) *commandsv1.ReplyEnvelope {
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: code}}}
+func declinedReply(code string, final bool) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentDeclined{PaymentDeclined: &commandsv1.PaymentDeclined{DeclineCode: code, Final: final}}}
 }
 
 func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment) (*commandsv1.ReplyEnvelope, error) {
@@ -579,7 +579,7 @@ func (h *Handler) askBeforeCharging(ctx context.Context, prov payments.PaymentPr
 	case payments.StateDeclined:
 		entry.Status, entry.Detail = store.StatusDeclined, st.DeclineCode
 		h.record(ctx, entry)
-		return declinedReply(st.DeclineCode), nil
+		return declinedReply(st.DeclineCode, st.Final), nil
 	}
 	return nil, nil
 }
@@ -598,7 +598,7 @@ func (h *Handler) chargeOutcome(ctx context.Context, entry store.LedgerEntry, re
 	case errors.As(err, &declined):
 		entry.Status, entry.Detail = store.StatusDeclined, declined.Code
 		h.record(ctx, entry)
-		return declinedReply(declined.Code), nil
+		return declinedReply(declined.Code, declined.Final), nil
 	default:
 		return providerFailure(err)
 	}
@@ -759,7 +759,7 @@ func statusFromProvider(st payments.StatusResult) *commandsv1.ReplyEnvelope {
 	case payments.StateSucceeded:
 		reply.State = commandsv1.PaymentStatus_STATE_SUCCEEDED
 	case payments.StateDeclined:
-		reply.State = commandsv1.PaymentStatus_STATE_DECLINED
+		reply.State, reply.Final = commandsv1.PaymentStatus_STATE_DECLINED, st.Final
 	default:
 		reply.State = commandsv1.PaymentStatus_STATE_NOT_FOUND
 	}

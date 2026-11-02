@@ -4339,7 +4339,7 @@
           "iyzico": "Geben Sie Ihre Live-Händlerschlüssel von iyzico ein. Sie werden vor dem Speichern bei iyzico geprüft.",
           "paddle": "Geben Sie Ihre Live-Schlüssel und das Webhook-Geheimnis von Paddle ein. Sie werden vor dem Speichern bei Paddle geprüft.",
           "banktransfer": "Geben Sie die Bankdaten ein, die auf Rechnungen für Kunden stehen, die per Überweisung zahlen. Bei einer Bank gibt es nichts zu prüfen.",
-          "stripe": "Geben Sie Ihren geheimen Live-Schlüssel von Stripe und das Signaturgeheimnis des Webhook-Endpunkts ein. Der Schlüssel wird vor dem Speichern bei Stripe geprüft."
+          "stripe": "Geben Sie Ihren Live-Geheimschlüssel von Stripe ein. Er wird vor dem Speichern bei Stripe geprüft. Lassen Sie dann Payrudder den Webhook-Endpunkt anlegen oder fügen Sie das Signaturgeheimnis eines selbst angelegten ein."
         },
         "envNote": "Das verbindet die Live-Umgebung. Die Sandbox läuft weiter mit dem eingebauten Simulator.",
         "testOk": "Der Anbieter akzeptiert diese Schlüssel.",
@@ -4355,12 +4355,21 @@
         "sandboxIntro": {
           "iyzico": "Geben Sie die Schlüssel Ihres iyzico-Sandbox-Kontos ein. Sie werden vor dem Speichern beim Test-Host von iyzico geprüft.",
           "paddle": "Geben Sie die Schlüssel Ihres Paddle-Sandbox-Kontos und das Webhook-Geheimnis ein. Sie werden vor dem Speichern in der Paddle-Sandbox geprüft.",
-          "banktransfer": "Eine Banküberweisung hat keinen Testmodus: Die Sandbox nutzt den eingebauten Simulator."
+          "banktransfer": "Eine Banküberweisung hat keinen Testmodus: Die Sandbox nutzt den eingebauten Simulator.",
+          "stripe": "Geben Sie einen Testmodus-Geheimschlüssel Ihres Stripe-Kontos ein (beginnt mit sk_test_ oder rk_test_). Er wird bei Stripe geprüft und muss ein Testschlüssel sein, bevor er gespeichert wird."
         },
         "sandboxEnvNote": "Das verbindet die Sandbox-Umgebung mit dem Testmodus des Anbieters. Eine Sandbox-Zahlung, deren Zahlungsmethode das eigene Token des Anbieters ist, geht dorthin; die pm_sandbox_-Szenarien bleiben beim Simulator. Live-Schlüssel werden abgelehnt, und Live bleibt unberührt.",
         "sandboxKeys": {
           "iyzico": "Verwenden Sie die Schlüssel des iyzico-Sandbox-Panels (der API-Schlüssel beginnt mit sandbox-).",
-          "paddle": "Verwenden Sie einen Schlüssel Ihres Paddle-Sandbox-Kontos (er beginnt mit pdl_sdbx_)."
+          "paddle": "Verwenden Sie einen Schlüssel Ihres Paddle-Sandbox-Kontos (er beginnt mit pdl_sdbx_).",
+          "stripe": "Verwenden Sie einen Testmodus-Schlüssel Ihres Stripe-Kontos (beginnt mit sk_test_ oder rk_test_)."
+        },
+        "webhook": {
+          "title": "Webhook-Endpunkt",
+          "hint": "Stripe meldet Zahlungen und Erstattungen über einen Webhook-Endpunkt an Payrudder. Payrudder kann Stripe bitten, ihn (für die verarbeiteten Ereignisse) anzulegen, und das Signaturgeheimnis aufbewahren, sodass nichts von Hand kopiert wird. Erneutes Anlegen erzeugt bei Stripe einen weiteren Endpunkt; löschen Sie den alten dort.",
+          "register": "Webhook-Endpunkt anlegen",
+          "registering": "Wird angelegt...",
+          "done": "Stripe hat den Endpunkt angelegt und Payrudder bewahrt das Signaturgeheimnis auf."
         }
       },
       "help": {
@@ -4377,7 +4386,7 @@
         },
         "stripe": {
           "api_key": "Erstellen Sie im Stripe-Dashboard unter Entwickler, API-Schlüssel einen eingeschränkten oder geheimen Live-Schlüssel (er beginnt mit sk_live_ oder rk_live_).",
-          "webhook_secret": "Fügen Sie unter Entwickler, Webhooks einen Endpunkt für die in Payrudder angezeigte Adresse hinzu (Ereignisse payment_intent, checkout.session und refund) und kopieren Sie sein Signaturgeheimnis (beginnt mit whsec_)."
+          "webhook_secret": "Lassen Sie es leer und nutzen Sie nach dem Verbinden \"Webhook-Endpunkt anlegen\": Payrudder bittet Stripe, den Endpunkt anzulegen, und bewahrt das Signaturgeheimnis auf. Oder legen Sie unter Developers, Webhooks selbst einen Endpunkt an die in Payrudder gezeigte Adresse für payment_intent-, checkout.session- und refund-Ereignisse an und fügen Sie sein Signaturgeheimnis ein (beginnt mit whsec_)."
         }
       },
       "sandbox": {

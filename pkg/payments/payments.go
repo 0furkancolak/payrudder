@@ -60,6 +60,8 @@ type StatusResult struct {
 	State       State
 	ChargeID    string
 	DeclineCode string
+	// Final is set with StateDeclined when the provider says the payment must not be tried again with this payment method (see DeclinedError.Final).
+	Final bool
 }
 
 // PaymentProvider is a payment service provider.
@@ -73,7 +75,13 @@ type PaymentProvider interface {
 }
 
 // DeclinedError is a permanent refusal (HTTP 402).
-type DeclinedError struct{ Code string }
+type DeclinedError struct {
+	Code string
+	// Final: the provider said the payment must not be tried again with this payment method (Stripe's advice_code "do_not_try_again"), so a retry is pointless
+	// and may count against the merchant with the card networks. Dunning then stops and the customer is asked for another method. False is not "retry": most
+	// declines carry no advice at all.
+	Final bool
+}
 
 func (e *DeclinedError) Error() string { return "payment declined: " + e.Code }
 

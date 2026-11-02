@@ -146,3 +146,22 @@ type DocumentLinker interface {
 	Provider
 	InvoiceURL(ctx context.Context, transactionRef string) (string, error)
 }
+
+// WebhookRegistration asks a provider to start sending its notifications to URL.
+type WebhookRegistration struct {
+	URL string
+}
+
+// WebhookEndpoint is what the provider created: its id, and the secret that signs what it sends, which the provider shows only now.
+type WebhookEndpoint struct {
+	ID     string
+	Secret string
+	// Events are the event types the endpoint was created for.
+	Events []string
+}
+
+// WebhookRegistrar is a provider whose API creates the endpoint its notifications go to, so a person does not copy the address and the signing secret by hand.
+type WebhookRegistrar interface {
+	Provider
+	RegisterWebhook(ctx context.Context, r WebhookRegistration) (WebhookEndpoint, error)
+}

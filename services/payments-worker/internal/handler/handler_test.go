@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
 // fakeReal stands in for a real provider (iyzico, Paddle): not the mock, and it records that it was called.
@@ -139,5 +140,21 @@ func TestCommandsWithoutOrAgainstTheirTenantsEnvironmentAreRefused(t *testing.T)
 	h.Tenants = nil
 	if _, err := h.Handle(ctx, chargeFor(plansv1.Environment_ENVIRONMENT_UNSPECIFIED, liveTenant.String())); !errors.Is(err, workerx.ErrPoison) {
 		t.Errorf("no directory, no environment: %v, want poison", err)
+	}
+}
+
+// A decline the provider says must not be retried reaches billing as such (PaymentDeclined.final, PaymentStatus.final), whether it is the answer to a charge or to
+// a status query; an ordinary decline carries no such flag.
+func TestAFinalDeclineIsPassedOnToBilling(t *testing.T) {
+	h := &Handler{}
+	for _, final := range []bool{false, true} {
+		reply, err := h.chargeOutcome(context.Background(), store.LedgerEntry{}, payments.ChargeResult{}, &payments.DeclinedError{Code: "generic_decline", Final: final})
+		if err != nil || reply.GetPaymentDeclined().GetDeclineCode() != "generic_decline" || reply.GetPaymentDeclined().GetFinal() != final {
+			t.Errorf("charge declined (final=%v): %v, %v", final, reply, err)
+		}
+		st := statusFromProvider(payments.StatusResult{State: payments.StateDeclined, DeclineCode: "generic_decline", Final: final})
+		if st.GetPaymentStatus().GetState() != commandsv1.PaymentStatus_STATE_DECLINED || st.GetPaymentStatus().GetFinal() != final {
+			t.Errorf("status declined (final=%v): %v", final, st)
+		}
 	}
 }
