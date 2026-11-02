@@ -82,7 +82,16 @@ The Review addendum's three pieces are built; the architecture decisions are **d
 
 ### Service suites behind the pooler (`ITEST_CELLS=1 ITEST_POOLER=1`, app role through PgBouncer 1.25, this machine, run once)
 
-RESULTS_PLACEHOLDER
+| Suite | Result |
+|---|---|
+| `pkg/cells`, `pkg/pgxx` | ok (215 s, 147 s) |
+| ingest-svc `./internal/itest` | ok (209 s) |
+| aggregator `./internal/itest`, `./internal/replay`, `./internal/usage/query` | ok (271 s, 62 s, 604 s) |
+| billing-svc `./internal/itest` | ok (459 s) |
+| payments-worker `./internal/itest` | ok (801 s). A first run stopped at Go's default 10 minute test timeout with every test that had finished passing; the rerun with `-timeout 100m` passed (the nightly sets it) |
+| plans-svc `./internal/itest` | first run: `TestPlansSvc/PriceChange` failed in three subtests ("price-change facts in the outbox: 0"). **Not the pooler**: it fails the same with `ITEST_CELLS=1` alone, on main. The test counted the outbox on the pooled system pool, where a tenant in a cell has no row (plan 15's test, #287, was never run in cells mode). Fixed in the test (`pricechange_integration_test.go`, no service code); rerun ok (244 s) |
+
+The load average was 15-20 on a 10-core machine, so the times are slow. Each suite ran once. The same suites **without** the pooler (the other half of the nightly matrix) were not run in full here; only `PriceChange` was, in cells mode.
 
 ### Not verified (needs a cluster, a region or the owner)
 
