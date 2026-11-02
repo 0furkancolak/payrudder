@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -29,6 +31,7 @@ func (s *Server) contractRoutes() []Route {
 		{"POST", "/v1/customers/{external_id}/contract-withdrawals", AccessTenant, ratelimit.ClassWrite, s.createContractWithdrawal},
 		{"GET", "/v1/contract-withdrawals", AccessTenant, ratelimit.ClassRead, s.listContractWithdrawals},
 		{"PUT", "/v1/contract-withdrawals/{id}/status", AccessTenant, ratelimit.ClassWrite, s.setContractWithdrawalStatus},
+		{"POST", "/v1/contract-withdrawals/{id}/refund", AccessTenant, ratelimit.ClassWrite, s.requestContractWithdrawalRefund},
 	}
 }
 
@@ -171,5 +174,78 @@ func (s *Server) setContractWithdrawalStatus(w http.ResponseWriter, r *http.Requ
 	}
 	req.Id, req.DecidedBy = r.PathValue("id"), contractAuthor(r)
 	resp, err := s.d.Contracts.SetContractWithdrawalStatus(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetWithdrawal(), err)
+	if err != nil {
+		respond(w, r, http.StatusOK, resp.GetWithdrawal(), err)
+		return
+	}
+	out := resp.GetWithdrawal()
+	// Accepting a withdrawal is the seller's decision to give the money back; the setting says whether Payrudder then asks for the refund too. The decision is already
+	// recorded: whatever happens to the refund is written on the withdrawal, never an error that would make the seller decide again.
+	if req.GetStatus() == "accepted" && out.GetInvoiceId() != "" {
+		if st, err := s.d.Contracts.GetContractSettings(r.Context(), &plansv1.GetContractSettingsRequest{}); err == nil && st.GetSettings().GetWithdrawalRefund() == "full" {
+			if refunded, err := s.refundWithdrawal(r, out.GetId(), req.GetRefundAmountMinor()); err == nil {
+				out = refunded
+			} else {
+				s.d.Log.WarnContext(r.Context(), "withdrawal accepted, refund not asked for", "withdrawal", out.GetId(), "error", err)
+			}
+		}
+	}
+	respond(w, r, http.StatusOK, out, nil)
+}
+
+// requestContractWithdrawalRefund is POST /v1/contract-withdrawals/{id}/refund: ask billing to refund an accepted withdrawal (the settings say none, or the first request
+// failed). The refund is a credit note that returns the money to the card; a payment made some other way (a bank transfer) is marked as one to refund by hand.
+func (s *Server) requestContractWithdrawalRefund(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.RequestContractWithdrawalRefundRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	out, err := s.refundWithdrawal(r, r.PathValue("id"), req.GetAmountMinor())
+	respond(w, r, http.StatusOK, out, err)
+}
+
+// refundWithdrawal asks billing for the refund of an accepted withdrawal's invoice through the credit-note path billing already has (a credit note with refund_to_card: only
+// a paid invoice, never more than what is left of it, and only a payment a provider can return) and writes the answer on the withdrawal. plans-svc hands the request to one
+// caller at a time and never twice; a request left standing by a caller that died is taken over after a few minutes, and then the credit notes of the invoice are searched
+// for the one it made before another is made.
+func (s *Server) refundWithdrawal(r *http.Request, id string, amount int64) (*plansv1.ContractWithdrawal, error) {
+	ctx := r.Context()
+	claim, err := s.d.Contracts.ClaimContractWithdrawalRefund(ctx, &plansv1.ClaimContractWithdrawalRefundRequest{Id: id})
+	if err != nil {
+		return nil, err
+	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	invoice, reason := claim.GetWithdrawal().GetInvoiceId(), "withdrawal "+id
+	record := func(state, creditNote, note string) (*plansv1.ContractWithdrawal, error) {
+		rec, err := s.d.Contracts.RecordContractWithdrawalRefund(ctx, &plansv1.RecordContractWithdrawalRefundRequest{Id: id, State: state, CreditNoteId: creditNote, Note: note})
+		return rec.GetWithdrawal(), err
+	}
+	if claim.GetReclaimed() {
+		if list, err := s.d.Billing.ListCreditNotes(ctx, &billingv1.ListCreditNotesRequest{InvoiceId: invoice}); err == nil {
+			for _, cn := range list.GetCreditNotes() {
+				if cn.GetReason() == reason {
+					return record("requested", cn.GetId(), "found: made by an earlier request")
+				}
+			}
+		} else {
+			return record("failed", "", "billing could not be asked whether an earlier request made a credit note: "+err.Error())
+		}
+	}
+	resp, err := s.d.BillingAdmin.CreateCreditNote(tenant.WithOperator(ctx), &billingv1.CreateCreditNoteRequest{TenantId: ti.ID.String(), InvoiceId: invoice, AmountMinor: amount, Reason: reason, RefundToCard: true})
+	switch key := errkey.Of(err); {
+	case err == nil:
+		return record("requested", resp.GetCreditNote().GetId(), "")
+	case key == "billing.credit_note.nothing_to_refund":
+		return record("outside", "", "the invoice was not paid by a card payment Payrudder can return (a bank transfer or cash): refund it outside Payrudder, then mark this withdrawal refunded")
+	case key == "billing.credit_note.not_paid":
+		return record("none", "", "the invoice is not paid: there is nothing to refund")
+	case key == "billing.credit_note.fully_credited":
+		return record("none", "", "the invoice was credited in full already")
+	default:
+		return record("failed", "", truncateRunes(err.Error(), 900))
+	}
 }

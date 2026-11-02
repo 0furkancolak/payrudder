@@ -100,6 +100,8 @@ type fakePlans struct {
 	lastTenant   tenant.Info
 	lastOperator bool
 	lastPM       string
+	// customer is what GetCustomer answers to a lookup by Payrudder's id (the hosted pages know the customer by it); nil keeps the failure the other tests expect.
+	customer     *plansv1.Customer
 	lastBlock    *plansv1.BlockCustomerRequest
 	lastUnblock  *plansv1.UnblockCustomerRequest
 	lastStatus   *plansv1.SetTenantStatusRequest
@@ -115,7 +117,10 @@ func (f *fakePlans) CreateCustomer(ctx context.Context, req *plansv1.CreateCusto
 	return &plansv1.CreateCustomerResponse{Customer: &plansv1.Customer{Id: "c1", ExternalId: req.GetExternalId(), Email: req.GetEmail()}}, nil
 }
 
-func (f *fakePlans) GetCustomer(context.Context, *plansv1.GetCustomerRequest) (*plansv1.GetCustomerResponse, error) {
+func (f *fakePlans) GetCustomer(_ context.Context, req *plansv1.GetCustomerRequest) (*plansv1.GetCustomerResponse, error) {
+	if f.customer != nil && req.GetId() != "" {
+		return &plansv1.GetCustomerResponse{Customer: f.customer}, nil
+	}
 	return nil, status.Error(codes.Internal, "pq: secret internals")
 }
 

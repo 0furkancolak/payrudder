@@ -38,6 +38,9 @@ const (
 	tokPayHeld     = "tok-payheld-0123456789abcdefghijklmnopqrst"
 	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
+	// tokPaidCustomer is the link to a paid invoice of a customer, tokPaidGuest to a paid invoice of a payment link with no customer.
+	tokPaidCustomer = "tok-paid-customer-0123456789abcdefghijklm"
+	tokPaidGuest    = "tok-paid-guest-0123456789abcdefghijklmnop"
 	liveTenantID   = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e"
 )
 
@@ -64,6 +67,14 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 		return openInvoice("sandbox", "open", true), true
 	case req.GetToken() == tokOpenLive:
 		return openInvoice("live", "open", true), true
+	case req.GetToken() == tokPaidCustomer:
+		r := openInvoice("live", "paid", false)
+		r.Invoice.Status, r.Invoice.CustomerId, r.CustomerType, r.CustomerLocale = "paid", "cust-uuid", "individual", "en"
+		return r, true
+	case req.GetToken() == tokPaidGuest:
+		r := openInvoice("live", "paid", false)
+		r.Invoice.Status = "paid"
+		return r, true
 	case req.GetToken() == tokVoid:
 		r := openInvoice("live", "void", false)
 		r.Invoice.Status = "void"

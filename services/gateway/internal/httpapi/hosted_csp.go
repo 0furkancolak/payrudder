@@ -52,7 +52,7 @@ func (v *adhocView) formTargets() string {
 }
 
 func (v *portalView) formTargets() string {
-	if v.CanBuy && len(v.Packs) > 0 {
+	if (v.CanBuy && len(v.Packs) > 0) || v.Ask != nil {
 		return formsSelf
 	}
 	return formsNone
