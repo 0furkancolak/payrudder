@@ -115,12 +115,26 @@ func messagesOf(rows []sqlc.ListSupportMessagesRow, files map[uuid.UUID][]*plans
 	return out
 }
 
-func eventsOf(rows []sqlc.ListSupportEventsRow) []*plansv1.SupportEvent {
-	out := make([]*plansv1.SupportEvent, len(rows))
-	for i, e := range rows {
-		out[i] = &plansv1.SupportEvent{Id: e.ID.String(), Kind: e.Kind, ActorKind: e.ActorKind, ActorName: e.ActorName, FromValue: e.FromValue, ToValue: e.ToValue, CreateTime: timestamppb.New(e.CreatedAt)}
+// personEventKinds are the history lines a person may read. It is an allow-list: a kind added later (the operator's tags and assignee are two of them) is the
+// operator's until someone adds it here.
+var personEventKinds = map[string]bool{"status": true, "priority": true}
+
+// eventsOf turns history rows into messages; for a person (the "My" calls) only the kinds in personEventKinds.
+func eventsOf(rows []sqlc.ListSupportEventsRow, person bool) []*plansv1.SupportEvent {
+	out := make([]*plansv1.SupportEvent, 0, len(rows))
+	for _, e := range rows {
+		if person && !personEventKinds[e.Kind] {
+			continue
+		}
+		out = append(out, &plansv1.SupportEvent{Id: e.ID.String(), Kind: e.Kind, ActorKind: e.ActorKind, ActorName: e.ActorName, FromValue: e.FromValue, ToValue: e.ToValue, CreateTime: timestamppb.New(e.CreatedAt)})
 	}
 	return out
+}
+
+// forPerson takes from a ticket what is the operator's own: the labels, and the operator the ticket is assigned to (an address of the operator's staff).
+func forPerson(t *plansv1.SupportTicket) *plansv1.SupportTicket {
+	t.Tags, t.Assignee = nil, ""
+	return t
 }
 
 func stateOf(r sqlc.LockSupportTicketRow) domain.SupportTicketState {
@@ -162,7 +176,7 @@ func ticket(ctx context.Context, q *sqlc.Queries, id uuid.UUID, viewer *uuid.UUI
 	}
 	t := ticketOf(r)
 	if viewer != nil {
-		t.Tags = nil // the operator's labels are not the person's to read
+		forPerson(t)
 	}
 	return t, nil
 }
@@ -176,7 +190,7 @@ func list(ctx context.Context, q *sqlc.Queries, p sqlc.ListSupportTicketsParams)
 	for i, r := range rows {
 		out[i] = ticketOf(sqlc.GetSupportTicketRow(r))
 		if p.UserID != nil {
-			out[i].Tags = nil // the operator's labels are not the person's to read
+			forPerson(out[i])
 		}
 	}
 	return out, nil
@@ -321,7 +335,7 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events)}, nil
+	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events, true)}, nil
 }
 
 // lockedFor locks the ticket and, for a person, checks they belong to its account.
@@ -488,7 +502,7 @@ func (s *Service) GetSupportTicket(ctx context.Context, req *plansv1.GetSupportT
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events)}, nil
+	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events, false)}, nil
 }
 
 func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupportTicketRequest) (*plansv1.ReplySupportTicketResponse, error) {

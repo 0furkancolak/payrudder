@@ -4563,7 +4563,7 @@ paths:
     get:
       operationId: appSupportTicket
       tags: [Support]
-      summary: A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark
+      summary: A ticket with its thread and history (the operator's internal notes, tags and assignee are not in it). Reading it as the person who opened it clears its unread mark
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -6280,7 +6280,7 @@ components:
         category: { type: string, enum: [billing, integration, bug, question, other] }
         priority: { type: string, enum: [low, normal, high, urgent] }
         status: { type: string, enum: [open, pending, solved, closed], description: "open waits for the operator, pending for the person" }
-        assignee: { type: string }
+        assignee: { type: string, description: "The operator the ticket is assigned to. Always empty in what the person's calls return" }
         create_time: { type: string, format: date-time }
         update_time: { type: string, format: date-time }
         last_message_time: { type: string, format: date-time }
@@ -6295,7 +6295,7 @@ components:
     SupportEvent:
       type: object
       required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
-      description: One change of a ticket's status, priority, assignee or tags. The history is append-only.
+      description: One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority.
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [status, priority, assignee, tags], description: A change of tags has the list joined by commas in from_value and to_value }
