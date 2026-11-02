@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/taxid"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/blocklist"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
@@ -33,15 +34,33 @@ import (
 // Referrer attributes a customer to an affiliate inside the caller's transaction (the affiliate program, phase 47).
 type Referrer func(ctx context.Context, q *sqlc.Queries, in affiliatescmd.AttributeInput) (affiliatescmd.AttributeResult, error)
 
+// BlocklistCheck refuses a customer who matches the app's or the platform's blocklist (internal/blocklist), in the caller's transaction.
+type BlocklistCheck func(ctx context.Context, q *sqlc.Queries, s blocklist.Subject) error
+
 // Commands changes customers.
 type Commands struct {
-	db       *store.DB
-	referrer Referrer
-	now      func() time.Time
+	db        *store.DB
+	referrer  Referrer
+	blocklist BlocklistCheck
+	now       func() time.Time
 }
 
 // New returns the customer commands.
 func New(db *store.DB) *Commands { return &Commands{db: db, now: time.Now} }
+
+// WithBlocklist makes a new customer, and a customer's new e-mail address or tax id, be checked against the blocklists (plan 13). Without it nothing is checked.
+func (c *Commands) WithBlocklist(check BlocklistCheck) *Commands {
+	c.blocklist = check
+	return c
+}
+
+// checkBlocklist runs the gate when there is one.
+func (c *Commands) checkBlocklist(ctx context.Context, q *sqlc.Queries, s blocklist.Subject) error {
+	if c.blocklist == nil {
+		return nil
+	}
+	return c.blocklist(ctx, q, s)
+}
 
 // WithReferral lets a customer be created with the code of the affiliate who brought them.
 func (c *Commands) WithReferral(r Referrer, now func() time.Time) *Commands {
@@ -58,6 +77,9 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateCustomerReques
 			return err
 		}
 		if err := domain.ValidateCustomer(t.Environment, req); err != nil {
+			return err
+		}
+		if err := c.checkBlocklist(ctx, q, blocklist.Subject{Email: req.GetEmail(), ExternalID: req.GetExternalId()}); err != nil {
 			return err
 		}
 		if quota := domain.QuotasFor(t.Tier).MaxCustomers; quota > 0 {
@@ -155,6 +177,11 @@ func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerConta
 		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
 		if err != nil {
 			return err
+		}
+		if !strings.EqualFold(strings.TrimSpace(cur.Email), strings.TrimSpace(req.GetEmail())) { // only an address that is new is checked: a listed customer can still change their name
+			if err := c.checkBlocklist(ctx, q, blocklist.Subject{Email: req.GetEmail()}); err != nil {
+				return err
+			}
 		}
 		if out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(), Phone: number}); err != nil {
 			return err
@@ -359,6 +386,11 @@ func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxReques
 		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
 		if err != nil {
 			return err
+		}
+		if taxid.Normalize(cur.TaxID) != taxid.Normalize(req.GetTaxId()) { // only an id that is new is checked
+			if err := c.checkBlocklist(ctx, q, blocklist.Subject{TaxID: req.GetTaxId()}); err != nil {
+				return err
+			}
 		}
 		if out, err = q.SetCustomerTax(ctx, sqlc.SetCustomerTaxParams{ExternalID: req.GetExternalId(), TaxID: req.GetTaxId(), TaxOffice: req.GetTaxOffice(),
 			EInvoiceRegistered: req.GetEInvoiceRegistered(), TaxIDValidatedAt: validated}); err != nil {

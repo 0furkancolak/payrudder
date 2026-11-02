@@ -29,6 +29,7 @@ import {
   ScrollText,
   Settings,
   Share2,
+  ShieldBan,
   ShieldCheck,
   SlidersHorizontal,
   Tag,
@@ -100,7 +101,7 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "connect", "webhooks", "mail", "contracts", "audit", "members"] as const;
+export const PERSON_PAGES = ["customers", "blocklist", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "connect", "webhooks", "mail", "contracts", "audit", "members"] as const;
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
@@ -113,6 +114,7 @@ interface Page {
 
 const PAGES: Page[] = [
   { key: "customers", icon: Users, path: "customers", section: "customersBilling", person: true },
+  { key: "blocklist", icon: ShieldBan, path: "blocklist", section: "customersBilling", person: true },
   { key: "subscriptions", icon: Repeat, path: "subscriptions", section: "customersBilling", person: true },
   { key: "invoices", icon: FileText, path: "invoices", section: "customersBilling", person: true },
   { key: "payments", icon: Wallet, path: "payments", section: "customersBilling", person: true },
@@ -222,6 +224,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("playground", "/playground", FlaskConical, under("/playground")),
             item("deadLetters", "/dead-letters", MailX, under("/dead-letters")),
             item("supportInbox", "/support", LifeBuoy, under("/support")),
+            item("platformBlocklist", "/blocklist", ShieldBan, under("/blocklist")),
             item("auditLog", "/audit", ClipboardList, under("/audit")),
           ],
         },

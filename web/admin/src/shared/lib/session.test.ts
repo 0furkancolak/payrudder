@@ -75,6 +75,7 @@ describe("the operator's paths", () => {
     const { OPERATOR_PATHS } = await import("./session");
     expect(OPERATOR_PATHS.test("/audit")).toBe(true);
     expect(OPERATOR_PATHS.test("/audit/x")).toBe(true);
+    expect(OPERATOR_PATHS.test("/blocklist")).toBe(true);
     expect(OPERATOR_PATHS.test("/auditing")).toBe(false);
     expect(OPERATOR_PATHS.test("/app/t/abc/audit")).toBe(false);
   });

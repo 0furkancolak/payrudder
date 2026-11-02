@@ -473,6 +473,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.appeal.exists`
 - `plans.appeal.not_held`
 - `plans.appeal.not_open`
+- `plans.blocklist.full`
 - `plans.change.bad_proration`
 - `plans.change.billed_in_arrears`
 - `plans.change.fee_not_invoiced`
@@ -504,6 +505,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.coupon.none_on_subscription`
 - `plans.coupon.subscription_ended`
 - `plans.customer.blocked`
+- `plans.customer.blocklisted`
 - `plans.customer.quota_reached`
 - `plans.customer.tax_invalid`
 - `plans.fee.invalid_period`

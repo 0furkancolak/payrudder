@@ -262,6 +262,40 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCustomerBlockEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/blocklist:
+    get:
+      operationId: listBlocklist
+      summary: Your blocklist, newest first
+      description: >
+        The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail address or tax id, may not match (error key
+        `plans.customer.blocklisted`, on creating a customer and on changing the contact details or the tax data). At most 1000 entries, so the list is not paged.
+        Customers that exist when an entry is added are not touched: block them from the customer list. The operator keeps a platform-wide list of its own that holds
+        the same gates for every app; it is not shown here and a refusal does not say which list it was. Needs customers:read.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListBlocklistResponse" } } } }
+    post:
+      operationId: addBlocklistEntry
+      summary: Put an e-mail address, a tax id or an external customer id on your blocklist
+      description: >
+        The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an external id as it is. An entry that is there is returned
+        as it is. The note is yours and is never shown to the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full` at 1000 entries.
+        Needs customers:write.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddBlocklistEntryRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BlocklistEntry" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /v1/blocklist/{id}:
+    delete:
+      operationId: removeBlocklistEntry
+      summary: Take an entry off your blocklist
+      description: Needs customers:write.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/tax:
     put:
       operationId: setCustomerTax
@@ -6119,6 +6153,34 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantStatusEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/blocklist:
+    get:
+      operationId: listPlatformBlocklist
+      summary: The operator's platform-wide blocklist, newest first
+      description: The same kinds of entry as an app's own list (plan 13), held against every app except the platform's own (the SaaS customers). At most 1000 entries. An app is never told which list refused a customer.
+      security: [{ operatorToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListBlocklistResponse" } } } }
+    post:
+      operationId: addPlatformBlocklistEntry
+      summary: Put a value on the platform-wide blocklist
+      description: Normalised as an app's entry is. Recorded in the audit log without the value (the kind only). Error key `plans.blocklist.full` at 1000 entries.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddBlocklistEntryRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BlocklistEntry" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/blocklist/{id}:
+    delete:
+      operationId: removePlatformBlocklistEntry
+      summary: Take an entry off the platform-wide blocklist
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/lifecycle:
     get:
       operationId: getTenantLifecycle
@@ -6703,6 +6765,28 @@ components:
         suspend_service: { type: boolean, description: "On a block: whether it also suspended the customer's service" }
         actor: { type: string, description: "A person's address, key:<api key id>, or operator" }
         create_time: { type: string, format: date-time }
+    BlocklistEntry:
+      type: object
+      required: [id, kind, value, note, created_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [email, tax_id, external_id] }
+        value: { type: string, description: "The normalised value" }
+        note: { type: string, description: "The owner's own note; never shown to the person the entry is about" }
+        created_by: { type: string, description: "A person's address, key:<api key id>, or operator" }
+        create_time: { type: string, format: date-time }
+    ListBlocklistResponse:
+      type: object
+      required: [entries]
+      properties:
+        entries: { type: array, items: { $ref: "#/components/schemas/BlocklistEntry" } }
+    AddBlocklistEntryRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [email, tax_id, external_id] }
+        value: { type: string, maxLength: 320 }
+        note: { type: string, maxLength: 500 }
     ListCustomerBlockEventsResponse:
       type: object
       required: [events]

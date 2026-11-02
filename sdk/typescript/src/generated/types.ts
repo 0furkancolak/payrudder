@@ -68,6 +68,12 @@ export interface AccountingSummary {
   currencies: Array<AccountingCurrency>;
 }
 
+export interface AddBlocklistEntryRequest {
+  kind: "email" | "tax_id" | "external_id";
+  value: string;
+  note?: string;
+}
+
 export interface AddDisputeNoteRequest {
   note: string;
 }
@@ -361,6 +367,18 @@ export interface BlockCustomerRequest {
   blocked_until?: string;
   /** Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false. */
   suspend_service?: boolean;
+}
+
+export interface BlocklistEntry {
+  id: string;
+  kind: "email" | "tax_id" | "external_id";
+  /** The normalised value */
+  value: string;
+  /** The owner's own note; never shown to the person the entry is about */
+  note: string;
+  /** A person's address, key:<api key id>, or operator */
+  created_by: string;
+  create_time: string;
 }
 
 export interface CancelSubscriptionQuery {
@@ -2049,6 +2067,10 @@ export interface ListAuditEventsResponse {
   /** A service that keeps part of the log did not answer: the page may lack its entries */
   incomplete: boolean;
   unavailable_sources: Array<"plans" | "billing" | "payments">;
+}
+
+export interface ListBlocklistResponse {
+  entries: Array<BlocklistEntry>;
 }
 
 export interface ListContractAcceptancesQuery {

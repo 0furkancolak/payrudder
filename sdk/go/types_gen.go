@@ -91,6 +91,14 @@ type AccountingSummary struct {
 	Currencies []AccountingCurrency `json:"currencies"`
 }
 
+// AddBlocklistEntryRequest is the request body of AddBlocklistEntry.
+type AddBlocklistEntryRequest struct {
+	// One of: email, tax_id, external_id.
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+	Note  string `json:"note,omitempty"`
+}
+
 // AddDisputeNoteRequest is the request body of AddDisputeNote.
 type AddDisputeNoteRequest struct {
 	Note string `json:"note"`
@@ -401,6 +409,20 @@ type BlockCustomerRequest struct {
 	// Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the
 	// block is lifted or ends. Usage is still accepted and counted. Default false.
 	SuspendService *bool `json:"suspend_service,omitempty"`
+}
+
+// BlocklistEntry is an object of the API; see components.schemas.BlocklistEntry in api/openapi/v1.yaml.
+type BlocklistEntry struct {
+	ID string `json:"id"`
+	// One of: email, tax_id, external_id.
+	Kind string `json:"kind"`
+	// The normalised value
+	Value string `json:"value"`
+	// The owner's own note; never shown to the person the entry is about
+	Note string `json:"note"`
+	// A person's address, key:<api key id>, or operator
+	CreatedBy  string    `json:"created_by"`
+	CreateTime time.Time `json:"create_time"`
 }
 
 // CancelSubscriptionResponse is the response of CancelSubscription.
@@ -1980,6 +2002,11 @@ type ListAuditEventsResponse struct {
 	// A service that keeps part of the log did not answer: the page may lack its entries
 	Incomplete         bool     `json:"incomplete"`
 	UnavailableSources []string `json:"unavailable_sources"`
+}
+
+// ListBlocklistResponse is the response of ListBlocklist.
+type ListBlocklistResponse struct {
+	Entries []BlocklistEntry `json:"entries"`
 }
 
 // ListContractAcceptancesResponse is the response of ListContractAcceptances.
