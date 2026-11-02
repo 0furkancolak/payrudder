@@ -125,7 +125,8 @@ test.describe("in Arabic", () => {
         const settled = await list.locator("xpath=ancestor::*[@role='dialog'][1]").boundingBox();
         return Math.abs(settled!.x + settled!.width - (chipBox!.x + chipBox!.width));
       })
-      .toBeLessThanOrEqual(2);
+      // (a few pixels of difference between the browsers' text widths and the popper's offset are not the bug: opening from the wrong edge is hundreds off)
+      .toBeLessThanOrEqual(8);
     await page.keyboard.press("Escape");
 
     // The bar of the selection: the clear button is at the far end, which is the left.
