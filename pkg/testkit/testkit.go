@@ -45,18 +45,34 @@ type Postgres struct {
 	DSN string
 	// ContainerID lets chaos tests pause and unpause the database with `docker pause`.
 	ContainerID string
+	// Alias is the name other containers on its network reach it by (StartPostgresOn); empty when it is on no network of its own.
+	Alias string
+	// Pooler is the PgBouncer in front of it, set when ITEST_POOLER is: CreateServiceDB and CreateCellDB then hand out app DSNs that go through it.
+	Pooler *Pooler
 }
 
-// StartPostgres starts Postgres and waits until it accepts connections.
+// StartPostgres starts Postgres and waits until it accepts connections. With ITEST_POOLER set it also starts a transaction-mode PgBouncer in front of it.
 func StartPostgres(t testing.TB) Postgres {
 	t.Helper()
+	if !poolerRequested() {
+		return startPostgres(t)
+	}
+	nw := StartNetwork(t)
+	pg := StartPostgresOn(t, nw, "pg")
+	p := StartPgBouncer(t, nw, PoolerOptions{Routes: map[string]Postgres{"*": pg}, MaxPreparedStatements: 200})
+	pg.Pooler = &p
+	return pg
+}
+
+func startPostgres(t testing.TB, opts ...testcontainers.ContainerCustomizer) Postgres {
+	t.Helper()
 	ctx := startCtx(t)
-	c, err := postgres.Run(ctx, PostgresImage,
+	c, err := postgres.Run(ctx, PostgresImage, append([]testcontainers.ContainerCustomizer{
 		postgres.WithDatabase("payrudder"),
 		postgres.WithUsername("payrudder"),
 		postgres.WithPassword("payrudder"),
 		postgres.BasicWaitStrategies(),
-	)
+	}, opts...)...)
 	testcontainers.CleanupContainer(t, c)
 	if err != nil {
 		t.Fatalf("testkit: start postgres: %v", err)

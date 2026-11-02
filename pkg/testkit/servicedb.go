@@ -63,11 +63,19 @@ func CreateServiceDB(t testing.TB, pg Postgres, svc string) ServiceDB {
 	}
 
 	db := svc + "_db"
-	return ServiceDB{
+	return behindPooler(pg, ServiceDB{
 		Migrator: withUserDB(t, pg.DSN, svc+"_migrator", svc+"_migrator_local", db),
 		App:      withUserDB(t, pg.DSN, svc+"_app", svc+"_app_local", db),
 		System:   withUserDB(t, pg.DSN, svc+"_system", svc+"_system_local", db),
+	})
+}
+
+// behindPooler puts the app DSN behind pg's pooler, if it has one (ITEST_POOLER).
+func behindPooler(pg Postgres, s ServiceDB) ServiceDB {
+	if pg.Pooler == nil {
+		return s
 	}
+	return s.Via(*pg.Pooler)
 }
 
 // CreateCellDB creates a second database for a service on the same Postgres, with the roles CreateServiceDB made: a cell of cells mode (ADR 0018). A cell holds
@@ -106,11 +114,11 @@ func CreateCellDB(t testing.TB, pg Postgres, svc, cell string) ServiceDB {
 			t.Fatalf("testkit: %s: %v", s, err)
 		}
 	}
-	return ServiceDB{
+	return behindPooler(pg, ServiceDB{
 		Migrator: withUserDB(t, pg.DSN, svc+"_migrator", svc+"_migrator_local", db),
 		App:      withUserDB(t, pg.DSN, svc+"_app", svc+"_app_local", db),
 		System:   withUserDB(t, pg.DSN, svc+"_system", svc+"_system_local", db),
-	}
+	})
 }
 
 // withUserDB rewrites a postgres:// DSN with another user (empty keeps it) and database.
