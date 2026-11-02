@@ -1593,7 +1593,8 @@ type GetDunningReportInvoice struct {
 	Provider           string `json:"provider"`
 	Currency           string `json:"currency"`
 	TotalMinor         Int64  `json:"total_minor"`
-	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE.
+	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, PAYMENT_HELD,
+	// UNCOLLECTIBLE.
 	State           string     `json:"state"`
 	DunningAttempt  int        `json:"dunning_attempt"`
 	NextAttemptTime *time.Time `json:"next_attempt_time"`

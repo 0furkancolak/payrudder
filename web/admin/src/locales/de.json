@@ -153,7 +153,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "abgelehnt, Wiederholung läuft",
       "PAYMENT_UNKNOWN": "Ergebnis unbekannt",
-      "UNCOLLECTIBLE": "aufgegeben"
+      "UNCOLLECTIBLE": "aufgegeben",
+      "PAYMENT_ACTION_REQUIRED": "wartet auf die Bestätigung des Kunden",
+      "PAYMENT_HELD": "erste Abbuchung gehalten"
     },
     "sagaState": {
       "PAYMENT_PENDING": "wartet auf Überweisung",
@@ -174,7 +176,9 @@
       "REFUND_FAILED": "Erstattung fehlgeschlagen",
       "REFUNDED": "erstattet",
       "VOIDED": "storniert",
-      "AWAITING_PAYMENT": "wartet auf Zahlung"
+      "AWAITING_PAYMENT": "wartet auf Zahlung",
+      "PAYMENT_ACTION_REQUIRED": "wartet auf die Bestätigung des Kunden",
+      "PAYMENT_HELD": "erste Abbuchung gehalten"
     },
     "paymentMethod": {
       "bank_transfer": "Banküberweisung",

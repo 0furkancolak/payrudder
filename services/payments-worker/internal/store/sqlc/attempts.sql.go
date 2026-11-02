@@ -8,6 +8,7 @@ package sqlc
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -66,6 +67,31 @@ func (q *Queries) GetChargeAttemptByKey(ctx context.Context, idempotencyKey stri
 		&i.AmountMinor,
 		&i.Currency,
 	)
+	return i, err
+}
+
+const getChargeAttemptRef = `-- name: GetChargeAttemptRef :one
+SELECT COALESCE(max(provider_ref), '')::text AS provider_ref, COALESCE(min(created_at), now())::timestamptz AS started_at, count(*) AS attempts
+FROM payment_attempts WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'charge' AND idempotency_key = $3
+`
+
+type GetChargeAttemptRefParams struct {
+	TenantID       uuid.UUID
+	InvoiceID      uuid.UUID
+	IdempotencyKey string
+}
+
+type GetChargeAttemptRefRow struct {
+	ProviderRef string
+	StartedAt   time.Time
+	Attempts    int64
+}
+
+// What the attempts of a charge under one key hold: the provider's reference (empty when none answered with one), when the first was started, and how many there are.
+func (q *Queries) GetChargeAttemptRef(ctx context.Context, arg GetChargeAttemptRefParams) (GetChargeAttemptRefRow, error) {
+	row := q.db.QueryRow(ctx, getChargeAttemptRef, arg.TenantID, arg.InvoiceID, arg.IdempotencyKey)
+	var i GetChargeAttemptRefRow
+	err := row.Scan(&i.ProviderRef, &i.StartedAt, &i.Attempts)
 	return i, err
 }
 
@@ -129,6 +155,21 @@ func (q *Queries) ListRefundAttemptsByKey(ctx context.Context, arg ListRefundAtt
 		return nil, err
 	}
 	return items, nil
+}
+
+const setAttemptRef = `-- name: SetAttemptRef :exec
+UPDATE payment_attempts SET provider_ref = $1 WHERE command_id = $2 AND provider_ref IS NULL
+`
+
+type SetAttemptRefParams struct {
+	ProviderRef *string
+	CommandID   uuid.UUID
+}
+
+// The provider's reference of the charge, from the first response that has one; the first one stays.
+func (q *Queries) SetAttemptRef(ctx context.Context, arg SetAttemptRefParams) error {
+	_, err := q.db.Exec(ctx, setAttemptRef, arg.ProviderRef, arg.CommandID)
+	return err
 }
 
 const startAttempt = `-- name: StartAttempt :execrows

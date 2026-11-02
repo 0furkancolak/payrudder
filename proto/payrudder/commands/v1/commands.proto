@@ -45,6 +45,7 @@ message ReplyEnvelope {
     PaymentStatus payment_status = 16;
     NotificationSent notification_sent = 17;
     EInvoiceResult e_invoice_result = 18;
+    PaymentActionRequired payment_action_required = 19;
   }
 }
 
@@ -243,6 +244,13 @@ message PaymentDeclined {
   bool final = 2;
 }
 
+// PaymentActionRequired: the provider needs the customer present to go on with the charge (Stripe's 3-D Secure: requires_action, or the decline authentication_required).
+// Nothing was charged and nothing is a decline: the saga mails the customer a link to the invoice page and waits (PAYMENT_ACTION_REQUIRED).
+message PaymentActionRequired {
+  // The provider's reference of the payment that waits (Stripe's PaymentIntent id), which the status query uses instead of a search.
+  string psp_charge_id = 1;
+}
+
 message PaymentErrored {
   bool retryable = 1;
   string code = 2;
@@ -264,6 +272,8 @@ message PaymentStatus {
     STATE_DECLINED = 3;
     // The charge was accepted but has not settled (a bank transfer that has not arrived yet). Ask again later.
     STATE_PENDING = 4;
+    // The payment waits for the customer to act (Stripe's 3-D Secure): the saga mails the customer a link, once, and goes on asking.
+    STATE_ACTION_REQUIRED = 5;
   }
   State state = 1;
   string psp_charge_id = 2;

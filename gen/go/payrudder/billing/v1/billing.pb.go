@@ -3302,7 +3302,7 @@ type DunningInvoice struct {
 	Provider           string                 `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`
 	Currency           string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
 	TotalMinor         int64                  `protobuf:"varint,7,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
-	// The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), UNCOLLECTIBLE (given up).
+	// The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), PAYMENT_ACTION_REQUIRED (waiting for the customer to confirm the payment, 3-D Secure), PAYMENT_HELD (the first charge is held: the tenant is on hold or the customer is blocked for fraud or a chargeback), UNCOLLECTIBLE (given up).
 	State string `protobuf:"bytes,8,opt,name=state,proto3" json:"state,omitempty"`
 	// Retries done so far (0 = only the first charge).
 	DunningAttempt  int32                  `protobuf:"varint,9,opt,name=dunning_attempt,json=dunningAttempt,proto3" json:"dunning_attempt,omitempty"`
