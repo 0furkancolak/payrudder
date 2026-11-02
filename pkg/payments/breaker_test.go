@@ -180,3 +180,118 @@ func TestBreakerLetsAnotherProbeInAfterALostOne(t *testing.T) {
 		t.Errorf("state = %s", b.State())
 	}
 }
+
+// memShared is a SharedBreaker over a clock: what Redis does with a key that expires.
+type memShared struct {
+	c          *clock
+	openUntil  time.Time
+	probeUntil time.Time
+}
+
+func (m *memShared) OpenFor() time.Duration {
+	if left := m.openUntil.Sub(m.c.now()); left > 0 {
+		return left
+	}
+	return 0
+}
+func (m *memShared) Opened(w time.Duration) {
+	m.openUntil, m.probeUntil = m.c.now().Add(w), time.Time{}
+}
+func (m *memShared) Closed() { m.openUntil, m.probeUntil = time.Time{}, time.Time{} }
+func (m *memShared) Probe(l time.Duration) bool {
+	if m.probeUntil.After(m.c.now()) {
+		return false
+	}
+	m.probeUntil = m.c.now().Add(l)
+	return true
+}
+
+// Two replicas share one circuit: the outage the first found makes the second refuse without a failure of its own, for the open window; one probe at a time goes through
+// across both; a good probe, or a health check that finds the provider answering, closes the circuit for both.
+func TestBreakerIsSharedBetweenReplicas(t *testing.T) {
+	c := &clock{t: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)}
+	shared := &memShared{c: c}
+	replica := func() *Breaker {
+		b := NewBreaker(BreakerSettings{Failures: 2, OpenFor: time.Minute}, c.now, nil)
+		b.Shared = shared
+		return b
+	}
+	a, b := replica(), replica()
+	for range 2 {
+		done, err := a.Allow()
+		if err != nil {
+			t.Fatal(err)
+		}
+		done(outage)
+	}
+	if a.State() != BreakerOpen || b.State() != BreakerClosed {
+		t.Fatalf("a = %s, b = %s: only a counted the failures", a.State(), b.State())
+	}
+	var tr *TransientError
+	_, err := b.Allow()
+	if !errors.Is(err, ErrCircuitOpen) || !errors.As(err, &tr) || tr.RetryAfter <= 0 || tr.RetryAfter > time.Minute {
+		t.Fatalf("b while a has the circuit open: %v, want refused with the time left", err)
+	}
+	c.add(30 * time.Second)
+	if _, err := b.Allow(); !errors.Is(err, ErrCircuitOpen) {
+		t.Errorf("b half way through the window: %v", err)
+	}
+
+	// The window is over: a probes, and a good probe closes the circuit for b as well.
+	c.add(31 * time.Second)
+	probe, err := a.Allow()
+	if err != nil {
+		t.Fatalf("a's probe: %v", err)
+	}
+	probe(nil)
+	if a.State() != BreakerClosed {
+		t.Fatalf("a after a good probe: %s", a.State())
+	}
+	if _, err := b.Allow(); err != nil {
+		t.Errorf("b after a's probe closed the circuit: %v", err)
+	}
+
+	// A health check that finds the provider answering clears what another replica opened.
+	for range 2 {
+		done, err := a.Allow()
+		if err != nil {
+			t.Fatal(err)
+		}
+		done(outage)
+	}
+	if _, err := b.Allow(); !errors.Is(err, ErrCircuitOpen) {
+		t.Fatalf("b: %v", err)
+	}
+	b.Observe(ErrBadCredentials) // answered, if only to refuse the credentials
+	if _, err := b.Allow(); err != nil {
+		t.Errorf("b after its own health check found the provider up: %v", err)
+	}
+}
+
+// The probe is one across replicas: two replicas whose circuit is open locally, after the window, and only one of them sends the probe.
+func TestOnlyOneReplicaProbes(t *testing.T) {
+	c := &clock{t: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)}
+	shared := &memShared{c: c}
+	var bs []*Breaker
+	for range 2 {
+		b := NewBreaker(BreakerSettings{Failures: 1, OpenFor: time.Minute}, c.now, nil)
+		b.Shared = shared
+		b.Observe(outage) // each found the outage itself
+		bs = append(bs, b)
+	}
+	c.add(time.Minute + time.Second)
+	first, err := bs[0].Allow()
+	if err != nil {
+		t.Fatalf("the first replica's probe: %v", err)
+	}
+	if _, err := bs[1].Allow(); !errors.Is(err, ErrCircuitOpen) {
+		t.Fatalf("the second replica while the first one's probe is out: %v, want refused", err)
+	}
+	first(outage) // the probe failed: open again for everyone
+	if _, err := bs[1].Allow(); !errors.Is(err, ErrCircuitOpen) {
+		t.Fatalf("after a failed probe: %v", err)
+	}
+	if shared.OpenFor() <= 0 {
+		t.Error("a failed probe leaves the shared circuit open")
+	}
+}
