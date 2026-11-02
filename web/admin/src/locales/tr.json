@@ -75,7 +75,10 @@
       "selectAllMore": "Eşleşen tüm sonuçları seç",
       "confirmAllTitle": "{n} satıra uygulansın mı?",
       "confirmAll": "Bu işlem, diğer sayfalardakiler dahil seçili {n} satırın tümüne uygulanır.",
-      "loadFailed": "Listenin geri kalanı yüklenemedi; bu yüzden tüm sonuçlar seçilemedi."
+      "loadFailed": "Listenin geri kalanı yüklenemedi; bu yüzden tüm sonuçlar seçilemedi.",
+      "progressLabel": "Toplu işlemin ilerlemesi",
+      "progress": "{total} içinden {n} tamamlandı",
+      "progressFailed": "{failed} değişmedi"
     },
     "appliedFilters": "Uygulanan filtreler"
   },

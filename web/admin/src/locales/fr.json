@@ -75,7 +75,10 @@
       "selectAllMore": "Sélectionner tous les résultats correspondants",
       "confirmAllTitle": "Appliquer à {n} lignes ?",
       "confirmAll": "Cela s'applique aux {n} lignes sélectionnées, y compris celles des autres pages.",
-      "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés."
+      "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés.",
+      "progressLabel": "Progression de l'action groupée",
+      "progress": "{n} sur {total} faits",
+      "progressFailed": "{failed} non modifiés"
     },
     "appliedFilters": "Filtres appliqués"
   },

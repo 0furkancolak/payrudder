@@ -124,6 +124,52 @@ test("the page ticked offers every result; the bulk action asks first, with the 
   expect(gw.called("POST", /\/block$/)).toHaveLength(23);
 });
 
+test("a run on more than twenty rows shows how far it has come, done and not changed, while it runs, and a short one does not", async ({ page }) => {
+  const all = many(23);
+  const gw = baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: all, next_page_token: "" } };
+    if (c.method === "POST" && c.path === "/v1/customers/cus_03/block") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "no" } } };
+    if (c.method === "POST" && /^\/v1\/customers\/cus_\d+\/block$/.test(c.path)) return { body: {} };
+    return undefined;
+  });
+  await gw.install(page);
+  // The tenth request waits for the test, so the bar can be looked at in the middle of the run. (A route added later is asked first; fallback hands the call on.)
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/gw/v1/customers/cus_10/block", async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  await openTenantPage(page, "/customers");
+  await page.getByTestId("customer-cus_01").waitFor();
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await page.getByTestId("bulk-select-all").click();
+  await expect(page.getByTestId("bulk-count")).toHaveText("23 selected");
+  await expect(page.getByTestId("bulk-progress")).toHaveCount(0);
+  await page.getByTestId("bulk-block").click();
+  await page.getByTestId("confirm-accept").click();
+
+  // Nine rows are through, one of them refused; the tenth is on its way.
+  await expect(page.getByTestId("bulk-progress-text")).toHaveText("8 of 23 done · 1 not changed");
+  const bar = page.getByRole("progressbar", { name: "Progress of the bulk action" });
+  await expect(bar).toHaveAttribute("aria-valuenow", "9");
+  await expect(bar).toHaveAttribute("aria-valuemax", "23");
+  await expect(bar).toHaveAttribute("aria-valuetext", "8 of 23 done · 1 not changed");
+  release();
+  await expect(page.getByTestId("bulk-note")).toContainText("22 done, 1 not changed");
+  await expect(page.getByTestId("bulk-progress")).toHaveCount(0);
+  // The refused row stays ticked.
+  await expect(page.getByTestId("bulk-count")).toHaveText("1 selected");
+
+  // Twenty rows or fewer: over before anybody could read it, so no panel.
+  await page.getByTestId("bulk-clear").click();
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await page.getByTestId("bulk-block").click();
+  await page.getByTestId("confirm-accept").click();
+  await expect(page.getByTestId("bulk-note")).toContainText("9 done, 1 not changed");
+  expect(await page.getByTestId("bulk-progress").count()).toBe(0);
+});
+
 test("a filter narrows what 'select all' takes, and the bar goes with a selection that fits one page", async ({ page }) => {
   const all = [...many(14), ...many(3, 50).map((x) => ({ ...x, country: "DE" }))];
   const gw = baseTenant(new MockGateway()).on((c) => (c.method === "GET" && c.path === "/v1/customers" ? { body: { customers: all, next_page_token: "" } } : undefined));
