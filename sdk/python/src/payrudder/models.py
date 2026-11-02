@@ -1013,7 +1013,7 @@ class CreditConsumeInput(_CreditConsumeInputRequired, total=False):
 class CreditLedgerEntry(TypedDict):
     id: str
     lot_id: str
-    kind: Literal["grant", "consume", "expire"]
+    kind: Literal["grant", "consume", "expire", "revoke"]
     amount: int
     reason: str
     idempotency_key: str

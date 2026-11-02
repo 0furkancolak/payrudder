@@ -11,4 +11,5 @@ enum CreditLedgerEntryKind: string
     case Grant = 'grant';
     case Consume = 'consume';
     case Expire = 'expire';
+    case Revoke = 'revoke';
 }

@@ -1043,9 +1043,11 @@ type CreditGrantInput struct {
 type CreditLedgerEntry struct {
 	ID    string `json:"id"`
 	LotID string `json:"lot_id"`
-	// One of: grant, consume, expire.
+	// One of: grant, consume, expire, revoke.
 	Kind string `json:"kind"`
-	// int64 as a string; negative for consume and expire
+	// int64 as a string; negative for consume, expire and revoke (a revoke takes back the credits of a credit pack
+	// whose invoice was voided or credited; 0 when none of them was left to take, and its reason says how many
+	// could not be)
 	Amount         Int64  `json:"amount"`
 	Reason         string `json:"reason"`
 	IdempotencyKey string `json:"idempotency_key"`

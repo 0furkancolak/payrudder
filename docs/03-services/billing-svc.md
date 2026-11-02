@@ -160,6 +160,7 @@ stateDiagram-v2
     PAYMENT_DECLINED --> VOIDED: Void
     AWAITING_PAYMENT --> VOIDED: Void
     PAYMENT_PENDING --> VOIDED: Void
+    PAYMENT_UNKNOWN --> VOIDED: Void
     PAYMENT_ACTION_REQUIRED --> VOIDED: Void
     PAYMENT_HELD --> VOIDED: Void
     NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
@@ -337,7 +338,7 @@ A refund credit note (`refund = true`) needs a card payment to return: an invoic
 
 ## As built: prepaid credits (Phase 35)
 
-Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per grant: `granted`, `remaining`, optional `expires_at`, `source` purchase/promo/manual, `source_ref` unique per payment) and the append-only `credit_ledger` (`grant`, `consume`, `expire`, signed `amount`, optional `idempotency_key`). A customer's credits change under `pg_advisory_xact_lock`; `ConsumeCredits` walks the spendable lots by expiry (never-expiring last), refuses with `billing.credits.insufficient` and takes nothing when they do not cover the amount, and returns the first result for a repeated key. The sweeper calls `ExpireDue` on the system pool. Details and limits: phase 35.
+Module `credits`. `credit_packs` (what a tenant sells), `credit_lots` (one per grant: `granted`, `remaining`, optional `expires_at`, `source` purchase/promo/manual, `source_ref` unique per payment) and the append-only `credit_ledger` (`grant`, `consume`, `expire`, `revoke`, signed `amount`, optional `idempotency_key`; a `revoke` takes back the credits of a pack invoice that was voided or credited, in proportion to what was credited, never below a balance of 0, with `unrecoverable: N` in its reason for what had been spent; it is the only kind that may be 0). A customer's credits change under `pg_advisory_xact_lock`; `ConsumeCredits` walks the spendable lots by expiry (never-expiring last), refuses with `billing.credits.insufficient` and takes nothing when they do not cover the amount, and returns the first result for a repeated key. The sweeper calls `ExpireDue` on the system pool. Details and limits: phase 35.
 
 ## As built: buying credit packs (Phase 36)
 

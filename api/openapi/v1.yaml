@@ -5996,6 +5996,10 @@ paths:
     post:
       operationId: adminVoidInvoice
       summary: Void an invoice, refunding it first when it was paid
+      description: >
+        An invoice whose payment is unknown (its saga is parked in `PAYMENT_UNKNOWN`: the provider may have taken the money and not said so) is voided only with
+        `confirm_not_charged: true`, the operator's word that they checked at the provider that nothing was charged. Without it the call is refused with 409
+        `billing.saga.void_needs_confirmation` and nothing changes. Nothing is refunded for such an invoice. The confirmation and the reason are recorded in the audit log.
       security: [{ operatorToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
@@ -9197,7 +9201,8 @@ components:
       required: [tenant_id]
       properties:
         tenant_id: { type: string, format: uuid }
-        reason: { type: string }
+        reason: { type: string, maxLength: 500, description: Kept in the audit log. }
+        confirm_not_charged: { type: boolean, description: "The operator checked at the provider that no charge was made. Required for an invoice whose payment is unknown (PAYMENT_UNKNOWN)." }
     AdminRecordInvoicePaymentRequest:
       type: object
       required: [tenant_id, method, amount_minor]
@@ -10710,8 +10715,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         lot_id: { type: string, format: uuid }
-        kind: { type: string, enum: [grant, consume, expire] }
-        amount: { type: string, description: "int64 as a string; negative for consume and expire", format: int64 }
+        kind: { type: string, enum: [grant, consume, expire, revoke] }
+        amount: { type: string, description: "int64 as a string; negative for consume, expire and revoke (a revoke takes back the credits of a credit pack whose invoice was voided or credited; 0 when none of them was left to take, and its reason says how many could not be)", format: int64 }
         reason: { type: string }
         idempotency_key: { type: string }
         source: { type: string, enum: [purchase, promo, manual], description: "Where the credits it touched came from; a purchase is a credit pack that was paid for" }

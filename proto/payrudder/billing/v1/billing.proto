@@ -400,6 +400,9 @@ message VoidInvoiceRequest {
   string tenant_id = 1;
   string invoice_id = 2;
   string reason = 3;
+  // The operator has checked at the payment provider that no charge was made. An invoice whose payment is unknown (PAYMENT_UNKNOWN: the provider may have taken the
+  // money and not said so) is voided only with it; without it the call is refused (billing.saga.void_needs_confirmation). Recorded in the audit log.
+  bool confirm_not_charged = 4;
 }
 
 message VoidInvoiceResponse {

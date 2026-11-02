@@ -31,7 +31,7 @@ const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filt
   sorts: () => [newest(t, (e) => time(e.create_time)), oldest(t, (e) => time(e.create_time)), amountHigh(t, (e) => amount(e.amount)), amountLow(t, (e) => amount(e.amount))],
   filters: { kind: (e, v) => e.kind === v },
 });
-const kinds = computed(() => [{ value: "", label: t("common.all") }, ...["grant", "consume", "expire"].map((k) => ({ value: k, label: t(`billing.credits.kind.${k}`) }))]);
+const kinds = computed(() => [{ value: "", label: t("common.all") }, ...["grant", "consume", "expire", "revoke"].map((k) => ({ value: k, label: t(`billing.credits.kind.${k}`) }))]);
 const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();

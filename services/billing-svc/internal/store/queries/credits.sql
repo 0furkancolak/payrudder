@@ -94,3 +94,10 @@ SELECT low_threshold FROM credit_settings WHERE tenant_id = @tenant_id;
 -- name: UpsertCreditSettings :exec
 INSERT INTO credit_settings (tenant_id, low_threshold) VALUES (@tenant_id, @low_threshold)
 ON CONFLICT (tenant_id) DO UPDATE SET low_threshold = EXCLUDED.low_threshold, updated_at = now();
+
+-- The lot a paid pack invoice granted (one per invoice): what a void or a credit note of the invoice takes back.
+-- name: GetPurchaseLot :one
+SELECT id, customer_id, granted FROM credit_lots WHERE tenant_id = @tenant_id AND source = 'purchase' AND source_ref = @source_ref;
+
+-- name: LockLotRemaining :one
+SELECT remaining FROM credit_lots WHERE tenant_id = @tenant_id AND id = @id FOR UPDATE;

@@ -2027,12 +2027,15 @@ func (x *RetryInvoiceSagaResponse) GetSaga() *InvoiceSaga {
 }
 
 type VoidInvoiceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	InvoiceId     string                 `protobuf:"bytes,2,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	TenantId  string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	InvoiceId string                 `protobuf:"bytes,2,opt,name=invoice_id,json=invoiceId,proto3" json:"invoice_id,omitempty"`
+	Reason    string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The operator has checked at the payment provider that no charge was made. An invoice whose payment is unknown (PAYMENT_UNKNOWN: the provider may have taken the
+	// money and not said so) is voided only with it; without it the call is refused (billing.saga.void_needs_confirmation). Recorded in the audit log.
+	ConfirmNotCharged bool `protobuf:"varint,4,opt,name=confirm_not_charged,json=confirmNotCharged,proto3" json:"confirm_not_charged,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *VoidInvoiceRequest) Reset() {
@@ -2084,6 +2087,13 @@ func (x *VoidInvoiceRequest) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *VoidInvoiceRequest) GetConfirmNotCharged() bool {
+	if x != nil {
+		return x.ConfirmNotCharged
+	}
+	return false
 }
 
 type VoidInvoiceResponse struct {
@@ -13058,12 +13068,13 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\n" +
 	"invoice_id\x18\x02 \x01(\tR\tinvoiceId\"Q\n" +
 	"\x18RetryInvoiceSagaResponse\x125\n" +
-	"\x04saga\x18\x01 \x01(\v2!.payrudder.billing.v1.InvoiceSagaR\x04saga\"h\n" +
+	"\x04saga\x18\x01 \x01(\v2!.payrudder.billing.v1.InvoiceSagaR\x04saga\"\x98\x01\n" +
 	"\x12VoidInvoiceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x02 \x01(\tR\tinvoiceId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"L\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12.\n" +
+	"\x13confirm_not_charged\x18\x04 \x01(\bR\x11confirmNotCharged\"L\n" +
 	"\x13VoidInvoiceResponse\x125\n" +
 	"\x04saga\x18\x01 \x01(\v2!.payrudder.billing.v1.InvoiceSagaR\x04saga\"\xc3\x04\n" +
 	"\vReratingJob\x12\x0e\n" +

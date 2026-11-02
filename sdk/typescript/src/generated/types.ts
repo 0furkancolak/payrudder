@@ -993,8 +993,8 @@ export interface CreditGrantInputParams {
 export interface CreditLedgerEntry {
   id: string;
   lot_id: string;
-  kind: "grant" | "consume" | "expire";
-  /** int64 as a string; negative for consume and expire */
+  kind: "grant" | "consume" | "expire" | "revoke";
+  /** int64 as a string; negative for consume, expire and revoke (a revoke takes back the credits of a credit pack whose invoice was voided or credited; 0 when none of them was left to take, and its reason says how many could not be) */
   amount: Int64;
   reason: string;
   idempotency_key: string;
