@@ -728,7 +728,8 @@
         "none": "Nothing to invoice yet: this customer has no subscription in the current period and no late usage to bill.",
         "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it.",
         "creditSurplus": "{amount} would be added to the customer's credit balance: the lines come to less than nothing."
-      }
+      },
+      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again."
     },
     "packages": {
       "new": "New package",
@@ -2755,7 +2756,23 @@
         "tr_is_vkn": "This is a VKN, the number of a business, but the customer is an individual (who has a TCKN). You can still save it.",
         "eu_vat": "A business in the EU has a VAT id that starts with its country code (for example DE136695976). This does not look like one; you can still save it."
       },
-      "warned": "This number does not look right for this customer. Open the tax data to see why."
+      "warned": "This number does not look right for this customer. Open the tax data to see why.",
+      "labels": {
+        "tckn": "TCKN (11-digit national ID number)",
+        "vkn": "VKN (10-digit tax number)",
+        "tr": "Tax number (VKN or TCKN)",
+        "vat": "VAT number",
+        "ein": "Tax ID (EIN)",
+        "taxid": "Tax ID"
+      },
+      "about": {
+        "tr_individual": "An individual in Turkey is identified by the 11-digit TCKN. Optional: without it an e-Arşiv invoice uses the consumer placeholder.",
+        "tr_business": "A business in Turkey is identified by its 10-digit VKN, which is required: an e-invoice to a business without one is refused. The tax office is optional.",
+        "tr_unknown": "Choose above whether this customer is an individual (TCKN) or a business (VKN): e-invoices treat them differently.",
+        "eu_business": "A business in the EU gives its VAT id, which starts with its country code. Optional; only its shape and check digits are checked, not VIES.",
+        "gb_business": "A business in the United Kingdom gives its VAT number if it is VAT-registered. Optional; not checked.",
+        "us_business": "A business in the United States may give its EIN. Optional; not checked."
+      }
     },
     "errorKeys": {
       "einvoice": {

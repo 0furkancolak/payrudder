@@ -391,7 +391,7 @@ test.describe("customer sheet", () => {
     await page.getByTestId("customer-edit").click();
     await page.getByTestId("customer-edit-tax").click();
     const tax = page.getByRole("dialog", { name: "Tax data of cus_1" });
-    await expect(tax.getByLabel("Tax id (VKN/TCKN or VAT id)")).toHaveValue("11111111111");
+    await expect(tax.getByLabel("Tax number (VKN or TCKN)")).toHaveValue("11111111111");
     await tax.getByLabel("Tax office").fill("Kadıköy");
     await tax.getByRole("button", { name: "Save tax data" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/tax").length).toBe(1);

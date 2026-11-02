@@ -728,7 +728,8 @@
         "none": "Rien à facturer pour l'instant : ce client n'a pas d'abonnement sur la période en cours ni d'utilisation tardive à facturer.",
         "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
         "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
-      }
+      },
+      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer."
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -2755,7 +2756,23 @@
         "tr_is_vkn": "C'est un VKN, le numéro d'une entreprise, mais le client est un particulier (qui a un TCKN). Vous pouvez tout de même l'enregistrer.",
         "eu_vat": "Une entreprise de l'UE a un numéro de TVA qui commence par le code de son pays (par exemple DE136695976). Ce n'en est pas un ; vous pouvez tout de même l'enregistrer."
       },
-      "warned": "Ce numéro ne semble pas correct pour ce client. Ouvrez les données fiscales pour voir pourquoi."
+      "warned": "Ce numéro ne semble pas correct pour ce client. Ouvrez les données fiscales pour voir pourquoi.",
+      "labels": {
+        "tckn": "TCKN (numéro d'identité à 11 chiffres)",
+        "vkn": "VKN (numéro fiscal à 10 chiffres)",
+        "tr": "Numéro fiscal (VKN ou TCKN)",
+        "vat": "Numéro de TVA",
+        "ein": "Identifiant fiscal (EIN)",
+        "taxid": "Identifiant fiscal"
+      },
+      "about": {
+        "tr_individual": "Un particulier en Turquie est identifié par le TCKN à 11 chiffres. Facultatif : sans lui, une facture e-Arşiv utilise l'identifiant générique du consommateur.",
+        "tr_business": "Une entreprise en Turquie est identifiée par son VKN à 10 chiffres, qui est obligatoire : une facture électronique à une entreprise qui n'en a pas est refusée. Le centre des impôts est facultatif.",
+        "tr_unknown": "Choisissez ci-dessus si ce client est un particulier (TCKN) ou une entreprise (VKN) : les factures électroniques les traitent différemment.",
+        "eu_business": "Une entreprise de l'UE donne son numéro de TVA, qui commence par le code de son pays. Facultatif ; seuls son format et ses chiffres de contrôle sont vérifiés, pas VIES.",
+        "gb_business": "Une entreprise du Royaume-Uni donne son numéro de TVA si elle y est assujettie. Facultatif ; non vérifié.",
+        "us_business": "Une entreprise des États-Unis peut donner son EIN. Facultatif ; non vérifié."
+      }
     },
     "errorKeys": {
       "einvoice": {
