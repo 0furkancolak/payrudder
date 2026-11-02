@@ -184,16 +184,17 @@ func TestContractAPIPermissionsAndForcedFields(t *testing.T) {
 		t.Errorf("the body chose its own source or customer, or the seller's claim was lost: %+v", rec)
 	}
 
-	// The author of a version is who the console says, else the key.
+	// The author of a version is the key that published it, whatever the key's holder writes in X-Payrudder-Actor or the body (TestContractAuthorIsWhoWasAuthenticated
+	// has the other callers).
 	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/v1/contracts/versions", strings.NewReader(`{"kind":"tos","bodies":{"en":"Terms"},"author":"someone else"}`))
-	req.Header.Set("Authorization", "Bearer live-key")
+	req.Header.Set("Authorization", "Bearer keyed-key")
 	req.Header.Set("X-Payrudder-Actor", "owner@example.com")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusCreated {
 		t.Fatalf("publish: %v %v", resp, err)
 	}
 	_ = resp.Body.Close()
-	if c.published.GetAuthor() != "owner@example.com" || c.published.GetKind() != "tos" {
+	if c.published.GetAuthor() != "api-key:key-123" || c.published.GetKind() != "tos" {
 		t.Errorf("published = %+v", c.published)
 	}
 
@@ -207,10 +208,76 @@ func TestContractAPIPermissionsAndForcedFields(t *testing.T) {
 		t.Errorf("the console's withdrawal: %+v", c.withdrawal)
 	}
 	decide, _ := http.NewRequest(http.MethodPut, ts.URL+"/v1/contract-withdrawals/wd-1/status", strings.NewReader(`{"status":"accepted","note":"ok","decided_by":"someone else"}`))
-	decide.Header.Set("Authorization", "Bearer billing-key")
+	decide.Header.Set("Authorization", "Bearer keyed-key")
 	decide.Header.Set("X-Payrudder-Actor", "owner@example.com")
-	if resp, err := http.DefaultClient.Do(decide); err != nil || resp.StatusCode != http.StatusOK || c.decided.GetId() != "wd-1" || c.decided.GetDecidedBy() != "owner@example.com" {
+	if resp, err := http.DefaultClient.Do(decide); err != nil || resp.StatusCode != http.StatusOK || c.decided.GetId() != "wd-1" || c.decided.GetDecidedBy() != "api-key:key-123" {
 		t.Errorf("decide: %v %v %+v", resp, err, c.decided)
+	}
+}
+
+// Who is recorded as the author of a version and the decider of a withdrawal comes from who the gateway authenticated: an API key is its own id, a signed-in person
+// their verified address, the machine token the actor it declares. The X-Payrudder-Actor header and the author in the body are never taken from anybody who is
+// not the machine token.
+func TestContractAuthorIsWhoWasAuthenticated(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	publish := func(token, tenantID string, hdr map[string]string) string {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, p.ts.URL+"/v1/contracts/versions", strings.NewReader(`{"kind":"tos","bodies":{"en":"Terms"},"author":"body@example.com"}`))
+		req.Header.Set("Authorization", "Bearer "+token)
+		if tenantID != "" {
+			req.Header.Set(ActAsHeader, tenantID)
+		}
+		for k, v := range hdr {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != http.StatusCreated {
+			t.Fatalf("publish as %s: %v %v", token, resp, err)
+		}
+		_ = resp.Body.Close()
+		return p.contracts.published.GetAuthor()
+	}
+	decide := func(token, tenantID string, hdr map[string]string) string {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPut, p.ts.URL+"/v1/contract-withdrawals/wd-1/status", strings.NewReader(`{"status":"declined","decided_by":"body@example.com"}`))
+		req.Header.Set("Authorization", "Bearer "+token)
+		if tenantID != "" {
+			req.Header.Set(ActAsHeader, tenantID)
+		}
+		for k, v := range hdr {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			t.Fatalf("decide as %s: %v %v", token, resp, err)
+		}
+		_ = resp.Body.Close()
+		return p.contracts.decided.GetDecidedBy()
+	}
+	spoof := map[string]string{"X-Payrudder-Actor": "ceo@victim.example"}
+	for name, c := range map[string]struct {
+		token, tenantID string
+		hdr             map[string]string
+		want            string
+	}{
+		"an API key, whatever it sends":                {"keyed-key", "", spoof, "api-key:key-123"},
+		"an API key sending nothing":                   {"keyed-key", "", nil, "api-key:key-123"},
+		"an API key that holds no id (never real)":     {"live-key", "", spoof, "api-key:"},
+		"a signed-in owner, whatever the client sends": {tokAda, adaLive, spoof, "ada@example.com"},
+		"a signed-in owner sending nothing":            {tokAda, adaLive, nil, "ada@example.com"},
+		"the machine token declares who it is":         {operatorToken, liveTenant.String(), spoof, "ceo@victim.example"},
+		"the machine token declaring nothing":          {operatorToken, liveTenant.String(), nil, "operator"},
+	} {
+		if got := publish(c.token, c.tenantID, c.hdr); got != c.want {
+			t.Errorf("publish, %s: author %q, want %q", name, got, c.want)
+		}
+		if got := decide(c.token, c.tenantID, c.hdr); got != c.want {
+			t.Errorf("decide, %s: decided_by %q, want %q", name, got, c.want)
+		}
+	}
+	long := map[string]string{"X-Payrudder-Actor": strings.Repeat("é", 500)}
+	if got := publish(operatorToken, liveTenant.String(), long); len([]rune(got)) != 120 {
+		t.Errorf("the machine token's actor is %d characters, want it cut to 120", len([]rune(got)))
 	}
 }
 
