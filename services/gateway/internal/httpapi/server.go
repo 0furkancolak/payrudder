@@ -360,7 +360,9 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	case errors.Is(err, auth.ErrSuspended):
 		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
-		s.authFailed(r, "")
+		if !errors.Is(err, auth.ErrRepeated) {
+			s.authFailed(r, "")
+		}
 		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
 	p.Actor = audit.Actor{Type: audit.ActorAPIKey, ID: p.Tenant.APIKeyID}

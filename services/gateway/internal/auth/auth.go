@@ -10,6 +10,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -44,6 +45,9 @@ const (
 var (
 	// ErrUnauthenticated: missing, malformed, unknown, revoked or wrong key. Clients never learn which.
 	ErrUnauthenticated = errors.New("auth: invalid api key")
+	// ErrRepeated is ErrUnauthenticated for a key prefix that was found unknown or revoked a moment ago and is refused from memory. It is the same guess again, not a new
+	// one, so the caller does not count it against the address (a client that keeps using a revoked key would otherwise get its whole address throttled).
+	ErrRepeated = fmt.Errorf("%w (asked a moment ago)", ErrUnauthenticated)
 	// ErrUnavailable: the key isn't cached and plans-svc can't be reached.
 	ErrUnavailable = errors.New("auth: key resolution unavailable")
 	// ErrSuspended: the key is genuine but its tenant is not active (suspended by an operator, or a live tenant that was never activated). Unlike a bad
@@ -185,7 +189,8 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	e, err := a.lookup(ctx, key.Prefix)
 	if err != nil {
 		if errors.Is(err, ErrUnauthenticated) {
-			return Principal{}, a.fail(ctx, "unknown")
+			a.failures.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", "unknown")))
+			return Principal{}, err // ErrUnauthenticated, or ErrRepeated
 		}
 		return Principal{}, err
 	}
@@ -265,7 +270,7 @@ func scopeName(s plansv1.ApiKey_Scope) string {
 func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error) {
 	// A prefix found unknown or revoked a moment ago is not asked about again: random well-formed keys miss every cache and would each cost plans-svc a call.
 	if a.neg.Has(prefix) {
-		return Entry{}, ErrUnauthenticated
+		return Entry{}, ErrRepeated
 	}
 	if a.cache != nil {
 		e, ok, err := a.cache.Get(ctx, prefix)

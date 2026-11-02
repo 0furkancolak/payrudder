@@ -245,7 +245,8 @@ func TestSuccessesDoNotCountAndFailuresAreForgotten(t *testing.T) {
 	}
 }
 
-// An unknown session token is asked about once in a while; the same token again is refused from memory, and still counts as a failure of the address.
+// An unknown session token is asked about once in a while; the same token again is refused from memory. It is not a new guess, so it does not count against the
+// address: a client that keeps using an expired session must not get everybody behind its address throttled.
 func TestAnUnknownSessionTokenIsAskedOnce(t *testing.T) {
 	p := newProduct(t, nil, func(d *Deps) { d.TrustForwardedFor = true })
 	for range 5 {
@@ -256,12 +257,18 @@ func TestAnUnknownSessionTokenIsAskedOnce(t *testing.T) {
 	if p.ident.getSessions != 1 {
 		t.Errorf("plans-svc was asked %d times about one unknown token, want 1", p.ident.getSessions)
 	}
+	for range 3 * authFailuresPerMinute {
+		p.callFrom(t, "198.51.100.20", "GET", "/app/v1/apps", "qs_unknown", "", "")
+	}
+	if resp, _ := p.callFrom(t, "198.51.100.20", "GET", "/app/v1/apps", tokAda, "", ""); resp.StatusCode != 200 {
+		t.Errorf("the same unknown token over and over throttled its address: %d", resp.StatusCode)
+	}
 	// A real session is asked about every time (sign-out and revocation take effect at once).
 	for range 3 {
 		p.callFrom(t, "198.51.100.21", "GET", "/app/v1/apps", tokAda, "", "")
 	}
-	if p.ident.getSessions != 4 {
-		t.Errorf("GetSession calls = %d, want 4 (one unknown token, three real ones)", p.ident.getSessions)
+	if p.ident.getSessions != 5 {
+		t.Errorf("GetSession calls = %d, want 5 (one unknown token, four real ones)", p.ident.getSessions)
 	}
 	// Signing out ends the session at once, and the ended token is then just an unknown one.
 	if resp, _ := p.callFrom(t, "198.51.100.21", "POST", "/auth/signout", tokBob, "", ""); resp.StatusCode != 204 {
@@ -269,5 +276,43 @@ func TestAnUnknownSessionTokenIsAskedOnce(t *testing.T) {
 	}
 	if resp, _ := p.callFrom(t, "198.51.100.21", "GET", "/app/v1/apps", tokBob, "", ""); resp.StatusCode != 401 {
 		t.Errorf("a signed-out session: %d", resp.StatusCode)
+	}
+}
+
+// auth refuses a key it has just refused with ErrRepeated, which is the same guess again and not counted against the address.
+type repeatingAuth struct {
+	mu   sync.Mutex
+	seen map[string]bool
+}
+
+func (a *repeatingAuth) Authenticate(ctx context.Context, key string) (auth.Principal, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if p, err := (fakeAuth{}).Authenticate(ctx, key); err == nil {
+		return p, nil
+	}
+	if a.seen[key] {
+		return auth.Principal{}, auth.ErrRepeated
+	}
+	a.seen[key] = true
+	return auth.Principal{}, auth.ErrUnauthenticated
+}
+
+func TestARevokedKeyUsedOverAndOverDoesNotThrottleItsAddress(t *testing.T) {
+	p := newProduct(t, nil, func(d *Deps) { d.TrustForwardedFor = true; d.Auth = &repeatingAuth{seen: map[string]bool{}} })
+	for range 5 * authFailuresPerMinute {
+		if resp, _ := p.callFrom(t, "198.51.100.30", "GET", "/v1/customers", "qk_live_revoked", "", ""); resp.StatusCode != 401 {
+			t.Fatalf("a refused key answered %d, want 401 every time", resp.StatusCode)
+		}
+	}
+	if resp, _ := p.callFrom(t, "198.51.100.30", "GET", "/v1/customers", "live-key", "", ""); resp.StatusCode != 200 {
+		t.Errorf("a valid key from that address: %d", resp.StatusCode)
+	}
+	// New keys are new guesses.
+	for i := range authFailuresPerMinute {
+		p.callFrom(t, "198.51.100.31", "GET", "/v1/customers", fmt.Sprintf("qk_live_guess%d", i), "", "")
+	}
+	if resp, _ := p.callFrom(t, "198.51.100.31", "GET", "/v1/customers", "live-key", "", ""); resp.StatusCode != 429 {
+		t.Errorf("after %d different bad keys: %d, want 429", authFailuresPerMinute, resp.StatusCode)
 	}
 }

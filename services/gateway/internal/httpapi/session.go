@@ -58,7 +58,8 @@ func (s *Server) session(r *http.Request) (session, error) {
 		return session{}, errSessionInvalid()
 	}
 	if s.badSessions.Has(token) {
-		s.authFailed(r, "session")
+		// The same token again is not a new guess: it is counted in the metric, not against the address.
+		s.countAuthFailure(r, "session")
 		return session{}, errSessionInvalid()
 	}
 	resp, err := s.d.Identity.GetSession(r.Context(), &plansv1.GetSessionRequest{Token: token})
