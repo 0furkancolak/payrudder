@@ -1473,6 +1473,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inbound/mail-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The mail provider's webhook of delivery events (bounces, complaints, deliveries). Public; protected by the provider's signature
+         * @description The webhook of the mail provider's events (Resend, or Nafru if its webhooks are the same: UNVERIFIED), signed with Svix (`svix-id`, `svix-timestamp`, `svix-signature`; the secret is `PAYRUDDER_MAIL_WEBHOOK_SECRET`, `whsec_...`; a timestamp more than five minutes from the clock is refused). `email.bounced` (a `bounce.type` of `Permanent` is a hard bounce, anything else soft), `email.complained`, `email.delivered` and `email.delivery_delayed` become the notifier's events, one for each recipient: a hard bounce and a complaint put the address on the suppression list of the tenant the mail was sent for. Every other event type is accepted and ignored. 401 when the signature does not verify, 503 when the notifier cannot be reached (the provider sends it again), 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET and the notifier's address are set.
+         */
+        post: operations["inboundMailEvents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/accounting/summary": {
         parameters: {
             query?: never;
@@ -4846,6 +4866,29 @@ export interface paths {
          * @description A provider problem is ok false with its kind, not an HTTP error.
          */
         post: operations["appTestMailIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the domain of the app's own e-mail sender publishes in DNS (SPF, DKIM, DMARC)
+         * @description Looks up three names for the domain of the address the live environment's own e-mail provider sends from, and changes nothing. Any member may ask; it is limited like a write because each
+         *     call is outbound lookups. `selector` is the DKIM selector the provider publishes its key under (the DKIM check is `unchecked` without one: it is not guessed, and Nafru's selector is
+         *     UNVERIFIED). Each check has a `status` (`ok`, `weak`, `missing`, `invalid`, `unchecked`, `error`) and a `detail` word. It says nothing about whether the records name the provider that sends,
+         *     nor about the provider's own verification of the domain. 404 `plans.mail_integration.not_connected` for an app that sends through Payrudder's own sender.
+         */
+        get: operations["appMailIdentity"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9363,6 +9406,24 @@ export interface components {
         AppTestMailIntegrationRequest: {
             /** Format: email */
             to: string;
+        };
+        MailIdentityCheck: {
+            /** @enum {string} */
+            status: "ok" | "weak" | "missing" | "invalid" | "unchecked" | "error";
+            /** @description hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked */
+            detail?: string;
+            /** @description The record that was found */
+            record?: string;
+            selector?: string;
+        };
+        MailIdentity: {
+            from: string;
+            domain: string;
+            /** Format: date-time */
+            checked_time: string;
+            spf: components["schemas"]["MailIdentityCheck"];
+            dkim: components["schemas"]["MailIdentityCheck"];
+            dmarc: components["schemas"]["MailIdentityCheck"];
         };
         AppTestMailIntegrationResponse: {
             ok: boolean;
@@ -16005,6 +16066,43 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    inboundMailEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Understood */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How many delivery events the body held */
+                        events: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            /** @description The signature is missing or does not verify */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     getAccountingSummary: {
         parameters: {
             query: {
@@ -22029,6 +22127,33 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appMailIdentity: {
+        parameters: {
+            query?: {
+                selector?: string;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailIdentity"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

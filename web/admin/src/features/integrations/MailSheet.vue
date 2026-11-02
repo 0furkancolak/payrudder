@@ -15,6 +15,7 @@ import { StatusPill } from "@/shared/ui/status-pill";
 import { Switch } from "@/shared/ui/switch";
 import { useMailActions, useMailIntegration } from "./api";
 import { NAFRU_EMAIL_URL } from "./brands";
+import MailIdentity from "./MailIdentity.vue";
 import { builtInMailState, ownMailState } from "./status";
 
 /**
@@ -150,6 +151,8 @@ const failure = computed(() => firstError(actions.save, actions.remove, actions.
             </div>
             <Button variant="outline" :disabled="actions.test.isPending.value || to.trim() === ''" data-testid="integration-test" @click="actions.test.mutate(to.trim())">{{ actions.test.isPending.value ? t("product.integrations.testing") : t("product.integrations.mail.sendTest") }}</Button>
           </div>
+
+          <MailIdentity v-if="own !== 'none'" :app-id="appId" />
 
           <form id="mail-sheet-form" class="grid gap-3" novalidate autocomplete="off" :aria-label="t('product.integrations.connectTitle', { name: 'Nafru Email' })" @submit.prevent="submit">
             <p class="text-muted-foreground text-xs">{{ own !== "none" ? t("product.integrations.replaceNote") : t("product.integrations.secretsOnce") }}</p>

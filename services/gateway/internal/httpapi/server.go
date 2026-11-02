@@ -41,6 +41,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
@@ -115,6 +116,11 @@ type Deps struct {
 	InboundDomain string
 	// InboundSecret (PAYRUDDER_INBOUND_SECRET) is what the mail provider's webhook to /inbound/invoices must present; empty disables the endpoint (404).
 	InboundSecret string
+	// MailWebhookSecret (PAYRUDDER_MAIL_WEBHOOK_SECRET, "whsec_...") is the signing secret of the mail provider's delivery webhook to /inbound/mail-events; empty (or no
+	// notifier connected) disables the endpoint (404).
+	MailWebhookSecret string
+	// LookupTXT reads TXT records for the sender-identity check of an app's mail (net.DefaultResolver.LookupTXT when nil); tests give it a zone.
+	LookupTXT mailx.TXTLookup
 	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
 	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string
