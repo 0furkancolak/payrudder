@@ -44,7 +44,7 @@ func (q *Queries) CountSagasByState(ctx context.Context) ([]CountSagasByStateRow
 
 const getChargeKeyStart = `-- name: GetChargeKeyStart :one
 SELECT at FROM saga_events
-WHERE tenant_id = $1 AND saga_id = $2 AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING')
+WHERE tenant_id = $1 AND saga_id = $2 AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED')
 ORDER BY seq DESC LIMIT 1
 `
 
@@ -295,7 +295,7 @@ func (q *Queries) ListSagasDueForDunning(ctx context.Context, arg ListSagasDueFo
 }
 
 const listSagasDueForPoll = `-- name: ListSagasDueForPoll :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_PENDING' AND next_attempt_at <= $1::timestamptz ORDER BY next_attempt_at LIMIT $2
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= $1::timestamptz ORDER BY next_attempt_at LIMIT $2
 `
 
 type ListSagasDueForPollParams struct {
@@ -383,7 +383,7 @@ func (q *Queries) LockSagaDueForDunning(ctx context.Context, arg LockSagaDueForD
 
 const lockSagaDueForPoll = `-- name: LockSagaDueForPoll :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = $1 AND id = $2 AND state = 'PAYMENT_PENDING' AND next_attempt_at <= $3::timestamptz
+WHERE tenant_id = $1 AND id = $2 AND state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= $3::timestamptz
 FOR UPDATE SKIP LOCKED
 `
 

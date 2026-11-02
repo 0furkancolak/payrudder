@@ -1659,7 +1659,7 @@ class GetDunningReportInvoice(TypedDict):
     provider: str
     currency: str
     total_minor: int
-    state: Literal["PAYMENT_DECLINED", "PAYMENT_UNKNOWN", "PAYMENT_PENDING", "UNCOLLECTIBLE"]
+    state: Literal["PAYMENT_DECLINED", "PAYMENT_UNKNOWN", "PAYMENT_PENDING", "PAYMENT_ACTION_REQUIRED", "UNCOLLECTIBLE"]
     dunning_attempt: int
     next_attempt_time: str | None
     last_error: str

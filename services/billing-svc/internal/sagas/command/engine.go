@@ -54,6 +54,9 @@ type Config struct {
 	// Hold, when set, says whether the operator has taken the tenant out of service (suspended, frozen or banned). The dunning sweep makes no charge for a tenant on hold:
 	// it puts the retry off by DunningHold and looks again. An error is not an answer: the saga is left as it is and the next pass asks again.
 	Hold func(ctx context.Context, tenantID uuid.UUID) (bool, error)
+	// PayLink, when set, makes the link to the invoice's page that the customer is mailed when the provider needs them to act (3-D Secure): an absolute URL, or "" when
+	// there is none to give (no public address is set, or the link could not be made). It runs while the saga's transaction is open, in its own, as every link is made.
+	PayLink func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error)
 }
 
 // Defaults of the "not found" window of a charge (Config.NotFoundGrace, NotFoundGraceSandbox, KeyHorizon).

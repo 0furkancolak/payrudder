@@ -414,6 +414,8 @@ type envOpts struct {
 	sandbox      bool
 	stepTimeout  time.Duration
 	watermarkGap time.Duration
+	// payLink makes the link of the mail that asks a customer to confirm a payment (the engine's Config.PayLink).
+	payLink func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error)
 }
 
 var seq atomic.Int64
@@ -458,7 +460,7 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.stepTimeout == 0 {
 		o.stepTimeout = time.Hour
 	}
-	e.eng, err = sagacommand.NewEngine(sagacommand.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger()})
+	e.eng, err = sagacommand.NewEngine(sagacommand.Config{Now: clk.Now, StepTimeout: o.stepTimeout, Log: testkit.Logger(), PayLink: o.payLink})
 	if err != nil {
 		t.Fatal(err)
 	}
