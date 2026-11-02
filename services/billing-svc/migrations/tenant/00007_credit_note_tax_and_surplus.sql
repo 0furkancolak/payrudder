@@ -5,7 +5,7 @@
 -- 2. A negative invoice total is no longer lost. The invoice's total is still clamped to zero (invoices.total_minor >= 0), and the surplus becomes a credit balance of its
 --    own source: credit_balances.source_surplus_invoice_id, at most one per invoice (idempotent), applied to the customer's next invoices like every other credit.
 --    source_invoice_id is not reused: it means "money received for an invoice that was voided" and the accounting refunds read it as that.
--- The twin of ../00006_credit_note_tax_and_surplus.sql for the tables that have a tenant_id.
+-- The twin of ../00007_credit_note_tax_and_surplus.sql for the tables that have a tenant_id.
 -- +goose Up
 ALTER TABLE credit_notes ADD COLUMN tax_minor bigint NOT NULL DEFAULT 0 CONSTRAINT credit_note_tax_within_total CHECK (tax_minor >= 0 AND tax_minor <= total_minor);
 

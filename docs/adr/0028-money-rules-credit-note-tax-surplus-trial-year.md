@@ -35,7 +35,7 @@ charges 0 as before, and what they came to below zero becomes a credit balance o
 - **Tax is on the net, on both sides of zero.** A base below zero gives a **negative `TAX` line** of the size the tax of that amount would have been (`rating.NetTaxLine`; the same rule
   as a credit that returns a taxed charge, plan changes and re-rating already follow). A customer who paid 100 plus 20 tax and has the usage taken back is credited 120, not 100.
   A provider-run subscription has no tax line, so none.
-- **One credit per invoice, append-only.** `credit_balances.source_surplus_invoice_id` (migration `00006`) with a unique index; the row is written in the transaction that writes the
+- **One credit per invoice, append-only.** `credit_balances.source_surplus_invoice_id` (migration `00007`) with a unique index; the row is written in the transaction that writes the
   draft, and a retried run that finds the draft already there writes no second. `source_invoice_id` is not reused: it means "money received for an invoice that was voided" and the
   accounting refunds read it as that. A void of an invoice with a surplus does not take the credit back (the surplus was owed to the customer whatever happens to the invoice).
 - **Visible.** `Invoice.credit_surplus_minor` and `UpcomingInvoice.credit_surplus_minor` (frozen in the invoice's snapshot as `credit_surplus_minor`), a sentence under the total in

@@ -569,7 +569,7 @@ CREATE TABLE credit_balances (
   PRIMARY KEY (tenant_id, id)
   -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and
   -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice), and source_surplus_invoice_id, the invoice whose lines
-  -- came to less than nothing: its total is 0 and the surplus is this credit (unique per invoice; migration 00006, ADR 0028)
+  -- came to less than nothing: its total is 0 and the surplus is this credit (unique per invoice; migration 00007, ADR 0028)
 );
 
 -- As built, credit_notes.tax_minor (migration 00006) is the part of total_minor that is the invoice's tax given back (0 for a note made before it);

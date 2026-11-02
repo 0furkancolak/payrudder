@@ -207,7 +207,7 @@ A credit that returns a taxed charge includes the tax (plan change, re-rating, a
 Still the owner's call, because the fix is an accounting rule and not a bug with one answer:
 
 - The tax of a *voided and refunded* invoice and of the credit balance a void of a hand-paid invoice makes is not reversed (their refund rows have tax 0): a full refund by a void of a taxed invoice still makes `Net` negative by the tax. The same pro rata would apply (a `tax_minor` for those two unions of `AccountingRefunds`), dated by the void.
-- Credit notes issued before migration `00006` carry no tax; the note that closes such an invoice takes all the tax not yet returned.
+- Credit notes issued before migration `00007` carry no tax; the note that closes such an invoice takes all the tax not yet returned.
 
 ## logic-plans-svc.md and logic-gateway-payments.md
 
