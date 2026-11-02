@@ -56,7 +56,7 @@ Artifact: [chaos_20k_local.json](benchmarks/chaos_20k_local.json). The 1M-event 
 
 ## Memory budgets
 
-The `e2e` job of `ci.yml` ends with `make mem-budget`: after the stack has served the e2e scenarios and the console test, the memory of every Payrudder
+The `e2e` job of `stack.yml` ends with `make mem-budget`: after the stack has served the e2e scenarios and the console test, the memory of every Payrudder
 service (`docker stats`, the container's working set, which for these processes is the resident set; the highest of three samples) must be at or below its
 `budget_mib` in [`deploy/compose/memory-budgets.yaml`](../deploy/compose/memory-budgets.yaml). The job writes the table (measured, budget, suggested budget) to the
 run summary. This is a regression alarm, not a benchmark: the compose limit stays the hard ceiling, the budget sits below it.

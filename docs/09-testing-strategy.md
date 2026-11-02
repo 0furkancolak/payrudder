@@ -5,9 +5,9 @@
 | Unit | `go test`, `testing/quick` / `pgregory.net/rapid` for property tests | every push | pure logic: rating, period/lateness classification, saga transitions, GCRA math |
 | Integration | `testcontainers-go` (Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO) | every PR | one service + its real dependencies |
 | Contract | `buf breaking`, golden proto fixtures, gRPC contract tests | every PR | wire compatibility between services and over time |
-| End-to-end | Docker Compose stack + Go test driver (`tests/e2e`) | every PR and every push to `main` (`e2e` job of `ci.yml`); on kind, `make e2e-kind` (the `kind` job) | full flows: ingest → invoice |
+| End-to-end | Docker Compose stack + Go test driver (`tests/e2e`) | every push to `main`, and a PR that carries the label `ci:full` (`e2e` job of `stack.yml`); on kind, `make e2e-kind` (the `kind` job) | full flows: ingest → invoice |
 | Load | k6 (`tests/load`) | by hand (`make load S=…`) and the short scenarios of `nightly.yml` | throughput, latency, noisy neighbor |
-| Chaos / correctness | Go driver + Toxiproxy + container kills (`tests/chaos`) | 100k events on every PR (`chaos` job of `ci.yml`), 1M events nightly | exact totals under failure |
+| Chaos / correctness | Go driver + Toxiproxy + container kills (`tests/chaos`) | 100k events on every push to `main` and on a `ci:full` PR (`chaos` job of `stack.yml`), 1M events nightly | exact totals under failure |
 
 ## Unit tests (highlights)
 
@@ -23,7 +23,7 @@
 
 ## Sandbox end-to-end
 
-`TestSandboxBillingEndToEnd` and `TestSandboxPaymentScenarios` in `tests/e2e/billing_e2e_test.go`, run on Compose in every PR (`make e2e`) and on kind (`make demo-k8s`, `make e2e-kind`): create an account → sandbox key →
+`TestSandboxBillingEndToEnd` and `TestSandboxPaymentScenarios` in `tests/e2e/billing_e2e_test.go`, run on Compose on every push to `main` and on a `ci:full` PR (`make e2e`) and on kind (`make demo-k8s`, `make e2e-kind`): create an account → sandbox key →
 one customer per `pm_sandbox_*` token → events → `POST /v1/sandbox/close-period` → assert each saga's terminal state,
 `SBX-` numbering, the PDF in MinIO and its sandbox marker, `[SANDBOX]` receipts in Mailpit, and exactly one charge at the mock provider. `tests/e2e/live_sandbox_e2e_test.go` (`TestLiveAndSandboxAcceptance`) covers the other half: a person signs up and works with the sandbox and live environments of an app.
 
@@ -123,7 +123,7 @@ Results are published in `docs/benchmarks.md` (Phase 9) with hardware, commit SH
 **Output.** JSON report (counts, faults injected, durations, any mismatching keys) stored as a CI artifact. A summary goes in
 `docs/benchmarks.md`. The test **fails on any single mismatch**. There is no tolerance.
 
-**Runtime target:** < 30 min on a CI runner with 4 vCPU / 16 GB. The nightly job runs on `ubuntu-latest` with a 150-minute timeout; GitHub shows its `chaos-1m` job passing in 35 to 45 minutes on the nights of 2026-10-30 to 11-02 (the reports of those runs are artifacts and are not copied into [benchmarks.md](benchmarks.md#correctness-under-chaos), which lists what was measured by hand). The 100k-event variant runs in the `chaos` job of `ci.yml` on every pull request and every push to `main`.
+**Runtime target:** < 30 min on a CI runner with 4 vCPU / 16 GB. The nightly job runs on `ubuntu-latest` with a 150-minute timeout; GitHub shows its `chaos-1m` job passing in 35 to 45 minutes on the nights of 2026-10-30 to 11-02 (the reports of those runs are artifacts and are not copied into [benchmarks.md](benchmarks.md#correctness-under-chaos), which lists what was measured by hand). The 100k-event variant runs in the `chaos` job of `stack.yml` on every push to `main` and on a pull request with the label `ci:full`.
 
 ### How it runs (as built)
 
@@ -151,7 +151,7 @@ A7 needs Prometheus (`PAYRUDDER_PROMETHEUS_URL`) and is reported as skipped with
 
 What exists in `.github/workflows/`. Nothing here builds or pushes container images, packages the Helm chart or publishes anything: there is no release workflow (the owner's rule is no releases until the app is complete, and `sdk-publish.yml` is a manual dry run).
 
-**`ci.yml`** runs on every pull request and every push to `main`. A pull request's older run is cancelled by its next push; every commit on `main` has a concurrency group of its own (the sha), so a merge's run is not replaced by the next merge's. Jobs, with the `name:` GitHub shows:
+**`ci.yml`** runs on every pull request and every push to `main`, except a change to `docs/plans/**` or a top-level `*.md` file (no run at all). A pull request's older run is cancelled by its next push. On `main` a run in progress is never cancelled, but only one run waits behind it: the next merge replaces the waiting run, so a burst of merges costs the run in progress and one run of the newest commit (a cancelled run on `main` means "replaced by a newer commit", never "green"). On a pull request the `what changed` job (`.github/scripts/changes.sh`, tested by `tests/ci`) lists the changed files and skips the jobs they cannot affect: the Go jobs (`test`, `integration`, `compose`, `backup`, `helm`) when only `sdk/typescript|php|python`, `mcp`, `examples` or `docs-site` changed; `web` unless `web/admin`, `api/openapi` or `.github` changed; `hosted-pages` when neither of the two runs. A path nobody listed runs everything; on `main` every job runs. Jobs, with the `name:` GitHub shows:
 
 | Job | What it runs |
 |---|---|
@@ -159,11 +159,16 @@ What exists in `.github/workflows/`. Nothing here builds or pushes container ima
 | `test` (unit tests) | `make test` (`go test -race` on every module) and `make test-rules` (Prometheus alert rules, Alertmanager routes) |
 | `integration` (integration tests) | `make test-integration`: every module with `-tags integration`, containers through testcontainers |
 | `compose` (compose stack healthy) | `make up-infra` with every container healthy |
-| `e2e` (end-to-end, compose) | `make up`, `make e2e` (`tests/e2e`), the console's Playwright smoke test, `make mem-budget`, `make seed` |
 | `web` (operator console) | lint, typecheck, unit tests, the generated API types match `api/openapi/v1.yaml`, build, Playwright against a mocked gateway |
 | `hosted-pages` (customer-facing pages) | the gateway writes every hosted page in every language; axe-core on each, light and dark, at three widths |
 | `backup` (backup scripts and recovery drill) | `make test-backup-scripts`, `make test-store-backups`, `make backup-drill` |
 | `helm` (helm charts) | `make helm-lint`, the render tests in `tests/helm`, `ct lint` |
+
+**`stack.yml`** boots the whole stack, about 70 job-minutes (more than the rest of `ci.yml` together), so it runs on every push to `main` (same collapse as above, and no run for a change under `docs/**`, `sdk/typescript|php|python`, `mcp`, `examples`, `docs-site` or a top-level `*.md`), on a pull request only when it carries the label `ci:full`, and by hand (`gh workflow run stack.yml --ref <branch>`):
+
+| Job | What it runs |
+|---|---|
+| `e2e` (end-to-end, compose) | `make up`, `make e2e` (`tests/e2e`), the console's Playwright smoke test, `make mem-budget`, `make seed` |
 | `kind` (kubernetes) | `kind-up`, `kind-images`, `helm-install`, `netpol-test`, `e2e-kind`, `rollout-test` under k6 load |
 | `chaos` (correctness, 100k events) | `make chaos N=100000` with the chaos monkey on; the report is an artifact |
 
