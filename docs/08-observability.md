@@ -71,6 +71,7 @@ RED for every gRPC/HTTP endpoint (from `otelgrpc`/`otelhttp`). Business and corr
 
 | Metric | Type | Labels | Why |
 |---|---|---|---|
+| `gateway_auth_failures_total` | counter | `reason` (`malformed`, `unknown`, `secret`, `revoked`, `environment`, `expired`, `tenant` for API keys; `session`, `operator_token`; `throttled`) | Guessing: a rising `unknown`/`session` rate is someone trying keys or tokens; `throttled` is the per-address cut-off at work ([gateway](03-services/gateway.md#authentication--tenant-resolution)) |
 | `ingest_events_total` | counter | `tenant`, `result` (accepted/duplicate/rejected), `error_code` | Volume, dup rate |
 | `ingest_outbox_depth` | gauge | — | Kafka health / back-pressure |
 | `ingest_outbox_oldest_age_seconds` | gauge | — | Relay lag, watermark blocker |
