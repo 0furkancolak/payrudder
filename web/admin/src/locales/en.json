@@ -364,7 +364,61 @@
       "suspended": "{app} is suspended: its API keys have stopped, payment pages and payment links take no payment, nothing is charged and its customers get no mail. Your data is kept.",
       "frozen": "{app} is frozen: you can still read everything, but nothing can be changed. API calls that write are refused, nothing is charged and its customers get no mail. Your data is kept.",
       "banned": "{app} is banned: its API keys have stopped and nothing is charged, mailed or sent. Only an operator can lift a ban.",
-      "write": "Write to support"
+      "write": "Write to support",
+      "retention": "Your data is kept until {date}.",
+      "scheduledSuspended": "{app} will be suspended on {date}: its API keys will stop and nothing will be charged. If you think this is a mistake, write to support.",
+      "scheduledFrozen": "{app} will be frozen on {date}: you will still be able to read everything, but nothing can be changed and nothing will be charged. If you think this is a mistake, write to support.",
+      "appeal": {
+        "button": "Appeal",
+        "hint": "Tell the operator why the hold should be lifted. Only owners can appeal. The operator answers by e-mail.",
+        "statement": "What happened",
+        "submit": "Send appeal",
+        "cancel": "Cancel",
+        "sent": "You appealed on {date}. The operator has not answered yet.",
+        "accepted": "Your appeal was accepted on {date}.",
+        "rejected": "Your appeal was not accepted on {date}.",
+        "answer": "The operator wrote: {answer}"
+      }
+    },
+    "lifecycle": {
+      "title": "Retention and schedule",
+      "retentionUntil": "Data is kept until {date}.",
+      "retentionDue": "The retention period ended on {date}. Nothing is deleted automatically: what happens to the data is decided by a person.",
+      "retentionNone": "Not banned: there is no retention deadline.",
+      "scheduled": "{status} on {date} (scheduled by {by})",
+      "none": "Nothing is scheduled.",
+      "hint": "An active live app is put in this status at that time, by the system. A ban cannot be scheduled.",
+      "status": "Status",
+      "time": "When",
+      "category": "Category",
+      "reason": "Reason",
+      "submit": "Schedule",
+      "cancel": "Cancel the schedule",
+      "confirmCancel": "Cancel the scheduled status?"
+    },
+    "appeals": {
+      "title": "Appeals",
+      "empty": "No appeals.",
+      "columns": {
+        "status": "Status",
+        "held": "Against",
+        "by": "Owner",
+        "sent": "Sent",
+        "statement": "What the owner wrote"
+      },
+      "status": {
+        "open": "Open",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "decide": "Decide",
+      "sheetTitle": "Appeal of {app}",
+      "answer": "Your answer to the owners",
+      "answerHint": "The owners get this by e-mail. Required to reject.",
+      "accept": "Accept and reinstate",
+      "reject": "Reject",
+      "confirmAccept": "Accept this appeal? {app} goes back into service.",
+      "openTitle": "Open appeals"
     }
   },
   "invoice": {
@@ -3262,6 +3316,11 @@
         "version_stale": "A newer version of this text was published. Show the current one and ask again.",
         "withdrawal_decided": "This withdrawal request cannot change to that status.",
         "withdrawal_not_found": "No such withdrawal request."
+      },
+      "appeal": {
+        "not_held": "Only an app the operator has suspended, frozen or banned can be appealed.",
+        "exists": "An appeal is open already. The operator will answer it.",
+        "not_open": "This appeal was decided already."
       }
     },
     "common": {

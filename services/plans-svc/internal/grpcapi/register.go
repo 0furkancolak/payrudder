@@ -53,10 +53,12 @@ type Deps struct {
 	WebhookAllowPrivate bool
 	// BanApproval makes a ban of a tenant need a second operator (PAYRUDDER_TENANT_BAN_APPROVAL; default off).
 	BanApproval bool
-	Mail        usermail.Sender // sends the verification, reset and invitation mails, and the help desk's notices
-	AppURL      string          // the console's base URL, which mailed links point into
-	OTPPepper   string          // keys the hash of one-time sign-in codes
-	Sandbox     *sandboxapi.Handler
+	// BanRetentionDays is how long a banned tenant's data is kept before the retention job marks the deadline due (PAYRUDDER_BAN_RETENTION_DAYS; 0 records none).
+	BanRetentionDays int
+	Mail             usermail.Sender // sends the verification, reset and invitation mails, and the help desk's notices
+	AppURL           string          // the console's base URL, which mailed links point into
+	OTPPepper        string          // keys the hash of one-time sign-in codes
+	Sandbox          *sandboxapi.Handler
 	// Saas is the SaaS mode (PAYRUDDER_SAAS, phase 55): Payrudder's own plans, enforced on every account. The zero value is off.
 	Saas saascmd.Config
 	// OperatorEmails are the platform operators' addresses (PAYRUDDER_OPERATOR_EMAILS, as on the gateway): the help desk mails them when a ticket is opened.
@@ -80,7 +82,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliateServiceServer(srv, newAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, resolver, d.Log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.Places))
-	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Mail, d.AppURL, d.Log)
+	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.BanRetentionDays, d.Mail, d.AppURL, d.Log)
 	admin.accounts.WithDefaultRegion(d.DefaultRegion)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))

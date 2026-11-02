@@ -5,7 +5,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PeekHost from "@/features/related/PeekHost.vue";
 import HoldBanner from "@/features/tenants/HoldBanner.vue";
-import { heldApps } from "@/features/tenants/hold";
+import { heldApps, scheduledCandidate } from "@/features/tenants/hold";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import { setupRedirect } from "@/features/product/twoFactor";
 import { BrandLogo } from "@/shared/ui/brand-logo";
@@ -115,6 +115,8 @@ const operatorTenantEnv = computed(() => {
 const sandboxPage = computed(() => (operatorTenantEnv.value ?? pageEnv.value) === "sandbox");
 /** The apps of the page whose live environment the operator has taken out of service: the person is told on the pages of the apps, not on the organisation's own. */
 const held = computed(() => (envPage.value ? heldApps(shell.apps.data.value?.apps, shell.scope.value) : []));
+/** The one active app of the page, so that a suspension or a freeze scheduled for it is told ahead of time. */
+const scheduledFor = computed(() => (envPage.value ? scheduledCandidate(shell.apps.data.value?.apps, shell.scope.value) : null));
 
 // An app opens next time where the person was: the app and, on a page that names its environment, the environment are remembered.
 watch(
@@ -228,7 +230,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-16 md:pt-4' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
       >
         <VerifyBanner v-if="isPerson" />
-        <HoldBanner :held="held" />
+        <HoldBanner :held="held" :scheduled-for="scheduledFor" />
         <NotFound v-if="unknownScope" />
         <PageBoundary v-else><Outlet /></PageBoundary>
       </main>

@@ -3558,6 +3558,224 @@ func (x *CouponRedemption) GetReverseTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// An owner's appeal against a suspended, frozen or banned app (plan 14). The operator decides it.
+type TenantAppeal struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TenantId string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// "open", "accepted" or "rejected".
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// The status the app was in when the owner appealed: "suspended", "frozen" or "banned".
+	HeldStatus string `protobuf:"bytes,4,opt,name=held_status,json=heldStatus,proto3" json:"held_status,omitempty"`
+	// What the owner wrote (up to 2000 characters).
+	Statement string `protobuf:"bytes,5,opt,name=statement,proto3" json:"statement,omitempty"`
+	// The owner's verified address.
+	SubmittedBy string `protobuf:"bytes,6,opt,name=submitted_by,json=submittedBy,proto3" json:"submitted_by,omitempty"`
+	// The operator's answer to the owner (up to 1000 characters); empty while the appeal is open. The operator's category and note of the hold are never in it.
+	Answer        string                 `protobuf:"bytes,7,opt,name=answer,proto3" json:"answer,omitempty"`
+	DecidedBy     string                 `protobuf:"bytes,8,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	DecideTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=decide_time,json=decideTime,proto3" json:"decide_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TenantAppeal) Reset() {
+	*x = TenantAppeal{}
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantAppeal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantAppeal) ProtoMessage() {}
+
+func (x *TenantAppeal) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantAppeal.ProtoReflect.Descriptor instead.
+func (*TenantAppeal) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *TenantAppeal) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetHeldStatus() string {
+	if x != nil {
+		return x.HeldStatus
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetStatement() string {
+	if x != nil {
+		return x.Statement
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetSubmittedBy() string {
+	if x != nil {
+		return x.SubmittedBy
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetAnswer() string {
+	if x != nil {
+		return x.Answer
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetDecidedBy() string {
+	if x != nil {
+		return x.DecidedBy
+	}
+	return ""
+}
+
+func (x *TenantAppeal) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *TenantAppeal) GetDecideTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DecideTime
+	}
+	return nil
+}
+
+// The retention deadline of a banned live tenant and the status change the operator scheduled for it (plan 14).
+type TenantLifecycle struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When a banned tenant's data may be considered for deletion: the ban's time plus the retention period. Empty unless the tenant is banned. Nothing deletes anything.
+	RetentionUntil *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=retention_until,json=retentionUntil,proto3" json:"retention_until,omitempty"`
+	// When the retention job noticed the deadline had passed and marked it due; empty before.
+	RetentionDueTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=retention_due_time,json=retentionDueTime,proto3" json:"retention_due_time,omitempty"`
+	// The status the tenant is to be put in at scheduled_time: "suspended" or "frozen"; empty when nothing is scheduled.
+	ScheduledStatus   string                 `protobuf:"bytes,3,opt,name=scheduled_status,json=scheduledStatus,proto3" json:"scheduled_status,omitempty"`
+	ScheduledTime     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=scheduled_time,json=scheduledTime,proto3" json:"scheduled_time,omitempty"`
+	ScheduledCategory string                 `protobuf:"bytes,5,opt,name=scheduled_category,json=scheduledCategory,proto3" json:"scheduled_category,omitempty"`
+	ScheduledReason   string                 `protobuf:"bytes,6,opt,name=scheduled_reason,json=scheduledReason,proto3" json:"scheduled_reason,omitempty"`
+	ScheduledBy       string                 `protobuf:"bytes,7,opt,name=scheduled_by,json=scheduledBy,proto3" json:"scheduled_by,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *TenantLifecycle) Reset() {
+	*x = TenantLifecycle{}
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TenantLifecycle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TenantLifecycle) ProtoMessage() {}
+
+func (x *TenantLifecycle) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TenantLifecycle.ProtoReflect.Descriptor instead.
+func (*TenantLifecycle) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *TenantLifecycle) GetRetentionUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RetentionUntil
+	}
+	return nil
+}
+
+func (x *TenantLifecycle) GetRetentionDueTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RetentionDueTime
+	}
+	return nil
+}
+
+func (x *TenantLifecycle) GetScheduledStatus() string {
+	if x != nil {
+		return x.ScheduledStatus
+	}
+	return ""
+}
+
+func (x *TenantLifecycle) GetScheduledTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ScheduledTime
+	}
+	return nil
+}
+
+func (x *TenantLifecycle) GetScheduledCategory() string {
+	if x != nil {
+		return x.ScheduledCategory
+	}
+	return ""
+}
+
+func (x *TenantLifecycle) GetScheduledReason() string {
+	if x != nil {
+		return x.ScheduledReason
+	}
+	return ""
+}
+
+func (x *TenantLifecycle) GetScheduledBy() string {
+	if x != nil {
+		return x.ScheduledBy
+	}
+	return ""
+}
+
 var File_payrudder_plans_v1_resources_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
@@ -3872,7 +4090,31 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	" \x01(\tR\bcurrency\x12;\n" +
 	"\vcreate_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12=\n" +
-	"\freverse_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vreverseTime*Y\n" +
+	"\freverse_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vreverseTime\"\xe6\x02\n" +
+	"\fTenantAppeal\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1f\n" +
+	"\vheld_status\x18\x04 \x01(\tR\n" +
+	"heldStatus\x12\x1c\n" +
+	"\tstatement\x18\x05 \x01(\tR\tstatement\x12!\n" +
+	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\x12\x16\n" +
+	"\x06answer\x18\a \x01(\tR\x06answer\x12\x1d\n" +
+	"\n" +
+	"decided_by\x18\b \x01(\tR\tdecidedBy\x12;\n" +
+	"\vcreate_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\x12;\n" +
+	"\vdecide_time\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"decideTime\"\x8b\x03\n" +
+	"\x0fTenantLifecycle\x12C\n" +
+	"\x0fretention_until\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x0eretentionUntil\x12H\n" +
+	"\x12retention_due_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10retentionDueTime\x12)\n" +
+	"\x10scheduled_status\x18\x03 \x01(\tR\x0fscheduledStatus\x12A\n" +
+	"\x0escheduled_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\rscheduledTime\x12-\n" +
+	"\x12scheduled_category\x18\x05 \x01(\tR\x11scheduledCategory\x12)\n" +
+	"\x10scheduled_reason\x18\x06 \x01(\tR\x0fscheduledReason\x12!\n" +
+	"\fscheduled_by\x18\a \x01(\tR\vscheduledBy*Y\n" +
 	"\vEnvironment\x12\x1b\n" +
 	"\x17ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENVIRONMENT_SANDBOX\x10\x01\x12\x14\n" +
@@ -3950,7 +4192,7 @@ func file_payrudder_plans_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
-var file_payrudder_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_payrudder_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_payrudder_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: payrudder.plans.v1.Environment
 	(TenantStatus)(0),             // 1: payrudder.plans.v1.TenantStatus
@@ -3991,43 +4233,45 @@ var file_payrudder_plans_v1_resources_proto_goTypes = []any{
 	(*Coupon)(nil),                // 36: payrudder.plans.v1.Coupon
 	(*PromotionCode)(nil),         // 37: payrudder.plans.v1.PromotionCode
 	(*CouponRedemption)(nil),      // 38: payrudder.plans.v1.CouponRedemption
-	nil,                           // 39: payrudder.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 40: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 41: google.protobuf.Duration
+	(*TenantAppeal)(nil),          // 39: payrudder.plans.v1.TenantAppeal
+	(*TenantLifecycle)(nil),       // 40: payrudder.plans.v1.TenantLifecycle
+	nil,                           // 41: payrudder.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 42: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 43: google.protobuf.Duration
 }
 var file_payrudder_plans_v1_resources_proto_depIdxs = []int32{
 	18, // 0: payrudder.plans.v1.Account.tenants:type_name -> payrudder.plans.v1.Tenant
-	40, // 1: payrudder.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	42, // 1: payrudder.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
 	17, // 2: payrudder.plans.v1.Account.apps:type_name -> payrudder.plans.v1.App
 	18, // 3: payrudder.plans.v1.App.tenants:type_name -> payrudder.plans.v1.Tenant
-	40, // 4: payrudder.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
-	40, // 5: payrudder.plans.v1.App.archive_time:type_name -> google.protobuf.Timestamp
+	42, // 4: payrudder.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
+	42, // 5: payrudder.plans.v1.App.archive_time:type_name -> google.protobuf.Timestamp
 	0,  // 6: payrudder.plans.v1.Tenant.environment:type_name -> payrudder.plans.v1.Environment
 	2,  // 7: payrudder.plans.v1.Tenant.tier:type_name -> payrudder.plans.v1.TenantTier
-	41, // 8: payrudder.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	40, // 9: payrudder.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	43, // 8: payrudder.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	42, // 9: payrudder.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
 	13, // 10: payrudder.plans.v1.Tenant.address:type_name -> payrudder.plans.v1.Address
 	14, // 11: payrudder.plans.v1.Tenant.bank_transfer:type_name -> payrudder.plans.v1.BankTransferDetails
 	15, // 12: payrudder.plans.v1.Tenant.legal:type_name -> payrudder.plans.v1.LegalInfo
 	1,  // 13: payrudder.plans.v1.Tenant.status:type_name -> payrudder.plans.v1.TenantStatus
-	40, // 14: payrudder.plans.v1.Tenant.activate_time:type_name -> google.protobuf.Timestamp
-	40, // 15: payrudder.plans.v1.Tenant.terms_accept_time:type_name -> google.protobuf.Timestamp
+	42, // 14: payrudder.plans.v1.Tenant.activate_time:type_name -> google.protobuf.Timestamp
+	42, // 15: payrudder.plans.v1.Tenant.terms_accept_time:type_name -> google.protobuf.Timestamp
 	0,  // 16: payrudder.plans.v1.ApiKey.environment:type_name -> payrudder.plans.v1.Environment
 	11, // 17: payrudder.plans.v1.ApiKey.status:type_name -> payrudder.plans.v1.ApiKey.Status
-	40, // 18: payrudder.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	40, // 19: payrudder.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	42, // 18: payrudder.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	42, // 19: payrudder.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
 	12, // 20: payrudder.plans.v1.ApiKey.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	40, // 21: payrudder.plans.v1.ApiKey.last_used_time:type_name -> google.protobuf.Timestamp
-	40, // 22: payrudder.plans.v1.ApiKey.expire_time:type_name -> google.protobuf.Timestamp
-	40, // 23: payrudder.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	42, // 21: payrudder.plans.v1.ApiKey.last_used_time:type_name -> google.protobuf.Timestamp
+	42, // 22: payrudder.plans.v1.ApiKey.expire_time:type_name -> google.protobuf.Timestamp
+	42, // 23: payrudder.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
 	13, // 24: payrudder.plans.v1.Customer.address:type_name -> payrudder.plans.v1.Address
-	40, // 25: payrudder.plans.v1.Customer.block_time:type_name -> google.protobuf.Timestamp
-	40, // 26: payrudder.plans.v1.Customer.blocked_until:type_name -> google.protobuf.Timestamp
-	40, // 27: payrudder.plans.v1.Customer.tax_id_validated_at:type_name -> google.protobuf.Timestamp
+	42, // 25: payrudder.plans.v1.Customer.block_time:type_name -> google.protobuf.Timestamp
+	42, // 26: payrudder.plans.v1.Customer.blocked_until:type_name -> google.protobuf.Timestamp
+	42, // 27: payrudder.plans.v1.Customer.tax_id_validated_at:type_name -> google.protobuf.Timestamp
 	3,  // 28: payrudder.plans.v1.Meter.aggregation:type_name -> payrudder.plans.v1.Aggregation
-	39, // 29: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
-	40, // 30: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	40, // 31: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	41, // 29: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
+	42, // 30: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	42, // 31: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
 	24, // 32: payrudder.plans.v1.TieredGraduatedPrice.tiers:type_name -> payrudder.plans.v1.PriceTier
 	25, // 33: payrudder.plans.v1.Price.per_unit:type_name -> payrudder.plans.v1.PerUnitPrice
 	26, // 34: payrudder.plans.v1.Price.tiered:type_name -> payrudder.plans.v1.TieredGraduatedPrice
@@ -4036,41 +4280,46 @@ var file_payrudder_plans_v1_resources_proto_depIdxs = []int32{
 	5,  // 37: payrudder.plans.v1.Entitlement.mode:type_name -> payrudder.plans.v1.QuotaMode
 	4,  // 38: payrudder.plans.v1.EntitlementOverride.window:type_name -> payrudder.plans.v1.QuotaWindow
 	5,  // 39: payrudder.plans.v1.EntitlementOverride.mode:type_name -> payrudder.plans.v1.QuotaMode
-	40, // 40: payrudder.plans.v1.EntitlementOverride.create_time:type_name -> google.protobuf.Timestamp
-	40, // 41: payrudder.plans.v1.EntitlementOverride.update_time:type_name -> google.protobuf.Timestamp
+	42, // 40: payrudder.plans.v1.EntitlementOverride.create_time:type_name -> google.protobuf.Timestamp
+	42, // 41: payrudder.plans.v1.EntitlementOverride.update_time:type_name -> google.protobuf.Timestamp
 	28, // 42: payrudder.plans.v1.PlanVersion.prices:type_name -> payrudder.plans.v1.Price
 	29, // 43: payrudder.plans.v1.PlanVersion.entitlements:type_name -> payrudder.plans.v1.Entitlement
-	40, // 44: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	42, // 44: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
 	33, // 45: payrudder.plans.v1.PlanVersion.fees:type_name -> payrudder.plans.v1.CurrencyFee
 	32, // 46: payrudder.plans.v1.PlanVersion.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
 	28, // 47: payrudder.plans.v1.CurrencyPrices.prices:type_name -> payrudder.plans.v1.Price
 	8,  // 48: payrudder.plans.v1.CurrencyFee.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 49: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	40, // 50: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	40, // 51: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	42, // 49: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	42, // 50: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	42, // 51: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
 	7,  // 52: payrudder.plans.v1.Subscription.state:type_name -> payrudder.plans.v1.SubscriptionState
 	8,  // 53: payrudder.plans.v1.Subscription.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 54: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	40, // 55: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	42, // 54: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	42, // 55: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
 	6,  // 56: payrudder.plans.v1.Subscription.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
 	35, // 57: payrudder.plans.v1.Subscription.scheduled_change:type_name -> payrudder.plans.v1.ScheduledChange
 	8,  // 58: payrudder.plans.v1.ScheduledChange.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 59: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	42, // 59: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
 	10, // 60: payrudder.plans.v1.Coupon.duration:type_name -> payrudder.plans.v1.CouponDuration
-	40, // 61: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
-	40, // 62: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
+	42, // 61: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
+	42, // 62: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
 	9,  // 63: payrudder.plans.v1.Coupon.applies_to:type_name -> payrudder.plans.v1.CouponTarget
-	40, // 64: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
-	40, // 65: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
+	42, // 64: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
+	42, // 65: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
 	9,  // 66: payrudder.plans.v1.CouponRedemption.target:type_name -> payrudder.plans.v1.CouponTarget
-	40, // 67: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
-	40, // 68: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
-	21, // 69: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
-	70, // [70:70] is the sub-list for method output_type
-	70, // [70:70] is the sub-list for method input_type
-	70, // [70:70] is the sub-list for extension type_name
-	70, // [70:70] is the sub-list for extension extendee
-	0,  // [0:70] is the sub-list for field type_name
+	42, // 67: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
+	42, // 68: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
+	42, // 69: payrudder.plans.v1.TenantAppeal.create_time:type_name -> google.protobuf.Timestamp
+	42, // 70: payrudder.plans.v1.TenantAppeal.decide_time:type_name -> google.protobuf.Timestamp
+	42, // 71: payrudder.plans.v1.TenantLifecycle.retention_until:type_name -> google.protobuf.Timestamp
+	42, // 72: payrudder.plans.v1.TenantLifecycle.retention_due_time:type_name -> google.protobuf.Timestamp
+	42, // 73: payrudder.plans.v1.TenantLifecycle.scheduled_time:type_name -> google.protobuf.Timestamp
+	21, // 74: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
+	75, // [75:75] is the sub-list for method output_type
+	75, // [75:75] is the sub-list for method input_type
+	75, // [75:75] is the sub-list for extension type_name
+	75, // [75:75] is the sub-list for extension extendee
+	0,  // [0:75] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_resources_proto_init() }
@@ -4089,7 +4338,7 @@ func file_payrudder_plans_v1_resources_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_resources_proto_rawDesc), len(file_payrudder_plans_v1_resources_proto_rawDesc)),
 			NumEnums:      13,
-			NumMessages:   27,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

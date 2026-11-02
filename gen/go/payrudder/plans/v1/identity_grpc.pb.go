@@ -53,6 +53,8 @@ const (
 	IdentityService_CreateMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/CreateMyApp"
 	IdentityService_ListMyApps_FullMethodName              = "/payrudder.plans.v1.IdentityService/ListMyApps"
 	IdentityService_GetMyApp_FullMethodName                = "/payrudder.plans.v1.IdentityService/GetMyApp"
+	IdentityService_GetMyAppHold_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyAppHold"
+	IdentityService_SubmitMyAppAppeal_FullMethodName       = "/payrudder.plans.v1.IdentityService/SubmitMyAppAppeal"
 	IdentityService_RenameMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/RenameMyApp"
 	IdentityService_DeleteMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
 	IdentityService_ResolveMyTenant_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
@@ -154,6 +156,11 @@ type IdentityServiceClient interface {
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
 	ListMyApps(ctx context.Context, in *ListMyAppsRequest, opts ...grpc.CallOption) (*ListMyAppsResponse, error)
 	GetMyApp(ctx context.Context, in *GetMyAppRequest, opts ...grpc.CallOption) (*GetMyAppResponse, error)
+	// GetMyAppHold says what the operator has done to the app's live environment as the owners may know it (plan 14): its status, a suspension or a freeze scheduled for
+	// it, the date a banned app's data is kept until, and the latest appeal. Any member may read it. It never carries the operator's category or note.
+	GetMyAppHold(ctx context.Context, in *GetMyAppHoldRequest, opts ...grpc.CallOption) (*GetMyAppHoldResponse, error)
+	// SubmitMyAppAppeal lets an owner state why the operator should lift a suspension, a freeze or a ban of the app. One open appeal at a time.
+	SubmitMyAppAppeal(ctx context.Context, in *SubmitMyAppAppealRequest, opts ...grpc.CallOption) (*SubmitMyAppAppealResponse, error)
 	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
 	RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error)
 	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
@@ -540,6 +547,26 @@ func (c *identityServiceClient) GetMyApp(ctx context.Context, in *GetMyAppReques
 	return out, nil
 }
 
+func (c *identityServiceClient) GetMyAppHold(ctx context.Context, in *GetMyAppHoldRequest, opts ...grpc.CallOption) (*GetMyAppHoldResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyAppHoldResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetMyAppHold_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) SubmitMyAppAppeal(ctx context.Context, in *SubmitMyAppAppealRequest, opts ...grpc.CallOption) (*SubmitMyAppAppealResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitMyAppAppealResponse)
+	err := c.cc.Invoke(ctx, IdentityService_SubmitMyAppAppeal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RenameMyAppResponse)
@@ -783,6 +810,11 @@ type IdentityServiceServer interface {
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
 	ListMyApps(context.Context, *ListMyAppsRequest) (*ListMyAppsResponse, error)
 	GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error)
+	// GetMyAppHold says what the operator has done to the app's live environment as the owners may know it (plan 14): its status, a suspension or a freeze scheduled for
+	// it, the date a banned app's data is kept until, and the latest appeal. Any member may read it. It never carries the operator's category or note.
+	GetMyAppHold(context.Context, *GetMyAppHoldRequest) (*GetMyAppHoldResponse, error)
+	// SubmitMyAppAppeal lets an owner state why the operator should lift a suspension, a freeze or a ban of the app. One open appeal at a time.
+	SubmitMyAppAppeal(context.Context, *SubmitMyAppAppealRequest) (*SubmitMyAppAppealResponse, error)
 	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
 	RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error)
 	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
@@ -930,6 +962,12 @@ func (UnimplementedIdentityServiceServer) ListMyApps(context.Context, *ListMyApp
 }
 func (UnimplementedIdentityServiceServer) GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetMyAppHold(context.Context, *GetMyAppHoldRequest) (*GetMyAppHoldResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyAppHold not implemented")
+}
+func (UnimplementedIdentityServiceServer) SubmitMyAppAppeal(context.Context, *SubmitMyAppAppealRequest) (*SubmitMyAppAppealResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitMyAppAppeal not implemented")
 }
 func (UnimplementedIdentityServiceServer) RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameMyApp not implemented")
@@ -1612,6 +1650,42 @@ func _IdentityService_GetMyApp_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_GetMyAppHold_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyAppHoldRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetMyAppHold(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetMyAppHold_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetMyAppHold(ctx, req.(*GetMyAppHoldRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_SubmitMyAppAppeal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitMyAppAppealRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SubmitMyAppAppeal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SubmitMyAppAppeal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SubmitMyAppAppeal(ctx, req.(*SubmitMyAppAppealRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_RenameMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RenameMyAppRequest)
 	if err := dec(in); err != nil {
@@ -2042,6 +2116,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMyApp",
 			Handler:    _IdentityService_GetMyApp_Handler,
+		},
+		{
+			MethodName: "GetMyAppHold",
+			Handler:    _IdentityService_GetMyAppHold_Handler,
+		},
+		{
+			MethodName: "SubmitMyAppAppeal",
+			Handler:    _IdentityService_SubmitMyAppAppeal_Handler,
 		},
 		{
 			MethodName: "RenameMyApp",

@@ -98,6 +98,57 @@ func (h *Handler) SetPriceChangePause(ctx context.Context, req *plansv1.SetPrice
 	return &plansv1.SetPriceChangePauseResponse{Pause: p}, nil
 }
 
+func (h *Handler) GetTenantLifecycle(ctx context.Context, req *plansv1.GetTenantLifecycleRequest) (*plansv1.GetTenantLifecycleResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	l, err := h.cmd.Lifecycle(ctx, req.GetTenantId())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetTenantLifecycleResponse{Lifecycle: l}, nil
+}
+
+func (h *Handler) ScheduleTenantStatus(ctx context.Context, req *plansv1.ScheduleTenantStatusRequest) (*plansv1.ScheduleTenantStatusResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	l, err := h.cmd.Schedule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ScheduleTenantStatusResponse{Lifecycle: l}, nil
+}
+
+func (h *Handler) CancelScheduledTenantStatus(ctx context.Context, req *plansv1.CancelScheduledTenantStatusRequest) (*plansv1.CancelScheduledTenantStatusResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	l, err := h.cmd.CancelSchedule(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.CancelScheduledTenantStatusResponse{Lifecycle: l}, nil
+}
+
+func (h *Handler) ListTenantAppeals(ctx context.Context, req *plansv1.ListTenantAppealsRequest) (*plansv1.ListTenantAppealsResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	return h.cmd.ListAppeals(ctx, req)
+}
+
+func (h *Handler) DecideTenantAppeal(ctx context.Context, req *plansv1.DecideTenantAppealRequest) (*plansv1.DecideTenantAppealResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	a, err := h.cmd.DecideAppeal(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.DecideTenantAppealResponse{Appeal: a}, nil
+}
+
 func (h *Handler) GetPriceChangeNotice(ctx context.Context, _ *plansv1.GetPriceChangeNoticeRequest) (*plansv1.GetPriceChangeNoticeResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err

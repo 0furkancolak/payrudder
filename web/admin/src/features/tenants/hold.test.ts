@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heldApps, holdOf } from "./hold";
+import { heldApps, holdOf, scheduledCandidate } from "./hold";
 
 const app = (id: string, name: string, live: string, sandbox = "TENANT_STATUS_ACTIVE") => ({
   id,
@@ -33,5 +33,13 @@ describe("heldApps", () => {
     expect(heldApps([app("x", "Sandbox only", "TENANT_STATUS_ACTIVE", "TENANT_STATUS_SUSPENDED")], "all")).toEqual([]);
     expect(heldApps([{ id: "y", name: "No tenants" }], "all")).toEqual([]);
     expect(heldApps(undefined, "all")).toEqual([]);
+  });
+});
+
+describe("scheduledCandidate", () => {
+  it("is the one app of the page when it is in service, and nothing for a held app, an inactive one, the scope all or an unknown app", () => {
+    expect(scheduledCandidate(apps, "b")).toEqual({ id: "b", name: "Blog" });
+    for (const scope of ["a", "d", "all", null, "nobody"]) expect(scheduledCandidate(apps, scope)).toBeNull();
+    expect(scheduledCandidate(undefined, "b")).toBeNull();
   });
 });

@@ -101,6 +101,18 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Contact support",
 			Ignore:  "You get this because you own the account {account}.",
 		},
+		KindTenantAppealAccepted: {
+			Subject: "Your appeal for {app} was accepted",
+			Lines:   []string{"Payrudder accepted your appeal and reinstated {app} (live). Its API keys work again, payments are taken, and the webhooks that waited are delivered.", "Payrudder wrote: {answer}"},
+			Button:  "Open the console",
+			Ignore:  "You get this because you own the account {account}.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "Your appeal for {app} was not accepted",
+			Lines:   []string{"Payrudder looked at your appeal and did not lift the hold on {app} (live).", "Payrudder wrote: {answer}", "If something has changed, write to support."},
+			Button:  "Contact support",
+			Ignore:  "You get this because you own the account {account}.",
+		},
 		KindTwoFactorOn: {
 			Subject: "Two-factor sign-in is now on for your Payrudder account",
 			Lines:   []string{"Two-factor sign-in was turned on for your Payrudder account. From now on you need a code from your authenticator app, or one of your recovery codes, to sign in.", "Keep the recovery codes somewhere safe: each one works once."},
@@ -204,6 +216,18 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder {app} (canlı) uygulamasını yeniden etkinleştirdi. API anahtarları yeniden çalışıyor, ödemeler alınıyor ve bekleyen webhook'lar iletiliyor.", "Başka hiçbir şey değişmedi. Bir şey yanlış görünüyorsa bir destek talebi açın."},
 			Button:  "Destekle iletişime geç",
 			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
+		},
+		KindTenantAppealAccepted: {
+			Subject: "{app} için itirazınız kabul edildi",
+			Lines:   []string{"Payrudder itirazınızı kabul etti ve {app} (canlı) uygulamasını yeniden hizmete aldı. API anahtarları yeniden çalışıyor, ödemeler alınıyor ve bekleyen webhook'lar iletiliyor.", "Payrudder şunu yazdı: {answer}"},
+			Button:  "Konsolu aç",
+			Ignore:  "Bunu {account} hesabının sahibi olduğunuz için alıyorsunuz.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "{app} için itirazınız kabul edilmedi",
+			Lines:   []string{"Payrudder itirazınıza baktı ve {app} (canlı) üzerindeki kısıtlamayı kaldırmadı.", "Payrudder şunu yazdı: {answer}", "Bir şey değiştiyse destek ekibine yazın."},
+			Button:  "Destekle iletişime geç",
+			Ignore:  "Bunu {account} hesabının sahibi olduğunuz için alıyorsunuz.",
 		},
 		KindTwoFactorOn: {
 			Subject: "Payrudder hesabınızda iki adımlı oturum açma açıldı",
@@ -309,6 +333,18 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Support kontaktieren",
 			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
 		},
+		KindTenantAppealAccepted: {
+			Subject: "Ihr Einspruch für {app} wurde angenommen",
+			Lines:   []string{"Payrudder hat Ihren Einspruch angenommen und {app} (live) wieder in Betrieb genommen. Die API-Schlüssel funktionieren wieder, Zahlungen werden angenommen und die wartenden Webhooks werden zugestellt.", "Payrudder schrieb: {answer}"},
+			Button:  "Konsole öffnen",
+			Ignore:  "Sie erhalten dies, weil Sie das Konto {account} besitzen.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "Ihr Einspruch für {app} wurde nicht angenommen",
+			Lines:   []string{"Payrudder hat Ihren Einspruch geprüft und die Sperre von {app} (live) nicht aufgehoben.", "Payrudder schrieb: {answer}", "Wenn sich etwas geändert hat, schreiben Sie dem Support."},
+			Button:  "Support kontaktieren",
+			Ignore:  "Sie erhalten dies, weil Sie das Konto {account} besitzen.",
+		},
 		KindTwoFactorOn: {
 			Subject: "Die Zwei-Faktor-Anmeldung ist für Ihr Payrudder-Konto jetzt aktiv",
 			Lines:   []string{"Für Ihr Payrudder-Konto wurde die Zwei-Faktor-Anmeldung eingeschaltet. Ab jetzt brauchen Sie zur Anmeldung einen Code aus Ihrer Authenticator-App oder einen Ihrer Wiederherstellungscodes.", "Bewahren Sie die Wiederherstellungscodes sicher auf: Jeder funktioniert nur einmal."},
@@ -412,6 +448,18 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder a réactivé {app} (production). Ses clés d'API fonctionnent de nouveau, les paiements sont pris et les webhooks en attente sont envoyés.", "Rien d'autre n'a changé. Si quelque chose vous semble anormal, ouvrez un ticket de support."},
 			Button:  "Contacter le support",
 			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTenantAppealAccepted: {
+			Subject: "Votre recours pour {app} a été accepté",
+			Lines:   []string{"Payrudder a accepté votre recours et a remis {app} (live) en service. Ses clés d'API fonctionnent de nouveau, les paiements sont pris et les webhooks en attente sont livrés.", "Payrudder a écrit : {answer}"},
+			Button:  "Ouvrir la console",
+			Ignore:  "Vous recevez ceci parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "Votre recours pour {app} n'a pas été accepté",
+			Lines:   []string{"Payrudder a examiné votre recours et n'a pas levé la restriction de {app} (live).", "Payrudder a écrit : {answer}", "Si quelque chose a changé, écrivez au support."},
+			Button:  "Contacter le support",
+			Ignore:  "Vous recevez ceci parce que vous êtes propriétaire du compte {account}.",
 		},
 		KindTwoFactorOn: {
 			Subject: "La connexion en deux étapes est activée sur votre compte Payrudder",
@@ -517,6 +565,18 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Contactar con soporte",
 			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
 		},
+		KindTenantAppealAccepted: {
+			Subject: "Tu apelación sobre {app} fue aceptada",
+			Lines:   []string{"Payrudder aceptó tu apelación y volvió a poner {app} (live) en servicio. Sus claves de API funcionan de nuevo, se aceptan pagos y se entregan los webhooks que esperaban.", "Payrudder escribió: {answer}"},
+			Button:  "Abrir la consola",
+			Ignore:  "Recibes esto porque eres propietario de la cuenta {account}.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "Tu apelación sobre {app} no fue aceptada",
+			Lines:   []string{"Payrudder revisó tu apelación y no levantó la restricción de {app} (live).", "Payrudder escribió: {answer}", "Si algo ha cambiado, escribe al soporte."},
+			Button:  "Contactar con soporte",
+			Ignore:  "Recibes esto porque eres propietario de la cuenta {account}.",
+		},
 		KindTwoFactorOn: {
 			Subject: "El inicio de sesión en dos pasos está activado en tu cuenta de Payrudder",
 			Lines:   []string{"Se activó el inicio de sesión en dos pasos en tu cuenta de Payrudder. A partir de ahora necesitas un código de tu aplicación de autenticación, o uno de tus códigos de recuperación, para iniciar sesión.", "Guarda los códigos de recuperación en un lugar seguro: cada uno funciona una sola vez."},
@@ -620,6 +680,18 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"أعادت Payrudder تفعيل {app} (إنتاج). تعمل مفاتيح واجهة البرمجة من جديد، وتُقبل المدفوعات، وتُرسل الـwebhooks التي كانت تنتظر.", "لم يتغير شيء آخر. إن بدا لك شيء غير صحيح فافتح تذكرة دعم."},
 			Button:  "تواصل مع الدعم",
 			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
+		},
+		KindTenantAppealAccepted: {
+			Subject: "تم قبول اعتراضك على {app}",
+			Lines:   []string{"قبلت Payrudder اعتراضك وأعادت {app} (live) إلى الخدمة. تعمل مفاتيح API من جديد وتُقبل المدفوعات وتُسلَّم الـ webhooks التي كانت تنتظر.", "كتبت Payrudder: {answer}"},
+			Button:  "افتح لوحة التحكم",
+			Ignore:  "تصلك هذه الرسالة لأنك تملك الحساب {account}.",
+		},
+		KindTenantAppealRejected: {
+			Subject: "لم يُقبل اعتراضك على {app}",
+			Lines:   []string{"راجعت Payrudder اعتراضك ولم ترفع القيد عن {app} (live).", "كتبت Payrudder: {answer}", "إذا تغيّر شيء فراسل الدعم."},
+			Button:  "تواصل مع الدعم",
+			Ignore:  "تصلك هذه الرسالة لأنك تملك الحساب {account}.",
 		},
 		KindTwoFactorOn: {
 			Subject: "تم تفعيل تسجيل الدخول بخطوتين على حسابك في Payrudder",

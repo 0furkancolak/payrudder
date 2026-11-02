@@ -28,3 +28,11 @@ export function heldApps(apps: readonly HasTenants[] | undefined, scope: string 
   }
   return out;
 }
+
+/** The one app a page is about when it is in service (so that a status the operator scheduled for it can be told); none for the scope "all" or for an app that is held already. */
+export function scheduledCandidate(apps: readonly HasTenants[] | undefined, scope: string | null | undefined): { id: string; name: string } | null {
+  if (!scope || scope === ALL_APPS) return null;
+  const a = (apps ?? []).find((x) => x.id === scope);
+  const status = a?.tenants?.find((t) => t.environment === "ENVIRONMENT_LIVE")?.status;
+  return a && status === "TENANT_STATUS_ACTIVE" ? { id: a.id ?? "", name: a.name ?? "" } : null;
+}

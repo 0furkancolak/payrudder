@@ -11,6 +11,9 @@ PAYRUDDER_ALLOWED_ENVIRONMENTS: "sandbox,live"
 PAYRUDDER_DEFAULT_REGION: ""
 # "true": banning a tenant needs a second operator (the first request is recorded, the same request from another operator within a day applies it). Default off.
 PAYRUDDER_TENANT_BAN_APPROVAL: "false"
+# How many days a banned tenant's data is kept before the retention job marks the deadline due (an audit entry and a mark the operator's tenant page shows; nothing is ever
+# deleted by it). 0 records no deadline. Default 90 (default, not agreed: docs/plans/14-tenant-management.md).
+PAYRUDDER_BAN_RETENTION_DAYS: "90"
 # The platform's own mail path, for the mail Payrudder writes to people (e-mail verification, password reset, invitations). The default is the development
 # Mailpit (SMTP port 42025 on the host, UI on http://localhost:42825); a deployment sets SMTP_ADDR to its relay. A tenant's mail to its own customers is
 # the notifier's job and uses the tenant's mail switch.

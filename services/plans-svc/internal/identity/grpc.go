@@ -176,6 +176,18 @@ func (h *Handler) GetMyApp(ctx context.Context, req *plansv1.GetMyAppRequest) (*
 	return &plansv1.GetMyAppResponse{App: app, Role: role}, nil
 }
 
+func (h *Handler) GetMyAppHold(ctx context.Context, req *plansv1.GetMyAppHoldRequest) (*plansv1.GetMyAppHoldResponse, error) {
+	return h.cmd.AppHold(ctx, req)
+}
+
+func (h *Handler) SubmitMyAppAppeal(ctx context.Context, req *plansv1.SubmitMyAppAppealRequest) (*plansv1.SubmitMyAppAppealResponse, error) {
+	a, err := h.cmd.SubmitAppeal(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SubmitMyAppAppealResponse{Appeal: a}, nil
+}
+
 func (h *Handler) RenameMyApp(ctx context.Context, req *plansv1.RenameMyAppRequest) (*plansv1.RenameMyAppResponse, error) {
 	app, err := h.cmd.RenameApp(ctx, req)
 	if err != nil {

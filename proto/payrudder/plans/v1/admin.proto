@@ -33,6 +33,18 @@ service AdminService {
   rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
   // ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
   rpc ListTenantStatusEvents(ListTenantStatusEventsRequest) returns (ListTenantStatusEventsResponse);
+  // GetTenantLifecycle returns a live tenant's retention deadline (a banned tenant's data is kept until then; a job marks it due and deletes nothing) and the status change
+  // scheduled for it.
+  rpc GetTenantLifecycle(GetTenantLifecycleRequest) returns (GetTenantLifecycleResponse);
+  // ScheduleTenantStatus schedules a suspension or a freeze of an active live tenant at a future time; the sweeper applies it as the operator "system" (a ban is never
+  // scheduled). One schedule per tenant: a new one replaces the old. The owners are told by the mail of the change when it is applied.
+  rpc ScheduleTenantStatus(ScheduleTenantStatusRequest) returns (ScheduleTenantStatusResponse);
+  // CancelScheduledTenantStatus drops the schedule (nothing scheduled is not an error).
+  rpc CancelScheduledTenantStatus(CancelScheduledTenantStatusRequest) returns (CancelScheduledTenantStatusResponse);
+  // ListTenantAppeals returns the owners' appeals, newest first (the latest 200), of one tenant or of all, of one status or of all.
+  rpc ListTenantAppeals(ListTenantAppealsRequest) returns (ListTenantAppealsResponse);
+  // DecideTenantAppeal accepts or rejects an open appeal. Accepting reinstates the tenant (active). Both mail the owners with the operator's answer and are audited.
+  rpc DecideTenantAppeal(DecideTenantAppealRequest) returns (DecideTenantAppealResponse);
   // GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
   rpc GetPriceChangePause(GetPriceChangePauseRequest) returns (GetPriceChangePauseResponse);
   // SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
@@ -197,6 +209,62 @@ message SetTenantStatusRequest {
 
 message SetTenantStatusResponse {
   Tenant tenant = 1;
+}
+
+message GetTenantLifecycleRequest {
+  string tenant_id = 1;
+}
+
+message GetTenantLifecycleResponse {
+  TenantLifecycle lifecycle = 1;
+}
+
+message ScheduleTenantStatusRequest {
+  string tenant_id = 1;
+  // "suspended" or "frozen".
+  string status = 2;
+  google.protobuf.Timestamp schedule_time = 3;
+  string category = 4;
+  string reason = 5;
+  string actor = 6;
+}
+
+message ScheduleTenantStatusResponse {
+  TenantLifecycle lifecycle = 1;
+}
+
+message CancelScheduledTenantStatusRequest {
+  string tenant_id = 1;
+  string actor = 2;
+}
+
+message CancelScheduledTenantStatusResponse {
+  TenantLifecycle lifecycle = 1;
+}
+
+message ListTenantAppealsRequest {
+  // Empty: every tenant.
+  string tenant_id = 1;
+  // "open", "accepted" or "rejected"; empty: every status.
+  string status = 2;
+}
+
+message ListTenantAppealsResponse {
+  repeated TenantAppeal appeals = 1;
+  // The names of the tenants' apps, by tenant id, for the list across tenants.
+  map<string, string> app_names = 2;
+}
+
+message DecideTenantAppealRequest {
+  string appeal_id = 1;
+  // "accepted" or "rejected".
+  string decision = 2;
+  string answer = 3;
+  string actor = 4;
+}
+
+message DecideTenantAppealResponse {
+  TenantAppeal appeal = 1;
 }
 
 message ListTenantStatusEventsRequest {
