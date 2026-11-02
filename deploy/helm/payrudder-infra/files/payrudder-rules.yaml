@@ -1,0 +1,345 @@
+# Alerts from docs/08-observability.md. Metric names are what the OpenTelemetry Prometheus exporter produces
+# (counters gain _total, histograms _bucket/_sum/_count). Unit tests: deploy/prometheus/tests (make test-rules).
+groups:
+  - name: payrudder-recording
+    rules:
+      # dlq_messages{broker,queue_or_topic}: messages waiting in a dead-letter queue or topic.
+      # Kafka has no "ready" count: pending = records ever dead-lettered (max_offset) minus what `payrudderctl dlq redrive
+      # --broker kafka` has moved on (the payrudderctl-redrive group's committed offset).
+      - record: dlq_messages
+        expr: |
+          sum by (broker, queue_or_topic) (
+            label_replace(label_replace(rabbitmq_detailed_queue_messages_ready{queue=~".*[.]dlq"},
+              "queue_or_topic", "$1", "queue", "(.*)"), "broker", "rabbitmq", "queue", ".*"))
+          or
+          sum by (broker, queue_or_topic) (
+            label_replace(label_replace(
+              sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"})
+              - (sum by (redpanda_topic) (redpanda_kafka_consumer_group_committed_offset{redpanda_group="payrudderctl-redrive", redpanda_topic=~".*[.]dlq[.].*"})
+                 or sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_topic=~".*[.]dlq[.].*"}) * 0),
+              "queue_or_topic", "$1", "redpanda_topic", "(.*)"), "broker", "kafka", "redpanda_topic", ".*"))
+
+  - name: payrudder-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="payrudder"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.service }} is not being scraped"
+
+      - alert: OutboxStalled
+        expr: ingest_outbox_oldest_age_seconds > 60
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "ingest outbox has had an unpublished row for over a minute (relay or Kafka down)"
+
+      - alert: ConsumerLagHigh
+        expr: max by (group) (consumer_lag_seconds) > 30
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "consumer group {{ $labels.group }} is {{ $value }}s behind"
+
+      - alert: TenantLagOutlier
+        expr: |
+          (max by (group, tenant) (consumer_lag_seconds)
+            > on(group) group_left() (5 * quantile by (group) (0.5, max by (group, tenant) (consumer_lag_seconds))))
+          and on(group, tenant) (max by (group, tenant) (consumer_lag_seconds) > 5)
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "tenant {{ $labels.tenant }} lags 5x the median in group {{ $labels.group }}"
+
+      - alert: DLQNotEmpty
+        expr: sum by (broker, queue_or_topic) (dlq_messages) > 0
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.broker }} {{ $labels.queue_or_topic }} holds {{ $value }} dead-lettered messages"
+
+      - alert: BillingRunStuck
+        expr: billing_runs{status="WAITING_WATERMARK"} > 0
+        for: 1h
+        labels: { severity: warn }
+        annotations:
+          summary: "a billing run has been waiting for the watermark for over an hour"
+
+      - alert: SagaStuck
+        expr: sum by (state) (saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"}) > 0
+        for: 15m
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $value }} invoice sagas are in {{ $labels.state }}"
+
+      - alert: FrozenPeriodViolation
+        expr: increase(aggregator_frozen_period_violations_total[5m]) > 0
+        labels: { severity: page }
+        annotations:
+          summary: "an on-time event arrived for a frozen period (tenant {{ $labels.tenant }})"
+
+      - alert: ReconcileDriftHigh
+        expr: |
+          sum(increase(limits_reconcile_corrections_total[10m]))
+            > 0.01 * clamp_min(sum(increase(limits_reconcile_keys_checked_total[10m])), 1)
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "more than 1% of limit counters needed a reconcile correction"
+
+  # Money (plan 16 / plan 22 G6): the payment path's own counters. The first response to each is in docs/runbooks/backup-restore.md#alerts. The thresholds are defaults (not
+  # agreed): tune them with real traffic. payments_total counts the commands payments-worker handled (charge and refund); a payment link settled by webhook is in
+  # provider_events_total and payment_discrepancies_total instead.
+  - name: payrudder-money
+    rules:
+      # A charge whose recorded outcomes disagree, or a customer who paid twice. increase() cannot see the first value of a counter that did not exist before, so a provider's
+      # first discrepancy ever is caught by the second clause (the series is new).
+      - alert: PaymentDiscrepancy
+        expr: |
+          sum by (provider) (increase(payment_discrepancies_total[10m])) > 0
+          or
+          sum by (provider) (payment_discrepancies_total unless payment_discrepancies_total offset 10m)
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: a payment's recorded outcomes disagree, or a customer paid twice (reconcile and refund)"
+
+      # Errors are not declines: a decline is the customer's card, an error is the provider, the credentials or us.
+      - alert: PaymentCommandsErroring
+        expr: |
+          sum(increase(payments_total{result="errored"}[15m])) >= 3
+          and
+          sum(increase(payments_total{result="errored"}[15m])) > 0.1 * clamp_min(sum(increase(payments_total{result=~"succeeded|declined|errored|refunded"}[15m])), 1)
+        for: 5m
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "more than 10% of payment commands end in an error (not a decline): a provider, credentials or code problem"
+
+      - alert: ChargeFailureRateHigh
+        expr: |
+          sum(increase(payments_total{result=~"declined|errored"}[30m])) > 0.5 * sum(increase(payments_total{result=~"succeeded|declined|errored"}[30m]))
+          and
+          sum(increase(payments_total{result=~"succeeded|declined|errored"}[30m])) >= 20
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "more than half of the charges of the last 30 minutes failed (declines and errors)"
+
+      - alert: RefundSpike
+        expr: |
+          sum(increase(payments_total{result="refunded"}[1h])) >= 5
+          and
+          sum(increase(payments_total{result="refunded"}[1h])) > 0.25 * clamp_min(sum(increase(payments_total{result="succeeded"}[1h])), 1)
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "refunds in the last hour are more than a quarter of the successful charges"
+
+      # retry: we could not confirm the notification and answered 503, so the provider redelivers (a backlog that grows is the lag); unverified: the signature check failed
+      # (a wrong secret, or someone else); malformed: not a notification we understand.
+      - alert: ProviderWebhookFailing
+        expr: |
+          sum by (provider) (increase(provider_events_total{result=~"retry|malformed|unverified"}[15m])) >= 3
+          and
+          sum by (provider) (increase(provider_events_total{result=~"retry|malformed|unverified"}[15m])) > 0.2 * sum by (provider) (increase(provider_events_total[15m]))
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: over 20% of its webhooks are not being accepted (retry, unverified or malformed)"
+
+      # PAYMENT_DECLINED is the state a dunning retry waits in.
+      - alert: DunningQueueGrowing
+        expr: |
+          sum(saga_state{state="PAYMENT_DECLINED"}) >= 20
+          and
+          sum(saga_state{state="PAYMENT_DECLINED"}) > 2 * (sum(saga_state{state="PAYMENT_DECLINED"} offset 6h) or vector(0))
+        for: 30m
+        labels: { severity: warn, service: billing-svc }
+        annotations:
+          summary: "invoices waiting for a dunning retry doubled in six hours ({{ $value }} now)"
+
+      # The money moved at the provider and the books do not show it: the ledger row could not be written (after two retries). The command is answered all the same and the
+      # provider's webhook or the next reconciliation writes the row, but until then the ledger is short. Same first-series clause as PaymentDiscrepancy.
+      - alert: LedgerWriteFailed
+        expr: |
+          sum by (provider, kind) (increase(ledger_write_failures_total[10m])) > 0
+          or
+          sum by (provider, kind) (ledger_write_failures_total unless ledger_write_failures_total offset 10m)
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: a {{ $labels.kind }} happened at the provider but its ledger row was not written (the books are short until the webhook or a reconciliation writes it)"
+
+      # A refund that was started before and whose outcome nothing records is not sent again (a provider that does not dedupe by key could refund twice); the credit note
+      # stays failed with REFUND_OUTCOME_UNKNOWN until an operator checks it at the provider and resolves it on the note (Resolve refund). A resend of the same refund counts again.
+      - alert: RefundOutcomeUnknown
+        expr: |
+          sum by (provider) (increase(refund_outcome_unknown_total[10m])) > 0
+          or
+          sum by (provider) (refund_outcome_unknown_total unless refund_outcome_unknown_total offset 10m)
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: a refund's outcome is unknown and it was not sent again (check it at the provider; the credit note stays failed)"
+
+      # The circuit breaker of a provider account opens after repeated outages; while it is open a charge is refused without a call and retried later. Opening is the
+      # warning, charges being refused for ten minutes is the page (customers' payments are being delayed).
+      - alert: ProviderCircuitOpened
+        expr: |
+          sum by (provider) (increase(provider_breaker_transitions_total{to="open"}[10m])) > 0
+          or
+          sum by (provider) (provider_breaker_transitions_total{to="open"} unless provider_breaker_transitions_total{to="open"} offset 10m)
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: the circuit breaker of a provider account opened (repeated outages); its charges are refused without a call and retried later"
+
+      - alert: ProviderChargesRefused
+        expr: sum by (provider) (increase(provider_breaker_rejections_total[5m])) > 0
+        for: 10m
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: charges have been refused by an open circuit breaker for ten minutes (the provider is down or unreachable; payments are delayed)"
+
+      # reconciliation_discrepancies_open is read on every scrape (payments-worker): the live discrepancies an operator has not explained or resolved, by kind. The number
+      # 10 is a default (not agreed).
+      - alert: ReconciliationBacklog
+        expr: sum(reconciliation_discrepancies_open) > 10
+        for: 1h
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $value }} live reconciliation discrepancies are waiting for an operator (the review queue on the Payments page)"
+
+      # settlement_missing: a payment older than the settlement lag (7 days by default) that the provider's settlement report does not show.
+      - alert: SettlementOverdue
+        expr: sum(reconciliation_discrepancies_open{kind="settlement_missing"}) > 0
+        for: 1h
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $value }} paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
+
+      # provider_account_up{provider,account} (payments-worker's health monitor, every PAYMENTS_HEALTH_INTERVAL, 5 min by default): one series per LIVE account, account being
+      # "<tenant id>/<account key>"; 1 = the provider answered with the key accepted, 0 = unreachable or the key refused. No series means no signal (never checked, nothing
+      # to ask, sandbox, removed). A tenant's own revoked key reads 0 too, which is why this warns and the provider-wide outage (ProviderChargesRefused) pages.
+      - alert: ProviderAccountDown
+        expr: provider_account_up == 0
+        for: 15m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }} account {{ $labels.account }} has failed its health check for 15 minutes (the provider is unreachable from here, or it refuses the account's key)"
+
+      # reconciliation_last_pass_timestamp_seconds: when the last scheduled reconciliation pass of a payments-worker finished (PAYMENTS_RECONCILE_INTERVAL, 6 h by default). 13 h
+      # is two intervals and an hour: change it with the interval. No series when the schedule is off or has not finished a pass yet.
+      - alert: ReconciliationRunStalled
+        expr: time() - max(reconciliation_last_pass_timestamp_seconds) > 13 * 3600
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "no scheduled reconciliation pass has finished for over 13 hours (it runs every 6): the review queue is not being kept up to date"
+
+      # audit_write_failed_total{area,reason}: an audit entry that the database refused. The change the entry belongs to fails with it (pkg/audit), so this is refused sign-ins,
+      # key changes and price changes, not a missing log line. "insert" is the database (a missing partition or grant, a full disk, a lost connection); a "bad_event" is a bug
+      # and reaches the error tracker as the failure it caused. Three in ten minutes is the default, not agreed.
+      - alert: AuditWriteFailed
+        expr: sum by (service) (increase(audit_write_failed_total{reason="insert"}[10m])) >= 3
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $labels.service }} could not write {{ printf "%.0f" $value }} audit entries in ten minutes: the changes they belong to are failing'
+
+      # DLQNotEmpty says a queue holds something; this says it is filling.
+      - alert: DLQGrowing
+        expr: delta(dlq_messages[15m]) >= 10
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.broker }} {{ $labels.queue_or_topic }} is filling: 10 or more dead-lettered messages in 15 minutes"
+
+      # Dead man's switch: always firing. Alertmanager sends it to its own receiver every minute; a service outside (a heartbeat monitor) pages when it stops arriving,
+      # which no alert inside can do because the thing that would send it is what broke.
+      - alert: Watchdog
+        expr: vector(1)
+        labels: { severity: none }
+        annotations:
+          summary: "always firing: if this heartbeat stops arriving at the receiver, Prometheus, Alertmanager or the path to the receiver is broken and silence means nothing"
+
+  # Data safety and the alert pipeline itself.
+  - name: payrudder-ops
+    rules:
+      - alert: BackupStale
+        expr: time() - max(payrudder_backup_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no database backup has succeeded for over 26 hours"
+      - alert: BackupNeverReported
+        expr: absent(payrudder_backup_last_success_timestamp_seconds)
+        for: 30h
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no backup has ever reported to the pushgateway (is the backup job running?)"
+      - alert: BackupFailed
+        expr: max(payrudder_backup_failed) > 0
+        for: 5m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "the last backup run failed for at least one database"
+      - alert: RestoreDrillFailed
+        expr: max(payrudder_restore_verify_failed) > 0
+        for: 5m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "the newest backup could not be restored in the restore drill"
+      - alert: RestoreNotVerified
+        expr: time() - max(payrudder_restore_verified_timestamp_seconds) > 8 * 24 * 3600
+        for: 1h
+        labels: { severity: warn, service: postgres }
+        annotations:
+          summary: "no restore drill has passed for over a week"
+      # Point-in-time recovery (deploy/backup/pitr-agent.sh): the objective is an RPO of 15 minutes, so 15 minutes without shipped WAL is the objective missed.
+      - alert: WalArchiveStale
+        expr: time() - max(payrudder_wal_last_shipped_timestamp_seconds) > 900
+        for: 1m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no WAL reached the backup storage for over 15 minutes: the RPO is exceeded and point-in-time recovery has a gap"
+      - alert: WalSpoolBacklog
+        expr: max(payrudder_wal_oldest_unshipped_age_seconds) > 600
+        for: 5m
+        labels: { severity: warn, service: postgres }
+        annotations:
+          summary: "archived WAL waits more than 10 minutes to be shipped (storage unreachable?); a full disk stops Postgres"
+      - alert: BaseBackupStale
+        expr: time() - max(payrudder_pitr_basebackup_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
+      # The object buckets (invoice PDFs, assets), copied by deploy/backup/object-backup.sh. A stack that does not run it has no such metric and raises nothing.
+      - alert: ObjectBackupStale
+        expr: time() - max(payrudder_objects_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: warn, service: minio }
+        annotations:
+          summary: "the object buckets have not been copied to the backup for over 26 hours"
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "the postgres exporter cannot reach the database"
+      - alert: PostgresConnectionsHigh
+        expr: sum(pg_stat_activity_count) / max(pg_settings_max_connections) > 0.8
+        for: 10m
+        labels: { severity: warn, service: postgres }
+        annotations:
+          summary: "more than 80% of the database connections are in use"
+      - alert: AlertmanagerNotifyFailing
+        expr: sum(rate(alertmanager_notifications_failed_total[5m])) > 0
+        for: 10m
+        labels: { severity: warn, service: alertmanager }
+        annotations:
+          summary: "Alertmanager cannot deliver alerts to a receiver (check the webhook URL)"
+      # support_sla_breached_tickets{priority}: open support tickets with no first answer past their deadline (plans-svc, read from the database at every scrape, a 0 for a
+      # priority with none). The deadline counts business hours (plan 12), so a ticket opened on Friday evening is not late on Saturday.
+      - alert: SupportFirstAnswerOverdue
+        expr: sum(support_sla_breached_tickets) > 0
+        for: 10m
+        labels: { severity: warn, service: plans-svc }
+        annotations:
+          summary: "{{ $value }} support tickets have waited past their first-answer deadline"

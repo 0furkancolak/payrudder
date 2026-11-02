@@ -5,7 +5,7 @@ List 1 (10): the customer payment pages (e.g. `/c/MJ-KPFG…`) are still not mod
 
 ## Where we are
 - #239: the server-rendered Go templates (`services/gateway/internal/httpapi/hosted_*.go`) got a split layout (seller and amount on a coloured side, the work on a calm pane), stacked full-width pay buttons, mobile and print rules. Checked with two screenshots (1440 and 390 px).
-- The portal page (`/c/<token>`) shows invoices and payment methods. It does **not** show the subscription, the card on file, upcoming invoice, or let the customer update the card or cancel (billing-svc does not return them).
+- The portal page (`/c/<token>`) shows **invoices, payments and credits** (balance, lots, packs to buy; [hosted-pages.md](../hosted-pages.md) is the inventory) and, since the status below, a read-only summary of the subscription. It does **not** show payment methods (the card on file), an upcoming invoice (the estimate exists in the API since plan 22 G14; showing it to a customer is the owner's call), or let the customer update the card or cancel.
 
 ## Gaps
 - The look was approximated from one screenshot; no comparison with Stripe Checkout / Customer Portal and Paddle's overlay and portal at the detail level (typography scale, spacing, states, error handling, 3-D Secure, wallet buttons, trust marks, success and failure pages, expired and paid states).
@@ -66,7 +66,7 @@ Defaults taken (not agreed; the owner may overturn them):
 5. `style-src 'unsafe-inline'` stays (a hash would unstyle the pages behind a proxy that rewrites inline CSS).
 6. The pane is centred in its column and the agreement texts' order total keeps `1,234.56` (stored evidence).
 
-Not verified: the comparison with the owner's Paddle/Stripe reference (a person's judgement); Arabic read by a person (layout mirrors, nothing overflows, wording unchecked); the German, French, Spanish, Turkish and Arabic strings of the summary and of "Check again" were written by the model; Safari and Firefox; a real phone; the provider flows (Paddle.js, iyzico form, 3-D Secure) which need accounts (plans 06 to 08); the portal summary against a real plans-svc (the unit and integration tests use fakes of it); axe is not run in CI. Screenshots are not committed (the script makes them).
+Not verified: the comparison with the owner's Paddle/Stripe reference (a person's judgement); Arabic read by a person (layout mirrors, nothing overflows, wording unchecked); the German, French, Spanish, Turkish and Arabic strings of the summary and of "Check again" were written by the model; Safari and Firefox; a real phone; the provider flows (Paddle.js, iyzico form, 3-D Secure) which need accounts (plans 06 to 08); the portal summary against a real plans-svc (the unit and integration tests use fakes of it). axe runs in CI since 2026-11-02 (the `hosted-pages` job of `ci.yml`, see [hosted-pages.md](../hosted-pages.md)). Screenshots are not committed (the script makes them).
 
 Still open from the list above: the Paddle-like portal's next charge for an active subscription, card on file and upcoming invoice (data missing end to end); customer actions; a language switcher; a performance budget; seller branding beyond the logo.
 

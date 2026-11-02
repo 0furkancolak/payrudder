@@ -1,0 +1,13 @@
+{
+    "name": "payrudder/example-laravel",
+    "description": "Laravel app that sends usage to Payrudder and verifies its webhooks (a template, not a package).",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "13.36.0",
+        "payrudder/payrudder-php": "*@dev"
+    },
+    "repositories": [{ "type": "path", "url": "../../sdk/php" }],
+    "autoload": { "psr-4": { "App\\": "app/" } },
+    "config": { "optimize-autoloader": true, "sort-packages": true }
+}

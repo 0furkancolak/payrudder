@@ -19,7 +19,8 @@ import (
 )
 
 // MailAdmin is what the gateway asks of the notifier about a tenant's mail (internal/mailadmin is the client). Nil means the notifier's events listener is not
-// configured here, and the routes answer 503 gateway.mail.unavailable.
+// configured here: the two list views then answer 200 with an empty list and "connected": false (a page that is merely not connected must not log an error in the
+// browser on every visit), and lifting a suppression or a preview, which are actions, answer 503 gateway.mail.unavailable.
 type MailAdmin interface {
 	Suppressions(ctx context.Context, tenantID uuid.UUID, after string, size int) ([]mailadmin.Suppression, string, error)
 	Unsuppress(ctx context.Context, tenantID uuid.UUID, address string) error
@@ -78,6 +79,11 @@ func mailPage(r *http.Request) (size int, token string, err error) {
 // listMailSuppressions is GET /v1/mail-suppressions: the addresses the tenant's mail is not sent to (a permanent bounce, a complaint, or the operator's word), in address
 // order, a page at a time.
 func (s *Server) listMailSuppressions(w http.ResponseWriter, r *http.Request) {
+	if s.d.Mail == nil {
+		noStore(w)
+		writeJSONValue(w, http.StatusOK, map[string]any{"suppressions": []mailadmin.Suppression{}, "next_page_token": "", "connected": false})
+		return
+	}
 	tid, ok := s.mailAdminTenant(w, r)
 	if !ok {
 		return
@@ -96,7 +102,7 @@ func (s *Server) listMailSuppressions(w http.ResponseWriter, r *http.Request) {
 		rows = []mailadmin.Suppression{}
 	}
 	noStore(w)
-	writeJSONValue(w, http.StatusOK, map[string]any{"suppressions": rows, "next_page_token": next})
+	writeJSONValue(w, http.StatusOK, map[string]any{"suppressions": rows, "next_page_token": next, "connected": true})
 }
 
 // deleteMailSuppression is DELETE /v1/mail-suppressions/{address}: the address is mailed again. Lifting what is not there is a 404.
@@ -119,6 +125,11 @@ func (s *Server) deleteMailSuppression(w http.ResponseWriter, r *http.Request) {
 
 // listMailMessages is GET /v1/mail-messages: the tenant's recent mail, newest first, with what became of each, a page at a time.
 func (s *Server) listMailMessages(w http.ResponseWriter, r *http.Request) {
+	if s.d.Mail == nil {
+		noStore(w)
+		writeJSONValue(w, http.StatusOK, map[string]any{"messages": []mailadmin.Message{}, "next_page_token": "", "connected": false})
+		return
+	}
 	tid, ok := s.mailAdminTenant(w, r)
 	if !ok {
 		return
@@ -134,7 +145,10 @@ func (s *Server) listMailMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noStore(w)
-	writeJSONValue(w, http.StatusOK, map[string]any{"messages": rows, "next_page_token": next})
+	if rows == nil {
+		rows = []mailadmin.Message{}
+	}
+	writeJSONValue(w, http.StatusOK, map[string]any{"messages": rows, "next_page_token": next, "connected": true})
 }
 
 // previewPriceChangeMail is POST /v1/mail-previews/price-change: the notice a customer would get of a price change, rendered by the notifier in the customer's language

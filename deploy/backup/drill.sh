@@ -103,7 +103,8 @@ dc run --rm --no-deps -v "${P}_restore:/var/lib/postgresql/data" --entrypoint sh
    if sh /scripts/pitr-restore.sh '2000-01-01 00:00:00' /var/lib/postgresql/data 2>/tmp/refused; then echo 'a target before every base backup was accepted' >&2; exit 1; fi
    grep -q 'no complete base backup' /tmp/refused || { cat /tmp/refused >&2; exit 1; }
    sh /scripts/pitr-restore.sh '$T' /var/lib/postgresql/data"
-docker run -d --name "$P-scratch" --network "${P}_default" -v "${P}_restore:/var/lib/postgresql/data" -v "$here:/scripts:ro" postgres:17.11-alpine >/dev/null
+docker run -d --name "$P-scratch" --network "${P}_default" -v "${P}_restore:/var/lib/postgresql/data" -v "$here:/scripts:ro" \
+  -v "$root/services/billing-svc/migrations:/m/billing:ro" -v "$root/services/payments-worker/migrations:/m/payments:ro" postgres:17.11-alpine >/dev/null
 scratch() { docker exec -e PGUSER=postgres "$P-scratch" "$@"; }
 i=0
 until [ "$(scratch psql -XAt -d postgres -c 'SELECT pg_is_in_recovery()' 2>/dev/null || true)" = f ]; do
@@ -120,6 +121,17 @@ rm -f "${TMPDIR:-/tmp}/$P.counts"
 notes="$(scratch psql -XAt -d postgres -c "SELECT note FROM payrudder_pitr_markers WHERE note LIKE 'drill-%'")"
 [ "$notes" = drill-before-T ] || fail "markers in the restored copy: '$notes' (want only drill-before-T)"
 echo "  invariants hold, row counts are those of T, marker drill-before-T is there, drill-after-T is not"
+
+step "the migrations the copy has applied are the ones the code ships"
+live_v="$(sql billing_db 'SELECT max(version_id) FROM goose_db_version')"
+for pair in billing_db:billing payments_db:payments; do
+  out="$(scratch env STRICT=1 sh /scripts/migrations-version.sh "${pair%%:*}" "/m/${pair##*:}")" || fail "migrations differ on the restored copy: $out"
+  echo "  $out"
+done
+[ "$(scratch psql -XAt -d billing_db -c 'SELECT max(version_id) FROM goose_db_version')" = "$live_v" ] || fail "the restored billing_db has other migrations than the live one"
+
+step "the services' roles work on the restored copy (RLS for the app role, passwords, grants)"
+scratch sh /scripts/testdata/roles.sh 11111111-1111-1111-1111-111111111111 30 | sed 's/^/  /'
 
 step "the metrics the alert rules read reached the pushgateway"
 metrics="$(agent curl -fsS http://pushgateway:9091/metrics)"

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -443,6 +444,13 @@ func TestTheMonitorKeepsHealthAndTheAPIKeepsTheFailover(t *testing.T) {
 	}
 	if b["status"] != "down" || b["last_error"] != "unreachable" || b["last_failure_at"] == nil {
 		t.Errorf("account b = %v", b)
+	}
+	// The gauge the ProviderAccountDown alert reads: one series per live account.
+	if v, ok := gauged(t, "provider_account_up", attribute.String("account", r.tenant.String()+"/fault")); !ok || v != 1 {
+		t.Errorf("provider_account_up of the healthy account = %d (present %v), want 1", v, ok)
+	}
+	if v, ok := gauged(t, "provider_account_up", attribute.String("account", r.tenant.String()+"/fault~b"), attribute.String("provider", "fault")); !ok || v != 0 {
+		t.Errorf("provider_account_up of the unreachable account = %d (present %v), want 0", v, ok)
 	}
 	// Three checks that find the provider down open its circuit without a charge having to fail first.
 	mon.Pass(ctx)

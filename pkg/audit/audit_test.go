@@ -12,8 +12,43 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"google.golang.org/grpc/metadata"
 )
+
+// failuresReader reads audit_write_failed. The global provider is set when the package loads, before any test runs, so that the counter made at the package's own
+// start-up is handed to it (OpenTelemetry's global delegation).
+var failuresReader = func() *sdkmetric.ManualReader {
+	r := sdkmetric.NewManualReader()
+	otel.SetMeterProvider(sdkmetric.NewMeterProvider(sdkmetric.WithReader(r)))
+	return r
+}()
+
+// failures is audit_write_failed so far, by "area/reason".
+func failures(t *testing.T) map[string]int64 {
+	t.Helper()
+	var rm metricdata.ResourceMetrics
+	if err := failuresReader.Collect(context.Background(), &rm); err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]int64{}
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			sum, ok := m.Data.(metricdata.Sum[int64])
+			if !ok || m.Name != "audit_write_failed" {
+				continue
+			}
+			for _, dp := range sum.DataPoints {
+				area, _ := dp.Attributes.Value("area")
+				reason, _ := dp.Attributes.Value("reason")
+				out[area.AsString()+"/"+reason.AsString()] += dp.Value
+			}
+		}
+	}
+	return out
+}
 
 func TestMaskRemovesSecrets(t *testing.T) {
 	secrets := []string{
@@ -152,6 +187,43 @@ func TestRecordRefusesABadEventAndPassesTheDatabaseError(t *testing.T) {
 	boom := errors.New("boom")
 	if err := Record(context.Background(), &fakeExec{err: boom}, Event{Action: "a.b"}); !errors.Is(err, boom) {
 		t.Errorf("a failed insert must come back: %v", err)
+	}
+}
+
+// An entry that cannot be written is counted (audit_write_failed_total{area,reason}, which AuditWriteFailed pages on), a written one is not, and a refused event does not
+// invent an area: the area is the part of a valid action before the dot.
+func TestRecordCountsEveryEntryItCouldNotWrite(t *testing.T) {
+	before := failures(t)
+	delta := func() map[string]int64 {
+		out := map[string]int64{}
+		for k, v := range failures(t) {
+			if v != before[k] {
+				out[k] = v - before[k]
+			}
+		}
+		return out
+	}
+	if err := Record(context.Background(), &fakeExec{}, Event{Action: "api_key.created"}); err != nil {
+		t.Fatal(err)
+	}
+	if d := delta(); len(d) != 0 {
+		t.Fatalf("a written entry was counted as a failure: %v", d)
+	}
+	boom := errors.New("boom")
+	_ = Record(context.Background(), &fakeExec{err: boom}, Event{Action: "api_key.created"})
+	_ = Record(context.Background(), &fakeExec{err: boom}, Event{Action: "api_key.revoked"})
+	_ = Record(context.Background(), &fakeExec{err: boom}, Event{Action: "member.role_changed"})
+	_ = Record(context.Background(), &fakeExec{}, Event{Action: "Not A Valid Action"})
+	_ = Record(context.Background(), &fakeExec{}, Event{Action: "a.b", Detail: map[string]any{"x": strings.Repeat("ab ", MaxDetail)}})
+	want := map[string]int64{"api_key/insert": 2, "member/insert": 1, "invalid/bad_event": 1, "a/bad_event": 1}
+	got := delta()
+	if len(got) != len(want) {
+		t.Fatalf("counted %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("%s = %d, want %d (all: %v)", k, got[k], v, got)
+		}
 	}
 }
 

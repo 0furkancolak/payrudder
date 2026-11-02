@@ -88,6 +88,7 @@ each service its health check, restart policy and watch paths. Until then it sti
    | `PAYRUDDER_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters; the API's machine credential) |
    | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in codes) |
    | `PAYMENTS_INTERNAL_TOKEN` | `payments-worker` | `openssl rand -hex 32` |
+| `NOTIFIER_MAIL_EVENTS_SECRET` | `notifier` | `openssl rand -hex 32` (signs the notifier's mail-events listener; the gateway refers to it) |
    | `PAYRUDDER_SECRETS_KEY` | `payments-worker` | `openssl rand -base64 32` (exactly 32 bytes; seals tenants' provider credentials and webhook secrets) |
 
    Losing `PAYRUDDER_SECRETS_KEY` makes every sealed credential unreadable: back it up outside Railway.
@@ -111,6 +112,10 @@ are 4 connections each (`pool_max_conns` in a DSN raises it) and idle ones close
 `RAILWAY_DOCKERFILE_PATH` (`deploy/railway/go.Dockerfile`) are the build settings of the Go services. Values written `${{x.Y}}` are Railway reference
 variables; `<role>` below is `app`, `system` or `migrator`. The names here are the ones the services read; the defaults are in each
 `cmd/*/config.default.yaml`.
+
+**Error tracking** (optional): `ERROR_TRACKING_URL=https://<public key>@host/<project id> deploy/railway/bootstrap.sh ...` sets `PAYRUDDER_ERROR_TRACKING_URL` on every Go service
+(panics and unexpected errors go to a GlitchTip or Sentry project; [docs/08-observability.md](../../docs/08-observability.md#error-tracking)); unset, nothing is sent. The DSN holds a key,
+so it lives in Railway's variables only. Not exercised against a real server.
 
 Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<ROLE>_PASSWORD}}@${{Postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/<db>_db`,
 **KAFKA** = `redpanda.railway.internal:9092`, **AMQP** = `amqp://payrudder:${{rabbitmq.RABBITMQ_PASSWORD}}@rabbitmq.railway.internal:5672/`.
@@ -138,6 +143,8 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_PAYMENTS_URL` | `http://payments-worker.railway.internal:8095` | |
 | `PAYRUDDER_PAYMENTS_INTERNAL_TOKEN` | `${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}` | |
 | `PAYRUDDER_PUBLIC_URL` | `https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}` | |
+| `PAYRUDDER_NOTIFIER_EVENTS_URL` | `http://notifier.railway.internal:9111` | the notifier's signed listener, for the console's mail page; set with the next row or not at all (the gateway refuses to start with one) |
+| `PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET` | `${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}` | |
 
 ### plans-svc
 
@@ -296,6 +303,8 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the mail rate limit's buckets are shared by the replicas; without it each replica keeps its own |
 | `SMTP_ADDR` | `mailpit.railway.internal:1025` | see [Mail](#mail) |
+| `NOTIFIER_EVENTS_ADDR` | `:9111` | the signed listener for mail events and the suppression list ([runbook](../../docs/runbooks/mail-suppression.md)); only the project's private network reaches it, the gateway calls it. Empty switches it off, and the gateway's two variables must then be unset too |
+| `NOTIFIER_MAIL_EVENTS_SECRET` | generated | at least 16 characters; signs every request; the gateway holds the same value by reference |
 
 ### mockpsp
 
@@ -418,6 +427,7 @@ Run locally with Docker (not on Railway):
 
 **Not verified: everything that needs Railway itself.** In particular:
 
+- that the gateway reaches the notifier's mail-events listener on `notifier.railway.internal:9111` (the same private-network question as above);
 - no deploy has happened; the CLI commands in `bootstrap.sh` follow the CLI's `--help` (v5.55) but were never run against an account, and the shape of
   `railway service list --json` / `volume list --json` / `domain list --json` that the script matches for idempotency is assumed;
 - that `service source connect` deploys a service whose variables are already set, and the order and waits of the staged deploy;

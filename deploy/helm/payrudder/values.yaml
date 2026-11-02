@@ -56,6 +56,13 @@ nafru:
   baseURL: ""
   apiKey: ""
 
+# The notifier's signed listener (docs/runbooks/mail-suppression.md): bounce and complaint notices, and the console's mail page (suppression list, message log, price-change preview)
+# through the gateway. At least 16 characters turns it on at both ends (NOTIFIER_EVENTS_ADDR on the notifier, PAYRUDDER_NOTIFIER_EVENTS_URL on the gateway, the secret in each Secret);
+# empty switches both off and the page says "not connected". The notifier's port is open to the gateway only (NetworkPolicy). Generate your own: `openssl rand -base64 32`.
+# With secrets.existingSecrets add NOTIFIER_MAIL_EVENTS_SECRET to the notifier's Secret and PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET to the gateway's (the same value).
+mail:
+  eventsSecret: local-mail-events-secret-change-me-0123456789
+
 operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, payrudderctl, tests); no page asks for it
 
 # How people sign in (phase 42): e-mail and password always, a one-time code mailed to the address, and Google when set up.
@@ -119,10 +126,11 @@ services:
     nodePort: 30080          # the only service reachable from outside; null for ClusterIP (put an Ingress in front)
     metricsPort: 9100
     replicas: 1
-    uses: [operatorToken, paymentsToken, google, trustedProxySecret]
+    uses: [operatorToken, paymentsToken, google, trustedProxySecret, mailEventsClient]
     hpa: { enabled: false, max: 4, cpu: 70 }
     env:
       PAYRUDDER_HTTP_ADDR: ":8000"
+      PAYRUDDER_NOTIFIER_EVENTS_URL: '{{ if .Values.mail.eventsSecret }}http://notifier:9111{{ end }}'
       PAYRUDDER_APP_URL: "{{ .Values.auth.appURL }}"
       PAYRUDDER_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
       PAYRUDDER_TRUSTED_PROXIES: "{{ .Values.auth.trustedProxies }}"
@@ -305,12 +313,15 @@ services:
       PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"   # the circuit breaker of a provider account, shared by the replicas
   notifier:
-    kind: worker
+    kind: http               # consumes the mail commands and events; the port is the signed listener of mail events (off with mail.eventsSecret empty), open to the gateway only
+    port: 9111
     metricsPort: 9109
     migrate: true
-    uses: [rabbitmq]
+    uses: [rabbitmq, mailEventsSecret]
     db: { role: notifier, name: notifier_db, system: true }
+    allowFrom: [gateway]
     env:
+      NOTIFIER_EVENTS_ADDR: '{{ if .Values.mail.eventsSecret }}:9111{{ end }}'
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002

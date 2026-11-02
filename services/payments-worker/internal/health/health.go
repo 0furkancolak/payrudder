@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/target"
@@ -28,6 +29,67 @@ var (
 	rejections  = counter("provider_breaker_rejections", "Charges refused without a call because the account's circuit was open, by provider")
 	checks      = counter("provider_health_checks", "Periodic health checks of provider accounts, by provider and result")
 )
+
+// accountUp is provider_account_up{provider,account}, read on every scrape: 1 when the last check of a live account found its provider answering with the key accepted, 0 when it
+// found the provider unreachable or the key refused. ProviderAccountDown reads it. account is "<tenant id>/<account key>": one series per live account (an account key is
+// the provider, or provider~label), so a tenant's second account at a provider has a series of its own. A sandbox account, one that was never checked, one without a remote
+// call to check with (a bank transfer) and one that was removed have no series: absent is "no signal", never "healthy".
+var accountUp = newUpGauge()
+
+type upGauge struct {
+	mu sync.Mutex
+	m  map[Ref]int64
+}
+
+func newUpGauge() *upGauge {
+	g := &upGauge{m: map[Ref]int64{}}
+	gauge, err := meter.Int64ObservableGauge("provider_account_up", metric.WithDescription("1 when the last health check of a live provider account found the provider answering with the key accepted, 0 when it was unreachable or refused the key"))
+	if err != nil {
+		panic(err)
+	}
+	if _, err = meter.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		for ref, v := range g.m {
+			o.ObserveInt64(gauge, v, metric.WithAttributes(attribute.String("provider", payments.BaseProvider(ref.Provider)), attribute.String("account", ref.Tenant.String()+"/"+ref.Provider)))
+		}
+		return nil
+	}, gauge); err != nil {
+		panic(err)
+	}
+	return g
+}
+
+// set records the result of a check (a store.Health* status).
+func (g *upGauge) set(ref Ref, status string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	switch {
+	case ref.Environment != string(env.Live):
+		return
+	case status == store.HealthHealthy:
+		g.m[ref] = 1
+	case status == store.HealthDown || status == store.HealthBadCredentials:
+		g.m[ref] = 0
+	default:
+		delete(g.m, ref)
+	}
+}
+
+// keep forgets the accounts that are no longer listed, so that a removed account does not read as down for ever.
+func (g *upGauge) keep(refs []Ref) {
+	live := make(map[Ref]bool, len(refs))
+	for _, r := range refs {
+		live[r] = true
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for r := range g.m {
+		if !live[r] {
+			delete(g.m, r)
+		}
+	}
+}
 
 func counter(name, desc string) metric.Int64Counter {
 	c, err := meter.Int64Counter(name, metric.WithDescription(desc))
@@ -143,6 +205,8 @@ func (m *Monitor) Pass(ctx context.Context) {
 	refs, err := m.Store.Accounts(ctx)
 	if err != nil {
 		m.Log.WarnContext(ctx, "health check: the accounts could not be listed", "err", err)
+	} else {
+		accountUp.keep(refs)
 	}
 	for _, ref := range refs {
 		if ctx.Err() != nil {
@@ -186,6 +250,7 @@ func (m *Monitor) Check(ctx context.Context, ref Ref) {
 		result = class
 	}
 	checks.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", payments.BaseProvider(ref.Provider)), attribute.String("result", result)))
+	accountUp.set(ref, status)
 	if status != store.HealthUnknown {
 		m.Breakers.For(ref).Observe(outcome) // an answer, even a refusal of the credentials, is a provider that is up; unreachable is an outage
 	}

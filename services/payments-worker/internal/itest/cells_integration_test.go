@@ -748,6 +748,7 @@ func TestMovesOfPaymentsTenants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The receipt also wrote an entry in the audit log, in its transaction, and a tenant's entries move with it.
 	if rep.Rows() != 5 {
 		t.Fatalf("copied %d rows, want the attempt, the pending and the manual ledger row, the receipt and its audit entry", rep.Rows())
 	}

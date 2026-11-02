@@ -9,10 +9,12 @@ import { Input } from "@/shared/ui/input";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import type { ApiLocale } from "@/shared/lib/locale";
-import { taxIdHint } from "@/shared/lib/taxid";
-import { useSetCustomerAddress, useSetCustomerContact, useSetCustomerTax, type Address, type CustomerContact, type CustomerKind, type CustomerTax } from "./api";
+import { useFormErrors } from "@/shared/lib/formErrors";
+import { taxFormRules } from "@/shared/lib/customerTax";
+import { useSetCustomerAddress, useSetCustomerContact, useSetCustomerTax, type Address, type CustomerContact, type CustomerKind } from "./api";
 import AddressLines from "./AddressLines.vue";
 import CustomerProfileFields from "./CustomerProfileFields.vue";
+import CustomerTaxFields from "./CustomerTaxFields.vue";
 import type { Customer } from "./lib";
 
 /**
@@ -74,19 +76,27 @@ function saveAddress() {
 }
 
 const setTax = useSetCustomerTax(() => props.tenantId);
-const editTax = ref<CustomerTax>({});
+const editTaxId = ref("");
+const editTaxOffice = ref("");
+const editRegistered = ref(false);
 const taxId = computed(() => taxOf.value?.external_id ?? "");
-// A hint under the tax id when it does not look like the kind of number this customer should have; the save is never blocked (docs/plans/05).
-const taxHint = computed(() => taxIdHint(editTax.value.tax_id ?? "", taxOf.value?.country, (taxOf.value?.customer_type ?? "") as "individual" | "business" | ""));
+// The fields, their names and which one is required follow the customer's country and type (docs/plans/05); a number of the wrong kind is only hinted at.
+const taxForm = useFormErrors(() => ({
+  taxId: taxFormRules(taxOf.value?.country, taxOf.value?.customer_type).taxId === "required" && editTaxId.value.trim() === "" ? t("common.validation.required") : undefined,
+}));
 const taxOpen = computed({ get: () => taxOf.value !== null, set: (v) => !v && (taxOf.value = null) });
 watch(taxOf, (c) => {
   if (!c) return;
-  editTax.value = { tax_id: c.tax_id ?? "", tax_office: c.tax_office ?? "", e_invoice_registered: c.e_invoice_registered ?? false };
+  editTaxId.value = c.tax_id ?? "";
+  editTaxOffice.value = c.tax_office ?? "";
+  editRegistered.value = c.e_invoice_registered ?? false;
   setTax.reset();
+  taxForm.reset();
 });
 function saveTax() {
+  if (!taxForm.attempt()) return;
   setTax.mutate(
-    { externalId: taxId.value, tax: { tax_id: (editTax.value.tax_id ?? "").trim(), tax_office: (editTax.value.tax_office ?? "").trim(), e_invoice_registered: !!editTax.value.e_invoice_registered } },
+    { externalId: taxId.value, tax: { tax_id: editTaxId.value.trim(), tax_office: editTaxOffice.value.trim(), e_invoice_registered: editRegistered.value } },
     { onSuccess: () => (taxOf.value = null) },
   );
 }
@@ -123,7 +133,7 @@ function saveTax() {
       <SheetBody>
         <form id="edit-address" class="grid gap-3" @submit.prevent="saveAddress">
           <LocationFields v-model:country="editAddress.country" v-model:region="editAddress.region" v-model:city="editAddress.city" id-prefix="edit-customer" compact :labels="placeLabels" />
-          <AddressLines v-model:line1="editAddress.line1" v-model:line2="editAddress.line2" v-model:postal-code="editAddress.postal_code" id-prefix="edit-address" />
+          <AddressLines v-model:line1="editAddress.line1" v-model:line2="editAddress.line2" v-model:postal-code="editAddress.postal_code" id-prefix="edit-address" :country="editAddress.country" />
           <ErrorText :error="setAddress.error.value" />
         </form>
       </SheetBody>
@@ -141,11 +151,8 @@ function saveTax() {
         <SheetDescription>{{ t("einvoice.customer.title") }}</SheetDescription>
       </SheetHeader>
       <SheetBody>
-        <form id="edit-tax" class="grid gap-3" @submit.prevent="saveTax">
-          <Input v-model="editTax.tax_id" maxlength="40" :aria-label="t('einvoice.customer.taxId')" :placeholder="t('einvoice.customer.taxId')" :aria-describedby="taxHint ? 'tax-id-hint' : undefined" />
-          <p v-if="taxHint" id="tax-id-hint" class="text-warning -mt-1 text-xs" role="status" data-testid="tax-id-hint">{{ t(`einvoice.customer.hint.${taxHint}`) }}</p>
-          <Input v-model="editTax.tax_office" maxlength="120" :aria-label="t('einvoice.customer.taxOffice')" :placeholder="t('einvoice.customer.taxOffice')" />
-          <label class="flex items-center gap-2 text-sm"><input v-model="editTax.e_invoice_registered" type="checkbox" :aria-label="t('einvoice.customer.registered')" />{{ t("einvoice.customer.registered") }}</label>
+        <form id="edit-tax" class="grid gap-3" novalidate @submit.prevent="saveTax">
+          <CustomerTaxFields v-model:tax-id="editTaxId" v-model:tax-office="editTaxOffice" v-model:registered="editRegistered" id-prefix="edit-tax" :country="taxOf?.country" :kind="taxOf?.customer_type" :error="taxForm.errors.value.taxId" />
           <ErrorText :error="setTax.error.value" />
         </form>
       </SheetBody>

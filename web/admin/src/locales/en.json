@@ -75,7 +75,10 @@
       "selectAllMore": "Select all matching results",
       "confirmAllTitle": "Apply to {n} rows?",
       "confirmAll": "This acts on all {n} selected rows, including those on other pages.",
-      "loadFailed": "The rest of the list could not be loaded, so not all results are selected."
+      "loadFailed": "The rest of the list could not be loaded, so not all results are selected.",
+      "progressLabel": "Progress of the bulk action",
+      "progress": "{n} of {total} done",
+      "progressFailed": "{failed} not changed"
     },
     "appliedFilters": "Applied filters"
   },
@@ -728,7 +731,8 @@
         "none": "Nothing to invoice yet: this customer has no subscription in the current period and no late usage to bill.",
         "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it.",
         "creditSurplus": "{amount} would be added to the customer's credit balance: the lines come to less than nothing."
-      }
+      },
+      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again."
     },
     "packages": {
       "new": "New package",
@@ -1515,6 +1519,7 @@
       },
       "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail.",
       "loadMore": "Show more",
+      "notConnected": "The mail log and the list of held-back addresses are not connected on this deployment, so nothing can be shown here.",
       "suppressions": {
         "title": "Addresses we do not mail",
         "hint": "An address lands here when its mail bounced for good, drew a complaint, or the operator put it here. Whatever the mail is, it is not sent to the address until you mail it again.",
@@ -2755,7 +2760,23 @@
         "tr_is_vkn": "This is a VKN, the number of a business, but the customer is an individual (who has a TCKN). You can still save it.",
         "eu_vat": "A business in the EU has a VAT id that starts with its country code (for example DE136695976). This does not look like one; you can still save it."
       },
-      "warned": "This number does not look right for this customer. Open the tax data to see why."
+      "warned": "This number does not look right for this customer. Open the tax data to see why.",
+      "labels": {
+        "tckn": "TCKN (11-digit national ID number)",
+        "vkn": "VKN (10-digit tax number)",
+        "tr": "Tax number (VKN or TCKN)",
+        "vat": "VAT number",
+        "ein": "Tax ID (EIN)",
+        "taxid": "Tax ID"
+      },
+      "about": {
+        "tr_individual": "An individual in Turkey is identified by the 11-digit TCKN. Optional: without it an e-Arşiv invoice uses the consumer placeholder.",
+        "tr_business": "A business in Turkey is identified by its 10-digit VKN, which is required: an e-invoice to a business without one is refused. The tax office is optional.",
+        "tr_unknown": "Choose above whether this customer is an individual (TCKN) or a business (VKN): e-invoices treat them differently.",
+        "eu_business": "A business in the EU gives its VAT id, which starts with its country code. Optional; only its shape and check digits are checked, not VIES.",
+        "gb_business": "A business in the United Kingdom gives its VAT number if it is VAT-registered. Optional; not checked.",
+        "us_business": "A business in the United States may give its EIN. Optional; not checked."
+      }
     },
     "errorKeys": {
       "einvoice": {
@@ -3066,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "The region may only have lower-case letters, digits and dashes, and at most 31 characters.",
         "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
         "slug_taken": "This account already has an app with that slug."
       },
@@ -3513,6 +3535,7 @@
         "unreachable": "The payments service cannot be reached right now. Try again shortly."
       },
       "region": {
+        "unknown": "That region is not available on this deployment. Choose one from the list.",
         "wrong": "This environment is served from another region. Send the request to the gateway of its region (see the X-Payrudder-Region and X-Payrudder-Region-Url headers)."
       },
       "rate_limit": {
@@ -3755,6 +3778,9 @@
       },
       "tickets": {
         "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
+      },
+      "canned_reply": {
+        "not_found": "That canned reply is not there any more."
       }
     },
     "audit": {
@@ -3901,6 +3927,8 @@
       "name": "App name",
       "currency": "Currency",
       "timezone": "Time zone",
+      "region": "Region",
+      "regionHint": "Where this app's data is kept. The console cannot change it later, and the app is reached at that region's address.",
       "immutable": "Currency and time zone cannot be changed later: billing periods are cut in that time zone.",
       "submit": "Create app",
       "badCurrency": "Choose a currency from the list.",
@@ -5626,7 +5654,43 @@
     "sortPriority": "Highest priority first",
     "sortDue": "Answer due soonest",
     "unread": "New",
-    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app."
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app.",
+    "tags": {
+      "title": "Tags",
+      "filter": "Tag",
+      "add": "Add a tag",
+      "remove": "Remove the tag {tag}",
+      "hint": "Only the team sees tags. Up to 5, lower case letters, digits and hyphens."
+    },
+    "canned": {
+      "title": "Canned replies",
+      "hint": "Texts the whole team can paste into an answer. A change is everyone's.",
+      "manage": "Canned replies…",
+      "insert": "Insert a canned reply",
+      "empty": "There are none yet.",
+      "fieldTitle": "Title",
+      "fieldBody": "Text",
+      "add": "Add",
+      "save": "Save",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete the canned reply “{title}”?"
+    },
+    "report": {
+      "title": "The queue",
+      "waiting": "Waiting for us",
+      "late": "Late",
+      "median": "First answer, median of {days} days",
+      "average": "average {time}",
+      "onTime": "Answered in time",
+      "answeredOf": "{answered} answered of {opened} opened",
+      "byStatus": "Every ticket, by status",
+      "byPriority": "Still waiting, by priority"
+    },
+    "badge": {
+      "unread": "Tickets with news: {n}",
+      "waiting": "Waiting for us: {n}"
+    }
   },
   "connect": {
     "nav": "Connect your app",

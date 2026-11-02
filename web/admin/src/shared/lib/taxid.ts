@@ -211,6 +211,8 @@ export function validEuVat(raw: string): boolean {
 /** The ISO countries whose VAT ids are in the list above (Greece is EL in a VAT id and GR as a country). */
 const EU_COUNTRIES = new Set(["AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "GR", "ES", "FI", "FR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK"]);
 
+export const isEuCountry = (country: string | undefined) => EU_COUNTRIES.has((country ?? "").toUpperCase());
+
 /** What the form says about an id: nothing (`null`), or the key of a hint under `taxid.hint.*`. Never a reason to refuse the save. */
 export type TaxIdHint = "tr_individual" | "tr_business" | "tr_any" | "tr_is_tckn" | "tr_is_vkn" | "eu_vat";
 
@@ -223,6 +225,6 @@ export function taxIdHint(rawId: string, country: string | undefined, kind: "ind
     if (kind === "business") return validVkn(id) ? null : validTckn(id) ? "tr_is_tckn" : "tr_business";
     return validTckn(id) || validVkn(id) ? null : "tr_any";
   }
-  if (EU_COUNTRIES.has(c) && kind === "business") return validEuVat(id) ? null : "eu_vat";
+  if (isEuCountry(c) && kind === "business") return validEuVat(id) ? null : "eu_vat";
   return null;
 }

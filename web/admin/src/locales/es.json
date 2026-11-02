@@ -75,7 +75,10 @@
       "selectAllMore": "Seleccionar todos los resultados coincidentes",
       "confirmAllTitle": "¿Aplicar a {n} filas?",
       "confirmAll": "Esto se aplica a las {n} filas seleccionadas, incluidas las de otras páginas.",
-      "loadFailed": "No se pudo cargar el resto de la lista, así que no están seleccionados todos los resultados."
+      "loadFailed": "No se pudo cargar el resto de la lista, así que no están seleccionados todos los resultados.",
+      "progressLabel": "Progreso de la acción masiva",
+      "progress": "{n} de {total} hechos",
+      "progressFailed": "{failed} sin cambiar"
     },
     "appliedFilters": "Filtros aplicados"
   },
@@ -728,7 +731,8 @@
         "none": "Aún no hay nada que facturar: este cliente no tiene suscripción en el periodo actual ni uso tardío que facturar.",
         "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla.",
         "creditSurplus": "Se añadirían {amount} al saldo a favor del cliente: las líneas suman menos de cero."
-      }
+      },
+      "taxNotSaved": "El cliente se creó, pero sus datos fiscales no se guardaron. Cierra este panel, abre el cliente y usa Editar, Datos fiscales para intentarlo de nuevo."
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -1515,6 +1519,7 @@
       },
       "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder.",
       "loadMore": "Mostrar más",
+      "notConnected": "El registro de correo y la lista de direcciones bloqueadas no están conectados en este despliegue, así que no se puede mostrar nada aquí.",
       "suppressions": {
         "title": "Direcciones a las que no enviamos",
         "hint": "Una dirección aparece aquí cuando su correo rebotó definitivamente, provocó una queja o el operador la puso aquí. Sea cual sea el correo, no se le envía hasta que vuelvas a habilitarla.",
@@ -2755,7 +2760,23 @@
         "tr_is_vkn": "Este es un VKN, el número de una empresa, pero el cliente es una persona física (que tiene un TCKN). Aun así puedes guardarlo.",
         "eu_vat": "Una empresa de la UE tiene un número de IVA que empieza por el código de su país (por ejemplo DE136695976). Esto no lo parece; aun así puedes guardarlo."
       },
-      "warned": "Este número no parece correcto para este cliente. Abra los datos fiscales para ver el motivo."
+      "warned": "Este número no parece correcto para este cliente. Abra los datos fiscales para ver el motivo.",
+      "labels": {
+        "tckn": "TCKN (número de identidad de 11 dígitos)",
+        "vkn": "VKN (número fiscal de 10 dígitos)",
+        "tr": "Número fiscal (VKN o TCKN)",
+        "vat": "Número de IVA",
+        "ein": "Id fiscal (EIN)",
+        "taxid": "Id fiscal"
+      },
+      "about": {
+        "tr_individual": "Una persona física en Turquía se identifica con el TCKN de 11 dígitos. Opcional: sin él, una factura e-Arşiv usa el identificador genérico de consumidor.",
+        "tr_business": "Una empresa en Turquía se identifica con su VKN de 10 dígitos, que es obligatorio: una factura electrónica a una empresa sin él se rechaza. La oficina tributaria es opcional.",
+        "tr_unknown": "Elige arriba si este cliente es una persona (TCKN) o una empresa (VKN): las facturas electrónicas las tratan de forma distinta.",
+        "eu_business": "Una empresa de la UE indica su número de IVA, que empieza por el código de su país. Opcional; solo se comprueban su formato y sus dígitos de control, no VIES.",
+        "gb_business": "Una empresa del Reino Unido indica su número de IVA si está registrada a efectos de IVA. Opcional; no se comprueba.",
+        "us_business": "Una empresa de Estados Unidos puede indicar su EIN. Opcional; no se comprueba."
+      }
     },
     "errorKeys": {
       "einvoice": {
@@ -3066,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "El nombre de la región solo puede tener minúsculas, dígitos y guiones, y como máximo 31 caracteres.",
         "bad_slug": "El identificador de la app solo puede tener minúsculas, dígitos y guiones sencillos, con un máximo de 60 caracteres.",
         "slug_taken": "Esta cuenta ya tiene una app con ese identificador."
       },
@@ -3513,6 +3535,7 @@
         "unreachable": "No se puede acceder al servicio de pagos ahora mismo. Inténtalo de nuevo en un momento."
       },
       "region": {
+        "unknown": "Esa región no existe en este despliegue. Elija una de la lista.",
         "wrong": "Este entorno se sirve desde otra región. Envíe la solicitud a la pasarela de su región (consulte las cabeceras X-Payrudder-Region y X-Payrudder-Region-Url)."
       },
       "rate_limit": {
@@ -3755,6 +3778,9 @@
       },
       "tickets": {
         "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
+      },
+      "canned_reply": {
+        "not_found": "Esa respuesta predefinida ya no existe."
       }
     },
     "audit": {
@@ -3901,6 +3927,8 @@
       "name": "Nombre de la aplicación",
       "currency": "Moneda",
       "timezone": "Zona horaria",
+      "region": "Región",
+      "regionHint": "Dónde se guardan los datos de esta app. La consola no puede cambiarlo después, y se accede a la app desde la dirección de esa región.",
       "immutable": "La moneda y la zona horaria no se pueden cambiar después: los periodos de facturación se cortan en esa zona horaria.",
       "submit": "Crear aplicación",
       "badCurrency": "Elija una moneda de la lista.",
@@ -5626,7 +5654,43 @@
     "sortPriority": "Mayor prioridad primero",
     "sortDue": "Vence antes primero",
     "unread": "Nuevo",
-    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación."
+    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación.",
+    "tags": {
+      "title": "Etiquetas",
+      "filter": "Etiqueta",
+      "add": "Añadir una etiqueta",
+      "remove": "Quitar la etiqueta {tag}",
+      "hint": "Solo el equipo ve las etiquetas. Hasta 5, minúsculas, cifras y guiones."
+    },
+    "canned": {
+      "title": "Respuestas predefinidas",
+      "hint": "Textos que todo el equipo puede pegar en una respuesta. Un cambio es de todos.",
+      "manage": "Respuestas predefinidas…",
+      "insert": "Insertar una respuesta predefinida",
+      "empty": "Todavía no hay ninguna.",
+      "fieldTitle": "Título",
+      "fieldBody": "Texto",
+      "add": "Añadir",
+      "save": "Guardar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar la respuesta predefinida «{title}»?"
+    },
+    "report": {
+      "title": "La cola",
+      "waiting": "Esperando a que respondamos",
+      "late": "Con retraso",
+      "median": "Primera respuesta, mediana de {days} días",
+      "average": "media {time}",
+      "onTime": "Respondidas a tiempo",
+      "answeredOf": "{answered} respondidos de {opened} abiertos",
+      "byStatus": "Todos los tickets, por estado",
+      "byPriority": "Aún pendientes, por prioridad"
+    },
+    "badge": {
+      "unread": "Tickets con novedades: {n}",
+      "waiting": "Esperando a que respondamos: {n}"
+    }
   },
   "connect": {
     "nav": "Conectar su app",

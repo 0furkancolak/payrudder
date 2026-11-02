@@ -1733,8 +1733,8 @@ paths:
       summary: The addresses the tenant's mail is not sent to
       description: |
         An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
-        In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
-        deployment whose gateway is not connected to the notifier.
+        In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). On a deployment whose gateway is not connected to
+        the notifier the answer is 200 with an empty list and `connected` false (lifting an address, which is an action, answers 503 `gateway.mail.unavailable` there).
       parameters:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
@@ -1760,6 +1760,7 @@ paths:
       description: |
         The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
         `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+        On a deployment whose gateway is not connected to the notifier the answer is 200 with an empty list and `connected` false.
       parameters:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
@@ -3307,6 +3308,19 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+  /app/v1/regions:
+    get:
+      operationId: appListRegions
+      tags: [Product]
+      summary: The regions an app can be pinned to from this deployment
+      description: >
+        Where the data of a new app can live, and where it lives when the person chooses none. Both are empty on a deployment without regions (its gateway has no
+        `PAYRUDDER_REGION`), where nothing is pinned. An app is pinned when it is created (`region` of `appCreateApp`); a gateway of another region then answers 421
+        `gateway.region.wrong` for it.
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppRegionsResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
   /app/v1/apps:
     get:
       operationId: appListApps
@@ -4555,6 +4569,7 @@ paths:
         - { name: assignee, in: query, schema: { type: string } }
         - { name: search, in: query, schema: { type: string }, description: Matches the subject and the ticket number }
         - { name: sla_breached, in: query, schema: { type: boolean }, description: Only tickets whose first answer is overdue }
+        - { name: tag, in: query, schema: { type: string }, description: Only tickets that carry this tag }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketList" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4570,7 +4585,7 @@ paths:
     patch:
       operationId: updateSupportTicket
       tags: [Support]
-      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
+      summary: Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -4595,6 +4610,73 @@ paths:
       responses:
         "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketResult" } } } }
         "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/support/unread:
+    get:
+      operationId: appSupportUnread
+      tags: [Support]
+      summary: How many of the person's tickets have an answer or a status change they have not read (the badge on the help page's link)
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportUnread" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/report:
+    get:
+      operationId: getSupportReport
+      tags: [Support]
+      summary: The queue and the first-answer times of the last 30 days (operator)
+      description: What waits for the operator and how much of it is past its first-answer deadline, every ticket by status, the waiting ones by priority, and for the tickets opened in the window how many were answered, how many in time, and how long the first answer took (median and average, wall-clock seconds).
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportReport" } } } }
+  /admin/v1/support/operators:
+    get:
+      operationId: listSupportOperators
+      tags: [Support]
+      summary: The addresses a ticket can be assigned to (operator)
+      description: The platform's operator addresses (`PAYRUDDER_OPERATOR_EMAILS`), with the name of the user who has one.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportOperatorList" } } } }
+  /admin/v1/support/canned-replies:
+    get:
+      operationId: listSupportCannedReplies
+      tags: [Support]
+      summary: The operators' canned replies, by title (operator)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyList" } } } }
+    post:
+      operationId: createSupportCannedReply
+      tags: [Support]
+      summary: Make a canned reply (operator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportCannedReplyInput" }
+      responses:
+        "201": { description: Made, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/canned-replies/{id}:
+    put:
+      operationId: updateSupportCannedReply
+      tags: [Support]
+      summary: Change a canned reply (operator)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportCannedReplyInput" }
+      responses:
+        "200": { description: Changed, content: { application/json: { schema: { $ref: "#/components/schemas/SupportCannedReplyResult" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteSupportCannedReply
+      tags: [Support]
+      summary: Delete a canned reply (operator)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts:
     get:
@@ -5989,10 +6071,11 @@ components:
         create_time: { type: string, format: date-time }
     ListMailSuppressionsResponse:
       type: object
-      required: [suppressions, next_page_token]
+      required: [suppressions, next_page_token, connected]
       properties:
         suppressions: { type: array, items: { $ref: "#/components/schemas/MailSuppression" } }
         next_page_token: { type: string }
+        connected: { type: boolean, description: "False when this deployment's gateway is not connected to the notifier (the list is then empty because nothing was asked, not because nothing is suppressed)." }
     MailMessage:
       type: object
       required: [key, kind, template, recipient, state, claim_time, send_time]
@@ -6006,10 +6089,11 @@ components:
         send_time: { type: string, format: date-time, nullable: true }
     ListMailMessagesResponse:
       type: object
-      required: [messages, next_page_token]
+      required: [messages, next_page_token, connected]
       properties:
         messages: { type: array, items: { $ref: "#/components/schemas/MailMessage" } }
         next_page_token: { type: string }
+        connected: { type: boolean, description: "False when this deployment's gateway is not connected to the notifier (the log is then empty because nothing was asked, not because no mail was sent)." }
     PriceChangeMailPreviewRequest:
       type: object
       required: [plan_code, effective_time, new_renewal_minor]
@@ -6069,7 +6153,7 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
-      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread]
+      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread, tags]
       properties:
         id: { type: string, format: uuid }
         number: { type: integer, format: int64, description: "The short number shown as #1042" }
@@ -6094,13 +6178,14 @@ components:
         solve_time: { type: string, format: date-time, nullable: true }
         message_count: { type: integer }
         unread: { type: boolean, description: "True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account" }
+        tags: { type: array, items: { type: string }, description: "The operator's own labels, at most five. Always empty in what the person's calls return" }
     SupportEvent:
       type: object
       required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
-      description: One change of a ticket's status, priority or assignee. The history is append-only.
+      description: One change of a ticket's status, priority, assignee or tags. The history is append-only.
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [status, priority, assignee] }
+        kind: { type: string, enum: [status, priority, assignee, tags], description: A change of tags has the list joined by commas in from_value and to_value }
         actor_kind: { type: string, enum: [customer, operator, system], description: "system is the job that closes a ticket that waited for the person for 7 days" }
         actor_name: { type: string }
         from_value: { type: string }
@@ -6153,12 +6238,74 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [solved, open] }
+    SupportUnread:
+      type: object
+      required: [unread]
+      properties:
+        unread: { type: integer }
+    SupportCount:
+      type: object
+      required: [value, count]
+      properties:
+        value: { type: string }
+        count: { type: integer }
+    SupportReport:
+      type: object
+      required: [waiting, breached, by_status, by_priority, window_days, opened, answered, answered_on_time, median_first_answer_seconds, average_first_answer_seconds]
+      properties:
+        waiting: { type: integer, description: Tickets waiting for the operator (open) }
+        breached: { type: integer, description: "Of those, the ones with no first answer past their deadline" }
+        by_status: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: Every ticket by status }
+        by_priority: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: The tickets still waiting (open or pending) by priority }
+        window_days: { type: integer }
+        opened: { type: integer, description: Tickets opened in the window }
+        answered: { type: integer, description: "Of those, the ones with a first answer" }
+        answered_on_time: { type: integer, description: "Of those, the ones answered by their deadline" }
+        median_first_answer_seconds: { type: integer, format: int64, description: "Wall-clock seconds from opening to the first public answer; 0 when none was answered" }
+        average_first_answer_seconds: { type: integer, format: int64 }
+    SupportOperator:
+      type: object
+      required: [email, name]
+      properties:
+        email: { type: string }
+        name: { type: string, description: The name of the user with that address; empty when nobody has signed up with it }
+    SupportOperatorList:
+      type: object
+      required: [operators]
+      properties:
+        operators: { type: array, items: { $ref: "#/components/schemas/SupportOperator" } }
+    SupportCannedReply:
+      type: object
+      required: [id, title, body, updated_by, update_time]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        updated_by: { type: string }
+        update_time: { type: string, format: date-time }
+    SupportCannedReplyList:
+      type: object
+      required: [replies]
+      properties:
+        replies: { type: array, items: { $ref: "#/components/schemas/SupportCannedReply" } }
+    SupportCannedReplyResult:
+      type: object
+      required: [reply]
+      properties:
+        reply: { $ref: "#/components/schemas/SupportCannedReply" }
+    SupportCannedReplyInput:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 100 }
+        body: { type: string, minLength: 1, maxLength: 10000 }
     SupportUpdateRequest:
       type: object
       properties:
         status: { type: string, enum: [open, pending, solved, closed] }
         priority: { type: string, enum: [low, normal, high, urgent] }
-        assignee: { type: string, maxLength: 100 }
+        assignee: { type: string, maxLength: 100, description: "One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed" }
+        tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30, pattern: "^[a-z0-9][a-z0-9-]*$" }, description: "With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once" }
     SupportOperatorReplyRequest:
       type: object
       required: [body]
@@ -7874,6 +8021,13 @@ components:
         slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
         currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
         timezone: { type: string, examples: [Europe/Istanbul] }
+        region: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: "Where the app's data lives, one of `appListRegions`; left out: this gateway's region (none on a deployment without regions). Cannot be changed afterwards except by moving the tenant" }
+    AppRegionsResponse:
+      type: object
+      required: [regions, default_region]
+      properties:
+        regions: { type: array, items: { type: string } }
+        default_region: { type: string, description: "Empty on a deployment without regions" }
     AppGetAppResponse:
       type: object
       required: [app, role]
@@ -8208,6 +8362,7 @@ components:
         timezone: { type: string, examples: [Europe/Istanbul] }
         grace_period: { type: string, examples: ["86400s"] }
         tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+        region: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,30}$", description: "The region of the app's tenants; left out: the deployment's default (`PAYRUDDER_DEFAULT_REGION` of plans-svc, itself empty: not pinned)" }
     ListAppsResponse:
       type: object
       required: [apps]
@@ -10989,7 +11144,7 @@ components:
               provider: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     Tenant:
       type: object
-      required: [id, account_id, app_id, address, legal, e_invoice_on, default_language, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
+      required: [id, account_id, app_id, address, legal, e_invoice_on, default_language, region, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
       properties:
         id: { type: string, format: uuid }
         account_id: { type: string, format: uuid }
@@ -10998,6 +11153,7 @@ components:
         legal: { allOf: [{ $ref: "#/components/schemas/LegalInfo" }], nullable: true }
         e_invoice_on: { type: string, enum: ["off", finalized, paid], description: When an invoice becomes an e-document }
         default_language: { type: string, enum: ["", en, tr, de, fr, es, ar], description: "The language of the tenant's invoices and mails for a customer who has none of their own. Empty is English" }
+        region: { type: string, description: "Where the tenant's data lives (set when the app was created, or when the tenant was moved into a cell); empty: not pinned, every gateway serves it" }
         environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
         name: { type: string }
         tier: { type: string }

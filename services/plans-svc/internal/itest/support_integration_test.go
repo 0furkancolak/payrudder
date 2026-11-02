@@ -149,9 +149,9 @@ func testSupport(t *testing.T) {
 			t.Fatal(err)
 		}
 		id := fresh.GetTicket().GetId()
-		urgent, who := "urgent", "Sam"
+		urgent, who := "urgent", testOperatorEmail
 		u, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: id, Priority: &urgent, Assignee: &who})
-		if err != nil || u.GetTicket().GetPriority() != "urgent" || u.GetTicket().GetAssignee() != "Sam" {
+		if err != nil || u.GetTicket().GetPriority() != "urgent" || u.GetTicket().GetAssignee() != testOperatorEmail {
 			t.Fatalf("update: %v %+v", err, u.GetTicket())
 		}
 		// The deadline follows the priority, counted from when the ticket was opened (the account has an app in Berlin, hence its zone).
@@ -162,7 +162,7 @@ func testSupport(t *testing.T) {
 		if _, err := e.system.Exec(ctx, `UPDATE support_tickets SET first_response_due = now() - interval '1 minute' WHERE id = $1::uuid`, id); err != nil {
 			t.Fatal(err)
 		}
-		late, err := e.support.ListSupportTickets(operator(), &plansv1.ListSupportTicketsRequest{SlaBreached: true, Assignee: "Sam"})
+		late, err := e.support.ListSupportTickets(operator(), &plansv1.ListSupportTicketsRequest{SlaBreached: true, Assignee: testOperatorEmail})
 		if err != nil || len(late.GetTickets()) != 1 || late.GetTickets()[0].GetId() != id || !late.GetTickets()[0].GetSlaBreached() {
 			t.Fatalf("late tickets: %v %v", err, late.GetTickets())
 		}
@@ -276,7 +276,7 @@ func testSupportDesk(t *testing.T) {
 		if n := len(e.mail.to(usermail.KindTicketStatus, ada.email)); n != 0 {
 			t.Fatalf("the person's own change was mailed %d times", n)
 		}
-		closed, high, sam := "closed", "high", "Sam"
+		closed, high, sam := "closed", "high", testOperatorEmail
 		if _, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: id, Priority: &high, Assignee: &sam, AuthorName: "sam@example.com"}); err != nil {
 			t.Fatal(err)
 		}
@@ -302,7 +302,7 @@ func testSupportDesk(t *testing.T) {
 			{"status", "customer", "Test", "pending", "open"},
 			{"status", "customer", "Test", "open", "solved"},
 			{"priority", "operator", "sam@example.com", "normal", "high"},
-			{"assignee", "operator", "sam@example.com", "", "Sam"},
+			{"assignee", "operator", "sam@example.com", "", testOperatorEmail},
 			{"status", "operator", "sam@example.com", "solved", "closed"},
 		}
 		check := func(who string, events []*plansv1.SupportEvent) {

@@ -66,6 +66,8 @@ message CreateAppRequest {
   string timezone = 5;
   google.protobuf.Duration grace_period = 6;
   TenantTier tier = 7;
+  // The region of the app's tenants (see Tenant.region); empty takes the deployment's default (PAYRUDDER_DEFAULT_REGION of plans-svc, itself empty: not pinned).
+  string region = 8;
 }
 
 message CreateAppResponse {

@@ -44,7 +44,7 @@ export function useMailSuppressions(tenantId: MaybeRefOrGetter<string>) {
     initialPageParam: "",
     queryFn: ({ pageParam }) => unwrap(tenantApi(toValue(tenantId)).GET("/v1/mail-suppressions", { params: { query: { page_size: PAGE, page_token: pageParam || undefined } } })),
     getNextPageParam: (last) => last.next_page_token || undefined,
-    retry: false, // a deployment that is not connected to the notifier answers 503 every time
+    retry: false, // a notifier that is connected but fails answers 503 every time (one that is not connected is a 200 with connected=false)
   });
 }
 

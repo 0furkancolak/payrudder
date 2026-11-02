@@ -34,6 +34,7 @@ func TestPlansSvc(t *testing.T) {
 	top = t
 	t.Run("RLSIsolationEveryTable", testRLSIsolationEveryTable)
 	t.Run("CreateAccountChoicesAndImmutability", testCreateAccountChoicesAndImmutability)
+	t.Run("AnAppIsPinnedToTheRegionChosenOrTheDefault", testAppRegion)
 	t.Run("SandboxOnlyDeployment", testSandboxOnlyDeployment)
 	t.Run("SandboxOnlyProductPath", testSandboxOnlyProductPath)
 	t.Run("APIKeysFollowEnvironmentAndRevocationEvicts", testAPIKeysFollowEnvironmentAndRevocationEvicts)
@@ -76,6 +77,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("OwnerGoLiveSteps", testOwnerGoLiveSteps)
 	t.Run("Support", testSupport)
 	t.Run("SupportDesk", testSupportDesk)
+	t.Run("SupportDeskExtras", testSupportDeskExtras)
 	t.Run("Contracts", testContracts)
 	t.Run("ContractFollowups", testContractFollowups)
 	t.Run("ContractRefundResultAndLog", testContractRefundResultAndLog)
