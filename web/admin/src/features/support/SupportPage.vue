@@ -172,7 +172,7 @@ const solved = computed(() => shown.value?.status === "solved");
         </TableRow>
       </TableBody>
     </Table>
-    <div v-if="rows.length === 0 && !tickets.isPending.value" class="text-muted-foreground flex flex-col items-center gap-2 p-8 text-center text-sm" data-testid="support-empty">
+    <div v-if="rows.length === 0 && !tickets.isPending.value && !tickets.isError.value" class="text-muted-foreground flex flex-col items-center gap-2 p-8 text-center text-sm" data-testid="support-empty">
       <LifeBuoy class="size-8" aria-hidden="true" />
       <p>{{ t("support.empty") }}</p>
       <Button variant="outline" @click="creating = true">{{ t("support.new") }}</Button>

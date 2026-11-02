@@ -229,7 +229,7 @@ async function send() {
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="rows.length === 0 && !queue.isPending.value" class="text-muted-foreground p-6 text-center text-sm" data-testid="inbox-empty">{{ t("support.inboxEmpty") }}</p>
+    <p v-if="rows.length === 0 && !queue.isPending.value && !queue.isError.value" class="text-muted-foreground p-6 text-center text-sm" data-testid="inbox-empty">{{ t("support.inboxEmpty") }}</p>
     <DataPagination v-if="rows.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

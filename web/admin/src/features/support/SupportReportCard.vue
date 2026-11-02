@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -12,6 +13,7 @@ import { PRIORITIES, STATUSES, useSupportReport } from "./api";
  * they took, median and average), and every ticket by status and the waiting ones by priority. The same numbers the sidebar's badge and the alert read.
  */
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const report = useSupportReport();
 const r = computed(() => report.data.value);
 const onTime = computed(() => (r.value && r.value.answered > 0 ? Math.round((r.value.answered_on_time / r.value.answered) * 100) : null));
@@ -41,10 +43,10 @@ const counted = (list: { value: string; count: number }[] | undefined, key: stri
       <div class="flex flex-wrap items-baseline gap-x-6 gap-y-1" data-testid="report-ratings">
         <div>
           <h3 class="m-0 mb-1 text-xs font-medium">{{ t("support.report.satisfaction", { days: r.window_days }) }}</h3>
-          <p class="m-0 text-sm" data-testid="report-rating-average">{{ r.rated > 0 ? t("support.report.ratingAverage", { average: r.average_rating.toFixed(1), n: r.rated }) : "—" }}</p>
+          <p class="m-0 text-sm" data-testid="report-rating-average">{{ r.rated > 0 ? t("support.report.ratingAverage", { average: fmt.decimal(r.average_rating), n: r.rated }) : "—" }}</p>
         </div>
         <ul v-if="r.rated > 0" class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-sm" data-testid="report-rating-counts">
-          <li v-for="c in r.ratings" :key="c.value"><span class="text-muted-foreground">{{ t("support.report.stars", { n: c.value }, c.value) }}</span> <span class="font-medium tabular-nums">{{ c.count }}</span></li>
+          <li v-for="c in r.ratings" :key="c.value"><span class="text-muted-foreground">{{ t("support.report.stars", { n: c.value }, Number(c.value)) }}</span> <span class="font-medium tabular-nums">{{ c.count }}</span></li>
         </ul>
       </div>
       <div class="grid gap-4 md:grid-cols-2">

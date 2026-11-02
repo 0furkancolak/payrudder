@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { usePortalLinkActions } from "@/features/paymentlinks/api";
 import { copyText } from "@/shared/lib/clipboard";
+import { useErrorText } from "@/shared/lib/errors";
 import { absoluteUrl } from "@/shared/lib/url";
 import { Button } from "@/shared/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
@@ -18,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 const props = defineProps<{ tenantId: string; customer: string }>();
 const DAYS = 30;
 const { t } = useI18n();
+const errorText = useErrorText();
 const act = usePortalLinkActions(() => props.tenantId);
 const link = ref("");
 watch(
@@ -34,7 +36,7 @@ async function guard<T>(run: () => Promise<T>): Promise<T | undefined> {
   try {
     return await run();
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : String(e));
+    toast.error(errorText(e));
     return undefined;
   }
 }
