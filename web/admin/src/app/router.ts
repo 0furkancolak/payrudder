@@ -23,7 +23,7 @@ import RootLayout from "./layout/RootLayout.vue";
 //  - the operator's console (/operator, /tenants, /playground, /dead-letters), behind the session of a person the server recognises as an operator.
 // The scope (`?app=<id|all>`) is kept by every link inside the app: a navigation that does not name an app keeps the one in the address.
 const root = createRootRoute({ component: RootLayout, search: { middlewares: [retainSearchParams(["app"] as never)] } } as never);
-const operator = createRoute({ getParentRoute: () => root, id: "signed-in", beforeLoad: requireOperator });
+const operator = createRoute({ getParentRoute: () => root, id: "signed-in", beforeLoad: (ctx) => requireOperator(ctx) });
 
 const routeTree = root.addChildren([
   ...publicProductRoutes(root),

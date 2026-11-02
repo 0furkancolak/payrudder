@@ -255,6 +255,7 @@ const CASES: ListCase[] = [
     scope: (page) => page.getByTestId("accounts-card"),
     item: "listitem",
     rows: ["iyzico", "Paddle"],
+    sort: { value: "name_desc", order: ["Paddle", "iyzico"] },
     filter: { chip: "Status", option: "Problem", keep: ["iyzico"] },
     url: "accounts-",
   },
