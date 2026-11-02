@@ -4183,7 +4183,7 @@
           "usage_product_id": "Kullanım ürün kimliği (pro_...)",
           "buyer_name": "Alıcı adı",
           "buyer_surname": "Alıcı soyadı",
-          "buyer_identity_number": "Alıcı kimlik numarası",
+          "buyer_identity_number": "Alıcının kimlik numarası olarak yalnızca vergi kimlik numarası kayıtlı olmayan müşteriler için kullanılır; diğer müşterilerin kendi numarası gönderilir. Fatura profiliniz bunu doldurur. Boşaltırsanız böyle bir ödeme, eksik alan belirtilerek reddedilir.",
           "buyer_email": "Alıcı e-postası",
           "buyer_address": "Alıcı adresi",
           "buyer_city": "Alıcı şehri",

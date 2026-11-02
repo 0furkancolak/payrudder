@@ -4183,7 +4183,7 @@
           "usage_product_id": "Usage product id (pro_...)",
           "buyer_name": "Buyer first name",
           "buyer_surname": "Buyer last name",
-          "buyer_identity_number": "Buyer identity number",
+          "buyer_identity_number": "Used as the buyer's identity number only for a customer who has no tax id on file; every other customer's own is sent. Your billing profile fills it in. Clear it and such a payment is refused instead, with the missing field named.",
           "buyer_email": "Buyer e-mail",
           "buyer_address": "Buyer address",
           "buyer_city": "Buyer city",

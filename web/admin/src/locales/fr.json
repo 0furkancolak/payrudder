@@ -4183,7 +4183,7 @@
           "usage_product_id": "ID du produit d'usage (pro_...)",
           "buyer_name": "Prénom de l'acheteur",
           "buyer_surname": "Nom de l'acheteur",
-          "buyer_identity_number": "Numéro d'identité de l'acheteur",
+          "buyer_identity_number": "Utilisé comme numéro d'identité de l'acheteur uniquement pour un client sans numéro fiscal enregistré ; celui de chaque autre client est envoyé. Votre profil de facturation le remplit. Videz-le et un tel paiement est refusé, avec le champ manquant indiqué.",
           "buyer_email": "E-mail de l'acheteur",
           "buyer_address": "Adresse de l'acheteur",
           "buyer_city": "Ville de l'acheteur",

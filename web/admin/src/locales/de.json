@@ -4183,7 +4183,7 @@
           "usage_product_id": "Produkt-ID für Nutzung (pro_...)",
           "buyer_name": "Vorname des Käufers",
           "buyer_surname": "Nachname des Käufers",
-          "buyer_identity_number": "Ausweisnummer des Käufers",
+          "buyer_identity_number": "Wird als Ausweisnummer des Käufers nur für Kunden ohne hinterlegte Steuernummer verwendet; bei allen anderen wird deren eigene gesendet. Ihr Rechnungsprofil füllt sie aus. Leeren Sie das Feld, wird eine solche Zahlung stattdessen mit Nennung des fehlenden Felds abgelehnt.",
           "buyer_email": "E-Mail des Käufers",
           "buyer_address": "Adresse des Käufers",
           "buyer_city": "Stadt des Käufers",
