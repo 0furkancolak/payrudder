@@ -95,6 +95,13 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
+    def create_payment_method_setup(self, external_id: str, body: m.CreatePaymentMethodSetupRequest, *, options: RequestOptions | None = None) -> m.PaymentMethodSetup:
+        """Make the link to the provider's page where the customer saves a card for later charges.
+
+        ``POST /v1/customers/{external_id}/payment-method-setup``
+        """
+        return cast("m.PaymentMethodSetup", self._client._request("POST", f"/v1/customers/{_p(external_id)}/payment-method-setup", body=body, options=options))
+
     def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
         """The cards the payment provider holds for the customer.
 
@@ -2004,6 +2011,13 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/payment-method``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
+
+    async def create_payment_method_setup(self, external_id: str, body: m.CreatePaymentMethodSetupRequest, *, options: RequestOptions | None = None) -> m.PaymentMethodSetup:
+        """Make the link to the provider's page where the customer saves a card for later charges.
+
+        ``POST /v1/customers/{external_id}/payment-method-setup``
+        """
+        return cast("m.PaymentMethodSetup", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/payment-method-setup", body=body, options=options))
 
     async def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
         """The cards the payment provider holds for the customer.

@@ -140,6 +140,31 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/payment-method-setup:
+    post:
+      operationId: createPaymentMethodSetup
+      summary: Make the link to the provider's page where the customer saves a card for later charges
+      description: >
+        For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the
+        customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge
+        takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so
+        asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent
+        to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep
+        the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404
+        payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePaymentMethodSetupRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PaymentMethodSetup" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/cards:
     get:
       operationId: listCustomerCards
@@ -7582,6 +7607,18 @@ components:
       required: [payment_method]
       properties:
         payment_method: { type: string }
+    CreatePaymentMethodSetupRequest:
+      type: object
+      required: [return_url]
+      properties:
+        provider: { type: string, enum: [stripe], default: stripe, description: The provider whose page it is; only Stripe has one }
+        return_url: { type: string, format: uri, maxLength: 2000, description: "Where the provider sends the customer after the page. `https` only" }
+    PaymentMethodSetup:
+      type: object
+      required: [url, ref]
+      properties:
+        url: { type: string, description: "The provider's page: send it to the customer" }
+        ref: { type: string, description: "The provider's reference of the page (Stripe's Checkout Session id)" }
     ListMetersResponse:
       type: object
       required: [meters]

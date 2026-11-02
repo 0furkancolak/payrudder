@@ -871,6 +871,13 @@ export interface CreatePaymentLinkRequestParams {
   idempotency_key?: string;
 }
 
+export interface CreatePaymentMethodSetupRequest {
+  /** The provider whose page it is; only Stripe has one */
+  provider?: "stripe";
+  /** Where the provider sends the customer after the page. `https` only */
+  return_url: string;
+}
+
 export interface CreatePlanRequest {
   code: string;
   name: string;
@@ -2427,6 +2434,13 @@ export interface PaymentLink {
   /** Invoices the link created (ad hoc) */
   use_count: number;
   idempotency_key: string;
+}
+
+export interface PaymentMethodSetup {
+  /** The provider's page: send it to the customer */
+  url: string;
+  /** The provider's reference of the page (Stripe's Checkout Session id) */
+  ref: string;
 }
 
 export interface PaymentWait {

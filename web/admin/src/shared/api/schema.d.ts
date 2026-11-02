@@ -113,6 +113,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/payment-method-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the link to the provider's page where the customer saves a card for later charges
+         * @description For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+         */
+        post: operations["createPaymentMethodSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/cards": {
         parameters: {
             query?: never;
@@ -8544,6 +8564,25 @@ export interface components {
         SetPaymentMethodRequest: {
             payment_method: string;
         };
+        CreatePaymentMethodSetupRequest: {
+            /**
+             * @description The provider whose page it is; only Stripe has one
+             * @default stripe
+             * @enum {string}
+             */
+            provider: "stripe";
+            /**
+             * Format: uri
+             * @description Where the provider sends the customer after the page. `https` only
+             */
+            return_url: string;
+        };
+        PaymentMethodSetup: {
+            /** @description The provider's page: send it to the customer */
+            url: string;
+            /** @description The provider's reference of the page (Stripe's Checkout Session id) */
+            ref: string;
+        };
         ListMetersResponse: {
             meters: components["schemas"]["Meter"][];
         };
@@ -14185,6 +14224,37 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    createPaymentMethodSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentMethodSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodSetup"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     listCustomerCards: {
