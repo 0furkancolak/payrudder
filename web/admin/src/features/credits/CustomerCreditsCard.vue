@@ -4,6 +4,7 @@ import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
+import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { useTabParam } from "@/shared/lib/useSearchValue";
 import { useTableState } from "@/shared/lib/useTableState";
@@ -31,6 +32,8 @@ const props = defineProps<{ tenantId: string }>();
 const customer = defineModel<string>("customer", { required: true });
 const { t, locale } = useI18n();
 const fmt = useFormat();
+// Giving credits is a write: a viewer sees the balance, its lots and its ledger.
+const canWrite = useCanWrite();
 
 const balance = useCreditBalance(() => props.tenantId, customer);
 const credits = (v: string | number | undefined) => formatCredits(v, locale.value);
@@ -77,7 +80,7 @@ const TAB_CLASS =
             {{ t("billing.credits.customer.nextExpiry", { when: fmt.date(balance.data.value.next_expire_time, "dateTime") }) }}
           </span>
         </div>
-        <Button type="button" data-testid="credits-grant" @click="open = true"><Coins class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
+        <Button v-if="canWrite" type="button" data-testid="credits-grant" @click="open = true"><Coins class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
       </div>
 
       <Tabs v-model="view" class="min-w-0 gap-3">
@@ -119,6 +122,6 @@ const TAB_CLASS =
       </Tabs>
     </template>
 
-    <GrantCreditsSheet v-model:open="open" :tenant-id="tenantId" :customer="customer" />
+    <GrantCreditsSheet v-if="canWrite" v-model:open="open" :tenant-id="tenantId" :customer="customer" />
   </Card>
 </template>

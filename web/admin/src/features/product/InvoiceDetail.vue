@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { findTenant } from "@/shared/lib/environment";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { SCENARIOS } from "./golive";
@@ -31,7 +32,8 @@ const apps = useApps();
 const sandbox = computed(() => findTenant(apps.data.value?.apps, tenantId.value)?.env === "sandbox");
 const simulate = useSimulateInvoice(tenantId, invoiceId);
 const scenario = ref("declined");
-const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open" || inv.value?.status === "uncollectible"));
+const canWrite = useCanWrite();
+const canSimulate = computed(() => canWrite.value && sandbox.value && (inv.value?.status === "open" || inv.value?.status === "uncollectible"));
 </script>
 
 <template>
