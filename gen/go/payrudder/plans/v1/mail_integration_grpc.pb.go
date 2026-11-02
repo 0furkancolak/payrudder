@@ -19,11 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MailIntegrationService_GetMailIntegration_FullMethodName    = "/payrudder.plans.v1.MailIntegrationService/GetMailIntegration"
-	MailIntegrationService_PutMailIntegration_FullMethodName    = "/payrudder.plans.v1.MailIntegrationService/PutMailIntegration"
-	MailIntegrationService_DeleteMailIntegration_FullMethodName = "/payrudder.plans.v1.MailIntegrationService/DeleteMailIntegration"
-	MailIntegrationService_TestMailIntegration_FullMethodName   = "/payrudder.plans.v1.MailIntegrationService/TestMailIntegration"
-	MailIntegrationService_ResolveMailSender_FullMethodName     = "/payrudder.plans.v1.MailIntegrationService/ResolveMailSender"
+	MailIntegrationService_GetMailIntegration_FullMethodName        = "/payrudder.plans.v1.MailIntegrationService/GetMailIntegration"
+	MailIntegrationService_PutMailIntegration_FullMethodName        = "/payrudder.plans.v1.MailIntegrationService/PutMailIntegration"
+	MailIntegrationService_DeleteMailIntegration_FullMethodName     = "/payrudder.plans.v1.MailIntegrationService/DeleteMailIntegration"
+	MailIntegrationService_TestMailIntegration_FullMethodName       = "/payrudder.plans.v1.MailIntegrationService/TestMailIntegration"
+	MailIntegrationService_ResolveMailSender_FullMethodName         = "/payrudder.plans.v1.MailIntegrationService/ResolveMailSender"
+	MailIntegrationService_SetDefaultMailIntegration_FullMethodName = "/payrudder.plans.v1.MailIntegrationService/SetDefaultMailIntegration"
+	MailIntegrationService_GetMailRouting_FullMethodName            = "/payrudder.plans.v1.MailIntegrationService/GetMailRouting"
+	MailIntegrationService_PutMailRouting_FullMethodName            = "/payrudder.plans.v1.MailIntegrationService/PutMailRouting"
 )
 
 // MailIntegrationServiceClient is the client API for MailIntegrationService service.
@@ -33,6 +36,10 @@ const (
 // MailIntegrationService lets a live tenant send its customer mail (invoices, receipts, alerts) through its own e-mail provider instead of Payrudder's built-in
 // sender. The one provider so far is Nafru Email (provider "nafru"), which speaks the Resend API: a base URL and an API key. The tenant comes from gRPC metadata.
 // A sandbox tenant has none: its mail always goes to the sandbox sink.
+//
+// A tenant can connect several accounts (docs/plans/10, ADR 0026). An account is named by its key, as a payment account is: the provider alone ("nafru", the primary
+// account) or with a label ("nafru~eu"). One is the default; the language of a mail can name the account that sends it (routing), and a mail in any other language goes
+// through the default. A tenant with no account sends through Payrudder's built-in sender.
 type MailIntegrationServiceClient interface {
 	// GetMailIntegration returns the connection without its key; connected is false when the tenant has none.
 	GetMailIntegration(ctx context.Context, in *GetMailIntegrationRequest, opts ...grpc.CallOption) (*GetMailIntegrationResponse, error)
@@ -43,6 +50,12 @@ type MailIntegrationServiceClient interface {
 	TestMailIntegration(ctx context.Context, in *TestMailIntegrationRequest, opts ...grpc.CallOption) (*TestMailIntegrationResponse, error)
 	// ResolveMailSender is for the notifier: the connection with its key in plaintext, to send one tenant's mail. Not reachable from the public API.
 	ResolveMailSender(ctx context.Context, in *ResolveMailSenderRequest, opts ...grpc.CallOption) (*ResolveMailSenderResponse, error)
+	// SetDefaultMailIntegration makes one of the connected accounts the default. The account is not touched, so no key is sent.
+	SetDefaultMailIntegration(ctx context.Context, in *SetDefaultMailIntegrationRequest, opts ...grpc.CallOption) (*SetDefaultMailIntegrationResponse, error)
+	// GetMailRouting lists the rules that send the mail of a language through an account.
+	GetMailRouting(ctx context.Context, in *GetMailRoutingRequest, opts ...grpc.CallOption) (*GetMailRoutingResponse, error)
+	// PutMailRouting replaces all the rules.
+	PutMailRouting(ctx context.Context, in *PutMailRoutingRequest, opts ...grpc.CallOption) (*PutMailRoutingResponse, error)
 }
 
 type mailIntegrationServiceClient struct {
@@ -103,6 +116,36 @@ func (c *mailIntegrationServiceClient) ResolveMailSender(ctx context.Context, in
 	return out, nil
 }
 
+func (c *mailIntegrationServiceClient) SetDefaultMailIntegration(ctx context.Context, in *SetDefaultMailIntegrationRequest, opts ...grpc.CallOption) (*SetDefaultMailIntegrationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetDefaultMailIntegrationResponse)
+	err := c.cc.Invoke(ctx, MailIntegrationService_SetDefaultMailIntegration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mailIntegrationServiceClient) GetMailRouting(ctx context.Context, in *GetMailRoutingRequest, opts ...grpc.CallOption) (*GetMailRoutingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMailRoutingResponse)
+	err := c.cc.Invoke(ctx, MailIntegrationService_GetMailRouting_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mailIntegrationServiceClient) PutMailRouting(ctx context.Context, in *PutMailRoutingRequest, opts ...grpc.CallOption) (*PutMailRoutingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PutMailRoutingResponse)
+	err := c.cc.Invoke(ctx, MailIntegrationService_PutMailRouting_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MailIntegrationServiceServer is the server API for MailIntegrationService service.
 // All implementations must embed UnimplementedMailIntegrationServiceServer
 // for forward compatibility.
@@ -110,6 +153,10 @@ func (c *mailIntegrationServiceClient) ResolveMailSender(ctx context.Context, in
 // MailIntegrationService lets a live tenant send its customer mail (invoices, receipts, alerts) through its own e-mail provider instead of Payrudder's built-in
 // sender. The one provider so far is Nafru Email (provider "nafru"), which speaks the Resend API: a base URL and an API key. The tenant comes from gRPC metadata.
 // A sandbox tenant has none: its mail always goes to the sandbox sink.
+//
+// A tenant can connect several accounts (docs/plans/10, ADR 0026). An account is named by its key, as a payment account is: the provider alone ("nafru", the primary
+// account) or with a label ("nafru~eu"). One is the default; the language of a mail can name the account that sends it (routing), and a mail in any other language goes
+// through the default. A tenant with no account sends through Payrudder's built-in sender.
 type MailIntegrationServiceServer interface {
 	// GetMailIntegration returns the connection without its key; connected is false when the tenant has none.
 	GetMailIntegration(context.Context, *GetMailIntegrationRequest) (*GetMailIntegrationResponse, error)
@@ -120,6 +167,12 @@ type MailIntegrationServiceServer interface {
 	TestMailIntegration(context.Context, *TestMailIntegrationRequest) (*TestMailIntegrationResponse, error)
 	// ResolveMailSender is for the notifier: the connection with its key in plaintext, to send one tenant's mail. Not reachable from the public API.
 	ResolveMailSender(context.Context, *ResolveMailSenderRequest) (*ResolveMailSenderResponse, error)
+	// SetDefaultMailIntegration makes one of the connected accounts the default. The account is not touched, so no key is sent.
+	SetDefaultMailIntegration(context.Context, *SetDefaultMailIntegrationRequest) (*SetDefaultMailIntegrationResponse, error)
+	// GetMailRouting lists the rules that send the mail of a language through an account.
+	GetMailRouting(context.Context, *GetMailRoutingRequest) (*GetMailRoutingResponse, error)
+	// PutMailRouting replaces all the rules.
+	PutMailRouting(context.Context, *PutMailRoutingRequest) (*PutMailRoutingResponse, error)
 	mustEmbedUnimplementedMailIntegrationServiceServer()
 }
 
@@ -144,6 +197,15 @@ func (UnimplementedMailIntegrationServiceServer) TestMailIntegration(context.Con
 }
 func (UnimplementedMailIntegrationServiceServer) ResolveMailSender(context.Context, *ResolveMailSenderRequest) (*ResolveMailSenderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMailSender not implemented")
+}
+func (UnimplementedMailIntegrationServiceServer) SetDefaultMailIntegration(context.Context, *SetDefaultMailIntegrationRequest) (*SetDefaultMailIntegrationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetDefaultMailIntegration not implemented")
+}
+func (UnimplementedMailIntegrationServiceServer) GetMailRouting(context.Context, *GetMailRoutingRequest) (*GetMailRoutingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMailRouting not implemented")
+}
+func (UnimplementedMailIntegrationServiceServer) PutMailRouting(context.Context, *PutMailRoutingRequest) (*PutMailRoutingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PutMailRouting not implemented")
 }
 func (UnimplementedMailIntegrationServiceServer) mustEmbedUnimplementedMailIntegrationServiceServer() {
 }
@@ -257,6 +319,60 @@ func _MailIntegrationService_ResolveMailSender_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MailIntegrationService_SetDefaultMailIntegration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetDefaultMailIntegrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MailIntegrationServiceServer).SetDefaultMailIntegration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MailIntegrationService_SetDefaultMailIntegration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MailIntegrationServiceServer).SetDefaultMailIntegration(ctx, req.(*SetDefaultMailIntegrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MailIntegrationService_GetMailRouting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMailRoutingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MailIntegrationServiceServer).GetMailRouting(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MailIntegrationService_GetMailRouting_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MailIntegrationServiceServer).GetMailRouting(ctx, req.(*GetMailRoutingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MailIntegrationService_PutMailRouting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutMailRoutingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MailIntegrationServiceServer).PutMailRouting(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MailIntegrationService_PutMailRouting_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MailIntegrationServiceServer).PutMailRouting(ctx, req.(*PutMailRoutingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MailIntegrationService_ServiceDesc is the grpc.ServiceDesc for MailIntegrationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -283,6 +399,18 @@ var MailIntegrationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMailSender",
 			Handler:    _MailIntegrationService_ResolveMailSender_Handler,
+		},
+		{
+			MethodName: "SetDefaultMailIntegration",
+			Handler:    _MailIntegrationService_SetDefaultMailIntegration_Handler,
+		},
+		{
+			MethodName: "GetMailRouting",
+			Handler:    _MailIntegrationService_GetMailRouting_Handler,
+		},
+		{
+			MethodName: "PutMailRouting",
+			Handler:    _MailIntegrationService_PutMailRouting_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

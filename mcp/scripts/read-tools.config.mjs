@@ -35,6 +35,14 @@ export const READ_TOOLS = {
   getRevenueReport: {}, // aggregates only: the monthly revenue review
   getSubscriptionReport: {},
   getDunningReport: {},
+  // Added with the leftovers of plan 20 (default, not agreed): the rest of the numbers a monthly review asks for, and the account's own settings that explain a behaviour.
+  // Aggregates and the seller's own configuration; no link, no secret, no customer contact data in their answers. Left out on purpose: the usage series (`exact` is a
+  // boolean argument, which the generator does not take yet), the credit packs (same), and the price changes (`created_by` and `withdrawn_by` name staff).
+  getAccountingSummary: {}, // income and expenses of a period per currency
+  getTopCustomers: {}, // customers ranked by usage of a meter: external ids and quantities
+  getDunningSettings: {}, // how long Payrudder waits before it retries a declined payment
+  getCreditSettings: {}, // the low-balance threshold of the credits.low event
+  getRoutingRules: {}, // which payment provider a new subscription gets, by country and currency
 };
 
 /**
@@ -95,6 +103,8 @@ export const STRUCTURAL = [
   "provider", "provider_ref", "quantity", "saga_state", "value_property",
   // Decimals of a plan and of usage (sent as text), the window an entitlement counts in, an invoice's number and the group key or month of a report: made by the API.
   "included", "limit", "package_size", "unit_price", "up_to", "used", "window_id", "invoice_number", "period", "month", "state",
+  // The app an environment belongs to (an id) and how exact a ranking is (an enum): made by the API.
+  "app_id", "precision",
 ];
 
 /**

@@ -1202,6 +1202,26 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { description: Wrong secret }
         "404": { $ref: "#/components/responses/Error" }
+  /inbound/mail-events:
+    post:
+      operationId: inboundMailEvents
+      summary: The mail provider's webhook of delivery events (bounces, complaints, deliveries). Public; protected by the provider's signature
+      description: >
+        The webhook of the mail provider's events (Resend, or Nafru if its webhooks are the same: UNVERIFIED), signed with Svix (`svix-id`, `svix-timestamp`, `svix-signature`; the secret is
+        `PAYRUDDER_MAIL_WEBHOOK_SECRET`, `whsec_...`; a timestamp more than five minutes from the clock is refused). `email.bounced` (a `bounce.type` of `Permanent` is a hard bounce, anything
+        else soft), `email.complained`, `email.delivered` and `email.delivery_delayed` become the notifier's events, one for each recipient: a hard bounce and a complaint put the address on the
+        suppression list of the tenant the mail was sent for. Every other event type is accepted and ignored. 401 when the signature does not verify, 503 when the notifier cannot be reached (the
+        provider sends it again), 404 until PAYRUDDER_MAIL_WEBHOOK_SECRET and the notifier's address are set.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { description: Understood, content: { application/json: { schema: { type: object, required: [events], properties: { events: { type: integer, description: How many delivery events the body held } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { description: The signature is missing or does not verify }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/accounting/summary:
     get:
       operationId: getAccountingSummary
@@ -4256,7 +4276,10 @@ paths:
     get:
       operationId: appGetMailIntegration
       tags: [Product]
-      summary: The tenant's own e-mail provider (Nafru Email) for the app's live environment, if one is connected (any member; the key is never in the answer)
+      summary: The tenant's own e-mail provider accounts (Nafru Email) for the app's live environment, the default first (any member; the key is never in the answer)
+      description: |
+        An app can connect several accounts at one provider, each named by a key (`nafru`, or `nafru~eu` with a label). `integration` is the default account and `accounts`
+        lists every one. With none connected the mail goes through Payrudder's built-in sender.
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -4270,11 +4293,12 @@ paths:
     put:
       operationId: appPutMailIntegration
       tags: [Product]
-      summary: Connect (or replace) the live environment's own e-mail provider (the owner only)
+      summary: Connect (or replace) one of the live environment's own e-mail accounts (the owner only)
       description: |
         From then on the customer mail of the live environment (invoices, receipts, alerts) is sent through it, from the given address. The provider is asked
         to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed, shown once
-        and never echoed back. The sandbox has none: its mail always goes to the sandbox inbox.
+        and never echoed back. A `label` connects a further account at the same provider; saving a key that exists replaces it. The first account is the default, and so is
+        one saved with `make_default`. The sandbox has none: its mail always goes to the sandbox inbox. Recorded in the audit trail of the person's account.
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -4296,11 +4320,67 @@ paths:
     delete:
       operationId: appRemoveMailIntegration
       tags: [Product]
-      summary: Disconnect the own e-mail provider; the mail goes through Payrudder's built-in sender again (the owner only)
+      summary: Disconnect an own e-mail account; with none left the mail goes through Payrudder's built-in sender again (the owner only)
+      description: The account named by `account` (the default when absent). The default account cannot be removed while others exist (409 plans.mail_integration.default_in_use). The rules that name the account go with it.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: account, in: query, schema: { $ref: "#/components/schemas/MailAccountKey" } }
+      responses:
+        "204": { description: Removed }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/mail/default:
+    post:
+      operationId: appSetMailDefault
+      tags: [Product]
+      summary: Make one of the live e-mail accounts the default (the owner only)
+      description: The default is the account a mail goes through when no rule names its language. The account is not touched, so no key is sent. The move is recorded for the person.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppSetMailDefaultRequest" }
+      responses:
+        "200": { description: The default has moved, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/mail/routing:
+    get:
+      operationId: appMailRouting
+      tags: [Product]
+      summary: The rules that send the mail of a language through an e-mail account
+      description: Any member reads it. A mail in a language no rule names goes through the default account.
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "204": { description: Removed }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailRoutingRules" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appSetMailRouting
+      tags: [Product]
+      summary: Replace the e-mail routing rules (the owner only)
+      description: |
+        A language is named once and every rule names an account the app has (400 plans.mail_integration.unknown_account). The language of a mail is the customer's, else the
+        app's default language, else English. DEFAULT (not agreed): by language; the country of a customer is not on the mail. The change is recorded for the person.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MailRoutingRules" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailRoutingRules" } } } }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -4308,8 +4388,8 @@ paths:
     post:
       operationId: appTestMailIntegration
       tags: [Product]
-      summary: Check the stored key at the provider and send one test mail through it (the owner only)
-      description: "A provider problem is ok false with its kind, not an HTTP error."
+      summary: Check the stored key of an account at the provider and send one test mail through it (the owner only)
+      description: "The account named by `account` (the default when absent). A provider problem is ok false with its kind, not an HTTP error."
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -4326,6 +4406,24 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/mail/identity:
+    get:
+      operationId: appMailIdentity
+      summary: What the domain of the app's own e-mail sender publishes in DNS (SPF, DKIM, DMARC)
+      description: |
+        Looks up three names for the domain of the address the live environment's own e-mail provider sends from, and changes nothing. Any member may ask; it is limited like a write because each
+        call is outbound lookups. `selector` is the DKIM selector the provider publishes its key under (the DKIM check is `unchecked` without one: it is not guessed, and Nafru's selector is
+        UNVERIFIED). Each check has a `status` (`ok`, `weak`, `missing`, `invalid`, `unchecked`, `error`) and a `detail` word. It says nothing about whether the records name the provider that sends,
+        nor about the provider's own verification of the domain. 404 `plans.mail_integration.not_connected` for an app that sends through Payrudder's own sender.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: selector, in: query, schema: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{0,62}$' } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailIdentity" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/api-keys/{key_id}:
     delete:
@@ -5996,6 +6094,10 @@ paths:
     post:
       operationId: adminVoidInvoice
       summary: Void an invoice, refunding it first when it was paid
+      description: >
+        An invoice whose payment is unknown (its saga is parked in `PAYMENT_UNKNOWN`: the provider may have taken the money and not said so) is voided only with
+        `confirm_not_charged: true`, the operator's word that they checked at the provider that nothing was charged. Without it the call is refused with 409
+        `billing.saga.void_needs_confirmation` and nothing changes. Nothing is refunded for such an invoice. The confirmation and the reason are recorded in the audit log.
       security: [{ operatorToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
@@ -8509,17 +8611,41 @@ components:
         ok: { type: boolean }
         checked: { type: string, enum: [credentials, configuration] }
         problem: { type: string, enum: [refused, unreachable] }
+    MailAccountKey:
+      type: string
+      pattern: '^nafru(~[a-z0-9][a-z0-9-]{0,30})?$'
+      description: 'An e-mail account: the provider alone (nafru) or with a label (nafru~eu).'
+    AppSetMailDefaultRequest:
+      type: object
+      required: [account]
+      properties:
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+    MailRoutingRules:
+      type: object
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            required: [language, account]
+            properties:
+              language: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the mail. }
+              account: { $ref: "#/components/schemas/MailAccountKey" }
     AppGetMailIntegrationResponse:
       type: object
-      required: [connected, integration]
+      required: [connected, integration, accounts]
       properties:
-        connected: { type: boolean }
-        integration: { allOf: [{ $ref: "#/components/schemas/MailIntegration" }], nullable: true }
+        connected: { type: boolean, description: At least one account is connected. }
+        integration: { allOf: [{ $ref: "#/components/schemas/MailIntegration" }], nullable: true, description: The default account. }
+        accounts: { type: array, items: { $ref: "#/components/schemas/MailIntegration" }, description: Every account, the default first. }
     AppPutMailIntegrationRequest:
       type: object
       required: [provider, base_url, api_key, from]
       properties:
         provider: { type: string, enum: [nafru] }
+        label: { type: string, pattern: '^[a-z0-9][a-z0-9-]{0,30}$', description: Connects a further account at the same provider; empty is the primary account. }
+        make_default: { type: boolean, description: Make this account the default. The first account is the default whatever this says. }
         base_url: { type: string, examples: ["https://api.nafru.example"], description: The Resend-compatible API address (https) }
         api_key: { type: string }
         from: { type: string, examples: ["Acme Billing <billing@acme.example>"] }
@@ -8533,6 +8659,25 @@ components:
       required: [to]
       properties:
         to: { type: string, format: email }
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+    MailIdentityCheck:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, weak, missing, invalid, unchecked, error] }
+        detail: { type: string, description: 'hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked' }
+        record: { type: string, description: The record that was found, clipped. }
+        selector: { type: string }
+    MailIdentity:
+      type: object
+      required: [from, domain, checked_time, spf, dkim, dmarc]
+      properties:
+        from: { type: string }
+        domain: { type: string }
+        checked_time: { type: string, format: date-time }
+        spf: { $ref: "#/components/schemas/MailIdentityCheck" }
+        dkim: { $ref: "#/components/schemas/MailIdentityCheck" }
+        dmarc: { $ref: "#/components/schemas/MailIdentityCheck" }
     AppTestMailIntegrationResponse:
       type: object
       required: [ok, problem, message_id]
@@ -9197,7 +9342,8 @@ components:
       required: [tenant_id]
       properties:
         tenant_id: { type: string, format: uuid }
-        reason: { type: string }
+        reason: { type: string, maxLength: 500, description: Kept in the audit log. }
+        confirm_not_charged: { type: boolean, description: "The operator checked at the provider that no charge was made. Required for an invoice whose payment is unknown (PAYMENT_UNKNOWN)." }
     AdminRecordInvoicePaymentRequest:
       type: object
       required: [tenant_id, method, amount_minor]
@@ -10710,8 +10856,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         lot_id: { type: string, format: uuid }
-        kind: { type: string, enum: [grant, consume, expire] }
-        amount: { type: string, description: "int64 as a string; negative for consume and expire", format: int64 }
+        kind: { type: string, enum: [grant, consume, expire, revoke] }
+        amount: { type: string, description: "int64 as a string; negative for consume, expire and revoke (a revoke takes back the credits of a credit pack whose invoice was voided or credited; 0 when none of them was left to take, and its reason says how many could not be)", format: int64 }
         reason: { type: string }
         idempotency_key: { type: string }
         source: { type: string, enum: [purchase, promo, manual], description: "Where the credits it touched came from; a purchase is a credit pack that was paid for" }
@@ -11700,10 +11846,13 @@ components:
       description: "resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write."
     MailIntegration:
       type: object
-      description: The tenant's own e-mail provider. The key is never returned.
-      required: [provider, base_url, from, key_hint, update_time, checked_time, check_problem]
+      description: One of the tenant's own e-mail provider accounts. The key is never returned.
+      required: [provider, base_url, from, key_hint, update_time, checked_time, check_problem, account, label, is_default]
       properties:
         provider: { type: string, enum: [nafru] }
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+        label: { type: string, description: The part of the key after the tilde; empty for the primary account. }
+        is_default: { type: boolean, description: The account a mail goes through when no rule names its language. }
         base_url: { type: string }
         from: { type: string }
         key_hint: { type: string, description: The last four characters of the stored key }

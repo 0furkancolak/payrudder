@@ -88,7 +88,7 @@ func (o offSwitch) Enabled(_ context.Context, _ uuid.UUID, category string) (boo
 // staticProviders gives the tenants in it their own e-mail provider.
 type staticProviders map[uuid.UUID]delivery.Provider
 
-func (s staticProviders) For(_ context.Context, id uuid.UUID) (*delivery.Provider, error) {
+func (s staticProviders) For(_ context.Context, id uuid.UUID, _ string) (*delivery.Provider, error) {
 	if p, ok := s[id]; ok {
 		return &p, nil
 	}

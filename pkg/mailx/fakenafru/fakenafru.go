@@ -143,3 +143,40 @@ func Emit(ctx context.Context, baseURL, secret string, e mailx.Event) (int, erro
 	_ = resp.Body.Close()
 	return resp.StatusCode, nil
 }
+
+// ResendWebhook is the body of a Resend webhook for a message: typ is the provider's event type ("email.bounced", "email.complained", "email.delivered",
+// "email.delivery_delayed"), bounceType the bounce's type ("Permanent" or "Temporary"; ignored for other types). Built from the examples on Resend's pages for the events
+// (read 2026-11-02); whether Nafru's webhooks look like this is UNVERIFIED.
+func ResendWebhook(typ, emailID, to, bounceType string) []byte {
+	data := map[string]any{"email_id": emailID, "to": []string{to}, "from": "Acme <billing@acme.example>", "subject": "Your invoice"}
+	if typ == "email.bounced" {
+		data["bounce"] = map[string]string{"type": bounceType, "subType": "General", "message": "550 5.1.1 mailbox unavailable"}
+	}
+	b, _ := json.Marshal(map[string]any{"type": typ, "created_at": time.Now().UTC().Format(time.RFC3339), "data": data})
+	return b
+}
+
+// PostSigned posts a webhook body to url the way the provider does: signed with Svix (svix-id, svix-timestamp, svix-signature) with secret ("whsec_..."). It returns the HTTP
+// status.
+func PostSigned(ctx context.Context, url, secret string, body []byte) (int, error) {
+	id := fmt.Sprintf("msg_%d", time.Now().UnixNano())
+	now := time.Now()
+	sig, err := mailx.SvixSign(secret, id, now, body)
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("svix-id", id)
+	req.Header.Set("svix-timestamp", fmt.Sprint(now.Unix()))
+	req.Header.Set("svix-signature", sig)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode, nil
+}

@@ -215,6 +215,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.run.sandbox_only`
 - `billing.saga.event_not_possible`
 - `billing.saga.not_found`
+- `billing.saga.void_needs_confirmation`
 - `billing.sandbox.unknown_scenario`
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`
@@ -422,6 +423,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.reconcile.resolved`
 - `payments.reconcile.too_long`
 - `payments.reconcile.too_many`
+- `payments.refund.charge_unclear`
 - `payments.request.bad_audit_filter`
 - `payments.request.bad_body`
 - `payments.request.bad_environment`
@@ -499,11 +501,13 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.fee.invalid_period`
 - `plans.fee.not_period_start`
 - `plans.mail.unknown_category`
+- `plans.mail_integration.default_in_use`
 - `plans.mail_integration.live_only`
 - `plans.mail_integration.not_configured`
 - `plans.mail_integration.not_connected`
 - `plans.mail_integration.refused`
 - `plans.mail_integration.seal_failed`
+- `plans.mail_integration.unknown_account`
 - `plans.mail_integration.unreachable`
 - `plans.meter.changed_concurrently`
 - `plans.meter.quota_reached`

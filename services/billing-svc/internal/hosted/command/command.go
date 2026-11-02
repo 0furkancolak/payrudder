@@ -578,7 +578,7 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 // is paying it finishes, and the tenant sees it open.
 func voidUnpaid(ctx context.Context, system *tenantdb.DB, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
 	for _, id := range ids {
-		_, err := sagacommand.Void(ctx, system, eng, tenantID, id)
+		_, err := sagacommand.Void(ctx, system, eng, tenantID, id, false, "")
 		// Best effort: FailedPrecondition means the saga is busy, NotFound that the invoice has no saga yet. Anything else is worth a line in the log.
 		if err != nil && status.Code(err) != codes.FailedPrecondition && status.Code(err) != codes.NotFound {
 			slog.WarnContext(ctx, "unpaid invoice not voided", "tenant", tenantID, "invoice", id, "error", err)

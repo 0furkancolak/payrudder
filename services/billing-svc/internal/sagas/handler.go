@@ -62,7 +62,7 @@ func (h *Handler) VoidInvoice(ctx context.Context, req *billingv1.VoidInvoiceReq
 	if err != nil {
 		return nil, err
 	}
-	row, err := command.Void(ctx, h.system, h.eng, tid, inv)
+	row, err := command.Void(ctx, h.system, h.eng, tid, inv, req.GetConfirmNotCharged(), req.GetReason())
 	if err != nil {
 		return nil, err
 	}

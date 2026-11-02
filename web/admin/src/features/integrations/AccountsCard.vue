@@ -22,19 +22,22 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useTableState } from "@/shared/lib/useTableState";
-import { ACCOUNT_KINDS, HEALTH_STATES, accountEntries, canFailover, eInvoiceAccounts, failoverTargets, healthState, healthTone, type AccountEntry, type AccountKind } from "./accounts";
-import { useAccountHealth, useEInvoiceActions, useEInvoiceIntegration, useEInvoiceRouting, useFailoverActions, useMailActions, useMailIntegration, useSetEInvoiceRouting, type EInvoiceProvider } from "./api";
+import { LANGUAGE_NAMES } from "@/features/contracts/lib";
+import type { ApiLocale } from "@/shared/lib/locale";
+import { ACCOUNT_KINDS, HEALTH_STATES, MAIL_LANGUAGES, accountEntries, canFailover, eInvoiceAccounts, failoverTargets, healthState, healthTone, type AccountEntry, type AccountKind } from "./accounts";
+import { useAccountHealth, useEInvoiceActions, useEInvoiceIntegration, useEInvoiceRouting, useFailoverActions, useMailActions, useMailIntegration, useMailRouting, useSetEInvoiceRouting, useSetMailRouting, type EInvoiceProvider } from "./api";
 import { BRANDS, type IntegrationId } from "./brands";
 import { stateTone } from "./status";
 
 /**
  * Every account of an app in one list, whatever it is for: the payment accounts (several at one provider, a Paddle account per region, an iyzico account per
- * company), the e-invoice accounts (the same) and the e-mail sender in use. A row says what it is, which one is the default, and whether it works; the default
- * moves with one click and an account is removed from its row. "Add integration" walks from the kind to the provider and opens the form of that provider. The
- * rules below the list say which account takes which customers: payments by the customer's country and currency, e-invoice documents by the buyer's country.
+ * company), the e-invoice accounts (the same) and the e-mail accounts (the same; Payrudder's built-in sender is "in use" while none is connected). A row says what
+ * it is, which one is the default, and whether it works; the default moves with one click and an account is removed from its row. "Add integration" walks from
+ * the kind to the provider and opens the form of that provider. The rules below the list say which account takes which customers: payments by the customer's
+ * country and currency, e-invoice documents by the buyer's country, e-mail by the language of the mail.
  */
 const props = defineProps<{ appId: string; apps: readonly AppRow[]; isOwner: boolean }>();
-const emit = defineEmits<{ einvoice: [provider: EInvoiceProvider, account: string]; mail: [kind: "payrudderMail" | "nafru"] }>();
+const emit = defineEmits<{ einvoice: [provider: EInvoiceProvider, account: string]; mail: [kind: "payrudderMail" | "nafru", account: string] }>();
 const { t, te } = useI18n();
 const fmt = useFormat();
 
@@ -69,7 +72,7 @@ const makeDefaultPayment = useMakeDefaultAccount(() => props.appId);
 const eActions = useEInvoiceActions(() => props.appId);
 const mActions = useMailActions(() => props.appId);
 const disconnect = useDisconnectProvider();
-const failure = computed(() => makeDefaultPayment.error.value ?? eActions.setDefault.error.value ?? eActions.remove.error.value ?? mActions.remove.error.value ?? disconnect.error.value);
+const failure = computed(() => makeDefaultPayment.error.value ?? eActions.setDefault.error.value ?? eActions.remove.error.value ?? mActions.setDefault.error.value ?? mActions.remove.error.value ?? disconnect.error.value);
 /** What a test of an e-invoice or e-mail account found, by row: an account has no standing health, so a row says what its last test said. */
 const tested = ref<Record<string, "working" | "problem">>({});
 const stateOf = (e: AccountEntry) => tested.value[e.id] ?? e.state;
@@ -77,13 +80,14 @@ const stateOf = (e: AccountEntry) => tested.value[e.id] ?? e.state;
 function makeDefault(e: AccountEntry) {
   if (e.kind === "payment") makeDefaultPayment.mutate(e.key);
   else if (e.kind === "einvoice") eActions.setDefault.mutate(e.key);
+  else mActions.setDefault.mutate(e.key);
 }
 
 async function remove(e: AccountEntry) {
   if (!(await askConfirm({ body: t("product.integrations.accounts.confirmRemove", { name: label(e) }) }))) return;
   if (e.kind === "payment") disconnect.mutate({ apps: props.apps.filter((a) => a.id === props.appId), provider: e.provider as LiveProviderName, key: e.key });
   else if (e.kind === "einvoice") eActions.remove.mutate(e.key);
-  else mActions.remove.mutate();
+  else mActions.remove.mutate(e.key);
 }
 
 function testNow(e: AccountEntry) {
@@ -95,7 +99,7 @@ function manage(e: AccountEntry) {
     const { provider, label: tag } = splitAccountKey(e.key);
     openPayments(provider as LiveProviderName, tag, false);
   } else if (e.kind === "einvoice") emit("einvoice", e.provider as EInvoiceProvider, e.key);
-  else emit("mail", e.provider as "payrudderMail" | "nafru");
+  else emit("mail", e.provider as "payrudderMail" | "nafru", e.key);
 }
 
 const label = (e: AccountEntry) => (e.label ? `${entryName(e)} (${e.label})` : entryName(e));
@@ -106,7 +110,7 @@ const actionsOf = (e: AccountEntry) => {
   if (props.isOwner && (e.kind !== "mail" || e.provider === "nafru")) out.push({ key: "remove", label: t("product.integrations.accounts.remove"), icon: Trash2, destructive: true, onSelect: () => void remove(e) });
   return out;
 };
-const canMakeDefault = (e: AccountEntry) => props.isOwner && !e.isDefault && (e.kind === "payment" || e.kind === "einvoice") && e.state !== "none";
+const canMakeDefault = (e: AccountEntry) => props.isOwner && !e.isDefault && (e.kind !== "mail" || e.provider === "nafru") && e.state !== "none";
 
 // --- failover: the account a new charge goes to when this one definitely did not process it (docs/provider-health.md). A sheet names the account, says what it is
 // doing now, and takes the target; the row says where it fails over to.
@@ -178,7 +182,7 @@ function continueAdd() {
   addOpen.value = false;
   if (addKind.value === "payment") openPayments(p as LiveProviderName, "", entries.value.some((e) => e.kind === "payment" && e.provider === p));
   else if (addKind.value === "einvoice") emit("einvoice", p as EInvoiceProvider, "");
-  else emit("mail", "nafru");
+  else emit("mail", "nafru", "");
 }
 
 // --- payment routing: edited as a list, saved as a whole
@@ -205,6 +209,30 @@ function save() {
     draft.value.map((r) => ({ country: r.country.trim().toUpperCase(), currency: r.currency.trim().toUpperCase(), provider: r.provider })),
     { onSuccess: () => (saved.value = true) },
   );
+}
+
+// --- e-mail routing: the language of the mail names the account that sends it (default, not agreed: by language, the one thing about a recipient the notifier has on every mail)
+const mailOptions = computed(() => entries.value.filter((e) => e.kind === "mail" && e.provider === "nafru").map((e) => ({ key: e.key, label: label(e) })));
+const mRouting = useMailRouting(() => props.appId);
+const setMRouting = useSetMailRouting(() => props.appId);
+const mDraft = ref<{ language: ApiLocale; account: string }[]>([]);
+const mSaved = ref(false);
+watch(
+  () => mRouting.data.value,
+  (rules) => {
+    mDraft.value = (rules ?? []).map((r) => ({ language: r.language as ApiLocale, account: r.account }));
+  },
+  { immediate: true },
+);
+const mDirty = computed(() => JSON.stringify(mDraft.value) !== JSON.stringify(mRouting.data.value ?? []));
+const mDuplicate = computed(() => new Set(mDraft.value.map((r) => r.language)).size < mDraft.value.length);
+function addMRule() {
+  const free = MAIL_LANGUAGES.find((l) => !mDraft.value.some((r) => r.language === l));
+  if (free) mDraft.value.push({ language: free, account: mailOptions.value[0]?.key ?? "" });
+}
+function saveM() {
+  mSaved.value = false;
+  setMRouting.mutate([...mDraft.value], { onSuccess: () => (mSaved.value = true) });
 }
 
 // --- e-invoice routing: the buyer's country names the account that issues the document
@@ -271,10 +299,10 @@ function saveE() {
           <StatusPill :tone="stateTone(stateOf(e))" :data-testid="`account-state-${e.id}`">{{ t(`product.integrations.state.${stateOf(e)}`) }}</StatusPill>
           <StatusPill v-if="e.kind === 'payment' && healthOf(e) !== 'unknown'" :tone="healthTone(healthOf(e))" :data-testid="`account-health-${e.id}`">{{ t(`product.integrations.health.states.${healthOf(e)}`) }}</StatusPill>
           <span v-if="failoverOf(e)" class="text-muted-foreground text-xs" :data-testid="`account-failover-${e.id}`">{{ t("product.integrations.health.failsOver", { name: accountName(failoverOf(e)) }) }}</span>
-          <StatusPill v-if="e.isDefault" tone="info" :data-testid="`account-default-${e.id}`">{{ e.kind === 'mail' ? t("product.integrations.accounts.inUse") : t("product.providers.account.default") }}</StatusPill>
+          <StatusPill v-if="e.isDefault" tone="info" :data-testid="`account-default-${e.id}`">{{ e.provider === 'payrudderMail' ? t("product.integrations.accounts.inUse") : t("product.providers.account.default") }}</StatusPill>
         </div>
         <div class="flex items-center gap-2">
-          <Button v-if="canMakeDefault(e)" variant="ghost" size="sm" :disabled="makeDefaultPayment.isPending.value || eActions.setDefault.isPending.value" :data-testid="`account-make-default-${e.id}`" @click="makeDefault(e)">
+          <Button v-if="canMakeDefault(e)" variant="ghost" size="sm" :disabled="makeDefaultPayment.isPending.value || eActions.setDefault.isPending.value || mActions.setDefault.isPending.value" :data-testid="`account-make-default-${e.id}`" @click="makeDefault(e)">
             <Star class="size-4" />{{ t("product.providers.account.makeDefault") }}
           </Button>
           <Button variant="outline" size="sm" :disabled="!isOwner && e.kind !== 'mail'" :data-testid="`account-manage-${e.id}`" @click="manage(e)">{{ e.kind === 'mail' && e.provider === 'payrudderMail' ? t("product.integrations.settings") : t("product.providers.manage") }}</Button>
@@ -339,6 +367,35 @@ function saveE() {
         <span v-if="eSaved && !eDirty" class="text-success text-xs" role="status" data-testid="einvoice-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
       </div>
       <ErrorText :error="setERouting.error.value" />
+    </div>
+
+    <div v-if="mailOptions.length > 1 || mDraft.length > 0" class="flex flex-col gap-3" data-testid="mail-routing-editor">
+      <div>
+        <h3 class="text-sm font-semibold">{{ t("product.integrations.accounts.mRouting.title") }}</h3>
+        <p class="text-muted-foreground text-xs">{{ t("product.integrations.accounts.mRouting.intro") }}</p>
+      </div>
+      <ul v-if="mDraft.length > 0" class="flex flex-col gap-2">
+        <li v-for="(rule, i) in mDraft" :key="i" class="grid items-end gap-2 sm:grid-cols-[10rem_1fr_auto]" :data-testid="`mail-rule-${i}`">
+          <label class="grid gap-1 text-xs">{{ t("product.integrations.accounts.mRouting.language") }}
+            <NativeSelect v-model="rule.language" :disabled="!isOwner" :data-testid="`mail-rule-language-${i}`">
+              <option v-for="l in MAIL_LANGUAGES" :key="l" :value="l">{{ LANGUAGE_NAMES[l] }}</option>
+            </NativeSelect>
+          </label>
+          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
+            <NativeSelect v-model="rule.account" :disabled="!isOwner" :data-testid="`mail-rule-account-${i}`">
+              <option v-for="o in mailOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
+            </NativeSelect>
+          </label>
+          <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`mail-rule-remove-${i}`" @click="mDraft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
+        </li>
+      </ul>
+      <p v-if="mDuplicate" class="text-destructive text-xs" role="alert">{{ t("product.integrations.accounts.mRouting.duplicate") }}</p>
+      <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" type="button" :disabled="mDraft.length >= MAIL_LANGUAGES.length" data-testid="mail-rule-add" @click="addMRule">{{ t("product.providers.account.routing.addRule") }}</Button>
+        <Button size="sm" type="button" :disabled="!mDirty || mDuplicate || setMRouting.isPending.value" data-testid="mail-rule-save" @click="saveM">{{ t("product.providers.account.routing.save") }}</Button>
+        <span v-if="mSaved && !mDirty" class="text-success text-xs" role="status" data-testid="mail-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
+      </div>
+      <ErrorText :error="setMRouting.error.value" />
     </div>
 
     <Sheet v-model:open="addOpen" name="add-integration">

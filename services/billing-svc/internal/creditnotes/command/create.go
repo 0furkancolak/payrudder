@@ -11,6 +11,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
+	creditscommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -73,13 +74,20 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 			Currency: inv.Currency, TotalMinor: amount, TaxMinor: tax, Reason: reason, CreatedAt: now, Disposition: model.Disposition(refund)}); err != nil {
 			return err
 		}
-		// Credited in full is a full refund of the purchase: a coupon it used gives its redemption back (the scheduler tells plans-svc).
-		if credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID}); err != nil {
+		credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID})
+		if err != nil {
 			return err
-		} else if credited >= inv.TotalMinor {
+		}
+		// Credited in full is a full refund of the purchase: a coupon it used gives its redemption back (the scheduler tells plans-svc).
+		if credited >= inv.TotalMinor {
 			if err := q.QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: tenantID, ID: invoiceID}); err != nil {
 				return err
 			}
+		}
+		// A credit-pack invoice takes back the share of its credits that the note credits: the whole lot when the notes add up to the invoice (default, not agreed:
+		// a partial note takes a proportional part, as far as the customer still has the credits).
+		if err := creditscommand.RevokePurchase(ctx, tx, tenantID, invoiceID, credited-amount, credited, inv.TotalMinor, "cn:"+cn.ID.String(), "credit note "+cn.Number+" against invoice "+cn.InvoiceNumber); err != nil {
+			return err
 		}
 		if refund {
 			cn.Refund = true

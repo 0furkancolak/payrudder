@@ -32,6 +32,9 @@ What an e-invoice integrator adapter in `pkg/einvoice/<name>` must do, so that a
 |---|---|
 | `capabilities` | a name, at least one valid type, `Supports` agrees with the list |
 | `issue-<type>` | for each type the adapter sends: the answer's shape (3), the repeat is the same document and not a second one at the integrator (2), `Status` agrees with `Issue` |
+| `issue-concurrent-is-one-document` | eight callers issuing one UUID at the same moment leave **one** document at the integrator and are all told about it (2); needs the fake's `Created` |
+| `credit-note` | for each type: a credit note (a `Reference` to the original's legal number) is a document of its own, with the shape of any answer, one more document at the integrator, never the original again (5) |
+| `cancel-unknown-is-not-found` | `Cancel` of a document nobody issued is `ErrNotFound` (or `ErrUnsupported`), never a success (1, 5) |
 | `issue-unsupported-type` | a type outside `Capabilities.Types` is a `PermanentError` (9) |
 | `status-unknown-is-not-found` | `ErrNotFound` for a UUID nobody issued, also for `FetchPDF` |
 | `async-confirmation` | pending, then issued with a legal number after the integrator confirms (4) |
@@ -62,6 +65,8 @@ A pass says the adapter honours the contract against the shapes the integrator's
 A document fails when the XSD rejects it or a schematron assertion fails without the flag `warning` or `information` (GİB's rules carry no flag, so all of them are errors). Artefacts are downloaded into a cache, pinned by version and sha256, and refused on a mismatch; nothing official is committed. The failures that are documented gaps rather than defects are in `scripts/einvoice-known-failures.txt`; a line there that no longer occurs fails the run, so the list can only shrink. What passes is **not** acceptance by a tax authority or a Peppol access point.
 
 ## Adding an integrator
+
+The questions to put to an integrator **before** this list, each tied to the check that proves the answer, are in [einvoice-integrator-checklist.md](einvoice-integrator-checklist.md).
 
 1. Read its public documentation and write the research row in plan 09 (auth, the calls for issue, status, cancel, credit note, PDF, XML, test environment, who owns the number series, idempotency, async acknowledgement), each with URL and date. If the documentation is not complete enough to build against an `httptest` fake, stop: list what is missing in the plan and ask for an account or the documentation.
 2. The adapter in `pkg/einvoice/<name>` with `Register`, a `Factory`, `Capabilities`, and `UNVERIFIED` marks where the documentation is silent.

@@ -159,9 +159,38 @@ func TestQuotaDropsAndCountsOnlyThePlatformSendersLiveMail(t *testing.T) {
 	}
 }
 
+// The language of the mail (Data["locale"]) is what the tenant's provider is chosen by: a routing rule sends a language through another account, and a mail with no
+// language is looked up as English's empty form.
+func TestDeliverAsksForTheProviderOfTheMailsLanguage(t *testing.T) {
+	r := newRig(t)
+	var asked []string
+	r.m.Providers = providerFunc(func(_ uuid.UUID, language string) (*Provider, error) {
+		asked = append(asked, language)
+		return nil, nil // no provider of its own: the built-in sender
+	})
+	for i, loc := range []string{"de", "", "tr"} {
+		data := map[string]string{"customer_name": "Ada"}
+		if loc != "" {
+			data["locale"] = loc
+		}
+		if _, err := r.m.Deliver(context.Background(), Delivery{Key: "k" + string(rune('a'+i)), Kind: "command", Template: "invoice_paid.v1", TenantID: r.tid, To: "a@example.com", Data: data}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(asked) != 3 || asked[0] != "de" || asked[1] != "" || asked[2] != "tr" {
+		t.Errorf("providers were asked for the languages %q", asked)
+	}
+}
+
+type providerFunc func(uuid.UUID, string) (*Provider, error)
+
+func (f providerFunc) For(_ context.Context, id uuid.UUID, language string) (*Provider, error) {
+	return f(id, language)
+}
+
 type ownProvider struct{ p Provider }
 
-func (o ownProvider) For(context.Context, uuid.UUID) (*Provider, error) { return &o.p, nil }
+func (o ownProvider) For(context.Context, uuid.UUID, string) (*Provider, error) { return &o.p, nil }
 
 func TestRateLimitedMailIsRetriedNotDropped(t *testing.T) {
 	r := newRig(t)
