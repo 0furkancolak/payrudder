@@ -10,10 +10,12 @@ afterEach(() => {
   while (open.length) open.pop()?.close();
 });
 
-async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPersonalData?: boolean; audit?: (r: AuditRecord) => void; ratePerMinute?: number } = {}) {
+async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPersonalData?: boolean; audit?: (r: AuditRecord) => void; ratePerMinute?: number; edgeSecret?: string; trustForwardedFor?: boolean } = {}) {
   const seen: { path: string; auth: string | null }[] = [];
+  const heads: Headers[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     seen.push({ path: new URL(String(input)).pathname, auth: new Headers(init.headers).get("Authorization") });
+    heads.push(new Headers(init.headers));
     return new Response(JSON.stringify({ external_id: "cus_1", name: "Ada" }), { status: 200 });
   }) as typeof fetch;
   const server = createHttpServer({ baseUrl: "https://api.example", fetch: fakeFetch, ...opts });
@@ -27,7 +29,7 @@ async function start(opts: { allowWrites?: boolean; allowLive?: boolean; allowPe
     open.push(client);
     return client;
   };
-  return { url, seen, connect };
+  return { url, seen, heads, connect };
 }
 
 describe("streamable HTTP", () => {
@@ -97,6 +99,41 @@ describe("streamable HTTP", () => {
     expect((await fetch(url, { method: "DELETE", headers: h })).status).toBe(405);
     expect((await fetch(url.replace("/mcp", "/other"), { method: "POST", headers: h, body: "{}" })).status).toBe(404);
     expect((await fetch(url, { method: "POST", headers: h, body: "not json" })).status).toBe(400);
+  });
+});
+
+// One flood of junk keys must not lock a shared server out: the API counts refused keys by the address they come from, and every caller of this server reaches it from the
+// server's. With the secret the API shares with this server (its PAYRUDDER_TRUSTED_PROXY_SECRET) the caller's own address goes along, and the API counts that one.
+describe("the caller's address goes to the API with the edge secret", () => {
+  const secret = "edge-secret-of-at-least-32-characters-0123456789";
+  const raw = (url: string, extra: Record<string, string> = {}) =>
+    fetch(url, { method: "POST", headers: { Authorization: "Bearer qk_test_a_1111", "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...extra },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "list_meters", arguments: {} } }) });
+
+  it("sends the connection's address and the secret, and the client cannot choose the address", async () => {
+    const { url, heads } = await start({ edgeSecret: secret });
+    expect((await raw(url, { "X-Forwarded-For": "203.0.113.9", "X-Edge-Auth": "from-the-client" })).status).toBe(200);
+    expect(heads).toHaveLength(1);
+    expect(heads[0]?.get("X-Edge-Auth")).toBe(secret);
+    expect(heads[0]?.get("X-Forwarded-For")).toMatch(/^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/);
+  });
+
+  it("sends the last address a proxy in front wrote when told to trust it, and the connection's otherwise", async () => {
+    const trusting = await start({ edgeSecret: secret, trustForwardedFor: true });
+    await raw(trusting.url, { "X-Forwarded-For": "203.0.113.9, 198.51.100.4" });
+    expect(trusting.heads[0]?.get("X-Forwarded-For")).toBe("198.51.100.4");
+    await raw(trusting.url); // no proxy header: the connection
+    expect(trusting.heads[1]?.get("X-Forwarded-For")).toMatch(/127\.0\.0\.1|::1/);
+    const plain = await start({ edgeSecret: secret });
+    await raw(plain.url, { "X-Forwarded-For": "203.0.113.9, 198.51.100.4" });
+    expect(plain.heads[0]?.get("X-Forwarded-For")).not.toContain("198.51.100.4");
+  });
+
+  it("sends neither header without a secret, whatever the client sent", async () => {
+    const { url, heads } = await start();
+    await raw(url, { "X-Forwarded-For": "203.0.113.9", "X-Edge-Auth": "from-the-client" });
+    expect(heads[0]?.get("X-Forwarded-For")).toBeNull();
+    expect(heads[0]?.get("X-Edge-Auth")).toBeNull();
   });
 });
 

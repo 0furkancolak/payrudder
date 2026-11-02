@@ -5,6 +5,8 @@ export interface ApiOptions {
   /** Injected in tests; the global fetch otherwise. */
   fetch?: typeof fetch;
   timeoutMs?: number;
+  /** The caller's address and the secret the API shares with this server (its PAYRUDDER_TRUSTED_PROXY_SECRET): sent as X-Forwarded-For and X-Edge-Auth, so that the API counts a refused key against the caller, not against this server. */
+  forward?: { address: string; secret: string };
 }
 
 export class ApiError extends Error {
@@ -30,7 +32,7 @@ export function createApi(o: ApiOptions): Api {
     for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     const res = await doFetch(url, {
       method,
-      headers: { Authorization: `Bearer ${o.apiKey}`, Accept: "application/json", "User-Agent": "payrudder-mcp/0.0.0", ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+      headers: { Authorization: `Bearer ${o.apiKey}`, Accept: "application/json", "User-Agent": "payrudder-mcp/0.0.0", ...(o.forward ? { "X-Forwarded-For": o.forward.address, "X-Edge-Auth": o.forward.secret } : {}), ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(o.timeoutMs ?? 30_000),
     });
@@ -50,5 +52,8 @@ export function createApi(o: ApiOptions): Api {
   return { get: (p, q) => call("GET", p, q), post: (p, b) => call("POST", p, undefined, b ?? {}) };
 }
 
-/** A path segment from a value the model supplied: encoded, so `../` or `?x=` in it cannot reach another route. */
-export const seg = (v: string): string => encodeURIComponent(v);
+/** A path segment from a value the model supplied: encoded, so `../` or `?x=` in it cannot reach another route. A segment of only dots is refused: encodeURIComponent leaves it, and a URL collapses `..` (and `%2e%2e`) into the parent route. */
+export const seg = (v: string): string => {
+  if (v === "." || v === "..") throw new Error(`"${v}" is not an id: used in a path it would reach another route.`);
+  return encodeURIComponent(v);
+};

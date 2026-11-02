@@ -50,6 +50,15 @@ func accountEntry(ctx context.Context, tx pgx.Tx, tenant uuid.UUID, action, prov
 	return audit.Record(ctx, tx, audit.Event{TenantID: tenant, Action: action, TargetType: "provider_account", TargetID: provider + "/" + env, Summary: summary, Detail: detail})
 }
 
+// CardDeleted writes the audit log entry of a stored card deleted at the provider (iyzico's card storage), on the customer: which provider, the card's last four digits and
+// whether it was the one the customer's invoices are charged with. The provider's token and the user key stay out of it.
+func (a Accounts) CardDeleted(ctx context.Context, tenant uuid.UUID, provider, customer, last4 string, wasInUse bool) error {
+	return tx(ctx, a.DB, tenant, func(tx pgx.Tx, _ *sqlc.Queries) error {
+		return audit.Record(ctx, tx, audit.Event{TenantID: tenant, Action: "stored_card.deleted", TargetType: "customer", TargetID: customer,
+			Summary: fmt.Sprintf("deleted the stored card ending %s at %s", last4, provider), Detail: map[string]any{"provider": provider, "last4": last4, "was_in_use": wasInUse}})
+	})
+}
+
 // Kinds of account the audit trail tells apart.
 const (
 	KindPayment  = "payment"

@@ -203,11 +203,16 @@ func CSVRecord(r Row) []string {
 		}
 		return u.String()
 	}
-	return []string{r.ID.String(), r.CreatedAt.UTC().Format(time.RFC3339Nano), ptr(r.TenantID), ptr(r.AccountID), r.ActorType, r.ActorID, r.ActorEmail, r.Action, r.TargetType,
-		r.TargetID, csvSafe(r.Summary), string(r.Detail), r.BeforeHash, r.AfterHash, r.SourceIP, r.RequestID}
+	rec := []string{r.ID.String(), r.CreatedAt.UTC().Format(time.RFC3339Nano), ptr(r.TenantID), ptr(r.AccountID), r.ActorType, r.ActorID, r.ActorEmail, r.Action, r.TargetType,
+		r.TargetID, r.Summary, string(r.Detail), r.BeforeHash, r.AfterHash, r.SourceIP, r.RequestID}
+	for i := range rec {
+		rec[i] = csvSafe(rec[i])
+	}
+	return rec
 }
 
-// csvSafe stops a cell from being read as a formula by a spreadsheet: a person controls parts of a summary (names), and the export is meant to be opened in one.
+// csvSafe stops a cell from being read as a formula by a spreadsheet: a person controls much of a line (the names in a summary, the address they signed up with, the id a
+// request names, a request id header), and the export is meant to be opened in one. Every cell goes through it; ids, times and JSON never start with one of these.
 func csvSafe(s string) string {
 	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
 		return "'" + s

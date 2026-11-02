@@ -219,3 +219,44 @@ func TestMailDeliveryWebhookIsTranslatedForTheNotifier(t *testing.T) {
 		t.Errorf("without a notifier there is nowhere to hand an event: %d", resp.StatusCode)
 	}
 }
+
+// The webhook is public and reads its body before it can check the signature, so, like the other public webhooks and pages, it is limited per address: an address that has
+// sent hostedPerMinute requests in the minute is refused with 429 before the body is read, and a signed request from it is refused too until the minute is over.
+func TestMailDeliveryWebhookIsLimitedPerAddress(t *testing.T) {
+	fm := &fakeMail{}
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Mail, d.MailWebhookSecret = fm, mailHookSecret })
+	big := strings.Repeat("x", mailWebhookLimit)
+	for i := 0; i < hostedPerMinute; i++ {
+		req, _ := http.NewRequest(http.MethodPost, ts.URL+"/inbound/mail-events", strings.NewReader(big))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != 401 {
+			t.Fatalf("request %d: %d, want 401 (not signed)", i+1, resp.StatusCode)
+		}
+	}
+	bounce := `{"type":"email.bounced","data":{"email_id":"em_1","to":["ada@example.com"],"bounce":{"type":"Permanent"}}}`
+	if resp := postMailHook(t, ts.URL, bounce, mailHookSecret, time.Now()); resp.StatusCode != 429 || len(fm.events) != 0 {
+		t.Errorf("a signed request over the limit: %d %+v; want 429 and nothing for the notifier", resp.StatusCode, fm.events)
+	}
+}
+
+// The mail log and the suppression list are customers' e-mail addresses: a key reads them with customers:read, not settings:read, and lifting a suppression is
+// customers:write (the read_only role holds the first and not the second; a key with settings:read alone reads neither).
+func TestMailLogAndSuppressionsNeedTheCustomerPermissions(t *testing.T) {
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Mail = &fakeMail{} })
+	for _, path := range []string{"/v1/mail-suppressions", "/v1/mail-messages"} {
+		for key, want := range map[string]int{"read-key": 200, "custom-key": 200, "audit-key": 403, "ingest-key": 403} {
+			if resp, _ := do(t, ts, "GET", path, key, ""); resp.StatusCode != want {
+				t.Errorf("GET %s with %s: %d, want %d", path, key, resp.StatusCode, want)
+			}
+		}
+	}
+	for key, want := range map[string]int{"read-key": 403, "custom-key": 403, "checkout-key": 204} {
+		if resp, _ := do(t, ts, "DELETE", "/v1/mail-suppressions/ada@example.com", key, ""); resp.StatusCode != want {
+			t.Errorf("lifting a suppression with %s: %d, want %d", key, resp.StatusCode, want)
+		}
+	}
+}

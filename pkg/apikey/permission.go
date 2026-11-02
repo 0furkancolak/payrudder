@@ -216,8 +216,10 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return rw("webhooks")
 	case "affiliates":
 		return rw("affiliates")
-	case "dunning-settings", "mail-settings", "mail-suppressions", "mail-messages", "mail-previews", "routing-rules", "tax-rates", "tenant", "credits":
+	case "dunning-settings", "mail-settings", "mail-previews", "routing-rules", "tax-rates", "tenant", "credits":
 		return rw("settings")
+	case "mail-suppressions", "mail-messages":
+		return rw("customers") // customers' e-mail addresses, and whether they are mailed: a customer record, not a setting
 	case "assets":
 		return rw("assets")
 	case "contracts":
