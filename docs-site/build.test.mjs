@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { parse } from "yaml";
-import { EVENT_CODES, GUIDES, OPERATOR_AREAS, REDIRECTS, STATUSES, TABBED, build, errorKeys, exampleOf, externalLinksOf, loadPublication, meaningsOf, operationsOf, publicationOf } from "./build.mjs";
+import { EVENT_CODES, GUIDES, OPERATOR_AREAS, REDIRECTS, STATUSES, TABBED, build, errorKeys, exampleOf, externalLinksOf, loadPublication, meaningsOf, operationsOf, publicationOf, versionLine } from "./build.mjs";
 import { LANGS } from "../web/admin/src/features/connect/snippets.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -170,6 +170,9 @@ test("every page carries a status, and a page of docs/ shows the one the manifes
 
 // ---- the concept pages
 
+/** The concepts that had no page of their own (plan 19): what a customer buys, what ties them to it, what they are billed, what they can spend, and what happens to a payment that fails. */
+const CONCEPT_PAGES = ["plans-and-packages", "subscriptions", "invoices", "credits", "dunning"];
+
 test("the concept pages are built, in the sidebar, and say what the repository documents say", async () => {
   for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "webhooks"]) {
     const h = await readFile(join(out, `${page}.html`), "utf8");
@@ -185,7 +188,7 @@ test("the concept pages are built, in the sidebar, and say what the repository d
 test("the pages for concepts do not point at a path the API does not have", async () => {
   const known = new Set(Object.keys(doc.paths));
   const toPattern = (p) => new RegExp(`^${p.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments", "migrate-from-stripe", "migrate-from-paddle", "migrate-from-iyzico", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security", "console-customers", "console-invoices", "console-pricing", "console-webhooks", "console-go-live", "versioning"]) {
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments", "migrate-from-stripe", "migrate-from-paddle", "migrate-from-iyzico", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security", "console-customers", "console-invoices", "console-pricing", "console-webhooks", "console-go-live", "versioning", ...CONCEPT_PAGES]) {
     const md = await readFile(join(here, "content", `${page}.md`), "utf8");
     const seen = [];
     for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) seen.push(m[1].replace(/\/$/, ""));
@@ -488,7 +491,7 @@ test("the two migration tutorials are built, draft, say there is no importer, na
 test("every verb and path the new pages name together is an operation of the OpenAPI file", async () => {
   // `POST /v1/plans/{code}/versions` in backticks: the route must have that verb (the path alone is checked above).
   let checked = 0;
-  for (const page of [...CONSOLE_PAGES, "migrate-from-paddle", "migrate-from-iyzico", "versioning"]) {
+  for (const page of [...CONSOLE_PAGES, "migrate-from-paddle", "migrate-from-iyzico", "versioning", ...CONCEPT_PAGES]) {
     const md = await readFile(join(here, "content", `${page}.md`), "utf8");
     for (const m of md.matchAll(/`(GET|POST|PUT|PATCH|DELETE) (\/v1\/[A-Za-z0-9_\-/{}.]+)`/g)) {
       const route = Object.entries(doc.paths).find(([k]) => new RegExp(`^${k.replace(/\{[^}]+\}/g, "[^/]+")}$`).test(m[2]));
@@ -517,4 +520,113 @@ test("the versioning page says what the repository does: one path version, nothi
   assert.match(plans, /default 30, at least 14, at most 365/, "the price-change notice limits changed: update versioning.md");
   assert.ok(doc.paths["/v1/plans/{code}/versions/{version}"] && doc.paths["/v1/plans/{code}/price-changes"].post);
   assert.match(await readFile(resolve(here, "../buf.yaml"), "utf8"), /WIRE_JSON/);
+});
+
+// ---- the concept pages for packages, subscriptions, invoices, credits and dunning (plan 19)
+
+test("the five concept pages are built, draft, in the Concepts section of the sidebar, and each value of an enum they explain is one the API has", async () => {
+  const schemas = doc.components.schemas;
+  const page = async (p) => readFile(join(out, `${p}.html`), "utf8");
+  for (const p of CONCEPT_PAGES) {
+    const h = await page(p);
+    assert.match(h, /data-status="draft"/, p);
+    assert.match(h, new RegExp(`<a href="${p}\\.html"`), `${p} is not in the sidebar`);
+  }
+  // Every value of the enums a page explains is on the page (a value added to the API fails here until the page explains it), and the page names no value the enum lacks.
+  const explains = [
+    ["subscriptions", schemas.Subscription.properties.state.enum],
+    ["subscriptions", schemas.Subscription.properties.interval.enum],
+    ["subscriptions", schemas.Subscription.properties.fee_timing.enum],
+    ["invoices", schemas.Invoice.properties.kind.enum],
+    ["invoices", schemas.Invoice.properties.status.enum],
+    ["invoices", schemas.InvoiceLine.properties.kind.enum],
+    ["credits", schemas.CreditLot.properties.source.enum],
+    ["credits", schemas.CreditLedgerEntry.properties.kind.enum],
+  ];
+  for (const [p, values] of explains) {
+    const h = await page(p);
+    for (const v of values) assert.ok(h.includes(`<code>${v}</code>`) || h.includes(`${v}</code>`), `${p}.html does not explain ${v}`);
+  }
+  const states = new Set(schemas.Subscription.properties.state.enum);
+  for (const m of (await page("subscriptions")).matchAll(/SUBSCRIPTION_STATE_[A-Z_]+/g)) assert.ok(states.has(m[0]), `subscriptions names ${m[0]}, which is not a state`);
+  const lineKinds = new Set(schemas.InvoiceLine.properties.kind.enum);
+  for (const m of (await readFile(join(here, "content", "invoices.md"), "utf8")).matchAll(/^\| `([A-Z_]+)` \|/gm)) assert.ok(lineKinds.has(m[1]), `invoices names the line kind ${m[1]}, which the API does not have`);
+});
+
+test("the webhook events the concept pages name are events the webhooks document lists", async () => {
+  const events = await readFile(resolve(here, "../docs/16-webhooks.md"), "utf8");
+  let named = 0;
+  for (const p of CONCEPT_PAGES) {
+    const md = await readFile(join(here, "content", `${p}.md`), "utf8");
+    // `invoice.paid`, `credits.low`, `.changed` after another event (`subscription.created`, `.changed`) are all read; a bare `.x` takes the family of the event before it.
+    let family = "";
+    for (const m of md.matchAll(/`((?:subscription|invoice|credit_note|credits|payment|payment_link)\.[a-z_.]+|\.[a-z_]+)`/g)) {
+      const name = m[1].startsWith(".") ? `${family}${m[1]}` : m[1];
+      if (!m[1].startsWith(".")) family = m[1].split(".")[0];
+      assert.ok(events.includes(`\`${name}\``), `${p}.md names the event ${name}, which docs/16-webhooks.md does not list`);
+      named += 1;
+    }
+  }
+  assert.ok(named >= 10, `only ${named} events were read: is the check reading the pages?`);
+});
+
+// ---- search over the guides, the version the site describes, and the pages that must keep working (plan 19)
+
+test("the search finds a word anywhere in a guide, in the section it is in, and every section of every guide is findable and has an anchor", async () => {
+  const idx = JSON.parse(await readFile(join(out, "search.json"), "utf8"));
+  // `Meter versions` is far below the first 4000 characters of the versioning page, which is all the search used to read of a guide.
+  const meter = idx.find((e) => e.title === "Versioning: Meter versions");
+  assert.ok(meter, "the section is not in the index");
+  assert.equal(meter.url, "versioning.html#meter-versions");
+  assert.match(meter.text, /decimal places/);
+  const versioning = await readFile(join(out, "versioning.html"), "utf8");
+  assert.ok(versioning.indexOf('id="meter-versions"') > 4000, "the section is no longer deep in the page: pick another example");
+  assert.match(versioning, /<h2 id="meter-versions">Meter versions<\/h2>/);
+  // Every h2 of every guide has an id and an entry that lands on it; an id appears once per page.
+  let sections = 0;
+  for (const g of GUIDES) {
+    const h = await readFile(join(out, `${g.page}.html`), "utf8");
+    const ids = [...h.slice(h.indexOf("<main>")).matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    assert.equal(new Set(ids).size, ids.length, `${g.page}.html has an id twice`);
+    for (const m of h.slice(h.indexOf("<main>")).matchAll(/<h2([^>]*)>([\s\S]*?)<\/h2>/g)) {
+      const id = /id="([^"]+)"/.exec(m[1])?.[1];
+      assert.ok(id, `${g.page}.html: the section "${m[2]}" has no id`);
+      assert.ok(idx.some((e) => e.url === `${g.page}.html#${id}` && e.kind === "Guide"), `${g.page}.html#${id} is not in the search index`);
+      sections += 1;
+    }
+  }
+  assert.ok(sections > 100, `only ${sections} sections were read`);
+  // A repeated heading gets its own id, and the entities of a heading are not left in its title.
+  assert.ok(idx.every((e) => !/&#\d+;|&amp;|&quot;/.test(e.title)), "a title shows an entity");
+});
+
+test("every page says which version of the API it describes, the same as the OpenAPI file, and the commit it was built from when git is there", async () => {
+  assert.equal(doc.info.version, "v1");
+  for (const f of ["index.html", "versioning.html", "api/events.html"]) {
+    const h = await readFile(join(out, f), "utf8");
+    const line = /data-api-version>([^<]*)</.exec(h)?.[1] ?? "";
+    assert.match(line, /^API v1\b/, f);
+  }
+  assert.equal(versionLine("v9", resolve(here, "..")).startsWith("API v9"), true);
+  assert.equal(versionLine("v9", tmpdir()), "API v9", "a folder that is not a git checkout leaves the commit out");
+  const page = await readFile(join(here, "content", "versioning.md"), "utf8");
+  assert.match(page, /sidebar names the API version/);
+});
+
+test("every address the site has had still works: a page, or a redirect to a page, and a new page is recorded in pages.txt", async (t) => {
+  const file = join(here, "pages.txt");
+  const now = (await pages()).sort();
+  if (process.env.UPDATE_PAGES === "1") {
+    const keep = (await readFile(file, "utf8")).split("\n").filter(Boolean);
+    await writeFile(file, [...new Set([...keep, ...now])].sort().join("\n") + "\n");
+    return t.diagnostic("pages.txt rewritten: it keeps every address it ever listed");
+  }
+  const listed = (await readFile(file, "utf8")).split("\n").filter(Boolean);
+  const missing = now.filter((f) => !listed.includes(f));
+  assert.deepEqual(missing, [], "a new page: record its address with UPDATE_PAGES=1 node --test docs-site/build.test.mjs");
+  for (const f of listed) {
+    if (now.includes(f)) continue;
+    assert.ok(f in REDIRECTS, `${f} was a page and is gone: add it to REDIRECTS in build.mjs (the address may be linked from elsewhere), or take it off pages.txt if it was never published`);
+    assert.ok(existsSync(join(out, f)) && existsSync(join(out, dirname(f), REDIRECTS[f])), `${f} redirects to ${REDIRECTS[f]}, which is not built`);
+  }
 });

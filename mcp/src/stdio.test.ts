@@ -37,7 +37,7 @@ describe("the built server over stdio", () => {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret", PAYRUDDER_MCP_ALLOW_PERSONAL_DATA: "1" }) }));
     try {
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(25);
+      expect(tools).toHaveLength(30);
       expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
       const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
       const text = (r.content as { text: string }[])[0]?.text ?? "";
@@ -94,10 +94,29 @@ describe("the built server over stdio", () => {
     const client = new Client({ name: "test", version: "0" });
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_live_ab12cd34_x", PAYRUDDER_MCP_ALLOW_LIVE: "1" }) }));
     try {
-      expect((await client.listTools()).tools).toHaveLength(25);
+      expect((await client.listTools()).tools).toHaveLength(30);
     } finally {
       await client.close();
     }
+  }, 30_000);
+
+  it("limits the key's calls to PAYRUDDER_MCP_RATE_PER_MINUTE, and refuses a value that is not a number of calls", async () => {
+    const before = calls.length;
+    const client = new Client({ name: "test", version: "0" });
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret", PAYRUDDER_MCP_RATE_PER_MINUTE: "6" }) }));
+    try {
+      expect((await client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
+      const r = await client.callTool({ name: "list_meters", arguments: {} });
+      expect(r.isError).toBe(true);
+      expect(JSON.stringify(r.content)).toContain("mcp.rate_limited");
+      expect(calls.length - before).toBe(1);
+    } finally {
+      await client.close();
+    }
+    const bad = spawnSync(process.execPath, [main], { env: env({ PAYRUDDER_API_KEY: "qk_test_x_1", PAYRUDDER_MCP_RATE_PER_MINUTE: "often" }), encoding: "utf8", timeout: 20_000 });
+    expect(bad.status).toBe(1);
+    expect(bad.stdout).toBe("");
+    expect(bad.stderr).toContain("PAYRUDDER_MCP_RATE_PER_MINUTE");
   }, 30_000);
 
   it("offers the write tools only with PAYRUDDER_MCP_WRITES=1", async () => {
