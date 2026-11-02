@@ -42,14 +42,22 @@ func TestParseRef(t *testing.T) {
 
 func TestLandingAddress(t *testing.T) {
 	for in, want := range map[string]string{
-		"":                                     "",
-		"https://shop.example.com/welcome":     "https://shop.example.com/welcome?ref=ANN",
-		"https://shop.example.com/welcome?a=1": "https://shop.example.com/welcome?a=1&ref=ANN",
-		"https://shop.example.com/?ref=theirs": "https://shop.example.com/?ref=theirs",
-		"javascript:alert(1)":                  "",
-		"ftp://shop.example.com":               "",
-		"//evil.example":                       "",
-		"https://":                             "",
+		"":                                       "",
+		"https://shop.example.com/welcome":       "https://shop.example.com/welcome?ref=ANN",
+		"https://shop.example.com/welcome?a=1":   "https://shop.example.com/welcome?a=1&ref=ANN",
+		"https://shop.example.com/?ref=theirs":   "https://shop.example.com/?ref=theirs",
+		"javascript:alert(1)":                    "",
+		"ftp://shop.example.com":                 "",
+		"//evil.example":                         "",
+		"https://":                               "",
+		"https://shop.example.com@evil.example/": "",
+		"https://user:pw@shop.example.com/":      "",
+		"http://localhost:3000/x":                "",
+		"https://127.0.0.1/x":                    "",
+		"https://[::1]/x":                        "",
+		"https://192.168.1.1/x":                  "",
+		"https://2130706433/x":                   "",
+		"https://intranet/x":                     "",
 	} {
 		if got := landing(in, "ANN"); got != want {
 			t.Errorf("landing(%q) = %q, want %q", in, got, want)
@@ -64,6 +72,52 @@ func cookieNamed(r *http.Response, name string) *http.Cookie {
 		}
 	}
 	return nil
+}
+
+// The link is an address on our own domain, so it is an open redirect when the program's owner can point it anywhere: the visitor is sent on by this site only for a
+// tenant that is vouched for, and never to an address that carries a user name, is an IP address, localhost or not http(s). A tenant that is not vouched for gets a
+// page that names the host, in the visitor's language, without a script.
+func TestAffiliateLinkRedirectsOnlyWhereTheTenantIsVouchedFor(t *testing.T) {
+	ts, _ := newTestServer(t)
+	fa := lastAffiliates
+
+	r, body := get(t, ts, "/r/sand")
+	if r.StatusCode != http.StatusOK || r.Header.Get("Location") != "" {
+		t.Fatalf("/r/sand = %d, Location %q: a tenant that is not vouched for is not redirected to", r.StatusCode, r.Header.Get("Location"))
+	}
+	if !strings.Contains(body, `<code class="ref" dir="ltr">shop.example.com</code>`) || !strings.Contains(body, `href="https://shop.example.com/welcome?ref=SAND&amp;utm=x"`) ||
+		!strings.Contains(body, `rel="noopener noreferrer nofollow"`) {
+		t.Errorf("the page does not name the host or carry the link:\n%s", body)
+	}
+	csp := r.Header.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "default-src 'none'") || strings.Contains(csp, "script-src") || r.Header.Get("Referrer-Policy") != "no-referrer" || r.Header.Get("Cache-Control") != "no-store" {
+		t.Errorf("headers: %q %q", csp, r.Header)
+	}
+	if strings.Contains(strings.ToLower(body), "<script") || strings.Contains(body, "http-equiv") {
+		t.Error("the stop page runs a script or refreshes by itself")
+	}
+	if cookieNamed(r, refCookie) == nil {
+		t.Error("the visit was not remembered")
+	}
+	if cl := fa.clicks(); len(cl) == 0 || cl[len(cl)-1].GetCode() != "sand" {
+		t.Errorf("the visit was not counted: %v", cl)
+	}
+	for lang, want := range map[string]string{"en": "You are leaving this site", "tr": "Bu siteden ayrılıyorsunuz", "de": "Sie verlassen diese Seite", "fr": "Vous quittez ce site",
+		"es": "Está saliendo de este sitio", "ar": "أنت تغادر هذا الموقع"} {
+		if _, b := get(t, ts, "/r/sand?lang="+lang); !strings.Contains(b, want) {
+			t.Errorf("%s: %s", lang, b)
+		}
+	}
+
+	// A tenant that is vouched for is still sent to a good address only; an address that was stored before the rule, or by something that skipped it, gets the plain page
+	// whether the tenant is vouched for or not.
+	for _, code := range []string{"userinfo", "local", "ipv4", "script", "private", "userinfo_untrusted"} {
+		r, body := get(t, ts, "/r/"+code)
+		if r.StatusCode != http.StatusOK || r.Header.Get("Location") != "" || !strings.Contains(body, "A small cookie now remembers") || strings.Contains(body, "evil.example") ||
+			strings.Contains(body, "localhost") || strings.Contains(body, "203.0.113.9") || strings.Contains(body, "192.168.0.10") || strings.Contains(body, "javascript:") {
+			t.Errorf("/r/%s = %d, Location %q\n%s", code, r.StatusCode, r.Header.Get("Location"), body)
+		}
+	}
 }
 
 func TestAffiliateLinkSetsTheCookieAndSendsTheVisitorOn(t *testing.T) {

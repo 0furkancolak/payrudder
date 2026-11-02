@@ -172,6 +172,12 @@ const referralTmpl = `{{define "referral"}}{{template "head" .}}
 <h1>{{.L.ref_title}}</h1><p class="hint">{{.L.ref_text}}</p><a class="btn alt" href="{{.Privacy}}">{{.L.ref_privacy}}</a>
 {{template "foot" .}}{{end}}`
 
+const leavingTmpl = `{{define "leaving"}}{{template "head" .}}
+<h1>{{.L.leave_title}}</h1><p class="hint">{{.L.leave_text}}</p>
+<p class="muted">{{.L.leave_dest}}</p><code class="ref" dir="ltr">{{.Host}}</code>
+<a class="btn" href="{{.To}}" rel="noopener noreferrer nofollow">{{.L.leave_go}}</a>
+{{template "foot" .}}{{end}}`
+
 const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
 <h1>{{.L.priv_title}}</h1><p>{{.L.priv_intro}}</p>
 <h2 class="sec">{{.L.priv_h_cookie}}</h2><p>{{.L.priv_cookie}}</p>
@@ -212,7 +218,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 
 // parsePageTemplates parses the templates; the tests parse a second set to run it with stricter options than the one the handlers use.
 func parsePageTemplates() *template.Template {
-	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
+	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + leavingTmpl + privacyTmpl))
 }
 
 var pageTemplates = parsePageTemplates()

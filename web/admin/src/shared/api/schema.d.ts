@@ -2391,7 +2391,7 @@ export interface paths {
         };
         /**
          * A partner's public link (public)
-         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
+         * @description Counts one visit for the partner (per day, no visitor kept), sets the first-party cookie payrudder_ref (the partner's code and the time of the visit, for the program's attribution window) and sends the visitor to the program's landing page with ?ref=<code> added, or shows a thank-you page. The redirect is made only when the program's tenant is live and active and an owner of its account has verified their e-mail address; for any other tenant (a sandbox, say) a page names the destination host and offers a link, so the link is not an open redirect. An address with a user name, an IP address, localhost or another scheme is never redirected to. The payment pages (/i/..., /c/...) accept ?ref=<code> the same way and read the cookie when a payment starts. A code that is not an active partner's of an active program answers the usual 404 page. The code is unique across the platform, so the link carries no tenant. At most 60 requests a minute per address.
          */
         get: operations["affiliateLink"];
         put?: never;
@@ -10930,7 +10930,7 @@ export interface components {
             referred_coupon_code: string;
             /** @default 1000 */
             daily_click_cap: number;
-            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
             landing_url: string;
             /** @description A partner who applies is active at once */
             auto_approve: boolean;
@@ -10966,7 +10966,7 @@ export interface components {
             referred_coupon_code?: string;
             /** @default 1000 */
             daily_click_cap: number;
-            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
             landing_url?: string;
             /** @description A partner who applies is active at once */
             auto_approve?: boolean;
@@ -17210,7 +17210,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A thank-you page, when the program has no landing page */
+            /** @description A thank-you page, when the program has no landing page; or, when the tenant is not vouched for, a page that names the landing page's host with a link */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -17219,7 +17219,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description Redirect to the program's landing page, with the cookie set */
+            /** @description Redirect to the program's landing page, with the cookie set (live, active tenant with a verified owner only) */
             302: {
                 headers: {
                     [name: string]: unknown;

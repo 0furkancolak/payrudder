@@ -212,7 +212,7 @@ export interface AffiliateProgram {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code: string;
   daily_click_cap: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url: string;
   /** A partner who applies is active at once */
   auto_approve: boolean;
@@ -239,7 +239,7 @@ export interface AffiliateProgramInput {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code?: string;
   daily_click_cap?: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url?: string;
   /** A partner who applies is active at once */
   auto_approve?: boolean;
@@ -266,7 +266,7 @@ export interface AffiliateProgramInputParams {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code?: string;
   daily_click_cap?: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url?: string;
   /** A partner who applies is active at once */
   auto_approve?: boolean;
