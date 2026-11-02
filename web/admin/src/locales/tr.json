@@ -3274,6 +3274,9 @@
         "not_configured": "Bu kurulumda ödeme sağlayıcıları yapılandırılmamış.",
         "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
       },
+      "region": {
+        "wrong": "Bu ortam başka bir bölgeden sunuluyor. İsteği kendi bölgesinin ağ geçidine gönderin (X-Payrudder-Region ve X-Payrudder-Region-Url başlıklarına bakın)."
+      },
       "rate_limit": {
         "exceeded": "Bu türden çok fazla istek var. Biraz bekleyip yeniden deneyin."
       },

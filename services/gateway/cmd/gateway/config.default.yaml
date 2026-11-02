@@ -27,3 +27,9 @@ PAYRUDDER_INBOUND_DOMAIN: ""
 # Payrudder as a SaaS (phase 55, ADR 0024): "on" shows organisations their plan and refuses their events over the plan's hard events quota, metering the rest into the
 # platform tenant. "off" (the default, and what a self-hoster wants): none of it. Set it the same as plans-svc. make setup and make dev switch it on.
 PAYRUDDER_SAAS: "off"
+
+# A gateway that serves one region only (plan 17, docs/runbooks/scaling.md). Empty (the default): this gateway serves every tenant. With a name, a request for a tenant whose
+# home region (tenants.region) is another is answered 421 gateway.region.wrong, with the right region in X-Payrudder-Region; a tenant with no region is served anywhere.
+PAYRUDDER_REGION: ""
+# Where the gateway of each region is, for the X-Payrudder-Region-Url hint of that answer: eu=https://eu.api.example.com,us=https://us.api.example.com
+PAYRUDDER_REGION_URLS: ""

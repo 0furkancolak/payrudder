@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/httpapi"
@@ -85,7 +87,16 @@ type Config struct {
 	// Saas is Payrudder as a SaaS (phase 55, ADR 0024): on shows organisations their plan and limits their ingest volume, off (the default) does neither.
 	// Set it the same as plans-svc.
 	Saas string `env:"PAYRUDDER_SAAS"`
+
+	// Region pins this gateway to one region (plan 17, docs/runbooks/scaling.md): it serves only the tenants whose home region (tenants.region) it is, and answers
+	// 421 gateway.region.wrong to the others. Empty (the default) serves every tenant. RegionURLs gives the public address of the gateway of each region, for the
+	// hint header of that answer: eu=https://eu.api.example.com,us=https://us.api.example.com.
+	Region     string            `env:"PAYRUDDER_REGION"`
+	RegionURLs map[string]string `env:"PAYRUDDER_REGION_URLS" envSeparator:"," envKeyValSeparator:"="`
 }
+
+// regionName is the shape of a region (and a cell) name in plans-svc's directory.
+var regionName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
@@ -110,6 +121,14 @@ func (c *Config) Validate() error {
 	}
 	if _, err := parseProxies(c.TrustedProxies); err != nil {
 		errs = append(errs, err)
+	}
+	if c.Region != "" && !regionName.MatchString(c.Region) {
+		errs = append(errs, errors.New("PAYRUDDER_REGION must be a region name: lower-case letters, digits and hyphens, at most 31 characters"))
+	}
+	for name, raw := range c.RegionURLs {
+		if u, err := url.Parse(raw); !regionName.MatchString(name) || err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_REGION_URLS: %q=%q is not a region name and an http(s) address", name, raw))
+		}
 	}
 	if c.TrustedProxySecret != "" && len(c.TrustedProxySecret) < 32 {
 		errs = append(errs, errors.New("PAYRUDDER_TRUSTED_PROXY_SECRET must be at least 32 characters"))
@@ -246,7 +265,16 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 	if on, _ := config.ParseSwitch("PAYRUDDER_SAAS", cfg.Saas); on {
 		saas = plansv1.NewSaasServiceClient(up.plans)
 	}
+	var region *httpapi.Region
+	if cfg.Region != "" {
+		urls := make(map[string]string, len(cfg.RegionURLs))
+		for name, u := range cfg.RegionURLs {
+			urls[name] = strings.TrimRight(u, "/")
+		}
+		region = &httpapi.Region{Name: cfg.Region, URLs: urls, Directory: tenantdir.NewGRPC(plansv1.NewDirectoryServiceClient(up.plans), tenantdir.Options{})}
+	}
 	return httpapi.New(httpapi.Deps{
+		Region:         region,
 		Saas:           saas,
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
