@@ -44,3 +44,10 @@ FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id 
 SELECT count(*) FROM payment_attempts
 WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND command_id <> @except_command_id
   AND (idempotency_key = @idempotency_key OR starts_with(idempotency_key, @failover_prefix::text));
+
+-- name: GetLatestChargeStart :one
+-- When the newest charge key of an invoice was first tried (the start of the window a payment that waits for the customer has), and how many attempts it has.
+SELECT COALESCE(min(a.created_at), now())::timestamptz AS started_at, count(*) AS attempts
+FROM payment_attempts a
+WHERE a.tenant_id = @tenant_id AND a.invoice_id = @invoice_id AND a.kind = 'charge'
+  AND a.idempotency_key = (SELECT l.idempotency_key FROM payment_attempts l WHERE l.tenant_id = @tenant_id AND l.invoice_id = @invoice_id AND l.kind = 'charge' ORDER BY l.created_at DESC LIMIT 1);

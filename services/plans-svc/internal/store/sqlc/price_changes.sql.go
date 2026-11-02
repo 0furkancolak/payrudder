@@ -12,6 +12,15 @@ import (
 	"github.com/google/uuid"
 )
 
+const deletePriceChangeNoticeRules = `-- name: DeletePriceChangeNoticeRules :exec
+DELETE FROM price_change_notice_rules
+`
+
+func (q *Queries) DeletePriceChangeNoticeRules(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deletePriceChangeNoticeRules)
+	return err
+}
+
 const getOpenPriceChangeID = `-- name: GetOpenPriceChangeID :one
 SELECT id FROM price_changes
 WHERE tenant_id = app_tenant_id() AND plan_code = $1 AND from_version = $2 AND to_version = $3 AND state = 'open'
@@ -55,6 +64,25 @@ func (q *Queries) GetPriceChangeItemChange(ctx context.Context, arg GetPriceChan
 	return i, err
 }
 
+const getPriceChangeNoticeSettings = `-- name: GetPriceChangeNoticeSettings :one
+SELECT default_notice_days, updated_by, updated_at FROM price_change_notice_settings
+`
+
+type GetPriceChangeNoticeSettingsRow struct {
+	DefaultNoticeDays int32
+	UpdatedBy         string
+	UpdatedAt         *time.Time
+}
+
+// The notice rules of price changes (migration 00029): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
+// data on the system pool; the operator replaces the whole table in one transaction.
+func (q *Queries) GetPriceChangeNoticeSettings(ctx context.Context) (GetPriceChangeNoticeSettingsRow, error) {
+	row := q.db.QueryRow(ctx, getPriceChangeNoticeSettings)
+	var i GetPriceChangeNoticeSettingsRow
+	err := row.Scan(&i.DefaultNoticeDays, &i.UpdatedBy, &i.UpdatedAt)
+	return i, err
+}
+
 const getPriceChangePause = `-- name: GetPriceChangePause :one
 SELECT paused, reason, updated_by, updated_at FROM price_change_pause
 `
@@ -77,6 +105,21 @@ func (q *Queries) GetPriceChangePause(ctx context.Context) (GetPriceChangePauseR
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const insertPriceChangeNoticeRule = `-- name: InsertPriceChangeNoticeRule :exec
+INSERT INTO price_change_notice_rules (country, min_notice_days, note) VALUES ($1, $2, $3)
+`
+
+type InsertPriceChangeNoticeRuleParams struct {
+	Country       string
+	MinNoticeDays int32
+	Note          string
+}
+
+func (q *Queries) InsertPriceChangeNoticeRule(ctx context.Context, arg InsertPriceChangeNoticeRuleParams) error {
+	_, err := q.db.Exec(ctx, insertPriceChangeNoticeRule, arg.Country, arg.MinNoticeDays, arg.Note)
+	return err
 }
 
 const listPendingPriceChangeChanges = `-- name: ListPendingPriceChangeChanges :many
@@ -182,8 +225,32 @@ func (q *Queries) ListPriceChangeItems(ctx context.Context, arg ListPriceChangeI
 	return items, nil
 }
 
+const listPriceChangeNoticeRules = `-- name: ListPriceChangeNoticeRules :many
+SELECT country, min_notice_days, note FROM price_change_notice_rules ORDER BY (country = '*') DESC, country
+`
+
+func (q *Queries) ListPriceChangeNoticeRules(ctx context.Context) ([]PriceChangeNoticeRule, error) {
+	rows, err := q.db.Query(ctx, listPriceChangeNoticeRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PriceChangeNoticeRule{}
+	for rows.Next() {
+		var i PriceChangeNoticeRule
+		if err := rows.Scan(&i.Country, &i.MinNoticeDays, &i.Note); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPriceChanges = `-- name: ListPriceChanges :many
-SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
+SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
        COALESCE(n.scheduled, 0)::int AS scheduled, COALESCE(n.applied, 0)::int AS applied, COALESCE(n.withdrawn, 0)::int AS withdrawn, COALESCE(n.skipped, 0)::int AS skipped
 FROM price_changes pc
 LEFT JOIN LATERAL (
@@ -204,21 +271,22 @@ type ListPriceChangesParams struct {
 }
 
 type ListPriceChangesRow struct {
-	ID          uuid.UUID
-	PlanCode    string
-	FromVersion int32
-	ToVersion   int32
-	NoticeDays  int32
-	EffectiveAt time.Time
-	State       string
-	CreatedBy   string
-	CreatedAt   time.Time
-	WithdrawnAt *time.Time
-	WithdrawnBy string
-	Scheduled   int32
-	Applied     int32
-	Withdrawn   int32
-	Skipped     int32
+	ID            uuid.UUID
+	PlanCode      string
+	FromVersion   int32
+	ToVersion     int32
+	NoticeDays    int32
+	EffectiveAt   time.Time
+	EffectiveFrom *time.Time
+	State         string
+	CreatedBy     string
+	CreatedAt     time.Time
+	WithdrawnAt   *time.Time
+	WithdrawnBy   string
+	Scheduled     int32
+	Applied       int32
+	Withdrawn     int32
+	Skipped       int32
 }
 
 // Newest first, with the number of subscriptions in each state; one by id, or the ones of a plan.
@@ -238,6 +306,7 @@ func (q *Queries) ListPriceChanges(ctx context.Context, arg ListPriceChangesPara
 			&i.ToVersion,
 			&i.NoticeDays,
 			&i.EffectiveAt,
+			&i.EffectiveFrom,
 			&i.State,
 			&i.CreatedBy,
 			&i.CreatedAt,
@@ -267,6 +336,28 @@ WHERE tenant_id = app_tenant_id() AND id = $1
 func (q *Queries) SetPriceChangeEffective(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, setPriceChangeEffective, id)
 	return err
+}
+
+const setPriceChangeNoticeSettings = `-- name: SetPriceChangeNoticeSettings :one
+UPDATE price_change_notice_settings SET default_notice_days = $1, updated_by = $2, updated_at = now() RETURNING default_notice_days, updated_by, updated_at
+`
+
+type SetPriceChangeNoticeSettingsParams struct {
+	DefaultNoticeDays int32
+	UpdatedBy         string
+}
+
+type SetPriceChangeNoticeSettingsRow struct {
+	DefaultNoticeDays int32
+	UpdatedBy         string
+	UpdatedAt         *time.Time
+}
+
+func (q *Queries) SetPriceChangeNoticeSettings(ctx context.Context, arg SetPriceChangeNoticeSettingsParams) (SetPriceChangeNoticeSettingsRow, error) {
+	row := q.db.QueryRow(ctx, setPriceChangeNoticeSettings, arg.DefaultNoticeDays, arg.UpdatedBy)
+	var i SetPriceChangeNoticeSettingsRow
+	err := row.Scan(&i.DefaultNoticeDays, &i.UpdatedBy, &i.UpdatedAt)
+	return i, err
 }
 
 const setPriceChangePause = `-- name: SetPriceChangePause :one
@@ -300,26 +391,34 @@ func (q *Queries) SetPriceChangePause(ctx context.Context, arg SetPriceChangePau
 
 const upsertOpenPriceChange = `-- name: UpsertOpenPriceChange :one
 
-INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, created_by)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
+INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, created_by)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7::timestamptz, $8)
 ON CONFLICT (tenant_id, plan_code, from_version, to_version) WHERE state = 'open' DO UPDATE SET notice_days = EXCLUDED.notice_days
-RETURNING id
+RETURNING id, effective_from
 `
 
 type UpsertOpenPriceChangeParams struct {
-	ID          uuid.UUID
-	PlanCode    string
-	FromVersion int32
-	ToVersion   int32
-	NoticeDays  int32
-	EffectiveAt time.Time
-	CreatedBy   string
+	ID            uuid.UUID
+	PlanCode      string
+	FromVersion   int32
+	ToVersion     int32
+	NoticeDays    int32
+	EffectiveAt   time.Time
+	EffectiveFrom *time.Time
+	CreatedBy     string
+}
+
+type UpsertOpenPriceChangeRow struct {
+	ID            uuid.UUID
+	EffectiveFrom *time.Time
 }
 
 // Price changes (plan 15): the record of a run of SchedulePriceChange and what happened to each subscription. The state of a scheduled item is the state of its
 // subscription_changes row (pending = scheduled, applied, cancelled = withdrawn), so it is joined, never copied.
 // A run continues the open price change of the same plan and versions, else makes one. effective_at is only the end of the notice until the first renewal is scheduled.
-func (q *Queries) UpsertOpenPriceChange(ctx context.Context, arg UpsertOpenPriceChangeParams) (uuid.UUID, error) {
+// effective_from is the date the seller chose (null: each subscription's next renewal); a run that continues an open price change keeps the date it has, and the caller
+// refuses a run that names another.
+func (q *Queries) UpsertOpenPriceChange(ctx context.Context, arg UpsertOpenPriceChangeParams) (UpsertOpenPriceChangeRow, error) {
 	row := q.db.QueryRow(ctx, upsertOpenPriceChange,
 		arg.ID,
 		arg.PlanCode,
@@ -327,11 +426,12 @@ func (q *Queries) UpsertOpenPriceChange(ctx context.Context, arg UpsertOpenPrice
 		arg.ToVersion,
 		arg.NoticeDays,
 		arg.EffectiveAt,
+		arg.EffectiveFrom,
 		arg.CreatedBy,
 	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i UpsertOpenPriceChangeRow
+	err := row.Scan(&i.ID, &i.EffectiveFrom)
+	return i, err
 }
 
 const upsertPriceChangeItem = `-- name: UpsertPriceChangeItem :exec

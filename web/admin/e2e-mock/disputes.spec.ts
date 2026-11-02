@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { DISPUTES, INVOICE_1, INVOICE_2, LIVE, billingGateway, disputesGateway, invoice, invoiceLines, productGateway, signInAsAda } from "./product";
+import { ACCOUNT, DISPUTES, INVOICE_1, INVOICE_2, LIVE, billingGateway, disputesGateway, invoice, invoiceLines, productGateway, signInAsAda } from "./product";
 import { pickFilter } from "./ui";
 
 // Disputes (chargebacks): the card on an invoice's sheet, the Disputes view of the payments page, and the dunning switch that blocks the customer.
@@ -37,6 +37,62 @@ test.describe("disputes of the app", () => {
     await expect(lost).not.toContainText("Evidence due");
   });
 
+  test("the card shows what the dispute cost, and the seller can write a note, mark the case handled and lift the mark", async ({ page }) => {
+    const gw = await open(page);
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await page.getByTestId("invoice-INV-2026-000003").click();
+    const card = page.getByTestId("detail-sheet").getByTestId("dispute-card");
+    await expect(card).toContainText("Dispute fee");
+    await expect(card).toContainText("$15.00");
+    const notes = card.getByTestId("dispute-notes");
+    await expect(notes.getByTestId("dispute-events-empty")).toBeVisible();
+    await expect(notes.getByTestId("dispute-note-add")).toBeDisabled(); // nothing written
+
+    await notes.getByTestId("dispute-note-input").fill("  Customer signed for the parcel on the 3rd.  ");
+    await notes.getByTestId("dispute-note-add").click();
+    await expect.poll(() => gw.called("POST", "/v1/disputes/1/notes").length).toBe(1);
+    expect(gw.called("POST", "/v1/disputes/1/notes")[0]?.body).toEqual({ note: "Customer signed for the parcel on the 3rd." });
+    await expect(notes.getByTestId("dispute-events")).toContainText("Customer signed for the parcel on the 3rd.");
+    await expect(notes.getByTestId("dispute-events")).toContainText("ada@example.com");
+    await expect(notes.getByTestId("dispute-note-input")).toHaveValue("");
+
+    await expect(card.getByTestId("dispute-handled-pill")).toHaveCount(0);
+    await notes.getByTestId("dispute-handled").click();
+    await expect.poll(() => gw.called("PUT", "/v1/disputes/1/handled").length).toBe(1);
+    expect(gw.called("PUT", "/v1/disputes/1/handled")[0]?.body).toEqual({ handled: true });
+    await expect(card.getByTestId("dispute-handled-pill")).toHaveText("Handled");
+    await expect(notes.getByTestId("dispute-events").locator('[data-action="handled"]')).toContainText("Marked as handled");
+    await expect(notes.getByTestId("dispute-handled")).toHaveText("Lift the handled mark");
+
+    await notes.getByTestId("dispute-handled").click();
+    await expect.poll(() => gw.called("PUT", "/v1/disputes/1/handled").length).toBe(2);
+    expect(gw.called("PUT", "/v1/disputes/1/handled")[1]?.body).toEqual({ handled: false });
+    await expect(card.getByTestId("dispute-handled-pill")).toHaveCount(0);
+    await expect(notes.getByTestId("dispute-handled")).toHaveText("Mark as handled");
+  });
+
+  test("a case whose evidence is due within three days says so, until it is marked handled", async ({ page }) => {
+    const gw = await open(page);
+    gw.on((c) => (c.method === "GET" && c.path === "/v1/disputes" && c.query.get("invoice_id") === INVOICE_1 ? { body: { disputes: [{ ...DISPUTES[0], evidence_due_time: "2026-10-22T09:00:00Z" }] } } : undefined));
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await page.getByTestId("invoice-INV-2026-000003").click();
+    await expect(page.getByTestId("detail-sheet").getByTestId("dispute-card")).toContainText("soon");
+  });
+
+  test("a viewer reads a case's notes and is given no form and no button", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { role: "viewer", memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "viewer" }] });
+    disputesGateway(billingGateway(gw), true);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await page.getByTestId("invoice-INV-2026-000003").click();
+    const notes = page.getByTestId("detail-sheet").getByTestId("dispute-card").getByTestId("dispute-notes");
+    await expect(notes.getByTestId("dispute-events-empty")).toBeVisible();
+    await expect(notes.getByTestId("dispute-note-input")).toHaveCount(0);
+    await expect(notes.getByTestId("dispute-note-add")).toHaveCount(0);
+    await expect(notes.getByTestId("dispute-handled")).toHaveCount(0);
+  });
+
   test("the Disputes view lists the cases; outcome applies on its button, search and sort narrow and order, a row opens its invoice", async ({ page }) => {
     await open(page);
     await page.goto(`/app/t/${LIVE}/payments`);
@@ -57,6 +113,17 @@ test.describe("disputes of the app", () => {
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText("du_3");
     await page.getByRole("button", { name: "Type: ×" }).click();
+
+    // The seller's own mark: du_3 was marked handled.
+    await expect(rows.filter({ hasText: "du_3" }).getByTestId("dispute-handled-pill")).toHaveText("Handled");
+    await pickFilter(page, "Handled", "Not handled");
+    await expect(rows).toHaveCount(2);
+    await page.getByRole("button", { name: "Handled: ×" }).click();
+    await pickFilter(page, "Handled", "Handled");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("du_3");
+    await page.getByRole("button", { name: "Handled: ×" }).click();
+    await expect(rows).toHaveCount(DISPUTES.length);
 
     await page.getByRole("searchbox").fill("du_2");
     await expect(rows).toHaveCount(1);

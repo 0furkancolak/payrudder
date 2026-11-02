@@ -73,6 +73,31 @@ func (f *fakeSupport) ListSupportTickets(_ context.Context, r *plansv1.ListSuppo
 	return &plansv1.ListSupportTicketsResponse{}, nil
 }
 
+func (f *fakeSupport) ListMySupportTickets(_ context.Context, r *plansv1.ListMySupportTicketsRequest) (*plansv1.ListMySupportTicketsResponse, error) {
+	f.remember("ListMySupportTickets", r)
+	return &plansv1.ListMySupportTicketsResponse{}, nil
+}
+
+func (f *fakeSupport) RateMySupportTicket(_ context.Context, r *plansv1.RateMySupportTicketRequest) (*plansv1.RateMySupportTicketResponse, error) {
+	f.remember("RateMySupportTicket", r)
+	return &plansv1.RateMySupportTicketResponse{Ticket: &plansv1.SupportTicket{Id: r.GetTicketId(), Rating: r.GetRating(), RatingComment: r.GetComment()}}, nil
+}
+
+func (f *fakeSupport) MergeSupportTickets(_ context.Context, r *plansv1.MergeSupportTicketsRequest) (*plansv1.MergeSupportTicketsResponse, error) {
+	f.remember("MergeSupportTickets", r)
+	return &plansv1.MergeSupportTicketsResponse{Ticket: &plansv1.SupportTicket{Id: r.GetTicketId(), Status: "closed", MergedIntoId: r.GetIntoTicketId()}, IntoTicket: &plansv1.SupportTicket{Id: r.GetIntoTicketId()}}, nil
+}
+
+func (f *fakeSupport) GetSupportHolidays(_ context.Context, r *plansv1.GetSupportHolidaysRequest) (*plansv1.GetSupportHolidaysResponse, error) {
+	f.remember("GetSupportHolidays", r)
+	return &plansv1.GetSupportHolidaysResponse{AppName: "Shop", Holidays: []*plansv1.SupportHoliday{{Day: "2026-12-25", Name: "Christmas"}}}, nil
+}
+
+func (f *fakeSupport) SetSupportHolidays(_ context.Context, r *plansv1.SetSupportHolidaysRequest) (*plansv1.SetSupportHolidaysResponse, error) {
+	f.remember("SetSupportHolidays", r)
+	return &plansv1.SetSupportHolidaysResponse{Holidays: r.GetHolidays()}, nil
+}
+
 // lastSupport is the fake of the product server newProduct built last.
 var lastSupport *fakeSupport
 
@@ -137,5 +162,64 @@ func TestSupportDeskRoutes(t *testing.T) {
 	p.call(t, "GET", "/admin/v1/support/tickets?tag=vat&status=active", operatorToken, "", "")
 	if got := fs.got("ListSupportTickets").(*plansv1.ListSupportTicketsRequest); got.GetTag() != "vat" || got.GetStatus() != "active" {
 		t.Errorf("list by tag: %+v", got)
+	}
+}
+
+// The help desk's leftovers (plan 12): the person's rating and search come from the session's person; merging and the days off are the operator's, signed with the
+// operator's name; a ticket's links change when the body has the key, like its tags.
+func TestSupportLeftoversRoutes(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	fs := lastSupport
+
+	if resp, m := p.call(t, "POST", "/app/v1/support/tickets/t1/rating", tokAda, "", `{"rating":4,"comment":"Fast","user_id":"forged"}`); resp.StatusCode != http.StatusOK || m["ticket"] == nil {
+		t.Fatalf("rate: %d %v", resp.StatusCode, m)
+	}
+	rated := fs.got("RateMySupportTicket").(*plansv1.RateMySupportTicketRequest)
+	if rated.GetTicketId() != "t1" || rated.GetRating() != 4 || rated.GetComment() != "Fast" || rated.GetUserId() == "" || rated.GetUserId() == "forged" {
+		t.Errorf("a rating: %+v (the person is the session's, the ticket the path's)", rated)
+	}
+	if resp, _ := p.call(t, "POST", "/app/v1/support/tickets/t1/rating", "", "", `{"rating":4}`); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a rating without a session: %d", resp.StatusCode)
+	}
+	p.call(t, "GET", "/app/v1/support/tickets?search=retries&status=active", tokAda, "", "")
+	if got := fs.got("ListMySupportTickets").(*plansv1.ListMySupportTicketsRequest); got.GetSearch() != "retries" || got.GetStatus() != "active" || got.GetUserId() == "" {
+		t.Errorf("the person's search: %+v", got)
+	}
+
+	if resp, _ := p.call(t, "POST", "/admin/v1/support/tickets/t2/merge", tokAda, "", `{"into_ticket_id":"t1"}`); resp.StatusCode == http.StatusOK {
+		t.Error("a person merged tickets")
+	}
+	if resp, m := p.call(t, "POST", "/admin/v1/support/tickets/t2/merge", operatorToken, "", `{"into_ticket_id":"t1","author_name":"forged"}`); resp.StatusCode != http.StatusOK || m["into_ticket"] == nil {
+		t.Fatalf("merge: %d %v", resp.StatusCode, m)
+	}
+	if got := fs.got("MergeSupportTickets").(*plansv1.MergeSupportTicketsRequest); got.GetTicketId() != "t2" || got.GetIntoTicketId() != "t1" || got.GetAuthorName() == "forged" {
+		t.Errorf("a merge: %+v (the ticket is the path's, the author the gateway's)", got)
+	}
+
+	if resp, _ := p.call(t, "GET", "/admin/v1/support/apps/app1/holidays", tokAda, "", ""); resp.StatusCode == http.StatusOK {
+		t.Error("a person read the days off")
+	}
+	if resp, m := p.call(t, "GET", "/admin/v1/support/apps/app1/holidays", operatorToken, "", ""); resp.StatusCode != http.StatusOK || m["app_name"] != "Shop" {
+		t.Fatalf("days off: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "PUT", "/admin/v1/support/apps/app1/holidays", operatorToken, "", `{"holidays":[{"day":"2026-12-25","name":"Christmas"}],"app_id":"forged","author_name":"forged"}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("set days off: %d", resp.StatusCode)
+	}
+	if got := fs.got("SetSupportHolidays").(*plansv1.SetSupportHolidaysRequest); got.GetAppId() != "app1" || len(got.GetHolidays()) != 1 || got.GetAuthorName() == "forged" {
+		t.Errorf("days off: %+v", got)
+	}
+
+	link := `{"kind":"invoice","ref":"0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e","app_id":"a","environment":"live"}`
+	p.call(t, "PATCH", "/admin/v1/support/tickets/t1", operatorToken, "", `{"links":[`+link+`]}`)
+	if got := fs.got("UpdateSupportTicket").(*plansv1.UpdateSupportTicketRequest); !got.GetSetLinks() || len(got.GetLinks()) != 1 || got.GetLinks()[0].GetKind() != "invoice" {
+		t.Errorf("links set: %+v", got)
+	}
+	p.call(t, "PATCH", "/admin/v1/support/tickets/t1", operatorToken, "", `{"links":[]}`)
+	if got := fs.got("UpdateSupportTicket").(*plansv1.UpdateSupportTicketRequest); !got.GetSetLinks() || len(got.GetLinks()) != 0 {
+		t.Errorf("links cleared: %+v", got)
+	}
+	p.call(t, "PATCH", "/admin/v1/support/tickets/t1", operatorToken, "", `{"priority":"low","set_links":true}`)
+	if got := fs.got("UpdateSupportTicket").(*plansv1.UpdateSupportTicketRequest); got.GetSetLinks() || got.GetPriority() != "low" {
+		t.Errorf("a body without links: %+v (the proto's flag is not the caller's)", got)
 	}
 }

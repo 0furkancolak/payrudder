@@ -775,12 +775,17 @@ message SchedulePriceChangeRequest {
   int32 from_version = 2;
   // The version they move to. 0 = the latest published one.
   int32 to_version = 3;
-  // How many days before the renewal the customer must be told at the least. 0 = 30. At least 14.
+  // How many days before the renewal the customer must be told at the least. 0 = the platform's default (30 until the operator changes it). At least 14. A customer
+  // in a country with a longer minimum (the operator's table, GET /admin/v1/price-change-notice) is told that much earlier, or skipped as renews_soon.
   int32 notice_days = 4;
   // Only count, change nothing and mail nobody.
   bool dry_run = 5;
   // Who asks, kept with the price change. The gateway sets it; a value in the request is overwritten.
   string actor = 6;
+  // Optional: the date the new price starts from. Each subscription then moves on its first period start on or after this date (a monthly one on the first
+  // renewal from it, a yearly one possibly months later) instead of on its next renewal. At least notice_days from now and at most two years. A run that continues an
+  // open price change must name the date that price change has (or none, if it has none).
+  google.protobuf.Timestamp effective_from = 7;
 }
 
 message PriceChangeSkipped {
@@ -823,6 +828,8 @@ message PriceChange {
   int32 applied = 13;
   int32 withdrawn = 14;
   int32 skipped = 15;
+  // The date the seller chose the new price to start from; unset when each subscription moves on its next renewal.
+  google.protobuf.Timestamp effective_from = 16;
 }
 
 message PriceChangeItem {

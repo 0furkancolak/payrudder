@@ -651,6 +651,12 @@ func (c *Client) dispute(ctx context.Context, n payments.Notification, object js
 		EvidenceDetails struct {
 			DueBy int64 `json:"due_by"`
 		} `json:"evidence_details"`
+		// "List of zero, one, or two balance transactions that show funds withdrawn and reinstated to your Stripe account as a result of this dispute"
+		// (docs.stripe.com/api/disputes/object, read 2026-11-02). Each has `fee`, "fees paid for this transaction" (docs.stripe.com/api/balance_transactions/object).
+		BalanceTransactions []struct {
+			Fee      int64  `json:"fee"`
+			Currency string `json:"currency"`
+		} `json:"balance_transactions"`
 	}
 	if err := json.Unmarshal(object, &d); err != nil {
 		return n, fmt.Errorf("stripe: dispute: %w", err)
@@ -678,6 +684,16 @@ func (c *Client) dispute(ctx context.Context, n payments.Notification, object js
 	ev := &payments.DisputeEvent{ID: d.ID, Status: d.Status, Outcome: outcome, Formal: formal, Reason: d.Reason}
 	if d.EvidenceDetails.DueBy > 0 {
 		ev.EvidenceDue = time.Unix(d.EvidenceDetails.DueBy, 0).UTC()
+	}
+	// The dispute fee. The documentation says Stripe "debits the disputed amount, plus a dispute fee" (docs.stripe.com/disputes/how-disputes-work) but not WHERE the fee
+	// shows: this reads the `fee` of the dispute's balance transactions, in the currency of the first one that has a fee. UNVERIFIED against an account: if Stripe books the
+	// fee as an amount of a balance transaction of its own, nothing is read here and the case has no fee (never a wrong one). A fee Stripe returns (the countered fee of a won
+	// case, a Mexican fee) is not read as a credit: only a positive total counts.
+	for _, bt := range d.BalanceTransactions {
+		if bt.Fee <= 0 || (ev.FeeCurrency != "" && !strings.EqualFold(ev.FeeCurrency, bt.Currency)) {
+			continue
+		}
+		ev.FeeMinor, ev.FeeCurrency = ev.FeeMinor+bt.Fee, strings.ToUpper(bt.Currency)
 	}
 	n.Kind, n.ProviderRef, n.Currency, n.AmountMinor, n.Dispute = payments.KindDispute, pi, strings.ToUpper(d.Currency), d.Amount, ev
 	return n, nil

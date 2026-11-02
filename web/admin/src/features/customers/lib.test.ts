@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countryName, flagOf, headline, initialsOf, isBlocked, summarise } from "./lib";
+import { countryName, flagOf, headline, initialsOf, isBlocked, returnUrlProblem, summarise } from "./lib";
 
 describe("summarise", () => {
   const invoices = [
@@ -84,5 +84,19 @@ describe("isBlocked", () => {
     expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: "2026-12-01T00:00:00Z" }, now)).toBe(true);
     expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: "2026-10-15T00:00:00Z" }, now)).toBe(false);
     expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: null }, now)).toBe(true);
+  });
+});
+
+describe("returnUrlProblem", () => {
+  it("takes an https address with a host and says why it does not take the rest", () => {
+    expect(returnUrlProblem("https://shop.example.com/thanks")).toBeUndefined();
+    expect(returnUrlProblem("  https://shop.example.com  ")).toBeUndefined();
+    expect(returnUrlProblem("")).toBe("required");
+    expect(returnUrlProblem("   ")).toBe("required");
+    expect(returnUrlProblem("http://shop.example.com")).toBe("notHttps");
+    expect(returnUrlProblem("javascript:alert(1)")).toBe("notHttps");
+    expect(returnUrlProblem("shop.example.com")).toBe("notHttps");
+    expect(returnUrlProblem("https:///thanks")).toBe("notHttps");
+    expect(returnUrlProblem("https://shop.example.com/" + "a".repeat(2000))).toBe("tooLong");
   });
 });

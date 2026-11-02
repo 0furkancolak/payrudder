@@ -28,6 +28,14 @@ Money received outside Payrudder (a bank transfer, cash) and recorded against th
 
 **Related** lists what hangs off the invoice: its customer, the payment attempts made for it, its credit notes and the customer's subscriptions. Each row opens that record's sheet.
 
+### An invoice that waits
+
+Two payments wait for somebody other than the provider, and the sheet says which.
+
+**First charge on hold.** Payrudder did not send the first charge to the payment provider because the payment gate said no: the customer is blocked for fraud or a chargeback (**The customer is blocked for fraud or a chargeback. The invoice stays open and is charged as soon as the block is lifted.**), or the operator has put the environment on hold (suspended, frozen or banned: nothing is charged while it lasts). The sheet shows **On hold since** and the **Next check**; Payrudder looks again every hour and charges the invoice as soon as nothing holds it. An owner or an administrator has two buttons: **Release the charge** asks the gate again now and sends the charge if it lets the invoice through (it never overrides the gate: to charge a blocked customer, lift the block first), and **Void invoice** ends the invoice (nothing was charged, so nothing is refunded). Each asks first and names the amount. A viewer sees why and has no button, and while the operator has the environment on hold nobody has one. The API is `GET /v1/invoices/{id}/payment-wait`, `POST /v1/invoices/{id}/release` and `POST /v1/invoices/{id}/void`; both writes need the `invoices:write` permission, answer `409 billing.invoice.not_held` for an invoice that is not held, and are recorded in the audit log.
+
+**Waiting for the customer to confirm the payment.** The customer's bank asks them to confirm a card payment (3-D Secure), so it cannot be charged without them. Payrudder asked for a mail with a link to the invoice page to be sent; the sheet shows **Customer mailed** (when the mail was asked for: the **E-mail** page says whether it arrived), the **Next check with the provider** and **Counts as declined on**: if the customer has not confirmed by then the payment counts as declined and the retries begin. The sheet has no button for this state, and Payrudder does not send that mail twice.
+
 ### In the sandbox: simulate a payment
 
 An invoice of the sandbox has **Simulate payment**: **Run this invoice's payment again as one of the scenarios. The customer keeps the scenario as their payment method.** The scenarios are described on the **Sandbox tools** page and in [Test mode](test-mode.html): the charge succeeds, every attempt is declined, the first attempt is declined and the retry succeeds, the provider fails twice and then succeeds, or the provider does not answer in time. No real provider is called.

@@ -62,18 +62,132 @@ func (q *Queries) GetChargeByPaymentRef(ctx context.Context, arg GetChargeByPaym
 	return i, err
 }
 
+const getDisputeForUpdate = `-- name: GetDisputeForUpdate :one
+SELECT id, environment, provider, dispute_ref, invoice_id, handled_at FROM payment_disputes WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type GetDisputeForUpdateParams struct {
+	TenantID uuid.UUID
+	ID       int64
+}
+
+type GetDisputeForUpdateRow struct {
+	ID          int64
+	Environment string
+	Provider    string
+	DisputeRef  string
+	InvoiceID   *uuid.UUID
+	HandledAt   *time.Time
+}
+
+func (q *Queries) GetDisputeForUpdate(ctx context.Context, arg GetDisputeForUpdateParams) (GetDisputeForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getDisputeForUpdate, arg.TenantID, arg.ID)
+	var i GetDisputeForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.Environment,
+		&i.Provider,
+		&i.DisputeRef,
+		&i.InvoiceID,
+		&i.HandledAt,
+	)
+	return i, err
+}
+
+const insertDisputeEvent = `-- name: InsertDisputeEvent :one
+INSERT INTO payment_dispute_events (tenant_id, environment, dispute_id, action, note, actor)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, created_at
+`
+
+type InsertDisputeEventParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	DisputeID   int64
+	Action      string
+	Note        string
+	Actor       string
+}
+
+type InsertDisputeEventRow struct {
+	ID        int64
+	CreatedAt time.Time
+}
+
+func (q *Queries) InsertDisputeEvent(ctx context.Context, arg InsertDisputeEventParams) (InsertDisputeEventRow, error) {
+	row := q.db.QueryRow(ctx, insertDisputeEvent,
+		arg.TenantID,
+		arg.Environment,
+		arg.DisputeID,
+		arg.Action,
+		arg.Note,
+		arg.Actor,
+	)
+	var i InsertDisputeEventRow
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
+
+const listDisputeEvents = `-- name: ListDisputeEvents :many
+SELECT id, action, note, actor, created_at FROM payment_dispute_events WHERE tenant_id = $1 AND dispute_id = $2 ORDER BY id DESC LIMIT $3
+`
+
+type ListDisputeEventsParams struct {
+	TenantID  uuid.UUID
+	DisputeID int64
+	RowLimit  int32
+}
+
+type ListDisputeEventsRow struct {
+	ID        int64
+	Action    string
+	Note      string
+	Actor     string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListDisputeEvents(ctx context.Context, arg ListDisputeEventsParams) ([]ListDisputeEventsRow, error) {
+	rows, err := q.db.Query(ctx, listDisputeEvents, arg.TenantID, arg.DisputeID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDisputeEventsRow{}
+	for rows.Next() {
+		var i ListDisputeEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Action,
+			&i.Note,
+			&i.Actor,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDisputes = `-- name: ListDisputes :many
-SELECT id, environment, provider, dispute_ref, payment_ref, invoice_id, amount_minor, currency, outcome, formal, provider_status, reason, evidence_due_at, opened_at, closed_at
-FROM payment_disputes
-WHERE tenant_id = $1 AND ($2::uuid IS NULL OR invoice_id = $2::uuid) AND ($3::text = '' OR outcome = $3::text)
-ORDER BY opened_at DESC, id DESC
-LIMIT $4
+SELECT d.id, d.environment, d.provider, d.dispute_ref, d.payment_ref, d.invoice_id, d.amount_minor, d.currency, d.outcome, d.formal, d.provider_status, d.reason, d.evidence_due_at,
+  d.opened_at, d.closed_at, d.fee_minor, d.fee_currency, d.handled_at, d.handled_by,
+  (SELECT count(*) FROM payment_dispute_events e WHERE e.tenant_id = d.tenant_id AND e.dispute_id = d.id AND e.action = 'note')::bigint AS note_count
+FROM payment_disputes d
+WHERE d.tenant_id = $1 AND ($2::uuid IS NULL OR d.invoice_id = $2::uuid) AND ($3::text = '' OR d.outcome = $3::text)
+  AND ($4::bigint IS NULL OR d.id = $4::bigint)
+ORDER BY d.opened_at DESC, d.id DESC
+LIMIT $5
 `
 
 type ListDisputesParams struct {
 	TenantID  uuid.UUID
 	InvoiceID *uuid.UUID
 	Outcome   string
+	ID        *int64
 	RowLimit  int32
 }
 
@@ -93,6 +207,11 @@ type ListDisputesRow struct {
 	EvidenceDueAt  *time.Time
 	OpenedAt       time.Time
 	ClosedAt       *time.Time
+	FeeMinor       *int64
+	FeeCurrency    *string
+	HandledAt      *time.Time
+	HandledBy      string
+	NoteCount      int64
 }
 
 func (q *Queries) ListDisputes(ctx context.Context, arg ListDisputesParams) ([]ListDisputesRow, error) {
@@ -100,6 +219,7 @@ func (q *Queries) ListDisputes(ctx context.Context, arg ListDisputesParams) ([]L
 		arg.TenantID,
 		arg.InvoiceID,
 		arg.Outcome,
+		arg.ID,
 		arg.RowLimit,
 	)
 	if err != nil {
@@ -125,6 +245,11 @@ func (q *Queries) ListDisputes(ctx context.Context, arg ListDisputesParams) ([]L
 			&i.EvidenceDueAt,
 			&i.OpenedAt,
 			&i.ClosedAt,
+			&i.FeeMinor,
+			&i.FeeCurrency,
+			&i.HandledAt,
+			&i.HandledBy,
+			&i.NoteCount,
 		); err != nil {
 			return nil, err
 		}
@@ -186,10 +311,31 @@ func (q *Queries) ListOpenDisputes(ctx context.Context, tenantID uuid.UUID) ([]L
 	return items, nil
 }
 
+const setDisputeHandled = `-- name: SetDisputeHandled :exec
+UPDATE payment_disputes SET handled_at = $1, handled_by = $2, updated_at = now() WHERE tenant_id = $3 AND id = $4
+`
+
+type SetDisputeHandledParams struct {
+	HandledAt *time.Time
+	HandledBy string
+	TenantID  uuid.UUID
+	ID        int64
+}
+
+func (q *Queries) SetDisputeHandled(ctx context.Context, arg SetDisputeHandledParams) error {
+	_, err := q.db.Exec(ctx, setDisputeHandled,
+		arg.HandledAt,
+		arg.HandledBy,
+		arg.TenantID,
+		arg.ID,
+	)
+	return err
+}
+
 const upsertDispute = `-- name: UpsertDispute :exec
 
-INSERT INTO payment_disputes AS d (tenant_id, environment, provider, dispute_ref, payment_ref, invoice_id, amount_minor, currency, outcome, formal, provider_status, reason, evidence_due_at, opened_at, closed_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO payment_disputes AS d (tenant_id, environment, provider, dispute_ref, payment_ref, invoice_id, amount_minor, currency, outcome, formal, provider_status, reason, evidence_due_at, opened_at, closed_at, fee_minor, fee_currency)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 ON CONFLICT (tenant_id, provider, dispute_ref) DO UPDATE SET
   invoice_id = COALESCE(d.invoice_id, EXCLUDED.invoice_id),
   amount_minor = EXCLUDED.amount_minor, formal = d.formal OR EXCLUDED.formal,
@@ -197,6 +343,7 @@ ON CONFLICT (tenant_id, provider, dispute_ref) DO UPDATE SET
   provider_status = CASE WHEN d.outcome = 'open' OR (d.outcome = 'lost' AND EXCLUDED.outcome = 'won') THEN EXCLUDED.provider_status ELSE d.provider_status END,
   reason = CASE WHEN EXCLUDED.reason <> '' THEN EXCLUDED.reason ELSE d.reason END,
   evidence_due_at = COALESCE(EXCLUDED.evidence_due_at, d.evidence_due_at),
+  fee_minor = COALESCE(EXCLUDED.fee_minor, d.fee_minor), fee_currency = COALESCE(EXCLUDED.fee_currency, d.fee_currency),
   closed_at = CASE WHEN d.outcome = 'open' OR (d.outcome = 'lost' AND EXCLUDED.outcome = 'won') THEN EXCLUDED.closed_at ELSE d.closed_at END,
   updated_at = now()
 `
@@ -217,6 +364,8 @@ type UpsertDisputeParams struct {
 	EvidenceDueAt  *time.Time
 	OpenedAt       time.Time
 	ClosedAt       *time.Time
+	FeeMinor       *int64
+	FeeCurrency    *string
 }
 
 // Disputes: a customer questioned a payment with their bank (migration 00011).
@@ -239,6 +388,8 @@ func (q *Queries) UpsertDispute(ctx context.Context, arg UpsertDisputeParams) er
 		arg.EvidenceDueAt,
 		arg.OpenedAt,
 		arg.ClosedAt,
+		arg.FeeMinor,
+		arg.FeeCurrency,
 	)
 	return err
 }

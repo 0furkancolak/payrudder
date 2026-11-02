@@ -27,7 +27,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `subscription.coupon_applied`, `subscription.coupon_removed` (the seller's own coupon code is named) | plans-svc `coupons/command` |
 | `tenant.status_changed`, `tenant.status_requested`, `tenant.settings_updated` (field names only) | plans-svc `tenants/command` (next to `tenant_status_events`) |
 | `credit_note.issued` (with `refund` in the detail), `credit_note.refund_retried` | billing-svc `creditnotes/command` |
-| `invoice.void`, `invoice.retry` (the operator's saga actions) | billing-svc `sagas/command/operator.go` |
+| `invoice.void`, `invoice.retry` (the operator's saga actions), `invoice.release` and `invoice.void` (the seller's: only for a first charge that is held; `detail.from`, `to` and `cause` `seller:release` / `seller:void`; a release the gate refused is an entry too, `to` still `PAYMENT_HELD`) | billing-svc `sagas/command/operator.go` |
 | `provider_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.failover_set`, `.failover_cleared`; `einvoice_account.connected`, `.replaced`, `.removed`, `.default_changed`, `.routing_changed` | payments-worker `store/accounts.go`, `store/health.go`, `store/einvoice.go` (next to `provider_account_events`) |
 | `two_factor.enabled`, `.disabled`, `.recovery_codes_replaced`, `.recovery_code_used`, `account.two_factor_policy_changed` | plans-svc `identity/command/twofactor.go` |
 | `price_change.scheduled` (one per run, a retry is a run; counts of scheduled, already scheduled, skipped; a dry run writes none), `price_change.withdrawn` (only when something was withdrawn) | plans-svc `changes/command/pricechange.go` |
@@ -38,6 +38,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `contract.version_published` (kind, audience, number, locales; not the text nor its hash, which the log would mask as an opaque run), `contract.settings_changed` (the settings; the locales of the cancel texts but not the texts) | plans-svc `contracts/contracts.go` |
 | `support.status_changed` (an account entry: the ticket belongs to an account, and only support changes the status this way) | plans-svc `support/support.go` |
 | `user.password_reset` (by the person's link; ends every session), `user.sign_in_locked` (the failure that set the lock; the address the failures came from; actor `system`, written best effort: if the entry cannot be written it is logged and the sign-in answers as before) | plans-svc `identity/command` |
+| `dispute.note_added` (the case, the provider's reference, the length of the note, never its text), `dispute.handled`, `dispute.unhandled` (the seller's own mark on a dispute; setting what is set writes nothing) | payments-worker `store/disputes.go` `Disputes.Annotate`, in the transaction of `payment_dispute_events` |
 | `dunning.settings_changed` (the retry delays before and after) | billing-svc `dunning/command` |
 | `invoice_payment.recorded` (method, amount, reference, date; not the free-text note) | billing-svc `payments/command` |
 | `bank_transfer.receipt_recorded` (reference, amount, what is still outstanding; not the note) | payments-worker `store/transfers.go` |

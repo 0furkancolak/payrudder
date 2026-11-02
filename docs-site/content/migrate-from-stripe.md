@@ -68,7 +68,7 @@ Register an endpoint (`POST /v1/webhook-endpoints`) and handle the events you us
 
 - **Past invoices and payments.** They stay in Stripe; Payrudder starts its own numbering.
 - **A customer's stored cards by themselves.** Only the cards you set as above are used; a customer who has none is asked to pay through a payment link or the hosted page.
-- **Anything of Stripe that Payrudder does not do:** disputes are not recorded, and a tax engine does not exist (Stripe Tax is not replaced; you give Payrudder the rates).
+- **Anything of Stripe that Payrudder does not do:** disputes are recorded (with a note and a "handled" mark of your own) but answered at Stripe, never from Payrudder, and a tax engine does not exist (Stripe Tax is not replaced; you give Payrudder the rates).
 - **Subscription periods other than monthly and yearly.**
 
 ## Before you switch off Stripe Billing

@@ -326,6 +326,8 @@ type WebhookPriceChange struct {
 	NoticeDays  int    `json:"notice_days"`
 	// EffectiveTime and CreateTime are RFC 3339 times: the first date a customer's price changes, and when the price change was made.
 	EffectiveTime string `json:"effective_time"`
+	// EffectiveFrom is the date the seller chose the new price to start from; empty when each subscription moves on its next renewal.
+	EffectiveFrom string `json:"effective_from,omitempty"`
 	State         string `json:"state"`
 	CreatedBy     string `json:"created_by,omitempty"`
 	CreateTime    string `json:"create_time"`
