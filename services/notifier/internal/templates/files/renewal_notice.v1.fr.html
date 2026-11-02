@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas un véritable avis.</strong></p>{{end}}
+<h2>Votre abonnement va bientôt se renouveler</h2>
+<p>Bonjour {{index .D "customer_name"}}, votre abonnement <strong>{{index .D "plan_code"}}</strong> chez <strong>{{index .D "tenant_name"}}</strong> se renouvelle le <strong>{{index .D "renewal_date"}}</strong>. Le prochain paiement est de <strong>{{index .D "price"}}</strong> ({{if eq (index .D "interval") "year"}}annuel{{else}}mensuel{{end}}).</p>
+{{if index .D "cancel_text"}}<h3>Comment résilier</h3>
+<p style="white-space: pre-line">{{index .D "cancel_text"}}</p>{{else}}<p>Si vous ne souhaitez pas continuer, veuillez en informer {{index .D "tenant_name"}} avant cette date.</p>{{end}}
+<p>Vous n'avez rien à faire pour continuer.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -31,6 +31,7 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "createContractWithdrawal": ("customers", "create_contract_withdrawal", "POST /v1/customers/{external_id}/contract-withdrawals"),
     "listContractWithdrawals": ("contract_withdrawals", "list_contract_withdrawals", "GET /v1/contract-withdrawals"),
     "setContractWithdrawalStatus": ("contract_withdrawals", "set_contract_withdrawal_status", "PUT /v1/contract-withdrawals/{id}/status"),
+    "requestContractWithdrawalRefund": ("contract_withdrawals", "request_contract_withdrawal_refund", "POST /v1/contract-withdrawals/{id}/refund"),
     "listEInvoices": ("e_invoices", "list_e_invoices", "GET /v1/e-invoices"),
     "getEInvoice": ("e_invoices", "get_e_invoice", "GET /v1/e-invoices/{id}"),
     "getEInvoiceFile": ("e_invoices", "get_e_invoice_file", "GET /v1/e-invoices/{id}/files/{kind}"),

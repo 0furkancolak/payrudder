@@ -59,6 +59,10 @@ export interface Withdrawal {
   decide_time: string | null;
   decided_by: string;
   decision_note: string;
+  credit_note_id: string;
+  refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+  refund_note: string;
+  refund_time: string | null;
 }
 
 export const withdrawal = (id: string, customer: string, status: string, statement: string, extra: Partial<Withdrawal> = {}): Withdrawal => ({
@@ -74,6 +78,10 @@ export const withdrawal = (id: string, customer: string, status: string, stateme
   decide_time: null,
   decided_by: "",
   decision_note: "",
+  credit_note_id: "",
+  refund_state: "none",
+  refund_note: "",
+  refund_time: null,
   ...extra,
 });
 
@@ -141,7 +149,7 @@ export const SNAPSHOT_HTML = "<!doctype html><html><head><meta charset=\"utf-8\"
 
 export interface ContractsState {
   versions: Version[];
-  settings: { required_kinds: string[]; immediate_start: boolean; retention_months: number };
+  settings: { required_kinds: string[]; immediate_start: boolean; retention_months: number; withdrawal_refund: string; renewal_notice_days: number; renewal_cancel_texts: Record<string, string>; withdrawal_function: boolean };
   withdrawals: Withdrawal[];
   acceptances: Acceptance[];
 }
@@ -166,13 +174,24 @@ export function preview(body: string): { html: string; variables: string[]; unkn
  * Answers the contracts routes from `state`. With `tenant` it answers only the calls made for that tenant (the go-live row asks the live one while the page
  * may talk to its sandbox too).
  */
-export function contractsGateway(gw: MockGateway, init: Partial<ContractsState> = {}, tenant = ""): ContractsState {
-  const state: ContractsState = { versions: [], settings: { required_kinds: [], immediate_start: false, retention_months: 36 }, withdrawals: [], acceptances: [], ...init };
+export function contractsGateway(gw: MockGateway, init: Partial<Omit<ContractsState, "settings">> & { settings?: Partial<ContractsState["settings"]> } = {}, tenant = ""): ContractsState {
+  const state: ContractsState = {
+    versions: [],
+    withdrawals: [],
+    acceptances: [],
+    ...init,
+    settings: { required_kinds: [], immediate_start: false, retention_months: 36, withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true, ...init.settings },
+  };
   // The newest version of a series is the current one, whatever the fixtures said.
   const flag = () => {
     for (const v of state.versions) v.current = !state.versions.some((o) => o.kind === v.kind && o.audience === v.audience && o.number > v.number);
   };
   flag();
+  // What billing answers: an invoice named "inv_transfer" was paid by bank transfer and cannot go back through Payrudder.
+  const refundOf = (w: Withdrawal) => {
+    if (w.invoice_id === "inv_transfer") Object.assign(w, { refund_state: "outside", refund_note: "paid by bank transfer: refund it outside Payrudder", refund_time: "2026-10-21T12:00:00Z" });
+    else Object.assign(w, { refund_state: "requested", credit_note_id: "cn-" + w.id, refund_time: "2026-10-21T12:00:00Z" });
+  };
   gw.on((c) => {
     if (tenant !== "" && c.headers["x-payrudder-tenant"] !== tenant) return undefined;
     if (c.path === "/v1/contracts/versions" && c.method === "GET") return { body: { versions: [...state.versions].sort((a, b) => b.number - a.number) } };
@@ -197,8 +216,20 @@ export function contractsGateway(gw: MockGateway, init: Partial<ContractsState> 
       return { body: { ...state.settings, published_kinds: published, update_time: null } };
     }
     if (c.path === "/v1/contracts/settings" && c.method === "PUT") {
-      const b = c.body as ContractsState["settings"];
-      state.settings = { required_kinds: b.required_kinds ?? [], immediate_start: b.immediate_start === true, retention_months: b.retention_months || state.settings.retention_months };
+      const b = c.body as Partial<ContractsState["settings"]>;
+      // The API keeps what a request does not carry, and removes a text that is sent empty.
+      const texts = { ...state.settings.renewal_cancel_texts };
+      for (const [l, t] of Object.entries(b.renewal_cancel_texts ?? {})) if (t.trim() === "") delete texts[l];
+      else texts[l] = t;
+      state.settings = {
+        required_kinds: b.required_kinds ?? [],
+        immediate_start: b.immediate_start === true,
+        retention_months: b.retention_months || state.settings.retention_months,
+        withdrawal_refund: b.withdrawal_refund || state.settings.withdrawal_refund,
+        renewal_notice_days: b.renewal_notice_days ?? state.settings.renewal_notice_days,
+        renewal_cancel_texts: texts,
+        withdrawal_function: b.withdrawal_function ?? state.settings.withdrawal_function,
+      };
       const published = KINDS.filter((k) => state.versions.some((v) => v.kind === k && v.audience === "consumer"));
       return { body: { ...state.settings, published_kinds: published, update_time: "2026-10-21T12:00:00Z" } };
     }
@@ -214,6 +245,17 @@ export function contractsGateway(gw: MockGateway, init: Partial<ContractsState> 
       if (!w) return { status: 404, body: { error: { code: "NOT_FOUND", key: "plans.contract.withdrawal_not_found", message: "no such withdrawal" } } };
       if (!(moves[w.status] ?? []).includes(next)) return { status: 412, body: { error: { code: "FAILED_PRECONDITION", key: "plans.contract.withdrawal_decided", message: "decided" } } };
       Object.assign(w, { status: next, decide_time: "2026-10-21T12:00:00Z", decided_by: "Ada Lovelace", decision_note: String(c.body?.note ?? "") });
+      // Accepting a withdrawal that names an invoice asks billing for the refund when the settings say full: a card payment is requested, a bank transfer is marked.
+      if (next === "accepted" && w.invoice_id !== "" && state.settings.withdrawal_refund === "full") refundOf(w);
+      return { body: w };
+    }
+    const refund = /^\/v1\/contract-withdrawals\/([^/]+)\/refund$/.exec(c.path);
+    if (refund && c.method === "POST") {
+      const w = state.withdrawals.find((x) => x.id === refund[1]);
+      if (!w) return { status: 404, body: { error: { code: "NOT_FOUND", key: "plans.contract.withdrawal_not_found", message: "no such withdrawal" } } };
+      if (w.status !== "accepted" || w.invoice_id === "" || !["none", "failed"].includes(w.refund_state))
+        return { status: 412, body: { error: { code: "FAILED_PRECONDITION", key: "plans.contract.refund_not_possible", message: "not possible" } } };
+      refundOf(w);
       return { body: w };
     }
     const record = /^\/v1\/customers\/([^/]+)\/contract-withdrawals$/.exec(c.path);

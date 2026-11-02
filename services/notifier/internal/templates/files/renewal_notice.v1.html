@@ -1,0 +1,10 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real notice.</strong></p>{{end}}
+<h2>Your subscription renews soon</h2>
+<p>Hi {{index .D "customer_name"}}, your <strong>{{index .D "plan_code"}}</strong> subscription with <strong>{{index .D "tenant_name"}}</strong> renews on <strong>{{index .D "renewal_date"}}</strong>. The next payment is <strong>{{index .D "price"}}</strong> ({{if eq (index .D "interval") "year"}}per year{{else}}per month{{end}}).</p>
+{{if index .D "cancel_text"}}<h3>How to cancel</h3>
+<p style="white-space: pre-line">{{index .D "cancel_text"}}</p>{{else}}<p>If you do not want to continue, please tell {{index .D "tenant_name"}} before that date.</p>{{end}}
+<p>You do not need to do anything to continue.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -21,6 +21,11 @@ import {
   publishFacts,
   requirable,
   retentionValid,
+  renewalDaysValid,
+  canRequestRefund,
+  CANCEL_TEXT_MAX,
+  REFUNDS,
+  RENEWAL,
   seriesKey,
   settingsChanged,
   settingsDraft,
@@ -31,6 +36,7 @@ import {
   type ContractAcceptance,
   type ContractSettings,
   type ContractVersion,
+  type ContractWithdrawal,
 } from "./lib";
 
 const go = readFileSync(fileURLToPath(new URL("../../../../../services/plans-svc/internal/domain/contracts.go", import.meta.url)), "utf8");
@@ -45,6 +51,13 @@ describe("what the console mirrors of the backend", () => {
     expect(RETENTION.min).toBe(Number(/MinRetentionMths = (\d+)/.exec(go)?.[1]));
     expect(RETENTION.max).toBe(Number(/MaxRetentionMths = (\d+)/.exec(go)?.[1]));
     expect(RETENTION.default).toBe(Number(/DefaultRetention = (\d+)/.exec(go)?.[1]));
+  });
+
+  it("has the renewal notice and cancel-text limits, and the refund settings, that plans-svc has", () => {
+    expect(RENEWAL.default).toBe(Number(/DefaultRenewalNoticeDays = (\d+)/.exec(go)?.[1]));
+    expect(RENEWAL.max).toBe(Number(/MaxRenewalNoticeDays\s*= (\d+)/.exec(go)?.[1]));
+    expect(CANCEL_TEXT_MAX).toBe(Number(/MaxCancelText\s*= (\d+)/.exec(go)?.[1]));
+    expect([...REFUNDS]).toEqual([/WithdrawalRefundFull = "([a-z]+)"/.exec(go)?.[1], /WithdrawalRefundNone = "([a-z]+)"/.exec(go)?.[1]]);
   });
 
   it("recognises the starter notices the backend writes", () => {
@@ -120,12 +133,26 @@ describe("which agreements can be required", () => {
   });
 
   it("knows a form that differs from the stored settings, and a retention that the API would refuse", () => {
-    const stored: ContractSettings = { required_kinds: ["tos"], immediate_start: false, retention_months: 36, published_kinds: ["tos"], update_time: null };
+    const stored: ContractSettings = { required_kinds: ["tos"], immediate_start: false, retention_months: 36, published_kinds: ["tos"], update_time: null, withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true };
     expect(settingsChanged(settingsDraft(stored), settingsDraft(stored))).toBe(false);
     expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), immediate_start: true })).toBe(true);
     expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), required_kinds: [] })).toBe(true);
     expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), retention_months: 60 })).toBe(true);
-    expect(settingsDraft(undefined)).toEqual({ required_kinds: [], immediate_start: false, retention_months: 36 });
+    expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), withdrawal_refund: "none" })).toBe(true);
+    expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), renewal_notice_days: 0 })).toBe(true);
+    expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), withdrawal_function: false })).toBe(true);
+    expect(settingsChanged(settingsDraft(stored), { ...settingsDraft(stored), renewal_cancel_texts: { ...settingsDraft(stored).renewal_cancel_texts, tr: "Panelden iptal edin" } })).toBe(true);
+    // A seller that never saved the new settings has the API's defaults: a full refund, a notice a week ahead, the function on, no words of its own.
+    expect(settingsDraft(undefined)).toEqual({
+      required_kinds: [],
+      immediate_start: false,
+      retention_months: 36,
+      withdrawal_refund: "full",
+      renewal_notice_days: 7,
+      renewal_cancel_texts: { en: "", tr: "", de: "", fr: "", es: "", ar: "" },
+      withdrawal_function: true,
+    });
+    for (const [days, ok] of [[-1, false], [0, true], [7, true], [60, true], [61, false], [2.5, false], [Number.NaN, false]] as const) expect(renewalDaysValid(days), String(days)).toBe(ok);
     for (const [months, ok] of [[11, false], [12, true], [36, true], [120, true], [121, false], [24.5, false], [Number.NaN, false]] as const) expect(retentionValid(months), String(months)).toBe(ok);
   });
 });
@@ -291,5 +318,17 @@ describe("text that is not ours", () => {
     const frame = readFileSync(`${dir}SandboxedHtml.vue`, "utf8");
     expect(frame).toContain('sandbox=""');
     expect(frame).toContain(":srcdoc");
+  });
+});
+
+describe("asking for the refund of an accepted withdrawal", () => {
+  const w = (extra: Partial<ContractWithdrawal>): ContractWithdrawal => ({ id: "w", customer_id: "c", customer_external_id: "cus", subscription_id: "", invoice_id: "inv-1", statement: "", source: "hosted", status: "accepted", receive_time: "2026-10-18T09:00:00Z", decide_time: null,
+    decided_by: "", decision_note: "", credit_note_id: "", refund_state: "none", refund_note: "", refund_time: null, ...extra });
+  it("is offered for an accepted withdrawal that names an invoice and has no refund, or a failed one, and for nothing else", () => {
+    expect(canRequestRefund(w({}))).toBe(true);
+    expect(canRequestRefund(w({ refund_state: "failed" }))).toBe(true);
+    for (const state of ["requesting", "requested", "outside"] as const) expect(canRequestRefund(w({ refund_state: state })), state).toBe(false);
+    expect(canRequestRefund(w({ invoice_id: "" }))).toBe(false);
+    for (const status of ["received", "rejected", "refunded"] as const) expect(canRequestRefund(w({ status })), status).toBe(false);
   });
 });

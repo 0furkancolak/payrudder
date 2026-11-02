@@ -2974,6 +2974,7 @@
         "kind_unpublished": "Publique una versión de este acuerdo antes de exigirlo.",
         "no_starter": "Solo hay un texto de partida en turco e inglés.",
         "not_accepted": "El cliente no ha aceptado los acuerdos que exige este vendedor.",
+        "refund_not_possible": "No se puede solicitar un reembolso para este desistimiento: no está aceptado, no indica factura o ya se solicitó un reembolso.",
         "unknown_variable": "El texto usa una variable que no existe. Use solo las variables de la lista.",
         "version_not_found": "No existe esa versión.",
         "version_stale": "Se publicó una versión más reciente de este texto. Muestre la actual y vuelva a pedir la aceptación.",
@@ -5422,18 +5423,31 @@
       "months": "meses",
       "retentionBad": "Introduzca un número entero de meses de {min} a {max}.",
       "save": "Guardar ajustes",
-      "saved": "Guardado."
+      "saved": "Guardado.",
+      "withdrawalTitle": "Desistimiento",
+      "withdrawalHint": "Qué ocurre cuando un cliente desiste de un contrato. Usted decide siempre cada solicitud.",
+      "refundTitle": "Pedir el reembolso cuando acepto un desistimiento",
+      "refundHint": "Aceptar un desistimiento que indica una factura pide a facturación una nota de crédito que devuelve la factura a la tarjeta del cliente. Un pago hecho de otra forma (transferencia, efectivo) no se puede devolver así: el desistimiento se marca para que usted reembolse. Desactivado: usted reembolsa, o lo pide desde el desistimiento.",
+      "functionTitle": "Permitir que los clientes desistan en las páginas de pago",
+      "functionHint": "Un consumidor ve «Desistir del contrato aquí» en una factura pagada y en el portal, confirma en un segundo paso y recibe un correo de acuse de recibo (Directiva 2011/83/UE art. 11 bis, desde el 19 de junio de 2026). Solo se ofrece mientras usted exija acuerdos.",
+      "noticeTitle": "Aviso de renovación",
+      "noticeHint": "Antes de cada renovación de una suscripción facturada por adelantado, un cliente que aceptó sus acuerdos recibe una vez por correo el precio, la fecha y cómo cancelar. {default} días por defecto, hasta {max}; 0 lo desactiva.",
+      "noticeDays": "días antes",
+      "noticeBad": "Introduzca un número entero de días de {min} a {max}.",
+      "cancelTitle": "Cómo cancelar, con sus palabras",
+      "cancelHint": "Se imprime en el aviso en el idioma del cliente; deje un idioma vacío para no decir nada en él. Texto sin formato."
     },
     "withdrawals": {
       "intro": "Clientes que desisten de un contrato. Usted decide cada solicitud; Payrudder guarda la declaración, su decisión, quién la tomó y cuándo, y envía el webhook contract.withdrawal_requested.",
-      "refundNote": "El reembolso todavía no es automático. Reembolse usted al cliente (o emita una nota de crédito) y marque después aquí la solicitud como reembolsada.",
+      "refundNote": "Aceptar un desistimiento que indica una factura también pide su reembolso a la tarjeta cuando sus ajustes lo dicen, y esta tabla muestra qué fue de la solicitud. Un pago hecho de otra forma se marca para que usted reembolse; marque después el desistimiento como reembolsado.",
       "search": "Buscar desistimientos",
       "columns": {
         "customer": "Cliente",
         "statement": "Declaración",
         "received": "Recibida",
         "status": "Estado",
-        "decision": "Decisión"
+        "decision": "Decisión",
+        "refund": "Reembolso"
       },
       "statuses": {
         "received": "Recibida",
@@ -5444,7 +5458,8 @@
       "actions": {
         "accepted": "Aceptar",
         "rejected": "Rechazar",
-        "refunded": "Marcar como reembolsada"
+        "refunded": "Marcar como reembolsada",
+        "refund": "Pedir reembolso"
       },
       "sources": {
         "api": "API",
@@ -5466,7 +5481,24 @@
         "refunded": {
           "title": "¿Marcar como reembolsado?",
           "body": "Hágalo después de haber reembolsado al cliente. Payrudder no mueve dinero."
+        },
+        "refund": {
+          "title": "¿Pedir el reembolso?",
+          "body": "Facturación hace una nota de crédito que devuelve lo que queda de la factura a la tarjeta del cliente. Nunca reembolsa más que la factura ni dos veces."
         }
+      },
+      "refundStates": {
+        "none": "No solicitado",
+        "requesting": "Solicitándose",
+        "requested": "Solicitado",
+        "outside": "Reembolse usted",
+        "failed": "Falló"
+      },
+      "creditNote": "Nota de crédito {id}",
+      "acceptRefund": {
+        "asked": "Sus ajustes también piden ahora el reembolso de la factura que indica este desistimiento a la tarjeta del cliente. Un pago hecho de otra forma se marca para que usted reembolse.",
+        "left": "Sus ajustes le dejan el reembolso: después use «Pedir reembolso» o reembolse usted al cliente.",
+        "noInvoice": "Este desistimiento no indica factura, así que no se pide reembolso: reembolse usted al cliente."
       }
     },
     "customer": {

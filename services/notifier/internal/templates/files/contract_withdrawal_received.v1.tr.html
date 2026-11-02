@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir onay değildir.</strong></p>{{end}}
+<h2>Cayma bildiriminizi aldık</h2>
+<p>Merhaba {{index .D "customer_name"}}, {{index .D "tenant_name"}} cayma bildiriminizi <strong>{{index .D "received_at"}}</strong> tarihinde aldı. Bu e-posta alındı onayıdır. Cayma talebiniz hakkında henüz bir karar değildir.</p>
+<h3>Gönderdiğiniz bildirim</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>Bu e-postayı saklayın: bildiriminizin ne zaman ulaştığının kanıtıdır.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

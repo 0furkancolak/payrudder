@@ -76,7 +76,7 @@ func (q *Queries) CustomerAcceptedNumbers(ctx context.Context, customerID *uuid.
 
 const decideContractWithdrawal = `-- name: DecideContractWithdrawal :one
 UPDATE contract_withdrawals SET status = $1, decided_at = $2, decided_by = $3, decision_note = $4
-WHERE tenant_id = app_tenant_id() AND id = $5 RETURNING tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note
+WHERE tenant_id = app_tenant_id() AND id = $5 RETURNING tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_at
 `
 
 type DecideContractWithdrawalParams struct {
@@ -109,6 +109,10 @@ func (q *Queries) DecideContractWithdrawal(ctx context.Context, arg DecideContra
 		&i.DecidedAt,
 		&i.DecidedBy,
 		&i.DecisionNote,
+		&i.CreditNoteID,
+		&i.RefundState,
+		&i.RefundNote,
+		&i.RefundAt,
 	)
 	return i, err
 }
@@ -152,7 +156,7 @@ func (q *Queries) GetContractAcceptance(ctx context.Context, id uuid.UUID) (Cont
 }
 
 const getContractSettings = `-- name: GetContractSettings :one
-SELECT tenant_id, required_kinds, immediate_start, retention_months, updated_at FROM contract_settings WHERE tenant_id = app_tenant_id()
+SELECT tenant_id, required_kinds, immediate_start, retention_months, updated_at, withdrawal_refund, renewal_notice_days, renewal_cancel_texts, withdrawal_function FROM contract_settings WHERE tenant_id = app_tenant_id()
 `
 
 func (q *Queries) GetContractSettings(ctx context.Context) (ContractSetting, error) {
@@ -164,6 +168,10 @@ func (q *Queries) GetContractSettings(ctx context.Context) (ContractSetting, err
 		&i.ImmediateStart,
 		&i.RetentionMonths,
 		&i.UpdatedAt,
+		&i.WithdrawalRefund,
+		&i.RenewalNoticeDays,
+		&i.RenewalCancelTexts,
+		&i.WithdrawalFunction,
 	)
 	return i, err
 }
@@ -209,7 +217,7 @@ func (q *Queries) GetContractVersion(ctx context.Context, id uuid.UUID) (Contrac
 }
 
 const getContractWithdrawalCustomer = `-- name: GetContractWithdrawalCustomer :one
-SELECT w.tenant_id, w.id, w.customer_id, w.subscription_id, w.invoice_id, w.statement, w.source, w.status, w.received_at, w.decided_at, w.decided_by, w.decision_note, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id
+SELECT w.tenant_id, w.id, w.customer_id, w.subscription_id, w.invoice_id, w.statement, w.source, w.status, w.received_at, w.decided_at, w.decided_by, w.decision_note, w.credit_note_id, w.refund_state, w.refund_note, w.refund_at, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id
 WHERE w.tenant_id = app_tenant_id() AND w.id = $1
 `
 
@@ -226,6 +234,10 @@ type GetContractWithdrawalCustomerRow struct {
 	DecidedAt          *time.Time
 	DecidedBy          string
 	DecisionNote       string
+	CreditNoteID       *uuid.UUID
+	RefundState        string
+	RefundNote         string
+	RefundAt           *time.Time
 	CustomerExternalID string
 }
 
@@ -245,13 +257,17 @@ func (q *Queries) GetContractWithdrawalCustomer(ctx context.Context, id uuid.UUI
 		&i.DecidedAt,
 		&i.DecidedBy,
 		&i.DecisionNote,
+		&i.CreditNoteID,
+		&i.RefundState,
+		&i.RefundNote,
+		&i.RefundAt,
 		&i.CustomerExternalID,
 	)
 	return i, err
 }
 
 const getContractWithdrawalForUpdate = `-- name: GetContractWithdrawalForUpdate :one
-SELECT tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note FROM contract_withdrawals WHERE tenant_id = app_tenant_id() AND id = $1 FOR UPDATE
+SELECT tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_at FROM contract_withdrawals WHERE tenant_id = app_tenant_id() AND id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetContractWithdrawalForUpdate(ctx context.Context, id uuid.UUID) (ContractWithdrawal, error) {
@@ -270,6 +286,10 @@ func (q *Queries) GetContractWithdrawalForUpdate(ctx context.Context, id uuid.UU
 		&i.DecidedAt,
 		&i.DecidedBy,
 		&i.DecisionNote,
+		&i.CreditNoteID,
+		&i.RefundState,
+		&i.RefundNote,
+		&i.RefundAt,
 	)
 	return i, err
 }
@@ -437,7 +457,7 @@ func (q *Queries) InsertContractVersion(ctx context.Context, arg InsertContractV
 const insertContractWithdrawal = `-- name: InsertContractWithdrawal :one
 INSERT INTO contract_withdrawals (tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, received_at)
 VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
-RETURNING tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note
+RETURNING tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_at
 `
 
 type InsertContractWithdrawalParams struct {
@@ -474,6 +494,10 @@ func (q *Queries) InsertContractWithdrawal(ctx context.Context, arg InsertContra
 		&i.DecidedAt,
 		&i.DecidedBy,
 		&i.DecisionNote,
+		&i.CreditNoteID,
+		&i.RefundState,
+		&i.RefundNote,
+		&i.RefundAt,
 	)
 	return i, err
 }
@@ -661,7 +685,7 @@ func (q *Queries) ListContractVersions(ctx context.Context, arg ListContractVers
 }
 
 const listContractWithdrawals = `-- name: ListContractWithdrawals :many
-SELECT w.tenant_id, w.id, w.customer_id, w.subscription_id, w.invoice_id, w.statement, w.source, w.status, w.received_at, w.decided_at, w.decided_by, w.decision_note, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id
+SELECT w.tenant_id, w.id, w.customer_id, w.subscription_id, w.invoice_id, w.statement, w.source, w.status, w.received_at, w.decided_at, w.decided_by, w.decision_note, w.credit_note_id, w.refund_state, w.refund_note, w.refund_at, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id
 WHERE w.tenant_id = app_tenant_id() AND ($1::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR w.customer_id = $1) AND ($2::text = '' OR w.status = $2)
 ORDER BY w.received_at DESC, w.id DESC LIMIT 200
 `
@@ -684,6 +708,10 @@ type ListContractWithdrawalsRow struct {
 	DecidedAt          *time.Time
 	DecidedBy          string
 	DecisionNote       string
+	CreditNoteID       *uuid.UUID
+	RefundState        string
+	RefundNote         string
+	RefundAt           *time.Time
 	CustomerExternalID string
 }
 
@@ -709,6 +737,10 @@ func (q *Queries) ListContractWithdrawals(ctx context.Context, arg ListContractW
 			&i.DecidedAt,
 			&i.DecidedBy,
 			&i.DecisionNote,
+			&i.CreditNoteID,
+			&i.RefundState,
+			&i.RefundNote,
+			&i.RefundAt,
 			&i.CustomerExternalID,
 		); err != nil {
 			return nil, err
@@ -866,22 +898,79 @@ func (q *Queries) ReferenceAcceptedNumbers(ctx context.Context, contextRef strin
 	return items, nil
 }
 
+const setContractWithdrawalRefund = `-- name: SetContractWithdrawalRefund :one
+UPDATE contract_withdrawals SET refund_state = $1, credit_note_id = $2, refund_note = $3, refund_at = $4
+WHERE tenant_id = app_tenant_id() AND id = $5 RETURNING tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_at
+`
+
+type SetContractWithdrawalRefundParams struct {
+	State        string
+	CreditNoteID *uuid.UUID
+	Note         string
+	Now          *time.Time
+	ID           uuid.UUID
+}
+
+// The refund of an accepted withdrawal (the caller holds the row lock of GetContractWithdrawalForUpdate and has checked the state).
+func (q *Queries) SetContractWithdrawalRefund(ctx context.Context, arg SetContractWithdrawalRefundParams) (ContractWithdrawal, error) {
+	row := q.db.QueryRow(ctx, setContractWithdrawalRefund,
+		arg.State,
+		arg.CreditNoteID,
+		arg.Note,
+		arg.Now,
+		arg.ID,
+	)
+	var i ContractWithdrawal
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.CustomerID,
+		&i.SubscriptionID,
+		&i.InvoiceID,
+		&i.Statement,
+		&i.Source,
+		&i.Status,
+		&i.ReceivedAt,
+		&i.DecidedAt,
+		&i.DecidedBy,
+		&i.DecisionNote,
+		&i.CreditNoteID,
+		&i.RefundState,
+		&i.RefundNote,
+		&i.RefundAt,
+	)
+	return i, err
+}
+
 const upsertContractSettings = `-- name: UpsertContractSettings :one
-INSERT INTO contract_settings (tenant_id, required_kinds, immediate_start, retention_months, updated_at)
-VALUES (app_tenant_id(), $1::text[], $2, $3, now())
+INSERT INTO contract_settings (tenant_id, required_kinds, immediate_start, retention_months, withdrawal_refund, renewal_notice_days, renewal_cancel_texts, withdrawal_function, updated_at)
+VALUES (app_tenant_id(), $1::text[], $2, $3, $4, $5, $6, $7, now())
 ON CONFLICT (tenant_id) DO UPDATE SET required_kinds = EXCLUDED.required_kinds, immediate_start = EXCLUDED.immediate_start,
-  retention_months = EXCLUDED.retention_months, updated_at = EXCLUDED.updated_at
-RETURNING tenant_id, required_kinds, immediate_start, retention_months, updated_at
+  retention_months = EXCLUDED.retention_months, withdrawal_refund = EXCLUDED.withdrawal_refund, renewal_notice_days = EXCLUDED.renewal_notice_days,
+  renewal_cancel_texts = EXCLUDED.renewal_cancel_texts, withdrawal_function = EXCLUDED.withdrawal_function, updated_at = EXCLUDED.updated_at
+RETURNING tenant_id, required_kinds, immediate_start, retention_months, updated_at, withdrawal_refund, renewal_notice_days, renewal_cancel_texts, withdrawal_function
 `
 
 type UpsertContractSettingsParams struct {
-	RequiredKinds   []string
-	ImmediateStart  bool
-	RetentionMonths int32
+	RequiredKinds      []string
+	ImmediateStart     bool
+	RetentionMonths    int32
+	WithdrawalRefund   string
+	RenewalNoticeDays  int32
+	RenewalCancelTexts json.RawMessage
+	WithdrawalFunction bool
 }
 
 func (q *Queries) UpsertContractSettings(ctx context.Context, arg UpsertContractSettingsParams) (ContractSetting, error) {
-	row := q.db.QueryRow(ctx, upsertContractSettings, arg.RequiredKinds, arg.ImmediateStart, arg.RetentionMonths)
+	row := q.db.QueryRow(ctx, upsertContractSettings,
+		arg.RequiredKinds,
+		arg.ImmediateStart,
+		arg.RetentionMonths,
+		arg.WithdrawalRefund,
+		arg.RenewalNoticeDays,
+		arg.RenewalCancelTexts,
+		arg.WithdrawalFunction,
+	)
 	var i ContractSetting
 	err := row.Scan(
 		&i.TenantID,
@@ -889,6 +978,10 @@ func (q *Queries) UpsertContractSettings(ctx context.Context, arg UpsertContract
 		&i.ImmediateStart,
 		&i.RetentionMonths,
 		&i.UpdatedAt,
+		&i.WithdrawalRefund,
+		&i.RenewalNoticeDays,
+		&i.RenewalCancelTexts,
+		&i.WithdrawalFunction,
 	)
 	return i, err
 }

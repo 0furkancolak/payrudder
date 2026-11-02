@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Bestätigung.</strong></p>{{end}}
+<h2>Wir haben Ihren Widerruf erhalten</h2>
+<p>Hallo {{index .D "customer_name"}}, {{index .D "tenant_name"}} hat Ihre Widerrufserklärung am <strong>{{index .D "received_at"}}</strong> erhalten. Diese E-Mail ist die Eingangsbestätigung. Sie ist noch keine Entscheidung über Ihren Widerruf.</p>
+<h3>Ihre Erklärung</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>Bewahren Sie diese E-Mail auf: Sie belegt, wann Ihre Erklärung eingegangen ist.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

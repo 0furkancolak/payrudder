@@ -59,10 +59,18 @@ func renderCases(lang string) []renderCase {
 		{PlanName: "Basic", State: "past_due", Interval: "month", ScheduledPlanName: "Free", ScheduledTime: timestamppb.New(day)},
 		{PlanName: "Solo", State: "paused", Interval: "month", NextRenewalTime: timestamppb.New(day)}}, b)
 	portal := &portalView{pageBase: b, Seller: "Acme & Sons", Customer: "Ada Lovelace", Subscriptions: subs, ShowCredits: true, Balance: f.Amount(12500, 0), CanBuy: true, Buy: "/c/token/credits/buy",
-		Invoices: []portalInvoiceRow{{Number: "INV-1", Date: f.Date(day), State: "open", StateLabel: b.L["st_open"], Total: "50.00", Currency: "USD", Href: "/c/token/invoices/1", Payable: true}, {Number: "INV-2", Date: f.Date(day), State: "paid", StateLabel: b.L["st_paid"], Total: "15.00", Currency: "USD", Href: "/c/token/invoices/2"}},
-		Payments: []portalPaymentRow{{Date: f.Date(day), Kind: b.L["kind_charge"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: "15.00", Currency: "USD"}, {Date: f.Date(day), Kind: b.L["kind_refund"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: f.Minus + "5.00", Currency: "USD", Negative: true}},
-		Lots:     []portalLotRow{{Granted: "10,000", Remaining: "2,500", Expires: f.Date(day)}, {Granted: "10,000", Remaining: "10,000"}},
-		Packs:    []portalPackRow{{ID: "p1", Name: "Starter", Credits: "10,000", Price: "5.00", Currency: "USD", Valid: b.L["cr_forever"]}}}
+		Invoices:   []portalInvoiceRow{{Number: "INV-1", Date: f.Date(day), State: "open", StateLabel: b.L["st_open"], Total: "50.00", Currency: "USD", Href: "/c/token/invoices/1", Payable: true}, {Number: "INV-2", Date: f.Date(day), State: "paid", StateLabel: b.L["st_paid"], Total: "15.00", Currency: "USD", Href: "/c/token/invoices/2"}},
+		Payments:   []portalPaymentRow{{Date: f.Date(day), Kind: b.L["kind_charge"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: "15.00", Currency: "USD"}, {Date: f.Date(day), Kind: b.L["kind_refund"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: f.Minus + "5.00", Currency: "USD", Negative: true}},
+		Lots:       []portalLotRow{{Granted: "10,000", Remaining: "2,500", Expires: f.Date(day)}, {Granted: "10,000", Remaining: "10,000"}},
+		Packs:      []portalPackRow{{ID: "p1", Name: "Starter", Credits: "10,000", Price: "5.00", Currency: "USD", Valid: b.L["cr_forever"]}},
+		Agreements: []portalAgreementRow{{Label: b.L["kind_tos"], Number: "2", Date: f.Date(day), Href: "/c/token/agreements/acc-1"}}, Ask: contracts, AgreeAction: "/c/token/agreements", Withdraw: "/c/token/withdraw"}
+	paidInvoice := invoice(nil)
+	paidInvoice.Payable, paidInvoice.State, paidInvoice.Withdraw = false, "paid", "/i/token/withdraw"
+	choices := []withdrawChoice{{ID: "i1", Label: b.L["withdraw_invoice"] + " INV-1 · " + f.Date(day) + " · 50.00 USD"}, {ID: "i2", Label: b.L["withdraw_invoice"] + " INV-2"}}
+	withdraw := func(review bool, invoices []withdrawChoice) *withdrawView {
+		return &withdrawView{pageBase: b, Action: "/c/token/withdraw", Back: "/c/token", Name: "Ada <Lovelace>", Email: withdrawEmailLine(b.L, "ada@example.com"), Words: "Changed my mind\nsecond line", Contract: "i1",
+			ContractLabel: choices[0].Label, Invoices: invoices, Error: b.L["withdraw_missing"], Review: review}
+	}
 	return []renderCase{
 		{"invoice", "invoice", invoice(nil)}, {"invoice-agreements", "invoice", invoice(contracts)},
 		{"invoice-processing", "invoice", func() *invoiceView {
@@ -76,7 +84,8 @@ func renderCases(lang string) []renderCase {
 			Lines: []struct{ Label, Value string }{{"IBAN", "TR33 0006 1005 1978 6457 8413 26"}}}},
 		{"message", "message", &messageView{pageBase: plain, Heading: plain.L["gone"], Text: plain.L["goneHint"], Back: "/c/token"}},
 		{"referral", "referral", &referralView{pageBase: plain, Privacy: "/privacy"}}, {"privacy", "privacy", &privacyView{pageBase: plain}},
-		{"portal", "portal", portal},
+		{"portal", "portal", portal}, {"invoice-paid-withdraw", "invoice", paidInvoice},
+		{"withdraw", "withdraw", withdraw(false, choices)}, {"withdraw-one-contract", "withdraw", withdraw(false, choices[:1])}, {"withdraw-review", "withdraw", withdraw(true, nil)},
 		{"portal-empty", "portal", &portalView{pageBase: b, Seller: "Acme", Customer: "Ada"}},
 	}
 }

@@ -2974,6 +2974,7 @@
         "kind_unpublished": "Bu sözleşmeyi zorunlu kılmadan önce bir sürümünü yayımlayın.",
         "no_starter": "Başlangıç metni yalnızca Türkçe ve İngilizce için var.",
         "not_accepted": "Müşteri, bu satıcının zorunlu kıldığı sözleşmeleri kabul etmedi.",
+        "refund_not_possible": "Bu cayma için iade istenemez: kabul edilmemiş, fatura belirtmiyor ya da iade zaten istenmiş.",
         "unknown_variable": "Metin var olmayan bir değişken kullanıyor. Yalnızca listedeki değişkenleri kullanın.",
         "version_not_found": "Böyle bir sürüm yok.",
         "version_stale": "Bu metnin daha yeni bir sürümü yayımlandı. Güncel olanı gösterip yeniden onay alın.",
@@ -5422,18 +5423,31 @@
       "months": "ay",
       "retentionBad": "{min} ile {max} arasında tam sayı olarak ay girin.",
       "save": "Ayarları kaydet",
-      "saved": "Kaydedildi."
+      "saved": "Kaydedildi.",
+      "withdrawalTitle": "Cayma",
+      "withdrawalHint": "Bir müşteri sözleşmeden caydığında ne olacağı. Her talebe her zaman siz karar verirsiniz.",
+      "refundTitle": "Bir cayma talebini kabul ettiğimde iadeyi iste",
+      "refundHint": "Bir faturayı belirten cayma talebini kabul etmek, faturayı müşterinin kartına iade eden bir alacak dekontunu faturalamadan ister. Başka yolla yapılmış ödeme (havale, nakit) bu şekilde iade edilemez: talep, sizin iade etmeniz için işaretlenir. Kapalıysa iadeyi siz yaparsınız veya cayma talebinden istersiniz.",
+      "functionTitle": "Müşteriler ödeme sayfalarından cayabilsin",
+      "functionHint": "Bir tüketici, ödenmiş bir faturada ve portalda “Sözleşmeden buradan cayın” görür, ikinci adımda onaylar ve bir alındı e-postası alır (2011/83/AB Yönergesi md. 11a, 19 Haziran 2026'dan itibaren). Yalnızca sözleşme onayı istediğinizde sunulur.",
+      "noticeTitle": "Yenileme bildirimi",
+      "noticeHint": "Ücreti peşin faturalanan bir aboneliğin her yenilemesinden önce, sözleşmelerinizi kabul etmiş müşteriye fiyat, tarih ve nasıl iptal edileceği bir kez e-postayla bildirilir. Varsayılan {default} gün, en çok {max}; 0 kapatır.",
+      "noticeDays": "gün önce",
+      "noticeBad": "{min} ile {max} arasında tam sayı gün girin.",
+      "cancelTitle": "Nasıl iptal edilir, kendi sözlerinizle",
+      "cancelHint": "Bildirimde müşterinin dilinde yazdırılır; bir dilde bir şey söylemek istemiyorsanız boş bırakın. Düz metin."
     },
     "withdrawals": {
       "intro": "Sözleşmeden cayan müşteriler. Her talebe siz karar verirsiniz; Payrudder beyanı, kararınızı, kimin ve ne zaman verdiğini saklar ve contract.withdrawal_requested webhook'unu gönderir.",
-      "refundNote": "İade henüz otomatik değil. Müşteriye iadeyi kendiniz yapın (ya da alacak dekontu kesin), ardından talebi burada iade edildi olarak işaretleyin.",
+      "refundNote": "Bir faturayı belirten cayma talebini kabul etmek, ayarlarınız söylüyorsa faturanın karta iadesini de faturalamadan ister; bu tablo isteğin ne olduğunu gösterir. Başka yolla yapılmış ödeme, sizin iade etmeniz için işaretlenir; sonra talebi iade edildi olarak işaretleyin.",
       "search": "Cayma taleplerinde ara",
       "columns": {
         "customer": "Müşteri",
         "statement": "Beyan",
         "received": "Alındı",
         "status": "Durum",
-        "decision": "Karar"
+        "decision": "Karar",
+        "refund": "İade"
       },
       "statuses": {
         "received": "Alındı",
@@ -5444,7 +5458,8 @@
       "actions": {
         "accepted": "Kabul et",
         "rejected": "Reddet",
-        "refunded": "İade edildi işaretle"
+        "refunded": "İade edildi işaretle",
+        "refund": "İade iste"
       },
       "sources": {
         "api": "API",
@@ -5466,7 +5481,24 @@
         "refunded": {
           "title": "İade edildi olarak işaretlensin mi?",
           "body": "Müşteriye iadeyi yaptıktan sonra bunu yapın. Payrudder hiçbir para hareketi yapmaz."
+        },
+        "refund": {
+          "title": "İade istensin mi?",
+          "body": "Faturalama, faturanın kalanını müşterinin kartına iade eden bir alacak dekontu düzenler. Faturadan fazlasını ve aynı şeyi iki kez iade etmez."
         }
+      },
+      "refundStates": {
+        "none": "İstenmedi",
+        "requesting": "İsteniyor",
+        "requested": "İstendi",
+        "outside": "Kendiniz iade edin",
+        "failed": "Başarısız"
+      },
+      "creditNote": "Alacak dekontu {id}",
+      "acceptRefund": {
+        "asked": "Ayarlarınız, bu cayma talebinin belirttiği faturanın müşterinin kartına iadesini de şimdi faturalamadan ister. Başka yolla yapılmış ödeme, sizin iade etmeniz için işaretlenir.",
+        "left": "Ayarlarınız iadeyi size bırakır: sonra “İade iste”yi kullanın ya da müşteriye kendiniz iade edin.",
+        "noInvoice": "Bu cayma talebi fatura belirtmiyor, bu yüzden iade istenmez: müşteriye kendiniz iade edin."
       }
     },
     "customer": {

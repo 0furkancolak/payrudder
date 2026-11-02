@@ -148,6 +148,8 @@ It doesn't round-trip through RabbitMQ because there is no saga to reply to. The
 This is the one place a worker reads Kafka, and it's justified: the input is a *fact* ("threshold crossed")
 and the email is the consumer's own side effect.
 
+Contract mail (plan 21): three more Kafka consumers, each with its own group, offsets table rows and DLQ: `contract.accepted.v1` (`-contracts`, `contract_accepted.v1`, `sent_notifications.kind = 'contract'`), `subscription.renewal-notice.v1` (`-renewals`, `renewal_notice.v1`, kind `renewal`) and `contract.withdrawal-received.v1` (`-withdrawals`, `contract_withdrawal_received.v1`, kind `withdrawal`). All three templates are in the category `system`, in six languages, and are not held back by the seller's mail switch; the dedup key is the fact's `event_id`. Migration `00004_contract_mail_kinds.sql` allows the three kinds (the check allowed four, so the first copy of an accepted agreement could never be recorded).
+
 Trial reminders: a second Kafka consumer on `subscription.trial-will-end.v1` (group `notifier-trials`, own DLQ `subscription.trial-will-end.dlq.v1`, `sent_notifications.kind = 'trial'`) mails the customer that their trial ends soon (`trial_will_end.v1`). The end of the trial is written in the tenant's time zone. The template is in the mail category `system` (it is in no family of `pkg/mailcategory`), so a tenant switches it off with the other system mail. Like all customer mail it is English only; a customer has no language on file.
 
 Templates: Go `html/template`, embedded with `embed.FS`, versioned by name (`invoice_paid.v1.html`).

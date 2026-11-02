@@ -410,6 +410,8 @@ func (w *workers) run(ctx context.Context) error {
 	})
 	// The IP address and user agent of contract acceptances are blanked after the seller's retention period (docs/plans/21-contracts.md).
 	g.Go(func() error { return contracts.NewEraser(w.places, 0, w.log).Run(gctx) })
+	// A customer who accepted the seller's agreements is told of a renewal before it happens (docs/plans/21-contracts.md).
+	g.Go(func() error { return contracts.NewRenewer(w.places, w.app, w.log).Run(gctx) })
 	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log).WithPlaces(w.places)
 	g.Go(func() error { return trials.Run(gctx) })
 	if w.saas.Enabled() {

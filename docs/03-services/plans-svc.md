@@ -84,12 +84,16 @@ Rules:
 
 `contract_versions` (immutable), `contract_settings`, `contract_acceptances` (append-only, UPDATE of `ip` and `user_agent` only for the erasure job), `contract_snapshots` and `contract_withdrawals` are tenant tables with their twins in `migrations/tenant` (public 00008, tenant 00006). `ContractService` (`internal/contracts`) serves them to the gateway for the tenant API and, with the tenant of the invoice, for the hosted pages; `contracts.Check` is the gate of `CreateSubscription`; the erasure job runs daily on the system role over the pooled schema and each cell. Events: webhooks `contract.accepted`, `contract.version_published`, `contract.withdrawal_requested`, and the outbox fact `contract.accepted.v1` for the customer's mail. See [19-contracts.md](../19-contracts.md).
 
+The follow-ups (migrations public 00011, tenant 00009): `contract_settings` gains `withdrawal_refund` (`full`/`none`, default `full`), `renewal_notice_days` (0 to 60, default 7), `renewal_cancel_texts` (language to the seller's words) and `withdrawal_function` (default on); `contract_withdrawals` gains `credit_note_id`, `refund_state`, `refund_note`, `refund_at`; the acceptance's `context_kind` may be `portal`; `contract_renewal_notices` (primary key tenant, customer, `renews_at`; the stored copy of what a customer was told). `ClaimContractWithdrawalRefund` and `RecordContractWithdrawalRefund` are the two halves the gateway uses to route an accepted withdrawal to billing's credit-note path (a row lock and the state `requesting`; a claim older than five minutes is taken over and says `reclaimed`); plans-svc never calls billing. `SetContractWithdrawalStatus` emits `contract.withdrawal_decided`. `CreateContractWithdrawal` takes `customer_id` and, for source `hosted` with a customer who has an address, writes the fact `ContractWithdrawalReceived` (`contract.withdrawal-received.v1`) in the same transaction. `contracts.Renewer` (`renewals.go`, listed in `pkg/tenantdir/jobs.go`, run every 10 minutes in every replica) lists on the system role, across tenants and in each cell's schema, the advance-billed subscriptions Payrudder runs whose `fee_due_at` falls within the seller's notice days for a customer with an address who accepted an agreement and was not noticed of that renewal, and for each one, in its tenant's transaction after the row lock, inserts the notice and writes the fact `RenewalNotice` (`subscription.renewal-notice.v1`; the price is the plan's fee for the interval and quantity less the subscription's coupon). A sandbox reset deletes the notices with the customers they name.
+
 ## Produced messages
 
 | Topic | When | Key |
 |---|---|---|
 | `plans.entitlements.v1` (compacted) | Subscription created/cancelled, or plan version with entitlements published | `{tenant_id}/{customer_id}/{meter_code}` |
 | `subscription.trial-will-end.v1` | The trial-ending reminder records a notice (below) | `{tenant_id}/{customer_id}` |
+| `subscription.renewal-notice.v1` | The renewal notice records a notice (contracts, above) | `{tenant_id}/{customer_id}` |
+| `contract.withdrawal-received.v1` | A customer withdrew on a hosted page (contracts, above) | `{tenant_id}/{customer_id}` |
 
 Produced through plans-svc's own **outbox** in the same transaction as the subscription change.
 Tombstone (null value) when a subscription ends.

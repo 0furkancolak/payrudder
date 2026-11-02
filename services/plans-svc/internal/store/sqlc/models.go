@@ -247,12 +247,27 @@ type ContractAcceptance struct {
 	AcceptedAt                   time.Time
 }
 
+type ContractRenewalNotice struct {
+	TenantID       uuid.UUID
+	CustomerID     uuid.UUID
+	RenewsAt       time.Time
+	SubscriptionID uuid.UUID
+	PriceMinor     int64
+	Currency       string
+	CancelText     string
+	NotifiedAt     time.Time
+}
+
 type ContractSetting struct {
-	TenantID        uuid.UUID
-	RequiredKinds   []string
-	ImmediateStart  bool
-	RetentionMonths int32
-	UpdatedAt       time.Time
+	TenantID           uuid.UUID
+	RequiredKinds      []string
+	ImmediateStart     bool
+	RetentionMonths    int32
+	UpdatedAt          time.Time
+	WithdrawalRefund   string
+	RenewalNoticeDays  int32
+	RenewalCancelTexts json.RawMessage
+	WithdrawalFunction bool
 }
 
 type ContractSnapshot struct {
@@ -290,6 +305,10 @@ type ContractWithdrawal struct {
 	DecidedAt      *time.Time
 	DecidedBy      string
 	DecisionNote   string
+	CreditNoteID   *uuid.UUID
+	RefundState    string
+	RefundNote     string
+	RefundAt       *time.Time
 }
 
 type Coupon struct {

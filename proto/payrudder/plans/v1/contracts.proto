@@ -35,6 +35,10 @@ service ContractService {
   rpc CreateContractWithdrawal(CreateContractWithdrawalRequest) returns (CreateContractWithdrawalResponse);
   rpc ListContractWithdrawals(ListContractWithdrawalsRequest) returns (ListContractWithdrawalsResponse);
   rpc SetContractWithdrawalStatus(SetContractWithdrawalStatusRequest) returns (SetContractWithdrawalStatusResponse);
+  // ClaimContractWithdrawalRefund and RecordContractWithdrawalRefund are the two halves of routing a withdrawal to a refund. The gateway claims the withdrawal (one caller
+  // at a time), asks billing for the credit note, and records the outcome; plans-svc never calls billing itself.
+  rpc ClaimContractWithdrawalRefund(ClaimContractWithdrawalRefundRequest) returns (ClaimContractWithdrawalRefundResponse);
+  rpc RecordContractWithdrawalRefund(RecordContractWithdrawalRefundRequest) returns (RecordContractWithdrawalRefundResponse);
 }
 
 // ContractVersion is one published edition of an agreement, in one or more languages.
@@ -119,6 +123,17 @@ message ContractSettings {
   // Kinds that have a published version.
   repeated string published_kinds = 4;
   google.protobuf.Timestamp update_time = 5;
+  // What accepting a withdrawal does about the money: full asks billing for a refund of the invoice (a credit note that returns it to the card), none leaves the refund
+  // to the seller. Either way the seller decides the withdrawal; nothing is refunded before that. Default full.
+  string withdrawal_refund = 6;
+  // How many days before each renewal of a subscription (fixed fee in advance) whose customer accepted agreements the customer is mailed the renewal notice. 0 switches
+  // it off. Default 7, at most 60.
+  int32 renewal_notice_days = 7;
+  // Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice.
+  map<string, string> renewal_cancel_texts = 8;
+  // Customers (consumers) can withdraw from a contract on the hosted pages ("withdraw from contract here", then "confirm withdrawal") and are sent an acknowledgement. Only
+  // while contracts are enforced. Default on.
+  bool withdrawal_function = 9;
 }
 message GetContractSettingsRequest {}
 message SetContractSettingsRequest {
@@ -126,6 +141,14 @@ message SetContractSettingsRequest {
   bool immediate_start = 2;
   // 0 keeps the current value.
   int32 retention_months = 3;
+  // Empty keeps the current value; full or none.
+  string withdrawal_refund = 4;
+  // Absent keeps the current value; 0 switches the notice off.
+  optional int32 renewal_notice_days = 5;
+  // A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text.
+  map<string, string> renewal_cancel_texts = 6;
+  // Absent keeps the current value.
+  optional bool withdrawal_function = 7;
 }
 
 // ContractOrder is what the customer is about to buy, for the variables of the texts.
@@ -285,6 +308,13 @@ message ContractWithdrawal {
   google.protobuf.Timestamp decide_time = 10;
   string decided_by = 11;
   string decision_note = 12;
+  // The credit note billing made to refund the invoice, once one was requested.
+  string credit_note_id = 13;
+  // none (nothing asked of billing), requesting (being asked), requested (a credit note exists; its own refund_state tells whether the card got the money), outside (the money
+  // cannot go back through Payrudder, a bank transfer for instance: the seller refunds it by hand) or failed (billing refused or did not answer: ask again).
+  string refund_state = 14;
+  string refund_note = 15;
+  google.protobuf.Timestamp refund_time = 16;
 }
 
 message CreateContractWithdrawalRequest {
@@ -295,6 +325,8 @@ message CreateContractWithdrawalRequest {
   string source = 5;
   // When the customer's statement reached the seller; empty: now.
   google.protobuf.Timestamp receive_time = 6;
+  // Payrudder's id of the customer, for the hosted pages that know it (customer_external_id is used when this is empty).
+  string customer_id = 7;
 }
 message ListContractWithdrawalsRequest {
   string customer_external_id = 1;
@@ -309,6 +341,39 @@ message SetContractWithdrawalStatusRequest {
   string status = 2;
   string note = 3;
   string decided_by = 4;
+  // Accepting only, and read by the gateway, not by plans-svc: the amount to refund when the settings ask for a refund, in minor units; 0 is whatever is left of the invoice
+  // (a seller who owes the customer only part of it, because the service already ran, names the amount).
+  int64 refund_amount_minor = 5;
+}
+
+// RequestContractWithdrawalRefundRequest is the body of POST /v1/contract-withdrawals/{id}/refund: ask for the refund of an accepted withdrawal (when the settings are none, or
+// the first request failed).
+message RequestContractWithdrawalRefundRequest {
+  string id = 1;
+  // 0 is whatever is left of the invoice.
+  int64 amount_minor = 2;
+}
+
+message ClaimContractWithdrawalRefundRequest {
+  string id = 1;
+}
+// ClaimContractWithdrawalRefundResponse is the withdrawal as it stands once the caller owns the request. A withdrawal that is not accepted, has no invoice, or whose refund
+// is under way (or done) is refused with plans.contract.refund_not_possible.
+message ClaimContractWithdrawalRefundResponse {
+  ContractWithdrawal withdrawal = 1;
+  // The claim took over a request that was left standing (the caller died before it recorded an answer): look for a credit note already made for it before making one.
+  bool reclaimed = 2;
+}
+
+message RecordContractWithdrawalRefundRequest {
+  string id = 1;
+  // none, requested, outside or failed.
+  string state = 2;
+  string credit_note_id = 3;
+  string note = 4;
+}
+message RecordContractWithdrawalRefundResponse {
+  ContractWithdrawal withdrawal = 1;
 }
 
 message PublishContractVersionResponse {

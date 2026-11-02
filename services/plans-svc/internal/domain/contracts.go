@@ -45,7 +45,30 @@ const (
 	MinRetentionMths = 12
 	MaxRetentionMths = 120
 	DefaultRetention = 36
+	// DefaultRenewalNoticeDays is how many days before a renewal the customer is told (0 switches the notice off); MaxCancelText bounds the seller's words on how to cancel.
+	DefaultRenewalNoticeDays = 7
+	MaxRenewalNoticeDays     = 60
+	MaxCancelText            = 1000
 )
+
+// What accepting a withdrawal does about the money (contract_settings.withdrawal_refund).
+const (
+	WithdrawalRefundFull = "full"
+	WithdrawalRefundNone = "none"
+)
+
+// ValidateCancelTexts checks the seller's words on how to cancel: only the languages of the texts, plain text of a bounded length.
+func ValidateCancelTexts(texts map[string]string) error {
+	for loc, t := range texts {
+		switch {
+		case !slices.Contains(ContractLocales, loc):
+			return Invalid("renewal_cancel_texts", fmt.Sprintf("%q is not a language of the texts (%s)", loc, strings.Join(ContractLocales, ", ")))
+		case len(t) > MaxCancelText:
+			return Invalid("renewal_cancel_texts", fmt.Sprintf("the %s text is longer than %d characters", loc, MaxCancelText))
+		}
+	}
+	return nil
+}
 
 // ValidContractKind reports whether k is a kind of agreement.
 func ValidContractKind(k string) bool { return slices.Contains(ContractKinds, k) }

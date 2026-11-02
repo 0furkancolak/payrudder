@@ -8,6 +8,7 @@ namespace Payrudder\Model;
 
 use Payrudder\Contract\Model;
 use Payrudder\Enum\ContractKind;
+use Payrudder\Enum\ContractSettingsWithdrawalRefund;
 use Payrudder\Internal\Cast;
 
 /**
@@ -21,6 +22,10 @@ final class ContractSettings implements Model
      * @param int|null $retentionMonths
      * @param list<ContractKind|string>|null $publishedKinds
      * @param string|null $updateTime
+     * @param ContractSettingsWithdrawalRefund|string|null $withdrawalRefund
+     * @param int|null $renewalNoticeDays
+     * @param array<string,string>|null $renewalCancelTexts
+     * @param bool|null $withdrawalFunction
      */
     public function __construct(
         public readonly ?array $requiredKinds = null,
@@ -28,6 +33,10 @@ final class ContractSettings implements Model
         public readonly ?int $retentionMonths = null,
         public readonly ?array $publishedKinds = null,
         public readonly ?string $updateTime = null,
+        public readonly ContractSettingsWithdrawalRefund|string|null $withdrawalRefund = null,
+        public readonly ?int $renewalNoticeDays = null,
+        public readonly ?array $renewalCancelTexts = null,
+        public readonly ?bool $withdrawalFunction = null,
     ) {}
 
     /**
@@ -41,6 +50,10 @@ final class ContractSettings implements Model
             retentionMonths: Cast::int($data['retention_months'] ?? null),
             publishedKinds: Cast::enums(ContractKind::class, $data['published_kinds'] ?? null),
             updateTime: Cast::string($data['update_time'] ?? null),
+            withdrawalRefund: Cast::enum(ContractSettingsWithdrawalRefund::class, $data['withdrawal_refund'] ?? null),
+            renewalNoticeDays: Cast::int($data['renewal_notice_days'] ?? null),
+            renewalCancelTexts: Cast::stringMap($data['renewal_cancel_texts'] ?? null),
+            withdrawalFunction: Cast::bool($data['withdrawal_function'] ?? null),
         );
     }
 
@@ -55,6 +68,10 @@ final class ContractSettings implements Model
             'retention_months' => $this->retentionMonths,
             'published_kinds' => Cast::wire($this->publishedKinds),
             'update_time' => $this->updateTime,
+            'withdrawal_refund' => Cast::wire($this->withdrawalRefund),
+            'renewal_notice_days' => $this->renewalNoticeDays,
+            'renewal_cancel_texts' => Cast::wireMap($this->renewalCancelTexts),
+            'withdrawal_function' => $this->withdrawalFunction,
         ]);
     }
 }

@@ -220,6 +220,8 @@ type invoiceView struct {
 	Hint                                string
 	// Contracts is what the seller asks the customer to accept before the payment starts; nil when nothing is.
 	Contracts *contractView
+	// Withdraw is the link to the withdrawal function (Directive 2011/83/EU art. 11a) on the page of a paid invoice; empty when it is not offered.
+	Withdraw string
 }
 
 func (v *invoiceView) Title() string { return v.L["invoice"] + " " + v.Number }
@@ -311,6 +313,9 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Hint = v.L["hint_void"]
 	case "paid":
 		v.Receipt = sc.page() + "/receipt" + q
+		if subj, ok := subjectOfInvoice(resp, sc.token); ok && sc.portal == "" {
+			v.Withdraw = s.withdrawalLink(ctx, subj, q)
+		}
 	}
 	if v.State == "open" || v.State == "failed" {
 		v.Payable = resp.GetPayable()

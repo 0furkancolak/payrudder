@@ -21,7 +21,7 @@ UNVERIFIED: that Nafru shows the tag and lets an application match on it or on t
 
 Every mail also carries `locale` (`en`, `tr`, `de`, `fr`, `es`, `ar`; empty or unknown is English; selects the template file and the subject) among its data. Bank-transfer details, when there are any, ride in the same data (the keys below).
 
-## The seven templates of tenants' customers
+## The nine templates of tenants' customers
 
 Sent by the notifier for a tenant, to that tenant's customers. A tenant can switch a **category** off (`pkg/mailcategory`, the mail page of the console); a template in no family is `system`. Each exists in all six languages (`services/notifier/internal/templates/files/<name>[.<locale>].html`) with a translated subject. A new wording is a new version (`.v2`), never an edit of a sent one.
 
@@ -34,6 +34,8 @@ Sent by the notifier for a tenant, to that tenant's customers. A tenant can swit
 | `trial_will_end.v1` | `system` | a customer's trial ends soon (Kafka `subscription.trial-will-end.v1`) | `customer_name`, `plan_code`, `tenant_name`, `trial_end`, `trial_end_date` |
 | `price_change.v1` | `system` | a price change was scheduled for a customer's subscription (Kafka `subscription.price-change.v1`) | `customer_name`, `effective_date`, `new_renewal`, `plan_code`, `tenant_name` |
 | `contract_accepted.v1` | `system` | a customer accepted one of the seller's agreements; the mail is their copy (Kafka `contract.accepted.v1`, plan 21) | `accepted_at`, `customer_name`, `snapshot_html`, `snapshot_sha256`, `tenant_name` |
+| `renewal_notice.v1` | `system` | a subscription of a customer who accepted the seller's agreements renews in the seller's notice days (Kafka `subscription.renewal-notice.v1`, plan 21) | `cancel_text`, `customer_name`, `interval`, `plan_code`, `price`, `renewal_date`, `tenant_name` |
+| `contract_withdrawal_received.v1` | `system` | a customer used the withdrawal function of a hosted page; the mail is the acknowledgement of receipt (Kafka `contract.withdrawal-received.v1`, plan 21) | `customer_name`, `received_at`, `statement`, `tenant_name` |
 
 Notes on the variables, all strings:
 
@@ -41,7 +43,7 @@ Notes on the variables, all strings:
 - **Bank details** (`account_holder`, `bank_name`, `bic`, `iban`, `reference`) are present only when the invoice is paid by bank transfer. `invoice_transfer.v1` needs them; `payment_failed.v1` shows its transfer paragraph only when `iban` is set.
 - The billing saga also sends `invoice_id`, `sandbox` (`true`/`false`) and `locale` with every invoice mail; the templates do not read the first two. `limit_exceeded.v1` is given `locale` too.
 - A variable a template does not receive reads as empty; a template never fails for a missing one.
-- Customer-controlled text (`customer_name`, `tenant_name`) is HTML-escaped by Payrudder's renderer; a provider that renders must escape it too. `snapshot_html` (`contract_accepted.v1`) is the one variable that is HTML on purpose: the agreement page Payrudder rendered and hashed (`snapshot_sha256`), inserted unescaped; a provider that renders must insert it as it is, because the fingerprint belongs to exactly those bytes.
+- Customer-controlled text (`customer_name`, `tenant_name`) is HTML-escaped by Payrudder's renderer; a provider that renders must escape it too. `cancel_text` (`renewal_notice.v1`) and `statement` (`contract_withdrawal_received.v1`) are plain text the seller or the customer wrote, shown with their line breaks (`white-space: pre-line`); `snapshot_html` (`contract_accepted.v1`) is the one variable that is HTML on purpose: the agreement page Payrudder rendered and hashed (`snapshot_sha256`), inserted unescaped; a provider that renders must insert it as it is, because the fingerprint belongs to exactly those bytes.
 
 The category of a template is `mailcategory.ForTemplate`; `invoice_issued` is a category with no template yet (the mail that announces an invoice is `invoice_transfer.v1`, which is `system` today).
 

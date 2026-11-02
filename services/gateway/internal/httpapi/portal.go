@@ -45,6 +45,12 @@ type portalView struct {
 	Packs       []portalPackRow
 	CanBuy      bool
 	Buy         string
+	// The seller's agreements (docs/plans/21-contracts.md): what the customer accepted (with the page they accepted), the texts to accept again when a material version was
+	// published since, and the link to the withdrawal function (Directive 2011/83/EU art. 11a). Each is empty when there is nothing to show.
+	Agreements  []portalAgreementRow
+	Ask         *contractView
+	AgreeAction string
+	Withdraw    string
 }
 
 // portalSubRow is one subscription as the summary shows it: the plan, its state as a badge, what one period costs, and a few facts (dates, quantity, who bills it).
@@ -60,6 +66,11 @@ type portalPackRow struct{ ID, Name, Credits, Price, Currency, Valid string }
 func (v *portalView) Title() string { return v.L["portal_title"] }
 
 func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
+	s.portalPageWith(w, r, http.StatusOK, "")
+}
+
+// portalPageWith writes the portal; problem is the key of the text to show above the agreements to accept again (the form was not complete), with the 422 that goes with it.
+func (s *Server) portalPageWith(w http.ResponseWriter, r *http.Request, code int, problem string) {
 	lang := pickLang(r)
 	if !s.hostedAllowed(w, r) {
 		return
@@ -93,7 +104,9 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	v.Payments = portalPayments(rows, shown, v.pageBase)
 	v.Subscriptions = s.portalSubscriptions(r.Context(), token, v.pageBase)
 	portalCredits(v, resp, token, q)
-	s.render(w, r, http.StatusOK, "portal", v)
+	s.portalAgreements(r.Context(), v, resp, token, lang, q, problem)
+	v.Withdraw = s.withdrawalLink(r.Context(), subjectOfPortal(resp, token), q)
+	s.render(w, r, code, "portal", v)
 }
 
 // subscriptionsWait is how long the portal waits for the subscription summary: a slow plans-svc must not hold the whole page back.

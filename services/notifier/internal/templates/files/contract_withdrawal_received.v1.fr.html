@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas un véritable accusé de réception.</strong></p>{{end}}
+<h2>Nous avons reçu votre rétractation</h2>
+<p>Bonjour {{index .D "customer_name"}}, {{index .D "tenant_name"}} a reçu votre déclaration de rétractation le <strong>{{index .D "received_at"}}</strong>. Ce courriel est l'accusé de réception. Ce n'est pas encore une décision sur votre rétractation.</p>
+<h3>Ce que vous avez envoyé</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>Conservez ce courriel : il prouve la date de réception de votre déclaration.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

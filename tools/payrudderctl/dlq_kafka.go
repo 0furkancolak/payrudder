@@ -16,12 +16,14 @@ import (
 
 // kafkaDLQs maps each Kafka dead-letter topic to the topic its records are redriven to (docs/04-messaging.md).
 var kafkaDLQs = map[string]string{
-	"usage.events.dlq.v1":                "usage.events.v1",
-	"usage.limit-exceeded.dlq.v1":        "usage.limit-exceeded.v1",
-	"billing.invoices.dlq.v1":            "billing.invoices.v1",
-	"subscription.trial-will-end.dlq.v1": "subscription.trial-will-end.v1",
-	"subscription.price-change.dlq.v1":   "subscription.price-change.v1",
-	"contract.accepted.dlq.v1":           "contract.accepted.v1",
+	"usage.events.dlq.v1":                 "usage.events.v1",
+	"usage.limit-exceeded.dlq.v1":         "usage.limit-exceeded.v1",
+	"billing.invoices.dlq.v1":             "billing.invoices.v1",
+	"subscription.trial-will-end.dlq.v1":  "subscription.trial-will-end.v1",
+	"subscription.price-change.dlq.v1":    "subscription.price-change.v1",
+	"contract.accepted.dlq.v1":            "contract.accepted.v1",
+	"subscription.renewal-notice.dlq.v1":  "subscription.renewal-notice.v1",
+	"contract.withdrawal-received.dlq.v1": "contract.withdrawal-received.v1",
 }
 
 // redriveGroup records how far a DLQ topic has been redriven. Kafka cannot delete a record, so "pending" is

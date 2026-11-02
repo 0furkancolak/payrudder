@@ -18,10 +18,12 @@ final class SetContractWithdrawalStatusRequest implements RequestBody
     /**
      * @param SetContractWithdrawalStatusRequestStatus|string $status
      * @param string|null $note
+     * @param int|null $refundAmountMinor
      */
     public function __construct(
         public readonly SetContractWithdrawalStatusRequestStatus|string $status,
         public readonly ?string $note = null,
+        public readonly ?int $refundAmountMinor = null,
     ) {}
 
     /**
@@ -32,6 +34,7 @@ final class SetContractWithdrawalStatusRequest implements RequestBody
         return Cast::compact([
             'status' => Cast::wire($this->status),
             'note' => $this->note,
+            'refund_amount_minor' => Cast::int64($this->refundAmountMinor),
         ]);
     }
 }

@@ -54,6 +54,7 @@ const (
 	EventContractAccepted                = "contract.accepted"
 	EventContractVersionPublished        = "contract.version_published"
 	EventContractWithdrawalRequested     = "contract.withdrawal_requested"
+	EventContractWithdrawalDecided       = "contract.withdrawal_decided"
 	// EventPing is what POST /v1/webhook-endpoints/{id}/test sends.
 	EventPing = "ping"
 )
@@ -69,7 +70,7 @@ var WebhookEventTypes = []string{
 	EventCreditsPurchased, EventCreditsLow,
 	EventCustomerBlocked, EventCustomerUnblocked,
 	EventPriceChangeScheduled,
-	EventContractAccepted, EventContractVersionPublished, EventContractWithdrawalRequested,
+	EventContractAccepted, EventContractVersionPublished, EventContractWithdrawalRequested, EventContractWithdrawalDecided,
 }
 
 // Reasons a delivery is refused. Test with errors.Is.
@@ -358,4 +359,17 @@ type ContractWithdrawalRequestedEventData struct {
 	InvoiceID          string `json:"invoice_id"`
 	Source             string `json:"source"`
 	ReceivedAt         string `json:"received_at"`
+}
+
+// ContractWithdrawalDecidedEventData is the data of contract.withdrawal_decided: the seller accepted or rejected a withdrawal, or marked an accepted one refunded.
+type ContractWithdrawalDecidedEventData struct {
+	WithdrawalID       string `json:"withdrawal_id"`
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	SubscriptionID     string `json:"subscription_id"`
+	InvoiceID          string `json:"invoice_id"`
+	Status             string `json:"status"`
+	DecidedBy          string `json:"decided_by"`
+	DecidedAt          string `json:"decided_at"`
+	Note               string `json:"note"`
 }

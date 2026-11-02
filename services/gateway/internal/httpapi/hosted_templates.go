@@ -55,6 +55,8 @@ h2.sec{border-top:0;padding-top:0;margin:44px 0 12px;font-size:.78rem;color:var(
 details.contract{border:1px solid var(--border);border-radius:14px;padding:6px 16px;margin:10px 0}details.contract summary{cursor:pointer;font-weight:600;padding:8px 0}
 .contract .text{max-height:300px;overflow:auto;padding:4px 0 10px;font-size:.92rem}.contract .text h3,.contract .text h4,.contract .text h5{font-size:1rem;text-transform:none;letter-spacing:0;color:inherit;margin:14px 0 6px}
 .contract .text ul,.contract .text ol{padding-inline-start:1.3rem;margin:6px 0}
+.fld{display:block;width:100%;margin:6px 0 16px;padding:10px 12px;border:1px solid var(--input);border-radius:12px;background:var(--card);color:inherit;font:inherit}.fld:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+label.lbl{display:block;font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground)}.pane form.wd button.btn{margin-inline-end:8px}
 .check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;cursor:pointer}.check input{margin-top:.3rem;flex:none;width:18px;height:18px}
 .agree fieldset{border:0;padding:0;margin:14px 0}.agree legend{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin-bottom:4px}
 @media (max-width:860px){.shell{grid-template-columns:minmax(0,1fr)}.side{padding:22px 20px;gap:12px}.side .sidetitle{display:none}.side .sideamt{font-size:1.8rem;margin-top:6px}.side .sidefoot{display:none}.side .sidemid{display:flex;flex-direction:column}.pane{max-width:none;padding:28px 20px 40px}}
@@ -88,7 +90,7 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
 {{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}
 {{if .NoMethod}}<p class="muted">{{.L.pay_none}}</p>{{end}}</div>{{end}}
-<div class="noprint">{{if .HasPDF}}<a class="btn alt" href="{{.PDF}}">{{.L.pdf}}</a>{{end}}{{if .Receipt}}<a class="btn alt" href="{{.Receipt}}">{{.L.receipt_view}}</a>{{end}}{{if .Back}}<a class="btn alt" href="{{.Back}}">{{.L.back}}</a>{{end}}</div>
+<div class="noprint">{{if .HasPDF}}<a class="btn alt" href="{{.PDF}}">{{.L.pdf}}</a>{{end}}{{if .Receipt}}<a class="btn alt" href="{{.Receipt}}">{{.L.receipt_view}}</a>{{end}}{{if .Back}}<a class="btn alt" href="{{.Back}}">{{.L.back}}</a>{{end}}{{if .Withdraw}}<a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a>{{end}}</div>
 {{template "foot" .}}{{end}}`
 
 // The agreements form: each text the customer has not accepted yet (the page needs no script: the browser keeps the form from being sent with a box empty, and the server
@@ -103,6 +105,35 @@ const agreeTmpl = `{{define "agree"}}<form method="post" action="{{.Pay}}" class
 {{if gt (len .Methods) 1}}<fieldset><legend>{{.L.pay_method}}</legend>{{range $i, $m := .Methods}}<label class="check"><input type="radio" name="method" value="{{$m.ID}}"{{if eq $i 0}} checked{{end}}><span>{{$m.Label}}</span></label>{{end}}</fieldset>{{else}}{{range .Methods}}<input type="hidden" name="method" value="{{.ID}}">{{end}}{{end}}
 <p class="muted">{{.L.contract_pay_note}}</p>
 <button class="btn" type="submit">{{.L.contract_pay}}</button></form>{{end}}`
+
+// The agreements the customer is asked to accept again on the portal (a material version was published since they accepted): no payment happens here, so the button says
+// only that they accept.
+const portalAgreeTmpl = `{{define "portalAgree"}}<form method="post" action="{{.AgreeAction}}" class="agree">
+<p class="hint">{{.L.agreements_changed}}</p>
+{{if .Ask.Error}}<p class="err" role="alert">{{.Ask.Error}}</p>{{end}}
+{{range .Ask.Items}}<details class="contract"{{if not .Accepted}} open{{end}}><summary>{{.Label}} · {{$.L.contract_version}} {{.Number}}</summary><div class="text">{{.HTML}}</div></details>
+{{if .Accepted}}<p class="muted">{{$.L.contract_accepted_on}} {{.AcceptedOn}}</p>{{else}}<input type="hidden" name="v_{{.Kind}}" value="{{.VersionID}}"><label class="check"><input type="checkbox" name="accept_{{.Kind}}" value="1" required><span>{{.CheckboxText}}</span></label>{{end}}
+{{end}}{{if .Ask.Consents}}<label class="check"><input type="checkbox" name="consent_start" value="1" required><span>{{.L.consent_start}}</span></label>
+<label class="check"><input type="checkbox" name="consent_waiver" value="1" required><span>{{.L.consent_waiver}}</span></label>{{end}}
+<button class="btn" type="submit">{{.L.agreements_accept}}</button></form>{{end}}`
+
+// The withdrawal function (Directive 2011/83/EU art. 11a): the statement, then the page that shows what will be sent with the confirmation button.
+const withdrawTmpl = `{{define "withdraw"}}{{template "head" .}}
+<h1>{{if .Review}}{{.L.withdraw_review}}{{else}}{{.L.withdraw_title}}{{end}}</h1>
+{{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+{{if .Review}}<dl class="kv"><dt>{{.L.withdraw_name}}</dt><dd>{{.Name}}</dd><dt>{{.L.withdraw_contract}}</dt><dd>{{.ContractLabel}}</dd>{{if .Words}}<dt>{{.L.withdraw_words}}</dt><dd>{{.Words}}</dd>{{end}}</dl>
+<p class="muted">{{.Email}}</p>
+<form method="post" action="{{.Action}}" class="wd"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="contract" value="{{.Contract}}"><input type="hidden" name="words" value="{{.Words}}">
+<button class="btn" type="submit">{{.L.withdraw_confirm}}</button><a class="btn alt" href="{{.Back}}">{{.L.withdraw_change}}</a></form>
+{{else}}<p>{{.L.withdraw_intro}}</p>
+<form method="post" action="{{.Action}}" class="wd">
+<label class="lbl" for="w-name">{{.L.withdraw_name}}</label><input class="fld" id="w-name" name="name" value="{{.Name}}" required maxlength="200" autocomplete="name">
+{{if gt (len .Invoices) 1}}<fieldset><legend>{{.L.withdraw_contract}}</legend>{{range .Invoices}}<label class="check"><input type="radio" name="contract" value="{{.ID}}"{{if eq .ID $.Contract}} checked{{end}}><span>{{.Label}}</span></label>{{end}}</fieldset>
+{{else}}{{range .Invoices}}<p class="lbl">{{$.L.withdraw_contract}}</p><p>{{.Label}}</p><input type="hidden" name="contract" value="{{.ID}}">{{end}}{{end}}
+<p class="muted">{{.Email}}</p>
+<label class="lbl" for="w-words">{{.L.withdraw_words}}</label><textarea class="fld" id="w-words" name="words" maxlength="1000" rows="4">{{.Words}}</textarea>
+<button class="btn" type="submit">{{.L.withdraw_continue}}</button><a class="btn alt" href="{{.Back}}">{{.L.instr_back}}</a></form>{{end}}
+{{template "foot" .}}{{end}}`
 
 const adhocTmpl = `{{define "adhoc"}}{{template "head" .}}
 <div class="muted">{{.Seller}}</div><h1>{{.Description}}</h1>
@@ -150,6 +181,7 @@ const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
 
 const portalTmpl = `{{define "portal"}}{{template "head" .}}
 <h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
+{{if .Ask}}<h2 class="sec">{{.L.agreements_title}}</h2>{{template "portalAgree" .}}{{end}}
 {{if .Subscriptions}}<h2 class="sec">{{.L.sub_title}}</h2>
 {{range .Subscriptions}}<div class="sub"><div class="subhead"><span class="name">{{.Plan}}</span><span class="badge {{.State}}">{{.StateLabel}}</span></div>
 {{if .Price}}<div class="subprice">{{.Price}}</div>{{end}}{{if .Facts}}<ul class="subfacts">{{range .Facts}}<li>{{.}}</li>{{end}}</ul>{{end}}</div>
@@ -162,6 +194,11 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{if .Payments}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
 {{range .Payments}}<tr><td>{{.Date}}</td><td>{{.Kind}}</td><td>{{.Number}}</td><td>{{.Status}}</td><td>{{.Provider}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}} {{.Currency}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
+{{if .Agreements}}<h2 class="sec">{{.L.agreements_list}}</h2>
+<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.contract_title}}</th><th>{{.L.contract_version}}</th><th>{{.L.contract_accepted_on}}</th><th><span class="sr">{{.L.action}}</span></th></tr></thead><tbody>
+{{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a></td></tr>
+{{end}}</tbody></table></div>{{end}}
+{{if .Withdraw}}<div class="noprint"><a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a></div>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>
 <div class="stat"><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> <span class="muted">{{.L.cr_unit}}</span></div>
 {{if .Lots}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
@@ -175,7 +212,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 
 // parsePageTemplates parses the templates; the tests parse a second set to run it with stricter options than the one the handlers use.
 func parsePageTemplates() *template.Template {
-	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
+	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
 }
 
 var pageTemplates = parsePageTemplates()

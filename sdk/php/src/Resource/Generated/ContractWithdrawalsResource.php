@@ -11,6 +11,7 @@ use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\ContractWithdrawal;
 use Payrudder\Model\ListContractWithdrawalsResponse;
+use Payrudder\Model\RequestContractWithdrawalRefundRequest;
 use Payrudder\Model\SetContractWithdrawalStatusRequest;
 use Payrudder\RequestOptions;
 
@@ -45,5 +46,19 @@ final class ContractWithdrawalsResource extends AbstractResource
     public function setContractWithdrawalStatus(string $id, SetContractWithdrawalStatusRequest|array $body, ?RequestOptions $options = null): ContractWithdrawal
     {
         return ContractWithdrawal::fromArray($this->call('PUT', '/v1/contract-withdrawals/' . rawurlencode($id) . '/status', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Ask for the refund of an accepted withdrawal (POST /v1/contract-withdrawals/{id}/refund).
+     *
+     * @param string $id
+     * @param RequestContractWithdrawalRefundRequest|array<string,mixed>|null $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function requestContractWithdrawalRefund(string $id, RequestContractWithdrawalRefundRequest|array|null $body = null, ?RequestOptions $options = null): ContractWithdrawal
+    {
+        return ContractWithdrawal::fromArray($this->call('POST', '/v1/contract-withdrawals/' . rawurlencode($id) . '/refund', [], $body === null ? null : Cast::body($body), $options));
     }
 }

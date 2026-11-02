@@ -18,13 +18,15 @@ import { SortSelect } from "@/shared/ui/sort-select";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { useContractWithdrawals, useDecideWithdrawal } from "./api";
-import { withdrawalMoves, type ContractWithdrawal, type WithdrawalStatus } from "./lib";
+import { useContractSettings, useContractWithdrawals, useDecideWithdrawal, useRequestRefund } from "./api";
+import { canRequestRefund, withdrawalMoves, type ContractWithdrawal, type WithdrawalStatus } from "./lib";
 
 /**
  * The withdrawal requests of the seller's customers. The seller decides: a request that was received is accepted or rejected, once, and an accepted one
- * is marked refunded after the seller has refunded the customer. Payrudder keeps the statement, the decision, who made it and when, and sends the webhook;
- * it does not move any money (routing a refund from here is not built).
+ * is marked refunded once the customer has their money. Payrudder keeps the statement, the decision, who made it and when, and sends the webhook. Accepting a
+ * withdrawal that names an invoice also asks billing for the refund (a credit note that returns it to the card) when the settings say so, never before the
+ * seller decided; the row shows what became of it, and a refund that was not asked for or failed can be asked for here. A payment that cannot go back through
+ * Payrudder (a bank transfer) is marked for the seller to refund by hand.
  */
 const props = defineProps<{ tenantId: string }>();
 const { t } = useI18n();
@@ -33,9 +35,13 @@ const canWrite = useCanWrite();
 
 const withdrawals = useContractWithdrawals(() => props.tenantId);
 const decide = useDecideWithdrawal(() => props.tenantId);
+const requestRefund = useRequestRefund(() => props.tenantId);
+const settings = useContractSettings(() => props.tenantId);
+const failure = computed(() => decide.error.value ?? requestRefund.error.value);
 const list = computed(() => withdrawals.data.value ?? []);
 const STATUSES: WithdrawalStatus[] = ["received", "accepted", "rejected", "refunded"];
 const TONES: Record<WithdrawalStatus, Tone> = { received: "warning", accepted: "info", rejected: "neutral", refunded: "success" };
+const REFUND_TONES: Record<ContractWithdrawal["refund_state"], Tone> = { none: "neutral", requesting: "warning", requested: "info", outside: "warning", failed: "danger" };
 
 const table = useTableState<ContractWithdrawal>(list, {
   searchFields: (w) => [w.customer_external_id, w.statement, w.decided_by, w.decision_note],
@@ -47,7 +53,15 @@ const statusFilter = computed({ get: () => table.filters.value.status ?? [], set
 const statusOptions = computed(() => [{ value: "", label: t("common.all") }, ...STATUSES.map((s) => ({ value: s, label: t(`contracts.withdrawals.statuses.${s}`) }))]);
 
 // The decision is taken in a dialog that says what it does: it is final (a received request is decided once) and a refund is the seller's own act.
-const deciding = ref<{ row: ContractWithdrawal; status: "accepted" | "rejected" | "refunded" } | null>(null);
+type Action = "accepted" | "rejected" | "refunded" | "refund";
+const deciding = ref<{ row: ContractWithdrawal; status: Action } | null>(null);
+/** What accepting does about the money, said in the dialog: the setting, and whether the withdrawal names an invoice to refund. */
+const acceptRefund = computed(() => {
+  const d = deciding.value;
+  if (!d || d.status !== "accepted") return "";
+  if (d.row.invoice_id === "") return "noInvoice";
+  return settings.data.value?.withdrawal_refund === "none" ? "left" : "asked";
+});
 const note = ref("");
 const open = computed({
   get: () => deciding.value !== null,
@@ -55,15 +69,17 @@ const open = computed({
     if (!v) deciding.value = null;
   },
 });
-function ask(row: ContractWithdrawal, status: "accepted" | "rejected" | "refunded") {
+function ask(row: ContractWithdrawal, status: Action) {
   note.value = "";
   decide.reset();
+  requestRefund.reset();
   deciding.value = { row, status };
 }
 function confirm() {
   const d = deciding.value;
   if (!d) return;
-  decide.mutate({ id: d.row.id, status: d.status, note: note.value.trim() }, { onSuccess: () => (deciding.value = null) });
+  if (d.status === "refund") requestRefund.mutate(d.row.id, { onSuccess: () => (deciding.value = null) });
+  else decide.mutate({ id: d.row.id, status: d.status, note: note.value.trim() }, { onSuccess: () => (deciding.value = null) });
 }
 </script>
 
@@ -88,6 +104,7 @@ function confirm() {
             <TableHead>{{ t("contracts.withdrawals.columns.received") }}</TableHead>
             <TableHead>{{ t("contracts.withdrawals.columns.status") }}</TableHead>
             <TableHead class="max-xl:hidden">{{ t("contracts.withdrawals.columns.decision") }}</TableHead>
+            <TableHead class="max-lg:hidden">{{ t("contracts.withdrawals.columns.refund") }}</TableHead>
             <TableHead class="w-px"><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
           </TableRow>
         </TableHeader>
@@ -107,8 +124,17 @@ function confirm() {
               </template>
               <template v-else>—</template>
             </TableCell>
+            <TableCell class="max-w-xs text-xs whitespace-normal max-lg:hidden" :data-refund="w.refund_state">
+              <template v-if="w.status === 'accepted' || w.status === 'refunded'">
+                <StatusPill :tone="REFUND_TONES[w.refund_state]" data-testid="withdrawal-refund-state">{{ t(`contracts.withdrawals.refundStates.${w.refund_state}`) }}</StatusPill>
+                <span v-if="w.credit_note_id" class="text-muted-foreground mono block break-all" data-testid="withdrawal-credit-note">{{ t("contracts.withdrawals.creditNote", { id: w.credit_note_id }) }}</span>
+                <span v-if="w.refund_note" class="text-muted-foreground block break-words" dir="auto">{{ w.refund_note }}</span>
+              </template>
+              <template v-else>—</template>
+            </TableCell>
             <TableCell>
               <div class="flex flex-wrap justify-end gap-1.5">
+                <Button v-if="canRequestRefund(w)" size="sm" variant="outline" :disabled="!canWrite" :data-testid="`withdrawal-refund-${w.id}`" @click="ask(w, 'refund')">{{ t("contracts.withdrawals.actions.refund") }}</Button>
                 <Button v-for="s in withdrawalMoves(w.status)" :key="s" size="sm" :variant="s === 'rejected' ? 'outline' : 'default'" :disabled="!canWrite" :data-testid="`withdrawal-${s}-${w.id}`" @click="ask(w, s)">{{ t(`contracts.withdrawals.actions.${s}`) }}</Button>
               </div>
             </TableCell>
@@ -127,13 +153,14 @@ function confirm() {
           <DialogTitle>{{ deciding ? t(`contracts.withdrawals.decide.${deciding.status}.title`) : "" }}</DialogTitle>
           <DialogDescription>{{ deciding ? t(`contracts.withdrawals.decide.${deciding.status}.body`) : "" }}</DialogDescription>
         </DialogHeader>
-        <FormField :label="t('contracts.withdrawals.note')" for="withdrawal-note" :hint="t('contracts.withdrawals.noteHint')">
+        <p v-if="acceptRefund" class="bg-muted rounded-xl px-3 py-2 text-sm" data-testid="withdrawal-refund-effect">{{ t(`contracts.withdrawals.acceptRefund.${acceptRefund}`) }}</p>
+        <FormField v-if="deciding?.status !== 'refund'" :label="t('contracts.withdrawals.note')" for="withdrawal-note" :hint="t('contracts.withdrawals.noteHint')">
           <Textarea id="withdrawal-note" v-model="note" maxlength="1000" data-testid="withdrawal-note" />
         </FormField>
-        <ErrorText :error="decide.error.value" />
+        <ErrorText :error="failure" />
         <DialogFooter>
           <Button type="button" variant="ghost" @click="open = false">{{ t("common.cancel") }}</Button>
-          <Button type="button" :disabled="decide.isPending.value" data-testid="withdrawal-confirm" @click="confirm">{{ deciding ? t(`contracts.withdrawals.actions.${deciding.status}`) : "" }}</Button>
+          <Button type="button" :disabled="decide.isPending.value || requestRefund.isPending.value" data-testid="withdrawal-confirm" @click="confirm">{{ deciding ? t(`contracts.withdrawals.actions.${deciding.status}`) : "" }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

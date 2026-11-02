@@ -36,4 +36,5 @@ enum WebhookEventType: string
     case ContractAccepted = 'contract.accepted';
     case ContractVersionPublished = 'contract.version_published';
     case ContractWithdrawalRequested = 'contract.withdrawal_requested';
+    case ContractWithdrawalDecided = 'contract.withdrawal_decided';
 }

@@ -37,6 +37,12 @@ import (
 // AcceptedTopic is the Kafka topic of the ContractAccepted fact (docs/04-messaging.md), written to the outbox and relayed like subscription.price-change.v1.
 const AcceptedTopic = "contract.accepted.v1"
 
+// WithdrawalReceivedTopic is the Kafka topic of the ContractWithdrawalReceived fact: the acknowledgement mail of the withdrawal function of the hosted pages.
+const WithdrawalReceivedTopic = "contract.withdrawal-received.v1"
+
+// refundStale is how long a refund request stands as "requesting" before another caller may take it over: the caller that made it died before it recorded an answer.
+const refundStale = 5 * time.Minute
+
 // Service implements plansv1.ContractServiceServer.
 type Service struct {
 	plansv1.UnimplementedContractServiceServer
@@ -230,7 +236,8 @@ func (s *Service) GetContractStarter(_ context.Context, req *plansv1.GetContract
 }
 
 func settingsOf(st sqlc.ContractSetting, published []string) *plansv1.ContractSettings {
-	return &plansv1.ContractSettings{RequiredKinds: orEmpty(st.RequiredKinds), ImmediateStart: st.ImmediateStart, RetentionMonths: st.RetentionMonths, PublishedKinds: published, UpdateTime: stamp(st.UpdatedAt)}
+	return &plansv1.ContractSettings{RequiredKinds: orEmpty(st.RequiredKinds), ImmediateStart: st.ImmediateStart, RetentionMonths: st.RetentionMonths, PublishedKinds: published, UpdateTime: stamp(st.UpdatedAt),
+		WithdrawalRefund: st.WithdrawalRefund, RenewalNoticeDays: st.RenewalNoticeDays, RenewalCancelTexts: bodiesOf(st.RenewalCancelTexts), WithdrawalFunction: st.WithdrawalFunction}
 }
 
 func orEmpty(s []string) []string {
@@ -244,7 +251,8 @@ func orEmpty(s []string) []string {
 func loadSettings(ctx context.Context, q *sqlc.Queries) (sqlc.ContractSetting, error) {
 	st, err := q.GetContractSettings(ctx)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return sqlc.ContractSetting{RequiredKinds: []string{}, RetentionMonths: domain.DefaultRetention}, nil
+		return sqlc.ContractSetting{RequiredKinds: []string{}, RetentionMonths: domain.DefaultRetention, WithdrawalRefund: domain.WithdrawalRefundFull,
+			RenewalNoticeDays: domain.DefaultRenewalNoticeDays, RenewalCancelTexts: json.RawMessage(`{}`), WithdrawalFunction: true}, nil
 	}
 	return st, err
 }
@@ -302,6 +310,15 @@ func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContr
 	if m := req.GetRetentionMonths(); m != 0 && (m < domain.MinRetentionMths || m > domain.MaxRetentionMths) {
 		return nil, domain.Invalid("retention_months", "between 12 and 120")
 	}
+	if r := req.GetWithdrawalRefund(); r != "" && r != domain.WithdrawalRefundFull && r != domain.WithdrawalRefundNone {
+		return nil, domain.Invalid("withdrawal_refund", "full or none")
+	}
+	if req.RenewalNoticeDays != nil && (req.GetRenewalNoticeDays() < 0 || req.GetRenewalNoticeDays() > domain.MaxRenewalNoticeDays) {
+		return nil, domain.Invalid("renewal_notice_days", "between 0 and 60")
+	}
+	if err := domain.ValidateCancelTexts(req.GetRenewalCancelTexts()); err != nil {
+		return nil, err
+	}
 	var out *plansv1.ContractSettings
 	err := s.tx(ctx, "contract settings", func(q *sqlc.Queries) error {
 		cur, err := q.ListContractCurrent(ctx)
@@ -322,7 +339,30 @@ func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContr
 		if req.GetRetentionMonths() != 0 {
 			months = req.GetRetentionMonths()
 		}
-		st, err := q.UpsertContractSettings(ctx, sqlc.UpsertContractSettingsParams{RequiredKinds: orEmpty(required), ImmediateStart: req.GetImmediateStart(), RetentionMonths: months})
+		refund, days, function := old.WithdrawalRefund, old.RenewalNoticeDays, old.WithdrawalFunction
+		if req.GetWithdrawalRefund() != "" {
+			refund = req.GetWithdrawalRefund()
+		}
+		if req.RenewalNoticeDays != nil {
+			days = req.GetRenewalNoticeDays()
+		}
+		if req.WithdrawalFunction != nil {
+			function = req.GetWithdrawalFunction()
+		}
+		texts := bodiesOf(old.RenewalCancelTexts)
+		for loc, t := range req.GetRenewalCancelTexts() {
+			if strings.TrimSpace(t) == "" {
+				delete(texts, loc)
+			} else {
+				texts[loc] = t
+			}
+		}
+		textsJSON, err := json.Marshal(texts)
+		if err != nil {
+			return err
+		}
+		st, err := q.UpsertContractSettings(ctx, sqlc.UpsertContractSettingsParams{RequiredKinds: orEmpty(required), ImmediateStart: req.GetImmediateStart(), RetentionMonths: months,
+			WithdrawalRefund: refund, RenewalNoticeDays: days, RenewalCancelTexts: textsJSON, WithdrawalFunction: function})
 		if err != nil {
 			return err
 		}
@@ -565,6 +605,9 @@ func deref(s *string) string {
 func (s *Service) RecordContractAcceptance(ctx context.Context, req *plansv1.RecordContractAcceptanceRequest) (*plansv1.RecordContractAcceptanceResponse, error) {
 	source := req.GetSource()
 	contextKind := map[string]string{"hosted": "hosted_invoice", "api": "api"}[source]
+	if source == "hosted" && req.GetContextKind() == "portal" {
+		contextKind = "portal" // asked for on the customer portal (a new material version between two payments), not on an invoice
+	}
 	switch {
 	case contextKind == "":
 		return nil, domain.Invalid("source", "hosted or api")
@@ -830,7 +873,13 @@ func acceptanceNotFound() error {
 
 func withdrawalOf(w sqlc.ContractWithdrawal, externalID string) *plansv1.ContractWithdrawal {
 	out := &plansv1.ContractWithdrawal{Id: w.ID.String(), CustomerId: w.CustomerID.String(), CustomerExternalId: externalID, Statement: w.Statement, Source: w.Source, Status: w.Status,
-		ReceiveTime: stamp(w.ReceivedAt), DecidedBy: w.DecidedBy, DecisionNote: w.DecisionNote}
+		ReceiveTime: stamp(w.ReceivedAt), DecidedBy: w.DecidedBy, DecisionNote: w.DecisionNote, RefundState: w.RefundState, RefundNote: w.RefundNote}
+	if w.CreditNoteID != nil {
+		out.CreditNoteId = w.CreditNoteID.String()
+	}
+	if w.RefundAt != nil {
+		out.RefundTime = stamp(*w.RefundAt)
+	}
 	if w.SubscriptionID != nil {
 		out.SubscriptionId = w.SubscriptionID.String()
 	}
@@ -883,10 +932,14 @@ func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.Cre
 	}
 	var out *plansv1.ContractWithdrawal
 	err = s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
-		c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
+		who, err := s.resolve(ctx, q, req.GetCustomerExternalId(), req.GetCustomerId(), "", "")
 		if err != nil {
-			return convert.Err(err, "customer")
+			return err
 		}
+		if who.customer == nil {
+			return domain.Invalid("customer_external_id", "required")
+		}
+		c := *who.customer
 		w, err := q.InsertContractWithdrawal(ctx, sqlc.InsertContractWithdrawalParams{ID: idgen.NewUUIDv7(), CustomerID: c.ID, SubscriptionID: sub, InvoiceID: inv, Statement: req.GetStatement(),
 			Source: source, ReceivedAt: at})
 		if err != nil {
@@ -898,8 +951,13 @@ func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.Cre
 		if err != nil {
 			return err
 		}
-		_, err = webhookscmd.Emit(ctx, q, w.ID, webhooksmodel.ContractWithdrawalRequested, raw, at)
-		return err
+		if _, err = webhookscmd.Emit(ctx, q, w.ID, webhooksmodel.ContractWithdrawalRequested, raw, at); err != nil {
+			return err
+		}
+		if source != "hosted" || c.Email == "" {
+			return nil
+		}
+		return s.acknowledge(ctx, q, c, w)
 	})
 	if err != nil {
 		return nil, err
@@ -927,7 +985,8 @@ func (s *Service) ListContractWithdrawals(ctx context.Context, req *plansv1.List
 		}
 		for _, r := range rows {
 			out = append(out, withdrawalOf(sqlc.ContractWithdrawal{TenantID: r.TenantID, ID: r.ID, CustomerID: r.CustomerID, SubscriptionID: r.SubscriptionID, InvoiceID: r.InvoiceID,
-				Statement: r.Statement, Source: r.Source, Status: r.Status, ReceivedAt: r.ReceivedAt, DecidedAt: r.DecidedAt, DecidedBy: r.DecidedBy, DecisionNote: r.DecisionNote}, r.CustomerExternalID))
+				Statement: r.Statement, Source: r.Source, Status: r.Status, ReceivedAt: r.ReceivedAt, DecidedAt: r.DecidedAt, DecidedBy: r.DecidedBy, DecisionNote: r.DecisionNote,
+				CreditNoteID: r.CreditNoteID, RefundState: r.RefundState, RefundNote: r.RefundNote, RefundAt: r.RefundAt}, r.CustomerExternalID))
 		}
 		return nil
 	})
@@ -967,12 +1026,135 @@ func (s *Service) SetContractWithdrawalStatus(ctx context.Context, req *plansv1.
 			return err
 		}
 		out = withdrawalOf(decided, c.ExternalID)
-		return nil
+		raw, err := json.Marshal(map[string]any{"withdrawal_id": decided.ID.String(), "customer_id": c.ID.String(), "customer_external_id": c.ExternalID, "subscription_id": out.GetSubscriptionId(),
+			"invoice_id": out.GetInvoiceId(), "status": decided.Status, "decided_by": decided.DecidedBy, "decided_at": decided.DecidedAt.UTC().Format(time.RFC3339), "note": decided.DecisionNote})
+		if err != nil {
+			return err
+		}
+		_, err = webhookscmd.Emit(ctx, q, idgen.NewUUIDv7(), webhooksmodel.ContractWithdrawalDecided, raw, *decided.DecidedAt)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &plansv1.SetContractWithdrawalStatusResponse{Withdrawal: out}, nil
+}
+
+// acknowledge queues the fact the notifier turns into the acknowledgement of receipt of a withdrawal made on a hosted page: a durable medium, without delay (Directive
+// 2011/83/EU art. 11a(3), Mesafeli Sözleşmeler Yönetmeliği art. 11(2)). It is written in the transaction that records the withdrawal.
+func (s *Service) acknowledge(ctx context.Context, q *sqlc.Queries, c sqlc.Customer, w sqlc.ContractWithdrawal) error {
+	ti, err := tenantOf(ctx)
+	if err != nil {
+		return err
+	}
+	ev := &eventsv1.ContractWithdrawalReceived{EventId: w.ID.String(), TenantId: ti.String(), CustomerId: c.ID.String(), Statement: w.Statement, ReceivedAt: stamp(w.ReceivedAt)}
+	if w.InvoiceID != nil {
+		ev.InvoiceId = w.InvoiceID.String()
+	}
+	payload, err := proto.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: WithdrawalReceivedTopic, PartitionKey: ti.String() + "/" + c.ID.String(), Payload: payload}); err != nil {
+		return err
+	}
+	return q.NotifyOutbox(ctx)
+}
+
+func refundNotPossible(why string) error {
+	return errkey.New(codes.FailedPrecondition, "plans.contract.refund_not_possible", why)
+}
+
+// ClaimContractWithdrawalRefund gives the caller the right to ask billing for the refund of an accepted withdrawal: one caller at a time, and never twice for one withdrawal. A
+// claim that stood for refundStale without an answer is taken over (reclaimed): its owner died, and the caller must look for a credit note it may have made.
+func (s *Service) ClaimContractWithdrawalRefund(ctx context.Context, req *plansv1.ClaimContractWithdrawalRefundRequest) (*plansv1.ClaimContractWithdrawalRefundResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, withdrawalNotFound()
+	}
+	out := &plansv1.ClaimContractWithdrawalRefundResponse{}
+	err = s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
+		w, err := q.GetContractWithdrawalForUpdate(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return withdrawalNotFound()
+		}
+		if err != nil {
+			return err
+		}
+		now := micro(s.now())
+		switch {
+		case w.Status != "accepted":
+			return refundNotPossible("only an accepted withdrawal is refunded")
+		case w.InvoiceID == nil:
+			return refundNotPossible("the withdrawal names no invoice: refund it by hand")
+		case w.RefundState == "requested" || w.RefundState == "outside":
+			return refundNotPossible("a refund was asked for already")
+		case w.RefundState == "requesting" && w.RefundAt != nil && now.Sub(*w.RefundAt) < refundStale:
+			return refundNotPossible("a refund is being asked for")
+		}
+		out.Reclaimed = w.RefundState == "requesting"
+		row, err := q.SetContractWithdrawalRefund(ctx, sqlc.SetContractWithdrawalRefundParams{ID: id, State: "requesting", Now: &now})
+		if err != nil {
+			return err
+		}
+		c, err := q.GetCustomerByID(ctx, row.CustomerID)
+		if err != nil {
+			return err
+		}
+		out.Withdrawal = withdrawalOf(row, c.ExternalID)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RecordContractWithdrawalRefund writes what billing answered to the claim: requested (a credit note exists), outside (the money cannot go back through Payrudder), failed (ask
+// again) or none (there was nothing to refund).
+func (s *Service) RecordContractWithdrawalRefund(ctx context.Context, req *plansv1.RecordContractWithdrawalRefundRequest) (*plansv1.RecordContractWithdrawalRefundResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, withdrawalNotFound()
+	}
+	if !slices.Contains([]string{"none", "requested", "outside", "failed"}, req.GetState()) {
+		return nil, domain.Invalid("state", "none, requested, outside or failed")
+	}
+	cn, err := optUUID("credit_note_id", req.GetCreditNoteId())
+	if err != nil {
+		return nil, err
+	}
+	if (req.GetState() == "requested") != (cn != nil) {
+		return nil, domain.Invalid("credit_note_id", "named when the refund is requested, and only then")
+	}
+	var out *plansv1.ContractWithdrawal
+	err = s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
+		w, err := q.GetContractWithdrawalForUpdate(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return withdrawalNotFound()
+		}
+		if err != nil {
+			return err
+		}
+		if w.RefundState != "requesting" {
+			return refundNotPossible("no refund request is open")
+		}
+		now := micro(s.now())
+		row, err := q.SetContractWithdrawalRefund(ctx, sqlc.SetContractWithdrawalRefundParams{ID: id, State: req.GetState(), CreditNoteID: cn, Note: truncate(req.GetNote(), 1000), Now: &now})
+		if err != nil {
+			return err
+		}
+		c, err := q.GetCustomerByID(ctx, row.CustomerID)
+		if err != nil {
+			return err
+		}
+		out = withdrawalOf(row, c.ExternalID)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RecordContractWithdrawalRefundResponse{Withdrawal: out}, nil
 }
 
 func ptr[T any](v T) *T { return &v }
