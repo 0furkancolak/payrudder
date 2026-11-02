@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"net/http"
@@ -200,15 +201,46 @@ func inboxTokens(addrs []string) []string {
 	return out
 }
 
-// inboundAuthorized checks the shared secret the mail provider's webhook is configured with: "Authorization: Bearer <secret>", "X-Inbound-Secret" or ?secret=.
+// The shared secret of the mail provider's webhook. Send it in a header: "X-Payrudder-Inbound-Secret: <secret>" (preferred), "Authorization: Bearer <secret>" or the
+// older "X-Inbound-Secret". A provider that can only post to an address may still put it in the URL as ?secret=, which is deprecated because a URL is kept by proxies,
+// access logs and traces: moveInboundSecret takes the query off the request before the router, the tracing or any log can see it.
+type inboundSecretKey struct{}
+
+// moveInboundSecret removes the query of POST /inbound/invoices from the request and keeps its ?secret= in the context for inboundAuthorized. The route takes no other
+// parameter. The request handed on is a copy; the caller's is not changed.
+func moveInboundSecret(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/inbound/invoices" && r.URL.RawQuery != "" {
+			u := *r.URL
+			u.RawQuery, u.ForceQuery = "", false
+			secret := r.URL.Query().Get("secret")
+			r = r.WithContext(context.WithValue(r.Context(), inboundSecretKey{}, secret))
+			r.URL, r.RequestURI = &u, u.RequestURI()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func inboundQuerySecret(r *http.Request) string {
+	s, _ := r.Context().Value(inboundSecretKey{}).(string)
+	return s
+}
+
+// inboundAuthorized checks the shared secret the mail provider's webhook is configured with. A header wins over the deprecated ?secret=; a wrong one is not made right by
+// the other.
 func (s *Server) inboundAuthorized(r *http.Request) bool {
 	want := s.d.InboundSecret
 	if want == "" {
 		return false
 	}
-	got := r.URL.Query().Get("secret")
-	if h := r.Header.Get("X-Inbound-Secret"); h != "" {
-		got = h
+	got := inboundQuerySecret(r)
+	if got != "" {
+		s.d.Log.WarnContext(r.Context(), "inbound invoices: the secret came in the URL (deprecated): send X-Payrudder-Inbound-Secret instead")
+	}
+	for _, h := range []string{"X-Inbound-Secret", "X-Payrudder-Inbound-Secret"} {
+		if v := r.Header.Get(h); v != "" {
+			got = v
+		}
 	}
 	if h, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
 		got = h

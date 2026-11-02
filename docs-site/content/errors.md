@@ -33,7 +33,7 @@ Every error of the tenant API has the same shape, whatever went wrong:
 | `UNAVAILABLE` | 503 | a dependency is not ready | yes, with the same [idempotency key](idempotency.html) |
 | `DEADLINE_EXCEEDED` | 504 | the call took too long | yes, with the same idempotency key |
 
-An `INTERNAL` error never carries its cause in the message. A request that timed out may or may not have been done: retry it only with an idempotency key, or read the state first. The SDKs retry `429` and `5xx` for you with the same key.
+An `INTERNAL` error never carries its cause in the message, and neither does an `UNAVAILABLE`, `DEADLINE_EXCEEDED`, `RESOURCE_EXHAUSTED` or `ABORTED` error that comes from the network or a database rather than from Payrudder's own rules: its `message` is a plain sentence that quotes the `request_id`, and the `key` (`common.unavailable`, `common.timeout`, `common.rate_limited`, `common.conflict`) is what to branch on. An error Payrudder wrote itself for these codes (a quota, an invitation limit) keeps its own message. A request that timed out may or may not have been done: retry it only with an idempotency key, or read the state first. The SDKs retry `429` and `5xx` for you with the same key.
 
 A usage event is judged on its own inside a `202` answer: an event that cannot be counted is `rejected` with an `error_code` (the [list is below](#event-codes)) and does not fail the others. See [Usage metering](usage-metering.html).
 

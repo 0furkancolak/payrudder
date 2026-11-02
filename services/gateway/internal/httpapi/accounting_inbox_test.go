@@ -4,11 +4,17 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 )
@@ -133,5 +139,73 @@ func TestExpenseInboxAndRulesRoutes(t *testing.T) {
 	resp, m = do(t, ts, "POST", "/v1/expense-rules", "live-key", `{"id":"x","vendor_match":"AWS","category":"infrastructure","currency":"USD"}`)
 	if resp.StatusCode != 201 || m["id"] != "new-rule" {
 		t.Fatalf("create rule: %d %v", resp.StatusCode, m)
+	}
+}
+
+// The secret belongs in a header: a URL is kept by proxies, access logs and traces. X-Payrudder-Inbound-Secret is the way to send it; ?secret= still works for a
+// provider that can only post to an address, and nothing of the query is passed on to the router, the tracing or the handler.
+func TestInboundSecretIsPreferablySentInAHeaderAndTheQueryIsNotKept(t *testing.T) {
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.InboundSecret, d.InboundDomain = "s3cret-value-0123456789", "in.example.test" })
+	const mail = `{"from":"a@b.test","to":"invoices+unknowntokenunknowntoken@in.example.test","subject":"x"}`
+	for name, tc := range map[string]struct {
+		hdr   map[string]string
+		query string
+		want  int
+	}{
+		"the header":                    {map[string]string{"X-Payrudder-Inbound-Secret": "s3cret-value-0123456789"}, "", 200},
+		"a wrong header":                {map[string]string{"X-Payrudder-Inbound-Secret": "nope"}, "", 401},
+		"a wrong header, a right query": {map[string]string{"X-Payrudder-Inbound-Secret": "nope"}, "?secret=s3cret-value-0123456789", 401},
+		"the older header":              {map[string]string{"X-Inbound-Secret": "s3cret-value-0123456789"}, "", 200},
+		"a bearer token":                {map[string]string{"Authorization": "Bearer s3cret-value-0123456789"}, "", 200},
+		"the query (deprecated)":        {nil, "?secret=s3cret-value-0123456789", 200},
+		"a wrong query":                 {nil, "?secret=nope", 401},
+		"nothing":                       {nil, "", 401},
+		"an empty query secret":         {nil, "?secret=", 401},
+	} {
+		if resp, _ := inbound(t, ts, tc.hdr, tc.query, mail); resp.StatusCode != tc.want {
+			t.Errorf("%s: %d, want %d", name, resp.StatusCode, tc.want)
+		}
+	}
+
+	// Nothing of the URL's query reaches a span (otelhttp records it), or the handler.
+	deadline := time.Now().Add(3 * time.Second)
+	for len(rec.Ended()) < 9 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if len(rec.Ended()) < 9 {
+		t.Fatalf("only %d spans were recorded", len(rec.Ended()))
+	}
+	for _, sp := range rec.Ended() {
+		all := sp.Name()
+		for _, kv := range sp.Attributes() {
+			all += " " + string(kv.Key) + "=" + fmt.Sprint(kv.Value.AsInterface())
+		}
+		if strings.Contains(all, "s3cret") || strings.Contains(all, "secret=") || strings.Contains(all, "nope") {
+			t.Errorf("a span carries the query: %s", all)
+		}
+	}
+}
+
+func TestMoveInboundSecretTakesTheQueryOffTheRequest(t *testing.T) {
+	var seen *http.Request
+	h := moveInboundSecret(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { seen = r }))
+	req := httptest.NewRequest("POST", "/inbound/invoices?secret=abc&x=1", nil)
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if seen.URL.RawQuery != "" || strings.Contains(seen.RequestURI, "abc") || strings.Contains(seen.URL.String(), "abc") || inboundQuerySecret(seen) != "abc" {
+		t.Errorf("url %q, request uri %q, secret %q", seen.URL, seen.RequestURI, inboundQuerySecret(seen))
+	}
+	if req.URL.RawQuery == "" {
+		t.Error("the caller's request was changed instead of a copy")
+	}
+	// Other routes keep their query.
+	other := httptest.NewRequest("GET", "/v1/customers?secret=abc", nil)
+	h.ServeHTTP(httptest.NewRecorder(), other)
+	if seen.URL.RawQuery != "secret=abc" || inboundQuerySecret(seen) != "" {
+		t.Errorf("another route lost its query: %q", seen.URL)
 	}
 }
