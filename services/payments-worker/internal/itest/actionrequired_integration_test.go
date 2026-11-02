@@ -73,7 +73,7 @@ func TestAChargeThatNeedsTheCustomerIsAskedByItsReference(t *testing.T) {
 	if err := accounts.Put(ctx, tenant, "reffake", "live", []byte(`{}`), true); err != nil {
 		t.Fatal(err)
 	}
-	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC() // the attempt's start is stamped by the database, so the injected clock starts at the real one
 	h := &handler.Handler{Sandbox: payments.NewMockPSP("http://127.0.0.1:1", 0), Attempts: store.Attempts{DB: wd.DB}, Ledger: store.Ledger{DB: wd.DB},
 		Resolver: &handler.Resolver{Registry: registry, Accounts: accounts}, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		TransferWindow: 48 * time.Hour, Now: func() time.Time { return now }}
