@@ -41,6 +41,7 @@ Actions on the sheet:
 - **New subscription**: subscribe the customer to a package.
 - **Payment link**: make a link the customer opens to pay without signing in (see [Invoices and payments](console-invoices.html)).
 - **Correct usage**: fix a quantity your app sent. **The event itself is not changed: the difference is added to the period it belongs to, and once that period is closed it is billed on the next invoice.** You give the meter, the idempotency key your app sent with the event (**Event key**), the quantity it should have been (0 cancels the event) and a reason. An event can be corrected for at least 45 days after it was sent. See also [Usage metering](usage-metering.html).
+- **Ask for a card**: make the link to Stripe's own page where the customer saves a card for later charges, to send to them (**Return address**, `https` only). Nothing is charged, no card number passes through Payrudder, and **Payrudder collects and keeps no consent in this flow**: the sheet reminds you that Stripe's guide asks you to get and keep the customer's explicit agreement to be charged without them. When the customer has saved the card it becomes their payment method. The same link is made with `POST /v1/customers/{external_id}/payment-method-setup`. Not shown to a viewer.
 - **Block**: see below.
 - **Edit**: **Edit name and e-mail**, **Edit address** and **Tax data**.
 

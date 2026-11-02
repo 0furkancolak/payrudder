@@ -95,10 +95,17 @@ func ticketOf(r sqlc.GetSupportTicketRow) *plansv1.SupportTicket {
 		Subject: r.Subject, Category: r.Category, Priority: r.Priority, Status: r.Status, Assignee: r.Assignee, LastAuthor: r.LastAuthor,
 		CreateTime: timestamppb.New(r.CreatedAt), UpdateTime: timestamppb.New(r.UpdatedAt), LastMessageTime: timestamppb.New(r.LastMessageAt),
 		FirstResponseDue: timestamppb.New(r.FirstResponseDue), FirstResponseTime: ts(r.FirstRespondedAt), SlaBreached: r.SlaBreached,
-		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount, Unread: r.Unread, Tags: r.Tags,
+		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount, Unread: r.Unread, Tags: r.Tags, SlaTier: r.SlaTier,
+		Rating: r.Rating, RatingComment: r.RatingComment, RateTime: ts(r.RatedAt),
 	}
 	if r.Number != nil {
 		t.Number = *r.Number
+	}
+	if r.MergedInto != nil {
+		t.MergedIntoId = r.MergedInto.String()
+	}
+	if r.MergedIntoNumber != nil {
+		t.MergedIntoNumber = *r.MergedIntoNumber
 	}
 	if r.AppID != nil {
 		t.AppId = r.AppID.String()
@@ -117,7 +124,7 @@ func messagesOf(rows []sqlc.ListSupportMessagesRow, files map[uuid.UUID][]*plans
 
 // personEventKinds are the history lines a person may read. It is an allow-list: a kind added later (the operator's tags and assignee are two of them) is the
 // operator's until someone adds it here.
-var personEventKinds = map[string]bool{"status": true, "priority": true}
+var personEventKinds = map[string]bool{"status": true, "priority": true, "merge": true}
 
 // eventsOf turns history rows into messages; for a person (the "My" calls) only the kinds in personEventKinds.
 func eventsOf(rows []sqlc.ListSupportEventsRow, person bool) []*plansv1.SupportEvent {
@@ -131,15 +138,16 @@ func eventsOf(rows []sqlc.ListSupportEventsRow, person bool) []*plansv1.SupportE
 	return out
 }
 
-// forPerson takes from a ticket what is the operator's own: the labels, and the operator the ticket is assigned to (an address of the operator's staff).
+// forPerson takes from a ticket what is the operator's own: the labels, the operator the ticket is assigned to (an address of the operator's staff) and the plan the
+// deadline was counted for.
 func forPerson(t *plansv1.SupportTicket) *plansv1.SupportTicket {
-	t.Tags, t.Assignee = nil, ""
+	t.Tags, t.Assignee, t.SlaTier = nil, "", ""
 	return t
 }
 
 func stateOf(r sqlc.LockSupportTicketRow) domain.SupportTicketState {
 	return domain.SupportTicketState{Status: r.Status, Priority: r.Priority, Assignee: r.Assignee, Tags: r.Tags, FirstResponseDue: r.FirstResponseDue, FirstRespondedAt: r.FirstRespondedAt, SolvedAt: r.SolvedAt,
-		CreatedAt: r.CreatedAt, Zone: r.SlaZone}
+		CreatedAt: r.CreatedAt, Zone: r.SlaZone, Tier: r.SlaTier}
 }
 
 // actor is who made a change, as the history shows it.
@@ -194,6 +202,18 @@ func list(ctx context.Context, q *sqlc.Queries, p sqlc.ListSupportTicketsParams)
 		}
 	}
 	return out, nil
+}
+
+// searchOf is the most characters of a search the help desk reads; the rest is cut.
+const searchOf = 200
+
+// queryText is a search as typed, trimmed and cut to searchOf characters, for the full-text query (websearch_to_tsquery takes any text).
+func queryText(s string) string {
+	s = strings.TrimSpace(s)
+	if r := []rune(s); len(r) > searchOf {
+		s = string(r[:searchOf])
+	}
+	return s
 }
 
 // likeEscaped keeps %, _ and \ in a search term from being patterns.
@@ -253,13 +273,20 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		} else if n >= domain.SupportMaxOpen {
 			return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many", "an account can have at most %d tickets waiting at once: wait for an answer or mark one solved", domain.SupportMaxOpen)
 		}
-		zone, err := q.SupportZoneFor(ctx, sqlc.SupportZoneForParams{AccountID: account, AppID: appID})
+		clock, err := q.SupportClockFor(ctx, sqlc.SupportClockForParams{AccountID: account, AppID: appID})
+		if err != nil {
+			return err
+		}
+		off, err := offDays(ctx, q, clockApp(clock.ClockAppID))
 		if err != nil {
 			return err
 		}
 		id := uuid.New()
 		if err := q.InsertSupportTicket(ctx, sqlc.InsertSupportTicketParams{ID: id, AccountID: account, AppID: appID, OpenedBy: user, Subject: strings.TrimSpace(req.GetSubject()), Category: req.GetCategory(),
-			Priority: priority, FirstResponseDue: domain.SupportFirstResponseDue(s.now(), priority, zone), SlaZone: zone}); err != nil {
+			Priority: priority, FirstResponseDue: domain.SupportFirstResponseDue(s.now(), clock.Tier, priority, clock.Zone, off), SlaZone: clock.Zone, SlaTier: clock.Tier, SlaAppID: clockApp(clock.ClockAppID)}); err != nil {
+			return err
+		}
+		if err := setLinks(ctx, q, id, account, req.GetLinks()); err != nil {
 			return err
 		}
 		t, err := ticket(ctx, q, id, &user)
@@ -272,6 +299,9 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		}
 		out, err = ticket(ctx, q, id, &user)
 		if err != nil {
+			return err
+		}
+		if out.Links, err = linksOf(ctx, q, id); err != nil {
 			return err
 		}
 		mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketNew)
@@ -293,7 +323,7 @@ func (s *Service) ListMySupportTickets(ctx context.Context, req *plansv1.ListMyS
 	if err := domain.ValidateSupportFilter(req.GetStatus(), ""); err != nil {
 		return nil, err
 	}
-	tickets, err := list(ctx, sqlc.New(s.pool), sqlc.ListSupportTicketsParams{UserID: &user, Status: req.GetStatus()})
+	tickets, err := list(ctx, sqlc.New(s.pool), sqlc.ListSupportTicketsParams{UserID: &user, Status: req.GetStatus(), Search: likeEscaped(queryText(req.GetSearch())), Query: queryText(req.GetSearch())})
 	if err != nil {
 		return nil, err
 	}
@@ -333,6 +363,9 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 	}
 	events, err := q.ListSupportEvents(ctx, id)
 	if err != nil {
+		return nil, err
+	}
+	if t.Links, err = linksOf(ctx, q, id); err != nil {
 		return nil, err
 	}
 	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events, true)}, nil
@@ -470,7 +503,7 @@ func (s *Service) ListSupportTickets(ctx context.Context, req *plansv1.ListSuppo
 		return nil, err
 	}
 	tickets, err := list(ctx, sqlc.New(s.pool), sqlc.ListSupportTicketsParams{Status: req.GetStatus(), Priority: req.GetPriority(), Assignee: req.GetAssignee(),
-		Search: likeEscaped(req.GetSearch()), SlaBreached: req.GetSlaBreached(), Tag: strings.ToLower(strings.TrimSpace(req.GetTag()))})
+		Search: likeEscaped(queryText(req.GetSearch())), Query: queryText(req.GetSearch()), WithInternal: true, SlaBreached: req.GetSlaBreached(), Tag: strings.ToLower(strings.TrimSpace(req.GetTag()))})
 	if err != nil {
 		return nil, err
 	}
@@ -502,6 +535,9 @@ func (s *Service) GetSupportTicket(ctx context.Context, req *plansv1.GetSupportT
 	if err != nil {
 		return nil, err
 	}
+	if t.Links, err = linksOf(ctx, q, id); err != nil {
+		return nil, err
+	}
 	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events, false)}, nil
 }
 
@@ -528,6 +564,9 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 		row, err := lockedFor(ctx, q, id, nil)
 		if err != nil {
 			return err
+		}
+		if row.MergedInto != nil {
+			return mergedErr()
 		}
 		msg = &plansv1.SupportMessage{Id: uuid.NewString(), AuthorKind: "operator", AuthorName: author, Internal: req.GetInternal(), Body: strings.TrimSpace(req.GetBody()), CreateTime: timestamppb.New(s.now())}
 		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.MustParse(msg.Id), TicketID: id, AuthorKind: "operator", AuthorName: author, Internal: msg.Internal, Body: msg.Body}); err != nil {
@@ -577,6 +616,9 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 		if err != nil {
 			return err
 		}
+		if row.MergedInto != nil {
+			return mergedErr()
+		}
 		prev := stateOf(row)
 		next := prev
 		if req.Status != nil {
@@ -585,6 +627,10 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 			}
 		}
 		if req.Priority != nil {
+			// The new deadline is counted with the app's days off as they are now.
+			if next.OffDays, err = offDays(ctx, q, row.SlaAppID); err != nil {
+				return err
+			}
 			if next, err = domain.SupportSetPriority(next, req.GetPriority()); err != nil {
 				return err
 			}
@@ -606,6 +652,11 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 		}
 		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"operator", by}); err != nil {
 			return err
+		}
+		if req.GetSetLinks() {
+			if err := setLinks(ctx, q, id, row.AccountID, req.GetLinks()); err != nil {
+				return err
+			}
 		}
 		if next.Status != prev.Status {
 			if err := audit.Record(ctx, tx, audit.Event{AccountID: row.AccountID, Action: "support.status_changed", TargetType: "support_ticket", TargetID: id.String(),

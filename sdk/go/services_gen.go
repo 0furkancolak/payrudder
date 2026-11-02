@@ -1541,6 +1541,33 @@ func (s *CustomersService) SetPaymentMethod(ctx context.Context, externalID stri
 	return &out, nil
 }
 
+// CreatePaymentMethodSetup: Make the link to the provider's page where the customer saves a card for later
+// charges (POST /v1/customers/{external_id}/payment-method-setup).
+//
+// For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode).
+// The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer
+// has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the
+// string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing
+// to call afterwards. The customer is made at the provider once and remembered, so asking again for the same
+// customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you
+// to collect the customer's explicit consent to be charged without them present (the amount and timing, how the
+// amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep
+// the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a
+// sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not
+// exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no
+// account for it.
+func (s *CustomersService) CreatePaymentMethodSetup(ctx context.Context, externalID string, req *CreatePaymentMethodSetupRequest, opts ...RequestOption) (*PaymentMethodSetup, error) {
+	if req == nil {
+		req = &CreatePaymentMethodSetupRequest{}
+	}
+	var body any = req
+	var out PaymentMethodSetup
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/payment-method-setup", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListCustomerPayments: The customer's invoices and the payments recorded for them (GET
 // /v1/customers/{external_id}/payments).
 //
@@ -1673,6 +1700,55 @@ type DisputesService service
 func (s *DisputesService) ListDisputes(ctx context.Context, params *ListDisputesParams, opts ...RequestOption) (*ListDisputesResponse, error) {
 	var out ListDisputesResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/disputes", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// SetDisputeHandled: Mark a dispute as handled in Payrudder, or lift the mark (PUT /v1/disputes/{id}/handled).
+//
+// Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it).
+// It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`).
+// Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the
+// case as it stands.
+func (s *DisputesService) SetDisputeHandled(ctx context.Context, id string, req *SetDisputeHandledRequest, opts ...RequestOption) (*Dispute, error) {
+	if req == nil {
+		req = &SetDisputeHandledRequest{}
+	}
+	var body any = req
+	var out Dispute
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/disputes/" + url.PathEscape(id) + "/handled", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListDisputeHistory: The notes and marks you made on a dispute, newest first (GET /v1/disputes/{id}/history).
+//
+// What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark
+// was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of
+// the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is
+// not yours.
+func (s *DisputesService) ListDisputeHistory(ctx context.Context, id string, opts ...RequestOption) (*ListDisputeEventsResponse, error) {
+	var out ListDisputeEventsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/disputes/" + url.PathEscape(id) + "/history", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// AddDisputeNote: Write a note on a dispute (POST /v1/disputes/{id}/notes).
+//
+// A note is for you and your colleagues: what you found out, what you answered at the provider, where the
+// evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its
+// text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+func (s *DisputesService) AddDisputeNote(ctx context.Context, id string, req *AddDisputeNoteRequest, opts ...RequestOption) (*DisputeEvent, error) {
+	if req == nil {
+		req = &AddDisputeNoteRequest{}
+	}
+	var body any = req
+	var out DisputeEvent
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/disputes/" + url.PathEscape(id) + "/notes", query: nil, body: body}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -2401,6 +2477,9 @@ func (s *PlansService) CreatePlan(ctx context.Context, req *CreatePlanRequest, o
 // For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away
 // (default 30, at least 14), a change to `to_version` (default: the latest published) is scheduled for that
 // renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+// With `effective_from` the subscription moves on its first period start on or after that date instead (the
+// customer is still mailed when the run schedules it, so at least `notice_days` before). The notice is the
+// longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
 // The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a
 // change is waiting and is never replaced), `run_by_provider`, `not_changeable` (for example a fee invoiced in
 // arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes

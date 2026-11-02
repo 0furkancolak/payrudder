@@ -261,6 +261,22 @@
       "resume": "Preisänderungen fortsetzen",
       "confirmPause": "Alle Preisänderungen der Plattform pausieren? Kein Verkäufer kann eine planen oder wiederholen, bis Sie fortsetzen, und bereits eingereihte Hinweise warten.",
       "confirmResume": "Preisänderungen fortsetzen? Verkäufer können wieder planen und wiederholen, und die wartenden Hinweise werden versendet."
+    },
+    "priceNotice": {
+      "title": "Mitteilung von Preisänderungen",
+      "unverified": "Ungeprüft, keine Rechtsberatung",
+      "hint": "Die Frist, die die Preisänderung eines Verkäufers verwendet, wenn sie keine nennt, und die kürzeste Frist je Land. Niemand hat diese Zeilen mit den Regeln eines Landes abgeglichen: es ist, was Sie eintragen. Ein Land kann die Untergrenze anheben, nie die 14 Tage unterschreiten, die die Plattform für alle hält. Ein Kunde in einem Land mit längerer Mindestfrist wird entsprechend früher informiert oder als zu bald erneuernd aus dem Lauf genommen.",
+      "defaultDays": "Standardfrist in Tagen",
+      "defaultHint": "Gilt, wenn eine Preisänderung keine Frist nennt. 14 bis 365.",
+      "rules": "Kürzeste Frist je Land",
+      "country": "Land (ISO-Code oder *)",
+      "days": "Tage",
+      "note": "Notiz (Quelle, Datum, wer geprüft hat)",
+      "remove": "Entfernen",
+      "add": "Land hinzufügen",
+      "save": "Fristen speichern",
+      "star": "Die Zeile * gilt für jedes Land ohne eigene Zeile (und für Kunden ohne Land). Ohne sie hält die Plattform 14 Tage.",
+      "updated": "Zuletzt gespeichert von {who} am {date}."
     }
   },
   "tenant": {
@@ -811,6 +827,26 @@
         "deleteInUse": "Das ist die Karte, mit der die Rechnungen des Kunden belastet werden. Nach dem Löschen schlägt die nächste Abbuchung fehl, bis für den Kunden eine neue Zahlungsmethode gesetzt ist. Die Karte wird beim Zahlungsanbieter gelöscht, das lässt sich nicht rückgängig machen.",
         "deletedInUse": "Die Karte wurde gelöscht. Es war die Karte, mit der die Rechnungen des Kunden belastet werden: Setzen Sie eine neue Zahlungsmethode für den Kunden.",
         "hint": "Payrudder speichert keine Kartennummern: eine Karte wird dort gespeichert, wo der Zahler sie eingibt, und die Zahlungsmethode des Kunden benennt sie. Hier sehen Sie die Karten und können eine löschen."
+      },
+      "askCard": {
+        "action": "Karte anfordern",
+        "title": "Kunden um eine Karte bitten",
+        "hint": "Stripe öffnet seine eigene Seite, auf der der Kunde eine Karte für spätere Abbuchungen speichert. Jetzt wird nichts abgebucht und keine Kartennummer läuft über Payrudder. Den Link schicken Sie dem Kunden.",
+        "consent": "In diesem Ablauf holt und speichert Payrudder keine Einwilligung. Stripes Leitfaden verlangt, dass Sie die ausdrückliche Zustimmung des Kunden zur Abbuchung in seiner Abwesenheit einholen (Betrag und Zeitpunkt, wie der Betrag bestimmt wird, wie gekündigt wird) und diese festhalten. Schicken Sie den Link zusammen mit Ihren Bedingungen und bewahren Sie die Zustimmung selbst auf.",
+        "returnUrl": "Rücksprungadresse",
+        "returnUrlHint": "Wohin Stripe den Kunden nach der Seite schickt: eine Adresse von Ihnen, nur https.",
+        "errors": {
+          "required": "Geben Sie die Adresse ein, zu der der Kunde zurückkehrt.",
+          "notHttps": "Die Adresse muss mit https:// beginnen und eine Website nennen.",
+          "tooLong": "Die Adresse ist zu lang (höchstens 2000 Zeichen)."
+        },
+        "made": "Der Link ist fertig. Schicken Sie ihn dem Kunden.",
+        "link": "Link zur Stripe-Seite",
+        "copy": "Kopieren",
+        "after": "Hat der Kunde die Karte gespeichert, meldet Stripe das an Payrudder und die Karte wird sein Zahlungsmittel: spätere Rechnungen werden damit abgebucht. Hier ist nichts weiter zu tun. Funktioniert der Link nicht mehr, erstellen Sie einen neuen.",
+        "close": "Schließen",
+        "make": "Link erstellen",
+        "again": "Neuen Link erstellen"
       }
     },
     "packages": {
@@ -967,7 +1003,10 @@
           "tenantDefault": "Standardsprache dieser App",
           "show": "Mail ansehen",
           "subject": "Betreff:"
-        }
+        },
+        "fromDate": "Gültig ab (optional)",
+        "fromDateHelp": "Leer lassen, damit jedes Abonnement bei seiner nächsten Verlängerung wechselt. Mit Datum wechselt jedes bei seiner ersten Verlängerung an oder nach diesem Tag: ein Monatsplan bei der ersten, ein Jahresplan möglicherweise erst Monate später. Mindestens die Mitteilungsfrist entfernt, höchstens zwei Jahre.",
+        "startsFrom": "ab {date}"
       },
       "prorateAfterTrial": "Die erste Periode ab dem Ende der Testphase berechnen",
       "prorateAfterTrialHelp": "Endet eine Testphase mitten in einer Abrechnungsperiode, wird die Grundgebühr dieser Periode nur vom Ende der Testphase bis zum Periodenende berechnet. Aus: Die Gebühr der ganzen Periode wird berechnet, wie bei Paketen, die vor dieser Option veröffentlicht wurden.",
@@ -3231,7 +3270,8 @@
       "price_change": {
         "not_found": "Preisänderung nicht gefunden.",
         "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an.",
-        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut."
+        "paused": "Preisänderungen sind vom Operator pausiert. Versuchen Sie es später erneut.",
+        "date_differs": "Eine offene Preisänderung für diese Versionen beginnt an einem anderen Datum. Ziehen Sie sie zurück, um eine neue anzulegen."
       },
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
@@ -3425,6 +3465,12 @@
       },
       "refund": {
         "charge_unclear": "Die Rechnung hat mehrere erfolgreiche Abbuchungen, und die Erstattung bestimmt keine davon eindeutig. Erstatten Sie den Kunden beim Zahlungsanbieter und erfassen Sie es dann auf der Gutschrift."
+      },
+      "dispute": {
+        "bad_id": "Das ist keine Dispute-ID.",
+        "not_found": "Der Dispute wurde nicht gefunden.",
+        "note_required": "Schreiben Sie etwas in die Notiz.",
+        "note_too_long": "Eine Notiz darf höchstens 2000 Zeichen lang sein."
       }
     },
     "einvoice": {
@@ -3836,7 +3882,10 @@
       },
       "ticket": {
         "closed": "Dieses Ticket ist geschlossen. Eröffnen Sie ein neues.",
-        "not_found": "Dieses Ticket wurde nicht gefunden."
+        "not_found": "Dieses Ticket wurde nicht gefunden.",
+        "merged": "Dieses Ticket wurde mit einem anderen zusammengeführt. Schreiben Sie dort.",
+        "cannot_merge": "Diese beiden Tickets lassen sich nicht zusammenführen: Es müssen zwei verschiedene Tickets einer Person in einer Organisation sein, keines bereits zusammengeführt, und das Ziel darf nicht geschlossen sein.",
+        "not_solved": "Ein Ticket lässt sich bewerten, sobald es gelöst ist."
       },
       "tickets": {
         "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
@@ -5693,7 +5742,7 @@
     "filters": {
       "any": "Alle",
       "late": "Nur überfällige",
-      "searchHint": "Betreff oder #Nummer"
+      "searchHint": "Betreff, #Nummer oder Wörter in den Nachrichten"
     },
     "status": {
       "active": "Aktiv",
@@ -5729,7 +5778,7 @@
     "sortPriority": "Höchste Priorität zuerst",
     "sortDue": "Früheste Frist zuerst",
     "unread": "Neu",
-    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App.",
+    "businessHours": "Antwortzeiten zählen Geschäftsstunden: Montag bis Freitag, 09:00 bis 18:00, in der Zeitzone Ihrer App, nicht an ihren freien Tagen. Die Zeiten oben gelten für eine App im Standard-Tarif: Eine kostenlose App hat mehr Zeit, eine Enterprise-App weniger. Das Ticket zeigt die genaue Zeit.",
     "tags": {
       "title": "Tags",
       "filter": "Tag",
@@ -5760,7 +5809,10 @@
       "onTime": "Rechtzeitig beantwortet",
       "answeredOf": "{answered} von {opened} eröffneten beantwortet",
       "byStatus": "Alle Tickets nach Status",
-      "byPriority": "Noch offen, nach Priorität"
+      "byPriority": "Noch offen, nach Priorität",
+      "satisfaction": "Zufriedenheit, letzte {days} Tage",
+      "ratingAverage": "{average} von 5 aus {n} Bewertungen",
+      "stars": "{n} Sterne"
     },
     "badge": {
       "unread": "Tickets mit Neuigkeiten: {n}",
@@ -5776,6 +5828,64 @@
       "failed": "Diese Dateien wurden nicht angehängt:",
       "openedButFailed": "Ihr Ticket wurde eröffnet, aber einige Dateien wurden nicht angehängt. Sie können sie an eine Antwort anhängen.",
       "download": "{name} herunterladen"
+    },
+    "links": {
+      "title": "Bezieht sich auf",
+      "none": "Keine verknüpften Einträge.",
+      "kind": {
+        "customer": "Kunde",
+        "invoice": "Rechnung",
+        "subscription": "Abonnement"
+      },
+      "env": {
+        "live": "live",
+        "sandbox": "Sandbox"
+      },
+      "remove": "Verknüpfung mit {link} entfernen",
+      "kindLabel": "Art",
+      "refLabel": "Kunden-ID oder Eintrags-ID",
+      "envLabel": "Umgebung",
+      "customerHint": "Die ID des Kunden in Ihrer App",
+      "idHint": "Die auf der Seite angezeigte ID",
+      "add": "Verknüpfen",
+      "needsApp": "Wählen Sie zuerst eine App: Eine Verknüpfung zeigt auf einen Eintrag dieser App."
+    },
+    "rating": {
+      "ask": "Wie war unsere Hilfe?",
+      "stars": "{n} von 5",
+      "comment": "Ein Kommentar (optional)",
+      "send": "Bewertung senden",
+      "yours": "Ihre Bewertung",
+      "change": "Ändern",
+      "operatorSees": "Vom Kunden mit {n} von 5 bewertet"
+    },
+    "merge": {
+      "open": "In ein anderes Ticket zusammenführen",
+      "title": "#{number} in ein anderes Ticket zusammenführen",
+      "hint": "Seine Nachrichten und Dateien wandern in das andere Ticket, dieses wird mit einem Verweis darauf geschlossen. Nur zwei Tickets derselben Person können zusammengeführt werden.",
+      "into": "Zusammenführen in",
+      "none": "Diese Person hat in der Liste kein anderes Ticket, das es aufnehmen kann. Setzen Sie den Statusfilter zurück, um mehr zu sehen.",
+      "confirm": "Zusammenführen",
+      "mergedInto": "Dieses Ticket wurde mit #{number} zusammengeführt. Seine Nachrichten stehen dort.",
+      "joined": "hat Ticket {number} hiermit zusammengeführt",
+      "joinedOther": "hat dieses Ticket mit {number} zusammengeführt"
+    },
+    "holidays": {
+      "open": "Freie Tage von {app}",
+      "title": "Freie Tage von {app}",
+      "hint": "Die Uhr der Erstantwort für die Tickets dieser App läuft an diesen Tagen nicht, wie an einem Wochenende. Es sind Kalendertage in der Zeitzone der App. Ein bereits offenes Ticket behält seine Frist; eine Änderung der Priorität berechnet sie mit den dann geltenden Tagen neu.",
+      "none": "Noch keine freien Tage.",
+      "day": "Tag",
+      "name": "Name (optional)",
+      "add": "Tag hinzufügen",
+      "save": "Freie Tage speichern",
+      "remove": "{day} entfernen"
+    },
+    "slaTier": "Die Frist wurde für eine App im Tarif {tier} berechnet.",
+    "tier": {
+      "free": "Free",
+      "standard": "Standard",
+      "enterprise": "Enterprise"
     }
   },
   "connect": {
@@ -6398,6 +6508,29 @@
     "opened": "Eröffnet",
     "closed": "Geschlossen",
     "reference": "Fall",
-    "case": "Fall"
+    "case": "Fall",
+    "fee": "Gebühr für die Zahlungsanfechtung",
+    "handled": "Erledigt",
+    "handledLabel": "Erledigt",
+    "allHandled": "Alle",
+    "handledYes": "Erledigt",
+    "handledNo": "Nicht erledigt",
+    "due": {
+      "overdue": "überfällig",
+      "soon": "bald fällig"
+    },
+    "notes": {
+      "title": "Notizen",
+      "hint": "Für Sie und Ihre Kolleginnen und Kollegen; Payrudder schickt sie nirgendwohin. Die Nachweise selbst reichen Sie bei Ihrem Zahlungsanbieter ein, nicht hier.",
+      "mark": "Als erledigt markieren",
+      "lift": "Erledigt-Markierung aufheben",
+      "empty": "Noch keine Notizen.",
+      "placeholder": "Notiz zu diesem Fall schreiben",
+      "add": "Notiz hinzufügen",
+      "event": {
+        "handled": "Als erledigt markiert",
+        "unhandled": "Erledigt-Markierung aufgehoben"
+      }
+    }
   }
 }

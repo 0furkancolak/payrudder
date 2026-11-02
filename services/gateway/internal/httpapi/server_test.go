@@ -115,6 +115,8 @@ type fakePlans struct {
 	lastUnblock  *plansv1.UnblockCustomerRequest
 	lastStatus   *plansv1.SetTenantStatusRequest
 	lastPause    *plansv1.SetPriceChangePauseRequest
+	lastNotice   *plansv1.SetPriceChangeNoticeRequest
+	lastSched    *plansv1.SchedulePriceChangeRequest
 	lastItems    *plansv1.GetPriceChangeRequest
 }
 

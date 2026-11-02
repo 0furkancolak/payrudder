@@ -88,6 +88,15 @@ export class MockGateway {
     return { body: this.pricePause };
   };
 
+  /** The notice rules of price changes (plan 15): the code's own to begin with. */
+  priceNotice = { default_notice_days: 30, rules: [{ country: "*", min_notice_days: 14, note: "Default floor of the code" }] as { country: string; min_notice_days: number; note: string }[], updated_by: "", update_time: null as string | null };
+
+  private priceNoticeHandler: Handler = (c) => {
+    if (c.path !== "/admin/v1/price-change-notice") return undefined;
+    if (c.method === "PUT") this.priceNotice = { default_notice_days: Number(c.body?.default_notice_days), rules: (c.body?.rules ?? []) as typeof this.priceNotice.rules, updated_by: "operator@example.com", update_time: "2026-11-02T09:00:00Z" };
+    return { body: this.priceNotice };
+  };
+
   /** The help desk's counts (the sidebar's badges): nothing waits and nothing is unread unless a test says so. */
   private supportCountsHandler: Handler = (c) => {
     if (c.method !== "GET") return undefined;
@@ -148,7 +157,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body, text: body ? undefined : (req.postData() ?? undefined) };
       this.calls.push(call);
-      for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, this.supportCountsHandler, operatorSignIn, geoHandler] as Handler[]) {
+      for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, this.priceNoticeHandler, this.supportCountsHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
         if (r) {
           if (r.raw) await route.fulfill({ status: r.status ?? 200, contentType: r.contentType ?? "application/octet-stream", body: r.raw });

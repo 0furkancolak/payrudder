@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { MockGateway, signInAsOperator } from "./gateway";
-import { ACCOUNT, APP, productGateway, signInAsAda } from "./product";
+import { ACCOUNT, APP, LIVE, productGateway, signInAsAda } from "./product";
+import { pickFilters } from "./ui";
 
 // The help desk: the organisation's tickets (open one, answer on it, mark it solved, reopen it) and the operator's inbox (filter, answer publicly or leave an
 // internal note, set status, priority and assignee). The gateway is mocked with one shared set of tickets, so what one side writes the other reads.
@@ -21,9 +22,17 @@ interface Msg {
   create_time: string;
   attachments?: File1[];
 }
+interface Link1 {
+  kind: string;
+  ref: string;
+  app_id: string;
+  environment: string;
+  tenant_id?: string;
+  app_name?: string;
+}
 interface Ev {
   id: string;
-  kind: "status" | "priority" | "assignee" | "tags";
+  kind: "status" | "priority" | "assignee" | "tags" | "merge";
   actor_kind: "customer" | "operator" | "system";
   actor_name: string;
   from_value: string;
@@ -55,6 +64,13 @@ interface Ticket {
   message_count: number;
   unread: boolean;
   tags: string[];
+  merged_into_id: string;
+  merged_into_number: number;
+  rating: number;
+  rating_comment: string;
+  rate_time: string | null;
+  links: Link1[];
+  sla_tier: string;
   messages: Msg[];
   events: Ev[];
 }
@@ -65,6 +81,7 @@ function ticket(over: Partial<Ticket> = {}): Ticket {
     id: "c0000000-0000-4000-8000-000000000001", number: 1042, account_id: ACCOUNT, account_name: "Ada Labs", app_id: APP, app_name: "Shop", opened_by: "u1", opened_by_name: "Ada",
     subject: "Paddle webhooks are late", category: "integration", priority: "high", status: "open", assignee: "", create_time: NOW, update_time: NOW, last_message_time: NOW,
     last_author: "customer", first_response_due: "2026-10-28T13:00:00Z", first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, tags: [], events: [],
+    merged_into_id: "", merged_into_number: 0, rating: 0, rating_comment: "", rate_time: null, links: [], sla_tier: "standard",
     messages: [{ id: "m1", author_kind: "customer", author_name: "Ada", body: "Since this morning.", internal: false, create_time: NOW }],
     ...over,
   };
@@ -80,9 +97,12 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     const rest: Omit<Ticket, "messages" | "events"> & { messages?: Msg[]; events?: Ev[] } = { ...t };
     delete rest.messages;
     delete rest.events;
-    return { ticket: { ...rest, tags: operator ? t.tags : [], unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events: t.events };
+    // The person sees neither the operator's labels nor the plan the deadline was counted for, and no history line that is the operator's own.
+    const events = operator ? t.events : t.events.filter((e) => ["status", "priority", "merge"].includes(e.kind));
+    return { ticket: { ...rest, tags: operator ? t.tags : [], sla_tier: operator ? t.sla_tier : "", unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events };
   };
   const find = (path: string) => tickets.find((t) => path.includes(t.id));
+  let days: { day: string; name: string }[] = [];
   gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/support/operators" ? { body: { operators: [{ email: "sam@example.com", name: "Sam" }, { email: "kim@example.com", name: "" }] } } : undefined));
   gw.on((c) => {
     const upload = /^\/(app|admin)\/v1\/support\/tickets\/([^/]+)\/messages\/([^/]+)\/attachments$/.exec(c.path);
@@ -95,10 +115,16 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
       return { status: 201, body: file };
     }
     if (/\/support\/tickets\/[^/]+\/attachments\/[^/]+$/.test(c.path) && c.method === "GET") return { body: { url: `https://files.example.test${c.path}`, expires_at: "2026-10-28T09:05:00Z" } };
-    if (c.path === "/app/v1/support/tickets" && c.method === "GET") return { body: { tickets: tickets.map((t) => view(t, false).ticket) } };
+    // The words of the messages the person can read (the server's full-text search); the page adds what it finds in the subject itself.
+    const words = (t: Ticket, operator: boolean, q: string) => t.subject.toLowerCase().includes(q) || t.messages.some((m) => (operator || !m.internal) && m.body.toLowerCase().includes(q));
+    if (c.path === "/app/v1/support/tickets" && c.method === "GET") {
+      const q = (c.query.get("search") ?? "").toLowerCase();
+      return { body: { tickets: tickets.filter((t) => !q || words(t, false, q)).map((t) => view(t, false).ticket) } };
+    }
     if (c.path === "/app/v1/support/tickets" && c.method === "POST") {
-      const b = c.body as { subject: string; category: string; priority?: string; body: string; app_id?: string };
+      const b = c.body as { subject: string; category: string; priority?: string; body: string; app_id?: string; links?: Link1[] };
       const t = ticket({ id: `c0000000-0000-4000-8000-00000000009${tickets.length}`, number: 1042 + tickets.length, subject: b.subject, category: b.category, priority: b.priority ?? "normal", app_id: b.app_id ?? "", app_name: b.app_id ? "Shop" : "",
+        links: (b.links ?? []).map((l) => ({ ...l, tenant_id: l.environment === "live" ? LIVE : "a1000000-0000-4000-8000-000000000002", app_name: "Shop" })),
         messages: [{ id: "n1", author_kind: "customer", author_name: "Ada", body: b.body, internal: false, create_time: NOW }] });
       tickets.unshift(t);
       return { status: 201, body: { ticket: view(t, false).ticket, message: t.messages[0] } };
@@ -115,6 +141,12 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
       t.status = "open";
       return { status: 201, body: { ticket: view(t, false).ticket, message: t.messages.at(-1) } };
     }
+    if (c.path.endsWith("/rating") && c.path.startsWith("/app/v1/")) {
+      const t = find(c.path)!;
+      if (!["solved", "closed"].includes(t.status)) return { status: 409, body: { error: { code: "FAILED_PRECONDITION", key: "support.ticket.not_solved", message: "no" } } };
+      Object.assign(t, { rating: Number(c.body?.rating), rating_comment: String(c.body?.comment ?? ""), rate_time: NOW });
+      return { body: { ticket: view(t, false).ticket } };
+    }
     if (c.path.endsWith("/status") && c.path.startsWith("/app/v1/")) {
       const t = find(c.path)!;
       t.status = String(c.body?.status);
@@ -123,10 +155,27 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     if (c.path === "/admin/v1/support/tickets" && c.method === "GET") {
       const status = c.query.get("status");
       const tag = c.query.get("tag");
-      const list = tickets.filter((t) => (!status ? true : status === "active" ? ["open", "pending"].includes(t.status) : t.status === status) && (c.query.get("sla_breached") !== "true" || t.sla_breached) && (!tag || t.tags.includes(tag)));
+      const q = (c.query.get("search") ?? "").toLowerCase();
+      const list = tickets.filter((t) => (!status ? true : status === "active" ? ["open", "pending"].includes(t.status) : t.status === status) && (c.query.get("sla_breached") !== "true" || t.sla_breached) && (!tag || t.tags.includes(tag)) && (!q || words(t, true, q)));
       return { body: { tickets: list.map((t) => view(t, true).ticket) } };
     }
     if (c.path.startsWith("/admin/v1/support/tickets/") && c.method === "GET") return { body: view(find(c.path)!, true) };
+    const merge = /^\/admin\/v1\/support\/tickets\/([^/]+)\/merge$/.exec(c.path);
+    if (merge && c.method === "POST") {
+      const from = tickets.find((t) => t.id === merge[1])!;
+      const into = tickets.find((t) => t.id === c.body?.into_ticket_id)!;
+      into.messages = [...into.messages, ...from.messages].sort((a, b) => a.create_time.localeCompare(b.create_time));
+      from.messages = [];
+      Object.assign(from, { status: "closed", merged_into_id: into.id, merged_into_number: into.number });
+      into.events.push({ id: "em", kind: "merge", actor_kind: "operator", actor_name: "user1@example.com", from_value: `#${from.number}`, to_value: "", create_time: NOW });
+      from.events.push({ id: "em", kind: "merge", actor_kind: "operator", actor_name: "user1@example.com", from_value: "", to_value: `#${into.number}`, create_time: NOW });
+      return { body: { ticket: view(from, true).ticket, into_ticket: view(into, true).ticket } };
+    }
+    const holidays = /^\/admin\/v1\/support\/apps\/([^/]+)\/holidays$/.exec(c.path);
+    if (holidays) {
+      if (c.method === "PUT") days = (c.body?.holidays ?? []) as { day: string; name: string }[];
+      return { body: c.method === "PUT" ? { holidays: days } : { app_name: "Shop", holidays: days } };
+    }
     if (c.path.endsWith("/replies") && c.path.startsWith("/admin/v1/")) {
       const t = find(c.path)!;
       const internal = c.body?.internal === true;
@@ -142,6 +191,7 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     if (c.path.startsWith("/admin/v1/support/tickets/") && c.method === "PATCH") {
       const t = find(c.path)!;
       const patch = Object.fromEntries(Object.entries(c.body ?? {}).filter(([, v]) => v !== undefined));
+      if (Array.isArray(patch.links)) patch.links = (patch.links as Link1[]).map((l) => ({ ...l, tenant_id: l.environment === "live" ? LIVE : "a1000000-0000-4000-8000-000000000002", app_name: "Shop" }));
       if (Array.isArray(patch.tags) && patch.tags.join(",") !== t.tags.join(",")) {
         t.events.push({ id: `e${t.events.length + 1}`, kind: "tags", actor_kind: "operator", actor_name: "user1@example.com", from_value: t.tags.join(","), to_value: patch.tags.join(","), create_time: NOW });
       }
@@ -521,7 +571,8 @@ test.describe("support: tags, canned replies, the report and the badges", () => 
     gw.on((c) =>
       c.method === "GET" && c.path === "/admin/v1/support/report"
         ? { body: { waiting: 4, breached: 1, by_status: [{ value: "open", count: 4 }, { value: "pending", count: 2 }, { value: "solved", count: 9 }], by_priority: [{ value: "high", count: 1 }, { value: "normal", count: 5 }],
-            window_days: 30, opened: 20, answered: 18, answered_on_time: 15, median_first_answer_seconds: 5400, average_first_answer_seconds: 14_400 } }
+            window_days: 30, opened: 20, answered: 18, answered_on_time: 15, median_first_answer_seconds: 5400, average_first_answer_seconds: 14_400,
+            rated: 8, average_rating: 4.25, ratings: [{ value: "1", count: 0 }, { value: "2", count: 1 }, { value: "3", count: 0 }, { value: "4", count: 3 }, { value: "5", count: 4 }] } }
         : undefined,
     );
     await gw.install(page);
@@ -536,6 +587,10 @@ test.describe("support: tags, canned replies, the report and the badges", () => 
     await expect(report.getByTestId("report-by-status")).toContainText("Waiting for us 4");
     await expect(report.getByTestId("report-by-priority")).toContainText("Normal 5");
     await expect(page.getByTestId("nav-badge-supportInbox")).toHaveText("4");
+    // The ratings of the same window: the average, how many, and how many gave each.
+    await expect(report.getByTestId("report-rating-average")).toHaveText("4.3 of 5 from 8 ratings");
+    await expect(report.getByTestId("report-rating-counts")).toContainText("5 stars 4");
+    await expect(report.getByTestId("report-rating-counts")).toContainText("2 stars 1");
   });
 
   test("the help page's link counts the tickets with news, and nothing when there are none", async ({ page }) => {
@@ -550,5 +605,177 @@ test.describe("support: tags, canned replies, the report and the badges", () => 
     await page.goto("/app/support");
     await expect(page.getByTestId("support-row-1042")).toBeVisible();
     await expect(page.getByTestId("nav-badge-support")).toHaveCount(0);
+  });
+});
+
+test.describe("support: search, links, ratings, merges and days off", () => {
+  test("the person's search finds a ticket by the words of its messages, not only by its subject", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, [
+      ticket({ messages: [{ id: "m1", author_kind: "customer", author_name: "Ada", body: "The webhook retries stopped after the deploy.", internal: false, create_time: NOW }] }),
+      ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1041, subject: "Invoice layout", messages: [
+        { id: "m2", author_kind: "customer", author_name: "Ada", body: "The logo is too big.", internal: false, create_time: NOW },
+        { id: "m3", author_kind: "operator", author_name: "Sam", body: "SECRET-TEAM-NOTE about retries", internal: true, create_time: NOW },
+      ] }),
+    ]);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await expect(page.getByTestId("support-row-1041")).toBeVisible();
+    await page.getByRole("searchbox").or(page.getByPlaceholder(/search/i)).first().fill("retries");
+    // 1042 says it in a message and passes; 1041 says it only in a note the person never reads, so it does not.
+    await expect(page.getByTestId("support-row-1042")).toBeVisible();
+    await expect(page.getByTestId("support-row-1041")).toHaveCount(0);
+    expect(gw.called("GET", "/app/v1/support/tickets").some((c) => c.query.get("search") === "retries")).toBe(true);
+  });
+
+  test("a new ticket can point at a customer, an invoice or a subscription of its app; the thread shows the link as a link to that page", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, []);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await page.getByTestId("support-new").click();
+    const sheet = page.getByTestId("support-new-sheet");
+    await expect(sheet.getByTestId("ticket-links")).toHaveCount(0); // a link points at a record of an app: none is chosen yet
+    await sheet.getByTestId("support-subject").fill("Wrong total");
+    await sheet.getByTestId("support-app").selectOption({ index: 1 });
+    await sheet.getByTestId("link-kind").selectOption("invoice");
+    await sheet.getByTestId("link-ref").fill("0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e");
+    await sheet.getByTestId("link-add").click();
+    await expect(sheet.getByTestId("ticket-link")).toHaveCount(1);
+    await sheet.getByTestId("support-body").fill("The total does not match.");
+    await sheet.getByTestId("support-submit").click();
+    await expect(page.getByTestId("support-row-1042")).toContainText("Wrong total");
+    expect((gw.called("POST", "/app/v1/support/tickets")[0]?.body as { links: unknown[] }).links).toEqual([{ kind: "invoice", ref: "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e", app_id: APP, environment: "live" }]);
+
+    await page.getByTestId("support-row-1042").click();
+    const link = page.getByTestId("support-ticket").getByTestId("ticket-link").getByRole("link");
+    await expect(link).toHaveAttribute("href", new RegExp(`/app/t/${LIVE}/invoices\\?.*invoice=0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e`));
+  });
+
+  test("a solved ticket is rated from one to five with a comment; the rating is shown back and can be changed; an open ticket takes none", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    const tickets = helpDesk(gw, [ticket({ status: "solved" }), ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1041, subject: "Still open" })]);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await page.getByTestId("support-row-1041").click();
+    await expect(page.getByTestId("ticket-rating")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    await page.getByTestId("support-row-1042").click();
+    const rating = page.getByTestId("ticket-rating");
+    await expect(rating.getByTestId("rating-send")).toBeDisabled();
+    await rating.getByTestId("rating-star-4").click();
+    await rating.getByTestId("rating-comment").fill("Fast and clear.");
+    await rating.getByTestId("rating-send").click();
+    await expect(rating.getByTestId("rating-shown")).toHaveAccessibleName("4 of 5");
+    await expect(rating).toContainText("Fast and clear.");
+    expect(gw.called("POST", /\/rating$/)[0]?.body).toEqual({ rating: 4, comment: "Fast and clear." });
+    expect(tickets[0]?.rating).toBe(4);
+    await rating.getByTestId("rating-change").click();
+    await rating.getByTestId("rating-star-2").click();
+    await rating.getByTestId("rating-send").click();
+    await expect(rating.getByTestId("rating-shown")).toHaveAccessibleName("2 of 5");
+  });
+
+  test("a merged ticket points at the one it joined and takes no reply; the history says so", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, [ticket({ status: "closed", merged_into_id: "c0000000-0000-4000-8000-000000000002", merged_into_number: 1043, messages: [], events: [
+      { id: "e1", kind: "merge", actor_kind: "operator", actor_name: "Sam", from_value: "", to_value: "#1043", create_time: NOW },
+    ] })]);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await page.getByTestId("support-row-1042").click();
+    const detail = page.getByTestId("support-ticket");
+    await expect(detail.getByTestId("support-merged")).toContainText("merged into #1043");
+    await expect(detail.getByTestId("support-event-merge")).toContainText("merged this ticket into #1043");
+    await expect(detail.getByTestId("support-reply")).toHaveCount(0);
+    await expect(detail.getByTestId("support-closed")).toHaveCount(0);
+  });
+
+  test("the operator sees the rating, the plan the deadline was counted for and the links, and edits the links", async ({ page }) => {
+    const gw = new MockGateway();
+    const tickets = helpDesk(gw, [ticket({ status: "solved", rating: 5, rating_comment: "Thanks!", sla_tier: "enterprise", links: [{ kind: "customer", ref: "cus_1", app_id: APP, environment: "live", tenant_id: LIVE, app_name: "Shop" }] })]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await pickFilters(page, "Status", "Any");
+    await page.getByTestId("inbox-row-1042").click();
+    const detail = page.getByTestId("inbox-ticket");
+    await expect(detail.getByTestId("ticket-rating")).toContainText("Rated 5 of 5 by the customer");
+    await expect(detail.getByTestId("ticket-rating")).toContainText("Thanks!");
+    await expect(detail.getByTestId("ticket-tier")).toContainText("enterprise plan");
+    await expect(detail.getByTestId("ticket-link")).toContainText("Customer cus_1");
+    await detail.getByTestId("link-kind").selectOption("subscription");
+    await detail.getByTestId("link-ref").fill("0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e");
+    await detail.getByTestId("link-env").selectOption("sandbox");
+    await detail.getByTestId("link-add").click();
+    await expect(detail.getByTestId("ticket-link")).toHaveCount(2);
+    expect((gw.called("PATCH", /\/admin\/v1\/support\/tickets\//)[0]?.body as { links: { kind: string }[] }).links.map((l) => l.kind)).toEqual(["customer", "subscription"]);
+    await detail.getByTestId("ticket-link-remove").first().click();
+    await expect(detail.getByTestId("ticket-link")).toHaveCount(1);
+    expect(tickets[0]?.links.map((l) => l.kind)).toEqual(["subscription"]);
+  });
+
+  test("the operator merges a ticket into another of the same person: only that person's tickets are offered, the messages move and the ticket closes with a pointer", async ({ page }) => {
+    const gw = new MockGateway();
+    const t1 = ticket();
+    const t2 = ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1043, subject: "Webhooks again", create_time: "2026-10-28T10:00:00Z", messages: [{ id: "m2", author_kind: "customer", author_name: "Ada", body: "Same problem, more detail.", internal: false, create_time: "2026-10-28T10:00:00Z" }] });
+    const other = ticket({ id: "c0000000-0000-4000-8000-000000000003", number: 1044, subject: "Someone else", opened_by: "u2", opened_by_name: "Bob" });
+    helpDesk(gw, [t1, t2, other]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await pickFilters(page, "Status", "Any");
+    await page.getByTestId("inbox-row-1043").click();
+    await page.getByTestId("merge-open").click();
+    const dialog = page.getByTestId("merge-dialog");
+    await expect(dialog.getByTestId("merge-into").locator("option")).toHaveText(["#1042 · Paddle webhooks are late"]);
+    await dialog.getByTestId("merge-confirm").click();
+    expect(gw.called("POST", /\/merge$/)[0]?.body).toEqual({ into_ticket_id: t1.id });
+    await expect(page.getByTestId("ticket-merged")).toContainText("merged into #1042");
+    await expect(page.getByTestId("inbox-ticket").getByTestId("inbox-reply")).toHaveCount(0);
+    expect(t1.messages.map((m) => m.body)).toEqual(["Since this morning.", "Same problem, more detail."]);
+    expect(t2.status).toBe("closed");
+  });
+
+  test("the days off of an app are listed, added and removed in a dialog and saved whole", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [ticket()]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await page.getByTestId("inbox-row-1042").click();
+    await page.getByTestId("holidays-open").click();
+    const dialog = page.getByTestId("holidays-dialog");
+    await expect(dialog).toContainText("Days off of Shop");
+    await dialog.getByTestId("holiday-day").fill("2026-12-25");
+    await dialog.getByTestId("holiday-name").fill("Christmas");
+    await dialog.getByTestId("holiday-add").click();
+    await dialog.getByTestId("holiday-day").fill("2026-12-24");
+    await dialog.getByTestId("holiday-add").click();
+    await dialog.getByTestId("holiday-remove-2026-12-24").click();
+    await dialog.getByTestId("holidays-save").click();
+    await expect.poll(() => gw.called("PUT", /\/holidays$/).length).toBe(1);
+    expect(gw.called("PUT", /\/holidays$/)[0]?.body).toEqual({ holidays: [{ day: "2026-12-25", name: "Christmas" }] });
+  });
+
+  test("the operator's search is sent to the server and finds a ticket by the words of its messages, notes included", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [
+      ticket({ subject: "Webhooks", messages: [{ id: "m1", author_kind: "operator", author_name: "Sam", body: "SECRET-TEAM-NOTE: refund approved", internal: true, create_time: NOW }] }),
+      ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1041, subject: "Invoice layout" }),
+    ]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await page.getByTestId("filter-search").fill("refund");
+    await page.getByTestId("filter-search").press("Enter");
+    await expect(page.getByTestId("inbox-row-1042")).toBeVisible();
+    await expect(page.getByTestId("inbox-row-1041")).toHaveCount(0);
+    expect(gw.called("GET", "/admin/v1/support/tickets").some((c) => c.query.get("search") === "refund")).toBe(true);
   });
 });

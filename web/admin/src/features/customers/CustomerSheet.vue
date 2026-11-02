@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { addressLine, useCustomerBlockEvents } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CorrectUsageSheet from "./CorrectUsageSheet.vue";
+import CustomerCardRequest from "./CustomerCardRequest.vue";
 import CustomerPaymentPage from "./CustomerPaymentPage.vue";
 import UpcomingInvoiceCard from "./UpcomingInvoiceCard.vue";
 import { countryName, flagOf, headline, isBlocked, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
@@ -120,6 +121,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />
+      <CustomerCardRequest :tenant-id="tenantId" :customer="id" />
       <Button size="sm" variant="outline" data-testid="customer-correct-usage" @click="correcting = true"><Undo2 aria-hidden="true" />{{ t("billing.corrections.action") }}</Button>
       <Button v-if="!blocked" size="sm" variant="outline" data-testid="customer-block" @click="emit('block')"><Ban aria-hidden="true" />{{ t("billing.customers.block.action") }}</Button>
       <DropdownMenu>

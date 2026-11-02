@@ -527,22 +527,55 @@ export const invoiceLines = [
 ];
 
 const dispute = (id: string, invoice: string, extra: { amount_minor: string; outcome: string } & Record<string, unknown>) => ({
-  id, provider: "stripe", dispute_id: `du_${id}`, payment_ref: `pi_${id}`, invoice_id: invoice, currency: "USD", formal: true, provider_status: "needs_response", ...extra,
+  id, provider: "stripe", dispute_id: `du_${id}`, payment_ref: `pi_${id}`, invoice_id: invoice, currency: "USD", formal: true, provider_status: "needs_response", handled: false, note_count: 0, ...extra,
 });
 /** An open chargeback with its evidence due, a lost one, and a closed inquiry: one per invoice of the billing mocks, newest first. */
 export const DISPUTES = [
-  dispute("1", INVOICE_1, { amount_minor: "4900", outcome: "open", reason: "fraudulent", evidence_due_time: "2026-10-28T09:00:00Z", opened_time: "2026-10-20T08:00:00Z" }),
+  dispute("1", INVOICE_1, { amount_minor: "4900", outcome: "open", reason: "fraudulent", evidence_due_time: "2026-10-28T09:00:00Z", opened_time: "2026-10-20T08:00:00Z", fee_minor: "1500", fee_currency: "USD" }),
   dispute("2", INVOICE_2, { provider: "paddle", amount_minor: "29900", outcome: "lost", provider_status: "lost", reason: "subscription_canceled", evidence_due_time: "2026-10-12T09:00:00Z", opened_time: "2026-10-10T08:00:00Z", closed_time: "2026-10-15T10:00:00Z" }),
-  dispute("3", INVOICE_3, { amount_minor: "1500", outcome: "won", formal: false, provider_status: "warning_closed", reason: "product_not_received", opened_time: "2026-10-05T08:00:00Z", closed_time: "2026-10-07T10:00:00Z" }),
+  dispute("3", INVOICE_3, { amount_minor: "1500", outcome: "won", formal: false, provider_status: "warning_closed", reason: "product_not_received", opened_time: "2026-10-05T08:00:00Z", closed_time: "2026-10-07T10:00:00Z", handled: true, handled_time: "2026-10-06T10:00:00Z", handled_by: "ada@example.com", note_count: 1 }),
 ];
 
-/** Answers GET /v1/disputes with DISPUTES (the invoice and outcome filters applied as the API does); put it after billingGateway, whose answer is none. */
-export function disputesGateway(gw: MockGateway): MockGateway {
+/**
+ * Answers GET /v1/disputes with DISPUTES (the invoice and outcome filters applied as the API does) and what a seller does with a case: its history, a note, the handled
+ * mark, kept for as long as the gateway lives. Put it after billingGateway, whose answer is none. `viewer` leaves out who did what, as the API does for a viewer.
+ */
+export function disputesGateway(gw: MockGateway, viewer = false): MockGateway {
+  const cases = DISPUTES.map((d) => ({ ...d }) as Record<string, unknown>);
+  const events = new Map<string, Record<string, unknown>[]>();
+  let next = 1;
+  const add = (id: string, action: string, note = "") => {
+    const e: Record<string, unknown> = { id: String(next++), action, create_time: "2026-10-21T11:00:00Z", ...(note ? { note } : {}), ...(viewer ? {} : { actor: "ada@example.com" }) };
+    events.set(id, [e, ...(events.get(id) ?? [])]);
+    return e;
+  };
   return gw.on((c) => {
+    const m = /^\/v1\/disputes\/([^/]+)\/(history|notes|handled)$/.exec(c.path);
+    if (m) {
+      const [, id, what] = m;
+      const found = cases.find((d) => d.id === id);
+      if (!found) return { status: 404, body: { error: { code: "NOT_FOUND", key: "payments.dispute.not_found", message: "no such dispute" } } };
+      if (what === "history" && c.method === "GET") return { body: { events: events.get(id!) ?? [] } };
+      if (what === "notes" && c.method === "POST") {
+        const note = String(c.body?.note ?? "").trim();
+        if (!note) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "payments.dispute.note_required", message: "write something" } } };
+        found.note_count = Number(found.note_count) + 1;
+        return { status: 201, body: add(id!, "note", note) };
+      }
+      if (what === "handled" && c.method === "PUT") {
+        const on = c.body?.handled === true;
+        if (on !== (found.handled === true)) add(id!, on ? "handled" : "unhandled");
+        found.handled = on;
+        if (on) Object.assign(found, { handled_time: "2026-10-21T11:00:00Z", ...(viewer ? {} : { handled_by: "ada@example.com" }) });
+        else delete found.handled_time;
+        return { body: found };
+      }
+      return undefined;
+    }
     if (c.method !== "GET" || c.path !== "/v1/disputes") return undefined;
     const invoice = c.query.get("invoice_id");
     const outcome = c.query.get("outcome");
-    return { body: { disputes: DISPUTES.filter((d) => (!invoice || d.invoice_id === invoice) && (!outcome || d.outcome === outcome)) } };
+    return { body: { disputes: cases.filter((d) => (!invoice || d.invoice_id === invoice) && (!outcome || d.outcome === outcome)) } };
   });
 }
 

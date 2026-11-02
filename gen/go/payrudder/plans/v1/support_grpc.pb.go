@@ -24,10 +24,14 @@ const (
 	SupportService_GetMySupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/GetMySupportTicket"
 	SupportService_ReplyMySupportTicket_FullMethodName       = "/payrudder.plans.v1.SupportService/ReplyMySupportTicket"
 	SupportService_SetMySupportTicketStatus_FullMethodName   = "/payrudder.plans.v1.SupportService/SetMySupportTicketStatus"
+	SupportService_RateMySupportTicket_FullMethodName        = "/payrudder.plans.v1.SupportService/RateMySupportTicket"
 	SupportService_ListSupportTickets_FullMethodName         = "/payrudder.plans.v1.SupportService/ListSupportTickets"
 	SupportService_GetSupportTicket_FullMethodName           = "/payrudder.plans.v1.SupportService/GetSupportTicket"
 	SupportService_ReplySupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/ReplySupportTicket"
 	SupportService_UpdateSupportTicket_FullMethodName        = "/payrudder.plans.v1.SupportService/UpdateSupportTicket"
+	SupportService_MergeSupportTickets_FullMethodName        = "/payrudder.plans.v1.SupportService/MergeSupportTickets"
+	SupportService_GetSupportHolidays_FullMethodName         = "/payrudder.plans.v1.SupportService/GetSupportHolidays"
+	SupportService_SetSupportHolidays_FullMethodName         = "/payrudder.plans.v1.SupportService/SetSupportHolidays"
 	SupportService_CountMySupportUnread_FullMethodName       = "/payrudder.plans.v1.SupportService/CountMySupportUnread"
 	SupportService_GetSupportReport_FullMethodName           = "/payrudder.plans.v1.SupportService/GetSupportReport"
 	SupportService_ListSupportOperators_FullMethodName       = "/payrudder.plans.v1.SupportService/ListSupportOperators"
@@ -56,6 +60,12 @@ const (
 // does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
 // messages only.
 //
+// Business hours: the deadline of the first answer follows the ticket's priority and the plan (tier) of its app (free, standard or enterprise; a default table in the
+// domain package, not agreed) and does not run on the app's days off, a list of dates the operator keeps per app (GetSupportHolidays). A person who has had a ticket
+// solved or closed may rate it from 1 to 5 with a comment; the report shows the ratings. The operator can merge two tickets of one person. A ticket may link to a
+// customer, an invoice or a subscription of one of the account's apps (shown as a link in the console). The list of tickets can be searched by the words of the
+// messages (Postgres full text, the person's list over the public messages only).
+//
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
 type SupportServiceClient interface {
@@ -66,12 +76,21 @@ type SupportServiceClient interface {
 	ReplyMySupportTicket(ctx context.Context, in *ReplyMySupportTicketRequest, opts ...grpc.CallOption) (*ReplyMySupportTicketResponse, error)
 	// SetMySupportTicketStatus lets the person mark the ticket solved or reopen it.
 	SetMySupportTicketStatus(ctx context.Context, in *SetMySupportTicketStatusRequest, opts ...grpc.CallOption) (*SetMySupportTicketStatusResponse, error)
+	// RateMySupportTicket records how the person found the help on a solved or closed ticket: 1 to 5 and an optional comment. A second call replaces the first.
+	RateMySupportTicket(ctx context.Context, in *RateMySupportTicketRequest, opts ...grpc.CallOption) (*RateMySupportTicketResponse, error)
 	ListSupportTickets(ctx context.Context, in *ListSupportTicketsRequest, opts ...grpc.CallOption) (*ListSupportTicketsResponse, error)
 	// GetSupportTicket returns the ticket with its whole thread, internal notes included.
 	GetSupportTicket(ctx context.Context, in *GetSupportTicketRequest, opts ...grpc.CallOption) (*GetSupportTicketResponse, error)
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(ctx context.Context, in *ReplySupportTicketRequest, opts ...grpc.CallOption) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(ctx context.Context, in *UpdateSupportTicketRequest, opts ...grpc.CallOption) (*UpdateSupportTicketResponse, error)
+	// MergeSupportTickets moves the messages (and their files) of one ticket into another ticket of the same person and account and closes the first with a pointer to
+	// the second. Neither may be merged already, and the target may not be closed.
+	MergeSupportTickets(ctx context.Context, in *MergeSupportTicketsRequest, opts ...grpc.CallOption) (*MergeSupportTicketsResponse, error)
+	// GetSupportHolidays lists the days off of an app, on which the first-answer clock of its tickets does not run.
+	GetSupportHolidays(ctx context.Context, in *GetSupportHolidaysRequest, opts ...grpc.CallOption) (*GetSupportHolidaysResponse, error)
+	// SetSupportHolidays replaces the days off of an app. It does not move the deadline of a ticket already open (a change of its priority does).
+	SetSupportHolidays(ctx context.Context, in *SetSupportHolidaysRequest, opts ...grpc.CallOption) (*SetSupportHolidaysResponse, error)
 	// CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
 	CountMySupportUnread(ctx context.Context, in *CountMySupportUnreadRequest, opts ...grpc.CallOption) (*CountMySupportUnreadResponse, error)
 	// GetSupportReport counts the queue (what waits for the operator, what is late, tickets by status and priority) and reports the first-answer times of the last 30 days.
@@ -150,6 +169,16 @@ func (c *supportServiceClient) SetMySupportTicketStatus(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *supportServiceClient) RateMySupportTicket(ctx context.Context, in *RateMySupportTicketRequest, opts ...grpc.CallOption) (*RateMySupportTicketResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RateMySupportTicketResponse)
+	err := c.cc.Invoke(ctx, SupportService_RateMySupportTicket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *supportServiceClient) ListSupportTickets(ctx context.Context, in *ListSupportTicketsRequest, opts ...grpc.CallOption) (*ListSupportTicketsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSupportTicketsResponse)
@@ -184,6 +213,36 @@ func (c *supportServiceClient) UpdateSupportTicket(ctx context.Context, in *Upda
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateSupportTicketResponse)
 	err := c.cc.Invoke(ctx, SupportService_UpdateSupportTicket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) MergeSupportTickets(ctx context.Context, in *MergeSupportTicketsRequest, opts ...grpc.CallOption) (*MergeSupportTicketsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MergeSupportTicketsResponse)
+	err := c.cc.Invoke(ctx, SupportService_MergeSupportTickets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) GetSupportHolidays(ctx context.Context, in *GetSupportHolidaysRequest, opts ...grpc.CallOption) (*GetSupportHolidaysResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSupportHolidaysResponse)
+	err := c.cc.Invoke(ctx, SupportService_GetSupportHolidays_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) SetSupportHolidays(ctx context.Context, in *SetSupportHolidaysRequest, opts ...grpc.CallOption) (*SetSupportHolidaysResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSupportHolidaysResponse)
+	err := c.cc.Invoke(ctx, SupportService_SetSupportHolidays_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -297,6 +356,12 @@ func (c *supportServiceClient) GetSupportAttachment(ctx context.Context, in *Get
 // does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
 // messages only.
 //
+// Business hours: the deadline of the first answer follows the ticket's priority and the plan (tier) of its app (free, standard or enterprise; a default table in the
+// domain package, not agreed) and does not run on the app's days off, a list of dates the operator keeps per app (GetSupportHolidays). A person who has had a ticket
+// solved or closed may rate it from 1 to 5 with a comment; the report shows the ratings. The operator can merge two tickets of one person. A ticket may link to a
+// customer, an invoice or a subscription of one of the account's apps (shown as a link in the console). The list of tickets can be searched by the words of the
+// messages (Postgres full text, the person's list over the public messages only).
+//
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
 type SupportServiceServer interface {
@@ -307,12 +372,21 @@ type SupportServiceServer interface {
 	ReplyMySupportTicket(context.Context, *ReplyMySupportTicketRequest) (*ReplyMySupportTicketResponse, error)
 	// SetMySupportTicketStatus lets the person mark the ticket solved or reopen it.
 	SetMySupportTicketStatus(context.Context, *SetMySupportTicketStatusRequest) (*SetMySupportTicketStatusResponse, error)
+	// RateMySupportTicket records how the person found the help on a solved or closed ticket: 1 to 5 and an optional comment. A second call replaces the first.
+	RateMySupportTicket(context.Context, *RateMySupportTicketRequest) (*RateMySupportTicketResponse, error)
 	ListSupportTickets(context.Context, *ListSupportTicketsRequest) (*ListSupportTicketsResponse, error)
 	// GetSupportTicket returns the ticket with its whole thread, internal notes included.
 	GetSupportTicket(context.Context, *GetSupportTicketRequest) (*GetSupportTicketResponse, error)
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(context.Context, *ReplySupportTicketRequest) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error)
+	// MergeSupportTickets moves the messages (and their files) of one ticket into another ticket of the same person and account and closes the first with a pointer to
+	// the second. Neither may be merged already, and the target may not be closed.
+	MergeSupportTickets(context.Context, *MergeSupportTicketsRequest) (*MergeSupportTicketsResponse, error)
+	// GetSupportHolidays lists the days off of an app, on which the first-answer clock of its tickets does not run.
+	GetSupportHolidays(context.Context, *GetSupportHolidaysRequest) (*GetSupportHolidaysResponse, error)
+	// SetSupportHolidays replaces the days off of an app. It does not move the deadline of a ticket already open (a change of its priority does).
+	SetSupportHolidays(context.Context, *SetSupportHolidaysRequest) (*SetSupportHolidaysResponse, error)
 	// CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
 	CountMySupportUnread(context.Context, *CountMySupportUnreadRequest) (*CountMySupportUnreadResponse, error)
 	// GetSupportReport counts the queue (what waits for the operator, what is late, tickets by status and priority) and reports the first-answer times of the last 30 days.
@@ -356,6 +430,9 @@ func (UnimplementedSupportServiceServer) ReplyMySupportTicket(context.Context, *
 func (UnimplementedSupportServiceServer) SetMySupportTicketStatus(context.Context, *SetMySupportTicketStatusRequest) (*SetMySupportTicketStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetMySupportTicketStatus not implemented")
 }
+func (UnimplementedSupportServiceServer) RateMySupportTicket(context.Context, *RateMySupportTicketRequest) (*RateMySupportTicketResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RateMySupportTicket not implemented")
+}
 func (UnimplementedSupportServiceServer) ListSupportTickets(context.Context, *ListSupportTicketsRequest) (*ListSupportTicketsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSupportTickets not implemented")
 }
@@ -367,6 +444,15 @@ func (UnimplementedSupportServiceServer) ReplySupportTicket(context.Context, *Re
 }
 func (UnimplementedSupportServiceServer) UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateSupportTicket not implemented")
+}
+func (UnimplementedSupportServiceServer) MergeSupportTickets(context.Context, *MergeSupportTicketsRequest) (*MergeSupportTicketsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MergeSupportTickets not implemented")
+}
+func (UnimplementedSupportServiceServer) GetSupportHolidays(context.Context, *GetSupportHolidaysRequest) (*GetSupportHolidaysResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSupportHolidays not implemented")
+}
+func (UnimplementedSupportServiceServer) SetSupportHolidays(context.Context, *SetSupportHolidaysRequest) (*SetSupportHolidaysResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetSupportHolidays not implemented")
 }
 func (UnimplementedSupportServiceServer) CountMySupportUnread(context.Context, *CountMySupportUnreadRequest) (*CountMySupportUnreadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CountMySupportUnread not implemented")
@@ -506,6 +592,24 @@ func _SupportService_SetMySupportTicketStatus_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SupportService_RateMySupportTicket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RateMySupportTicketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).RateMySupportTicket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_RateMySupportTicket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).RateMySupportTicket(ctx, req.(*RateMySupportTicketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SupportService_ListSupportTickets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSupportTicketsRequest)
 	if err := dec(in); err != nil {
@@ -574,6 +678,60 @@ func _SupportService_UpdateSupportTicket_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SupportServiceServer).UpdateSupportTicket(ctx, req.(*UpdateSupportTicketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_MergeSupportTickets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MergeSupportTicketsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).MergeSupportTickets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_MergeSupportTickets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).MergeSupportTickets(ctx, req.(*MergeSupportTicketsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_GetSupportHolidays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSupportHolidaysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).GetSupportHolidays(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_GetSupportHolidays_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).GetSupportHolidays(ctx, req.(*GetSupportHolidaysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_SetSupportHolidays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSupportHolidaysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).SetSupportHolidays(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_SetSupportHolidays_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).SetSupportHolidays(ctx, req.(*SetSupportHolidaysRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -768,6 +926,10 @@ var SupportService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SupportService_SetMySupportTicketStatus_Handler,
 		},
 		{
+			MethodName: "RateMySupportTicket",
+			Handler:    _SupportService_RateMySupportTicket_Handler,
+		},
+		{
 			MethodName: "ListSupportTickets",
 			Handler:    _SupportService_ListSupportTickets_Handler,
 		},
@@ -782,6 +944,18 @@ var SupportService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSupportTicket",
 			Handler:    _SupportService_UpdateSupportTicket_Handler,
+		},
+		{
+			MethodName: "MergeSupportTickets",
+			Handler:    _SupportService_MergeSupportTickets_Handler,
+		},
+		{
+			MethodName: "GetSupportHolidays",
+			Handler:    _SupportService_GetSupportHolidays_Handler,
+		},
+		{
+			MethodName: "SetSupportHolidays",
+			Handler:    _SupportService_SetSupportHolidays_Handler,
 		},
 		{
 			MethodName: "CountMySupportUnread",

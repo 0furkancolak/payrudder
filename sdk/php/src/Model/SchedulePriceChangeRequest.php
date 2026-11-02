@@ -18,12 +18,14 @@ final class SchedulePriceChangeRequest implements RequestBody
      * @param int $fromVersion
      * @param int|null $toVersion
      * @param int|null $noticeDays
+     * @param string|null $effectiveFrom
      * @param bool|null $dryRun
      */
     public function __construct(
         public readonly int $fromVersion,
         public readonly ?int $toVersion = null,
         public readonly ?int $noticeDays = null,
+        public readonly ?string $effectiveFrom = null,
         public readonly ?bool $dryRun = null,
     ) {}
 
@@ -36,6 +38,7 @@ final class SchedulePriceChangeRequest implements RequestBody
             'from_version' => $this->fromVersion,
             'to_version' => $this->toVersion,
             'notice_days' => $this->noticeDays,
+            'effective_from' => $this->effectiveFrom,
             'dry_run' => $this->dryRun,
         ]);
     }

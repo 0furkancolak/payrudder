@@ -185,3 +185,19 @@ export function useSubmitAppeal(appId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: tenantKeys.hold(toValue(appId)) }),
   });
 }
+
+export const noticeKey = ["price-change-notice"] as const;
+
+/** The notice rules of price changes (plan 15): the default notice and the least notice per country. Not legal advice. */
+export function usePriceChangeNotice() {
+  return useQuery({ queryKey: noticeKey, queryFn: () => unwrap(api.GET("/admin/v1/price-change-notice")) });
+}
+
+/** Replaces the default notice and the whole table of the least notice per country. */
+export function useSetPriceChangeNotice() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: components["schemas"]["SetPriceChangeNoticeRequest"]) => unwrap(api.PUT("/admin/v1/price-change-notice", { body: v })),
+    onSuccess: (data) => queries.setQueryData(noticeKey, data),
+  });
+}

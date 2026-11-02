@@ -315,7 +315,7 @@ type SetTenantRetentionParams struct {
 	RetentionUntil *time.Time
 }
 
-// A ban starts the retention period (the first one: banning again after a change of ban keeps the date), and anything else ends it.
+// A ban starts the retention period; leaving the ban ends it (the commands decide which, in the transaction of the status change).
 func (q *Queries) SetTenantRetention(ctx context.Context, arg SetTenantRetentionParams) error {
 	_, err := q.db.Exec(ctx, setTenantRetention, arg.LiveTenantID, arg.RetentionUntil)
 	return err

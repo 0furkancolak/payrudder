@@ -31,12 +31,15 @@ import (
 // PriceChangeTopic is the Kafka topic of the PriceChangeScheduled fact (docs/04-messaging.md), written to the outbox and relayed like subscription.trial-will-end.v1.
 const PriceChangeTopic = "subscription.price-change.v1"
 
-// Notice days: the least a customer must be told before a new price starts, and the default when the request names none. One floor for every country: a table of the
-// legal minimum per country needs a reviewer's sign-off (plan 15) and is not built.
+// Notice days: the least a customer must be told before a new price starts (the code's floor, a guess), and the default when nothing is configured. The operator's
+// table (domain.NoticeRules) can raise the floor per country and change the default; its rows are UNVERIFIED and not legal advice.
 const (
-	MinNoticeDays     = 14
-	DefaultNoticeDays = 30
+	MinNoticeDays     = domain.MinNoticeDays
+	DefaultNoticeDays = domain.DefaultNoticeDays
 )
+
+// maxEffectiveFromDays bounds how far ahead a price change may name its date (default, not agreed): two years.
+const maxEffectiveFromDays = 730
 
 // pauseCheckEvery is how many subscriptions a run handles between two looks at the kill switch: a pause stops a run within a hundred subscriptions.
 const pauseCheckEvery = 100
@@ -62,6 +65,43 @@ func (c *Commands) checkNotPaused(ctx context.Context) error {
 	return nil
 }
 
+// NoticeSource reads the operator's notice rules (plan 15). They are rows of the pooled database, which a tenant placed in a cell cannot reach from its own
+// transaction, so they are read on the system pool.
+type NoticeSource func(ctx context.Context) (domain.NoticeRules, error)
+
+// WithNotice makes the commands honour the operator's notice rules; without it the notice is 30 days by default and 14 at least for every country.
+func (c *Commands) WithNotice(n NoticeSource) *Commands {
+	c.notice = n
+	return c
+}
+
+// noticeRules is the operator's notice rules, or the defaults when none are wired.
+func (c *Commands) noticeRules(ctx context.Context) (domain.NoticeRules, error) {
+	if c.notice == nil {
+		return domain.DefaultNoticeRules(), nil
+	}
+	r, err := c.notice(ctx)
+	return r, convert.Err(err, "price change notice")
+}
+
+// NoticeRulesOf reads the operator's notice rules of price changes (plan 15) from any connection to the pooled database. It is read on the system pool.
+func NoticeRulesOf(ctx context.Context, db sqlc.DBTX) (domain.NoticeRules, error) {
+	q := sqlc.New(db)
+	s, err := q.GetPriceChangeNoticeSettings(ctx)
+	if err != nil {
+		return domain.NoticeRules{}, err
+	}
+	rows, err := q.ListPriceChangeNoticeRules(ctx)
+	if err != nil {
+		return domain.NoticeRules{}, err
+	}
+	out := domain.NoticeRules{Default: int(s.DefaultNoticeDays), Floors: map[string]int{}}
+	for _, r := range rows {
+		out.Floors[r.Country] = int(r.MinNoticeDays)
+	}
+	return out, nil
+}
+
 // maxActorRunes bounds the actor kept with a price change, as the table does.
 const maxActorRunes = 120
 
@@ -78,17 +118,46 @@ func actorOf(a string) string {
 // transaction: one that cannot be scheduled is listed with the reason and the rest go on. A subscription that has another change waiting is left alone (a price
 // change never replaces a change the customer or the seller asked for), and so is one whose change of this price change was withdrawn.
 func (c *Commands) SchedulePriceChange(ctx context.Context, req *plansv1.SchedulePriceChangeRequest) (*plansv1.SchedulePriceChangeResponse, error) {
+	rules, err := c.noticeRules(ctx)
+	if err != nil {
+		return nil, err
+	}
 	notice := int(req.GetNoticeDays())
 	if notice == 0 {
-		notice = DefaultNoticeDays
+		notice = rules.Default
 	}
-	if notice < MinNoticeDays || notice > 365 {
+	if notice < MinNoticeDays || notice > domain.MaxNoticeDays {
 		return nil, domain.Invalid("notice_days", "between 14 and 365 days")
 	}
 	if req.GetPlanCode() == "" || req.GetFromVersion() < 1 {
 		return nil, domain.Invalid("plan_code", "a plan code and the version the subscriptions are on are required")
 	}
-	return c.runPriceChange(ctx, priceRun{plan: req.GetPlanCode(), from: req.GetFromVersion(), to: req.GetToVersion(), notice: notice, dry: req.GetDryRun(), actor: actorOf(req.GetActor())})
+	from, err := c.effectiveFrom(req.GetEffectiveFrom(), notice)
+	if err != nil {
+		return nil, err
+	}
+	return c.runPriceChange(ctx, priceRun{plan: req.GetPlanCode(), from: req.GetFromVersion(), to: req.GetToVersion(), notice: notice, dry: req.GetDryRun(), actor: actorOf(req.GetActor()), effectiveFrom: from, rules: rules})
+}
+
+// effectiveFrom checks the date a seller names for the new price (plan 15): at least the notice from now, at most two years. Unset is the old model, each
+// subscription on its next renewal.
+func (c *Commands) effectiveFrom(ts *timestamppb.Timestamp, notice int) (*time.Time, error) {
+	if ts == nil {
+		return nil, nil
+	}
+	if err := ts.CheckValid(); err != nil {
+		return nil, domain.Invalid("effective_from", "invalid timestamp")
+	}
+	// Postgres keeps microseconds: a finer instant would never equal the stored one.
+	t := ts.AsTime().Truncate(time.Microsecond)
+	now := c.now()
+	if t.Before(now.Add(time.Duration(notice) * 24 * time.Hour)) {
+		return nil, domain.Invalid("effective_from", "at least notice_days from now: the customer is told before the price starts")
+	}
+	if t.After(now.Add(maxEffectiveFromDays * 24 * time.Hour)) {
+		return nil, domain.Invalid("effective_from", "at most two years from now")
+	}
+	return &t, nil
 }
 
 // RetryPriceChange runs an open price change again with the notice it has: the skipped subscriptions are tried again, and so are the ones that joined the version
@@ -109,7 +178,16 @@ func (c *Commands) RetryPriceChange(ctx context.Context, req *plansv1.RetryPrice
 	if pc.GetState() != "open" {
 		return nil, errkey.New(codes.FailedPrecondition, "plans.price_change.withdrawn", "this price change was withdrawn; make a new one")
 	}
-	return c.runPriceChange(ctx, priceRun{plan: pc.GetPlanCode(), from: pc.GetFromVersion(), to: pc.GetToVersion(), notice: int(pc.GetNoticeDays())})
+	rules, err := c.noticeRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	run := priceRun{plan: pc.GetPlanCode(), from: pc.GetFromVersion(), to: pc.GetToVersion(), notice: int(pc.GetNoticeDays()), rules: rules}
+	if pc.GetEffectiveFrom() != nil {
+		t := pc.GetEffectiveFrom().AsTime()
+		run.effectiveFrom = &t
+	}
+	return c.runPriceChange(ctx, run)
 }
 
 // WithdrawPriceChange closes a price change and cancels every change of it that is still waiting, subscription by subscription. A change that was applied stays,
@@ -177,6 +255,9 @@ type priceRun struct {
 	notice   int
 	dry      bool
 	actor    string
+	// effectiveFrom is the date the seller named for the new price (nil: each subscription's next renewal); rules are the operator's notice rules.
+	effectiveFrom *time.Time
+	rules         domain.NoticeRules
 }
 
 type skippable struct {
@@ -226,9 +307,17 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 			case !errors.Is(err, pgx.ErrNoRows):
 				return err
 			}
-		} else if pcID, err = q.UpsertOpenPriceChange(ctx, sqlc.UpsertOpenPriceChangeParams{ID: idgen.NewUUIDv7(), PlanCode: a.plan, FromVersion: from.Version, ToVersion: to.Version,
-			NoticeDays: int32(a.notice), EffectiveAt: c.now().Add(time.Duration(a.notice) * 24 * time.Hour), CreatedBy: a.actor}); err != nil { //nolint:gosec // bounded by the callers
-			return err
+		} else {
+			up, err := q.UpsertOpenPriceChange(ctx, sqlc.UpsertOpenPriceChangeParams{ID: idgen.NewUUIDv7(), PlanCode: a.plan, FromVersion: from.Version, ToVersion: to.Version,
+				NoticeDays: int32(a.notice), EffectiveAt: c.now().Add(time.Duration(a.notice) * 24 * time.Hour), EffectiveFrom: a.effectiveFrom, CreatedBy: a.actor}) //nolint:gosec // bounded by the callers
+			if err != nil {
+				return err
+			}
+			// Subscriptions already scheduled keep their dates, so a run cannot move the open price change to another date: withdraw it and make a new one.
+			if !sameInstant(up.EffectiveFrom, a.effectiveFrom) {
+				return errkey.New(codes.FailedPrecondition, "plans.price_change.date_differs", "an open price change for these versions starts on another date; withdraw it to make a new one")
+			}
+			pcID = up.ID
 		}
 		rows, err := q.ListLiveSubscriptionsOnVersion(ctx, from.ID)
 		if err != nil {
@@ -246,7 +335,7 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 	if pcID != uuid.Nil {
 		resp.PriceChangeId = pcID.String()
 	}
-	earliest := c.now().Add(time.Duration(a.notice) * 24 * time.Hour)
+	runAt := c.now()
 	for i, s := range ids {
 		if i > 0 && i%pauseCheckEvery == 0 && !a.dry {
 			if err := c.checkNotPaused(ctx); err != nil {
@@ -255,7 +344,7 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		}
 		var o outcome
 		err := c.db.Tx(ctx, func(q *sqlc.Queries) (err error) {
-			o, err = c.priceOne(ctx, q, a, ti.ID, pcID, s.id, toVersion, earliest)
+			o, err = c.priceOne(ctx, q, a, ti.ID, pcID, s.id, toVersion, runAt)
 			return err
 		})
 		if err != nil {
@@ -281,8 +370,8 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		}
 		// One entry per run (a retry is a run): what was asked, and how many subscriptions it moved, found moved already and skipped.
 		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "price_change.scheduled", TargetType: "price_change", TargetID: pcID.String(),
-			Summary: fmt.Sprintf("moved %s from version %d to %d at the next renewal, %d days notice", a.plan, a.from, toVersion, a.notice),
-			Detail: map[string]any{"plan": a.plan, "from_version": a.from, "to_version": toVersion, "notice_days": a.notice, "scheduled": resp.Scheduled,
+			Summary: fmt.Sprintf("moved %s from version %d to %d %s, %d days notice", a.plan, a.from, toVersion, whenText(a.effectiveFrom), a.notice),
+			Detail: map[string]any{"plan": a.plan, "from_version": a.from, "to_version": toVersion, "notice_days": a.notice, "effective_from": a.effectiveFrom, "scheduled": resp.Scheduled,
 				"already_scheduled": resp.AlreadyScheduled, "skipped": len(resp.Skipped)}}); err != nil {
 			return err
 		}
@@ -308,7 +397,7 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 }
 
 // priceOne decides and does what the run does to one subscription, in its own transaction.
-func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, tenantID, pcID, subID uuid.UUID, toVersion int32, earliest time.Time) (outcome, error) {
+func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, tenantID, pcID, subID uuid.UUID, toVersion int32, runAt time.Time) (outcome, error) {
 	row, err := subsqry.Lock(ctx, q, subID)
 	if err != nil {
 		return outcome{}, err
@@ -351,7 +440,15 @@ func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, te
 	if err != nil {
 		return skip("not_changeable")
 	}
-	if pc.Quote.Effective.Before(earliest) {
+	// A date the seller named: the subscription moves on its first period start from it (a monthly one on the first renewal from the date, a yearly one perhaps months later).
+	if a.effectiveFrom != nil {
+		if err := pc.NotBefore(*a.effectiveFrom); err != nil {
+			return skip("not_changeable")
+		}
+	}
+	// The customer is told at least this long before the price starts: the run's notice, or the operator's minimum for the customer's country when that is longer.
+	notice := max(a.notice, a.rules.Floor(ptrOr(cust.Country, "")))
+	if pc.Quote.Effective.Before(runAt.Add(time.Duration(notice) * 24 * time.Hour)) {
 		return skip("renews_soon")
 	}
 	if a.dry {
@@ -382,3 +479,26 @@ func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, te
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// whenText says in an audit summary when the new price starts.
+func whenText(from *time.Time) string {
+	if from == nil {
+		return "at the next renewal"
+	}
+	return "from " + from.UTC().Format("2006-01-02")
+}
+
+func ptrOr[T any](p *T, def T) T {
+	if p == nil {
+		return def
+	}
+	return *p
+}
+
+// sameInstant reports whether two optional instants are the same (both unset counts).
+func sameInstant(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Equal(*b)
+}

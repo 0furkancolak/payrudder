@@ -113,6 +113,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/payment-method-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make the link to the provider's page where the customer saves a card for later charges
+         * @description For a provider that has the customer save a payment method on its own page (Stripe: Checkout in setup mode). The answer is the address of that page; you send it to the customer. Nothing is charged. When the customer has saved the card, the provider tells Payrudder and the method becomes the customer's payment method (the string a charge takes, `cus_...:pm_...` at Stripe), which later invoices are charged with: there is nothing to call afterwards. The customer is made at the provider once and remembered, so asking again for the same customer reuses it. **Payrudder collects and keeps no consent in this flow.** The provider's guide asks you to collect the customer's explicit consent to be charged without them present (the amount and timing, how the amount is decided, how to cancel) and to keep a record of it: send the link together with your terms and keep the agreement yourself. The page is made in the environment of the key (a `sk_test_` Stripe account for a sandbox key). `return_url` must be `https`. `404 payments.customer.not_ready` for a customer that does not exist, `501` for a provider that cannot do this, and the provider's own refusal when the environment has no account for it.
+         */
+        post: operations["createPaymentMethodSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/cards": {
         parameters: {
             query?: never;
@@ -949,6 +969,8 @@ export interface paths {
          * Move every subscription on one plan version to another at its next renewal, and tell the customers
          * @description For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
          *     (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+         *     With `effective_from` the subscription moves on its first period start on or after that date instead (the customer is still mailed when the run schedules it, so at
+         *     least `notice_days` before). The notice is the longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
          *     The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
          *     `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
          *     Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
@@ -3166,6 +3188,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/disputes/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The notes and marks you made on a dispute, newest first
+         * @description What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+         */
+        get: operations["listDisputeHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Write a note on a dispute
+         * @description A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+         */
+        post: operations["addDisputeNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/handled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a dispute as handled in Payrudder, or lift the mark
+         * @description Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+         */
+        put: operations["setDisputeHandled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/assets/uploads": {
         parameters: {
             query?: never;
@@ -5334,8 +5416,9 @@ export interface paths {
         put?: never;
         /**
          * Open a support ticket for an account (and optionally one of its apps)
-         * @description The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+         * @description The first answer is due by the priority and the plan of the ticket's app (free, standard or enterprise; a default table, not agreed), counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC, not on the app's days off). For a free app (the plan every new app starts on): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
          *     An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
+         *     `links` may point at up to five customers, invoices or subscriptions of the account's apps (`404 support.app.not_found` for an app that is not the account's); only the pointer is kept, whether the object exists is not checked.
          */
         post: operations["appOpenSupportTicket"];
         delete?: never;
@@ -5432,6 +5515,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/support/tickets/{id}/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate a solved or closed ticket, 1 to 5 with an optional comment. A second call replaces the first; the operator's report shows the ratings */
+        post: operations["appRateSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/support/tickets": {
         parameters: {
             query?: never;
@@ -5463,7 +5563,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
+        /** Change a ticket's status, priority, assignee, tags or links (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
         patch: operations["updateSupportTicket"];
         trace?: never;
     };
@@ -5478,6 +5578,51 @@ export interface paths {
         put?: never;
         /** Answer a ticket (operator). The answer is mailed to the person who opened the ticket. An internal note is never shown to the person, is not mailed and does not count as an answer */
         post: operations["replySupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge this ticket into another of the same person (operator)
+         * @description The messages and files of this ticket move into `into_ticket_id`; this ticket is closed and points at it (`merged_into_id`, `merged_into_number`). Both must be
+         *     tickets of one person in one account, neither merged already, and the target not closed (`409 support.ticket.cannot_merge`). A person's message that waits
+         *     for the operator reopens a target that was pending or solved; the earlier first-answer deadline holds while neither was answered. Both tickets are unread for
+         *     the person afterwards. A merged ticket takes no reply or change (`409 support.ticket.merged`). Recorded in the audit log.
+         */
+        post: operations["mergeSupportTickets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/apps/{app_id}/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The days off of an app, on which the first-answer clock of its tickets does not run (operator) */
+        get: operations["getSupportHolidays"];
+        /**
+         * Replace the days off of an app (operator)
+         * @description The whole list: at most 200 days, each once, within three years of today. A ticket already open keeps its deadline; a change of its priority counts it again with the
+         *     days as they are then. Recorded in the audit log.
+         */
+        put: operations["setSupportHolidays"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6716,6 +6861,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/price-change-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The notice rules of price changes
+         * @description The notice a run uses when its request names none, and the least notice per country (`*` is any country without a row). Plan 15, default (not agreed): the code's
+         *     floor of 14 days for every country. The rows are the operator's words: UNVERIFIED and not legal advice.
+         */
+        get: operations["getPriceChangeNotice"];
+        /**
+         * Replace the notice rules of price changes
+         * @description Replaces the default and the whole table in one step; a row not listed is removed. A country row can raise the floor, never lower the code's 14 days. A run that
+         *     has scheduled a subscription is not changed; the next run reads the new rules. Recorded in the audit log.
+         */
+        put: operations["setPriceChangeNotice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -7082,8 +7253,13 @@ export interface components {
             from_version: number;
             /** @description The version they move to; 0 or absent is the latest published */
             to_version?: number;
-            /** @description Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+            /** @description Days before the new price starts that the customer must be told at the least: absent or 0 is the platform's default (30 until the operator changes it), otherwise at least 14. A customer in a country with a longer minimum (the operator's table) is told that much earlier, or skipped as `renews_soon`. */
             notice_days?: number;
+            /**
+             * Format: date-time
+             * @description The date the new price starts from. Each subscription then moves on its first period start on or after it (a monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next renewal. At least `notice_days` from now and at most two years. A run that continues an open price change must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`).
+             */
+            effective_from?: string | null;
             /** @description Only count; change nothing and mail nobody */
             dry_run?: boolean;
         };
@@ -7119,6 +7295,11 @@ export interface components {
              * @description The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice)
              */
             effective_time: string;
+            /**
+             * Format: date-time
+             * @description The date the seller chose the new price to start from; null when each subscription moves on its next renewal
+             */
+            effective_from: string | null;
             /** @enum {string} */
             state: "open" | "withdrawn";
             /** @description The signed-in person's address, key:<id> for an API key, or the operator */
@@ -7163,6 +7344,26 @@ export interface components {
             paused: boolean;
             /** @description Why; kept with the setting and shown to the next operator. */
             reason?: string;
+        };
+        PriceChangeNoticeRule: {
+            /** @description ISO 3166-1 alpha-2 in capitals, or * for any other country */
+            country: string;
+            min_notice_days: number;
+            /** @description A source, a date, who checked it */
+            note: string;
+        };
+        SetPriceChangeNoticeRequest: {
+            /** @description The notice a run uses when its request names none */
+            default_notice_days: number;
+            /** @description The whole table, each country once */
+            rules: components["schemas"]["PriceChangeNoticeRule"][];
+        };
+        PriceChangeNotice: {
+            default_notice_days: number;
+            rules: components["schemas"]["PriceChangeNoticeRule"][];
+            updated_by: string;
+            /** Format: date-time */
+            update_time: string | null;
         };
         PriceChangePause: {
             paused: boolean;
@@ -7324,16 +7525,50 @@ export interface components {
             unread: boolean;
             /** @description The operator's own labels, at most five. Always empty in what the person's calls return */
             tags: string[];
+            /** @description The ticket this one was merged into (closed, its messages moved there); empty otherwise */
+            merged_into_id: string;
+            /** Format: int64 */
+            merged_into_number: number;
+            /** @description 1 to 5 once the person rated the ticket, else 0 */
+            rating: number;
+            rating_comment: string;
+            /** Format: date-time */
+            rate_time: string | null;
+            /** @description The objects the ticket links to; filled when one ticket is read with its thread, empty in the lists */
+            links: components["schemas"]["SupportLink"][];
+            /**
+             * @description The plan of the ticket's app the first-answer deadline was counted for. Always empty in what the person's calls return
+             * @enum {string}
+             */
+            sla_tier: "" | "free" | "standard" | "enterprise";
         };
-        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority. */
+        /** @description A pointer from a ticket to an object of one of the account's apps. Only the pointer is kept; the console opens the object under the viewer's own access. */
+        SupportLink: {
+            /** @enum {string} */
+            kind: "customer" | "invoice" | "subscription";
+            /** @description A customer's external id; the id (a UUID) of an invoice or a subscription */
+            ref: string;
+            /** Format: uuid */
+            app_id: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            /**
+             * Format: uuid
+             * @description Filled when read: the tenant of that app environment
+             */
+            tenant_id?: string;
+            /** @description Filled when read */
+            app_name?: string;
+        };
+        /** @description One change of a ticket's status, priority, assignee or tags, or a merge. The history is append-only. The person's calls return only the changes of status and priority and the merges. */
         SupportEvent: {
             /** Format: uuid */
             id: string;
             /**
-             * @description A change of tags has the list joined by commas in from_value and to_value
+             * @description A change of tags has the list joined by commas in from_value and to_value. A merge has from_value `#1041` on the ticket that kept the thread (that ticket joined it) and to_value `#1042` on the ticket that joined
              * @enum {string}
              */
-            kind: "status" | "priority" | "assignee" | "tags";
+            kind: "status" | "priority" | "assignee" | "tags" | "merge";
             /**
              * @description system is the job that closes a ticket that waited for the person for 7 days
              * @enum {string}
@@ -7400,6 +7635,40 @@ export interface components {
              */
             priority: "low" | "normal" | "high" | "urgent";
             body: string;
+            /** @description Optional: the customers, invoices or subscriptions of the account's apps the ticket is about */
+            links?: components["schemas"]["SupportLink"][];
+        };
+        SupportRatingRequest: {
+            rating: number;
+            comment?: string;
+        };
+        SupportMergeRequest: {
+            /**
+             * Format: uuid
+             * @description The ticket that keeps the messages
+             */
+            into_ticket_id: string;
+        };
+        SupportMergeResult: {
+            /** @description The ticket that was closed */
+            ticket: components["schemas"]["SupportTicket"];
+            /** @description The ticket that keeps the thread */
+            into_ticket: components["schemas"]["SupportTicket"];
+        };
+        SupportHoliday: {
+            /** @description yyyy-mm-dd, a calendar day in the time zone of the app */
+            day: string;
+            name?: string;
+        };
+        SupportHolidayList: {
+            holidays: components["schemas"]["SupportHoliday"][];
+        };
+        SupportHolidays: {
+            app_name: string;
+            holidays: components["schemas"]["SupportHoliday"][];
+        };
+        SetSupportHolidaysRequest: {
+            holidays: components["schemas"]["SupportHoliday"][];
         };
         SupportReplyRequest: {
             body: string;
@@ -7438,6 +7707,15 @@ export interface components {
             median_first_answer_seconds: number;
             /** Format: int64 */
             average_first_answer_seconds: number;
+            /** @description Tickets rated in the window */
+            rated: number;
+            /**
+             * Format: double
+             * @description The average of those ratings; 0 when none
+             */
+            average_rating: number;
+            /** @description How many tickets gave each rating, value 1 to 5, every one listed */
+            ratings: components["schemas"]["SupportCount"][];
         };
         SupportOperator: {
             email: string;
@@ -7473,6 +7751,8 @@ export interface components {
             priority?: "low" | "normal" | "high" | "urgent";
             /** @description One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed */
             assignee?: string;
+            /** @description With this key the ticket's links become exactly this list (an empty list clears them); without it they stay */
+            links?: components["schemas"]["SupportLink"][];
             /** @description With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once */
             tags?: string[];
         };
@@ -8608,6 +8888,25 @@ export interface components {
         SetPaymentMethodRequest: {
             payment_method: string;
         };
+        CreatePaymentMethodSetupRequest: {
+            /**
+             * @description The provider whose page it is; only Stripe has one
+             * @default stripe
+             * @enum {string}
+             */
+            provider: "stripe";
+            /**
+             * Format: uri
+             * @description Where the provider sends the customer after the page. `https` only
+             */
+            return_url: string;
+        };
+        PaymentMethodSetup: {
+            /** @description The provider's page: send it to the customer */
+            url: string;
+            /** @description The provider's reference of the page (Stripe's Checkout Session id) */
+            ref: string;
+        };
         ListMetersResponse: {
             meters: components["schemas"]["Meter"][];
         };
@@ -9088,6 +9387,50 @@ export interface components {
              * @description Absent while the case is open
              */
             closed_time?: string;
+            /**
+             * Format: int64
+             * @description What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee
+             */
+            fee_minor?: string;
+            /** @description The currency of `fee_minor` */
+            fee_currency?: string;
+            /** @description Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider */
+            handled: boolean;
+            /**
+             * Format: date-time
+             * @description Absent when the case is not marked
+             */
+            handled_time?: string;
+            /** @description Who marked it; absent when it is not marked and for a viewer of the account */
+            handled_by?: string;
+            /**
+             * Format: int64
+             * @description How many notes you wrote (`GET /v1/disputes/{id}/history`)
+             */
+            note_count: number;
+        };
+        DisputeEvent: {
+            id: string;
+            /**
+             * @description A note, the mark that the case was handled, or that mark lifted
+             * @enum {string}
+             */
+            action: "note" | "handled" | "unhandled";
+            /** @description The text of a note; absent for a mark */
+            note?: string;
+            /** @description Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account */
+            actor?: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListDisputeEventsResponse: {
+            events: components["schemas"]["DisputeEvent"][];
+        };
+        AddDisputeNoteRequest: {
+            note: string;
+        };
+        SetDisputeHandledRequest: {
+            handled: boolean;
         };
         ListDisputesResponse: {
             disputes: components["schemas"]["Dispute"][];
@@ -14296,6 +14639,37 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    createPaymentMethodSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePaymentMethodSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodSetup"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     listCustomerCards: {
@@ -19626,6 +20000,89 @@ export interface operations {
             503: components["responses"]["Error"];
         };
     };
+    listDisputeHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDisputeEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    addDisputeNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDisputeNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeEvent"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    setDisputeHandled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisputeHandledRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     createUploadSession: {
         parameters: {
             query?: never;
@@ -23173,6 +23630,8 @@ export interface operations {
             query?: {
                 /** @description active is open and pending */
                 status?: "active" | "open" | "pending" | "solved" | "closed";
+                /** @description Matches the subject, the ticket number and the words of the messages the person can read (not the operator's internal notes). Full text, whole words: no prefixes */
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -23365,13 +23824,44 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appRateSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportRatingRequest"];
+            };
+        };
+        responses: {
+            /** @description Rated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     listSupportTickets: {
         parameters: {
             query?: {
                 status?: "active" | "open" | "pending" | "solved" | "closed";
                 priority?: "low" | "normal" | "high" | "urgent";
                 assignee?: string;
-                /** @description Matches the subject and the ticket number */
+                /** @description Matches the subject, the ticket number and the words of the messages, the operator's internal notes included. Full text (Postgres, the simple configuration), whole words: no prefixes */
                 search?: string;
                 /** @description Only tickets whose first answer is overdue */
                 sla_breached?: boolean;
@@ -23469,6 +23959,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    mergeSupportTickets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportMergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Merged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportMergeResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getSupportHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportHolidays"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setSupportHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSupportHolidaysRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportHolidayList"];
                 };
             };
             400: components["responses"]["Error"];
@@ -25589,6 +26159,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getPriceChangeNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangeNotice"];
+                };
+            };
+        };
+    };
+    setPriceChangeNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPriceChangeNoticeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangeNotice"];
                 };
             };
             400: components["responses"]["Error"];

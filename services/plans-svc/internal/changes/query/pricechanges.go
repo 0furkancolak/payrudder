@@ -31,6 +31,7 @@ func PriceChangeOf(r sqlc.ListPriceChangesRow) *plansv1.PriceChange {
 	if r.WithdrawnAt != nil {
 		out.WithdrawTime = timestamppb.New(*r.WithdrawnAt)
 	}
+	out.EffectiveFrom = optTime(r.EffectiveFrom)
 	return out
 }
 

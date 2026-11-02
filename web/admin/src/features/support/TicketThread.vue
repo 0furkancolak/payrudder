@@ -66,7 +66,8 @@ const value = (kind: string, v: string) =>
       </li>
       <li v-else-if="e.event" class="text-muted-foreground flex flex-wrap items-center gap-x-2 px-4 text-xs" :data-testid="`support-event-${e.event.kind}`">
         <span class="font-medium">{{ e.event.actor_name || t(`support.author.${e.event.actor_kind}`) }}</span>
-        <span>{{ field(e.event.kind) }}: {{ value(e.event.kind, e.event.from_value) }} → {{ value(e.event.kind, e.event.to_value) }}</span>
+        <span v-if="e.event.kind === 'merge'">{{ e.event.from_value ? t("support.merge.joined", { number: e.event.from_value }) : t("support.merge.joinedOther", { number: e.event.to_value }) }}</span>
+        <span v-else>{{ field(e.event.kind) }}: {{ value(e.event.kind, e.event.from_value) }} → {{ value(e.event.kind, e.event.to_value) }}</span>
         <time :datetime="e.event.create_time">{{ formatDate(e.event.create_time, locale, "dateTime") }}</time>
       </li>
     </template>

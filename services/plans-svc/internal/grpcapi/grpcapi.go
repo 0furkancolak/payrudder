@@ -29,6 +29,7 @@ import (
 	customersapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers"
 	customerscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/command"
 	customersqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	feesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees"
 	feescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/command"
 	feesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/query"
@@ -127,7 +128,7 @@ func newPlans(appDB pgxx.Beginner, systemPool *pgxpool.Pool, resolver *affiliate
 		overridesHandler:     overridesapi.New(overridescmd.New(db, now), overridesqry.New(db)),
 		plansHandler:         plansapi.New(planscmd.New(db), plansqry.New(db)),
 		subscriptionsHandler: subscriptionsapi.New(subscriptionscmd.New(db, now), subscriptionsQ),
-		changesHandler:       changesapi.New(changescmd.New(db, now).WithPause(pricePause(systemPool)), changesqry.New(db, now)),
+		changesHandler:       changesapi.New(changescmd.New(db, now).WithPause(pricePause(systemPool)).WithNotice(priceNotice(systemPool)), changesqry.New(db, now)),
 		couponsHandler:       couponsapi.New(couponscmd.New(db, now).WithRedeemHook(affiliatescmd.AttributeByPromotionCode), couponsqry.New(db)),
 		feesHandler:          feesapi.New(feescmd.New(db), feesqry.New(db, now)),
 		migrationsHandler:    provmigapi.New(provmigcmd.New(db, now), provmigqry.New(db)),
@@ -147,6 +148,11 @@ func pricePause(pool *pgxpool.Pool) changescmd.PauseSource {
 		r, err := sqlc.New(pool).GetPriceChangePause(ctx)
 		return r.Paused, err
 	}
+}
+
+// priceNotice reads the operator's notice rules of price changes on the system pool.
+func priceNotice(pool *pgxpool.Pool) changescmd.NoticeSource {
+	return func(ctx context.Context) (domain.NoticeRules, error) { return changescmd.NoticeRulesOf(ctx, pool) }
 }
 
 // newWebhooks returns the webhook service on the same database as s. box seals the signing secrets (nil: endpoints cannot be created).

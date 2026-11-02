@@ -28,6 +28,8 @@ const previewLocale = ref("");
 const fromVersion = ref("1");
 const toVersion = ref("");
 const noticeDays = ref("30");
+/** The optional date (yyyy-mm-dd) the new price starts from; empty moves each subscription at its next renewal. */
+const fromDate = ref("");
 const checked = ref<PriceChangeResult | null>(null);
 const done = ref<PriceChangeResult | null>(null);
 
@@ -36,16 +38,26 @@ watch(open, (isOpen) => {
   fromVersion.value = String(Math.max(1, props.latest - 1));
   toVersion.value = "";
   noticeDays.value = "30";
+  fromDate.value = "";
   checked.value = null;
   done.value = null;
   previewLocale.value = "";
   run.reset();
   preview.reset();
 });
-watch([fromVersion, toVersion, noticeDays], () => ((checked.value = null), preview.reset()));
+watch([fromVersion, toVersion, noticeDays, fromDate], () => ((checked.value = null), preview.reset()));
 
 const valid = computed(() => Number(fromVersion.value) >= 1 && Number(noticeDays.value) >= 14 && Number(noticeDays.value) <= 365 && (toVersion.value === "" || Number(toVersion.value) >= 1));
-const args = (dryRun: boolean) => ({ code: props.code, fromVersion: Number(fromVersion.value), toVersion: toVersion.value ? Number(toVersion.value) : undefined, noticeDays: Number(noticeDays.value), dryRun });
+const args = (dryRun: boolean) => ({
+  code: props.code,
+  fromVersion: Number(fromVersion.value),
+  toVersion: toVersion.value ? Number(toVersion.value) : undefined,
+  noticeDays: Number(noticeDays.value),
+  ...(fromDate.value ? { effectiveFrom: `${fromDate.value}T00:00:00Z` } : {}),
+  dryRun,
+});
+/** The example mail counts its date as now plus the notice: with a start date, that is the days to it (the mail API takes at most a year). */
+const previewNotice = () => (fromDate.value ? Math.min(365, Math.max(14, Math.ceil((Date.parse(`${fromDate.value}T00:00:00Z`) - Date.now()) / 86_400_000))) : Number(noticeDays.value));
 
 async function check() {
   checked.value = await run.mutateAsync(args(true)).catch(() => null);
@@ -60,7 +72,7 @@ async function schedule() {
   }
 }
 async function showPreview() {
-  await preview.mutateAsync({ code: props.code, ...(toVersion.value ? { toVersion: Number(toVersion.value) } : {}), noticeDays: Number(noticeDays.value), locale: previewLocale.value }).catch(() => null);
+  await preview.mutateAsync({ code: props.code, ...(toVersion.value ? { toVersion: Number(toVersion.value) } : {}), noticeDays: previewNotice(), locale: previewLocale.value }).catch(() => null);
 }
 const reasons = (r: PriceChangeResult) => {
   const m = new Map<string, number>();
@@ -89,6 +101,10 @@ const reasons = (r: PriceChangeResult) => {
           <label class="grid gap-1 text-sm">{{ t("billing.packages.priceChange.notice") }}
             <Input v-model="noticeDays" type="number" min="14" max="365" required data-testid="pc-notice" />
             <span class="text-muted-foreground text-xs">{{ t("billing.packages.priceChange.noticeHelp") }}</span>
+          </label>
+          <label class="grid gap-1 text-sm">{{ t("billing.packages.priceChange.fromDate") }}
+            <Input v-model="fromDate" type="date" data-testid="pc-from-date" />
+            <span class="text-muted-foreground text-xs">{{ t("billing.packages.priceChange.fromDateHelp") }}</span>
           </label>
         </form>
         <ErrorText :error="run.error.value" />
