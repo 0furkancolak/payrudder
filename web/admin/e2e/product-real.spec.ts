@@ -250,7 +250,7 @@ test.describe("product app, real stack", () => {
     await expect(page.getByRole("heading", { name: "Hosted test" })).toBeVisible();
     await shoot(page, "r7-link");
     await page.getByRole("button", { name: "Continue" }).click();
-    // The invoice is made and goes through its saga first ("being processed", the page refreshes by itself); then the sandbox offers the mock method.
+    // The invoice is made and goes through its saga first ("being processed"; Continue waits for it on the server, a few seconds at most); then the sandbox offers the mock method.
     await expect(page.getByRole("button", { name: "Pay (test)" })).toBeVisible({ timeout: 60_000 });
     await shoot(page, "r7b-link-pay");
     await page.getByRole("button", { name: "Pay (test)" }).click();

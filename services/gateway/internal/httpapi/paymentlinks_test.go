@@ -29,6 +29,9 @@ const (
 	tokOpenLive    = "tok-open-live-0123456789abcdefghijklmnopq"
 	tokPack        = "tok-pack-0123456789abcdefghijklmnopqrstuvw"
 	tokProcessing  = "tok-processing-0123456789abcdefghijklmnop"
+	tokAdhocSlow   = "tok-adhoc-slow-0123456789abcdefghijklmnopq"
+	tokAdhocStuck  = "tok-adhoc-stuck-0123456789abcdefghijklmnopq"
+	tokSlowInvoice = "tok-slow-invoice-0123456789abcdefghijklmno"
 	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
 	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
 	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
@@ -74,6 +77,16 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 		return r, true
 	case req.GetToken() == tokProcessing:
 		return openInvoice("live", "processing", true), true
+	case req.GetToken() == tokSlowInvoice:
+		// Processing for its first two looks, open from the third.
+		billingMu.Lock()
+		slowLooks++
+		n := slowLooks
+		billingMu.Unlock()
+		if n < 3 {
+			return openInvoice("live", "processing", true), true
+		}
+		return openInvoice("live", "open", true), true
 	case req.GetToken() == tokHostile:
 		r := openInvoice("live", "open", false)
 		r.SellerName, r.CustomerName = `<img src=x onerror=alert(1)>`, `"><script>alert(2)</script>`
@@ -138,6 +151,9 @@ var startedWith string
 // lastStart is the last StartLinkPayment request billing got.
 var lastStart *billingv1.StartLinkPaymentRequest
 
+// slowLooks counts the looks at the invoice tokSlowInvoice (guarded by billingMu).
+var slowLooks int
+
 func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
 	billingMu.Lock()
 	startedWith = req.GetPromotionCode()
@@ -149,6 +165,10 @@ func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkP
 	switch req.GetToken() {
 	case tokAdhoc:
 		return &billingv1.StartLinkPaymentResponse{InvoiceToken: tokOpenSandbox}, nil
+	case tokAdhocSlow:
+		return &billingv1.StartLinkPaymentResponse{InvoiceToken: tokSlowInvoice}, nil
+	case tokAdhocStuck:
+		return &billingv1.StartLinkPaymentResponse{InvoiceToken: tokProcessing}, nil
 	case tokAdhocUsed:
 		return nil, status.Error(codes.FailedPrecondition, "used")
 	case tokBlockedLink:
@@ -851,5 +871,41 @@ func TestLanguageFallbackOnTheNewPages(t *testing.T) {
 	// ?lang= is kept on the form, but only a known language.
 	if _, page := get(t, ts, "/i/"+tokAdhoc+"?lang=%22%3E%3Cx"); strings.Contains(page, "<x") {
 		t.Error("a hostile lang parameter reached the page")
+	}
+}
+
+// Continue waits for the new invoice to leave "processing" before it redirects, so the payer lands on the pay buttons without a refresh; a stuck one redirects after the
+// wait and its page offers "Check again".
+func TestStartWaitsForTheInvoiceToOpen(t *testing.T) {
+	oldWait, oldPoll := startWait, startPoll
+	startWait, startPoll = 2*time.Second, 10*time.Millisecond
+	defer func() { startWait, startPoll = oldWait, oldPoll }()
+	ts, _ := newTestServer(t)
+
+	billingMu.Lock()
+	slowLooks = 0
+	billingMu.Unlock()
+	t0 := time.Now()
+	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocSlow+"/start", url.Values{}, nil)
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokSlowInvoice {
+		t.Fatalf("start = %d %q", r.StatusCode, r.Header.Get("Location"))
+	}
+	billingMu.Lock()
+	looks := slowLooks
+	billingMu.Unlock()
+	if looks != 3 {
+		t.Errorf("looked %d times, want 3 (two processing, then open)", looks)
+	}
+	if time.Since(t0) > time.Second {
+		t.Errorf("waited %v for an invoice that opened on the third look", time.Since(t0))
+	}
+
+	t1 := time.Now()
+	r, _ = send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocStuck+"/start", url.Values{}, nil)
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokProcessing {
+		t.Errorf("stuck start = %d %q", r.StatusCode, r.Header.Get("Location"))
+	}
+	if d := time.Since(t1); d < startWait-200*time.Millisecond || d > startWait+time.Second {
+		t.Errorf("a stuck invoice waited %v, want about %v", d, startWait)
 	}
 }
