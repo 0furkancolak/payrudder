@@ -4,6 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { askConfirm } from "@/shared/lib/confirm";
 import { useFormat } from "@/shared/lib/format";
+import { readOf, together } from "@/shared/lib/reads";
 import { useLiveProviders } from "@/features/product/api";
 import type { LiveProviderName } from "@/features/product/liveProvider";
 import { useDisconnectProvider, useLiveRouting, useMakeDefaultAccount, useSetLiveRouting, type RoutingRule } from "@/features/providers/connectApi";
@@ -12,11 +13,13 @@ import ProviderSheet from "@/features/providers/ProviderSheet.vue";
 import { Button } from "@/shared/ui/button";
 import { DataToolbar } from "@/shared/ui/data-table";
 import { DetailList } from "@/shared/ui/detail-list";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Input } from "@/shared/ui/input";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -49,6 +52,9 @@ const eInvoice = useEInvoiceIntegration(() => props.appId);
 const mail = useMailIntegration(() => props.appId);
 const eAccounts = computed(() => eInvoiceAccounts(eInvoice.data.value));
 const entries = computed(() => accountEntries({ payments: payments.data.value?.accounts, eInvoice: eAccounts.value, mail: mail.data.value }));
+// The list says "no accounts" only once all three reads have answered; the health pills are a read of their own and say so when it failed.
+const listRead = computed(() => together([readOf(payments), readOf(eInvoice), readOf(mail)]));
+const healthRead = computed(() => readOf(health));
 
 const nameOf = (id: string) => BRANDS[id as IntegrationId]?.name ?? t(`product.integrations.names.${id}`);
 const entryName = (e: AccountEntry) => (e.kind === "payment" && !BRANDS[e.provider as IntegrationId]?.name ? t(`product.goLive.provider.names.${e.provider}`) : nameOf(e.provider));
@@ -72,7 +78,7 @@ const makeDefaultPayment = useMakeDefaultAccount(() => props.appId);
 const eActions = useEInvoiceActions(() => props.appId);
 const mActions = useMailActions(() => props.appId);
 const disconnect = useDisconnectProvider();
-const failure = computed(() => makeDefaultPayment.error.value ?? eActions.setDefault.error.value ?? eActions.remove.error.value ?? mActions.setDefault.error.value ?? mActions.remove.error.value ?? disconnect.error.value);
+const failure = computed(() => makeDefaultPayment.error.value ?? eActions.setDefault.error.value ?? eActions.remove.error.value ?? eActions.test.error.value ?? mActions.setDefault.error.value ?? mActions.remove.error.value ?? disconnect.error.value);
 /** What a test of an e-invoice or e-mail account found, by row: an account has no standing health, so a row says what its last test said. */
 const tested = ref<Record<string, "working" | "problem">>({});
 const stateOf = (e: AccountEntry) => tested.value[e.id] ?? e.state;
@@ -105,7 +111,7 @@ function manage(e: AccountEntry) {
 const label = (e: AccountEntry) => (e.label ? `${entryName(e)} (${e.label})` : entryName(e));
 const actionsOf = (e: AccountEntry) => {
   const out = [];
-  if (e.kind === "einvoice") out.push({ key: "test", label: t("product.integrations.test"), icon: FlaskConical, onSelect: () => testNow(e) });
+  if (props.isOwner && e.kind === "einvoice") out.push({ key: "test", label: t("product.integrations.test"), icon: FlaskConical, onSelect: () => testNow(e) });
   if (props.isOwner && canFailover(e)) out.push({ key: "failover", label: t("product.integrations.health.failover.action"), icon: ArrowRightLeft, onSelect: () => openFailover(e) });
   if (props.isOwner && (e.kind !== "mail" || e.provider === "nafru")) out.push({ key: "remove", label: t("product.integrations.accounts.remove"), icon: Trash2, destructive: true, onSelect: () => void remove(e) });
   return out;
@@ -188,6 +194,7 @@ function continueAdd() {
 // --- payment routing: edited as a list, saved as a whole
 const rows = computed(() => entries.value.filter((e) => e.kind === "payment" && e.provider !== "banktransfer"));
 const routing = useLiveRouting(() => props.appId);
+const routingRead = computed(() => readOf(routing));
 const setRouting = useSetLiveRouting(() => props.appId);
 const draft = ref<RoutingRule[]>([]);
 const saved = ref(false);
@@ -214,6 +221,7 @@ function save() {
 // --- e-mail routing: the language of the mail names the account that sends it (default, not agreed: by language, the one thing about a recipient the notifier has on every mail)
 const mailOptions = computed(() => entries.value.filter((e) => e.kind === "mail" && e.provider === "nafru").map((e) => ({ key: e.key, label: label(e) })));
 const mRouting = useMailRouting(() => props.appId);
+const mRoutingRead = computed(() => readOf(mRouting));
 const setMRouting = useSetMailRouting(() => props.appId);
 const mDraft = ref<{ language: ApiLocale; account: string }[]>([]);
 const mSaved = ref(false);
@@ -237,6 +245,7 @@ function saveM() {
 
 // --- e-invoice routing: the buyer's country names the account that issues the document
 const eRouting = useEInvoiceRouting(() => props.appId);
+const eRoutingRead = computed(() => readOf(eRouting));
 const setERouting = useSetEInvoiceRouting(() => props.appId);
 const eDraft = ref<{ country: string; account: string }[]>([]);
 const eSaved = ref(false);
@@ -288,8 +297,11 @@ function saveE() {
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
 
-    <p v-if="entries.filter((e) => e.kind !== 'mail').length === 0" class="text-muted-foreground text-sm" data-testid="accounts-empty">{{ t("product.providers.account.empty") }}</p>
-    <ul class="divide-border flex flex-col divide-y" :aria-label="t('product.integrations.accounts.title')">
+    <Skeleton v-if="listRead.loading" class="h-20 rounded-xl" />
+    <ErrorState v-else-if="listRead.error" :error="listRead.error" :retrying="listRead.fetching" compact class="mx-0" @retry="listRead.retry()" />
+    <p v-else-if="entries.filter((e) => e.kind !== 'mail').length === 0" class="text-muted-foreground text-sm" data-testid="accounts-empty">{{ t("product.providers.account.empty") }}</p>
+    <ErrorState v-if="!listRead.error && healthRead.error" :error="healthRead.error" :retrying="healthRead.fetching" compact class="mx-0" @retry="healthRead.retry()" />
+    <ul v-if="!listRead.loading && !listRead.error" class="divide-border flex flex-col divide-y" :aria-label="t('product.integrations.accounts.title')">
       <li v-for="e in table.items.value" :key="e.id" class="flex flex-wrap items-center justify-between gap-3 py-3" :data-testid="`account-${e.id}`" :data-kind="e.kind">
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <span class="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-xs" :data-testid="`account-kind-${e.id}`">{{ t(`product.integrations.accounts.kinds.${e.kind}`) }}</span>
@@ -310,91 +322,103 @@ function saveE() {
         </div>
       </li>
     </ul>
-    <p v-if="table.total.value === 0 && table.active.value" class="text-muted-foreground text-sm">{{ t("common.noMatches") }}</p>
+    <p v-if="!listRead.loading && !listRead.error && table.total.value === 0 && table.active.value" class="text-muted-foreground text-sm">{{ t("common.noMatches") }}</p>
     <ErrorText :error="failure" />
 
-    <div v-if="rows.length > 1 || draft.length > 0" class="flex flex-col gap-3" data-testid="routing-editor">
+    <div v-if="rows.length > 1 || draft.length > 0 || routingRead.error" class="flex flex-col gap-3" data-testid="routing-editor">
       <div>
         <h3 class="text-sm font-semibold">{{ t("product.providers.account.routing.title") }}</h3>
         <p class="text-muted-foreground text-xs">{{ t("product.providers.account.routing.intro") }}</p>
       </div>
-      <ul v-if="draft.length > 0" class="flex flex-col gap-2">
-        <li v-for="(rule, i) in draft" :key="i" class="grid items-end gap-2 sm:grid-cols-[6rem_6rem_1fr_auto]" :data-testid="`routing-rule-${i}`">
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.country") }}
-            <Input v-model="rule.country" class="mono uppercase" maxlength="2" :placeholder="t('product.providers.account.routing.any')" :disabled="!isOwner" :data-testid="`routing-country-${i}`" />
-          </label>
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.currency") }}
-            <Input v-model="rule.currency" class="mono uppercase" maxlength="3" :placeholder="t('product.providers.account.routing.any')" :disabled="!isOwner" :data-testid="`routing-currency-${i}`" />
-          </label>
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
-            <NativeSelect v-model="rule.provider" :disabled="!isOwner" :data-testid="`routing-account-${i}`">
-              <option v-for="o in accountOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
-            </NativeSelect>
-          </label>
-          <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`routing-remove-${i}`" @click="draft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
-        </li>
-      </ul>
-      <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" type="button" data-testid="routing-add" @click="addRule">{{ t("product.providers.account.routing.addRule") }}</Button>
-        <Button size="sm" type="button" :disabled="!dirty || setRouting.isPending.value" data-testid="routing-save" @click="save">{{ t("product.providers.account.routing.save") }}</Button>
-        <span v-if="saved && !dirty" class="text-success text-xs" role="status" data-testid="routing-saved">{{ t("product.providers.account.routing.saved") }}</span>
-      </div>
+      <ErrorState v-if="routingRead.error" :error="routingRead.error" :retrying="routingRead.fetching" compact class="mx-0" @retry="routingRead.retry()" />
+      <Skeleton v-else-if="routingRead.loading" class="h-10 rounded-xl" />
+      <template v-else>
+        <ul v-if="draft.length > 0" class="flex flex-col gap-2">
+          <li v-for="(rule, i) in draft" :key="i" class="grid items-end gap-2 sm:grid-cols-[6rem_6rem_1fr_auto]" :data-testid="`routing-rule-${i}`">
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.country") }}
+              <Input v-model="rule.country" class="mono uppercase" maxlength="2" :placeholder="t('product.providers.account.routing.any')" :disabled="!isOwner" :data-testid="`routing-country-${i}`" />
+            </label>
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.currency") }}
+              <Input v-model="rule.currency" class="mono uppercase" maxlength="3" :placeholder="t('product.providers.account.routing.any')" :disabled="!isOwner" :data-testid="`routing-currency-${i}`" />
+            </label>
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
+              <NativeSelect v-model="rule.provider" :disabled="!isOwner" :data-testid="`routing-account-${i}`">
+                <option v-for="o in accountOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
+              </NativeSelect>
+            </label>
+            <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`routing-remove-${i}`" @click="draft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
+          </li>
+        </ul>
+        <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" type="button" data-testid="routing-add" @click="addRule">{{ t("product.providers.account.routing.addRule") }}</Button>
+          <Button size="sm" type="button" :disabled="!dirty || setRouting.isPending.value" data-testid="routing-save" @click="save">{{ t("product.providers.account.routing.save") }}</Button>
+          <span v-if="saved && !dirty" class="text-success text-xs" role="status" data-testid="routing-saved">{{ t("product.providers.account.routing.saved") }}</span>
+        </div>
+      </template>
       <ErrorText :error="setRouting.error.value" />
     </div>
 
-    <div v-if="eOptions.length > 1 || eDraft.length > 0" class="flex flex-col gap-3" data-testid="einvoice-routing-editor">
+    <div v-if="eOptions.length > 1 || eDraft.length > 0 || eRoutingRead.error" class="flex flex-col gap-3" data-testid="einvoice-routing-editor">
       <div>
         <h3 class="text-sm font-semibold">{{ t("product.integrations.accounts.eRouting.title") }}</h3>
         <p class="text-muted-foreground text-xs">{{ t("product.integrations.accounts.eRouting.intro") }}</p>
       </div>
-      <ul v-if="eDraft.length > 0" class="flex flex-col gap-2">
-        <li v-for="(rule, i) in eDraft" :key="i" class="grid items-end gap-2 sm:grid-cols-[6rem_1fr_auto]" :data-testid="`einvoice-rule-${i}`">
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.country") }}
-            <Input v-model="rule.country" class="mono uppercase" maxlength="2" :disabled="!isOwner" :data-testid="`einvoice-rule-country-${i}`" />
-          </label>
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
-            <NativeSelect v-model="rule.account" :disabled="!isOwner" :data-testid="`einvoice-rule-account-${i}`">
-              <option v-for="o in eOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
-            </NativeSelect>
-          </label>
-          <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`einvoice-rule-remove-${i}`" @click="eDraft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
-        </li>
-      </ul>
-      <p v-if="eDuplicate" class="text-destructive text-xs" role="alert">{{ t("product.integrations.accounts.eRouting.duplicate") }}</p>
-      <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" type="button" data-testid="einvoice-rule-add" @click="addERule">{{ t("product.providers.account.routing.addRule") }}</Button>
-        <Button size="sm" type="button" :disabled="!eDirty || eDuplicate || setERouting.isPending.value" data-testid="einvoice-rule-save" @click="saveE">{{ t("product.providers.account.routing.save") }}</Button>
-        <span v-if="eSaved && !eDirty" class="text-success text-xs" role="status" data-testid="einvoice-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
-      </div>
+      <ErrorState v-if="eRoutingRead.error" :error="eRoutingRead.error" :retrying="eRoutingRead.fetching" compact class="mx-0" @retry="eRoutingRead.retry()" />
+      <Skeleton v-else-if="eRoutingRead.loading" class="h-10 rounded-xl" />
+      <template v-else>
+        <ul v-if="eDraft.length > 0" class="flex flex-col gap-2">
+          <li v-for="(rule, i) in eDraft" :key="i" class="grid items-end gap-2 sm:grid-cols-[6rem_1fr_auto]" :data-testid="`einvoice-rule-${i}`">
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.country") }}
+              <Input v-model="rule.country" class="mono uppercase" maxlength="2" :disabled="!isOwner" :data-testid="`einvoice-rule-country-${i}`" />
+            </label>
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
+              <NativeSelect v-model="rule.account" :disabled="!isOwner" :data-testid="`einvoice-rule-account-${i}`">
+                <option v-for="o in eOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
+              </NativeSelect>
+            </label>
+            <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`einvoice-rule-remove-${i}`" @click="eDraft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
+          </li>
+        </ul>
+        <p v-if="eDuplicate" class="text-destructive text-xs" role="alert">{{ t("product.integrations.accounts.eRouting.duplicate") }}</p>
+        <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" type="button" data-testid="einvoice-rule-add" @click="addERule">{{ t("product.providers.account.routing.addRule") }}</Button>
+          <Button size="sm" type="button" :disabled="!eDirty || eDuplicate || setERouting.isPending.value" data-testid="einvoice-rule-save" @click="saveE">{{ t("product.providers.account.routing.save") }}</Button>
+          <span v-if="eSaved && !eDirty" class="text-success text-xs" role="status" data-testid="einvoice-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
+        </div>
+      </template>
       <ErrorText :error="setERouting.error.value" />
     </div>
 
-    <div v-if="mailOptions.length > 1 || mDraft.length > 0" class="flex flex-col gap-3" data-testid="mail-routing-editor">
+    <div v-if="mailOptions.length > 1 || mDraft.length > 0 || mRoutingRead.error" class="flex flex-col gap-3" data-testid="mail-routing-editor">
       <div>
         <h3 class="text-sm font-semibold">{{ t("product.integrations.accounts.mRouting.title") }}</h3>
         <p class="text-muted-foreground text-xs">{{ t("product.integrations.accounts.mRouting.intro") }}</p>
       </div>
-      <ul v-if="mDraft.length > 0" class="flex flex-col gap-2">
-        <li v-for="(rule, i) in mDraft" :key="i" class="grid items-end gap-2 sm:grid-cols-[10rem_1fr_auto]" :data-testid="`mail-rule-${i}`">
-          <label class="grid gap-1 text-xs">{{ t("product.integrations.accounts.mRouting.language") }}
-            <NativeSelect v-model="rule.language" :disabled="!isOwner" :data-testid="`mail-rule-language-${i}`">
-              <option v-for="l in MAIL_LANGUAGES" :key="l" :value="l">{{ LANGUAGE_NAMES[l] }}</option>
-            </NativeSelect>
-          </label>
-          <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
-            <NativeSelect v-model="rule.account" :disabled="!isOwner" :data-testid="`mail-rule-account-${i}`">
-              <option v-for="o in mailOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
-            </NativeSelect>
-          </label>
-          <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`mail-rule-remove-${i}`" @click="mDraft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
-        </li>
-      </ul>
-      <p v-if="mDuplicate" class="text-destructive text-xs" role="alert">{{ t("product.integrations.accounts.mRouting.duplicate") }}</p>
-      <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" type="button" :disabled="mDraft.length >= MAIL_LANGUAGES.length" data-testid="mail-rule-add" @click="addMRule">{{ t("product.providers.account.routing.addRule") }}</Button>
-        <Button size="sm" type="button" :disabled="!mDirty || mDuplicate || setMRouting.isPending.value" data-testid="mail-rule-save" @click="saveM">{{ t("product.providers.account.routing.save") }}</Button>
-        <span v-if="mSaved && !mDirty" class="text-success text-xs" role="status" data-testid="mail-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
-      </div>
+      <ErrorState v-if="mRoutingRead.error" :error="mRoutingRead.error" :retrying="mRoutingRead.fetching" compact class="mx-0" @retry="mRoutingRead.retry()" />
+      <Skeleton v-else-if="mRoutingRead.loading" class="h-10 rounded-xl" />
+      <template v-else>
+        <ul v-if="mDraft.length > 0" class="flex flex-col gap-2">
+          <li v-for="(rule, i) in mDraft" :key="i" class="grid items-end gap-2 sm:grid-cols-[10rem_1fr_auto]" :data-testid="`mail-rule-${i}`">
+            <label class="grid gap-1 text-xs">{{ t("product.integrations.accounts.mRouting.language") }}
+              <NativeSelect v-model="rule.language" :disabled="!isOwner" :data-testid="`mail-rule-language-${i}`">
+                <option v-for="l in MAIL_LANGUAGES" :key="l" :value="l">{{ LANGUAGE_NAMES[l] }}</option>
+              </NativeSelect>
+            </label>
+            <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.account") }}
+              <NativeSelect v-model="rule.account" :disabled="!isOwner" :data-testid="`mail-rule-account-${i}`">
+                <option v-for="o in mailOptions" :key="o.key" :value="o.key">{{ o.label }}</option>
+              </NativeSelect>
+            </label>
+            <Button v-if="isOwner" variant="ghost" size="sm" :data-testid="`mail-rule-remove-${i}`" @click="mDraft.splice(i, 1)">{{ t("product.providers.account.routing.remove") }}</Button>
+          </li>
+        </ul>
+        <p v-if="mDuplicate" class="text-destructive text-xs" role="alert">{{ t("product.integrations.accounts.mRouting.duplicate") }}</p>
+        <div v-if="isOwner" class="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" type="button" :disabled="mDraft.length >= MAIL_LANGUAGES.length" data-testid="mail-rule-add" @click="addMRule">{{ t("product.providers.account.routing.addRule") }}</Button>
+          <Button size="sm" type="button" :disabled="!mDirty || mDuplicate || setMRouting.isPending.value" data-testid="mail-rule-save" @click="saveM">{{ t("product.providers.account.routing.save") }}</Button>
+          <span v-if="mSaved && !mDirty" class="text-success text-xs" role="status" data-testid="mail-rule-saved">{{ t("product.providers.account.routing.saved") }}</span>
+        </div>
+      </template>
       <ErrorText :error="setMRouting.error.value" />
     </div>
 

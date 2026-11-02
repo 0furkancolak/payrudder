@@ -4789,7 +4789,7 @@
           "from": "A name and address on a domain verified at Nafru Email."
         },
         "checkAndConnect": "Check and connect",
-        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again.",
+        "confirmRemove": "Disconnect {name}? It is your only own e-mail account, so the live mail goes out from Payrudder again.",
         "templatesNote": "Want your own look? In Nafru Email, add Payrudder under Applications and edit the templates there. Every mail carries its name in the payrudder_template tag, so the right template is applied.",
         "identity": {
           "title": "Sender identity",
@@ -4829,7 +4829,9 @@
             "revoked": "The key was revoked (an empty p=)"
           },
           "note": "This only reads public DNS. It does not tell whether the records name your provider, nor whether your provider has verified the domain. A change can take hours to spread."
-        }
+        },
+        "confirmRemoveOther": "Disconnect {name}? Your other e-mail accounts stay. The rules that send mail through {name} are removed, and that mail goes through the default account instead.",
+        "confirmRemoveDefault": "Disconnect {name}? It is the default account, so this is refused while other accounts exist: make another one the default first."
       },
       "accounts": {
         "title": "Accounts",
@@ -4934,7 +4936,8 @@
           "remove": "Remove failover",
           "noTargets": "Add a second payment account to choose where charges can fail over to."
         }
-      }
+      },
+      "unread": "Could not be read"
     },
     "envSwitch": {
       "open": "Environment: {env}. Switch environment",

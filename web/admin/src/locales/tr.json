@@ -4789,7 +4789,7 @@
           "from": "Nafru Email'de doğrulanmış bir alan adındaki ad ve adres."
         },
         "checkAndConnect": "Denetle ve bağla",
-        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
+        "confirmRemove": "{name} bağlantısı kesilsin mi? Bu tek e-posta hesabınız olduğundan canlı e-postalar yeniden Payrudder'dan gider.",
         "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır.",
         "identity": {
           "title": "Gönderen kimliği",
@@ -4829,7 +4829,9 @@
             "revoked": "Anahtar iptal edilmiş (boş p=)"
           },
           "note": "Bu yalnızca herkese açık DNS'i okur. Kayıtların sağlayıcınızı gösterip göstermediğini ya da sağlayıcınızın alan adını doğrulayıp doğrulamadığını söylemez. Bir değişikliğin yayılması saatler sürebilir."
-        }
+        },
+        "confirmRemoveOther": "{name} bağlantısı kesilsin mi? Diğer e-posta hesaplarınız kalır. {name} üzerinden gönderen kurallar silinir ve bu e-postalar varsayılan hesap üzerinden gider.",
+        "confirmRemoveDefault": "{name} bağlantısı kesilsin mi? Bu varsayılan hesaptır; başka hesaplar varken işlem reddedilir: önce başka bir hesabı varsayılan yapın."
       },
       "accounts": {
         "title": "Hesaplar",
@@ -4934,7 +4936,8 @@
           "remove": "Yedek geçişi kaldır",
           "noTargets": "Tahsilatların nereye geçebileceğini seçmek için ikinci bir ödeme hesabı ekleyin."
         }
-      }
+      },
+      "unread": "Okunamadı"
     },
     "envSwitch": {
       "open": "Ortam: {env}. Ortamı değiştir",

@@ -4789,7 +4789,7 @@
           "from": "Un nombre y una dirección en un dominio verificado en Nafru Email."
         },
         "checkAndConnect": "Comprobar y conectar",
-        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
+        "confirmRemove": "¿Desconectar {name}? Es tu única cuenta de correo propia, así que el correo live vuelve a salir desde Payrudder.",
         "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta.",
         "identity": {
           "title": "Identidad del remitente",
@@ -4829,7 +4829,9 @@
             "revoked": "La clave fue revocada (p= vacío)"
           },
           "note": "Esto solo lee el DNS público. No dice si los registros nombran a su proveedor ni si su proveedor ha verificado el dominio. Un cambio puede tardar horas en propagarse."
-        }
+        },
+        "confirmRemoveOther": "¿Desconectar {name}? Tus otras cuentas de correo siguen. Las reglas que envían correo por {name} se eliminan y ese correo sale por la cuenta predeterminada.",
+        "confirmRemoveDefault": "¿Desconectar {name}? Es la cuenta predeterminada, así que se rechaza mientras existan otras cuentas: primero define otra como predeterminada."
       },
       "accounts": {
         "title": "Cuentas",
@@ -4934,7 +4936,8 @@
           "remove": "Quitar la conmutación",
           "noTargets": "Añada una segunda cuenta de pago para elegir a dónde pueden conmutar los cobros."
         }
-      }
+      },
+      "unread": "No se pudo leer"
     },
     "envSwitch": {
       "open": "Entorno: {env}. Cambiar de entorno",

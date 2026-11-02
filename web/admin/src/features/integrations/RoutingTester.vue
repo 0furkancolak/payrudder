@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { readOf, together } from "@/shared/lib/reads";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Button } from "@/shared/ui/button";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { splitAccountKey } from "@/features/providers/connections";
@@ -24,6 +26,8 @@ const eInvoice = useEInvoiceIntegration(() => props.appId);
 const eRules = useEInvoiceRouting(() => props.appId);
 const mail = useMailIntegration(() => props.appId);
 const mRules = useMailRouting(() => props.appId);
+// The answer is worked out from these four: with one missing, "the built-in sender" or "no account" would be a guess, so the question waits until all have been read.
+const rulesRead = computed(() => together([readOf(eInvoice), readOf(eRules), readOf(mail), readOf(mRules)]));
 
 const country = ref("");
 const currency = ref("");
@@ -53,6 +57,7 @@ function run() {
       <h2 class="text-base font-semibold tracking-tight">{{ t("product.integrations.accounts.tester.title") }}</h2>
       <p class="text-muted-foreground max-w-2xl text-sm">{{ t("product.integrations.accounts.tester.intro") }}</p>
     </div>
+    <ErrorState v-if="rulesRead.error" :error="rulesRead.error" :retrying="rulesRead.fetching" compact class="mx-0" @retry="rulesRead.retry()" />
     <form class="flex flex-wrap items-end gap-3" role="form" :aria-label="t('product.integrations.accounts.tester.title')" @submit.prevent="run">
       <label class="grid gap-1 text-xs">{{ t("product.providers.account.routing.country") }}
         <Input v-model="country" class="mono w-24 uppercase" maxlength="2" :placeholder="t('product.providers.account.routing.any')" data-testid="tester-country" />
@@ -65,7 +70,7 @@ function run() {
           <option v-for="l in MAIL_LANGUAGES" :key="l" :value="l">{{ LANGUAGE_NAMES[l] }}</option>
         </NativeSelect>
       </label>
-      <Button type="submit" variant="outline" :disabled="preview.isPending.value" data-testid="tester-run">{{ t("product.integrations.accounts.tester.run") }}</Button>
+      <Button type="submit" variant="outline" :disabled="preview.isPending.value || rulesRead.loading || !!rulesRead.error" data-testid="tester-run">{{ t("product.integrations.accounts.tester.run") }}</Button>
     </form>
     <ErrorText :error="preview.error.value" />
     <dl v-if="asked && preview.data.value" class="grid gap-2 text-sm" data-testid="tester-result">
