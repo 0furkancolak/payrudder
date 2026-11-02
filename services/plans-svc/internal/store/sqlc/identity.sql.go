@@ -832,17 +832,23 @@ func (q *Queries) InsertMember(ctx context.Context, arg InsertMemberParams) erro
 }
 
 const insertRecoveryCode = `-- name: InsertRecoveryCode :exec
-INSERT INTO user_recovery_codes (id, user_id, code_hash) VALUES ($1, $2, $3)
+INSERT INTO user_recovery_codes (id, user_id, code_hash, hash_version) VALUES ($1, $2, $3, $4)
 `
 
 type InsertRecoveryCodeParams struct {
-	ID       uuid.UUID
-	UserID   uuid.UUID
-	CodeHash []byte
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	CodeHash    []byte
+	HashVersion int16
 }
 
 func (q *Queries) InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error {
-	_, err := q.db.Exec(ctx, insertRecoveryCode, arg.ID, arg.UserID, arg.CodeHash)
+	_, err := q.db.Exec(ctx, insertRecoveryCode,
+		arg.ID,
+		arg.UserID,
+		arg.CodeHash,
+		arg.HashVersion,
+	)
 	return err
 }
 
@@ -1706,16 +1712,20 @@ func (q *Queries) UpsertPendingTotp(ctx context.Context, arg UpsertPendingTotpPa
 }
 
 const useRecoveryCode = `-- name: UseRecoveryCode :execrows
-UPDATE user_recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL
+UPDATE user_recovery_codes SET used_at = now()
+WHERE user_id = $1 AND used_at IS NULL
+  AND ((hash_version = 1 AND code_hash = $2) OR (hash_version = 2 AND code_hash = $3))
 `
 
 type UseRecoveryCodeParams struct {
-	UserID   uuid.UUID
-	CodeHash []byte
+	UserID uuid.UUID
+	HashV1 []byte
+	HashV2 []byte
 }
 
+// A code is looked up by the hash of the version its row carries: a row of version 1 opens only with the old derivation, one of version 2 only with the new.
 func (q *Queries) UseRecoveryCode(ctx context.Context, arg UseRecoveryCodeParams) (int64, error) {
-	result, err := q.db.Exec(ctx, useRecoveryCode, arg.UserID, arg.CodeHash)
+	result, err := q.db.Exec(ctx, useRecoveryCode, arg.UserID, arg.HashV1, arg.HashV2)
 	if err != nil {
 		return 0, err
 	}

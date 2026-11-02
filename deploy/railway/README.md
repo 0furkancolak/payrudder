@@ -86,7 +86,7 @@ each service its health check, restart policy and watch paths. Until then it sti
    | `MINIO_ROOT_PASSWORD` | `minio` | `openssl rand -hex 24` |
    | `CLICKHOUSE_PASSWORD` | `clickhouse` | `openssl rand -hex 24` |
    | `PAYRUDDER_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters; the API's machine credential) |
-   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in codes) |
+   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in and recovery codes; plans-svc refuses to start without it, and `PAYRUDDER_ENV=railway` is not a development environment) |
    | `PAYMENTS_INTERNAL_TOKEN` | `payments-worker` | `openssl rand -hex 32` |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | `notifier` | `openssl rand -hex 32` (signs the notifier's mail-events listener; the gateway refers to it) |
    | `PAYRUDDER_SECRETS_KEY` | `payments-worker` | `openssl rand -base64 32` (exactly 32 bytes; seals tenants' provider credentials and webhook secrets) |
