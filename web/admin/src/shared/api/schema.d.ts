@@ -8093,7 +8093,7 @@ export interface components {
             discrepancy_counts: {
                 [key: string]: number;
             };
-            /** @description More was found than a run keeps */
+            /** @description More was found than a run keeps, so nothing was cleared */
             truncated?: boolean;
         };
         ReconciliationDiscrepancy: {
@@ -8140,7 +8140,7 @@ export interface components {
             id: number;
             /** @enum {string} */
             action: "detected" | "reopened" | "cleared" | "assigned" | "explained" | "resolved";
-            /** @description system for a run */
+            /** @description system for a run, otherwise who the gateway named */
             actor: string;
             from_status?: string;
             to_status?: string;
@@ -8175,7 +8175,7 @@ export interface components {
         };
         ListReconciliationDiscrepanciesResponse: {
             discrepancies: components["schemas"]["ReconciliationDiscrepancy"][];
-            /** @description Per status and kind for the period (all periods when none is given) */
+            /** @description Per status and kind for the period (all periods when none is given), not narrowed by the other filters */
             counts: components["schemas"]["ReconciliationCount"][];
             next_page_token: string;
             last_run?: components["schemas"]["ReconciliationRun"];
@@ -8203,7 +8203,7 @@ export interface components {
         ResolveReconciliationDiscrepancyRequest: {
             /** @enum {string} */
             resolution: "ledger_fact" | "credit_note" | "refunded_at_provider" | "corrected_in_billing" | "not_an_error" | "other";
-            /** @description What was found and done (for credit_note */
+            /** @description What was found and done (for credit_note, the credit note number) */
             note: string;
             owner?: string;
             ledger_fact?: components["schemas"]["ReconciliationLedgerFact"];
@@ -8267,7 +8267,7 @@ export interface components {
             changed: number;
         };
         SyncSettlementRequest: {
-            /** @description The account key to read */
+            /** @description The account key to read, such as stripe */
             provider: string;
             /**
              * Format: date-time

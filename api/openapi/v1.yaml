@@ -7425,7 +7425,7 @@ components:
         reopened: { type: integer, description: Resolved before and found again }
         cleared: { type: integer, description: Open or explained before and no longer found }
         discrepancy_counts: { type: object, additionalProperties: { type: integer } }
-        truncated: { type: boolean, description: More was found than a run keeps, so nothing was cleared }
+        truncated: { type: boolean, description: "More was found than a run keeps, so nothing was cleared" }
     ReconciliationDiscrepancy:
       type: object
       required: [id, environment, period, kind, status, first_seen_at, last_seen_at]
@@ -7442,8 +7442,8 @@ components:
         provider_ref: { type: string }
         currency: { type: string }
         billed_minor: { type: integer, format: int64 }
-        ledger_minor: { type: integer, format: int64, description: What the ledger holds; for fee_mismatch the fee expected }
-        settled_minor: { type: integer, format: int64, description: What the provider reported (settlement kinds only); for fee_mismatch the fee kept }
+        ledger_minor: { type: integer, format: int64, description: "What the ledger holds; for fee_mismatch the fee expected" }
+        settled_minor: { type: integer, format: int64, description: "What the provider reported (settlement kinds only); for fee_mismatch the fee kept" }
         detail: { type: string }
         status: { type: string, enum: [open, explained, resolved] }
         owner: { type: string }
@@ -7458,7 +7458,7 @@ components:
       properties:
         id: { type: integer, format: int64 }
         action: { type: string, enum: [detected, reopened, cleared, assigned, explained, resolved] }
-        actor: { type: string, description: system for a run, otherwise who the gateway named }
+        actor: { type: string, description: "system for a run, otherwise who the gateway named" }
         from_status: { type: string }
         to_status: { type: string }
         resolution: { type: string }
@@ -7493,7 +7493,7 @@ components:
       required: [discrepancies, counts, next_page_token]
       properties:
         discrepancies: { type: array, items: { $ref: "#/components/schemas/ReconciliationDiscrepancy" } }
-        counts: { type: array, items: { $ref: "#/components/schemas/ReconciliationCount" }, description: Per status and kind for the period (all periods when none is given), not narrowed by the other filters }
+        counts: { type: array, items: { $ref: "#/components/schemas/ReconciliationCount" }, description: "Per status and kind for the period (all periods when none is given), not narrowed by the other filters" }
         next_page_token: { type: string }
         last_run: { $ref: "#/components/schemas/ReconciliationRun" }
     GetReconciliationDiscrepancyResponse:
@@ -7522,13 +7522,13 @@ components:
       required: [provider, provider_ref]
       properties:
         provider: { type: string, description: "An account key such as stripe or stripe~eu" }
-        provider_ref: { type: string, description: The provider's reference of the payment }
+        provider_ref: { type: string, description: "The provider's reference of the payment" }
     ResolveReconciliationDiscrepancyRequest:
       type: object
       required: [resolution, note]
       properties:
         resolution: { type: string, enum: [ledger_fact, credit_note, refunded_at_provider, corrected_in_billing, not_an_error, other] }
-        note: { type: string, maxLength: 1000, description: What was found and done (for credit_note, the credit note number) }
+        note: { type: string, maxLength: 1000, description: "What was found and done (for credit_note, the credit note number)" }
         owner: { type: string, maxLength: 120 }
         ledger_fact: { $ref: "#/components/schemas/ReconciliationLedgerFact" }
     ResolveReconciliationDiscrepanciesRequest:
@@ -7563,7 +7563,7 @@ components:
         currency: { type: string }
         amount_minor: { type: integer, format: int64 }
         paid_at: { type: string, format: date-time }
-        state: { type: string, enum: [not_reported, pending_payout, settled], description: Paid is the ledger's word; settled is the provider's }
+        state: { type: string, enum: [not_reported, pending_payout, settled], description: "Paid is the ledger's word; settled is the provider's" }
         settlement_currency: { type: string }
         gross_minor: { type: integer, format: int64 }
         fee_minor: { type: integer, format: int64 }
@@ -7583,13 +7583,13 @@ components:
       required: [lines, changed]
       properties:
         lines: { type: integer }
-        changed: { type: integer, format: int64, description: New or changed; the same lines read again change none }
+        changed: { type: integer, format: int64, description: "New or changed; the same lines read again change none" }
     SyncSettlementRequest:
       type: object
       required: [provider]
       properties:
-        provider: { type: string, description: The account key to read, such as stripe }
-        since: { type: string, format: date-time, description: Default 45 days ago; at most 400 }
+        provider: { type: string, description: "The account key to read, such as stripe" }
+        since: { type: string, format: date-time, description: "Default 45 days ago; at most 400" }
     SettlementFeeRule:
       type: object
       required: [environment, provider, currency, rate_bps]
