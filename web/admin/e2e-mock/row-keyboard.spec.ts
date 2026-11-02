@@ -12,6 +12,7 @@ const ticket = {
   id: "c0000000-0000-4000-8000-000000000001", number: 1042, account_id: ACCOUNT, account_name: "Ada Labs", app_id: "", app_name: "", opened_by: "u1", opened_by_name: "Ada", subject: "Paddle webhooks are late",
   category: "integration", priority: "high", status: "open", assignee: "", create_time: NOW, update_time: NOW, last_message_time: NOW, last_author: "customer", first_response_due: "2026-10-28T13:00:00Z",
   first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, tags: [] as string[],
+  merged_into_id: "", merged_into_number: 0, rating: 0, rating_comment: "", rate_time: null, links: [], sla_tier: "standard",
 };
 const thread = { ticket, messages: [{ id: "m1", author_kind: "customer", author_name: "Ada", body: "Since this morning.", internal: false, create_time: NOW }], events: [] };
 
