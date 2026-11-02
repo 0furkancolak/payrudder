@@ -13,9 +13,10 @@ import { ErrorText } from "@/shared/ui/error-text";
 import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { useCreateApp } from "./api";
+import { useCreateApp, useRegions } from "./api";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t, locale } = useI18n();
@@ -26,6 +27,11 @@ const create = useCreateApp();
 const name = ref("");
 const currency = ref<Currency>(FALLBACK_CURRENCY);
 const timezone = ref(ownZone());
+// Where the app's data lives: asked only on a deployment with more than one region (a single one is the default and is sent as it is by the server).
+const regions = useRegions(open);
+const regionChoices = computed(() => regions.data.value?.regions ?? []);
+const region = ref("");
+watch(() => regions.data.value, (d) => { if (d && !regionChoices.value.includes(region.value)) region.value = d.default_region ?? ""; }, { immediate: true });
 const plan = usePlan();
 /** The plan's app limit when it is used up: said before the form is filled in, with the way out, instead of after "Create". */
 const limit = computed(() => appLimitReached(plan.data.value?.quotas));
@@ -51,7 +57,7 @@ watch(open, (v) => {
 function submit() {
   if (limit.value || !check.attempt()) return;
   create.mutate(
-    { name: name.value.trim(), currency: currency.value, timezone: timezone.value },
+    { name: name.value.trim(), currency: currency.value, timezone: timezone.value, ...(regionChoices.value.length > 1 ? { region: region.value } : {}) },
     {
       onSuccess: async (app) => {
         open.value = false;
@@ -86,6 +92,11 @@ function submit() {
               <TimezoneSelect id="ca-tz" v-model="timezone" :aria-label="t('product.createApp.timezone')" />
             </FormField>
           </div>
+          <FormField v-if="regionChoices.length > 1" for="ca-region" :label="t('product.createApp.region')" :hint="t('product.createApp.regionHint')">
+            <NativeSelect id="ca-region" v-model="region" data-testid="app-region">
+              <option v-for="r in regionChoices" :key="r" :value="r">{{ r }}</option>
+            </NativeSelect>
+          </FormField>
           <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
           <ErrorText :error="create.error.value" box />
           <UpgradeHint :error="create.error.value" />

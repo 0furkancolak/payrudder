@@ -3087,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "Bölge adında yalnızca küçük harf, rakam ve tire bulunabilir; en fazla 31 karakter olabilir.",
         "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
         "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
       },
@@ -3534,6 +3535,7 @@
         "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
       },
       "region": {
+        "unknown": "Bu bölge bu kurulumda yok. Listeden birini seçin.",
         "wrong": "Bu ortam başka bir bölgeden sunuluyor. İsteği kendi bölgesinin ağ geçidine gönderin (X-Payrudder-Region ve X-Payrudder-Region-Url başlıklarına bakın)."
       },
       "rate_limit": {
@@ -3925,6 +3927,8 @@
       "name": "Uygulama adı",
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
+      "region": "Bölge",
+      "regionHint": "Bu uygulamanın verilerinin tutulduğu yer. Konsoldan sonradan değiştirilemez; uygulamaya o bölgenin adresinden ulaşılır.",
       "immutable": "Para birimi ve saat dilimi sonradan değiştirilemez: fatura dönemleri bu saat diliminde kesilir.",
       "submit": "Uygulama oluştur",
       "badCurrency": "Listeden bir para birimi seçin.",

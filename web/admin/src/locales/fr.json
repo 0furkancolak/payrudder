@@ -3087,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "Le nom de la région ne peut contenir que des minuscules, des chiffres et des tirets, et au plus 31 caractères.",
         "bad_slug": "Le code de l'app ne peut contenir que des minuscules, des chiffres et des tirets simples, et au plus 60 caractères.",
         "slug_taken": "Ce compte a déjà une app avec ce code."
       },
@@ -3534,6 +3535,7 @@
         "unreachable": "Le service de paiement est inaccessible pour le moment. Réessayez dans un instant."
       },
       "region": {
+        "unknown": "Cette région n'existe pas sur ce déploiement. Choisissez-en une dans la liste.",
         "wrong": "Cet environnement est servi depuis une autre région. Envoyez la requête à la passerelle de sa région (voir les en-têtes X-Payrudder-Region et X-Payrudder-Region-Url)."
       },
       "rate_limit": {
@@ -3925,6 +3927,8 @@
       "name": "Nom de l'application",
       "currency": "Devise",
       "timezone": "Fuseau horaire",
+      "region": "Région",
+      "regionHint": "L'endroit où les données de cette app sont conservées. La console ne peut pas le modifier plus tard, et l'app est jointe à l'adresse de cette région.",
       "immutable": "La devise et le fuseau horaire ne peuvent pas être modifiés ensuite : les périodes de facturation sont découpées dans ce fuseau.",
       "submit": "Créer l'application",
       "badCurrency": "Choisissez une devise dans la liste.",

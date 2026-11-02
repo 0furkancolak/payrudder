@@ -153,10 +153,12 @@ type CreateAppRequest struct {
 	// Empty: the name in lower case with dashes.
 	Slug string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
 	// As in CreateAccountRequest: no defaults.
-	Currency      string               `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Timezone      string               `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"`
-	GracePeriod   *durationpb.Duration `protobuf:"bytes,6,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
-	Tier          TenantTier           `protobuf:"varint,7,opt,name=tier,proto3,enum=payrudder.plans.v1.TenantTier" json:"tier,omitempty"`
+	Currency    string               `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	Timezone    string               `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	GracePeriod *durationpb.Duration `protobuf:"bytes,6,opt,name=grace_period,json=gracePeriod,proto3" json:"grace_period,omitempty"`
+	Tier        TenantTier           `protobuf:"varint,7,opt,name=tier,proto3,enum=payrudder.plans.v1.TenantTier" json:"tier,omitempty"`
+	// The region of the app's tenants (see Tenant.region); empty takes the deployment's default (PAYRUDDER_DEFAULT_REGION of plans-svc, itself empty: not pinned).
+	Region        string `protobuf:"bytes,8,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -238,6 +240,13 @@ func (x *CreateAppRequest) GetTier() TenantTier {
 		return x.Tier
 	}
 	return TenantTier_TENANT_TIER_UNSPECIFIED
+}
+
+func (x *CreateAppRequest) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
 }
 
 type CreateAppResponse struct {
@@ -1801,7 +1810,7 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\fgrace_period\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x122\n" +
 	"\x04tier\x18\x05 \x01(\x0e2\x1e.payrudder.plans.v1.TenantTierR\x04tier\"N\n" +
 	"\x15CreateAccountResponse\x125\n" +
-	"\aaccount\x18\x01 \x01(\v2\x1b.payrudder.plans.v1.AccountR\aaccount\"\x83\x02\n" +
+	"\aaccount\x18\x01 \x01(\v2\x1b.payrudder.plans.v1.AccountR\aaccount\"\x9b\x02\n" +
 	"\x10CreateAppRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x12\n" +
@@ -1810,7 +1819,8 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12\x1a\n" +
 	"\btimezone\x18\x05 \x01(\tR\btimezone\x12<\n" +
 	"\fgrace_period\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x122\n" +
-	"\x04tier\x18\a \x01(\x0e2\x1e.payrudder.plans.v1.TenantTierR\x04tier\">\n" +
+	"\x04tier\x18\a \x01(\x0e2\x1e.payrudder.plans.v1.TenantTierR\x04tier\x12\x16\n" +
+	"\x06region\x18\b \x01(\tR\x06region\">\n" +
 	"\x11CreateAppResponse\x12)\n" +
 	"\x03app\x18\x01 \x01(\v2\x17.payrudder.plans.v1.AppR\x03app\"0\n" +
 	"\x0fListAppsRequest\x12\x1d\n" +

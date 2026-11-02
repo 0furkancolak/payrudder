@@ -297,6 +297,9 @@ func newEnvWith(t *testing.T, saasCfg saascmd.Config, allowedEnvs ...string) *en
 }
 
 // newEnvIn starts a plans-svc over a world: its two pools of the pooled database, and in a world with cells their routers.
+// defaultRegionForTests is PAYRUDDER_DEFAULT_REGION of the plans-svc the next environment starts (a test that wants one sets it and puts it back).
+var defaultRegionForTests string
+
 func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...string) *env {
 	t.Helper()
 	if len(allowedEnvs) == 0 {
@@ -337,7 +340,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(places, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
 	saas := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, BanApproval: banApproval, Box: box, WebhookAllowPrivate: true,
+		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, DefaultRegion: defaultRegionForTests, BanApproval: banApproval, Box: box, WebhookAllowPrivate: true,
 		Mail: mail, AppURL: testAppURL, OperatorEmails: []string{testOperatorEmail}, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
 	})
 	lis := bufconn.Listen(1 << 20)
