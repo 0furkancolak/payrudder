@@ -266,6 +266,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.payments.not_configured`
 - `gateway.payments.unreachable`
 - `gateway.rate_limit.exceeded`
+- `gateway.region.wrong`
 - `gateway.request.bad_tenant_id`
 - `gateway.request.invalid`
 - `gateway.request.malformed_json`

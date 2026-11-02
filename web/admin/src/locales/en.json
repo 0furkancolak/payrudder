@@ -3274,6 +3274,9 @@
         "not_configured": "Payment providers are not set up on this deployment.",
         "unreachable": "The payments service cannot be reached right now. Try again shortly."
       },
+      "region": {
+        "wrong": "This environment is served from another region. Send the request to the gateway of its region (see the X-Payrudder-Region and X-Payrudder-Region-Url headers)."
+      },
       "rate_limit": {
         "exceeded": "Too many requests of this kind. Wait a moment and try again."
       },

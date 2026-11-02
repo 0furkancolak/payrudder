@@ -3274,6 +3274,9 @@
         "not_configured": "Les prestataires de paiement ne sont pas configurés sur ce déploiement.",
         "unreachable": "Le service de paiement est inaccessible pour le moment. Réessayez dans un instant."
       },
+      "region": {
+        "wrong": "Cet environnement est servi depuis une autre région. Envoyez la requête à la passerelle de sa région (voir les en-têtes X-Payrudder-Region et X-Payrudder-Region-Url)."
+      },
       "rate_limit": {
         "exceeded": "Trop de requêtes de ce type. Patientez un instant puis réessayez."
       },

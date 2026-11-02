@@ -86,7 +86,7 @@ Two read-only passes over `main` (2026-11-01) with file evidence. **Nothing was 
 
 **G16 Backoffice and DX.** Publish SDKs with versions; a customer CLI (login, tail events, forward webhooks locally); docs site: publish job and concept pages (plan 19; five guides and 149 operation pages exist); examples per language (TS first, then Go, then Python). **Medium.** **L.**
 
-**G17 Throughput.** Profile ingest at 20k/s before any new technology; the first suspects are WAL fsync and a single hot tenant partition. Do not add systems without a measurement. **Low–Medium.** **M.**
+**G17 Throughput.** Profile ingest at 20k/s before any new technology; the first suspects are WAL fsync and a single hot tenant partition. Do not add systems without a measurement. **Low–Medium.** **M.** *Status 2026-11-02 (plan 17 branch): not profiled. [capacity.md](../capacity.md) has the published numbers, a derivation that makes WAL fsync of the idempotency table an unlikely first suspect on the benchmark VM (20k rows/s against 198k rows/s measured in isolation), and the seven steps that find the cause; no k6 scenario was run.*
 
 **G18 Error tracking.** Add an error tracker (self-hostable) or structured error export; none found. **Low.** **S.**
 

@@ -3274,6 +3274,9 @@
         "not_configured": "Zahlungsanbieter sind in dieser Installation nicht eingerichtet.",
         "unreachable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich erneut."
       },
+      "region": {
+        "wrong": "Diese Umgebung wird aus einer anderen Region bereitgestellt. Senden Sie die Anfrage an das Gateway ihrer Region (siehe die Header X-Payrudder-Region und X-Payrudder-Region-Url)."
+      },
       "rate_limit": {
         "exceeded": "Zu viele Anfragen dieser Art. Warten Sie einen Moment und versuchen Sie es erneut."
       },

@@ -35,6 +35,7 @@ files:
   18-sdks.md: { audience: public, status: pre-release }
   19-contracts.md: { audience: public, status: preview }
   benchmarks.md: { audience: internal, status: stable }
+  capacity.md: { audience: internal, status: preview }
   error-keys.md: { audience: public, status: stable }
   email-template-contract.md: { audience: internal, status: preview }
   geo-data.md: { audience: internal, status: stable }

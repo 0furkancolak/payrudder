@@ -55,34 +55,72 @@ DROP FUNCTION app_tenant_id();
 `
 
 type env struct {
-	cfg      cells.Config
-	dir      *memDir
-	pooled   *pgx.Conn // owner of the pooled database
-	cell     map[string]*pgx.Conn
-	app      map[string]testkit.ServiceDB // by cell name; "" is the pooled database
-	schemas  pgxx.TenantSchemas
-	tenantA  uuid.UUID
-	tenantB  uuid.UUID
-	settle   time.Duration
-	migrDir  string
-	services []string
+	cfg     cells.Config
+	dir     *memDir
+	pooled  *pgx.Conn // owner of the pooled database
+	cell    map[string]*pgx.Conn
+	app     map[string]testkit.ServiceDB // by cell name; "" is the pooled database
+	schemas pgxx.TenantSchemas
+	tenantA uuid.UUID
+	tenantB uuid.UUID
+	settle  time.Duration
+	migrDir string
+	// pg is the cluster of each place ("" and c1 share the first; c2 is on the second when the topology has two clusters). pooler is set when a PgBouncer sits in front.
+	pg     map[string]testkit.Postgres
+	pooler *testkit.Pooler
 }
 
-func newEnv(t *testing.T) *env {
+// topology is where the places of a test environment are. The zero value is the original: one Postgres holds the pooled database and both cells, no pooler.
+type topology struct {
+	// twoClusters puts cell c2 on a second Postgres container, as a cell in another region would be.
+	twoClusters bool
+	// pooler puts a transaction-mode PgBouncer in front of every database; the app-role DSNs of env.app go through it. (The owner DSNs of env.cfg stay direct.)
+	pooler *testkit.PoolerOptions
+}
+
+func newEnv(t *testing.T) *env { return newEnvOn(t, topology{}) }
+
+func newEnvOn(t *testing.T, topo topology) *env {
 	t.Helper()
 	ctx := testkit.Ctx(t)
-	pg := testkit.StartPostgres(t)
+	var pg1, pg2 testkit.Postgres
+	var pool *testkit.Pooler
+	switch {
+	case topo.pooler != nil || topo.twoClusters:
+		nw := testkit.StartNetwork(t)
+		pg1 = testkit.StartPostgresOn(t, nw, "pg1")
+		pg2 = pg1
+		if topo.twoClusters {
+			pg2 = testkit.StartPostgresOn(t, nw, "pg2")
+		}
+		if topo.pooler != nil {
+			o := *topo.pooler
+			o.Routes = map[string]testkit.Postgres{"mvt_db": pg1, "mvt_c1_db": pg1, "mvt_c2_db": pg2}
+			p := testkit.StartPgBouncer(t, nw, o)
+			pool = &p
+		}
+	default:
+		pg1 = testkit.StartPostgres(t)
+		pg2 = pg1
+	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "00001_init.sql"), []byte(fixtureSQL), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pooled := testkit.CreateServiceDB(t, pg, "mvt")
+	pooled := testkit.CreateServiceDB(t, pg1, "mvt")
 	if err := pgxx.Migrate(ctx, pooled.Migrator, fstest.MapFS{"00001_init.sql": {Data: []byte(fixtureSQL)}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	c1, c2 := testkit.CreateCellDB(t, pg, "mvt", "c1"), testkit.CreateCellDB(t, pg, "mvt", "c2")
+	if pg2.ContainerID != pg1.ContainerID {
+		testkit.CreateServiceDB(t, pg2, "mvt") // the roles of the service on the second cluster; its own database stays empty
+	}
+	c1, c2 := testkit.CreateCellDB(t, pg1, "mvt", "c1"), testkit.CreateCellDB(t, pg2, "mvt", "c2")
+	if pool != nil {
+		pooled, c1, c2 = pooled.Via(*pool), c1.Via(*pool), c2.Via(*pool)
+	}
 	e := &env{
 		dir: newMemDir(), settle: time.Nanosecond, migrDir: dir, cell: map[string]*pgx.Conn{}, app: map[string]testkit.ServiceDB{"": pooled, "c1": c1, "c2": c2},
+		pg: map[string]testkit.Postgres{"": pg1, "c1": pg1, "c2": pg2}, pooler: pool,
 		tenantA: uuid.New(), tenantB: uuid.New(),
 		cfg: cells.Config{
 			Cells: map[string]cells.Cell{"c1": {Region: "eu"}, "c2": {Region: "us"}},
@@ -331,8 +369,9 @@ func equalSnapshots(t *testing.T, what string, want, got map[string]string) {
 	}
 }
 
-func TestMoveLosesNoRow(t *testing.T) {
-	e := newEnv(t)
+func TestMoveLosesNoRow(t *testing.T) { moveLosesNoRow(t, newEnv(t)) }
+
+func moveLosesNoRow(t *testing.T, e *env) {
 	const scale = 40
 	e.seed(t, e.tenantA, scale)
 	e.seed(t, e.tenantB, 7)
@@ -424,8 +463,9 @@ func TestMoveLosesNoRow(t *testing.T) {
 	})
 }
 
-func TestMoveGivenUpUndoesEverything(t *testing.T) {
-	e := newEnv(t)
+func TestMoveGivenUpUndoesEverything(t *testing.T) { moveGivenUpUndoesEverything(t, newEnv(t)) }
+
+func moveGivenUpUndoesEverything(t *testing.T, e *env) {
 	ctx := testkit.Ctx(t)
 	e.seed(t, e.tenantA, 10)
 	want := e.snapshot(t, "", e.tenantA)
@@ -561,8 +601,9 @@ func TestMoveGivenUpUndoesEverything(t *testing.T) {
 	})
 }
 
-func TestDoctorFindsWhatDisagrees(t *testing.T) {
-	e := newEnv(t)
+func TestDoctorFindsWhatDisagrees(t *testing.T) { doctorFindsWhatDisagrees(t, newEnv(t)) }
+
+func doctorFindsWhatDisagrees(t *testing.T, e *env) {
 	ctx := testkit.Ctx(t)
 	healthy, missing, orphan, behind, stuck := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 

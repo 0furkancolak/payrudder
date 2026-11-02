@@ -113,6 +113,8 @@ type Deps struct {
 	// AppURL is the console's public address (https://app.example.com), where the browser is sent after a provider login. The OAuth redirect address
 	// registered at Google is AppURL + /gw/auth/google/callback unless the deployment says otherwise.
 	AppURL string
+	// Region pins this gateway to one region (PAYRUDDER_REGION); nil serves every tenant.
+	Region *Region
 }
 
 // Server is the HTTP handler.
@@ -242,6 +244,9 @@ func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Rout
 	p, err := s.authenticate(r)
 	if err != nil {
 		writeError(w, r, err)
+		return nil, false
+	}
+	if !s.inRegion(w, r, p) {
 		return nil, false
 	}
 	if need, ok := permitted(p, rt.Method, rt.Path); !ok {

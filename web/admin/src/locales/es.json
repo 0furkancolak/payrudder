@@ -3274,6 +3274,9 @@
         "not_configured": "Los proveedores de pago no están configurados en este despliegue.",
         "unreachable": "No se puede acceder al servicio de pagos ahora mismo. Inténtalo de nuevo en un momento."
       },
+      "region": {
+        "wrong": "Este entorno se sirve desde otra región. Envíe la solicitud a la pasarela de su región (consulte las cabeceras X-Payrudder-Region y X-Payrudder-Region-Url)."
+      },
       "rate_limit": {
         "exceeded": "Demasiadas solicitudes de este tipo. Espera un momento e inténtalo de nuevo."
       },

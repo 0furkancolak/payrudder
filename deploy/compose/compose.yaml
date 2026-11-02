@@ -4,6 +4,7 @@
 #   ops:   backup (pg_dump every night, restore drill every week; needs the default profile's postgres)
 #          + with compose.pitr.yaml on top (make up-pitr): pitr-agent, WAL archiving and a base backup a day for point-in-time recovery
 #   app:   Payrudder services                    make up
+#   pooler: pgbouncer, a transaction-mode pooler in front of postgres; compose.pooler.yaml (make up-pooler) points the services' app role at it
 #   chaos: toxiproxy                           Phase 09
 #   oidc:  mockoidc, a stand-in for Google    (development only)
 #   init:  minio-init (one-shot, run by make)
@@ -35,6 +36,24 @@ services:
       timeout: 3s
       retries: 20
     deploy: { resources: { limits: { memory: 512m } } }
+
+  # PgBouncer 1.25 in transaction mode (docs/runbooks/scaling.md). Off unless the pooler profile is on.
+  pgbouncer:
+    <<: *defaults
+    profiles: [pooler]
+    image: edoburu/pgbouncer@sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340
+    ports: ["${PAYRUDDER_PGBOUNCER_HOST_PORT:-42433}:6432"]
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy: { resources: { limits: { memory: 64m } } }
 
   redpanda:
     <<: *defaults
