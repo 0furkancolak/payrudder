@@ -2,6 +2,7 @@ package domain
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -48,34 +49,40 @@ func inList(list []string, v string) bool {
 	return false
 }
 
-// SupportFirstResponse is how much business time the operator has to answer a new ticket first, by priority: urgent one hour, high four, normal one business day
-// (nine hours), low three business days.
-func SupportFirstResponse(priority string) time.Duration {
-	switch priority {
-	case "urgent":
-		return time.Hour
-	case "high":
-		return 4 * time.Hour
-	case "low":
-		return 27 * time.Hour
-	default:
-		return 9 * time.Hour
+// SupportFirstResponse is how much business time the operator has to answer a new ticket first, by the plan of the ticket's app and the ticket's priority (plan 12,
+// a default table, not agreed; the owner may overturn it). The free row is the one table the help desk had before plans counted, and the plan every new app starts on:
+// urgent one hour, high four, normal one business day (nine hours), low three business days. A standard app has less time to wait and an enterprise one less still. An
+// unknown plan counts as free.
+func SupportFirstResponse(tier, priority string) time.Duration {
+	table, ok := supportFirstResponse[tier]
+	if !ok {
+		table = supportFirstResponse["free"]
 	}
+	if d, ok := table[priority]; ok {
+		return d
+	}
+	return table["normal"]
 }
 
-// SupportFirstResponseDue is the deadline of a ticket opened at from: the priority's business time after it, counted in the ticket's zone (UTC when the zone is
-// empty or not known). A ticket opened out of hours starts the clock when the next business day opens. Holidays are not known: shortcut, add a calendar when the
-// operator publishes its days off.
-func SupportFirstResponseDue(from time.Time, priority, zone string) time.Time {
+var supportFirstResponse = map[string]map[string]time.Duration{
+	"free":       {"urgent": time.Hour, "high": 4 * time.Hour, "normal": 9 * time.Hour, "low": 27 * time.Hour},
+	"standard":   {"urgent": time.Hour, "high": 2 * time.Hour, "normal": 6 * time.Hour, "low": 18 * time.Hour},
+	"enterprise": {"urgent": 30 * time.Minute, "high": time.Hour, "normal": 4 * time.Hour, "low": 9 * time.Hour},
+}
+
+// SupportFirstResponseDue is the deadline of a ticket opened at from: the plan's and priority's business time after it, counted in the ticket's zone (UTC when the zone
+// is empty or not known). A ticket opened out of hours starts the clock when the next business day opens. The clock does not run on a weekend or on a day in off (the
+// app's days off, "2006-01-02" in the ticket's zone).
+func SupportFirstResponseDue(from time.Time, tier, priority, zone string, off map[string]bool) time.Time {
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
 		loc = time.UTC
 	}
-	left, t := SupportFirstResponse(priority), from.In(loc)
+	left, t := SupportFirstResponse(tier, priority), from.In(loc)
 	for {
 		y, m, d := t.Date()
 		open, end := time.Date(y, m, d, supportOpenHour, 0, 0, 0, loc), time.Date(y, m, d, supportCloseHour, 0, 0, 0, loc)
-		if wd := t.Weekday(); wd != time.Saturday && wd != time.Sunday && t.Before(end) {
+		if wd := t.Weekday(); wd != time.Saturday && wd != time.Sunday && !off[t.Format("2006-01-02")] && t.Before(end) {
 			if t.Before(open) {
 				t = open
 			}
@@ -138,8 +145,10 @@ type SupportTicketState struct {
 	FirstRespondedAt *time.Time
 	SolvedAt         *time.Time
 	CreatedAt        time.Time
-	// Zone is the time zone the first-answer deadline counts business hours in.
-	Zone string
+	// Zone is the time zone the first-answer deadline counts business hours in, Tier the plan of the ticket's app it was counted for, and OffDays the app's days off
+	// (loaded by the caller that changes the priority).
+	Zone, Tier string
+	OffDays    map[string]bool
 }
 
 // SupportCustomerReply is the state after the person writes: a ticket waiting for them, or solved, goes back to the operator. A closed ticket takes no
@@ -200,7 +209,7 @@ func SupportSetPriority(s SupportTicketState, to string) (SupportTicketState, er
 	}
 	s.Priority = to
 	if s.FirstRespondedAt == nil {
-		s.FirstResponseDue = SupportFirstResponseDue(s.CreatedAt, to, s.Zone)
+		s.FirstResponseDue = SupportFirstResponseDue(s.CreatedAt, s.Tier, to, s.Zone, s.OffDays)
 	}
 	return s, nil
 }
@@ -253,4 +262,111 @@ func ValidateSupportCannedReply(title, body string) error {
 	}
 	validateSupportBody(&v, body)
 	return v.Err()
+}
+
+// ValidateSupportRating checks what a person says of a solved ticket: 1 to 5 and a comment of at most 1000 characters (optional).
+func ValidateSupportRating(rating int, comment string) error {
+	var v Violations
+	if rating < 1 || rating > 5 {
+		v.Add("rating", "between 1 and 5")
+	}
+	if utf8.RuneCountInString(comment) > 1000 {
+		v.Add("comment", "at most 1000 characters")
+	}
+	return v.Err()
+}
+
+// SupportMaxLinks is the most objects a ticket links to; SupportMaxHolidays the most days off an app lists (plan 12, defaults not agreed).
+const (
+	SupportMaxLinks    = 5
+	SupportMaxHolidays = 200
+)
+
+// SupportLinkKinds are the objects a ticket may link to.
+var SupportLinkKinds = []string{"customer", "invoice", "subscription"}
+
+var uuidText = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// NormalizeSupportLink checks one link and returns it trimmed: a kind from the list, a reference of 1 to 200 characters without control characters (a customer's
+// external id, or the id of an invoice or a subscription, which is a UUID), and an environment of sandbox or live.
+func NormalizeSupportLink(kind, ref, environment string) (string, string, string, error) {
+	kind, ref, environment = strings.TrimSpace(kind), strings.TrimSpace(ref), strings.TrimSpace(environment)
+	var v Violations
+	if !inList(SupportLinkKinds, kind) {
+		v.Add("links", "kind is one of "+strings.Join(SupportLinkKinds, ", "))
+	}
+	if n := utf8.RuneCountInString(ref); n < 1 || n > 200 || strings.ContainsFunc(ref, func(r rune) bool { return r < ' ' || r == 0x7f }) {
+		v.Add("links", "ref is 1 to 200 characters without control characters")
+	} else if kind != "customer" && !uuidText.MatchString(ref) {
+		v.Add("links", "an invoice or a subscription is named by its id")
+	}
+	if environment != "sandbox" && environment != "live" {
+		v.Add("links", "environment is sandbox or live")
+	}
+	return kind, refCase(kind, ref), environment, v.Err()
+}
+
+// refCase lower-cases the id of an invoice or a subscription (the same UUID is written either way) and leaves a customer's external id as it is.
+func refCase(kind, ref string) string {
+	if kind == "customer" {
+		return ref
+	}
+	return strings.ToLower(ref)
+}
+
+// NormalizeSupportHolidays checks an app's days off: at most 200, each day once, written yyyy-mm-dd, within three years either side of today, a name of at most
+// 100 characters. It returns them in date order.
+func NormalizeSupportHolidays(days []SupportHoliday, today time.Time) ([]SupportHoliday, error) {
+	var v Violations
+	seen := map[string]bool{}
+	out := make([]SupportHoliday, 0, len(days))
+	if len(days) > SupportMaxHolidays {
+		v.Add("holidays", "at most 200 days")
+	}
+	for _, h := range days {
+		d, err := time.Parse("2006-01-02", strings.TrimSpace(h.Day))
+		switch {
+		case err != nil:
+			v.Add("holidays", "a day is written yyyy-mm-dd")
+			continue
+		case d.Before(today.AddDate(-3, 0, 0)) || d.After(today.AddDate(3, 0, 0)):
+			v.Add("holidays", "a day is within three years of today")
+		case seen[d.Format("2006-01-02")]:
+			v.Add("holidays", "each day once")
+		case utf8.RuneCountInString(strings.TrimSpace(h.Name)) > 100:
+			v.Add("holidays", "a name is at most 100 characters")
+		}
+		seen[d.Format("2006-01-02")] = true
+		out = append(out, SupportHoliday{Day: d.Format("2006-01-02"), Name: strings.TrimSpace(h.Name)})
+	}
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Day < out[j].Day })
+	return out, nil
+}
+
+// SupportHoliday is a day off of an app.
+type SupportHoliday struct{ Day, Name string }
+
+// SupportMergeCheck says whether ticket a may be merged into b (plan 12): two different tickets of one person in one account, neither merged already, and the target
+// not closed. It returns a reason for a refusal.
+func SupportMergeCheck(a, b SupportMergeSide) string {
+	switch {
+	case a.ID == b.ID:
+		return "a ticket cannot be merged into itself"
+	case a.AccountID != b.AccountID || a.OpenedBy != b.OpenedBy:
+		return "only two tickets of one person in one account can be merged"
+	case a.Merged || b.Merged:
+		return "a ticket that was merged already cannot be merged again"
+	case b.Status == "closed":
+		return "the ticket to merge into is closed"
+	}
+	return ""
+}
+
+// SupportMergeSide is what a merge needs to know of a ticket.
+type SupportMergeSide struct {
+	ID, AccountID, OpenedBy, Status string
+	Merged                          bool
 }

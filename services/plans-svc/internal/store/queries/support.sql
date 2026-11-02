@@ -7,10 +7,12 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = sqlc.narg('viewer')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
+       (COALESCE(t.opened_by = sqlc.narg('viewer')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags,
+       t.sla_tier, t.merged_into, mt.number AS merged_into_number, COALESCE(t.rating, 0)::int AS rating, t.rating_comment, t.rated_at
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
+LEFT JOIN support_tickets mt ON mt.id = t.merged_into
 JOIN users u ON u.id = t.opened_by
 WHERE t.id = @id;
 
@@ -21,24 +23,28 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = sqlc.narg('user_id')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
+       (COALESCE(t.opened_by = sqlc.narg('user_id')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags,
+       t.sla_tier, t.merged_into, mt.number AS merged_into_number, COALESCE(t.rating, 0)::int AS rating, t.rating_comment, t.rated_at
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
+LEFT JOIN support_tickets mt ON mt.id = t.merged_into
 JOIN users u ON u.id = t.opened_by
 WHERE (sqlc.narg('user_id')::uuid IS NULL OR t.account_id IN (SELECT m.account_id FROM account_members m WHERE m.user_id = sqlc.narg('user_id')::uuid AND m.role <> 'affiliate'))
   AND (@status::text = '' OR t.status = @status::text OR (@status::text = 'active' AND t.status IN ('open', 'pending')))
   AND (@priority::text = '' OR t.priority = @priority::text)
   AND (@assignee::text = '' OR t.assignee = @assignee::text)
   AND (@tag::text = '' OR @tag::text = ANY(t.tags))
-  AND (@search::text = '' OR t.subject ILIKE '%' || @search::text || '%' OR t.number::text = ltrim(@search::text, '#'))
+  AND (@search::text = '' OR t.subject ILIKE '%' || @search::text || '%' OR t.number::text = ltrim(@search::text, '#')
+       -- The words of the messages (migration 00030): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
+       OR EXISTS (SELECT 1 FROM support_messages sm WHERE sm.ticket_id = t.id AND (@with_internal::boolean OR NOT sm.internal) AND sm.tsv @@ websearch_to_tsquery('simple', @query::text)))
   AND (NOT @sla_breached::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
 LIMIT 200;
 
 -- Locks the ticket for a change.
 -- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, tags, last_author
+SELECT id, account_id, app_id, opened_by, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, sla_tier, sla_app_id, tags, last_author, merged_into
 FROM support_tickets WHERE id = @id FOR UPDATE;
 
 -- The user's role in the account, if any; an affiliate of a program is not a member for the help desk.
@@ -50,8 +56,8 @@ SELECT role FROM account_members WHERE account_id = @account_id AND user_id = @u
 SELECT EXISTS (SELECT 1 FROM apps WHERE id = @id AND account_id = @account_id AND archived_at IS NULL) AS found;
 
 -- name: InsertSupportTicket :exec
-INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone)
-VALUES (@id, @account_id, sqlc.narg('app_id')::uuid, @opened_by, @subject, @category, @priority, 'open', 'customer', @first_response_due, @sla_zone);
+INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone, sla_tier, sla_app_id)
+VALUES (@id, @account_id, sqlc.narg('app_id')::uuid, @opened_by, @subject, @category, @priority, 'open', 'customer', @first_response_due, @sla_zone, @sla_tier, sqlc.narg('sla_app_id')::uuid);
 
 -- name: InsertSupportMessage :exec
 INSERT INTO support_messages (id, ticket_id, author_kind, author_user_id, author_name, internal, body)
@@ -82,13 +88,34 @@ SELECT pg_advisory_xact_lock(hashtextextended('support:' || @account_id::text, 0
 -- name: SupportOpenCount :one
 SELECT count(*)::int FROM support_tickets WHERE account_id = @account_id AND status IN ('open', 'pending');
 
--- The time zone the first-answer deadline counts business hours in: the ticket's app, else the account's oldest app, else UTC.
--- name: SupportZoneFor :one
-SELECT COALESCE((
-  SELECT t.timezone FROM tenants t JOIN apps p ON p.id = t.app_id
+-- What the first-answer deadline is counted by: the time zone and the app whose days off apply (the ticket's app, else the account's oldest app, else UTC and the nil
+-- uuid for none),
+-- and the plan of the ticket's app (its live tenant's; the best among the account's apps when the ticket names none; free when it has no app yet).
+-- name: SupportClockFor :one
+SELECT COALESCE(z.zone, 'UTC')::text AS zone, COALESCE(z.app_id, '00000000-0000-0000-0000-000000000000'::uuid) AS clock_app_id,
+       COALESCE((SELECT t.tier FROM tenants t JOIN apps p ON p.id = t.app_id
+                 WHERE t.account_id = @account_id AND p.archived_at IS NULL AND (sqlc.narg('app_id')::uuid IS NULL OR p.id = sqlc.narg('app_id')::uuid)
+                 ORDER BY (t.environment = 'live') DESC, CASE t.tier WHEN 'enterprise' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END LIMIT 1), 'free')::text AS tier
+FROM (SELECT 1) one
+LEFT JOIN LATERAL (
+  SELECT t.timezone AS zone, p.id AS app_id FROM tenants t JOIN apps p ON p.id = t.app_id
   WHERE t.account_id = @account_id AND p.archived_at IS NULL
   ORDER BY COALESCE(p.id = sqlc.narg('app_id')::uuid, false) DESC, p.created_at, t.environment DESC LIMIT 1
-), 'UTC')::text AS zone;
+) z ON true;
+
+-- The days off of an app, as calendar days.
+-- name: ListSupportHolidays :many
+SELECT to_char(day, 'YYYY-MM-DD')::text AS day, name FROM support_holidays WHERE app_id = @app_id ORDER BY day;
+
+-- name: DeleteSupportHolidays :exec
+DELETE FROM support_holidays WHERE app_id = @app_id;
+
+-- name: InsertSupportHoliday :exec
+INSERT INTO support_holidays (app_id, day, name) VALUES (@app_id, (@day::text)::date, @name);
+
+-- The app, as the holiday calls need it: its name, and that it exists and is not archived.
+-- name: SupportAppName :one
+SELECT name FROM apps WHERE id = @id AND archived_at IS NULL;
 
 -- name: InsertSupportEvent :exec
 INSERT INTO support_events (id, ticket_id, kind, actor_kind, actor_name, from_value, to_value)
@@ -219,3 +246,44 @@ JOIN support_messages m ON m.id = a.message_id
 JOIN support_tickets t ON t.id = a.ticket_id
 JOIN tenants tn ON tn.id = a.storage_tenant_id
 WHERE a.id = @id AND a.ticket_id = @ticket_id;
+
+-- --- ratings, merges and links (plan 12, migration 00030)
+
+-- name: RateSupportTicket :exec
+UPDATE support_tickets SET rating = @rating::smallint, rating_comment = @comment, rated_at = now(), updated_at = now() WHERE id = @id;
+
+-- The tickets rated in the last @days days: how many and the average, and how many gave each rating.
+-- name: SupportRatingStats :one
+SELECT count(*)::int AS rated, COALESCE(avg(rating), 0)::float8 AS average FROM support_tickets WHERE rated_at >= now() - make_interval(days => @days::int);
+
+-- name: SupportRatingCounts :many
+SELECT rating::int AS value, count(*)::int AS count FROM support_tickets WHERE rated_at >= now() - make_interval(days => @days::int) GROUP BY rating ORDER BY rating;
+
+-- A merge moves the messages and the files of one ticket to another; the ticket they left is closed and points at the other.
+-- name: MoveSupportMessages :exec
+UPDATE support_messages SET ticket_id = @into_id WHERE ticket_id = @from_id;
+
+-- name: MoveSupportAttachments :exec
+UPDATE support_attachments SET ticket_id = @into_id WHERE ticket_id = @from_id;
+
+-- name: SetSupportTicketMerged :exec
+UPDATE support_tickets SET merged_into = @into_id, updated_at = now() WHERE id = @id;
+
+-- name: SupportTicketNumber :one
+SELECT COALESCE(number, 0)::bigint FROM support_tickets WHERE id = @id;
+
+-- The tenant of an app of the account in an environment (a link's target); no row when the app is not the account's, is archived, or has no such environment.
+-- name: SupportLinkTenant :one
+SELECT t.id FROM tenants t JOIN apps p ON p.id = t.app_id
+WHERE t.account_id = @account_id AND p.id = @app_id AND p.archived_at IS NULL AND t.environment = @environment;
+
+-- name: DeleteSupportLinks :exec
+DELETE FROM support_ticket_links WHERE ticket_id = @ticket_id;
+
+-- name: InsertSupportLink :exec
+INSERT INTO support_ticket_links (id, ticket_id, link_tenant_id, kind, ref) VALUES (@id, @ticket_id, @link_tenant_id, @kind, @ref);
+
+-- name: ListSupportLinks :many
+SELECT l.kind, l.ref, t.app_id, t.environment, l.link_tenant_id, COALESCE(p.name, '')::text AS app_name
+FROM support_ticket_links l JOIN tenants t ON t.id = l.link_tenant_id LEFT JOIN apps p ON p.id = t.app_id
+WHERE l.ticket_id = @ticket_id ORDER BY l.created_at, l.id;

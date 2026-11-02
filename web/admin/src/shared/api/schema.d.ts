@@ -5376,8 +5376,9 @@ export interface paths {
         put?: never;
         /**
          * Open a support ticket for an account (and optionally one of its apps)
-         * @description The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+         * @description The first answer is due by the priority and the plan of the ticket's app (free, standard or enterprise; a default table, not agreed), counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC, not on the app's days off). For a free app (the plan every new app starts on): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
          *     An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
+         *     `links` may point at up to five customers, invoices or subscriptions of the account's apps (`404 support.app.not_found` for an app that is not the account's); only the pointer is kept, whether the object exists is not checked.
          */
         post: operations["appOpenSupportTicket"];
         delete?: never;
@@ -5474,6 +5475,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/support/tickets/{id}/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate a solved or closed ticket, 1 to 5 with an optional comment. A second call replaces the first; the operator's report shows the ratings */
+        post: operations["appRateSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/support/tickets": {
         parameters: {
             query?: never;
@@ -5505,7 +5523,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
+        /** Change a ticket's status, priority, assignee, tags or links (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
         patch: operations["updateSupportTicket"];
         trace?: never;
     };
@@ -5520,6 +5538,51 @@ export interface paths {
         put?: never;
         /** Answer a ticket (operator). The answer is mailed to the person who opened the ticket. An internal note is never shown to the person, is not mailed and does not count as an answer */
         post: operations["replySupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge this ticket into another of the same person (operator)
+         * @description The messages and files of this ticket move into `into_ticket_id`; this ticket is closed and points at it (`merged_into_id`, `merged_into_number`). Both must be
+         *     tickets of one person in one account, neither merged already, and the target not closed (`409 support.ticket.cannot_merge`). A person's message that waits
+         *     for the operator reopens a target that was pending or solved; the earlier first-answer deadline holds while neither was answered. Both tickets are unread for
+         *     the person afterwards. A merged ticket takes no reply or change (`409 support.ticket.merged`). Recorded in the audit log.
+         */
+        post: operations["mergeSupportTickets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/apps/{app_id}/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The days off of an app, on which the first-answer clock of its tickets does not run (operator) */
+        get: operations["getSupportHolidays"];
+        /**
+         * Replace the days off of an app (operator)
+         * @description The whole list: at most 200 days, each once, within three years of today. A ticket already open keeps its deadline; a change of its priority counts it again with the
+         *     days as they are then. Recorded in the audit log.
+         */
+        put: operations["setSupportHolidays"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7338,16 +7401,50 @@ export interface components {
             unread: boolean;
             /** @description The operator's own labels, at most five. Always empty in what the person's calls return */
             tags: string[];
+            /** @description The ticket this one was merged into (closed, its messages moved there); empty otherwise */
+            merged_into_id: string;
+            /** Format: int64 */
+            merged_into_number: number;
+            /** @description 1 to 5 once the person rated the ticket, else 0 */
+            rating: number;
+            rating_comment: string;
+            /** Format: date-time */
+            rate_time: string | null;
+            /** @description The objects the ticket links to; filled when one ticket is read with its thread, empty in the lists */
+            links: components["schemas"]["SupportLink"][];
+            /**
+             * @description The plan of the ticket's app the first-answer deadline was counted for. Always empty in what the person's calls return
+             * @enum {string}
+             */
+            sla_tier: "" | "free" | "standard" | "enterprise";
         };
-        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority. */
+        /** @description A pointer from a ticket to an object of one of the account's apps. Only the pointer is kept; the console opens the object under the viewer's own access. */
+        SupportLink: {
+            /** @enum {string} */
+            kind: "customer" | "invoice" | "subscription";
+            /** @description A customer's external id; the id (a UUID) of an invoice or a subscription */
+            ref: string;
+            /** Format: uuid */
+            app_id: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            /**
+             * Format: uuid
+             * @description Filled when read: the tenant of that app environment
+             */
+            tenant_id?: string;
+            /** @description Filled when read */
+            app_name?: string;
+        };
+        /** @description One change of a ticket's status, priority, assignee or tags, or a merge. The history is append-only. The person's calls return only the changes of status and priority and the merges. */
         SupportEvent: {
             /** Format: uuid */
             id: string;
             /**
-             * @description A change of tags has the list joined by commas in from_value and to_value
+             * @description A change of tags has the list joined by commas in from_value and to_value. A merge has from_value `#1041` on the ticket that kept the thread (that ticket joined it) and to_value `#1042` on the ticket that joined
              * @enum {string}
              */
-            kind: "status" | "priority" | "assignee" | "tags";
+            kind: "status" | "priority" | "assignee" | "tags" | "merge";
             /**
              * @description system is the job that closes a ticket that waited for the person for 7 days
              * @enum {string}
@@ -7414,6 +7511,40 @@ export interface components {
              */
             priority: "low" | "normal" | "high" | "urgent";
             body: string;
+            /** @description Optional: the customers, invoices or subscriptions of the account's apps the ticket is about */
+            links?: components["schemas"]["SupportLink"][];
+        };
+        SupportRatingRequest: {
+            rating: number;
+            comment?: string;
+        };
+        SupportMergeRequest: {
+            /**
+             * Format: uuid
+             * @description The ticket that keeps the messages
+             */
+            into_ticket_id: string;
+        };
+        SupportMergeResult: {
+            /** @description The ticket that was closed */
+            ticket: components["schemas"]["SupportTicket"];
+            /** @description The ticket that keeps the thread */
+            into_ticket: components["schemas"]["SupportTicket"];
+        };
+        SupportHoliday: {
+            /** @description yyyy-mm-dd, a calendar day in the time zone of the app */
+            day: string;
+            name?: string;
+        };
+        SupportHolidayList: {
+            holidays: components["schemas"]["SupportHoliday"][];
+        };
+        SupportHolidays: {
+            app_name: string;
+            holidays: components["schemas"]["SupportHoliday"][];
+        };
+        SetSupportHolidaysRequest: {
+            holidays: components["schemas"]["SupportHoliday"][];
         };
         SupportReplyRequest: {
             body: string;
@@ -7452,6 +7583,15 @@ export interface components {
             median_first_answer_seconds: number;
             /** Format: int64 */
             average_first_answer_seconds: number;
+            /** @description Tickets rated in the window */
+            rated: number;
+            /**
+             * Format: double
+             * @description The average of those ratings; 0 when none
+             */
+            average_rating: number;
+            /** @description How many tickets gave each rating, value 1 to 5, every one listed */
+            ratings: components["schemas"]["SupportCount"][];
         };
         SupportOperator: {
             email: string;
@@ -7487,6 +7627,8 @@ export interface components {
             priority?: "low" | "normal" | "high" | "urgent";
             /** @description One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed */
             assignee?: string;
+            /** @description With this key the ticket's links become exactly this list (an empty list clears them); without it they stay */
+            links?: components["schemas"]["SupportLink"][];
             /** @description With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once */
             tags?: string[];
         };
@@ -23220,6 +23362,8 @@ export interface operations {
             query?: {
                 /** @description active is open and pending */
                 status?: "active" | "open" | "pending" | "solved" | "closed";
+                /** @description Matches the subject, the ticket number and the words of the messages the person can read (not the operator's internal notes). Full text, whole words: no prefixes */
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -23412,13 +23556,44 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appRateSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportRatingRequest"];
+            };
+        };
+        responses: {
+            /** @description Rated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     listSupportTickets: {
         parameters: {
             query?: {
                 status?: "active" | "open" | "pending" | "solved" | "closed";
                 priority?: "low" | "normal" | "high" | "urgent";
                 assignee?: string;
-                /** @description Matches the subject and the ticket number */
+                /** @description Matches the subject, the ticket number and the words of the messages, the operator's internal notes included. Full text (Postgres, the simple configuration), whole words: no prefixes */
                 search?: string;
                 /** @description Only tickets whose first answer is overdue */
                 sla_breached?: boolean;
@@ -23516,6 +23691,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    mergeSupportTickets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportMergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Merged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportMergeResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getSupportHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportHolidays"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setSupportHolidays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                app_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSupportHolidaysRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportHolidayList"];
                 };
             };
             400: components["responses"]["Error"];

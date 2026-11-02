@@ -24,6 +24,24 @@ func (q *Queries) DeleteSupportCannedReply(ctx context.Context, id uuid.UUID) (i
 	return result.RowsAffected(), nil
 }
 
+const deleteSupportHolidays = `-- name: DeleteSupportHolidays :exec
+DELETE FROM support_holidays WHERE app_id = $1
+`
+
+func (q *Queries) DeleteSupportHolidays(ctx context.Context, appID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSupportHolidays, appID)
+	return err
+}
+
+const deleteSupportLinks = `-- name: DeleteSupportLinks :exec
+DELETE FROM support_ticket_links WHERE ticket_id = $1
+`
+
+func (q *Queries) DeleteSupportLinks(ctx context.Context, ticketID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSupportLinks, ticketID)
+	return err
+}
+
 const getSupportAttachment = `-- name: GetSupportAttachment :one
 SELECT a.id, a.ticket_id, a.storage_tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
 FROM support_attachments a
@@ -77,10 +95,12 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags,
+       t.sla_tier, t.merged_into, mt.number AS merged_into_number, COALESCE(t.rating, 0)::int AS rating, t.rating_comment, t.rated_at
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
+LEFT JOIN support_tickets mt ON mt.id = t.merged_into
 JOIN users u ON u.id = t.opened_by
 WHERE t.id = $2
 `
@@ -115,6 +135,12 @@ type GetSupportTicketRow struct {
 	MessageCount     int32
 	Unread           bool
 	Tags             []string
+	SlaTier          string
+	MergedInto       *uuid.UUID
+	MergedIntoNumber *int64
+	Rating           int32
+	RatingComment    string
+	RatedAt          *time.Time
 }
 
 // The help desk (SupportService). Run as plans_system from internal/support only.
@@ -147,6 +173,12 @@ func (q *Queries) GetSupportTicket(ctx context.Context, arg GetSupportTicketPara
 		&i.MessageCount,
 		&i.Unread,
 		&i.Tags,
+		&i.SlaTier,
+		&i.MergedInto,
+		&i.MergedIntoNumber,
+		&i.Rating,
+		&i.RatingComment,
+		&i.RatedAt,
 	)
 	return i, err
 }
@@ -246,6 +278,44 @@ func (q *Queries) InsertSupportEvent(ctx context.Context, arg InsertSupportEvent
 	return err
 }
 
+const insertSupportHoliday = `-- name: InsertSupportHoliday :exec
+INSERT INTO support_holidays (app_id, day, name) VALUES ($1, ($2::text)::date, $3)
+`
+
+type InsertSupportHolidayParams struct {
+	AppID uuid.UUID
+	Day   string
+	Name  string
+}
+
+func (q *Queries) InsertSupportHoliday(ctx context.Context, arg InsertSupportHolidayParams) error {
+	_, err := q.db.Exec(ctx, insertSupportHoliday, arg.AppID, arg.Day, arg.Name)
+	return err
+}
+
+const insertSupportLink = `-- name: InsertSupportLink :exec
+INSERT INTO support_ticket_links (id, ticket_id, link_tenant_id, kind, ref) VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertSupportLinkParams struct {
+	ID           uuid.UUID
+	TicketID     uuid.UUID
+	LinkTenantID uuid.UUID
+	Kind         string
+	Ref          string
+}
+
+func (q *Queries) InsertSupportLink(ctx context.Context, arg InsertSupportLinkParams) error {
+	_, err := q.db.Exec(ctx, insertSupportLink,
+		arg.ID,
+		arg.TicketID,
+		arg.LinkTenantID,
+		arg.Kind,
+		arg.Ref,
+	)
+	return err
+}
+
 const insertSupportMessage = `-- name: InsertSupportMessage :exec
 INSERT INTO support_messages (id, ticket_id, author_kind, author_user_id, author_name, internal, body)
 VALUES ($1, $2, $3, $4::uuid, $5, $6, $7)
@@ -275,8 +345,8 @@ func (q *Queries) InsertSupportMessage(ctx context.Context, arg InsertSupportMes
 }
 
 const insertSupportTicket = `-- name: InsertSupportTicket :exec
-INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone)
-VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, 'open', 'customer', $8, $9)
+INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone, sla_tier, sla_app_id)
+VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, 'open', 'customer', $8, $9, $10, $11::uuid)
 `
 
 type InsertSupportTicketParams struct {
@@ -289,6 +359,8 @@ type InsertSupportTicketParams struct {
 	Priority         string
 	FirstResponseDue time.Time
 	SlaZone          string
+	SlaTier          string
+	SlaAppID         *uuid.UUID
 }
 
 func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTicketParams) error {
@@ -302,6 +374,8 @@ func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTick
 		arg.Priority,
 		arg.FirstResponseDue,
 		arg.SlaZone,
+		arg.SlaTier,
+		arg.SlaAppID,
 	)
 	return err
 }
@@ -435,6 +509,78 @@ func (q *Queries) ListSupportEvents(ctx context.Context, ticketID uuid.UUID) ([]
 	return items, nil
 }
 
+const listSupportHolidays = `-- name: ListSupportHolidays :many
+SELECT to_char(day, 'YYYY-MM-DD')::text AS day, name FROM support_holidays WHERE app_id = $1 ORDER BY day
+`
+
+type ListSupportHolidaysRow struct {
+	Day  string
+	Name string
+}
+
+// The days off of an app, as calendar days.
+func (q *Queries) ListSupportHolidays(ctx context.Context, appID uuid.UUID) ([]ListSupportHolidaysRow, error) {
+	rows, err := q.db.Query(ctx, listSupportHolidays, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSupportHolidaysRow{}
+	for rows.Next() {
+		var i ListSupportHolidaysRow
+		if err := rows.Scan(&i.Day, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSupportLinks = `-- name: ListSupportLinks :many
+SELECT l.kind, l.ref, t.app_id, t.environment, l.link_tenant_id, COALESCE(p.name, '')::text AS app_name
+FROM support_ticket_links l JOIN tenants t ON t.id = l.link_tenant_id LEFT JOIN apps p ON p.id = t.app_id
+WHERE l.ticket_id = $1 ORDER BY l.created_at, l.id
+`
+
+type ListSupportLinksRow struct {
+	Kind         string
+	Ref          string
+	AppID        uuid.UUID
+	Environment  string
+	LinkTenantID uuid.UUID
+	AppName      string
+}
+
+func (q *Queries) ListSupportLinks(ctx context.Context, ticketID uuid.UUID) ([]ListSupportLinksRow, error) {
+	rows, err := q.db.Query(ctx, listSupportLinks, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSupportLinksRow{}
+	for rows.Next() {
+		var i ListSupportLinksRow
+		if err := rows.Scan(
+			&i.Kind,
+			&i.Ref,
+			&i.AppID,
+			&i.Environment,
+			&i.LinkTenantID,
+			&i.AppName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSupportMessages = `-- name: ListSupportMessages :many
 SELECT id, author_kind, author_name, internal, body, created_at
 FROM support_messages WHERE ticket_id = $1 AND ($2::boolean OR NOT internal)
@@ -488,30 +634,36 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags,
+       t.sla_tier, t.merged_into, mt.number AS merged_into_number, COALESCE(t.rating, 0)::int AS rating, t.rating_comment, t.rated_at
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
+LEFT JOIN support_tickets mt ON mt.id = t.merged_into
 JOIN users u ON u.id = t.opened_by
 WHERE ($1::uuid IS NULL OR t.account_id IN (SELECT m.account_id FROM account_members m WHERE m.user_id = $1::uuid AND m.role <> 'affiliate'))
   AND ($2::text = '' OR t.status = $2::text OR ($2::text = 'active' AND t.status IN ('open', 'pending')))
   AND ($3::text = '' OR t.priority = $3::text)
   AND ($4::text = '' OR t.assignee = $4::text)
   AND ($5::text = '' OR $5::text = ANY(t.tags))
-  AND ($6::text = '' OR t.subject ILIKE '%' || $6::text || '%' OR t.number::text = ltrim($6::text, '#'))
-  AND (NOT $7::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
+  AND ($6::text = '' OR t.subject ILIKE '%' || $6::text || '%' OR t.number::text = ltrim($6::text, '#')
+       -- The words of the messages (migration 00030): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
+       OR EXISTS (SELECT 1 FROM support_messages sm WHERE sm.ticket_id = t.id AND ($7::boolean OR NOT sm.internal) AND sm.tsv @@ websearch_to_tsquery('simple', $8::text)))
+  AND (NOT $9::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
 LIMIT 200
 `
 
 type ListSupportTicketsParams struct {
-	UserID      *uuid.UUID
-	Status      string
-	Priority    string
-	Assignee    string
-	Tag         string
-	Search      string
-	SlaBreached bool
+	UserID       *uuid.UUID
+	Status       string
+	Priority     string
+	Assignee     string
+	Tag          string
+	Search       string
+	WithInternal bool
+	Query        string
+	SlaBreached  bool
 }
 
 type ListSupportTicketsRow struct {
@@ -539,6 +691,12 @@ type ListSupportTicketsRow struct {
 	MessageCount     int32
 	Unread           bool
 	Tags             []string
+	SlaTier          string
+	MergedInto       *uuid.UUID
+	MergedIntoNumber *int64
+	Rating           int32
+	RatingComment    string
+	RatedAt          *time.Time
 }
 
 // A person's tickets are those of the accounts they are a (non-affiliate) member of; the operator passes no user and sees all.
@@ -550,6 +708,8 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 		arg.Assignee,
 		arg.Tag,
 		arg.Search,
+		arg.WithInternal,
+		arg.Query,
 		arg.SlaBreached,
 	)
 	if err != nil {
@@ -584,6 +744,12 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 			&i.MessageCount,
 			&i.Unread,
 			&i.Tags,
+			&i.SlaTier,
+			&i.MergedInto,
+			&i.MergedIntoNumber,
+			&i.Rating,
+			&i.RatingComment,
+			&i.RatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -596,13 +762,15 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 }
 
 const lockSupportTicket = `-- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, tags, last_author
+SELECT id, account_id, app_id, opened_by, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, sla_tier, sla_app_id, tags, last_author, merged_into
 FROM support_tickets WHERE id = $1 FOR UPDATE
 `
 
 type LockSupportTicketRow struct {
 	ID               uuid.UUID
 	AccountID        uuid.UUID
+	AppID            *uuid.UUID
+	OpenedBy         uuid.UUID
 	Status           string
 	Priority         string
 	Assignee         string
@@ -611,8 +779,11 @@ type LockSupportTicketRow struct {
 	SolvedAt         *time.Time
 	CreatedAt        time.Time
 	SlaZone          string
+	SlaTier          string
+	SlaAppID         *uuid.UUID
 	Tags             []string
 	LastAuthor       string
+	MergedInto       *uuid.UUID
 }
 
 // Locks the ticket for a change.
@@ -622,6 +793,8 @@ func (q *Queries) LockSupportTicket(ctx context.Context, id uuid.UUID) (LockSupp
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
+		&i.AppID,
+		&i.OpenedBy,
 		&i.Status,
 		&i.Priority,
 		&i.Assignee,
@@ -630,8 +803,11 @@ func (q *Queries) LockSupportTicket(ctx context.Context, id uuid.UUID) (LockSupp
 		&i.SolvedAt,
 		&i.CreatedAt,
 		&i.SlaZone,
+		&i.SlaTier,
+		&i.SlaAppID,
 		&i.Tags,
 		&i.LastAuthor,
+		&i.MergedInto,
 	)
 	return i, err
 }
@@ -658,6 +834,52 @@ UPDATE support_tickets SET opener_seen_at = NULL WHERE id = $1
 // An answer or a status change by the operator that the opener has not read.
 func (q *Queries) MarkSupportTicketUnseen(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markSupportTicketUnseen, id)
+	return err
+}
+
+const moveSupportAttachments = `-- name: MoveSupportAttachments :exec
+UPDATE support_attachments SET ticket_id = $1 WHERE ticket_id = $2
+`
+
+type MoveSupportAttachmentsParams struct {
+	IntoID uuid.UUID
+	FromID uuid.UUID
+}
+
+func (q *Queries) MoveSupportAttachments(ctx context.Context, arg MoveSupportAttachmentsParams) error {
+	_, err := q.db.Exec(ctx, moveSupportAttachments, arg.IntoID, arg.FromID)
+	return err
+}
+
+const moveSupportMessages = `-- name: MoveSupportMessages :exec
+UPDATE support_messages SET ticket_id = $1 WHERE ticket_id = $2
+`
+
+type MoveSupportMessagesParams struct {
+	IntoID uuid.UUID
+	FromID uuid.UUID
+}
+
+// A merge moves the messages and the files of one ticket to another; the ticket they left is closed and points at the other.
+func (q *Queries) MoveSupportMessages(ctx context.Context, arg MoveSupportMessagesParams) error {
+	_, err := q.db.Exec(ctx, moveSupportMessages, arg.IntoID, arg.FromID)
+	return err
+}
+
+const rateSupportTicket = `-- name: RateSupportTicket :exec
+
+UPDATE support_tickets SET rating = $1::smallint, rating_comment = $2, rated_at = now(), updated_at = now() WHERE id = $3
+`
+
+type RateSupportTicketParams struct {
+	Rating  int16
+	Comment string
+	ID      uuid.UUID
+}
+
+// --- ratings, merges and links (plan 12, migration 00030)
+func (q *Queries) RateSupportTicket(ctx context.Context, arg RateSupportTicketParams) error {
+	_, err := q.db.Exec(ctx, rateSupportTicket, arg.Rating, arg.Comment, arg.ID)
 	return err
 }
 
@@ -696,6 +918,20 @@ func (q *Queries) SaveSupportTicket(ctx context.Context, arg SaveSupportTicketPa
 		arg.Touch,
 		arg.ID,
 	)
+	return err
+}
+
+const setSupportTicketMerged = `-- name: SetSupportTicketMerged :exec
+UPDATE support_tickets SET merged_into = $1, updated_at = now() WHERE id = $2
+`
+
+type SetSupportTicketMergedParams struct {
+	IntoID *uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) SetSupportTicketMerged(ctx context.Context, arg SetSupportTicketMergedParams) error {
+	_, err := q.db.Exec(ctx, setSupportTicketMerged, arg.IntoID, arg.ID)
 	return err
 }
 
@@ -743,6 +979,18 @@ func (q *Queries) SupportAppInAccount(ctx context.Context, arg SupportAppInAccou
 	var found bool
 	err := row.Scan(&found)
 	return found, err
+}
+
+const supportAppName = `-- name: SupportAppName :one
+SELECT name FROM apps WHERE id = $1 AND archived_at IS NULL
+`
+
+// The app, as the holiday calls need it: its name, and that it exists and is not archived.
+func (q *Queries) SupportAppName(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, supportAppName, id)
+	var name string
+	err := row.Scan(&name)
+	return name, err
 }
 
 const supportAttachmentTotals = `-- name: SupportAttachmentTotals :one
@@ -809,6 +1057,40 @@ func (q *Queries) SupportBreachedByPriority(ctx context.Context) ([]SupportBreac
 		return nil, err
 	}
 	return items, nil
+}
+
+const supportClockFor = `-- name: SupportClockFor :one
+SELECT COALESCE(z.zone, 'UTC')::text AS zone, COALESCE(z.app_id, '00000000-0000-0000-0000-000000000000'::uuid) AS clock_app_id,
+       COALESCE((SELECT t.tier FROM tenants t JOIN apps p ON p.id = t.app_id
+                 WHERE t.account_id = $1 AND p.archived_at IS NULL AND ($2::uuid IS NULL OR p.id = $2::uuid)
+                 ORDER BY (t.environment = 'live') DESC, CASE t.tier WHEN 'enterprise' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END LIMIT 1), 'free')::text AS tier
+FROM (SELECT 1) one
+LEFT JOIN LATERAL (
+  SELECT t.timezone AS zone, p.id AS app_id FROM tenants t JOIN apps p ON p.id = t.app_id
+  WHERE t.account_id = $1 AND p.archived_at IS NULL
+  ORDER BY COALESCE(p.id = $2::uuid, false) DESC, p.created_at, t.environment DESC LIMIT 1
+) z ON true
+`
+
+type SupportClockForParams struct {
+	AccountID uuid.UUID
+	AppID     *uuid.UUID
+}
+
+type SupportClockForRow struct {
+	Zone       string
+	ClockAppID uuid.UUID
+	Tier       string
+}
+
+// What the first-answer deadline is counted by: the time zone and the app whose days off apply (the ticket's app, else the account's oldest app, else UTC and the nil
+// uuid for none),
+// and the plan of the ticket's app (its live tenant's; the best among the account's apps when the ticket names none; free when it has no app yet).
+func (q *Queries) SupportClockFor(ctx context.Context, arg SupportClockForParams) (SupportClockForRow, error) {
+	row := q.db.QueryRow(ctx, supportClockFor, arg.AccountID, arg.AppID)
+	var i SupportClockForRow
+	err := row.Scan(&i.Zone, &i.ClockAppID, &i.Tier)
+	return i, err
 }
 
 const supportCloseStale = `-- name: SupportCloseStale :many
@@ -907,6 +1189,25 @@ func (q *Queries) SupportFirstAnswerStats(ctx context.Context, days int32) (Supp
 		&i.AverageSeconds,
 	)
 	return i, err
+}
+
+const supportLinkTenant = `-- name: SupportLinkTenant :one
+SELECT t.id FROM tenants t JOIN apps p ON p.id = t.app_id
+WHERE t.account_id = $1 AND p.id = $2 AND p.archived_at IS NULL AND t.environment = $3
+`
+
+type SupportLinkTenantParams struct {
+	AccountID   uuid.UUID
+	AppID       uuid.UUID
+	Environment string
+}
+
+// The tenant of an app of the account in an environment (a link's target); no row when the app is not the account's, is archived, or has no such environment.
+func (q *Queries) SupportLinkTenant(ctx context.Context, arg SupportLinkTenantParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, supportLinkTenant, arg.AccountID, arg.AppID, arg.Environment)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const supportLockAccount = `-- name: SupportLockAccount :exec
@@ -1081,6 +1382,52 @@ func (q *Queries) SupportQueueCounts(ctx context.Context) (SupportQueueCountsRow
 	return i, err
 }
 
+const supportRatingCounts = `-- name: SupportRatingCounts :many
+SELECT rating::int AS value, count(*)::int AS count FROM support_tickets WHERE rated_at >= now() - make_interval(days => $1::int) GROUP BY rating ORDER BY rating
+`
+
+type SupportRatingCountsRow struct {
+	Value int32
+	Count int32
+}
+
+func (q *Queries) SupportRatingCounts(ctx context.Context, days int32) ([]SupportRatingCountsRow, error) {
+	rows, err := q.db.Query(ctx, supportRatingCounts, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportRatingCountsRow{}
+	for rows.Next() {
+		var i SupportRatingCountsRow
+		if err := rows.Scan(&i.Value, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supportRatingStats = `-- name: SupportRatingStats :one
+SELECT count(*)::int AS rated, COALESCE(avg(rating), 0)::float8 AS average FROM support_tickets WHERE rated_at >= now() - make_interval(days => $1::int)
+`
+
+type SupportRatingStatsRow struct {
+	Rated   int32
+	Average float64
+}
+
+// The tickets rated in the last @days days: how many and the average, and how many gave each rating.
+func (q *Queries) SupportRatingStats(ctx context.Context, days int32) (SupportRatingStatsRow, error) {
+	row := q.db.QueryRow(ctx, supportRatingStats, days)
+	var i SupportRatingStatsRow
+	err := row.Scan(&i.Rated, &i.Average)
+	return i, err
+}
+
 const supportRoleOf = `-- name: SupportRoleOf :one
 SELECT role FROM account_members WHERE account_id = $1 AND user_id = $2 AND role <> 'affiliate'
 `
@@ -1155,6 +1502,17 @@ func (q *Queries) SupportTenantInAccount(ctx context.Context, arg SupportTenantI
 	return i, err
 }
 
+const supportTicketNumber = `-- name: SupportTicketNumber :one
+SELECT COALESCE(number, 0)::bigint FROM support_tickets WHERE id = $1
+`
+
+func (q *Queries) SupportTicketNumber(ctx context.Context, id uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, supportTicketNumber, id)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const supportUnreadCount = `-- name: SupportUnreadCount :one
 SELECT count(*)::int FROM support_tickets
 WHERE opened_by = $1 AND opener_seen_at IS NULL
@@ -1167,27 +1525,6 @@ func (q *Queries) SupportUnreadCount(ctx context.Context, userID uuid.UUID) (int
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
-}
-
-const supportZoneFor = `-- name: SupportZoneFor :one
-SELECT COALESCE((
-  SELECT t.timezone FROM tenants t JOIN apps p ON p.id = t.app_id
-  WHERE t.account_id = $1 AND p.archived_at IS NULL
-  ORDER BY COALESCE(p.id = $2::uuid, false) DESC, p.created_at, t.environment DESC LIMIT 1
-), 'UTC')::text AS zone
-`
-
-type SupportZoneForParams struct {
-	AccountID uuid.UUID
-	AppID     *uuid.UUID
-}
-
-// The time zone the first-answer deadline counts business hours in: the ticket's app, else the account's oldest app, else UTC.
-func (q *Queries) SupportZoneFor(ctx context.Context, arg SupportZoneForParams) (string, error) {
-	row := q.db.QueryRow(ctx, supportZoneFor, arg.AccountID, arg.AppID)
-	var zone string
-	err := row.Scan(&zone)
-	return zone, err
 }
 
 const updateSupportCannedReply = `-- name: UpdateSupportCannedReply :one

@@ -11,6 +11,11 @@ export type SupportAttachment = components["schemas"]["SupportAttachment"];
 export type SupportReport = components["schemas"]["SupportReport"];
 export type SupportOperator = components["schemas"]["SupportOperator"];
 export type CannedReply = components["schemas"]["SupportCannedReply"];
+export type SupportLink = components["schemas"]["SupportLink"];
+export type SupportHoliday = components["schemas"]["SupportHoliday"];
+/** What a ticket may link to, and how many (the help desk checks the same). */
+export const LINK_KINDS: readonly SupportLink["kind"][] = ["customer", "invoice", "subscription"];
+export const MAX_LINKS = 5;
 export type SupportCategory = SupportTicket["category"];
 export type SupportPriority = SupportTicket["priority"];
 export type SupportStatus = SupportTicket["status"];
@@ -34,6 +39,8 @@ export const supportKeys = {
   report: ["support", "report"] as const,
   operators: ["support", "operators"] as const,
   canned: ["support", "canned"] as const,
+  hits: (q: string) => ["support", "mine-search", q] as const,
+  holidays: (appId: string) => ["support", "holidays", appId] as const,
 };
 
 // --- the person's side: the tickets of every account they belong to
@@ -45,6 +52,19 @@ export function useMyTickets(status: MaybeRefOrGetter<string> = "") {
       const s = toValue(status) as "active" | "open" | "pending" | "solved" | "closed" | "";
       return (await unwrap(api.GET("/app/v1/support/tickets", { params: { query: s ? { status: s } : {} } }))).tickets;
     },
+  });
+}
+
+/**
+ * The ids of the tickets whose messages (the ones the person can read) match a search, for the page's own search to add to what it finds in the subject and number it has
+ * loaded. Whole words, Postgres full text; nothing is asked for less than two characters.
+ */
+export function useMyTicketHits(search: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => supportKeys.hits(toValue(search).trim())),
+    queryFn: async () => new Set((await unwrap(api.GET("/app/v1/support/tickets", { params: { query: { search: toValue(search).trim() } } }))).tickets.map((t) => t.id)),
+    enabled: computed(() => toValue(search).trim().length >= 2),
+    staleTime: 30_000,
   });
 }
 
@@ -81,6 +101,10 @@ export function useMySupportActions() {
     }),
     setStatus: useMutation({
       mutationFn: (v: { id: string; status: "solved" | "open" }) => unwrap(api.PUT("/app/v1/support/tickets/{id}/status", { params: { path: { id: v.id } }, body: { status: v.status } })),
+      onSuccess: done,
+    }),
+    rate: useMutation({
+      mutationFn: (v: { id: string; rating: number; comment: string }) => unwrap(api.POST("/app/v1/support/tickets/{id}/rating", { params: { path: { id: v.id } }, body: { rating: v.rating, comment: v.comment } })),
       onSuccess: done,
     }),
   };
@@ -134,8 +158,17 @@ export function useOperatorSupportActions() {
       onSuccess: done,
     }),
     update: useMutation({
-      mutationFn: (v: { id: string; status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[] }) =>
-        unwrap(api.PATCH("/admin/v1/support/tickets/{id}", { params: { path: { id: v.id } }, body: { status: v.status, priority: v.priority, assignee: v.assignee, tags: v.tags } })),
+      mutationFn: (v: { id: string; status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[]; links?: SupportLink[] }) =>
+        unwrap(api.PATCH("/admin/v1/support/tickets/{id}", { params: { path: { id: v.id } }, body: { status: v.status, priority: v.priority, assignee: v.assignee, tags: v.tags, links: v.links } })),
+      onSuccess: done,
+    }),
+    /** Moves the ticket's messages into another ticket of the same person and closes it. */
+    merge: useMutation({
+      mutationFn: (v: { id: string; into: string }) => unwrap(api.POST("/admin/v1/support/tickets/{id}/merge", { params: { path: { id: v.id } }, body: { into_ticket_id: v.into } })),
+      onSuccess: done,
+    }),
+    saveHolidays: useMutation({
+      mutationFn: (v: { appId: string; holidays: SupportHoliday[] }) => unwrap(api.PUT("/admin/v1/support/apps/{app_id}/holidays", { params: { path: { app_id: v.appId } }, body: { holidays: v.holidays } })),
       onSuccess: done,
     }),
     saveCanned: useMutation({
@@ -166,6 +199,15 @@ export function useSupportReport(enabled: MaybeRefOrGetter<boolean> = true) {
 /** The addresses a ticket can be assigned to. */
 export function useSupportOperators() {
   return useQuery({ queryKey: supportKeys.operators, queryFn: async () => (await unwrap(api.GET("/admin/v1/support/operators"))).operators, staleTime: 5 * 60_000 });
+}
+
+/** The days off of an app: the first-answer clock of its tickets does not run on them. */
+export function useSupportHolidays(appId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => supportKeys.holidays(toValue(appId))),
+    queryFn: () => unwrap(api.GET("/admin/v1/support/apps/{app_id}/holidays", { params: { path: { app_id: toValue(appId) } } })),
+    enabled: computed(() => toValue(appId) !== ""),
+  });
 }
 
 export function useCannedReplies() {

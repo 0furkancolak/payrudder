@@ -25,12 +25,15 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { useBulk } from "@/shared/lib/bulk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { attachFiles, PRIORITIES, STATUSES, useCannedReplies, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import { attachFiles, PRIORITIES, STATUSES, useCannedReplies, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportLink, type SupportPriority, type SupportStatus } from "./api";
 import AttachFailures from "./AttachFailures.vue";
 import AttachPicker from "./AttachPicker.vue";
 import CannedRepliesDialog from "./CannedRepliesDialog.vue";
+import HolidaysDialog from "./HolidaysDialog.vue";
+import MergeDialog from "./MergeDialog.vue";
 import SupportReportCard from "./SupportReportCard.vue";
 import TicketBadges from "./TicketBadges.vue";
+import TicketLinks from "./TicketLinks.vue";
 import TicketThread from "./TicketThread.vue";
 
 /**
@@ -45,6 +48,8 @@ const actions = useOperatorSupportActions();
 const operators = useSupportOperators();
 const canned = useCannedReplies();
 const managing = ref(false);
+const merging = ref(false);
+const holidaying = ref(false);
 // The filters that are a choice wait for Apply (FilterSelect); the two text boxes are searches and apply when left or on Enter.
 const statusOptions = computed(() => [
   { value: "active", label: t("support.status.active") },
@@ -124,7 +129,7 @@ async function setStatus(el: HTMLSelectElement) {
   }
   change({ status });
 }
-function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[] }) {
+function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[]; links?: SupportLink[] }) {
   const id = shown.value?.id;
   if (id) actions.update.mutate({ id, ...patch });
 }
@@ -264,8 +269,22 @@ async function send() {
         {{ shown.first_response_time ? t("support.answeredAt", { time: formatDate(shown.first_response_time, locale, "dateTime") }) : t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
         <TicketBadges :ticket="shown" class="ms-2" />
       </p>
+      <p v-if="shown.sla_tier" class="text-muted-foreground m-0 text-xs" data-testid="ticket-tier">{{ t("support.slaTier", { tier: t(`support.tier.${shown.sla_tier}`) }) }}</p>
+      <section class="grid gap-1" :aria-label="t('support.links.title')">
+        <h3 class="m-0 text-xs font-medium">{{ t("support.links.title") }}</h3>
+        <TicketLinks :links="shown.links" :app-id="shown.app_id || undefined" :editable="!shown.merged_into_id" @change="change({ links: $event })" />
+      </section>
+      <p v-if="shown.rating > 0" class="m-0 text-sm" data-testid="ticket-rating">
+        <span class="font-medium">{{ t("support.rating.operatorSees", { n: shown.rating }) }}</span>
+        <span v-if="shown.rating_comment" class="text-muted-foreground break-words whitespace-pre-wrap" dir="auto"> · {{ shown.rating_comment }}</span>
+      </p>
+      <p v-if="shown.merged_into_id" class="bg-muted m-0 rounded-2xl px-4 py-3 text-sm" data-testid="ticket-merged">{{ t("support.merge.mergedInto", { number: shown.merged_into_number }) }}</p>
+      <div v-else class="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" data-testid="merge-open" @click="merging = true">{{ t("support.merge.open") }}</Button>
+        <Button v-if="shown.app_id" type="button" variant="ghost" size="sm" data-testid="holidays-open" @click="holidaying = true">{{ t("support.holidays.open", { app: shown.app_name }) }}</Button>
+      </div>
       <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="operator" />
-      <form class="grid gap-2" @submit.prevent="send">
+      <form v-if="!shown.merged_into_id" class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="5" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="internal ? t('support.fields.note') : t('support.fields.reply')" data-testid="inbox-reply" />
         <AttachPicker v-model="replyFiles" />
         <ErrorText :error="actions.reply.error.value ?? actions.update.error.value" />
@@ -287,4 +306,6 @@ async function send() {
     </div>
   </DetailSheet>
   <CannedRepliesDialog v-model:open="managing" />
+  <MergeDialog v-if="shown" v-model:open="merging" :ticket="shown" :candidates="rows" />
+  <HolidaysDialog v-if="shown?.app_id" v-model:open="holidaying" :app-id="shown.app_id" />
 </template>

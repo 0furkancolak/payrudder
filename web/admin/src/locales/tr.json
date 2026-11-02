@@ -3823,7 +3823,10 @@
       },
       "ticket": {
         "closed": "Bu talep kapalı. Yeni bir talep açın.",
-        "not_found": "Talep bulunamadı."
+        "not_found": "Talep bulunamadı.",
+        "merged": "Bu talep başka bir talebe birleştirildi. Orada yazın.",
+        "cannot_merge": "Bu iki talep birleştirilemez: aynı kişinin aynı kuruluştaki iki farklı talebi olmalı, hiçbiri daha önce birleştirilmemiş olmalı ve birleştirileceği talep kapalı olmamalı.",
+        "not_solved": "Bir talebi çözüldükten sonra puanlayabilirsiniz."
       },
       "tickets": {
         "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
@@ -5680,7 +5683,7 @@
     "filters": {
       "any": "Hepsi",
       "late": "Yalnızca geciken",
-      "searchHint": "Konu veya #numara"
+      "searchHint": "Konu, #numara veya mesajlardaki sözcükler"
     },
     "status": {
       "active": "Aktif",
@@ -5716,7 +5719,7 @@
     "sortPriority": "Önce en yüksek öncelik",
     "sortDue": "Yanıt süresi en yakın önce",
     "unread": "Yeni",
-    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde.",
+    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: Pazartesi-Cuma, 09:00-18:00, uygulamanızın saat diliminde ve tatil günleri hariç. Yukarıdaki süreler standart plandaki bir uygulama içindir: ücretsiz uygulamanın süresi daha uzun, kurumsal uygulamanınki daha kısadır. Talep tam saati gösterir.",
     "tags": {
       "title": "Etiketler",
       "filter": "Etiket",
@@ -5747,7 +5750,10 @@
       "onTime": "Zamanında yanıtlanan",
       "answeredOf": "{opened} açılandan {answered} yanıtlandı",
       "byStatus": "Tüm talepler, duruma göre",
-      "byPriority": "Hâlâ bekleyenler, önceliğe göre"
+      "byPriority": "Hâlâ bekleyenler, önceliğe göre",
+      "satisfaction": "Memnuniyet, son {days} gün",
+      "ratingAverage": "{n} puandan ortalama 5 üzerinden {average}",
+      "stars": "{n} yıldız"
     },
     "badge": {
       "unread": "Yenilik olan talepler: {n}",
@@ -5763,6 +5769,64 @@
       "failed": "Bu dosyalar eklenemedi:",
       "openedButFailed": "Talebiniz açıldı ancak bazı dosyalar eklenemedi. Dosyaları bir yanıta ekleyebilirsiniz.",
       "download": "{name} dosyasını indir"
+    },
+    "links": {
+      "title": "İlgili olduğu kayıtlar",
+      "none": "Bağlı kayıt yok.",
+      "kind": {
+        "customer": "Müşteri",
+        "invoice": "Fatura",
+        "subscription": "Abonelik"
+      },
+      "env": {
+        "live": "canlı",
+        "sandbox": "deneme"
+      },
+      "remove": "{link} bağlantısını kaldır",
+      "kindLabel": "Tür",
+      "refLabel": "Müşteri kimliği veya kayıt kimliği",
+      "envLabel": "Ortam",
+      "customerHint": "Müşterinin uygulamanızdaki kimliği",
+      "idHint": "Sayfasında görünen kimlik",
+      "add": "Bağla",
+      "needsApp": "Önce bir uygulama seçin: bağlantı o uygulamanın bir kaydını gösterir."
+    },
+    "rating": {
+      "ask": "Yardımımızı nasıl buldunuz?",
+      "stars": "5 üzerinden {n}",
+      "comment": "Yorum (isteğe bağlı)",
+      "send": "Puanı gönder",
+      "yours": "Puanınız",
+      "change": "Değiştir",
+      "operatorSees": "Müşteri 5 üzerinden {n} verdi"
+    },
+    "merge": {
+      "open": "Başka bir talebe birleştir",
+      "title": "#{number} numaralı talebi başka bir talebe birleştir",
+      "hint": "Mesajları ve dosyaları diğer talebe taşınır, bu talep ona işaret ederek kapatılır. Yalnızca aynı kişinin iki talebi birleştirilebilir.",
+      "into": "Birleştirilecek talep",
+      "none": "Bu kişinin listede onu alabilecek başka bir talebi yok. Daha fazlasını görmek için durum süzgecini temizleyin.",
+      "confirm": "Birleştir",
+      "mergedInto": "Bu talep #{number} numaralı talebe birleştirildi. Mesajları orada.",
+      "joined": "{number} numaralı talebi bununla birleştirdi",
+      "joinedOther": "bu talebi {number} ile birleştirdi"
+    },
+    "holidays": {
+      "open": "{app} için tatil günleri",
+      "title": "{app} için tatil günleri",
+      "hint": "Bu uygulamanın taleplerinin ilk yanıt saati bu günlerde, hafta sonu gibi işlemez. Günler uygulamanın saat dilimindeki takvim günleridir. Açık bir talep süresini korur; önceliği değiştirilirse süre günlerin o anki haliyle yeniden hesaplanır.",
+      "none": "Henüz tatil günü yok.",
+      "day": "Gün",
+      "name": "Ad (isteğe bağlı)",
+      "add": "Günü ekle",
+      "save": "Tatil günlerini kaydet",
+      "remove": "{day} gününü kaldır"
+    },
+    "slaTier": "Süre {tier} planındaki bir uygulama için hesaplandı.",
+    "tier": {
+      "free": "ücretsiz",
+      "standard": "standart",
+      "enterprise": "kurumsal"
     }
   },
   "connect": {

@@ -3823,7 +3823,10 @@
       },
       "ticket": {
         "closed": "Este ticket está cerrado. Abra uno nuevo.",
-        "not_found": "No se encontró ese ticket."
+        "not_found": "No se encontró ese ticket.",
+        "merged": "Este ticket se fusionó con otro. Escriba allí.",
+        "cannot_merge": "Estos dos tickets no se pueden fusionar: deben ser dos tickets distintos de una misma persona en una misma organización, ninguno fusionado antes, y el de destino no puede estar cerrado.",
+        "not_solved": "Puede valorar un ticket cuando esté resuelto."
       },
       "tickets": {
         "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
@@ -5680,7 +5683,7 @@
     "filters": {
       "any": "Todos",
       "late": "Solo atrasados",
-      "searchHint": "Asunto o #número"
+      "searchHint": "Asunto, #número o palabras de los mensajes"
     },
     "status": {
       "active": "Activos",
@@ -5716,7 +5719,7 @@
     "sortPriority": "Mayor prioridad primero",
     "sortDue": "Vence antes primero",
     "unread": "Nuevo",
-    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación.",
+    "businessHours": "Los plazos cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su app y sin sus días no laborables. Los plazos de arriba son para una app del plan estándar: una app gratuita tiene más tiempo, una empresarial menos. El ticket muestra la hora exacta.",
     "tags": {
       "title": "Etiquetas",
       "filter": "Etiqueta",
@@ -5747,7 +5750,10 @@
       "onTime": "Respondidas a tiempo",
       "answeredOf": "{answered} respondidos de {opened} abiertos",
       "byStatus": "Todos los tickets, por estado",
-      "byPriority": "Aún pendientes, por prioridad"
+      "byPriority": "Aún pendientes, por prioridad",
+      "satisfaction": "Satisfacción, últimos {days} días",
+      "ratingAverage": "{average} de 5 según {n} valoraciones",
+      "stars": "{n} estrellas"
     },
     "badge": {
       "unread": "Tickets con novedades: {n}",
@@ -5763,6 +5769,64 @@
       "failed": "Estos archivos no se adjuntaron:",
       "openedButFailed": "Tu ticket se abrió, pero algunos archivos no se adjuntaron. Puedes adjuntarlos a una respuesta.",
       "download": "Descargar {name}"
+    },
+    "links": {
+      "title": "Relacionado con",
+      "none": "Sin registros vinculados.",
+      "kind": {
+        "customer": "Cliente",
+        "invoice": "Factura",
+        "subscription": "Suscripción"
+      },
+      "env": {
+        "live": "producción",
+        "sandbox": "sandbox"
+      },
+      "remove": "Quitar el vínculo con {link}",
+      "kindLabel": "Tipo",
+      "refLabel": "Id del cliente o del registro",
+      "envLabel": "Entorno",
+      "customerHint": "El id del cliente en su app",
+      "idHint": "El id que muestra su página",
+      "add": "Vincular",
+      "needsApp": "Elija primero una app: un vínculo apunta a un registro de esa app."
+    },
+    "rating": {
+      "ask": "¿Qué le pareció nuestra ayuda?",
+      "stars": "{n} de 5",
+      "comment": "Un comentario (opcional)",
+      "send": "Enviar la valoración",
+      "yours": "Su valoración",
+      "change": "Cambiar",
+      "operatorSees": "Valorado con {n} de 5 por el cliente"
+    },
+    "merge": {
+      "open": "Fusionar con otro ticket",
+      "title": "Fusionar #{number} con otro ticket",
+      "hint": "Sus mensajes y archivos pasan al otro ticket y este se cierra con una referencia a él. Solo se pueden fusionar dos tickets de la misma persona.",
+      "into": "Fusionar con",
+      "none": "Esta persona no tiene otro ticket en la lista que pueda recibirlo. Quite el filtro de estado para ver más.",
+      "confirm": "Fusionar",
+      "mergedInto": "Este ticket se fusionó con #{number}. Sus mensajes están allí.",
+      "joined": "fusionó el ticket {number} con este",
+      "joinedOther": "fusionó este ticket con {number}"
+    },
+    "holidays": {
+      "open": "Días no laborables de {app}",
+      "title": "Días no laborables de {app}",
+      "hint": "El reloj de la primera respuesta de los tickets de esta app no corre en estos días, como un fin de semana. Son días naturales en la zona horaria de la app. Un ticket ya abierto conserva su plazo; cambiar su prioridad lo recalcula con los días tal como estén entonces.",
+      "none": "Aún no hay días no laborables.",
+      "day": "Día",
+      "name": "Nombre (opcional)",
+      "add": "Añadir el día",
+      "save": "Guardar los días no laborables",
+      "remove": "Quitar {day}"
+    },
+    "slaTier": "El plazo se calculó para una app del plan {tier}.",
+    "tier": {
+      "free": "gratuito",
+      "standard": "estándar",
+      "enterprise": "empresarial"
     }
   },
   "connect": {

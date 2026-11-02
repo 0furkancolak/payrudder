@@ -21,10 +21,12 @@ import { Textarea } from "@/shared/ui/textarea";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
-import { attachFiles, CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority, supportKeys } from "./api";
+import { attachFiles, CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTicketHits, useMyTickets, type SupportCategory, type SupportLink, type SupportPriority, supportKeys } from "./api";
 import AttachFailures from "./AttachFailures.vue";
 import AttachPicker from "./AttachPicker.vue";
 import TicketBadges from "./TicketBadges.vue";
+import TicketLinks from "./TicketLinks.vue";
+import TicketRating from "./TicketRating.vue";
 import TicketThread from "./TicketThread.vue";
 
 /**
@@ -38,11 +40,15 @@ const apps = useApps();
 const actions = useMySupportActions();
 
 const rows = computed(() => tickets.data.value ?? []);
+// The page filters on the subject and number it has; the words of the messages are the server's: a ticket it names passes the filter too.
+const typed = ref("");
+const hits = useMyTicketHits(typed);
 const table = useTableState(rows, {
-  url: true, searchFields: (r) => [r.subject, r.number, r.app_name],
+  url: true, searchFields: (r) => [r.subject, r.number, r.app_name, ...(hits.data.value?.has(r.id) ? [typed.value] : [])],
   sorts: () => [newest(t, (r) => time(r.last_message_time)), oldest(t, (r) => time(r.last_message_time))],
   sheet: { kind: "ticket", id: (r) => r.id, loaded: () => tickets.isSuccess.value },
 });
+watch(() => table.search.value, (v) => (typed.value = v), { immediate: true });
 const current = computed(() => table.row.value);
 const thread = useMyTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
@@ -66,6 +72,9 @@ const category = ref<SupportCategory>("question");
 const priority = ref<SupportPriority>("normal");
 const appId = ref("");
 const body = ref("");
+/** The objects the new ticket is about; they belong to the app chosen, so a different app starts the list again. */
+const newLinks = ref<SupportLink[]>([]);
+watch(appId, () => (newLinks.value = []));
 const newFiles = ref<File[]>([]);
 // The ticket exists once its message is sent; files that then fail are named here and the sheet stays open until the person has read it.
 const openedNumber = ref(0);
@@ -78,6 +87,7 @@ watch(creating, (open) => {
   category.value = "question";
   priority.value = "normal";
   appId.value = "";
+  newLinks.value = [];
   newFiles.value = [];
   newFailures.value = [];
   openedNumber.value = 0;
@@ -87,7 +97,7 @@ async function submit() {
   const accountId = account.data.value?.id;
   if (!accountId || openedNumber.value > 0) return;
   try {
-    const made = await actions.open.mutateAsync({ account_id: accountId, subject: subject.value.trim(), category: category.value, priority: priority.value, body: body.value.trim(), ...(appId.value ? { app_id: appId.value } : {}) });
+    const made = await actions.open.mutateAsync({ account_id: accountId, subject: subject.value.trim(), category: category.value, priority: priority.value, body: body.value.trim(), ...(appId.value ? { app_id: appId.value } : {}), ...(newLinks.value.length > 0 ? { links: newLinks.value } : {}) });
     const failed = made.message ? await attachFiles("person", made.ticket.id, made.message.id, newFiles.value) : [];
     if (failed.length === 0) {
       creating.value = false;
@@ -126,6 +136,7 @@ async function send() {
   }
 }
 const closed = computed(() => shown.value?.status === "closed");
+const merged = computed(() => !!shown.value?.merged_into_id);
 const solved = computed(() => shown.value?.status === "solved");
 </script>
 
@@ -200,6 +211,10 @@ const solved = computed(() => shown.value?.status === "solved");
               <option v-for="a in appOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
             </NativeSelect>
           </label>
+          <div v-if="appId" class="grid gap-1 text-sm">
+            <span>{{ t("support.links.title") }}</span>
+            <TicketLinks :links="newLinks" :app-id="appId" editable @change="newLinks = $event" />
+          </div>
           <label class="grid gap-1 text-sm">{{ t("support.fields.body") }}
             <Textarea v-model="body" required rows="7" maxlength="10000" data-testid="support-body" />
           </label>
@@ -224,9 +239,12 @@ const solved = computed(() => shown.value?.status === "solved");
       <p v-if="!shown.first_response_time && shown.status === 'open'" class="text-muted-foreground text-xs" data-testid="support-due">
         {{ t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
       </p>
+      <TicketLinks v-if="shown.links.length > 0" :links="shown.links" />
       <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="person" />
-      <p v-if="closed" class="text-muted-foreground bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="support-closed">{{ t("support.closedNote") }}</p>
-      <form v-else class="grid gap-2" @submit.prevent="send">
+      <p v-if="merged" class="text-muted-foreground bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="support-merged">{{ t("support.merge.mergedInto", { number: shown.merged_into_number }) }}</p>
+      <TicketRating v-else-if="solved || closed" :ticket="shown" />
+      <p v-if="closed && !merged" class="text-muted-foreground bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="support-closed">{{ t("support.closedNote") }}</p>
+      <form v-else-if="!closed" class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="4" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="t('support.fields.reply')" data-testid="support-reply" />
         <AttachPicker v-model="replyFiles" />
         <ErrorText :error="actions.reply.error.value ?? actions.setStatus.error.value" />
