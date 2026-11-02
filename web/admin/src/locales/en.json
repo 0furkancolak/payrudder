@@ -3894,7 +3894,8 @@
         "not_solved": "You can rate a ticket once it is solved."
       },
       "tickets": {
-        "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
+        "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again.",
+        "too_many_recent": "Your organisation has opened too many tickets in the last hour. Wait a while, or write in a ticket that is already open."
       },
       "canned_reply": {
         "not_found": "That canned reply is not there any more."

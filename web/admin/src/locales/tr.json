@@ -3894,7 +3894,8 @@
         "not_solved": "Bir talebi çözüldükten sonra puanlayabilirsiniz."
       },
       "tickets": {
-        "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
+        "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin.",
+        "too_many_recent": "Kuruluşunuz son bir saatte çok fazla talep açtı. Biraz bekleyin veya zaten açık olan bir talebe yazın."
       },
       "canned_reply": {
         "not_found": "Bu hazır yanıt artık yok."

@@ -24,7 +24,7 @@ func placeholders(c copyText) string {
 }
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
-	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketCustomerReply, KindTicketReply, KindTicketStatus,
+	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketBurst, KindTicketCustomerReply, KindTicketReply, KindTicketStatus,
 		KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated, KindTenantAppealAccepted, KindTenantAppealRejected}
 	for _, l := range Locales {
 		for _, k := range kinds {

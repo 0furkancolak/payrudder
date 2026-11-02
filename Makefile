@@ -259,14 +259,18 @@ helm-uninstall: $(BIN)/helm ## Remove both releases
 	-$(BIN)/helm uninstall payrudder -n $(HELM_NS) --kube-context kind-payrudder
 	-$(BIN)/helm uninstall payrudder-infra -n $(HELM_NS) --kube-context kind-payrudder
 
+# What a production profile's secrets file would set: without these the chart refuses to render there (the pepper, and the published defaults of the other secrets).
+HELM_LINT_SECRETS = --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 --set operatorToken=lint-only-operator-token-0123456789 \
+	--set payments.secretsKey=bGludC1vbmx5LWtleS0wMTIzNDU2Nzg5YWJjZGVm --set payments.internalToken=lint-only-internal-token-0123456789
+
 .PHONY: helm-lint
 helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file (a KEDA ScaledObject and a PrometheusRule have no schema in kubeconform: tests/helm checks them)
-	@# values-small.yaml is a production profile: the pepper and the public URL are values of the secrets file it is paired with, so the lint is given them (tests/helm checks that the chart refuses to render without them).
+	@# values-small.yaml is a production profile: the pepper, the other secrets and the public URL are values of the secrets file it is paired with, so the lint is given them (tests/helm checks that the chart refuses to render without them).
 	@set -e; for c in payrudder payrudder-infra; do \
 	  for v in deploy/helm/$$c/values*.yaml; do \
 	    echo "== $$c $$v"; \
-	    $(BIN)/helm lint deploy/helm/$$c -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 --set global.publicURL=https://api.example.com; \
-	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 --set global.publicURL=https://api.example.com | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject,PrometheusRule -; \
+	    $(BIN)/helm lint deploy/helm/$$c -f $$v $(HELM_LINT_SECRETS) --set global.publicURL=https://api.example.com; \
+	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v $(HELM_LINT_SECRETS) --set global.publicURL=https://api.example.com | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject,PrometheusRule -; \
 	  done; \
 	done
 

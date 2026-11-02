@@ -84,6 +84,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SupportDeskExtras", testSupportDeskExtras)
 	t.Run("SupportLeftovers", testSupportLeftovers)
 	t.Run("SupportAttachments", testSupportAttachments)
+	t.Run("SupportLimits", testSupportLimits)
 	t.Run("SupportViewer", testSupportViewer)
 	t.Run("Contracts", testContracts)
 	t.Run("ContractFollowups", testContractFollowups)

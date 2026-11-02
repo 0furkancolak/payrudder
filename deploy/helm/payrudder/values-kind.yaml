@@ -2,6 +2,8 @@
 # ingest-svc, a NodePort for the gateway and mock-psp so that the host reaches them on 42800 and 42890.
 global:
   environment: kind
+mail:
+  eventsSecret: local-mail-events-secret-change-me-0123456789   # the local value; the chart default is empty (the mail page off)
 defaults:
   resources:
     requests: { cpu: 25m, memory: 32Mi }

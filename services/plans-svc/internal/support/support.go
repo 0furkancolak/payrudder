@@ -36,6 +36,10 @@ type Config struct {
 	Operators []string
 	// AppURL is the console's address; the links in the notices open the ticket in it.
 	AppURL string
+	// OpensPerHour is the most tickets one account may open in an hour, solved and closed ones included (solving a ticket frees its place among the ones waiting, so
+	// the waiting limit alone does not stop a loop of open and solve); 0 allows any number. MailBurst is how many new tickets the operators are mailed one by one
+	// within domain.SupportMailWindow: the next one is mailed as one digest and the ones after it are not mailed (they are in the inbox); 0 mails every one.
+	OpensPerHour, MailBurst int
 }
 
 // Service implements plansv1.SupportServiceServer.
@@ -289,6 +293,13 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		} else if n >= domain.SupportMaxOpen {
 			return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many", "an account can have at most %d tickets waiting at once: wait for an answer or mark one solved", domain.SupportMaxOpen)
 		}
+		if s.cfg.OpensPerHour > 0 {
+			if n, err := q.SupportOpenedByAccountSince(ctx, sqlc.SupportOpenedByAccountSinceParams{AccountID: account, Since: s.now().Add(-time.Hour)}); err != nil {
+				return err
+			} else if int(n) >= s.cfg.OpensPerHour {
+				return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many_recent", "an account can open at most %d tickets an hour: wait a while, or write in a ticket that is open", s.cfg.OpensPerHour)
+			}
+		}
 		clock, err := q.SupportClockFor(ctx, sqlc.SupportClockForParams{AccountID: account, AppID: appID})
 		if err != nil {
 			return err
@@ -320,7 +331,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		if out.Links, err = linksOf(ctx, q, id); err != nil {
 			return err
 		}
-		mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketNew)
+		mails, err = s.newTicketMails(ctx, q, id)
 		return err
 	})
 	if err != nil {

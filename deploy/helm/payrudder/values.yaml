@@ -65,10 +65,10 @@ nafru:
 # shows when you make the webhook, pointed at https://<gateway>/inbound/mail-events. Empty (the default): the route answers 404 and a bounce never reaches the suppression list.
 # It needs eventsSecret (the gateway hands the event to the notifier). A secret, so it goes in the gateway's Secret; with secrets.existingSecrets add PAYRUDDER_MAIL_WEBHOOK_SECRET to it.
 mail:
-  eventsSecret: local-mail-events-secret-change-me-0123456789
+  eventsSecret: ""   # empty: off. The kind profiles (values-kind*.yaml, values-sandbox.yaml) set the local value; outside a development environment the chart refuses the published one
   webhookSecret: ""
 
-operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, payrudderctl, tests); no page asks for it
+operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, payrudderctl, tests); no page asks for it. A public local value: outside a development environment the chart refuses it
 
 # How people sign in (phase 42): e-mail and password always, a one-time code mailed to the address, and Google when set up.
 auth:

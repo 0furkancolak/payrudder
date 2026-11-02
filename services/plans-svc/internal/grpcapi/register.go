@@ -63,6 +63,8 @@ type Deps struct {
 	Saas saascmd.Config
 	// OperatorEmails are the platform operators' addresses (PAYRUDDER_OPERATOR_EMAILS, as on the gateway): the help desk mails them when a ticket is opened.
 	OperatorEmails []string
+	// SupportOpensPerHour and SupportMailBurst bound a flood of new tickets (PAYRUDDER_SUPPORT_OPENS_PER_HOUR, PAYRUDDER_SUPPORT_MAIL_BURST); 0 is no bound.
+	SupportOpensPerHour, SupportMailBurst int
 	// CellsReady says whether a tenant may be placed in a cell (ADR 0018): nil when every cross-tenant job is converted, an error naming what is left otherwise.
 	// nil in the Deps means pkg/tenantdir's inventory; a test passes its own.
 	CellsReady func() error
@@ -86,7 +88,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	admin.accounts.WithDefaultRegion(d.DefaultRegion)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
-	desk := support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL})
+	desk := support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL, OpensPerHour: d.SupportOpensPerHour, MailBurst: d.SupportMailBurst})
 	if err := desk.RegisterMetrics(); err != nil {
 		d.Log.Error("support metrics are not registered", "error", err)
 	}

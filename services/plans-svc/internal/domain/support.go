@@ -23,6 +23,10 @@ const SupportMaxBody = 10000
 // one. A default (plan 12, not agreed).
 const SupportMaxOpen = 20
 
+// SupportMailWindow is the stretch of time in which the operators are mailed at most so many new tickets one by one (Config.MailBurst); the number is a setting. A default
+// (security review 4, not agreed).
+const SupportMailWindow = 10 * time.Minute
+
 // What may be attached to a message (plan 12, defaults not agreed). The types and the size are assets-svc's rule for the purpose support_attachment; the count and the
 // account's total are this module's.
 const (

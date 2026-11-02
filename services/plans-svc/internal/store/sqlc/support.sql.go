@@ -1303,6 +1303,35 @@ func (q *Queries) SupportOpenCount(ctx context.Context, accountID uuid.UUID) (in
 	return column_1, err
 }
 
+const supportOpenedByAccountSince = `-- name: SupportOpenedByAccountSince :one
+SELECT count(*)::int FROM support_tickets WHERE account_id = $1 AND created_at > $2::timestamptz
+`
+
+type SupportOpenedByAccountSinceParams struct {
+	AccountID uuid.UUID
+	Since     time.Time
+}
+
+// Tickets the account opened since a time, solved and closed ones included: the limit per hour (a solved ticket frees its place among the ones waiting, not this).
+func (q *Queries) SupportOpenedByAccountSince(ctx context.Context, arg SupportOpenedByAccountSinceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, supportOpenedByAccountSince, arg.AccountID, arg.Since)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const supportOpenedSince = `-- name: SupportOpenedSince :one
+SELECT count(*)::int FROM support_tickets WHERE last_message_at > $1::timestamptz AND created_at > $1::timestamptz
+`
+
+// Tickets anybody opened since a time, for the burst of mail to the operators. last_message_at is never earlier than created_at; it is in the condition for its index.
+func (q *Queries) SupportOpenedSince(ctx context.Context, since time.Time) (int32, error) {
+	row := q.db.QueryRow(ctx, supportOpenedSince, since)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const supportOperatorLocales = `-- name: SupportOperatorLocales :many
 SELECT lower(email)::text AS email, locale FROM users WHERE lower(email) = ANY($1::text[])
 `

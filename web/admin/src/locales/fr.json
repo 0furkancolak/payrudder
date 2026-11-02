@@ -3894,7 +3894,8 @@
         "not_solved": "Vous pouvez noter un ticket une fois qu'il est résolu."
       },
       "tickets": {
-        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
+        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez.",
+        "too_many_recent": "Votre organisation a ouvert trop de tickets au cours de la dernière heure. Patientez un moment ou écrivez dans un ticket déjà ouvert."
       },
       "canned_reply": {
         "not_found": "Cette réponse type n'existe plus."
