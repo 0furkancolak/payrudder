@@ -3,6 +3,7 @@
 {{if .Sandbox}}<p><strong>SANDBOX — this is not a real agreement.</strong></p>{{end}}
 <h2>Your copy of what you accepted</h2>
 <p>Hi {{index .D "customer_name"}}, on <strong>{{index .D "accepted_at"}}</strong> you accepted the following with <strong>{{index .D "tenant_name"}}</strong>. Keep this e-mail: it is your copy.</p>
+{{if index .D "has_pdf"}}<p style="font-size: 12px; color: #666">A PDF copy of this page is attached.</p>{{end}}
 <hr>
 {{trusted (index .D "snapshot_html")}}
 <hr>

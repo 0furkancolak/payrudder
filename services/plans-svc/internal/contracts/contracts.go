@@ -28,6 +28,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts/snapshotpdf"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -916,7 +917,7 @@ func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.List
 	return resp, nil
 }
 
-// GetContractSnapshot returns the page the acceptance's group was shown to and accepted, as it was written then, with its sha256. The page is checked against the hash the
+// GetContractSnapshot returns the page the acceptance's group was shown to and accepted, as it was written then, with its sha256 (and, when asked, the same page as a PDF). The page is checked against the hash the
 // acceptance holds before it is returned: a page that no longer matches is an error, never evidence.
 func (s *Service) GetContractSnapshot(ctx context.Context, req *plansv1.GetContractSnapshotRequest) (*plansv1.GetContractSnapshotResponse, error) {
 	id, err := uuid.Parse(req.GetAcceptanceId())
@@ -940,6 +941,16 @@ func (s *Service) GetContractSnapshot(ctx context.Context, req *plansv1.GetContr
 			return status.Error(codes.DataLoss, "the stored page does not match its hash")
 		}
 		out = &plansv1.GetContractSnapshotResponse{Html: snap.Html, Sha256: snap.Sha256, GroupId: a.GroupID.String()}
+		if req.GetIncludePdf() {
+			switch pdf, err := snapshotpdf.Render(snap.Html, a.AcceptedAt); {
+			case errors.Is(err, snapshotpdf.ErrUnsupported):
+				out.PdfUnavailable = true
+			case err != nil:
+				return err
+			default:
+				out.Pdf = pdf
+			}
+		}
 		return nil
 	})
 	return out, err

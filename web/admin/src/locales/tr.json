@@ -3087,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "Bölge adında yalnızca küçük harf, rakam ve tire bulunabilir; en fazla 31 karakter olabilir.",
         "bad_slug": "Uygulama kısaltması yalnızca küçük harf, rakam ve tekil tire içerebilir; en fazla 60 karakter olmalı.",
         "slug_taken": "Bu hesapta aynı kısaltmaya sahip bir uygulama zaten var."
       },
@@ -3534,6 +3535,7 @@
         "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
       },
       "region": {
+        "unknown": "Bu bölge bu kurulumda yok. Listeden birini seçin.",
         "wrong": "Bu ortam başka bir bölgeden sunuluyor. İsteği kendi bölgesinin ağ geçidine gönderin (X-Payrudder-Region ve X-Payrudder-Region-Url başlıklarına bakın)."
       },
       "rate_limit": {
@@ -3925,6 +3927,8 @@
       "name": "Uygulama adı",
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
+      "region": "Bölge",
+      "regionHint": "Bu uygulamanın verilerinin tutulduğu yer. Konsoldan sonradan değiştirilemez; uygulamaya o bölgenin adresinden ulaşılır.",
       "immutable": "Para birimi ve saat dilimi sonradan değiştirilemez: fatura dönemleri bu saat diliminde kesilir.",
       "submit": "Uygulama oluştur",
       "badCurrency": "Listeden bir para birimi seçin.",
@@ -6048,7 +6052,17 @@
         "source": "Nerede kabul edildi",
         "allSources": "Her yerde"
       },
-      "showMore": "Daha fazla göster"
+      "showMore": "Daha fazla göster",
+      "requirements": "Müşterinin kabul etmesi gerekenler",
+      "reqOff": "Sözleşme zorunlu tutmuyorsunuz: bu müşteriden bir şey istenmiyor.",
+      "reqSatisfied": "Gerekli her şey kabul edilmiş",
+      "reqOpen": "Kabul edilmesi gereken: {n}",
+      "reqAccepted": "Kabul: {time}",
+      "reqToAccept": "Kabul edilecek",
+      "reqConsents": "Tüketiciden ayrıca hizmetin hemen başlamasını istemesi ve cayma hakkını kaybettiğini onaylaması istenir.",
+      "reqMissing": "Şunlar için yayımlanmış metin yok: {kinds}. Yayımlanana kadar ödeme reddedilir.",
+      "downloadPdf": "PDF indir",
+      "pdfUnavailable": "Bu sayfanın PDF'i yapılamıyor: metninde PDF yazı tipinin çizemediği karakterler var. Bunun yerine sayfayı görüntüleyin."
     },
     "record": {
       "title": "Cayma kaydet",

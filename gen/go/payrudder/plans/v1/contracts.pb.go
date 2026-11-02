@@ -1951,7 +1951,9 @@ func (x *ListContractAcceptancesResponse) GetNextPageToken() string {
 type GetContractSnapshotRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The acceptance id, or any acceptance of the group (the page covers the whole group).
-	AcceptanceId  string `protobuf:"bytes,1,opt,name=acceptance_id,json=acceptanceId,proto3" json:"acceptance_id,omitempty"`
+	AcceptanceId string `protobuf:"bytes,1,opt,name=acceptance_id,json=acceptanceId,proto3" json:"acceptance_id,omitempty"`
+	// Also draw the page as a PDF (the customer's copy). The PDF is read from the stored page and ends with its sha256.
+	IncludePdf    bool `protobuf:"varint,2,opt,name=include_pdf,json=includePdf,proto3" json:"include_pdf,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1993,13 +1995,24 @@ func (x *GetContractSnapshotRequest) GetAcceptanceId() string {
 	return ""
 }
 
+func (x *GetContractSnapshotRequest) GetIncludePdf() bool {
+	if x != nil {
+		return x.IncludePdf
+	}
+	return false
+}
+
 type GetContractSnapshotResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Html          string                 `protobuf:"bytes,1,opt,name=html,proto3" json:"html,omitempty"`
-	Sha256        string                 `protobuf:"bytes,2,opt,name=sha256,proto3" json:"sha256,omitempty"`
-	GroupId       string                 `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Html    string                 `protobuf:"bytes,1,opt,name=html,proto3" json:"html,omitempty"`
+	Sha256  string                 `protobuf:"bytes,2,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	GroupId string                 `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	// The page as a PDF, set when include_pdf was asked and the page can be drawn.
+	Pdf []byte `protobuf:"bytes,4,opt,name=pdf,proto3" json:"pdf,omitempty"`
+	// True when include_pdf was asked and the page cannot be drawn in the embedded font (Arabic, or a character the font has no glyph for): the HTML page is then the only copy.
+	PdfUnavailable bool `protobuf:"varint,5,opt,name=pdf_unavailable,json=pdfUnavailable,proto3" json:"pdf_unavailable,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetContractSnapshotResponse) Reset() {
@@ -2051,6 +2064,20 @@ func (x *GetContractSnapshotResponse) GetGroupId() string {
 		return x.GroupId
 	}
 	return ""
+}
+
+func (x *GetContractSnapshotResponse) GetPdf() []byte {
+	if x != nil {
+		return x.Pdf
+	}
+	return nil
+}
+
+func (x *GetContractSnapshotResponse) GetPdfUnavailable() bool {
+	if x != nil {
+		return x.PdfUnavailable
+	}
+	return false
 }
 
 type ContractWithdrawal struct {
@@ -3230,13 +3257,17 @@ const file_payrudder_plans_v1_contracts_proto_rawDesc = "" +
 	"page_token\x18\t \x01(\tR\tpageToken\"\x93\x01\n" +
 	"\x1fListContractAcceptancesResponse\x12H\n" +
 	"\vacceptances\x18\x01 \x03(\v2&.payrudder.plans.v1.ContractAcceptanceR\vacceptances\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"A\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"b\n" +
 	"\x1aGetContractSnapshotRequest\x12#\n" +
-	"\racceptance_id\x18\x01 \x01(\tR\facceptanceId\"d\n" +
+	"\racceptance_id\x18\x01 \x01(\tR\facceptanceId\x12\x1f\n" +
+	"\vinclude_pdf\x18\x02 \x01(\bR\n" +
+	"includePdf\"\x9f\x01\n" +
 	"\x1bGetContractSnapshotResponse\x12\x12\n" +
 	"\x04html\x18\x01 \x01(\tR\x04html\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x19\n" +
-	"\bgroup_id\x18\x03 \x01(\tR\agroupId\"\xf4\x04\n" +
+	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12\x10\n" +
+	"\x03pdf\x18\x04 \x01(\fR\x03pdf\x12'\n" +
+	"\x0fpdf_unavailable\x18\x05 \x01(\bR\x0epdfUnavailable\"\xf4\x04\n" +
 	"\x12ContractWithdrawal\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +

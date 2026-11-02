@@ -14,6 +14,8 @@ import (
 //     neutral Event (event.go); a Nafru delivery needs a translating layer once Nafru's contract is known. Resend's own webhooks are signed with Svix, which this
 //     endpoint does not speak.
 //   - UNVERIFIED: Nafru's sending limits, its sender-domain verification and its idempotency window (Resend's is 24 hours, 256 characters).
+//   - UNVERIFIED: that Nafru accepts Resend's `attachments` (filename and base64 content). Message.Attachments are sent that way; the only mail that carries one (the copy of an
+//     accepted agreement) also holds the same page in its body, so a Nafru that drops or refuses the field loses the PDF, not the evidence.
 //
 // NOT BUILT: a "template mode" in which Payrudder sends the template id and its variables and Nafru renders (docs/email-template-contract.md lists what would be
 // sent). It needs Nafru's template contract; until then Payrudder renders every mail.

@@ -30,6 +30,7 @@ type fakeContracts struct {
 	recordErr  error
 	required   []*plansv1.ContractRequirement
 	asked      []*plansv1.GetContractRequirementsRequest
+	snapshots  []*plansv1.GetContractSnapshotRequest // what was asked of GetContractSnapshot
 	recorded   []*plansv1.RecordContractAcceptanceRequest
 	recordedAs []string // the tenant each record was made for
 	published  *plansv1.PublishContractVersionRequest
@@ -106,10 +107,22 @@ func (f *fakeContracts) PublishContractVersion(_ context.Context, req *plansv1.P
 }
 
 func (f *fakeContracts) GetContractSnapshot(_ context.Context, req *plansv1.GetContractSnapshotRequest) (*plansv1.GetContractSnapshotResponse, error) {
-	if req.GetAcceptanceId() != "acc-1" {
+	f.mu.Lock()
+	f.snapshots = append(f.snapshots, req)
+	f.mu.Unlock()
+	if req.GetAcceptanceId() != "acc-1" && req.GetAcceptanceId() != "acc-ar" {
 		return nil, errkey.New(codes.NotFound, "plans.contract.acceptance_not_found", "no such acceptance")
 	}
-	return &plansv1.GetContractSnapshotResponse{Html: "<html><body>the page</body></html>", Sha256: "abc123"}, nil
+	resp := &plansv1.GetContractSnapshotResponse{Html: "<html><body>the page</body></html>", Sha256: "abc123def456abc123"}
+	if req.GetIncludePdf() {
+		// acc-ar is a text the PDF font cannot draw.
+		if req.GetAcceptanceId() == "acc-ar" {
+			resp.PdfUnavailable = true
+		} else {
+			resp.Pdf = []byte("%PDF-1.3 the copy")
+		}
+	}
+	return resp, nil
 }
 
 func (f *fakeContracts) SetContractSettings(_ context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.SetContractSettingsResponse, error) {
@@ -198,7 +211,7 @@ func TestContractAPIPermissionsAndForcedFields(t *testing.T) {
 func TestContractSnapshotIsReturnedWithItsHash(t *testing.T) {
 	ts, _ := newTestServer(t)
 	r, m := do(t, ts, http.MethodGet, "/v1/contract-acceptances/acc-1/snapshot", "live-key", ``)
-	if r.StatusCode != 200 || m["sha256"] != "abc123" || !strings.Contains(m["html"].(string), "the page") || r.Header.Get("Cache-Control") == "" {
+	if r.StatusCode != 200 || m["sha256"] != "abc123def456abc123" || !strings.Contains(m["html"].(string), "the page") || r.Header.Get("Cache-Control") == "" {
 		t.Errorf("snapshot: %d %v %v", r.StatusCode, m, r.Header)
 	}
 	if r, m := do(t, ts, http.MethodGet, "/v1/contract-acceptances/nope/snapshot", "live-key", ``); r.StatusCode != http.StatusNotFound || errCode(m) != "NOT_FOUND" {

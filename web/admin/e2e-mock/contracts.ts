@@ -177,7 +177,14 @@ export interface ContractsState {
   withdrawals: Withdrawal[];
   acceptances: Acceptance[];
   invoices: MockInvoice[];
+  /** What the API answers about what a customer must accept now (default: the seller requires nothing). */
+  requirements?: { enforced: boolean; satisfied: boolean; immediate_start: boolean; missing_kinds: string[]; audience: string; requirements: { kind: string; version_number: number; accepted: boolean; accept_time: string | null }[] };
+  /** Acceptances whose page the PDF font cannot draw: asked for with pdf=true they answer pdf_unavailable. */
+  noPdf?: string[];
 }
+
+/** The bytes the mock's PDF copy holds. */
+export const PDF_TEXT = "%PDF-1.3 the copy of what the customer accepted";
 
 const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -311,7 +318,15 @@ export function contractsGateway(gw: MockGateway, init: Partial<Omit<ContractsSt
     const oneInvoice = /^\/v1\/invoices\/([^/]+)$/.exec(c.path);
     const found = oneInvoice ? state.invoices.find((i) => i.id === oneInvoice[1]) : undefined;
     if (found && c.method === "GET") return { body: { ...found, lines: [], payments: [] } };
-    if (/^\/v1\/contract-acceptances\/[^/]+\/snapshot$/.test(c.path) && c.method === "GET") return { body: { html: SNAPSHOT_HTML, sha256: "cafe".repeat(16), group_id: "g-new" } };
+    const snap = /^\/v1\/contract-acceptances\/([^/]+)\/snapshot$/.exec(c.path);
+    if (snap && c.method === "GET") {
+      const wantPdf = c.query.get("pdf") === "true";
+      const none = (state.noPdf ?? []).includes(snap[1] ?? "");
+      return { body: { html: SNAPSHOT_HTML, sha256: "cafe".repeat(16), group_id: "g-new", ...(wantPdf && !none ? { pdf: Buffer.from(PDF_TEXT).toString("base64") } : {}), pdf_unavailable: wantPdf && none } };
+    }
+    if (/^\/v1\/customers\/[^/]+\/contract-requirements$/.test(c.path) && c.method === "GET") {
+      return { body: state.requirements ?? { enforced: false, requirements: [], satisfied: true, immediate_start: false, missing_kinds: [], audience: "consumer" } };
+    }
     return undefined;
   });
   return state;

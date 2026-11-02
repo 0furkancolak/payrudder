@@ -3,6 +3,7 @@
 package itest
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -269,6 +270,26 @@ func testContracts(t *testing.T) {
 		}
 		_, err = c.GetContractSnapshot(as(e.account(t, "Snap Other")[plansv1.Environment_ENVIRONMENT_LIVE].GetId()), &plansv1.GetContractSnapshotRequest{AcceptanceId: a.GetId()})
 		wantCode(t, "another tenant's snapshot", err, codes.NotFound, "plans.contract.acceptance_not_found")
+	})
+
+	t.Run("the PDF copy is drawn from the stored page, only when asked, and is the same every time", func(t *testing.T) {
+		list, err := c.ListContractAcceptances(ctx, &plansv1.ListContractAcceptancesRequest{CustomerExternalId: "grace"})
+		if err != nil || len(list.GetAcceptances()) == 0 {
+			t.Fatalf("list: %v %v", list, err)
+		}
+		id := list.GetAcceptances()[0].GetId()
+		plain, err := c.GetContractSnapshot(ctx, &plansv1.GetContractSnapshotRequest{AcceptanceId: id})
+		if err != nil || len(plain.GetPdf()) != 0 || plain.GetPdfUnavailable() {
+			t.Fatalf("a PDF nobody asked for: %v %d %v", err, len(plain.GetPdf()), plain.GetPdfUnavailable())
+		}
+		withPdf, err := c.GetContractSnapshot(ctx, &plansv1.GetContractSnapshotRequest{AcceptanceId: id, IncludePdf: true})
+		if err != nil || !bytes.HasPrefix(withPdf.GetPdf(), []byte("%PDF-")) || withPdf.GetPdfUnavailable() || withPdf.GetSha256() != plain.GetSha256() || withPdf.GetHtml() != plain.GetHtml() {
+			t.Fatalf("with the PDF: %v %v", err, withPdf.GetPdfUnavailable())
+		}
+		again, _ := c.GetContractSnapshot(ctx, &plansv1.GetContractSnapshotRequest{AcceptanceId: id, IncludePdf: true})
+		if !bytes.Equal(again.GetPdf(), withPdf.GetPdf()) {
+			t.Error("the same acceptance gave two different PDFs")
+		}
 	})
 
 	t.Run("a guest payment is covered by the invoice it was accepted for", func(t *testing.T) {

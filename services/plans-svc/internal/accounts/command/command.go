@@ -38,9 +38,25 @@ var (
 
 // Commands creates accounts and apps.
 type Commands struct {
-	pool        *pgxpool.Pool
-	allowedEnvs []string
-	log         *slog.Logger
+	pool          *pgxpool.Pool
+	allowedEnvs   []string
+	defaultRegion string
+	log           *slog.Logger
+}
+
+// WithDefaultRegion sets the region a new app is pinned to when its request names none (PAYRUDDER_DEFAULT_REGION). Empty, the default, pins nothing: every gateway serves
+// the tenant (docs/runbooks/scaling.md).
+func (c *Commands) WithDefaultRegion(region string) *Commands {
+	c.defaultRegion = region
+	return c
+}
+
+// CheckRegion is the answer to a region the table would refuse.
+func CheckRegion(region string) error {
+	if region != "" && !domain.RegionName.MatchString(region) {
+		return errkey.New(codes.InvalidArgument, "plans.app.bad_region", "region: lower-case letters, digits and single dashes, at most 31 characters")
+	}
+	return nil
 }
 
 // New returns the account commands on the system pool. allowedEnvs is PAYRUDDER_ALLOWED_ENVIRONMENTS ("sandbox", "live").
@@ -87,6 +103,10 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateAppRequest)
 	if err != nil {
 		return nil, err
 	}
+	if err := CheckRegion(req.GetRegion()); err != nil {
+		return nil, err
+	}
+	settings.Region = req.GetRegion()
 	slug, err := ResolveSlug(settings.Name, req.GetSlug())
 	if err != nil {
 		return nil, err
@@ -121,6 +141,10 @@ func (c *Commands) InsertApp(ctx context.Context, q *sqlc.Queries, accountID uui
 	if env.Allowed(c.allowedEnvs, env.Live) {
 		envs = append(envs, env.Live)
 	}
+	region := settings.Region
+	if region == "" {
+		region = c.defaultRegion
+	}
 	app, err := q.InsertApp(ctx, sqlc.InsertAppParams{ID: idgen.NewUUIDv7(), AccountID: accountID, Name: settings.Name, Slug: slug})
 	if err != nil {
 		return nil, err
@@ -137,7 +161,7 @@ func (c *Commands) InsertApp(ctx context.Context, q *sqlc.Queries, accountID uui
 		}
 		t, err := q.InsertTenant(ctx, sqlc.InsertTenantParams{
 			ID: idgen.NewUUIDv7(), AccountID: accountID, AppID: app.ID, Environment: e.String(), Name: name, Tier: settings.Tier,
-			Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace), Status: tenantStatus,
+			Currency: settings.Currency, Timezone: settings.Timezone, GracePeriod: convert.Interval(settings.Grace), Status: tenantStatus, Region: region,
 		})
 		if err != nil {
 			return nil, err

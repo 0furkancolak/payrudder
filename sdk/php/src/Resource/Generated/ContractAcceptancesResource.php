@@ -20,12 +20,13 @@ final class ContractAcceptancesResource extends AbstractResource
      * The page the customer accepted, as it was rendered then (GET /v1/contract-acceptances/{id}/snapshot).
      *
      * @param string $id
+     * @param bool|null $pdf
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function getContractSnapshot(string $id, ?RequestOptions $options = null): GetContractSnapshotResponse
+    public function getContractSnapshot(string $id, ?bool $pdf = null, ?RequestOptions $options = null): GetContractSnapshotResponse
     {
-        return GetContractSnapshotResponse::fromArray($this->call('GET', '/v1/contract-acceptances/' . rawurlencode($id) . '/snapshot', [], null, $options));
+        return GetContractSnapshotResponse::fromArray($this->call('GET', '/v1/contract-acceptances/' . rawurlencode($id) . '/snapshot', ['pdf' => $pdf], null, $options));
     }
 }

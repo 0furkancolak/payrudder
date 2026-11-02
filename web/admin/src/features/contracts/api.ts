@@ -168,3 +168,38 @@ export function useContractSnapshot(tenantId: MaybeRefOrGetter<string>, id: Mayb
     enabled: ready(tenantId, () => toValue(id) !== ""),
   });
 }
+
+/** What the customer has to accept now, and what of it they have: the seller's required texts as of today (the texts themselves are not shown here). */
+export function useContractRequirements(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => ["tenants", toValue(tenantId), "contract-requirements", toValue(customer)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/contract-requirements", { params: { path: { external_id: toValue(customer) } } })),
+    enabled: ready(tenantId, () => toValue(customer) !== ""),
+  });
+}
+
+/** The PDF bytes of a base64 string (the API sends them that way inside its JSON). */
+export function pdfBlob(base64: string): Blob {
+  const raw = atob(base64);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return new Blob([bytes], { type: "application/pdf" });
+}
+
+/**
+ * Downloads the customer's PDF copy of what they accepted (the page drawn as a PDF, ending with the hash of the page). A text the PDF font cannot draw has none:
+ * "unavailable" says so and nothing is saved. Errors are thrown as an ApiError.
+ */
+export async function downloadSnapshotPdf(tenantId: string, acceptance: string): Promise<"saved" | "unavailable"> {
+  const r = await unwrap(tenantApi(tenantId).GET("/v1/contract-acceptances/{id}/snapshot", { params: { path: { id: acceptance }, query: { pdf: true } } }));
+  if (!r.pdf) return "unavailable";
+  const url = URL.createObjectURL(pdfBlob(r.pdf));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `agreement-${r.sha256.slice(0, 12)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return "saved";
+}

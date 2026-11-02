@@ -433,6 +433,10 @@ func TestScheduledReconciliationVisitsLiveTenants(t *testing.T) {
 	job := &schedule.Job{Deps: f.deps, Interval: time.Hour, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Now: func() time.Time { return time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC) }}
 	job.Pass(context.Background())
 	job.Pass(context.Background())
+	// The gauge ReconciliationRunStalled reads: when the last pass finished (the job's clock here).
+	if v, ok := gauged(t, "reconciliation_last_pass_timestamp_seconds"); !ok || v != time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC).Unix() {
+		t.Errorf("reconciliation_last_pass_timestamp_seconds = %d (present %v), want the end of the pass", v, ok)
+	}
 	kinds := map[string]int{}
 	for _, d := range f.list(store.Filter{}) {
 		kinds[d.Period+" "+d.Kind]++

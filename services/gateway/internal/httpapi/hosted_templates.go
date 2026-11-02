@@ -18,7 +18,7 @@ button.btn:hover,a.btn:hover{filter:brightness(1.08)}
 a.btn.alt,button.btn.alt{background:transparent;color:inherit;border:1px solid var(--input);margin-top:20px;margin-inline-end:8px}
 .promo-row .btn.alt{margin:0}
 .big{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:8px 0;font-variant-numeric:tabular-nums}.wrap{position:relative;overflow-x:auto}.foot{margin-top:20px;text-align:center}
-dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}dl.kv dt{color:var(--muted-foreground)}dl.kv dd{margin:0;word-break:break-all}
+dl.kv{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px}dl.kv dt{color:var(--muted-foreground);overflow-wrap:anywhere}dl.kv dd{margin:0;word-break:break-all}@media(max-width:480px){dl.kv{grid-template-columns:minmax(0,1fr)}dl.kv dd{margin-bottom:6px}}
 code.ref{display:block;padding:10px 12px;margin:8px 0;border-radius:calc(var(--radius) - 6px);background:var(--muted);font-size:1.05rem;word-break:break-all}
 h2.sec{font-size:1.05rem;margin:32px 0 10px;padding-top:24px;border-top:1px solid var(--border)}
 .nw td{white-space:nowrap}.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}.seller{font-weight:600;font-size:.95rem;margin-bottom:2px}.stat{display:flex;align-items:baseline;gap:8px;padding:16px;border-radius:calc(var(--radius) - 4px);background:var(--muted)}.stat .big{margin:0}
@@ -196,7 +196,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
 {{if .Agreements}}<h2 class="sec">{{.L.agreements_list}}</h2>
 <div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.contract_title}}</th><th>{{.L.contract_version}}</th><th>{{.L.contract_accepted_on}}</th><th><span class="sr">{{.L.action}}</span></th></tr></thead><tbody>
-{{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a></td></tr>
+{{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a>{{if .PdfHref}} · <a href="{{.PdfHref}}">{{$.L.agreements_pdf}}</a>{{end}}</td></tr>
 {{end}}</tbody></table></div>{{end}}
 {{if .Withdraw}}<div class="noprint"><a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a></div>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>

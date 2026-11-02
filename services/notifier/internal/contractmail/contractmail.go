@@ -26,6 +26,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/localefmt"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
@@ -102,7 +103,7 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		c.Log.InfoContext(ctx, "contract acceptance mail dropped: the customer has no e-mail address", "tenant_id", tid, "customer_id", cid)
 		return nil
 	}
-	snap, err := c.Contracts.GetContractSnapshot(octx, &plansv1.GetContractSnapshotRequest{AcceptanceId: ev.GetAcceptanceId()})
+	snap, err := c.Contracts.GetContractSnapshot(octx, &plansv1.GetContractSnapshotRequest{AcceptanceId: ev.GetAcceptanceId(), IncludePdf: true})
 	if status.Code(err) == codes.NotFound {
 		return c.dlq(ctx, rec, "UNKNOWN_ACCEPTANCE", err)
 	}
@@ -117,11 +118,17 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err != nil {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
-	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
+	d := delivery.Delivery{
 		Key: ev.GetEventId(), Kind: "contract", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(),
 		Data:    MailData(ev.GetAcceptedAt().AsTime(), cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage()), snap),
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
-	})
+	}
+	if pdf := snap.GetPdf(); len(pdf) > 0 {
+		// The PDF is drawn from the page whose hash was just checked. A text with no PDF (Arabic) is mailed as the page alone.
+		d.Attachments = []mailx.Attachment{{Filename: "agreement-" + snap.GetSha256()[:min(12, len(snap.GetSha256()))] + ".pdf", ContentType: "application/pdf", Data: pdf}}
+		d.Data["has_pdf"] = "1"
+	}
+	_, err = c.Mailer.Deliver(ctx, d)
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
 		return c.dlq(ctx, rec, "INVALID_EVENT", err)
 	}
