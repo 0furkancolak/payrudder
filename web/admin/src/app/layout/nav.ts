@@ -71,6 +71,8 @@ export interface ShellContext {
   platformTenant?: string;
   /** Whether the person is a partner of a seller (a membership with the role affiliate): the organisation level then has the partner portal. */
   partner?: boolean;
+  /** Whether the person is only a viewer of the selected app's account: the audit log is not offered to them (the API refuses it anyway). */
+  viewer?: boolean;
 }
 
 export interface NavItem {
@@ -96,7 +98,7 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "connect", "webhooks", "mail", "contracts", "members"] as const;
+export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "connect", "webhooks", "mail", "contracts", "audit", "members"] as const;
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
@@ -128,6 +130,7 @@ const PAGES: Page[] = [
   { key: "providers", icon: Plug, path: "providers", section: "developers", person: false },
   { key: "mail", icon: Mail, path: "mail", section: "settings", person: true },
   { key: "contracts", icon: ScrollText, path: "contracts", section: "settings", person: true },
+  { key: "audit", icon: ScrollText, path: "audit", section: "settings", person: true },
   { key: "address", icon: MapPin, path: "address", section: "settings", person: false },
   { key: "einvoice", icon: FileCheck, path: "e-invoice", section: "settings", person: false },
 ];
@@ -166,7 +169,7 @@ function personNav(ctx: ShellContext, has: ReadonlySet<string>): NavSection[] {
   }
 
   for (const s of SECTION_ORDER) {
-    const items = base ? PAGES.filter((p) => p.person && p.section === s && has.has(p.key)).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`), tenantSearch)) : [];
+    const items = base ? PAGES.filter((p) => p.person && p.section === s && has.has(p.key) && !(ctx.viewer && p.key === "audit")).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`), tenantSearch)) : [];
     if (ctx.appId && !all) {
       const app = `/app/apps/${ctx.appId}`;
       const appSearch = withScope({ env });
@@ -217,6 +220,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("playground", "/playground", FlaskConical, under("/playground")),
             item("deadLetters", "/dead-letters", MailX, under("/dead-letters")),
             item("supportInbox", "/support", LifeBuoy, under("/support")),
+            item("auditLog", "/audit", ScrollText, under("/audit")),
           ],
         },
         { key: "account", items: [item("myApps", "/app", LayoutGrid, exact("/app"))] },

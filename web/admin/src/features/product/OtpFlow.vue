@@ -7,12 +7,15 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { useRequestCode, useVerifyCode } from "./api";
 import OtpInput from "./OtpInput.vue";
+import TwoFactorStep from "./TwoFactorStep.vue";
 import { useAfterSignIn } from "./afterSignIn";
+import { isChallenge } from "./twoFactor";
 
 /**
  * Signing in (or up) with a one-time code: the address, then the six digits mailed to it. The same answer comes back for every address, so the page says
  * "we sent a code" without knowing whether there is an account; entering the right code signs in, and for an address without an account it also creates one
- * (that is the sign-up with a code). The code can be asked for again once a minute, which the countdown shows.
+ * (that is the sign-up with a code). The code can be asked for again once a minute, which the countdown shows. A person with two-factor sign-in on is not signed
+ * in by the code alone: the challenge it answers with opens a third step (TwoFactorStep).
  */
 const props = defineProps<{ mode: "signin" | "signup" }>();
 const { t } = useI18n();
@@ -23,7 +26,8 @@ const verify = useVerifyCode();
 /** Seconds between two codes to one address: the server's rule, shown so the person is not left guessing. */
 const RESEND_AFTER = 60;
 
-const step = ref<"email" | "code">("email");
+const step = ref<"email" | "code" | "second">("email");
+const challenge = ref("");
 const name = ref("");
 const organisation = ref("");
 const email = ref("");
@@ -79,7 +83,11 @@ function submit(value = code.value): void {
   verify.mutate(
     { email: email.value.trim(), code: value, display_name: name.value.trim() || undefined, account_name: organisation.value.trim() || undefined },
     {
-      onSuccess: () => afterSignIn(),
+      onSuccess: (s) => {
+        if (!isChallenge(s)) return afterSignIn();
+        challenge.value = s.challenge;
+        step.value = "second";
+      },
       onError: () => {
         code.value = "";
         void nextTick(() => otp.value?.focusFirst());
@@ -91,6 +99,7 @@ function submit(value = code.value): void {
 function change(): void {
   clearInterval(timer);
   step.value = "email";
+  challenge.value = "";
   code.value = "";
   verify.reset();
   request.reset();
@@ -114,6 +123,8 @@ function change(): void {
     <ErrorText :error="request.error.value" box />
     <Button type="submit" size="lg" :disabled="!canSend">{{ t("product.signIn.code.send") }}</Button>
   </form>
+
+  <TwoFactorStep v-else-if="step === 'second'" :challenge="challenge" @done="afterSignIn()" @restart="change" />
 
   <form v-else class="flex flex-col gap-4" :aria-label="t('product.signIn.code.verifyLabel')" @submit.prevent="submit()">
     <p class="text-muted-foreground text-sm" role="status">{{ t("product.signIn.code.sentTo", { email: email.trim() }) }}</p>

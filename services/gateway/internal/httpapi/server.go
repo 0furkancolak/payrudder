@@ -30,11 +30,13 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
 	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	auditv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/audit/v1"
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
@@ -66,7 +68,10 @@ type Deps struct {
 	MailIntegration plansv1.MailIntegrationServiceClient
 	Support         plansv1.SupportServiceClient
 	// Contracts serves the agreements and their evidence; the hosted payment pages ask it before a payment starts. Nil (tests only) means no agreements are asked for.
-	Contracts       plansv1.ContractServiceClient
+	Contracts plansv1.ContractServiceClient
+	// AuditPlans and AuditBilling read the audit log of plans-svc and billing-svc (payments-worker answers over PaymentsURL); a nil one is left out of the answer.
+	AuditPlans      auditv1.AuditServiceClient
+	AuditBilling    auditv1.AuditServiceClient
 	Affiliates      plansv1.AffiliateServiceClient
 	AffiliatePub    plansv1.AffiliatePublicServiceClient
 	AffiliatePortal plansv1.AffiliatePortalServiceClient
@@ -181,6 +186,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 			return
 		}
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
+		ctx = audit.NewContext(ctx, s.auditActor(ctx, r))
 		if debugAllowed(rt, ctx, r) {
 			ctx = metadata.AppendToOutgoingContext(ctx, "x-payrudder-debug", "1")
 			span.SetAttributes(attribute.Bool("payrudder.debug", true))
@@ -208,6 +214,9 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rt Route, spa
 // authorizeSession admits a signed-in person, charged against the limits of their own account.
 func (s *Server) authorizeSession(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
 	sess, err := s.session(r)
+	if err == nil {
+		err = requireSecondFactorSetup(sess.User, rt.Path)
+	}
 	if err != nil {
 		writeError(w, r, err)
 		return nil, false
@@ -321,7 +330,9 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	// The operator token, with a tenant named, is that tenant for the call: the console shows a tenant's customers, plans and reports through
 	// the same API the tenant uses. Without the header the operator token is no tenant key and is refused here, as before.
 	if id := r.Header.Get(ActAsHeader); id != "" && s.operatorOK(r) {
-		return s.actAs(r.Context(), id)
+		p, err := s.actAs(r.Context(), id)
+		p.Actor = audit.Actor{Type: audit.ActorOperator, ID: actorOf(r)}
+		return p, err
 	}
 	p, err := s.d.Auth.Authenticate(r.Context(), token)
 	switch {
@@ -332,6 +343,7 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	case err != nil:
 		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
+	p.Actor = audit.Actor{Type: audit.ActorAPIKey, ID: p.Tenant.APIKeyID}
 	return p, nil
 }
 

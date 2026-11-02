@@ -2062,6 +2062,50 @@ paths:
               schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/audit-events:
+    get:
+      operationId: listAuditEvents
+      summary: The audit log of the tenant, newest first
+      description: >
+        Who did what and when, for the actions that change money or access: API keys created, rotated and revoked; members invited, changed and removed; plan versions
+        published; webhook endpoints created, changed, deleted and their secrets rolled; customers blocked and unblocked; credit notes and refunds; the operator's invoice
+        actions; payment provider accounts connected, replaced, removed and made the default; the tenant's status and settings. Each entry has the actor (a person, an API
+        key, the operator or the system), the target, a one-line summary with no secret in it, a small `detail` object, the address and the request id. The log is append-only: the
+        database refuses any change to an entry. It is read from several services and merged; when one does not answer, `incomplete` is true and `unavailable_sources` names it.
+        Needs the permission `audit:read` (an admin key has it; the `read_only` role does not). A person who is a viewer of the account may not read it.
+      parameters:
+        - { name: action, in: query, description: "Action names such as api_key.created, or an area such as api_key.*, separated by commas", schema: { type: string } }
+        - { name: actor, in: query, description: "An actor id (user id, API key id) or an e-mail address", schema: { type: string } }
+        - { name: target_type, in: query, schema: { type: string } }
+        - { name: target_id, in: query, schema: { type: string } }
+        - { name: from, in: query, description: "Inclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: "Exclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAuditEventsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /v1/audit-events/export:
+    get:
+      operationId: exportAuditEvents
+      summary: The audit log as CSV (the newest 5000 entries of the filter)
+      description: >
+        The same filter as `listAuditEvents`, one line per entry with the columns id, create_time, tenant_id, account_id, actor_type, actor_id, actor_email, action,
+        target_type, target_id, summary, detail (JSON), before_hash, after_hash, source_ip, request_id. A cell that starts with `=`, `+`, `-` or `@` gets a leading `'`, so a
+        spreadsheet does not run it. An export that cannot read every service fails with `503 audit.unavailable` rather than leave entries out. Needs `audit:read`.
+      parameters:
+        - { name: action, in: query, description: "Action names such as api_key.created, or an area such as api_key.*, separated by commas", schema: { type: string } }
+        - { name: actor, in: query, description: "An actor id (user id, API key id) or an e-mail address", schema: { type: string } }
+        - { name: target_type, in: query, schema: { type: string } }
+        - { name: target_id, in: query, schema: { type: string } }
+        - { name: from, in: query, description: "Inclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: "Exclusive, RFC 3339", schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/payments:
     get:
       operationId: listPayments
@@ -2393,7 +2437,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/VerifyLoginCodeRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "200": { description: "OK: a session, or (two-factor sign-in on) a challenge for POST /auth/2fa/verify", content: { application/json: { schema: { oneOf: [{ $ref: "#/components/schemas/SessionOpened" }, { $ref: "#/components/schemas/SecondFactorRequired" }] } } } }
         "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /auth/google/start:
@@ -2553,7 +2597,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SignInRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "200": { description: "OK: a session, or (two-factor sign-in on) a challenge for POST /auth/2fa/verify", content: { application/json: { schema: { oneOf: [{ $ref: "#/components/schemas/SessionOpened" }, { $ref: "#/components/schemas/SecondFactorRequired" }] } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -2575,6 +2619,100 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
         "401": { $ref: "#/components/responses/Error" }
+  /auth/2fa:
+    get:
+      operationId: getTwoFactor
+      tags: [Product]
+      summary: Whether the person has two-factor sign-in, and whether they must
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorStatus" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/2fa/setup:
+    post:
+      operationId: setupTwoFactor
+      tags: [Product]
+      summary: Start setting up an authenticator app
+      description: >
+        Makes a new secret and returns it with the `otpauth://` address an authenticator app takes (the console draws the QR code from it itself; nothing is sent to a third party).
+        Two-factor sign-in is **not** on until `confirmTwoFactor` has proven a code. Asking again before that replaces the secret. `409 identity.two_factor.already_enabled` when it is on
+        already; `503 identity.two_factor.not_configured` when this deployment has no secrets key (`PAYRUDDER_SECRETS_KEY`). The answer is `Cache-Control: no-store`.
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorSetup" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /auth/2fa/confirm:
+    post:
+      operationId: confirmTwoFactor
+      tags: [Product]
+      summary: Turn two-factor sign-in on with the first code of the authenticator app
+      description: >
+        The six-digit code (RFC 6238, SHA-1, 30 seconds) proves the app holds the secret. It turns two-factor sign-in on and returns ten single-use recovery codes, **once**: they are stored
+        only as keyed hashes. Rate limited per client address (10 a minute); wrong codes count against the account's lock (five in a row lock sign-in for fifteen minutes).
+        The answer is `Cache-Control: no-store`.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorCodeRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorRecoveryCodes" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/2fa/disable:
+    post:
+      operationId: disableTwoFactor
+      tags: [Product]
+      summary: Turn two-factor sign-in off
+      description: >
+        Needs a current code of the authenticator app or an unused recovery code. Not allowed (`403 identity.two_factor.required_by_organisation`) while an organisation the person owns
+        requires two-factor sign-in. Recorded in the audit log.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorCodeRequest" } } }
+      responses:
+        "204": { description: Turned off }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/2fa/recovery-codes:
+    post:
+      operationId: regenerateRecoveryCodes
+      tags: [Product]
+      summary: Make ten new recovery codes (the old ones stop working)
+      description: >
+        Needs a current code of the authenticator app or an unused recovery code. The codes are returned once. The answer is `Cache-Control: no-store`.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorCodeRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TwoFactorRecoveryCodes" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/2fa/verify:
+    post:
+      operationId: verifyTwoFactor
+      tags: [Product]
+      summary: The second step of a sign-in
+      description: >
+        A person who has two-factor sign-in on gets no session from `/auth/signin`, `/auth/otp/verify` or `/auth/google/callback`: they get a `challenge` (valid 5 minutes, five tries).
+        This route takes the challenge and a six-digit code of the authenticator app, or a recovery code (used once), and opens the session. Every wrong try counts against the account's
+        lock like a wrong password. A wrong or expired challenge, a wrong code and a locked account are all `401 identity.two_factor.invalid`. Public; rate limited per client address (10 a minute).
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/VerifyTwoFactorRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /app/v1/me/onboarding:
     get:
       operationId: getMyOnboarding
@@ -2644,6 +2782,25 @@ paths:
             schema: { $ref: "#/components/schemas/AppRenameAccountRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppRenameAccountResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/security:
+    patch:
+      operationId: appSetAccountSecurity
+      tags: [Product]
+      summary: Require two-factor sign-in of the owners of the account (owners only)
+      description: >
+        Default off. When on, an owner of the account who has not set up two-factor sign-in can sign in but nothing else: every route except `/auth/*` answers `403 identity.two_factor.setup_required`
+        until they have. An owner who has it cannot turn it off while it is required. Recorded in the audit log.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AccountSecurity" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountSecurity" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -4526,6 +4683,46 @@ paths:
               schema: { $ref: "#/components/schemas/ReconcilePaymentsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/audit-events:
+    get:
+      operationId: adminListAuditEvents
+      summary: The audit log across tenants, newest first
+      description: >
+        The same entries and filters as `listAuditEvents`, for every tenant of the pooled databases and the entries that belong to no tenant (sign-in security events). `tenant_id`
+        narrows to one tenant (also one placed in a cell); `account_id` to the entries of one account that belong to no tenant (its members).
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+        - { name: action, in: query, description: "Action names such as api_key.created, or an area such as api_key.*, separated by commas", schema: { type: string } }
+        - { name: actor, in: query, description: "An actor id (user id, API key id) or an e-mail address", schema: { type: string } }
+        - { name: target_type, in: query, schema: { type: string } }
+        - { name: target_id, in: query, schema: { type: string } }
+        - { name: from, in: query, description: "Inclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: "Exclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAuditEventsResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /admin/v1/audit-events/export:
+    get:
+      operationId: adminExportAuditEvents
+      summary: The audit log across tenants as CSV (the newest 5000 entries of the filter)
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: tenant_id, in: query, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+        - { name: action, in: query, description: "Action names such as api_key.created, or an area such as api_key.*, separated by commas", schema: { type: string } }
+        - { name: actor, in: query, description: "An actor id (user id, API key id) or an e-mail address", schema: { type: string } }
+        - { name: target_type, in: query, schema: { type: string } }
+        - { name: target_id, in: query, schema: { type: string } }
+        - { name: from, in: query, description: "Inclusive, RFC 3339", schema: { type: string, format: date-time } }
+        - { name: to, in: query, description: "Exclusive, RFC 3339", schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: OK, content: { text/csv: { schema: { type: string } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
     get:
       operationId: adminListDeadLetters
@@ -5401,13 +5598,15 @@ components:
         error_message: { type: string }
     AuthUser:
       type: object
-      required: [id, email, display_name, create_time, email_verified]
+      required: [id, email, display_name, create_time, email_verified, two_factor_enabled, two_factor_setup_required]
       properties:
         id: { type: string, format: uuid }
         email: { type: string, format: email }
         display_name: { type: string }
         create_time: { type: string, format: date-time, nullable: true }
         email_verified: { type: boolean, description: "True once the person opened a mailed link for this address. Until then live API keys cannot be created." }
+        two_factor_enabled: { type: boolean }
+        two_factor_setup_required: { type: boolean, description: "An account the person owns requires two-factor sign-in and they have not set it up: the console sends them to set it up, every other route is refused." }
     Payment:
       type: object
       required: [id, invoice_id, provider, kind, status, amount_minor, currency, occurred_at]
@@ -5590,11 +5789,12 @@ components:
         create_time: { type: string, format: date-time }
     MyAccount:
       type: object
-      required: [id, name, role, create_time, members]
+      required: [id, name, role, create_time, members, require_two_factor_for_owners]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         role: { type: string, enum: [owner, admin, viewer], description: The caller's own role }
+        require_two_factor_for_owners: { type: boolean, description: "The owners of the account must sign in with a second factor (default off)" }
         create_time: { type: string, format: date-time, nullable: true }
         members:
           type: array
@@ -6588,6 +6788,78 @@ components:
         password: { type: string, minLength: 10, maxLength: 256, format: password }
         display_name: { type: string, maxLength: 200 }
         locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+    SecondFactorRequired:
+      type: object
+      description: The answer of a sign-in for a person who has two-factor sign-in on. No session yet; send the challenge and a code to `/auth/2fa/verify`.
+      required: [second_factor_required, challenge, challenge_expire_time]
+      properties:
+        second_factor_required: { type: boolean, enum: [true] }
+        challenge: { type: string, description: "qc_..., valid 5 minutes, five tries; shown once" }
+        challenge_expire_time: { type: string, format: date-time, nullable: true }
+    VerifyTwoFactorRequest:
+      type: object
+      required: [challenge, code]
+      properties:
+        challenge: { type: string }
+        code: { type: string, description: "Six digits of the authenticator app, or a recovery code (letters and digits, dashes optional)" }
+    TwoFactorCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: "Six digits of the authenticator app, or a recovery code" }
+    TwoFactorStatus:
+      type: object
+      required: [enabled, enable_time, recovery_codes_remaining, setup_required]
+      properties:
+        enabled: { type: boolean }
+        enable_time: { type: string, format: date-time, nullable: true }
+        recovery_codes_remaining: { type: integer }
+        setup_required: { type: boolean, description: "An account the person owns requires two-factor sign-in and the person has not set it up: every route but /auth/* is refused until they have." }
+        required_by_organisation: { type: boolean, description: "An account the person owns requires it, so it cannot be turned off." }
+    TwoFactorSetup:
+      type: object
+      required: [secret, otpauth_uri]
+      properties:
+        secret: { type: string, description: "The shared secret in base32, to type into an app that cannot scan" }
+        otpauth_uri: { type: string, description: "otpauth://totp/... for a QR code" }
+    TwoFactorRecoveryCodes:
+      type: object
+      required: [recovery_codes]
+      properties:
+        recovery_codes: { type: array, items: { type: string }, description: "Ten single-use codes, shown once" }
+    AccountSecurity:
+      type: object
+      required: [require_two_factor_for_owners]
+      properties:
+        require_two_factor_for_owners: { type: boolean }
+    AuditEvent:
+      type: object
+      required: [id, tenant_id, account_id, actor_type, actor_id, actor_email, action, target_type, target_id, summary, detail_json, before_hash, after_hash, source_ip, request_id, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, description: "Empty for an entry that belongs to no tenant" }
+        account_id: { type: string, description: "Set for an entry that is an account's and no tenant's (its members)" }
+        actor_type: { type: string, enum: [user, api_key, operator, system] }
+        actor_id: { type: string }
+        actor_email: { type: string }
+        action: { type: string, description: "<area>.<what>, for example api_key.created", examples: ["api_key.created"] }
+        target_type: { type: string }
+        target_id: { type: string }
+        summary: { type: string, description: "One line for a person; secrets are masked" }
+        detail_json: { type: string, description: "A small JSON object of what changed, as text; it holds no secret" }
+        before_hash: { type: string }
+        after_hash: { type: string }
+        source_ip: { type: string }
+        request_id: { type: string }
+        create_time: { type: string, format: date-time, nullable: true }
+    ListAuditEventsResponse:
+      type: object
+      required: [events, next_page_token, incomplete, unavailable_sources]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } }
+        next_page_token: { type: string }
+        incomplete: { type: boolean, description: "A service that keeps part of the log did not answer: the page may lack its entries" }
+        unavailable_sources: { type: array, items: { type: string, enum: [plans, billing, payments] } }
     SignInRequest:
       type: object
       required: [email, password]
@@ -9726,7 +9998,7 @@ components:
         note: { type: string, maxLength: 1000 }
     ApiKeyPermission:
       type: string
-      enum: [events:write, customers:read, customers:write, subscriptions:read, subscriptions:write, catalog:read, catalog:write, usage:read, credits:read, credits:write, invoices:read, invoices:write, reports:read, accounting:read, accounting:write, webhooks:read, webhooks:write, affiliates:read, affiliates:write, settings:read, settings:write, assets:read, assets:write, sandbox:write, contracts:read, contracts:write]
+      enum: [events:write, customers:read, customers:write, subscriptions:read, subscriptions:write, catalog:read, catalog:write, usage:read, credits:read, credits:write, invoices:read, invoices:write, reports:read, accounting:read, accounting:write, webhooks:read, webhooks:write, affiliates:read, affiliates:write, settings:read, settings:write, assets:read, assets:write, sandbox:write, contracts:read, contracts:write, audit:read]
       description: "resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write."
     MailIntegration:
       type: object

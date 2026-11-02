@@ -81,6 +81,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `assets.upload.size_mismatch`
 - `assets.upload.size_required`
 - `assets.upload.unsupported_content_type`
+- `audit.filter.bad_account`
+- `audit.filter.bad_page_size`
+- `audit.filter.bad_tenant`
+- `audit.filter.bad_time`
+- `audit.page_token.invalid`
+- `audit.unavailable`
 - `billing.accounting.bad_app`
 - `billing.accounting.bad_attachment`
 - `billing.accounting.bad_category`
@@ -326,6 +332,14 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.tenant.metadata_missing`
 - `identity.tenant.not_found`
 - `identity.token.invalid`
+- `identity.two_factor.already_enabled`
+- `identity.two_factor.bad_code`
+- `identity.two_factor.invalid`
+- `identity.two_factor.no_setup`
+- `identity.two_factor.not_configured`
+- `identity.two_factor.not_enabled`
+- `identity.two_factor.required_by_organisation`
+- `identity.two_factor.setup_required`
 - `identity.verify.throttled`
 - `ingest.backlog.full`
 - `ingest.batch.bad_size`
@@ -382,6 +396,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.provider.not_supported`
 - `payments.provider.unknown`
 - `payments.reconcile.bad_period`
+- `payments.request.bad_audit_filter`
 - `payments.request.bad_body`
 - `payments.request.bad_environment`
 - `payments.request.bad_tenant`

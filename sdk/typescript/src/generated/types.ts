@@ -313,6 +313,30 @@ export interface AttributeCustomerResponse {
   reason: string;
 }
 
+export interface AuditEvent {
+  id: string;
+  /** Empty for an entry that belongs to no tenant */
+  tenant_id: string;
+  /** Set for an entry that is an account's and no tenant's (its members) */
+  account_id: string;
+  actor_type: "user" | "api_key" | "operator" | "system";
+  actor_id: string;
+  actor_email: string;
+  /** <area>.<what>, for example api_key.created */
+  action: string;
+  target_type: string;
+  target_id: string;
+  /** One line for a person; secrets are masked */
+  summary: string;
+  /** A small JSON object of what changed, as text; it holds no secret */
+  detail_json: string;
+  before_hash: string;
+  after_hash: string;
+  source_ip: string;
+  request_id: string;
+  create_time: string | null;
+}
+
 export interface BillingRun {
   tenant_id: string;
   period_id: string;
@@ -1413,6 +1437,19 @@ export interface ExportAffiliateJournalQuery {
   to?: string;
 }
 
+export interface ExportAuditEventsQuery {
+  /** Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+  action?: string;
+  /** An actor id (user id, API key id) or an e-mail address */
+  actor?: string;
+  target_type?: string;
+  target_id?: string;
+  /** Inclusive, RFC 3339 */
+  from?: string;
+  /** Exclusive, RFC 3339 */
+  to?: string;
+}
+
 export interface GetAccountingSummaryQuery {
   /** First day, inside the period */
   from: string;
@@ -1838,6 +1875,29 @@ export interface ListAssetsQuery {
 export interface ListAssetsResponse {
   assets: Array<Asset>;
   next_page_token: string;
+}
+
+export interface ListAuditEventsQuery {
+  /** Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+  action?: string;
+  /** An actor id (user id, API key id) or an e-mail address */
+  actor?: string;
+  target_type?: string;
+  target_id?: string;
+  /** Inclusive, RFC 3339 */
+  from?: string;
+  /** Exclusive, RFC 3339 */
+  to?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListAuditEventsResponse {
+  events: Array<AuditEvent>;
+  next_page_token: string;
+  /** A service that keeps part of the log did not answer: the page may lack its entries */
+  incomplete: boolean;
+  unavailable_sources: Array<"plans" | "billing" | "payments">;
 }
 
 export interface ListContractAcceptancesResponse {

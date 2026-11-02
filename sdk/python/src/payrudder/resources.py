@@ -1443,6 +1443,37 @@ class PaymentLinksResource:
         return cast("m.PaymentLink", self._client._request("DELETE", f"/v1/payment-links/{_p(id)}", response_wire='PaymentLink', options=options))
 
 
+class AuditEventsResource:
+    """``/v1/audit-events`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAuditEventsResponse:
+        """The audit log of the tenant, newest first.
+
+        ``GET /v1/audit-events``
+        """
+        return cast("m.ListAuditEventsResponse", self._client._request("GET", "/v1/audit-events", query={"action": action, "actor": actor, "target_type": target_type, "target_id": target_id, "from": from_, "to": to, "page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.AuditEvent]:
+        """Every item of ``list_audit_events``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.list_audit_events(action=action, actor=actor, target_type=target_type, target_id=target_id, from_=from_, to=to, page_size=page_size, options=options, page_token=token)
+            yield from page.get("events", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    def export_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, options: RequestOptions | None = None) -> str:
+        """The audit log as CSV (the newest 5000 entries of the filter).
+
+        ``GET /v1/audit-events/export``
+        """
+        return cast("str", self._client._request("GET", "/v1/audit-events/export", query={"action": action, "actor": actor, "target_type": target_type, "target_id": target_id, "from": from_, "to": to}, returns="text", options=options))
+
+
 class PaymentsResource:
     """``/v1/payments`` and related operations."""
 
@@ -1662,6 +1693,7 @@ class Resources:
     invoices: InvoicesResource
     credit_notes: CreditNotesResource
     payment_links: PaymentLinksResource
+    audit_events: AuditEventsResource
     payments: PaymentsResource
     assets: AssetsResource
     tenant: TenantResource
@@ -1700,6 +1732,7 @@ class Resources:
         self.invoices = InvoicesResource(client)
         self.credit_notes = CreditNotesResource(client)
         self.payment_links = PaymentLinksResource(client)
+        self.audit_events = AuditEventsResource(client)
         self.payments = PaymentsResource(client)
         self.assets = AssetsResource(client)
         self.tenant = TenantResource(client)
@@ -3147,6 +3180,38 @@ class AsyncPaymentLinksResource:
         return cast("m.PaymentLink", await self._client._request("DELETE", f"/v1/payment-links/{_p(id)}", response_wire='PaymentLink', options=options))
 
 
+class AsyncAuditEventsResource:
+    """``/v1/audit-events`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAuditEventsResponse:
+        """The audit log of the tenant, newest first.
+
+        ``GET /v1/audit-events``
+        """
+        return cast("m.ListAuditEventsResponse", await self._client._request("GET", "/v1/audit-events", query={"action": action, "actor": actor, "target_type": target_type, "target_id": target_id, "from": from_, "to": to, "page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.AuditEvent]:
+        """Every item of ``list_audit_events``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.list_audit_events(action=action, actor=actor, target_type=target_type, target_id=target_id, from_=from_, to=to, page_size=page_size, options=options, page_token=token)
+            for item in page.get("events", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    async def export_audit_events(self, *, action: str | None = None, actor: str | None = None, target_type: str | None = None, target_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, options: RequestOptions | None = None) -> str:
+        """The audit log as CSV (the newest 5000 entries of the filter).
+
+        ``GET /v1/audit-events/export``
+        """
+        return cast("str", await self._client._request("GET", "/v1/audit-events/export", query={"action": action, "actor": actor, "target_type": target_type, "target_id": target_id, "from": from_, "to": to}, returns="text", options=options))
+
+
 class AsyncPaymentsResource:
     """``/v1/payments`` and related operations."""
 
@@ -3367,6 +3432,7 @@ class AsyncResources:
     invoices: AsyncInvoicesResource
     credit_notes: AsyncCreditNotesResource
     payment_links: AsyncPaymentLinksResource
+    audit_events: AsyncAuditEventsResource
     payments: AsyncPaymentsResource
     assets: AsyncAssetsResource
     tenant: AsyncTenantResource
@@ -3405,6 +3471,7 @@ class AsyncResources:
         self.invoices = AsyncInvoicesResource(client)
         self.credit_notes = AsyncCreditNotesResource(client)
         self.payment_links = AsyncPaymentLinksResource(client)
+        self.audit_events = AsyncAuditEventsResource(client)
         self.payments = AsyncPaymentsResource(client)
         self.assets = AsyncAssetsResource(client)
         self.tenant = AsyncTenantResource(client)

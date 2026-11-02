@@ -16,6 +16,7 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
@@ -36,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/auditlog"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
@@ -292,11 +294,12 @@ func webhookHandler(cfg Config, db store.DB, box *secretbox.Box, h *handler.Hand
 	}
 	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
-	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
+	// audit.Middleware reads who the gateway says is acting (pkg/audit); the gateway sets those headers itself and removes the caller's own.
+	return audit.Middleware((&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
-		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
+		Modules: []webhook.RouteRegistrar{transferHandler, &auditlog.Handler{DB: db, Log: log}}}).Handler()), closeConns, nil
 }
 
 // serveHTTP runs the webhook and operator server until ctx ends.

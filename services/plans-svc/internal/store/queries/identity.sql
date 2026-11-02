@@ -35,7 +35,7 @@ WHERE m.user_id = $1 ORDER BY a.created_at, a.id;
 
 -- An affiliate (phase 47) is a member of the account only so that the console knows to show the partner portal: every account-wide read leaves the role out.
 -- name: GetMembership :one
-SELECT m.role, a.name AS account_name, a.created_at
+SELECT m.role, a.name AS account_name, a.created_at, a.require_two_factor
 FROM account_members m JOIN accounts a ON a.id = m.account_id
 WHERE m.account_id = @account_id AND m.user_id = @user_id AND m.role <> 'affiliate';
 
@@ -254,3 +254,83 @@ SELECT user_id, wizard, seen_tours, updated_at FROM user_onboarding WHERE user_i
 -- name: SaveUserOnboarding :exec
 -- system. Writes the merged document.
 UPDATE user_onboarding SET wizard = @wizard, seen_tours = @seen_tours, updated_at = @updated_at WHERE user_id = @user_id;
+
+-- Two-factor sign-in (plan 22, G9). The secret is sealed; a pending setup (confirmed_at NULL) is replaced by the next setup, a confirmed one never is.
+-- name: GetUserTotp :one
+SELECT * FROM user_totp WHERE user_id = $1;
+
+-- name: UpsertPendingTotp :execrows
+INSERT INTO user_totp (user_id, secret_enc) VALUES (@user_id, @secret_enc)
+ON CONFLICT (user_id) DO UPDATE SET secret_enc = EXCLUDED.secret_enc, last_step = 0, created_at = now()
+WHERE user_totp.confirmed_at IS NULL;
+
+-- Turning it on: the step of the code that proved it is spent.
+-- name: ConfirmTotp :execrows
+UPDATE user_totp SET confirmed_at = now(), last_step = @step WHERE user_id = @user_id AND confirmed_at IS NULL;
+
+-- A code works once: the step it matched must be later than the last one accepted. One atomic UPDATE, so two requests with the same code cannot both pass.
+-- name: UseTotpStep :execrows
+UPDATE user_totp SET last_step = @step WHERE user_id = @user_id AND confirmed_at IS NOT NULL AND last_step < @step;
+
+-- name: DeleteTotp :execrows
+DELETE FROM user_totp WHERE user_id = $1;
+
+-- name: DeleteRecoveryCodes :exec
+DELETE FROM user_recovery_codes WHERE user_id = $1;
+
+-- name: InsertRecoveryCode :exec
+INSERT INTO user_recovery_codes (id, user_id, code_hash) VALUES ($1, $2, $3);
+
+-- name: UseRecoveryCode :execrows
+UPDATE user_recovery_codes SET used_at = now() WHERE user_id = @user_id AND code_hash = @code_hash AND used_at IS NULL;
+
+-- name: CountRecoveryCodes :one
+SELECT count(*) FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL;
+
+-- What a session needs to know about the second factor: whether the user has it, and whether an account they own requires it.
+-- name: GetTwoFactorState :one
+SELECT
+  (SELECT t.confirmed_at FROM user_totp t WHERE t.user_id = @user_id) AS confirmed_at,
+  EXISTS (SELECT 1 FROM account_members m JOIN accounts a ON a.id = m.account_id
+          WHERE m.user_id = @user_id AND m.role = 'owner' AND a.require_two_factor) AS owner_requires;
+
+-- A sign-in whose first step passed, waiting for the second.
+-- name: InsertLoginChallenge :exec
+INSERT INTO login_challenges (id, user_id, token_hash, expires_at) VALUES (@id, @user_id, @token_hash, @expires_at);
+
+-- name: DeleteStaleLoginChallenges :exec
+DELETE FROM login_challenges WHERE user_id = $1 AND expires_at <= now();
+
+-- A try is counted before the code is looked at; the fifth wrong one burns the challenge.
+-- name: TryLoginChallenge :one
+UPDATE login_challenges SET attempts = attempts + 1
+WHERE token_hash = @token_hash AND expires_at > now() AND attempts < @max_attempts::int
+RETURNING id, user_id;
+
+-- name: DeleteLoginChallenge :execrows
+DELETE FROM login_challenges WHERE id = $1;
+
+-- A try at the second factor counts against the lock of the account exactly like a wrong password (TryPassword), and a locked account is refused.
+-- name: TryTwoFactor :one
+UPDATE users SET
+  failed_logins = CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END,
+  locked_until = CASE
+    WHEN (CASE WHEN locked_until <= now() THEN 1 ELSE failed_logins + 1 END) >= @max_failures::int THEN now() + @lock_for::interval
+    ELSE NULL
+  END
+WHERE id = @id AND (locked_until IS NULL OR locked_until <= now())
+RETURNING *;
+
+-- The password was right and the second step is still to come: the try TryPassword counted is given back (the second step counts its own).
+-- name: RefundPasswordTry :exec
+UPDATE users SET
+  failed_logins = GREATEST(failed_logins - 1, 0),
+  locked_until = CASE WHEN GREATEST(failed_logins - 1, 0) >= @max_failures::int THEN locked_until ELSE NULL END
+WHERE id = @id;
+
+-- name: SetAccountRequireTwoFactor :one
+UPDATE accounts SET require_two_factor = @required WHERE id = @id RETURNING require_two_factor;
+
+-- A correct code of a signed-in person ends the failures counted against their lock (RecordSuccessfulLogin also stamps a sign-in, which this is not).
+-- name: ResetLoginFailures :exec
+UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1;

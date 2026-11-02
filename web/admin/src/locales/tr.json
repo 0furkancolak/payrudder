@@ -2990,7 +2990,8 @@
         "bad_body": "İstek gövdesi geçerli bir JSON olmalı.",
         "bad_environment": "Ortam sandbox ya da live olmalı.",
         "bad_tenant": "Hesap kimliği geçerli bir kimlik değil.",
-        "too_large": "İstek çok büyük."
+        "too_large": "İstek çok büyük.",
+        "bad_audit_filter": "Denetim günlüğü filtresi geçerli değil."
       },
       "subscription": {
         "cannot_cancel": "Bu sağlayıcı aboneliği buradan iptal edemiyor.",
@@ -3138,6 +3139,16 @@
         "country_required": "İşletmenin ülkesini seçin.",
         "address_required": "Sokak adresini ve şehri girin.",
         "tax_id_required": "Bu ülkedeki faturalar için vergi numarası zorunludur."
+      },
+      "two_factor": {
+        "invalid": "Kod yanlış veya süresi dolmuş.",
+        "bad_code": "Kod yanlış. Doğrulayıcı uygulamanın şu an gösterdiği altı haneyi veya bir kurtarma kodunu yazın.",
+        "already_enabled": "İki adımlı giriş zaten açık.",
+        "not_enabled": "İki adımlı giriş açık değil.",
+        "no_setup": "Önce kurulumu başlatın: kodu tarayın, sonra onaylayın.",
+        "not_configured": "Bu kurulum henüz iki adımlı giriş sunamıyor: gizli anahtar tanımlı değil.",
+        "required_by_organisation": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kıldığı için kapatamazsınız.",
+        "setup_required": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Önce güvenlik sayfasında kurun."
       }
     },
     "gateway": {
@@ -3404,6 +3415,18 @@
       "tickets": {
         "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
       }
+    },
+    "audit": {
+      "unavailable": "Denetim günlüğü tüm hizmetlerden okunamadı. Yeniden deneyin.",
+      "page_token": {
+        "invalid": "Günlüğün bu sayfası artık geçerli değil. Listeyi yeniden yükleyin."
+      },
+      "filter": {
+        "bad_tenant": "Kiracı kimliği geçerli değil.",
+        "bad_account": "Hesap kimliği geçerli değil.",
+        "bad_time": "Tarihler geçerli değil veya başlangıç bitişten sonra.",
+        "bad_page_size": "Sayfa boyutu 1 ile 200 arasında olmalıdır."
+      }
     }
   },
   "product": {
@@ -3417,7 +3440,8 @@
     },
     "nav": {
       "home": "Ana sayfa",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "security": "Güvenlik"
     },
     "hero": {
       "title": "Tüm uygulamalarınızın tüm ödemelerini tek bir sakin yerde görün."
@@ -3672,7 +3696,8 @@
         "settings": "Ayarlar (vergi, yönlendirme, e-posta)",
         "assets": "Dosyalar",
         "contracts": "Sözleşmeler (metinler ve ayarlar)",
-        "sandbox": "Sandbox araçları"
+        "sandbox": "Sandbox araçları",
+        "audit": "Denetim günlüğü"
       },
       "permissionCount": "{n} / {total} izin",
       "customNeedsOne": "En az bir izin seçin.",
@@ -3797,7 +3822,9 @@
       "rename": "Hesap adı",
       "save": "Adı kaydet",
       "noneTitle": "Hiçbir hesapta değilsiniz",
-      "noneBody": "Son hesabınızdan ayrıldınız ya da çıkarıldınız. Bir sahipten sizi yeniden davet etmesini isteyin ya da başka bir adresle kaydolun."
+      "noneBody": "Son hesabınızdan ayrıldınız ya da çıkarıldınız. Bir sahipten sizi yeniden davet etmesini isteyin ya da başka bir adresle kaydolun.",
+      "requireTwoFactor": "Sahipler için iki adımlı girişi zorunlu kıl",
+      "requireTwoFactorHint": "İki adımlı girişi kurmamış sahipler, kurana kadar güvenlik sayfasında tutulur. Varsayılan olarak kapalıdır."
     },
     "invite": {
       "title": "Davet edildiniz",
@@ -4348,6 +4375,78 @@
         "sandbox": "Sandbox'a geç",
         "live": "Canlıya geç"
       }
+    },
+    "security": {
+      "title": "Güvenlik",
+      "intro": "Nasıl giriş yaptığınız ve bunu nasıl koruyacağınız.",
+      "setupRequired": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Aşağıdan kurun: kurana kadar konsolda başka hiçbir şey kullanılamaz."
+    },
+    "twoFactor": {
+      "title": "İki adımlı giriş",
+      "on": "Açık",
+      "off": "Kapalı",
+      "offBody": "Parolanızdan, e-posta kodunuzdan veya Google'dan sonra giriş, bir kimlik doğrulayıcı uygulamadan altı haneli bir kod da ister. Parolanızı öğrenen biri yine de giremez.",
+      "onBody": "Giriş, parolanızdan, e-posta kodunuzdan veya Google'dan sonra kimlik doğrulayıcı uygulamanızdan altı haneli bir kod ister.",
+      "since": "Açıldığı tarih",
+      "codesLeft": "Kalan kurtarma kodları",
+      "codesLow": "Yalnızca {n} kurtarma kodu kaldı. Bitmeden yenilerini oluşturun: telefonunuzu kaybederseniz içeri girmenin tek yolu bunlardır.",
+      "turnOn": "Aç",
+      "turnOff": "Kapat",
+      "regenerate": "Yeni kurtarma kodları oluştur",
+      "requiredNote": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kıldığı için kapatılamaz.",
+      "disableTitle": "İki adımlı giriş kapatılsın mı?",
+      "disableBody": "Kimlik doğrulayıcı uygulamanızdaki güncel kodu veya bir kurtarma kodunu girin. Hesabınız bundan sonra yalnızca giriş yönteminizle korunur.",
+      "regenerateTitle": "Yeni kurtarma kodları oluşturulsun mu?",
+      "regenerateBody": "Kimlik doğrulayıcı uygulamanızdaki güncel kodu veya bir kurtarma kodunu girin. Eski kurtarma kodları çalışmaz hale gelir.",
+      "regeneratedBody": "Bunlar eski kurtarma kodlarınızın yerini alır. Yalnızca şimdi gösterilir.",
+      "prompt": {
+        "label": "Kod",
+        "hint": "Uygulamadaki altı hane veya bir kurtarma kodu."
+      },
+      "setup": {
+        "scan": {
+          "title": "Kodu tarayın",
+          "body": "Telefonunuzda bir kimlik doğrulayıcı uygulaması açın ve bu kodu tarayın."
+        },
+        "code": {
+          "title": "Kodu girin",
+          "body": "Kurulduğunu kanıtlamak için uygulamanın şimdi gösterdiği altı haneyi yazın."
+        },
+        "codes": {
+          "title": "Kurtarma kodlarınızı kaydedin",
+          "body": "İki adımlı giriş artık açık."
+        },
+        "qrLabel": "Kimlik doğrulayıcı uygulamanız için QR kodu",
+        "cantScan": "Tarayamıyor musunuz? Bunun yerine bu anahtarı uygulamaya yazın.",
+        "secretLabel": "Gizli anahtar",
+        "copySecret": "Kopyala",
+        "next": "İleri",
+        "back": "Geri",
+        "turnOn": "Aç"
+      },
+      "codes": {
+        "body": "Her kod yalnızca bir kez çalışır. Telefonunuzu kaybederseniz giriş yapmanın tek yolu bir kurtarma kodudur. Yalnızca şimdi gösterilir.",
+        "list": "Kurtarma kodları",
+        "download": ".txt olarak indir",
+        "copy": "Kopyala",
+        "saved": "Bu kodları kaydettim",
+        "done": "Bitti"
+      },
+      "file": {
+        "title": "{email} için Payrudder kurtarma kodları, {date}",
+        "note": "Her kod yalnızca bir kez çalışır. Bu dosyayı güvenli ve özel bir yerde saklayın."
+      },
+      "step": {
+        "title": "İki adımlı doğrulama",
+        "intro": "Kimlik doğrulayıcı uygulamanızı açın ve gösterdiği altı haneli kodu girin.",
+        "recoveryIntro": "Kurtarma kodlarınızdan birini girin. Her biri yalnızca bir kez çalışır.",
+        "submit": "Doğrula",
+        "recoveryLabel": "Kurtarma kodu",
+        "recoveryHint": "Harfler ve rakamlar, tireler isteğe bağlı.",
+        "useRecovery": "Kurtarma kodu kullan",
+        "useApp": "Kimlik doğrulayıcı uygulamasını kullan",
+        "restart": "Baştan başla"
+      }
     }
   },
   "shell": {
@@ -4417,7 +4516,9 @@
       "support": "Yardım",
       "supportInbox": "Destek kutusu",
       "connect": "Uygulamanı bağla",
-      "contracts": "Sözleşmeler"
+      "contracts": "Sözleşmeler",
+      "audit": "Denetim günlüğü",
+      "auditLog": "Denetim günlüğü"
     },
     "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
@@ -4807,6 +4908,9 @@
         "agreementsTitle": "Sözleşmeler",
         "settings": "Müşterilerin hangi sözleşmeleri kabul etmesi gerektiğini ve adreslerinin ile tarayıcılarının ne kadar saklanacağını seçin.",
         "settingsTitle": "Ayarlar"
+      },
+      "audit": {
+        "intro": "Anahtarlarda, üyelerde, fiyatlarda, webhook'larda, müşterilerde, iadelerde ve sağlayıcı hesaplarında yapılan her değişiklik burada kaydedilir. Kayıtlar değiştirilemez veya silinemez."
       }
     }
   },
@@ -5340,6 +5444,118 @@
       "received": "Size ulaştığı an (isteğe bağlı)",
       "receivedHint": "Şimdi için boş bırakın.",
       "submit": "Caymayı kaydet"
+    }
+  },
+  "audit": {
+    "title": "Denetim günlüğü",
+    "intro": "Kim, ne zaman, ne yaptı: anahtarlar, üyeler, fiyatlar, webhook'lar, müşteriler, iadeler ve sağlayıcı hesapları. Kayıtlar değiştirilemez veya silinemez.",
+    "adminIntro": "Tüm kiracıların denetim günlüğü, en yeni önce. Birine bakmak için kiracıya göre süzün.",
+    "empty": "Henüz hiçbir şey kaydedilmedi.",
+    "export": "CSV dışa aktar",
+    "loadMore": "Daha fazla yükle",
+    "incomplete": "Bazı kayıtlar eksik olabilir. Günlüğün şu bölümleri yanıt vermedi: {sources}. Biraz sonra yeniden deneyin.",
+    "sources": {
+      "plans": "anahtarlar, üyeler, planlar, müşteriler ve webhook'lar",
+      "billing": "faturalar ve alacak dekontları",
+      "payments": "ödeme sağlayıcı hesapları"
+    },
+    "filters": {
+      "area": "Alan",
+      "anyArea": "Tüm alanlar",
+      "actor": "Yapan: e-posta veya kimlik",
+      "tenant": "Kiracı kimliği"
+    },
+    "columns": {
+      "time": "Zaman",
+      "actor": "Yapan",
+      "action": "İşlem",
+      "summary": "Özet",
+      "target": "Hedef"
+    },
+    "fields": {
+      "summary": "Özet",
+      "time": "Zaman",
+      "actor": "Yapan",
+      "actorId": "Yapan kimliği",
+      "target": "Hedef",
+      "targetId": "Hedef kimliği",
+      "ip": "Kaynak IP",
+      "request": "İstek kimliği",
+      "tenant": "Kiracı kimliği",
+      "account": "Hesap kimliği",
+      "before": "Önceki özet",
+      "after": "Sonraki özet",
+      "detail": "Ayrıntı"
+    },
+    "actorTypes": {
+      "user": "Kişi",
+      "api_key": "API anahtarı",
+      "operator": "Operatör",
+      "system": "Sistem"
+    },
+    "areas": {
+      "api_key": "API anahtarları",
+      "member": "Üyeler",
+      "plan": "Planlar",
+      "webhook_endpoint": "Webhook uç noktaları",
+      "customer": "Müşteriler",
+      "credit_note": "Alacak dekontları",
+      "invoice": "Faturalar",
+      "provider_account": "Sağlayıcı hesapları",
+      "tenant": "Kiracı ayarları ve durumu",
+      "two_factor": "İki adımlı giriş",
+      "sign_in": "Giriş",
+      "account": "Kuruluş"
+    },
+    "actions": {
+      "api_key": {
+        "created": "API anahtarı oluşturuldu",
+        "rotated": "API anahtarı yenilendi",
+        "revoked": "API anahtarı iptal edildi",
+        "expiring": "API anahtarının süresi dolmak üzere"
+      },
+      "member": {
+        "invited": "Üye davet edildi",
+        "joined": "Üye katıldı",
+        "role_changed": "Üye rolü değişti",
+        "removed": "Üye çıkarıldı"
+      },
+      "plan": {
+        "created": "Plan oluşturuldu",
+        "version_published": "Plan sürümü yayımlandı"
+      },
+      "webhook_endpoint": {
+        "created": "Webhook uç noktası oluşturuldu",
+        "updated": "Webhook uç noktası değiştirildi",
+        "deleted": "Webhook uç noktası silindi",
+        "secret_rotated": "Webhook gizli anahtarı yenilendi"
+      },
+      "customer": {
+        "blocked": "Müşteri engellendi",
+        "unblocked": "Müşterinin engeli kaldırıldı"
+      },
+      "credit_note": {
+        "issued": "Alacak dekontu düzenlendi",
+        "refunded": "Alacak dekontu iade edildi",
+        "refund_failed": "İade başarısız oldu",
+        "refund_retried": "İade yeniden denendi"
+      },
+      "provider_account": {
+        "connected": "Sağlayıcı hesabı bağlandı",
+        "replaced": "Sağlayıcı hesabı değiştirildi",
+        "removed": "Sağlayıcı hesabı kaldırıldı",
+        "default_changed": "Varsayılan sağlayıcı değişti"
+      },
+      "tenant": {
+        "status_requested": "Durum değişikliği istendi",
+        "status_changed": "Durum değişti",
+        "settings_updated": "Ayarlar değişti"
+      },
+      "two_factor": {
+        "enabled": "İki adımlı giriş açıldı",
+        "disabled": "İki adımlı giriş kapatıldı",
+        "recovery_codes_regenerated": "Kurtarma kodları yeniden oluşturuldu"
+      }
     }
   }
 }

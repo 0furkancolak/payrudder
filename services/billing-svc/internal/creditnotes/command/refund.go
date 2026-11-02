@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
@@ -199,7 +200,9 @@ func (c *Commands) retryRefund(ctx context.Context, tenantID, creditNoteID uuid.
 			return err
 		}
 		out = cn
-		return nil
+		return audit.Record(ctx, tx, audit.Event{TenantID: tenantID, Action: "credit_note.refund_retried", TargetType: "credit_note", TargetID: creditNoteID.String(),
+			Summary: fmt.Sprintf("asked again for the refund of the credit note %s (%d %s)", cn.Number, cn.TotalMinor, cn.Currency),
+			Detail:  map[string]any{"number": cn.Number, "amount_minor": cn.TotalMinor, "currency": cn.Currency, "same_key": generation == int(row.RefundGeneration)}})
 	})
 	return out, err
 }

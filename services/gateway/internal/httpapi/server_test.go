@@ -62,6 +62,8 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleReadOnly, Permissions: readOnly()}, nil
 	case "billing-key":
 		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleBilling, Permissions: billing()}, nil
+	case "audit-key":
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleCustom, Permissions: []string{apikey.PermAuditRead}}, nil
 	case "custom-key":
 		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleCustom, Permissions: []string{apikey.PermCustomersRead, apikey.PermInvoicesRead}}, nil
 	case "suspended-key":

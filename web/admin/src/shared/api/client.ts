@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch";
-import { activeAccount, currentToken, sessionLost } from "@/shared/lib/session";
+import { activeAccount, currentToken, sessionLost, setupRequired } from "@/shared/lib/session";
 import type { components, paths } from "./schema";
 
 // Same origin: the console talks to the gateway through its own /gw path (the Cloudflare Worker in production, Vite in development), so the gateway
@@ -21,27 +21,43 @@ function withToken(request: Request): void {
  * names no key (a proxy, an old gateway) is treated as a dead session.
  */
 export function isDeadSession(body: unknown): boolean {
-  const key = body && typeof body === "object" ? (body as { error?: { key?: unknown } }).error?.key : undefined;
+  const key = errorKey(body);
   return typeof key !== "string" || key === "" || key === "identity.session.invalid";
 }
 
-/** A 401 while a person is signed in and the gateway calls the session dead (expired, revoked): the app is told once and goes to the sign-in page. */
-const endSessionOn401: Pick<Middleware, "onResponse"> = {
+/** The key of the refusal that keeps a person on the security page until they have set up two-factor sign-in. */
+export const SETUP_REQUIRED_KEY = "identity.two_factor.setup_required";
+
+/**
+ * What the app is told about an answer: a 401 while a person is signed in and the gateway calls the session dead (expired, revoked) ends the session once
+ * and sends the person to the sign-in page; a 403 `identity.two_factor.setup_required` (an organisation they own requires two-factor sign-in and they have
+ * none) sends them to the security page.
+ */
+export const watchSession: Pick<Middleware, "onResponse"> = {
   async onResponse({ response }) {
-    if (response.status !== 401 || isAdminCall(response)) return response;
-    let body: unknown;
-    try {
-      body = await response.clone().json();
-    } catch {
-      body = undefined;
+    if (response.status === 401 && !isAdminCall(response)) {
+      if (isDeadSession(await bodyOf(response))) sessionLost();
+    } else if (response.status === 403 && errorKey(await bodyOf(response)) === SETUP_REQUIRED_KEY) {
+      setupRequired();
     }
-    if (isDeadSession(body)) sessionLost();
     return response;
   },
 };
 
+async function bodyOf(response: Response): Promise<unknown> {
+  try {
+    return await response.clone().json();
+  } catch {
+    return undefined;
+  }
+}
+
+function errorKey(body: unknown): unknown {
+  return body && typeof body === "object" ? (body as { error?: { key?: unknown } }).error?.key : undefined;
+}
+
 api.use({
-  ...endSessionOn401,
+  ...watchSession,
   onRequest({ request }) {
     withToken(request);
     const url = new URL(request.url);
@@ -74,7 +90,7 @@ export function tenantApi(tenantId: string) {
   if (!client) {
     client = createClient<paths>({ baseUrl: "/gw" });
     client.use({
-      ...endSessionOn401,
+      ...watchSession,
       onRequest({ request }) {
         withToken(request);
         request.headers.set("X-Payrudder-Tenant", tenantId);

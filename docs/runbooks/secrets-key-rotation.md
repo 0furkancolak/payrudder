@@ -32,9 +32,10 @@ A re-seal must give `Reseal` the same associated data the writer used, or the bo
 | payments-worker | `einvoice_accounts.settings_enc` | `tenant|einvoice|environment` (`store/einvoice.go`) |
 | plans-svc | `webhook_endpoints.secret_enc`, `prev_secret_enc` | `webhooks/model.SecretAAD(endpoint)` |
 | plans-svc | `tenant_mail_integrations.api_key_enc` | `mailintegration/query.AAD(tenant)` |
+| plans-svc | `user_totp.secret_enc` (two-factor sign-in, plan 22 G9) | `totp|<user id>` (`identity/command/twofactor.go`) |
 
 The loop for each: select the rows whose column is `Stale` (first byte `<> active id`, `get_byte(col, 0) <> 2`), `Reseal(col, aad)`, and update with the old bytes in the `WHERE` so that a row an owner replaced in the meantime is left alone. In cells mode (ADR 0018) the tables are in the tenants' schemas: visit each place.
 
 ## What is built, and what is not
 
-Built and tested: the key ids, a ring of keys, `Stale`, `Reseal`, the four variables and their checks (`pkg/secretbox`). **Not built: the job that runs the loop above** over the four places. Until it exists, step 3 is not done and step 4 must wait; the platform runs correctly with two keys for as long as that takes (a credential an owner saves again is re-sealed with the active key by the ordinary write). Writing the job is about twenty lines per table; it has not been run against a real rotation.
+Built and tested: the key ids, a ring of keys, `Stale`, `Reseal`, the four variables and their checks (`pkg/secretbox`). **Not built: the job that runs the loop above** over these places. Until it exists, step 3 is not done and step 4 must wait; the platform runs correctly with two keys for as long as that takes (a credential an owner saves again is re-sealed with the active key by the ordinary write). Writing the job is about twenty lines per table; it has not been run against a real rotation.

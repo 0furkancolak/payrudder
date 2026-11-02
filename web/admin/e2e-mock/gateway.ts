@@ -171,3 +171,91 @@ export async function openTenantPage(page: Page, path: string): Promise<void> {
   await signInAsOperator(page);
   await page.goto(`/tenants/${TENANT}${path}`);
 }
+
+/** One entry of the audit log as the API returns it. */
+export interface MockAuditEvent {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  actor_type: "user" | "api_key" | "operator" | "system";
+  actor_id: string;
+  actor_email: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  summary: string;
+  detail_json: string;
+  before_hash: string;
+  after_hash: string;
+  source_ip: string;
+  request_id: string;
+  create_time: string;
+}
+
+/** The nth entry of a mock log: entries are numbered from the newest (1) and an hour apart, ending on 21 Oct 2026. */
+export function auditEvent(n: number, over: Partial<MockAuditEvent> = {}): MockAuditEvent {
+  const at = new Date(Date.UTC(2026, 9, 21, 10, 0, 0) - (n - 1) * 3_600_000).toISOString().replace(".000Z", "Z");
+  return {
+    id: `e0000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+    tenant_id: TENANT,
+    account_id: "",
+    actor_type: "user",
+    actor_id: "11111111-1111-4111-8111-111111111111",
+    actor_email: "ada@example.com",
+    action: "api_key.created",
+    target_type: "api_key",
+    target_id: `k${n}`,
+    summary: `created the key abcd${n}`,
+    detail_json: JSON.stringify({ role: "read_only", environment: "live" }),
+    before_hash: "",
+    after_hash: "9f2c4e7a1b3d5f60",
+    source_ip: "203.0.113.7",
+    request_id: `req-${n}`,
+    create_time: at,
+    ...over,
+  };
+}
+
+/**
+ * The audit log of the tenant API (`/v1/audit-events`) and of the operator's (`/admin/v1/audit-events`), filtered the way the server filters: an action name
+ * or an area (`api_key.*`), the actor's id or address, `from` inclusive, `to` exclusive, the operator's `tenant_id`, newest first (the order of `events`), paged
+ * by `page_token`. `perPage` makes a page smaller than the console asks for, so paging can be tried with a few entries; `incomplete` names the services that
+ * did not answer; `forbidden` is a viewer's refusal. The export is a small CSV of the same filter (503 when `exportFails`).
+ */
+export function auditGateway(gw: MockGateway, events: MockAuditEvent[], opts: { perPage?: number; incomplete?: string[]; forbidden?: boolean; exportFails?: boolean } = {}): MockGateway {
+  return gw.on((c) => {
+    const exporting = c.path.endsWith("/audit-events/export");
+    if (c.method !== "GET" || !(c.path === "/v1/audit-events" || c.path === "/admin/v1/audit-events" || (exporting && c.path.endsWith("/v1/audit-events/export")))) return undefined;
+    if (opts.forbidden) return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "gateway.auth.permission_denied", message: "this key may not read the audit log" } } };
+    const actions = c.query.getAll("action").flatMap((a) => a.split(",")).filter((a) => a !== "");
+    const actor = (c.query.get("actor") ?? "").toLowerCase();
+    const from = c.query.get("from");
+    const to = c.query.get("to");
+    const tenant = c.query.get("tenant_id");
+    const matches = events.filter(
+      (e) =>
+        (actions.length === 0 || actions.some((a) => (a.endsWith(".*") ? e.action.startsWith(a.slice(0, -1)) : e.action === a))) &&
+        (actor === "" || e.actor_id.toLowerCase() === actor || e.actor_email.toLowerCase() === actor) &&
+        (!from || new Date(e.create_time) >= new Date(from)) &&
+        (!to || new Date(e.create_time) < new Date(to)) &&
+        (!tenant || e.tenant_id === tenant),
+    );
+    if (exporting) {
+      if (opts.exportFails) return { status: 503, body: { error: { code: "UNAVAILABLE", key: "audit.unavailable", message: "a service did not answer" } } };
+      const csv = ["id,create_time,actor_email,action,summary", ...matches.map((e) => [e.id, e.create_time, e.actor_email, e.action, e.summary].join(","))].join("\n") + "\n";
+      return { raw: Buffer.from(csv), contentType: "text/csv" };
+    }
+    const size = Math.min(opts.perPage ?? 200, Number(c.query.get("page_size") ?? 50));
+    const start = Number((c.query.get("page_token") ?? "o0").slice(1));
+    const page = matches.slice(start, start + size);
+    const more = start + size < matches.length;
+    return {
+      body: {
+        events: page,
+        next_page_token: more ? `o${start + size}` : "",
+        incomplete: (opts.incomplete ?? []).length > 0,
+        unavailable_sources: opts.incomplete ?? [],
+      },
+    };
+  });
+}

@@ -76,7 +76,7 @@ func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (Api
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, name, created_at, platform FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -87,6 +87,7 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }
@@ -170,7 +171,7 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 
 const insertAccount = `-- name: InsertAccount :one
 
-INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform
+INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform, require_two_factor
 `
 
 type InsertAccountParams struct {
@@ -187,6 +188,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }

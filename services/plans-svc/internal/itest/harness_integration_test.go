@@ -23,7 +23,9 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	auditv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/audit/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -115,6 +117,7 @@ type env struct {
 	contracts plansv1.ContractServiceClient
 	pub       plansv1.AffiliatePublicServiceClient
 	portal    plansv1.AffiliatePortalServiceClient
+	audit     auditv1.AuditServiceClient
 	box       *secretbox.Box
 	evicted   *recordingEvictor
 	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
@@ -323,7 +326,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	}
 	ev := &recordingEvictor{}
 	srv, _ := grpcx.NewServer(grpcx.ServerOptions{Logger: log, Extra: []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
+		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor(), audit.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 	}})
 	box, err := secretbox.New(make([]byte, 32)) // an all-zero key is fine for a test database
@@ -340,14 +343,14 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
-	cc, err := grpcx.NewClient("passthrough:///bufnet",
+	cc, err := grpcx.NewClient("passthrough:///bufnet", grpc.WithChainUnaryInterceptor(audit.UnaryClientInterceptor()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) { return lis.DialContext(ctx) }))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{w: w, saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: w.db, app: app, system: system, appDB: appDB, places: places, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), contracts: plansv1.NewContractServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), audit: auditv1.NewAuditServiceClient(cc), contracts: plansv1.NewContractServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 // banApproval makes the plans-svc a test starts need a second operator for a ban (PAYRUDDER_TENANT_BAN_APPROVAL); only the test of that sets it.

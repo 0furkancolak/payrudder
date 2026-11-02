@@ -2990,7 +2990,8 @@
         "bad_body": "Der Anfragetext muss gültiges JSON sein.",
         "bad_environment": "Die Umgebung muss sandbox oder live sein.",
         "bad_tenant": "Die Konto-ID ist keine gültige ID.",
-        "too_large": "Die Anfrage ist zu groß."
+        "too_large": "Die Anfrage ist zu groß.",
+        "bad_audit_filter": "Der Filter des Audit-Protokolls ist ungültig."
       },
       "subscription": {
         "cannot_cancel": "Dieser Anbieter kann ein Abonnement von hier aus nicht kündigen.",
@@ -3138,6 +3139,16 @@
         "country_required": "Wählen Sie das Land des Unternehmens.",
         "address_required": "Geben Sie Straße und Ort ein.",
         "tax_id_required": "Für Rechnungen in diesem Land ist eine Steuernummer erforderlich."
+      },
+      "two_factor": {
+        "invalid": "Falscher oder abgelaufener Code.",
+        "bad_code": "Falscher Code. Geben Sie die sechs Ziffern ein, die die Authenticator-App jetzt anzeigt, oder einen Wiederherstellungscode.",
+        "already_enabled": "Die Zwei-Faktor-Anmeldung ist bereits eingeschaltet.",
+        "not_enabled": "Die Zwei-Faktor-Anmeldung ist nicht eingeschaltet.",
+        "no_setup": "Starten Sie zuerst die Einrichtung: Code scannen, dann bestätigen.",
+        "not_configured": "Diese Installation kann die Zwei-Faktor-Anmeldung noch nicht anbieten: Es ist kein Geheimnisschlüssel gesetzt.",
+        "required_by_organisation": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung, daher können Sie sie nicht ausschalten.",
+        "setup_required": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie zuerst auf der Sicherheitsseite ein."
       }
     },
     "gateway": {
@@ -3404,6 +3415,18 @@
       "tickets": {
         "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
       }
+    },
+    "audit": {
+      "unavailable": "Das Audit-Protokoll konnte nicht von allen Diensten gelesen werden. Versuchen Sie es erneut.",
+      "page_token": {
+        "invalid": "Diese Seite des Protokolls ist nicht mehr gültig. Laden Sie die Liste neu."
+      },
+      "filter": {
+        "bad_tenant": "Die Mandanten-ID ist ungültig.",
+        "bad_account": "Die Konto-ID ist ungültig.",
+        "bad_time": "Die Daten sind ungültig oder der Beginn liegt nach dem Ende.",
+        "bad_page_size": "Die Seitengröße muss zwischen 1 und 200 liegen."
+      }
     }
   },
   "product": {
@@ -3417,7 +3440,8 @@
     },
     "nav": {
       "home": "Start",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "security": "Sicherheit"
     },
     "hero": {
       "title": "Jede Zahlung jeder App an einem ruhigen Ort."
@@ -3672,7 +3696,8 @@
         "settings": "Einstellungen (Steuer, Routing, E-Mail)",
         "assets": "Dateien",
         "contracts": "Vereinbarungen (Texte und Einstellungen)",
-        "sandbox": "Sandbox-Werkzeuge"
+        "sandbox": "Sandbox-Werkzeuge",
+        "audit": "Audit-Protokoll"
       },
       "permissionCount": "{n} von {total} Berechtigungen",
       "customNeedsOne": "Wählen Sie mindestens eine Berechtigung.",
@@ -3797,7 +3822,9 @@
       "rename": "Kontoname",
       "save": "Namen speichern",
       "noneTitle": "Sie gehören zu keinem Konto",
-      "noneBody": "Sie haben Ihr letztes Konto verlassen oder wurden entfernt. Bitten Sie einen Inhaber, Sie erneut einzuladen, oder registrieren Sie sich mit einer anderen Adresse."
+      "noneBody": "Sie haben Ihr letztes Konto verlassen oder wurden entfernt. Bitten Sie einen Inhaber, Sie erneut einzuladen, oder registrieren Sie sich mit einer anderen Adresse.",
+      "requireTwoFactor": "Zwei-Faktor-Anmeldung für Inhaber verlangen",
+      "requireTwoFactorHint": "Inhaber, die die Zwei-Faktor-Anmeldung noch nicht eingerichtet haben, bleiben auf der Sicherheitsseite, bis sie es tun. Standardmäßig aus."
     },
     "invite": {
       "title": "Sie sind eingeladen",
@@ -4348,6 +4375,78 @@
         "sandbox": "Zur Sandbox wechseln",
         "live": "Zu Live wechseln"
       }
+    },
+    "security": {
+      "title": "Sicherheit",
+      "intro": "Wie Sie sich anmelden und wie Sie das schützen.",
+      "setupRequired": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie unten ein: Bis dahin ist in der Konsole nichts anderes verfügbar."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Anmeldung",
+      "on": "Ein",
+      "off": "Aus",
+      "offBody": "Nach Passwort, E-Mail-Code oder Google fragt die Anmeldung zusätzlich nach einem sechsstelligen Code aus einer Authenticator-App. Wer Ihr Passwort kennt, kommt trotzdem nicht hinein.",
+      "onBody": "Die Anmeldung fragt nach Passwort, E-Mail-Code oder Google zusätzlich nach einem sechsstelligen Code aus Ihrer Authenticator-App.",
+      "since": "Eingeschaltet am",
+      "codesLeft": "Verbleibende Wiederherstellungscodes",
+      "codesLow": "Nur noch {n} Wiederherstellungscodes übrig. Erzeugen Sie neue, bevor sie aufgebraucht sind: Wenn Sie Ihr Telefon verlieren, sind sie der einzige Weg zurück.",
+      "turnOn": "Einschalten",
+      "turnOff": "Ausschalten",
+      "regenerate": "Neue Wiederherstellungscodes erzeugen",
+      "requiredNote": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung, daher lässt sie sich nicht ausschalten.",
+      "disableTitle": "Zwei-Faktor-Anmeldung ausschalten?",
+      "disableBody": "Geben Sie einen aktuellen Code Ihrer Authenticator-App oder einen Wiederherstellungscode ein. Ihr Konto ist danach nur noch durch Ihre Anmeldemethode geschützt.",
+      "regenerateTitle": "Neue Wiederherstellungscodes erzeugen?",
+      "regenerateBody": "Geben Sie einen aktuellen Code Ihrer Authenticator-App oder einen Wiederherstellungscode ein. Die alten Wiederherstellungscodes funktionieren danach nicht mehr.",
+      "regeneratedBody": "Sie ersetzen Ihre alten Wiederherstellungscodes. Sie werden nur jetzt angezeigt.",
+      "prompt": {
+        "label": "Code",
+        "hint": "Sechs Ziffern aus der App oder ein Wiederherstellungscode."
+      },
+      "setup": {
+        "scan": {
+          "title": "Code scannen",
+          "body": "Öffnen Sie eine Authenticator-App auf Ihrem Telefon und scannen Sie diesen Code."
+        },
+        "code": {
+          "title": "Code eingeben",
+          "body": "Geben Sie die sechs Ziffern ein, die die App jetzt anzeigt, um zu bestätigen, dass sie eingerichtet ist."
+        },
+        "codes": {
+          "title": "Wiederherstellungscodes sichern",
+          "body": "Die Zwei-Faktor-Anmeldung ist jetzt eingeschaltet."
+        },
+        "qrLabel": "QR-Code für Ihre Authenticator-App",
+        "cantScan": "Scannen nicht möglich? Geben Sie stattdessen diesen Schlüssel in die App ein.",
+        "secretLabel": "Geheimer Schlüssel",
+        "copySecret": "Kopieren",
+        "next": "Weiter",
+        "back": "Zurück",
+        "turnOn": "Einschalten"
+      },
+      "codes": {
+        "body": "Jeder Code funktioniert nur einmal. Wenn Sie Ihr Telefon verlieren, ist ein Wiederherstellungscode der einzige Weg zur Anmeldung. Sie werden nur jetzt angezeigt.",
+        "list": "Wiederherstellungscodes",
+        "download": "Als .txt herunterladen",
+        "copy": "Kopieren",
+        "saved": "Ich habe diese Codes gesichert",
+        "done": "Fertig"
+      },
+      "file": {
+        "title": "Payrudder-Wiederherstellungscodes für {email}, {date}",
+        "note": "Jeder Code funktioniert nur einmal. Bewahren Sie diese Datei sicher und privat auf."
+      },
+      "step": {
+        "title": "Bestätigung in zwei Schritten",
+        "intro": "Öffnen Sie Ihre Authenticator-App und geben Sie den sechsstelligen Code ein, den sie anzeigt.",
+        "recoveryIntro": "Geben Sie einen Ihrer Wiederherstellungscodes ein. Jeder funktioniert nur einmal.",
+        "submit": "Bestätigen",
+        "recoveryLabel": "Wiederherstellungscode",
+        "recoveryHint": "Buchstaben und Ziffern, Bindestriche optional.",
+        "useRecovery": "Wiederherstellungscode verwenden",
+        "useApp": "Authenticator-App verwenden",
+        "restart": "Neu beginnen"
+      }
     }
   },
   "shell": {
@@ -4417,7 +4516,9 @@
       "support": "Hilfe",
       "supportInbox": "Support-Eingang",
       "connect": "App verbinden",
-      "contracts": "Verträge"
+      "contracts": "Verträge",
+      "audit": "Audit-Protokoll",
+      "auditLog": "Audit-Protokoll"
     },
     "noApps": "Noch keine Apps",
     "newApp": "Neue App"
@@ -4807,6 +4908,9 @@
         "agreementsTitle": "Vereinbarungen",
         "settings": "Wählen Sie, welche Vereinbarungen Kunden akzeptieren müssen und wie lange ihre Adresse und ihr Browser aufbewahrt werden.",
         "settingsTitle": "Einstellungen"
+      },
+      "audit": {
+        "intro": "Jede Änderung an Schlüsseln, Mitgliedern, Preisen, Webhooks, Kunden, Erstattungen und Anbieterkonten wird hier aufgezeichnet. Einträge lassen sich weder ändern noch entfernen."
       }
     }
   },
@@ -5340,6 +5444,118 @@
       "received": "Wann es Sie erreicht hat (optional)",
       "receivedHint": "Für jetzt leer lassen.",
       "submit": "Widerruf erfassen"
+    }
+  },
+  "audit": {
+    "title": "Audit-Protokoll",
+    "intro": "Wer hat wann was getan: Schlüssel, Mitglieder, Preise, Webhooks, Kunden, Erstattungen und Anbieterkonten. Einträge lassen sich weder ändern noch entfernen.",
+    "adminIntro": "Das Audit-Protokoll aller Mandanten, neueste zuerst. Filtern Sie nach Mandant, um einen einzelnen anzusehen.",
+    "empty": "Es wurde noch nichts aufgezeichnet.",
+    "export": "CSV exportieren",
+    "loadMore": "Mehr laden",
+    "incomplete": "Einige Einträge fehlen möglicherweise. Diese Teile des Protokolls haben nicht geantwortet: {sources}. Versuchen Sie es gleich noch einmal.",
+    "sources": {
+      "plans": "Schlüssel, Mitglieder, Pläne, Kunden und Webhooks",
+      "billing": "Rechnungen und Gutschriften",
+      "payments": "Zahlungsanbieter-Konten"
+    },
+    "filters": {
+      "area": "Bereich",
+      "anyArea": "Alle Bereiche",
+      "actor": "Akteur: E-Mail oder ID",
+      "tenant": "Mandanten-ID"
+    },
+    "columns": {
+      "time": "Zeit",
+      "actor": "Akteur",
+      "action": "Aktion",
+      "summary": "Zusammenfassung",
+      "target": "Ziel"
+    },
+    "fields": {
+      "summary": "Zusammenfassung",
+      "time": "Zeit",
+      "actor": "Akteur",
+      "actorId": "Akteur-ID",
+      "target": "Ziel",
+      "targetId": "Ziel-ID",
+      "ip": "Quell-IP",
+      "request": "Anfrage-ID",
+      "tenant": "Mandanten-ID",
+      "account": "Konto-ID",
+      "before": "Hash davor",
+      "after": "Hash danach",
+      "detail": "Details"
+    },
+    "actorTypes": {
+      "user": "Person",
+      "api_key": "API-Schlüssel",
+      "operator": "Betreiber",
+      "system": "System"
+    },
+    "areas": {
+      "api_key": "API-Schlüssel",
+      "member": "Mitglieder",
+      "plan": "Pläne",
+      "webhook_endpoint": "Webhook-Endpunkte",
+      "customer": "Kunden",
+      "credit_note": "Gutschriften",
+      "invoice": "Rechnungen",
+      "provider_account": "Anbieterkonten",
+      "tenant": "Mandanteneinstellungen und -status",
+      "two_factor": "Zwei-Faktor-Anmeldung",
+      "sign_in": "Anmeldung",
+      "account": "Organisation"
+    },
+    "actions": {
+      "api_key": {
+        "created": "API-Schlüssel erstellt",
+        "rotated": "API-Schlüssel rotiert",
+        "revoked": "API-Schlüssel widerrufen",
+        "expiring": "API-Schlüssel läuft bald ab"
+      },
+      "member": {
+        "invited": "Mitglied eingeladen",
+        "joined": "Mitglied beigetreten",
+        "role_changed": "Rolle eines Mitglieds geändert",
+        "removed": "Mitglied entfernt"
+      },
+      "plan": {
+        "created": "Plan erstellt",
+        "version_published": "Planversion veröffentlicht"
+      },
+      "webhook_endpoint": {
+        "created": "Webhook-Endpunkt erstellt",
+        "updated": "Webhook-Endpunkt geändert",
+        "deleted": "Webhook-Endpunkt gelöscht",
+        "secret_rotated": "Webhook-Geheimnis erneuert"
+      },
+      "customer": {
+        "blocked": "Kunde gesperrt",
+        "unblocked": "Kunde entsperrt"
+      },
+      "credit_note": {
+        "issued": "Gutschrift ausgestellt",
+        "refunded": "Gutschrift erstattet",
+        "refund_failed": "Erstattung fehlgeschlagen",
+        "refund_retried": "Erstattung erneut versucht"
+      },
+      "provider_account": {
+        "connected": "Anbieterkonto verbunden",
+        "replaced": "Anbieterkonto ersetzt",
+        "removed": "Anbieterkonto entfernt",
+        "default_changed": "Standardanbieter geändert"
+      },
+      "tenant": {
+        "status_requested": "Statusänderung angefragt",
+        "status_changed": "Status geändert",
+        "settings_updated": "Einstellungen geändert"
+      },
+      "two_factor": {
+        "enabled": "Zwei-Faktor-Anmeldung eingeschaltet",
+        "disabled": "Zwei-Faktor-Anmeldung ausgeschaltet",
+        "recovery_codes_regenerated": "Wiederherstellungscodes neu erzeugt"
+      }
     }
   }
 }

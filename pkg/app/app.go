@@ -27,6 +27,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
@@ -116,7 +117,7 @@ func NewGRPCServer(log *slog.Logger, cfg *config.Base) (*grpc.Server, *grpchealt
 	return grpcx.NewServer(grpcx.ServerOptions{
 		Logger: log, Reflection: cfg.Env == config.EnvLocal,
 		Extra: []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
+			grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor(), audit.UnaryServerInterceptor()),
 			grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 		},
 	})

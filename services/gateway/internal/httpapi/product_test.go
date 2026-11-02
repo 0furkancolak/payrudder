@@ -39,6 +39,7 @@ const (
 	// Phase 42: sessions of people the operator list may name (see signin_methods_test.go).
 	tokOperator           = "qs_operator"            // boss@example.com, verified: an operator
 	tokOperatorUnverified = "qs_operator_unverified" // the same address, never verified: not an operator
+	tokNeedsSetup         = "qs_needs_setup"         // Ada, an owner of an account that requires two-factor sign-in, who has not set it up
 	tokSpoof              = "qs_spoof"               // an address that only starts like a listed one
 	opUser                = "44444444-4444-4444-8444-444444444444"
 	opUser2               = "55555555-5555-4555-8555-555555555555"
@@ -74,6 +75,7 @@ type fakeIdentity struct {
 	// Phase 42: what the one-time code and provider routes passed on.
 	codeRequests []*plansv1.RequestLoginCodeRequest
 	codeVerifies []*plansv1.VerifyLoginCodeRequest
+	verifies     []*plansv1.VerifyTwoFactorRequest
 	identities   []*plansv1.SignInWithIdentityRequest
 
 	// Phase 45: what the go-live and rotation routes passed on, and the scope of the last key made.
@@ -107,7 +109,7 @@ type fakeUser struct {
 }
 
 var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com", true}, tokBob: {bobUser, "bob@example.com", true}, tokViewer: {viewerUser, "view@example.com", true},
-	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}}
+	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}, tokNeedsSetup: {adaUser, "ada@example.com", true}}
 
 func (f *fakeIdentity) memberships(user string) []*plansv1.Membership {
 	base := f.baseMemberships(user)
@@ -162,6 +164,9 @@ func (f *fakeIdentity) SignIn(_ context.Context, req *plansv1.SignInRequest) (*p
 	f.mu.Unlock()
 	if req.GetPassword() != "right password!" {
 		return nil, errkey.New(codes.Unauthenticated, "identity.auth.invalid_credentials", "wrong")
+	}
+	if req.GetEmail() == twoFactorEmail {
+		return &plansv1.SignInResponse{Challenge: goodChallenge, ChallengeExpireTime: timestamppb.New(time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC))}, nil
 	}
 	return &plansv1.SignInResponse{User: &plansv1.User{Id: adaUser, Email: req.GetEmail()}, Token: tokAda, Memberships: f.memberships(adaUser), ExpireTime: timestamppb.Now()}, nil
 }
@@ -226,7 +231,8 @@ func (f *fakeIdentity) GetSession(_ context.Context, req *plansv1.GetSessionRequ
 	if !ok || f.revoked[req.GetToken()] {
 		return nil, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in again")
 	}
-	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email, EmailVerified: u.verified}, Memberships: f.memberships(u.id), ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
+	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email, EmailVerified: u.verified, TwoFactorSetupRequired: req.GetToken() == tokNeedsSetup},
+		Memberships: f.memberships(u.id), ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
 }
 
 func (f *fakeIdentity) seen(user string) {

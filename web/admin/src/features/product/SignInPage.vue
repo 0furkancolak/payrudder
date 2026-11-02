@@ -13,6 +13,8 @@ import AuthShell from "./AuthShell.vue";
 import AuthMethodPicker from "./AuthMethodPicker.vue";
 import OtpFlow from "./OtpFlow.vue";
 import PasswordField from "./PasswordField.vue";
+import TwoFactorStep from "./TwoFactorStep.vue";
+import { isChallenge } from "./twoFactor";
 
 // The three ways to sign in: e-mail and password, a one-time code mailed to the address, and Google (only when the deployment has set it up).
 const { t } = useI18n();
@@ -23,6 +25,8 @@ const email = ref("");
 const password = ref("");
 const method = ref("password");
 const login = useSignIn();
+// A person with two-factor sign-in on gets no session from the password: the challenge it answered with is handed to the second step.
+const challenge = ref("");
 // Local development only (stripped from production builds): the public credentials of the default dev seed (`make dev` creates them).
 const devHint = import.meta.env.DEV;
 const expired = computed(() => (search.value as { expired?: string }).expired === "1");
@@ -33,17 +37,28 @@ const oauthError = computed(() => {
 });
 
 function submit() {
-  login.mutate({ email: email.value.trim(), password: password.value }, { onSuccess: () => afterSignIn() });
+  login.mutate(
+    { email: email.value.trim(), password: password.value },
+    { onSuccess: (s) => (isChallenge(s) ? (challenge.value = s.challenge) : afterSignIn()) },
+  );
+}
+
+/** Back to the first step: the password is typed again. */
+function restart() {
+  challenge.value = "";
+  password.value = "";
+  login.reset();
 }
 </script>
 
 <template>
   <AuthShell :title="t('product.signIn.title')" :intro="t('product.signIn.intro')">
-    <p v-if="expired" class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="status">{{ t("product.signIn.expired") }}</p>
-    <p v-if="oauthError" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert" data-testid="oauth-error">
+    <p v-if="expired && !challenge" class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="status">{{ t("product.signIn.expired") }}</p>
+    <p v-if="oauthError && !challenge" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert" data-testid="oauth-error">
       {{ t(`product.signIn.oauthError.${oauthError}`) }}
     </p>
-    <div class="flex flex-col gap-4">
+    <TwoFactorStep v-if="challenge" :challenge="challenge" @done="afterSignIn()" @restart="restart" />
+    <div v-else class="flex flex-col gap-4">
       <AuthMethodPicker v-model="method" :google="methods.data.value?.google" />
       <form v-if="method === 'password'" class="flex flex-col gap-4" :aria-label="t('product.signIn.title')" @submit.prevent="submit">
         <FormField for="si-email" :label="t('product.auth.email')">

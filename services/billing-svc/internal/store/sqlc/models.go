@@ -12,6 +12,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuditEvent struct {
+	ID         uuid.UUID
+	TenantID   *uuid.UUID
+	AccountID  *uuid.UUID
+	ActorType  string
+	ActorID    string
+	ActorEmail string
+	Action     string
+	TargetType string
+	TargetID   string
+	Summary    string
+	Detail     json.RawMessage
+	BeforeHash string
+	AfterHash  string
+	SourceIp   string
+	RequestID  string
+	CreatedAt  time.Time
+}
+
 type BillingRun struct {
 	TenantID        uuid.UUID
 	PeriodID        string
