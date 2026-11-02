@@ -20,6 +20,7 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 | `PAYRUDDER_MCP_WRITES` | `1` also offers the tools that write; off by default |
 | `PAYRUDDER_MCP_HTTP_PORT` | serve streamable HTTP on this port instead of stdio, see “Over HTTP” below; unset by default |
 | `PAYRUDDER_MCP_HTTP_HOST` | the address to listen on in that mode; default `127.0.0.1` |
+| `PAYRUDDER_MCP_AUDIT` | `0` stops the audit log (below); on by default |
 
 **Claude Code:** `claude mcp add payrudder -e PAYRUDDER_API_KEY=qk_test_... -e PAYRUDDER_BASE_URL=https://YOUR-API-ADDRESS -- node /path/to/mcp/dist/main.js`
 
@@ -60,9 +61,27 @@ For an assistant that is not on your machine, start the server with `PAYRUDDER_M
 - The API address is the server's `PAYRUDDER_BASE_URL`; a caller cannot change it.
 - It listens on `127.0.0.1` unless you set `PAYRUDDER_MCP_HTTP_HOST`. There is no TLS here: put a proxy that terminates TLS in front of it before it is reachable from anywhere else, or the keys travel in the clear.
 - `PAYRUDDER_MCP_WRITES=1` applies to every caller of the server; each caller's key still decides what succeeds.
-- Not built yet: sign-in with OAuth instead of a key, a rate limit per key, and a log of what an assistant did. Until then, hand out keys of the narrowest role (`read_only`).
+- Every tool call is written to the audit log (below) with the caller's key prefix, so you can tell who did what when several people share one server.
+- Not built yet: sign-in with OAuth instead of a key, and a limit of the server's own (see "Rate limits"). Until then, hand out keys of the narrowest role (`read_only`).
 
 Claude Code: `claude mcp add --transport http payrudder https://YOUR-MCP-ADDRESS/mcp --header "Authorization: Bearer qk_test_..."`.
+
+## Audit log
+
+Every tool call writes one JSON line to **stderr** (stdout carries the protocol in stdio mode; in HTTP mode a log collector reads stderr). It says what an assistant did with a key, not what it learned:
+
+```json
+{"ts":"2026-11-02T10:00:00.123Z","event":"mcp.tool_call","tool":"get_customer","write":false,"transport":"stdio","key":"qk_test_ab12cd34","args":{"customer_external_id":"cus_42"},"ms":38,"ok":true,"chars":412,"cut":false}
+```
+
+- `key` is the public prefix of the API key (`qk_test_ab12cd34`), never the secret part; in HTTP mode it tells the callers apart.
+- `args` holds the arguments as given, with long text cut at 80 characters; arguments that are free text about a person (`name`, `email`, `phone`, `address`, `notes`, `reason`, `description`, `properties`) are replaced by `"[not logged]"` and lists are counted (`{"items":3}`). The answer is never logged, only its size (`chars`) and whether it was cut.
+- A failed call has `"ok":false`, the API's error key in `error` (`customer.not_found`) and its HTTP `status`; the error's message is not logged.
+- `PAYRUDDER_MCP_AUDIT=0` turns it off. The server writes to stderr only; keeping, shipping and expiring the lines is the log collector's job (the services' own logs go to a collector the same way).
+
+## Rate limits
+
+The server has no limit of its own and the API does not limit **per key**: the gateway limits each **tenant** (the sandbox or the live environment of an app) per class of route (reads, writes, ingest, analytics) by the tenant's tier, and every key of that tenant shares the budget, an assistant's and your application's alike. A loop of tool calls therefore spends your application's reads; when the budget is gone the API answers `429` with `Retry-After`, which the assistant gets back as an error (`HTTP 429`). Until a limit per key exists in the gateway (not built; `docs/plans/20-mcp.md`), give an assistant a sandbox key, or an app of its own, and read the audit log for `"ok":false,"status":429`.
 
 ## Resources
 

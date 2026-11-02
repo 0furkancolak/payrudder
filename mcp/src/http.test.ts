@@ -2,6 +2,7 @@ import type { AddressInfo } from "node:net";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, describe, expect, it } from "vitest";
+import type { AuditRecord } from "./audit.js";
 import { createHttpServer } from "./http.js";
 
 const open: { close(): void }[] = [];
@@ -9,7 +10,7 @@ afterEach(() => {
   while (open.length) open.pop()?.close();
 });
 
-async function start(opts: { allowWrites?: boolean } = {}) {
+async function start(opts: { allowWrites?: boolean; audit?: (r: AuditRecord) => void } = {}) {
   const seen: { path: string; auth: string | null }[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     seen.push({ path: new URL(String(input)).pathname, auth: new Headers(init.headers).get("Authorization") });
@@ -68,5 +69,17 @@ describe("streamable HTTP", () => {
     expect((await fetch(url, { method: "DELETE", headers: h })).status).toBe(405);
     expect((await fetch(url.replace("/mcp", "/other"), { method: "POST", headers: h, body: "{}" })).status).toBe(404);
     expect((await fetch(url, { method: "POST", headers: h, body: "not json" })).status).toBe(400);
+  });
+});
+
+describe("the audit log over HTTP", () => {
+  it("names the caller's key by its prefix and the transport, and never holds the secret part", async () => {
+    const records: AuditRecord[] = [];
+    const { connect } = await start({ audit: (r) => records.push(r) });
+    const [a, b] = [await connect("qk_test_alpha_SECRETONE"), await connect("qk_live_beta_SECRETTWO")];
+    await a.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
+    await b.callTool({ name: "list_meters", arguments: {} });
+    expect(records.map((r) => [r.tool, r.key, r.transport]).sort()).toEqual([["get_customer", "qk_test_alpha", "http"], ["list_meters", "qk_live_beta", "http"]]);
+    expect(JSON.stringify(records)).not.toMatch(/SECRET/);
   });
 });

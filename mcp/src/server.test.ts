@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { createApi } from "./api.js";
+import type { AuditRecord } from "./audit.js";
 import { MAX_REPLY, createServer } from "./server.js";
 
 interface Seen {
@@ -11,14 +12,14 @@ interface Seen {
   body: string | null;
 }
 
-async function connect(opts: { allowWrites?: boolean; answer?: (u: URL, init: RequestInit) => Response }) {
+async function connect(opts: { allowWrites?: boolean; answer?: (u: URL, init: RequestInit) => Response; audit?: (r: AuditRecord) => void }) {
   const seen: Seen[] = [];
   const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
     const url = new URL(String(input));
     seen.push({ method: init.method ?? "GET", url: url.pathname + url.search, auth: new Headers(init.headers).get("Authorization"), body: (init.body as string | undefined) ?? null });
     return opts.answer ? opts.answer(url, init) : new Response(JSON.stringify({ ok: true }), { status: 200 });
   }) as typeof fetch;
-  const server = createServer({ api: createApi({ baseUrl: "https://api.example/", apiKey: "qk_test_SECRET", fetch: fakeFetch }), allowWrites: opts.allowWrites });
+  const server = createServer({ api: createApi({ baseUrl: "https://api.example/", apiKey: "qk_test_SECRET", fetch: fakeFetch }), allowWrites: opts.allowWrites, keyHint: "qk_test_SECRET", ...(opts.audit ? { audit: opts.audit } : {}) });
   const [a, b] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(a), client.connect(b)]);
@@ -150,5 +151,56 @@ describe("resources", () => {
     const { client } = await connect({});
     const uris = (await client.listResources()).resources.map((r) => r.uri);
     for (const internal of ["architecture", "data-model", "vision", "plans"]) expect(uris.join(" ")).not.toContain(internal);
+  });
+});
+
+describe("the audit log", () => {
+  const records: AuditRecord[] = [];
+  const audit = (r: AuditRecord) => records.push(r);
+
+  it("records every tool call: the tool, the key's prefix, the arguments, the outcome, never the answer", async () => {
+    records.length = 0;
+    const { client } = await connect({ audit, answer: () => new Response(JSON.stringify({ external_id: "cus_1", name: "Ada" }), { status: 200 }) });
+    await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ event: "mcp.tool_call", tool: "get_customer", write: false, transport: "stdio", key: "qk_test_SECRET", args: { customer_external_id: "cus_1" }, ok: true, cut: false });
+    expect(Date.parse(records[0]?.ts ?? "")).not.toBeNaN();
+    expect(records[0]?.ms).toBeGreaterThanOrEqual(0);
+    expect(records[0]?.chars).toBeGreaterThan(0);
+    expect(JSON.stringify(records[0])).not.toContain("Ada");
+  });
+
+  it("records a failed call with the API's error key and status, not its message", async () => {
+    records.length = 0;
+    const { client } = await connect({ audit, answer: () => new Response(JSON.stringify({ error: { key: "customer.not_found", message: "no customer ada@example.com" } }), { status: 404 }) });
+    const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "ghost" } });
+    expect(r.isError).toBe(true);
+    expect(records[0]).toMatchObject({ ok: false, error: "customer.not_found", status: 404 });
+    expect(JSON.stringify(records[0])).not.toContain("ada@example.com");
+  });
+
+  it("marks a write and does not log what a write holds about a person", async () => {
+    records.length = 0;
+    const { client } = await connect({ audit, allowWrites: true });
+    await client.callTool({ name: "create_customer", arguments: { external_id: "cus_9", name: "Grace Hopper", email: "grace@example.com" } });
+    await client.callTool({ name: "ingest_usage_events", arguments: { events: [{ customer_external_id: "cus_9", meter_code: "m", quantity: "1", event_time: "2026-11-02T10:00:00Z" }] } });
+    expect(records.map((r) => [r.tool, r.write])).toEqual([["create_customer", true], ["ingest_usage_events", true]]);
+    expect(records[0]?.args).toEqual({ external_id: "cus_9", name: "[not logged]", email: "[not logged]" });
+    expect(records[1]?.args).toEqual({ events: { items: 1 } });
+    expect(JSON.stringify(records)).not.toMatch(/Grace|grace@/);
+  });
+
+  it("says when an answer was cut, and a call the model made wrongly is a record too", async () => {
+    records.length = 0;
+    const { client } = await connect({ audit, answer: () => new Response(JSON.stringify({ customers: ["x".repeat(MAX_REPLY + 10)] }), { status: 200 }) });
+    await client.callTool({ name: "list_customers", arguments: {} });
+    expect(records[0]).toMatchObject({ ok: true, cut: true });
+  });
+
+  it("is silent without a sink, and a sink that throws does not fail the call or run it twice", async () => {
+    expect((await (await connect({})).client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
+    const { client, seen } = await connect({ audit: () => { throw new Error("disk full"); } });
+    expect((await client.callTool({ name: "list_meters", arguments: {} })).isError).toBeFalsy();
+    expect(seen).toHaveLength(1);
   });
 });
