@@ -2483,6 +2483,8 @@ export interface PriceChange {
   notice_days: number;
   /** The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice) */
   effective_time: string;
+  /** The date the seller chose the new price to start from; null when each subscription moves on its next renewal */
+  effective_from: string | null;
   state: "open" | "withdrawn";
   /** The signed-in person's address, key:<id> for an API key, or the operator */
   created_by: string;
@@ -2903,8 +2905,10 @@ export interface SchedulePriceChangeRequest {
   from_version: number;
   /** The version they move to; 0 or absent is the latest published */
   to_version?: number;
-  /** Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+  /** Days before the new price starts that the customer must be told at the least: absent or 0 is the platform's default (30 until the operator changes it), otherwise at least 14. A customer in a country with a longer minimum (the operator's table) is told that much earlier, or skipped as `renews_soon`. */
   notice_days?: number;
+  /** The date the new price starts from. Each subscription then moves on its first period start on or after it (a monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next renewal. At least `notice_days` from now and at most two years. A run that continues an open price change must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`). */
+  effective_from?: string | null;
   /** Only count; change nothing and mail nobody */
   dry_run?: boolean;
 }

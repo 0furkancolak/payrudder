@@ -261,6 +261,22 @@
       "resume": "Fiyat değişikliklerini sürdür",
       "confirmPause": "Platformdaki tüm fiyat değişiklikleri duraklatılsın mı? Siz sürdürene kadar hiçbir satıcı yenisini planlayamaz veya yeniden deneyemez ve sıradaki bildirimler bekler.",
       "confirmResume": "Fiyat değişiklikleri sürdürülsün mü? Satıcılar yeniden planlayıp deneyebilir ve bekleyen bildirimler gönderilir."
+    },
+    "priceNotice": {
+      "title": "Fiyat değişikliği bildirimi",
+      "unverified": "Doğrulanmadı, hukuki tavsiye değildir",
+      "hint": "Bir satıcının fiyat değişikliği süre belirtmediğinde kullanılan bildirim süresi ve ülke başına en kısa süre. Bu satırlar hiçbir ülkenin kurallarına göre kontrol edilmedi: yazdığınız değerlerdir. Bir ülke tabanı yükseltebilir, platformun herkes için tuttuğu 14 günü asla düşüremez. Daha uzun alt sınırı olan bir ülkedeki müşteriye o kadar önce haber verilir ya da çok yakında yenilendiği için çalıştırmanın dışında bırakılır.",
+      "defaultDays": "Varsayılan bildirim süresi (gün)",
+      "defaultHint": "Fiyat değişikliği süre belirtmediğinde kullanılır. 14 ile 365 arası.",
+      "rules": "Ülke başına en kısa bildirim süresi",
+      "country": "Ülke (ISO kodu veya *)",
+      "days": "Gün",
+      "note": "Not (kaynak, tarih, kim kontrol etti)",
+      "remove": "Kaldır",
+      "add": "Ülke ekle",
+      "save": "Bildirim kurallarını kaydet",
+      "star": "* satırı kendi satırı olmayan her ülke için (ve ülkesi olmayan müşteri için) geçerlidir. Olmazsa platform 14 gün tutar.",
+      "updated": "Son kaydeden {who}, {date}."
     }
   },
   "tenant": {
@@ -876,7 +892,10 @@
           "tenantDefault": "Bu uygulamanın varsayılan dili",
           "show": "Postayı önizle",
           "subject": "Konu:"
-        }
+        },
+        "fromDate": "Başlangıç tarihi (isteğe bağlı)",
+        "fromDateHelp": "Boş bırakırsanız her abonelik bir sonraki yenilemesinde geçer. Tarih verirseniz her abonelik, bu tarihte veya sonrasındaki ilk yenilemesinde geçer: aylık plan hemen ilkinde, yıllık plan aylar sonra olabilir. Bildirim süresi kadar ileride, en fazla iki yıl.",
+        "startsFrom": "{date} tarihinden itibaren"
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
@@ -3139,7 +3158,8 @@
       "price_change": {
         "not_found": "Fiyat değişikliği bulunamadı.",
         "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun.",
-        "paused": "Fiyat değişiklikleri operatör tarafından duraklatıldı. Daha sonra tekrar deneyin."
+        "paused": "Fiyat değişiklikleri operatör tarafından duraklatıldı. Daha sonra tekrar deneyin.",
+        "date_differs": "Bu sürümler için açık bir fiyat değişikliği başka bir tarihte başlıyor. Yenisini yapmak için onu geri çekin."
       },
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",

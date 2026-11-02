@@ -261,6 +261,22 @@
       "resume": "Reanudar los cambios de precio",
       "confirmPause": "¿Pausar todos los cambios de precio de la plataforma? Ningún vendedor podrá programar ni reintentar uno hasta que reanudes, y los avisos ya en cola esperan.",
       "confirmResume": "¿Reanudar los cambios de precio? Los vendedores podrán volver a programar y reintentar, y los avisos que esperaban se enviarán."
+    },
+    "priceNotice": {
+      "title": "Aviso de cambios de precio",
+      "unverified": "Sin verificar, no es asesoría legal",
+      "hint": "El aviso que usa el cambio de precio de un vendedor cuando no indica ninguno, y el aviso mínimo por país. Nadie ha comprobado estas filas con las normas de ningún país: son lo que usted escribe. Un país puede subir el mínimo, nunca bajar los 14 días que la plataforma mantiene para todos. Un cliente de un país con un mínimo mayor recibe el aviso con esa antelación, o queda fuera de la ejecución por renovarse demasiado pronto.",
+      "defaultDays": "Aviso por defecto, en días",
+      "defaultHint": "Se usa cuando un cambio de precio no indica aviso. De 14 a 365.",
+      "rules": "Aviso mínimo por país",
+      "country": "País (código ISO o *)",
+      "days": "Días",
+      "note": "Nota (fuente, fecha, quién lo comprobó)",
+      "remove": "Quitar",
+      "add": "Añadir un país",
+      "save": "Guardar las reglas de aviso",
+      "star": "La fila * vale para cualquier país sin fila propia (y para un cliente sin país). Sin ella, la plataforma mantiene 14 días.",
+      "updated": "Guardado por última vez por {who} el {date}."
     }
   },
   "tenant": {
@@ -876,7 +892,10 @@
           "tenantDefault": "Idioma por defecto de esta aplicación",
           "show": "Ver el correo",
           "subject": "Asunto:"
-        }
+        },
+        "fromDate": "Desde el (opcional)",
+        "fromDateHelp": "Déjelo vacío para mover cada suscripción en su próxima renovación. Con una fecha, cada una pasa en su primera renovación en esa fecha o después: un plan mensual en la primera, un plan anual quizá meses después. Como mínimo el plazo de aviso, como máximo dos años.",
+        "startsFrom": "desde el {date}"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -3139,7 +3158,8 @@
       "price_change": {
         "not_found": "Cambio de precio no encontrado.",
         "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo.",
-        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde."
+        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde.",
+        "date_differs": "Un cambio de precio abierto para estas versiones empieza en otra fecha. Retírelo para hacer uno nuevo."
       },
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",

@@ -164,6 +164,28 @@ test.describe("packages", () => {
     expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, dry_run: false });
   });
 
+  test("a price change can start from a date: the date is sent as a day, and changing it throws the check away", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
+      if (c.path === "/v1/plans") return { body: { plans: [plan] } };
+      if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
+      if (c.method === "POST" && c.path === "/v1/plans/pro/price-changes") return { body: { scheduled: 1, scheduled_subscription_ids: ["s1"], skipped: [], to_version: 2, notice_days: 30, price_change_id: "", already_scheduled: 0 } };
+      if (c.method === "GET" && c.path === "/v1/price-changes") return { body: { price_changes: [] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await rowAction(page.getByRole("row", { name: /pro/ }), "Schedule a price change");
+    const sheet = page.getByTestId("price-change-sheet");
+    await sheet.getByTestId("pc-check-button").click();
+    await expect(sheet.getByTestId("pc-check")).toBeVisible();
+    expect(gw.called("POST", "/v1/plans/pro/price-changes")[0]?.body).toEqual({ from_version: 1, notice_days: 30, dry_run: true });
+    await sheet.getByTestId("pc-from-date").fill("2027-03-01");
+    await expect(sheet.getByTestId("pc-check")).toHaveCount(0);
+    await sheet.getByTestId("pc-check-button").click();
+    await expect(sheet.getByTestId("pc-check")).toBeVisible();
+    expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, effective_from: "2027-03-01T00:00:00Z", dry_run: true });
+  });
+
   test("the price changes made are listed with what became of each subscription; the skipped are tried again and what is waiting is withdrawn after asking", async ({ page }) => {
     const change = (id: string, extra: Record<string, unknown>): Record<string, unknown> => ({ id, plan_code: "pro", from_version: 1, to_version: 2, notice_days: 30, effective_time: "2026-12-05T10:00:00Z", state: "open", created_by: "boss@example.com",
       create_time: "2026-11-02T09:00:00Z", withdraw_time: null, withdrawn_by: "", scheduled: 3, applied: 0, withdrawn: 0, skipped: 2, ...extra });

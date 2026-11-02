@@ -50,6 +50,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("TenantStatusApproval", testTenantStatusApproval)
 	t.Run("TenantStatusMails", testTenantStatusMails)
 	t.Run("PriceChange", testPriceChange)
+	t.Run("PriceChangeDateAndNotice", testPriceChangeDateAndNotice)
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("SubscriptionQuantity", testSubscriptionQuantity)
 	t.Run("Coupons", testCoupons)

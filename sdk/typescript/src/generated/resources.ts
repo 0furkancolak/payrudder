@@ -1823,6 +1823,8 @@ export class PlansResource {
    *
    * For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
    * (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+   * With `effective_from` the subscription moves on its first period start on or after that date instead (the customer is still mailed when the run schedules it, so at
+   * least `notice_days` before). The notice is the longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
    * The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
    * `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
    * Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
