@@ -38,6 +38,9 @@ type Capabilities struct {
 	// When false (iyzico allows repeated refunds, the Paddle adapter sends no key, and neither documents a lookup by key), payments-worker never sends a refund
 	// again under a key it has already used: it answers from the ledger and payment_attempts, and parks a refund whose earlier outcome is unknown.
 	IdempotentRefunds bool
+	// NeedsBuyer: the provider vets the payer and refuses a payment without their name, phone, tax id and address (iyzico), so payments-worker reads the customer record
+	// for a charge or a checkout and passes it as the Buyer. A provider without it is not sent the customer's data.
+	NeedsBuyer bool
 	// Currencies the provider can charge in. Empty means any.
 	Currencies []string
 }
@@ -141,6 +144,8 @@ const (
 	KindCharge       NotificationKind = ""
 	KindRefund       NotificationKind = "refund"
 	KindSubscription NotificationKind = "subscription"
+	// KindPaymentMethod: a customer saved a payment method on a page made by SetupProvider.
+	KindPaymentMethod NotificationKind = "payment_method"
 	// KindIgnored is an event Payrudder has no use for (a transaction that was merely created, for example).
 	KindIgnored NotificationKind = "ignored"
 )
@@ -158,6 +163,8 @@ type Notification struct {
 	Currency    string
 	// Subscription is set for KindSubscription.
 	Subscription *SubscriptionEvent
+	// PaymentMethod is set for KindPaymentMethod.
+	PaymentMethod *SavedPaymentMethod
 	// OccurredAt is when the provider says the event happened; zero when it does not say.
 	OccurredAt time.Time
 }
@@ -165,6 +172,15 @@ type Notification struct {
 // ErrUnverified is returned by ConfirmNotification for a notification that does not come from the provider (a bad signature). It is
 // permanent: retrying the same body changes nothing.
 var ErrUnverified = errors.New("payments: notification could not be verified")
+
+// SavedPaymentMethod is a method a customer saved, as the provider's notification says it. Token is the string Charge takes as its payment method for it
+// ("cus_...:pm_..." at Stripe), so that setting it on the customer is all it takes to charge it.
+type SavedPaymentMethod struct {
+	CustomerRef string
+	Token       string
+	// PayrudderCustomerID and ExternalID are what the page was made for (SetupRequest); empty when the page was not made by Payrudder, and then nothing is set.
+	PayrudderCustomerID, ExternalID string
+}
 
 // SubscriptionEvent is a provider-side change to a subscription the provider runs.
 type SubscriptionEvent struct {

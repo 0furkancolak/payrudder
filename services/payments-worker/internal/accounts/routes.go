@@ -39,6 +39,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("PUT "+base+"/provider-accounts/{provider}", guard(h.put))
 	mux.HandleFunc("DELETE "+base+"/provider-accounts/{provider}", guard(h.delete))
 	mux.HandleFunc("POST "+base+"/provider-accounts/{provider}/default", guard(h.makeDefault))
+	mux.HandleFunc("POST "+base+"/provider-accounts/{provider}/webhook-endpoint", guard(h.registerWebhook))
 	mux.HandleFunc("GET "+base+"/go-live", guard(h.goLive))
 	mux.HandleFunc("GET "+base+"/provider-health", guard(h.health))
 	mux.HandleFunc("GET "+base+"/provider-account-events", guard(h.events))
@@ -116,6 +117,31 @@ func (h *Handler) makeDefault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// registerWebhook has the provider create the endpoint its notifications go to, at the address in the body, and stores the signing secret in the account. The
+// answer is the endpoint's id; the secret is never in it.
+func (h *Handler) registerWebhook(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	mode, ok := httpx.Environment(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		URL string `json:"url"`
+	}
+	if !httpx.DecodeBody(w, r, &in) {
+		return
+	}
+	id, err := command.RegisterWebhook(r.Context(), h.Command, t, r.PathValue("provider"), mode, in.URL, actor(r))
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"endpoint_id": id})
 }
 
 func (h *Handler) goLive(w http.ResponseWriter, r *http.Request) {

@@ -74,6 +74,17 @@ func TestPaymentMethodByEnvironment(t *testing.T) {
 	if err := ValidatePaymentMethod("sandbox", "tok_real_visa"); err == nil {
 		t.Fatal("sandbox accepted a non-scenario token")
 	}
+	// A payment provider's test-mode method (a saved Stripe card) can be held by a sandbox; a scenario that does not exist cannot, however it is spelled.
+	for _, ok := range []string{"pm_card_visa", "cus_NffrFeUfNV2Hib:pm_1Mr5jULkdIwHu7ix"} {
+		if err := ValidatePaymentMethod("sandbox", ok); err != nil {
+			t.Errorf("sandbox refused %q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"pm_sandbox_typo", "cus_1:pm_sandbox_success", "cus_1:pm_sandbox_nope", "pm_", "cus_1:", "cus_1:pm_a:pm_b", "pm_card visa"} {
+		if err := ValidatePaymentMethod("sandbox", bad); err == nil {
+			t.Errorf("sandbox accepted %q", bad)
+		}
+	}
 	if err := ValidatePaymentMethod("live", "pm_sandbox_success"); err == nil {
 		t.Fatal("live accepted a scenario token")
 	}

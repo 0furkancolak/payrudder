@@ -25,6 +25,8 @@ type ChargeRequest struct {
 	PaymentMethod  string `json:"payment_method"`
 	// InvoiceNumber is the number printed on the invoice, for a provider that asks the customer to quote it (a bank transfer). Not sent to mock-psp.
 	InvoiceNumber string `json:"-"`
+	// Buyer is the customer, for a provider that vets the payer (iyzico). Nil for a provider that does not ask. Not sent to mock-psp.
+	Buyer *Buyer `json:"-"`
 }
 
 // ChargeResult is a successful charge.
@@ -39,6 +41,10 @@ type RefundRequest struct {
 	ChargeID       string `json:"charge_id,omitempty"`
 	AmountMinor    int64  `json:"amount_minor"`
 	Currency       string `json:"currency"`
+	// ChargeAmountMinor and ChargedAt are the payment being refunded as the ledger holds it, zero when payments-worker does not know. A provider that can cancel a
+	// payment the day it was taken (no entry on the card statement) reads them: a refund of the whole payment on its day is a cancel. Not sent to mock-psp.
+	ChargeAmountMinor int64     `json:"-"`
+	ChargedAt         time.Time `json:"-"`
 }
 
 // RefundResult is a successful refund.
@@ -60,6 +66,8 @@ type StatusResult struct {
 	State       State
 	ChargeID    string
 	DeclineCode string
+	// Final is set with StateDeclined when the provider says the payment must not be tried again with this payment method (see DeclinedError.Final).
+	Final bool
 }
 
 // PaymentProvider is a payment service provider.
@@ -73,20 +81,30 @@ type PaymentProvider interface {
 }
 
 // DeclinedError is a permanent refusal (HTTP 402).
-type DeclinedError struct{ Code string }
+type DeclinedError struct {
+	Code string
+	// Final: the provider said the payment must not be tried again with this payment method (Stripe's advice_code "do_not_try_again"), so a retry is pointless
+	// and may count against the merchant with the card networks. Dunning then stops and the customer is asked for another method. False is not "retry": most
+	// declines carry no advice at all.
+	Final bool
+}
 
 func (e *DeclinedError) Error() string { return "payment declined: " + e.Code }
 
 // TransientError is a failure that may succeed when retried (5xx, connection reset).
 type TransientError struct {
 	Err error
-	// RetryAfter is how long the provider asked callers to wait before trying again (a Retry-After header); zero when it did not say. Nothing in Payrudder
-	// schedules by it yet: payments-worker's delay queues use their own backoff.
+	// RetryAfter is how long the provider asked callers to wait before trying again (a Retry-After header); zero when it did not say. The circuit breaker reads it,
+	// and so do payments-worker's delay queues (through RetryDelay): a command that failed with it is retried after the longer of its tier's delay and this, at most
+	// rabbitx.RetryCeiling.
 	RetryAfter time.Duration
 }
 
 func (e *TransientError) Error() string { return "transient payment provider error: " + e.Err.Error() }
 func (e *TransientError) Unwrap() error { return e.Err }
+
+// RetryDelay is RetryAfter, named for pkg/workerx, which asks any error for it without importing this package.
+func (e *TransientError) RetryDelay() time.Duration { return e.RetryAfter }
 
 // ErrTimeout means the provider did not answer in time: the charge may or may not have happened. Callers must not
 // retry blindly; they ask Status.

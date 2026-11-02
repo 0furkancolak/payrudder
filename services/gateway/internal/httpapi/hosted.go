@@ -138,7 +138,7 @@ func hostedDir(lang string) string {
 }
 
 // textSources are the maps of text the public pages merge, English first.
-var textSources = []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings, subscriptionStrings, withdrawStrings}
+var textSources = []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings, subscriptionStrings, withdrawStrings, declineStrings}
 
 // hostedTexts is the text of the public pages per language: English first, then the language's own over it, so a text a translation lacks reads in English.
 var hostedTexts = func() map[string]map[string]string {

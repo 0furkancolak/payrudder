@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,14 +38,19 @@ import (
 // Name is the registry name.
 const Name = "iyzico"
 
+// installmentCounts are the instalment counts iyzico's payment pages list (docs.iyzico.com/en/payment-methods/api/non-3ds/non-3ds-implementation/create-payment,
+// read 2026-11-02; the 3-D Secure page also lists 4).
+var installmentCounts = []int{1, 2, 3, 6, 9, 12}
+
 // Endpoints.
 const (
 	LiveURL    = "https://api.iyzipay.com"
 	SandboxURL = "https://sandbox-api.iyzipay.com"
 )
 
-// Buyer is what iyzico wants to know about the payer. iyzico requires these fields on every payment, also on a stored-card one.
-// Payrudder does not hold them per customer yet, so the account's defaults are sent; real values per customer are a later addition.
+// Buyer is what iyzico wants to know about the payer. iyzico requires these fields on every payment, also on a stored-card one. A request carries the customer's own
+// (payments.Buyer, built from the customer record); these are the account's explicit defaults, used only for a field the customer lacks. A seller who configures none gets
+// a payment refused with the fields named (payments.BuyerIncompleteError) rather than a stranger's identity on it.
 type Buyer struct {
 	Name           string `json:"name"`
 	Surname        string `json:"surname"`
@@ -74,6 +80,10 @@ type Settings struct {
 	// RequireWebhookSignature refuses a notification that carries no X-IYZ-SIGNATURE-V3 header. Set it once iyzico has enabled the signature on the account
 	// (it is a feature to ask for: entegrasyon@iyzico.com, docs.iyzico.com/en/advanced/webhook, read 2026-11-02). A header that is there is always checked.
 	RequireWebhookSignature bool `json:"require_webhook_signature,omitempty"`
+	// EnabledInstallments are the instalment counts the payer may choose from on the checkout form (enabledInstallments of cf-initialize); empty is a single payment.
+	// The instalment interest is the account's own (iyzico panel, "Installment and Commission Management"), so the payer may pay more than the invoice and the
+	// invoice is still paid in full. Values: 1, 2, 3, 6, 9 and 12, the counts of the payment pages.
+	EnabledInstallments []int `json:"enabled_installments,omitempty"`
 }
 
 // Client is an iyzico account.
@@ -81,6 +91,7 @@ type Client struct {
 	s      Settings
 	http   *http.Client
 	random func() string
+	now    func() time.Time
 }
 
 // New returns a client with the given per-request timeout (default 10 s).
@@ -95,10 +106,15 @@ func New(s Settings, timeout time.Duration) (*Client, error) {
 		return nil, fmt.Errorf("iyzico: base_url: %w", err)
 	}
 	s.BaseURL = strings.TrimRight(s.BaseURL, "/")
+	for _, n := range s.EnabledInstallments {
+		if !slices.Contains(installmentCounts, n) {
+			return nil, fmt.Errorf("iyzico: enabled_installments: %d is not one of %v", n, installmentCounts)
+		}
+	}
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
-	return &Client{s: s, http: &http.Client{Timeout: timeout}, random: randomKey}, nil
+	return &Client{s: s, http: &http.Client{Timeout: timeout}, random: randomKey, now: time.Now}, nil
 }
 
 // Factory builds a Client from stored settings, for payments.Registry.
@@ -140,7 +156,7 @@ func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 // Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists. Neither charges nor
 // refunds are idempotent (a repeated refund is a second refund, docs/iyzico-compatibility-matrix.md), so payments-worker guards both itself.
 func Caps() payments.Capabilities {
-	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
+	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, NeedsBuyer: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
 }
 
 func randomKey() string {
@@ -198,7 +214,14 @@ type response struct {
 	FraudStatus *int   `json:"fraudStatus"`
 	Retryable   bool   `json:"retryable"`
 	RefundRef   string `json:"refundHostReference"`
-	Price       any    `json:"price"`
+	CancelRef   string `json:"cancelHostReference"`
+	Price       text   `json:"price"`
+	PaidPrice   text   `json:"paidPrice"`
+	Currency    string `json:"currency"`
+	// MdStatus is the result of the 3-D Secure authentication on a 3-D Secure answer: 1 successful, 0 and 2 to 8 failed.
+	MdStatus text `json:"mdStatus"`
+	// ThreeDSHTML is the base64 page of an initialised 3-D Secure payment.
+	ThreeDSHTML string `json:"threeDSHtmlContent"`
 }
 
 func (r response) ok() bool { return strings.EqualFold(r.Status, "success") }
@@ -245,14 +268,19 @@ func (c *Client) do(ctx context.Context, path string, in any) (response, error) 
 	return out, err
 }
 
-// doInto signs and sends a request and decodes the answer into out.
+// doInto signs and sends a POST and decodes the answer into out.
 func (c *Client) doInto(ctx context.Context, path string, in, out any) error {
+	return c.doMethod(ctx, http.MethodPost, path, in, out)
+}
+
+// doMethod signs and sends a request and decodes the answer into out. The body is signed like any other (randomKey + path + body), also on a DELETE (card storage).
+func (c *Client) doMethod(ctx context.Context, method, path string, in, out any) error {
 	body, err := json.Marshal(in)
 	if err != nil {
 		return err
 	}
 	rnd := c.random()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.s.BaseURL+path, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, method, c.s.BaseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -306,8 +334,8 @@ type Error struct{ Code, Message string }
 func (e *Error) Error() string { return "iyzico refused the request (" + e.Code + "): " + e.Message }
 
 // issuerDeclines are the card-issuer error groups iyzico documents (docs.iyzico.com/en/add-ons/error-codes, read 2026-11-02, "Bank Error Codes"; the page says it
-// lists the commonly met ones) in Payrudder's decline vocabulary, the snake_case one mock-psp and the Stripe adapter use. A group or code that is not here is
-// passed on as iyzico spells it.
+// lists the commonly met ones) in Payrudder's decline vocabulary, the snake_case one mock-psp and the Stripe adapter use, with Stripe's word where it has one. A
+// group or code that is not here is passed on as iyzico spells it. The payer-facing sentence of each word is in the gateway's hosted pages (six languages).
 var issuerDeclines = []struct{ group, code, decline string }{
 	{"DO_NOT_HONOUR", "10005", "do_not_honor"},
 	{"FRAUD_SUSPECT", "10034", "fraudulent"},
@@ -315,10 +343,38 @@ var issuerDeclines = []struct{ group, code, decline string }{
 	{"LOST_CARD", "10043", "lost_card"},
 	{"NOT_SUFFICIENT_FUNDS", "10051", "insufficient_funds"},
 	{"EXPIRED_CARD", "10054", "expired_card"},
+	{"NOT_PERMITTED_TO_CARDHOLDER", "10057", "restricted_card"},
 	{"INVALID_CVC2", "10084", "incorrect_cvc"},
+	{"RESTRICTED_BY_LAW", "10093", "restricted_card"}, // "closed for online shopping": the payer asks the bank to open it
+	{"CARD_NOT_PERMITTED", "10201", "restricted_card"},
+	{"REFER_TO_CARD_ISSUER", "10207", "refer_to_issuer"},
+	{"BLOCKED_CARD", "10209", "blocked_card"},
 	{"INVALID_CARD_NUMBER", "10215", "incorrect_number"},
 	{"DEBIT_CARDS_REQUIRES_3DS", "10217", "authentication_required"}, // the customer must come back and authenticate, as with Stripe's code of the same name
-	{"", "6001", "fraudulent"},                                       // validation error 6001: "Payment request has not passed Fraud check"
+	{"DECLINED", "10220", "generic_decline"},
+	{"EXCEEDS_WITHDRAWAL_AMOUNT_LIMIT", "10224", "card_velocity_exceeded"},
+	{"RESTRICTED_CARD", "10225", "restricted_card"},
+	{"INVALID_EXPIRE_YEAR_MONTH", "10229", "invalid_expiry"},
+	{"LOCAL_DECLINE", "10243", "generic_decline"},
+	{"REMOTE_DECLINE", "10244", "generic_decline"},
+	{"EXCEEDED_TRANSACTION_AMOUNT", "10248", "amount_too_large"},
+	{"", "3005", "payment_method_not_found"}, // card storage: "cardUserKey is not found"
+	{"", "3006", "payment_method_not_found"}, // card storage: "cardToken is not found": the stored card is gone, the payer must give another
+	{"", "6001", "fraudulent"},               // validation error 6001: "Payment request has not passed Fraud check"
+}
+
+// DeclineWords are the decline codes of Payrudder's vocabulary this adapter produces from iyzico's answers (the ones of issuerDeclines, and "authentication_failed" for a
+// 3-D Secure authentication the bank refused), sorted. A decline that is not one of these carries iyzico's own error group or code. The hosted pages explain each of
+// them to the payer in six languages, and a test there fails for a word without a sentence.
+func DeclineWords() []string {
+	words := []string{"authentication_failed"}
+	for _, d := range issuerDeclines {
+		if !slices.Contains(words, d.decline) {
+			words = append(words, d.decline)
+		}
+	}
+	slices.Sort(words)
+	return words
 }
 
 // tryAgain are the groups and codes iyzico documents as a failure to try again later: the bank or a system could not answer ("Error occurred at the bank,
@@ -347,6 +403,9 @@ func (c *Client) classify(r response) error {
 	}
 	if tryAgain[code] || tryAgain[r.ErrorGroup] {
 		return transient()
+	}
+	if field, ok := buyerFieldOfCode(code); ok {
+		return &payments.BuyerIncompleteError{Provider: Name, Missing: []string{field}}
 	}
 	if requestError(code) {
 		return &Error{Code: code, Message: r.ErrorMessage}
@@ -379,17 +438,15 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 	if err != nil {
 		return payments.ChargeResult{}, err
 	}
-	b := c.s.Buyer
-	addr := map[string]string{"address": b.Address, "zipCode": b.ZipCode, "contactName": b.Name + " " + b.Surname, "city": b.City, "country": b.Country}
+	buyer, addr, err := c.buyerObjects(r.Buyer, r.InvoiceID)
+	if err != nil {
+		return payments.ChargeResult{}, err
+	}
 	req := map[string]any{
 		"locale": "en", "conversationId": r.IdempotencyKey, "price": amount, "paidPrice": amount, "currency": r.Currency,
 		"installment": 1, "basketId": r.InvoiceID, "paymentChannel": "WEB", "paymentGroup": "SUBSCRIPTION",
 		"paymentCard": map[string]string{"cardUserKey": userKey, "cardToken": token},
-		"buyer": map[string]string{
-			"id": r.InvoiceID, "name": b.Name, "surname": b.Surname, "identityNumber": b.IdentityNumber, "email": b.Email,
-			"gsmNumber": b.GSMNumber, "registrationAddress": b.Address, "city": b.City, "country": b.Country, "zipCode": b.ZipCode, "ip": b.IP,
-		},
-		"shippingAddress": addr, "billingAddress": addr,
+		"buyer":       buyer, "shippingAddress": addr, "billingAddress": addr,
 		"basketItems": []map[string]string{{"id": r.InvoiceID, "name": "Invoice " + r.InvoiceID, "category1": "Subscription", "itemType": "VIRTUAL", "price": amount}},
 	}
 	out, err := c.do(ctx, "/payment/auth", req)
@@ -409,31 +466,6 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 		return payments.ChargeResult{}, &payments.DeclinedError{Code: "fraudulent"}
 	}
 	return payments.ChargeResult{ChargeID: out.PaymentID}, nil
-}
-
-// Refund implements payments.PaymentProvider: the whole amount given, against the payment (ChargeID).
-func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments.RefundResult, error) {
-	if r.ChargeID == "" {
-		return payments.RefundResult{}, errors.New("iyzico: a refund needs the charge id (the paymentId)")
-	}
-	amount, err := price(r.AmountMinor, r.Currency)
-	if err != nil {
-		return payments.RefundResult{}, err
-	}
-	out, err := c.do(ctx, "/v2/payment/refund", map[string]any{
-		"locale": "en", "conversationId": r.IdempotencyKey, "paymentId": r.ChargeID, "price": amount, "currency": r.Currency, "ip": c.s.Buyer.IP,
-	})
-	if err != nil {
-		return payments.RefundResult{}, err
-	}
-	if !out.ok() {
-		return payments.RefundResult{}, c.classify(out)
-	}
-	id := out.RefundRef
-	if id == "" {
-		id = out.PaymentID
-	}
-	return payments.RefundResult{RefundID: id}, nil
 }
 
 // Status implements payments.PaymentProvider: did the charge made under this idempotency key (the conversationId) go through?

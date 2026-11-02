@@ -106,6 +106,9 @@ type Config struct {
 	// HealthInterval is the pause between the checks of every account's health (5m; 0 turns the checks off) and HealthTimeout the limit of one (10s).
 	HealthInterval time.Duration `env:"PAYMENTS_HEALTH_INTERVAL"`
 	HealthTimeout  time.Duration `env:"PAYMENTS_HEALTH_TIMEOUT"`
+	// RetryCeiling bounds how long a provider's Retry-After holds a command's retry back (docs/04-messaging.md): the retry waits the longer of its tier's delay and the
+	// Retry-After, at most this. Default (not agreed): 10 minutes, which is also the longest delay queue, so more changes nothing.
+	RetryCeiling time.Duration `env:"PAYMENTS_RETRY_CEILING"`
 }
 
 func (c *Config) Validate() error {
@@ -128,6 +131,9 @@ func (c *Config) Validate() error {
 	}
 	if c.HealthInterval != 0 && c.HealthInterval < 30*time.Second || c.HealthTimeout < time.Second {
 		errs = append(errs, errors.New("PAYMENTS_HEALTH_INTERVAL must be 0 (off) or at least 30s and PAYMENTS_HEALTH_TIMEOUT at least 1s"))
+	}
+	if c.RetryCeiling < rabbitx.Tiers[len(rabbitx.Tiers)-1].Delay {
+		errs = append(errs, fmt.Errorf("PAYMENTS_RETRY_CEILING must be at least %s, the longest ordinary retry delay", rabbitx.Tiers[len(rabbitx.Tiers)-1].Delay))
 	}
 	if c.SettlementLag < 24*time.Hour {
 		errs = append(errs, errors.New("PAYMENTS_SETTLEMENT_LAG must be at least 24h"))
@@ -191,6 +197,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		log.Info("cells mode", "cells", routers.System.CellNames())
 	}
 
+	rabbitx.RetryCeiling = cfg.RetryCeiling
 	h := newHandler(cfg, db, log)
 	dir, closeDir, err := tenantDirectory(cfg)
 	if err != nil {
@@ -334,6 +341,7 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 			return nil, nil, err
 		}
 		plansSync = webhook.PlansClient{Client: plansv1.NewPlansServiceClient(conn), Admin: plansv1.NewAdminServiceClient(conn)}
+		h.Customers = plansSync // a charge to a provider that vets the payer carries the customer's own details
 	}
 	var billing webhook.BillingAPI
 	var transferBilling transfercommand.Billing

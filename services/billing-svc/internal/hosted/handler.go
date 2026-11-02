@@ -450,6 +450,7 @@ func paymentContext(tenantID uuid.UUID, p *query.Page) *billingv1.HostedPaymentC
 	return &billingv1.HostedPaymentContext{
 		TenantId: tenantID.String(), InvoiceId: r.ID.String(), SagaId: p.SagaID.String(), Number: r.Number, AmountMinor: r.TotalMinor, Currency: r.Currency, Provider: p.Provider,
 		Country: p.Country, CustomerEmail: p.Snapshot.CustomerEmail, CustomerName: p.CustomerName, Description: desc, Environment: p.Environment,
+		CustomerExternalId: p.Snapshot.CustomerExternalID,
 	}
 }
 

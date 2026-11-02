@@ -183,7 +183,7 @@ func TestStoresStayInTheirTenantsPlace(t *testing.T) {
 		if err := objects.Put(ctx, tenant, "paddle", "live", "price", "plan:pro", fmt.Sprintf("pri_%d", i)); err != nil {
 			t.Fatal(err)
 		}
-		if err := subs.Upsert(ctx, tenant, "paddle", "live", "sub_1", nil, fmt.Sprintf("status-%d", i), nil, now); err != nil {
+		if err := subs.Upsert(ctx, tenant, "paddle", "live", "sub_1", nil, fmt.Sprintf("status-%d", i), nil, nil, now); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := attempts.Start(ctx, uuid.New(), tenant, invoice, "charge", "live", "iyzico", invoice.String()+":charge:0", map[string]any{"amount_minor": 100 + i, "currency": "TRY"}); err != nil {

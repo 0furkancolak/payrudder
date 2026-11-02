@@ -96,6 +96,184 @@ func TestTurkishChecksumsAgreeWithAnIndependentImplementation(t *testing.T) {
 	}
 }
 
+// The vectors of the VAT checksums were produced and judged by python-stdnum (stdnum.eu.vat, which routes to the module of each country), the same implementation as
+// above: the valid ones are the examples of its documentation or numbers found by searching and judged valid by it, the invalid ones are those of its documentation or a
+// valid one with one character changed that it judges invalid. Every one of them has the shape of a VAT id, so a false is the checksum's doing. They are the vectors of
+// euVatVectors in web/admin/src/shared/lib/taxid.test.ts. A country with no checksum here (SK, XI) has no vector; see euVATWithoutChecksum.
+var euVATVectors = []struct {
+	id string
+	ok bool
+}{
+	{"ATU13585627", true},
+	{"ATU91621601", true},
+	{"ATU13585628", false},
+	{"ATU13585637", false},
+	{"ATU91621602", false},
+	{"BE0428759497", true},
+	{"BE0403019261", true},
+	{"BE0428759498", false},
+	{"BE0428759407", false},
+	{"BE0403019262", false},
+	{"BG175074752", true},
+	{"BG8973928695", true},
+	{"BG175074753", false},
+	{"BG175074762", false},
+	{"CY10259033P", true},
+	{"CY95388011J", true},
+	{"CY10259033Q", false},
+	{"CY10259034P", false},
+	{"CY95388011K", false},
+	{"CZ25123891", true},
+	{"CZ640903926", true},
+	{"CZ25123892", false},
+	{"CZ25123801", false},
+	{"CZ640903927", false},
+	{"DE136695976", true},
+	{"DE188007596", true},
+	{"DE136695978", false},
+	{"DE136695977", false},
+	{"DE136695986", false},
+	{"DE188007597", false},
+	{"DK13585628", true},
+	{"DK16913898", true},
+	{"DK13585629", false},
+	{"DK13585638", false},
+	{"DK16913899", false},
+	{"EE100594102", true},
+	{"EE100931558", true},
+	{"EE100594103", false},
+	{"EE100594112", false},
+	{"EE100931559", false},
+	{"EL094259216", true},
+	{"EL498861492", true},
+	{"EL123456781", false},
+	{"EL094259217", false},
+	{"EL094259226", false},
+	{"EL498861493", false},
+	{"ESB64717838", true},
+	{"ES54362315K", true},
+	{"ESX5253868R", true},
+	{"ESM1234567L", true},
+	{"ESB64717839", false},
+	{"ESB64717848", false},
+	{"ES54362315L", false},
+	{"ESX5253868S", false},
+	{"ESM1234567M", false},
+	{"FI20774740", true},
+	{"FI45170724", true},
+	{"FI20774741", false},
+	{"FI20774750", false},
+	{"FI45170725", false},
+	{"FR23334175221", true},
+	{"FR40303265045", true},
+	{"FRK7399859412", true},
+	{"FR4Z123456782", true},
+	{"FR84323140391", false},
+	{"FRIO334175221", false},
+	{"FR23334175222", false},
+	{"FR23334175231", false},
+	{"FR40303265046", false},
+	{"FRK7399859413", false},
+	{"HR33392005961", true},
+	{"HR58626137648", true},
+	{"HR33392005962", false},
+	{"HR33392005971", false},
+	{"HR58626137649", false},
+	{"HU12892312", true},
+	{"HU04412427", true},
+	{"HU12892313", false},
+	{"HU12892322", false},
+	{"HU04412428", false},
+	{"IE6433435F", true},
+	{"IE6433435OA", true},
+	{"IE8D79739I", true},
+	{"IE6433435G", false},
+	{"IE6433436F", false},
+	{"IE6433435OB", false},
+	{"IE8D79739J", false},
+	{"IT00743110157", true},
+	{"IT59576010843", true},
+	{"IT00743110158", false},
+	{"IT00743110167", false},
+	{"IT59576010844", false},
+	{"LT119511515", true},
+	{"LT100001919017", true},
+	{"LT100004801610", true},
+	{"LT119511516", false},
+	{"LT119511525", false},
+	{"LT100001919018", false},
+	{"LT100004801611", false},
+	{"LU15027442", true},
+	{"LU82289501", true},
+	{"LU15027443", false},
+	{"LU15027452", false},
+	{"LU82289502", false},
+	{"LV40003521600", true},
+	{"LV22069520547", true},
+	{"LV40003521601", false},
+	{"LV40003521610", false},
+	{"MT11679112", true},
+	{"MT60282319", true},
+	{"MT11679113", false},
+	{"MT11679122", false},
+	{"MT60282310", false},
+	{"NL004495445B01", true},
+	{"NL002455799B11", true},
+	{"NL123456789B90", false},
+	{"NL004495545B01", false},
+	{"NL002455899B11", false},
+	{"PL8567346215", true},
+	{"PL6161379700", true},
+	{"PL8567346216", false},
+	{"PL8567346225", false},
+	{"PL6161379701", false},
+	{"PT501964843", true},
+	{"PT204433568", true},
+	{"PT501964844", false},
+	{"PT501964853", false},
+	{"PT204433569", false},
+	{"RO18547290", true},
+	{"RO70138", true},
+	{"RO18547291", false},
+	{"RO18547200", false},
+	{"RO70139", false},
+	{"SE123456789701", true},
+	{"SE927293143801", true},
+	{"SE123456789101", false},
+	{"SE123456789801", false},
+	{"SE123456889701", false},
+	{"SE927293143901", false},
+	{"SI50223054", true},
+	{"SI96862335", true},
+	{"SI50223055", false},
+	{"SI50223064", false},
+	{"SI96862336", false},
+}
+
+// Numbers python-stdnum judges invalid (the second of each pair) that this package accepts, because the branch they belong to is shape-only: the two countries without an
+// algorithm here (SK, XI) and the numbers made of a person's birth date (CZ with 9 or 10 digits, BG with 10, the personal codes of LV). A warning on a good number is worse
+// than none on a bad one, so what is not verified is not guessed at; the first of each pair is judged valid by stdnum.
+var euVATWithoutChecksum = []string{"SK2022749619", "SK2022749610", "XI123456782", "XI123456783", "CZ7103192745", "CZ7103192746", "BG7523169263", "BG7523169264", "LV16117519997", "LV16137519997"}
+
+func TestEUVATChecksumsAgreeWithAnIndependentImplementation(t *testing.T) {
+	for _, c := range euVATVectors {
+		if !ValidEUVATShape(c.id) {
+			t.Errorf("%q must have the shape of a VAT id: a vector tests the checksum", c.id)
+		}
+		if got := ValidEUVAT(c.id); got != c.ok {
+			t.Errorf("ValidEUVAT(%q) = %v, want %v", c.id, got, c.ok)
+		}
+	}
+	for _, id := range euVATWithoutChecksum {
+		if !ValidEUVAT(id) {
+			t.Errorf("%q has no checksum here and the shape of a VAT id, so it is accepted", id)
+		}
+	}
+	if !ValidEUVAT("de 136.695-976") || ValidEUVAT("DE 136 695 978") || ValidEUVAT("DE12345") || ValidEUVAT("US136695976") {
+		t.Error("spaces and dots do not matter, and a wrong shape or checksum is refused")
+	}
+}
+
 func TestNormalizeKeepsWhatPeopleTypeForReadability(t *testing.T) {
 	for in, want := range map[string]string{"de 136.695-976": "DE136695976", " 10000000146 ": "10000000146", "tr": "TR"} {
 		if got := Normalize(in); got != want {
@@ -134,6 +312,9 @@ func TestDetectAndValid(t *testing.T) {
 	if _, ok := Detect("12345678901"); ok {
 		t.Error("a number that passes no checksum is not guessed at")
 	}
+	if _, ok := Detect("DE136695978"); ok || Valid(EUVAT, "DE136695978") {
+		t.Error("a VAT id with a wrong check digit is not recognised")
+	}
 	if Valid("passport", "X") || Valid(TCKN, "1234567890") {
 		t.Error("an unknown kind is never valid, and a VKN is not a TCKN")
 	}
@@ -162,6 +343,11 @@ func TestCheckIsAHintNeverARefusal(t *testing.T) {
 		{"DE 136 695 976", "de", "business", HintNone},
 		{"DE12", "DE", "business", HintEUVAT},
 		{"GR", "GR", "business", HintEUVAT},
+		{"DE136695978", "DE", "business", HintEUVAT},
+		{"FR84323140391", "FR", "business", HintEUVAT},
+		{"EL094259216", "GR", "business", HintNone},
+		{"SK2022749610", "SK", "business", HintNone},
+		{"DE136695978", "DE", "individual", HintNone},
 	} {
 		if got := Check(c.id, c.country, c.kind); got != c.want {
 			t.Errorf("Check(%q, %q, %q) = %q, want %q", c.id, c.country, c.kind, got, c.want)
@@ -170,7 +356,7 @@ func TestCheckIsAHintNeverARefusal(t *testing.T) {
 }
 
 func TestRecognised(t *testing.T) {
-	for id, want := range map[string]bool{"10000000146": true, "1234567890": true, "DE136695976": true, "12345": false, "": false, "12345678901": false} {
+	for id, want := range map[string]bool{"10000000146": true, "1234567890": true, "DE136695976": true, "DE136695978": false, "12345": false, "": false, "12345678901": false} {
 		if got := Recognised(id); got != want {
 			t.Errorf("Recognised(%q) = %v, want %v", id, got, want)
 		}

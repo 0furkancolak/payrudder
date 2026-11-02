@@ -302,6 +302,8 @@ func (f *fakeWorker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"rows": f.rows})
 	case strings.HasSuffix(r.URL.Path, "/invoice-methods"):
 		_ = json.NewEncoder(w).Encode(map[string]any{"methods": f.methods})
+	case strings.HasSuffix(r.URL.Path, "/invoice-payments/return"):
+		_ = json.NewEncoder(w).Encode(map[string]any{"state": "paid"})
 	case strings.HasSuffix(r.URL.Path, "/invoice-payments"):
 		if f.payCode != 0 {
 			w.WriteHeader(f.payCode)

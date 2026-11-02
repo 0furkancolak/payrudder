@@ -52,6 +52,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation"
 	reconciliationcommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/command"
 	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/returns"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions"
 	subscriptionscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/command"
@@ -106,6 +107,8 @@ type PlansAPI interface {
 	PreviewRouting(ctx context.Context, tenant uuid.UUID, country, currency string) (string, error)
 	// SetBankTransfer replaces the bank details printed on the tenant's invoices; nil clears them.
 	SetBankTransfer(ctx context.Context, tenant uuid.UUID, d *plansv1.BankTransferDetails) error
+	// SetCustomerPaymentMethod sets the payment method the customer's invoices are charged with: what a customer saved at a provider.
+	SetCustomerPaymentMethod(ctx context.Context, tenant uuid.UUID, externalID, method string) error
 }
 
 // RouteRegistrar adds routes to the server's mux, each behind the operator check.
@@ -141,7 +144,7 @@ func (s *Server) Handler() http.Handler {
 
 // modules are the operator endpoints, one module each, and the modules the caller added.
 func (s *Server) modules() []RouteRegistrar {
-	invoiceQuery := invoicepaymentsquery.Deps{Accounts: s.Accounts, Resolver: s.Resolver, Plans: s.Plans, Log: s.Log}
+	invoiceQuery := invoicepaymentsquery.Deps{Accounts: s.Accounts, Resolver: s.Resolver, Plans: s.Plans, Customers: s.Plans, Log: s.Log}
 	subscriptionQuery := subscriptionsquery.Deps{Plans: s.Plans, Objects: s.Objects, Subscriptions: s.Subscriptions, Log: s.Log}
 	mods := []RouteRegistrar{
 		&accounts.Handler{Log: s.Log,
@@ -152,7 +155,8 @@ func (s *Server) modules() []RouteRegistrar {
 		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
-			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Log: s.Log}},
+			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Customers: s.Plans, Log: s.Log}},
+		&returns.Handler{Log: s.Log, Deps: returns.Deps{Attempts: s.Attempts, Ledger: s.Ledger, Resolver: s.Resolver, Billing: s.Billing, Log: s.Log}},
 		&migrations.Handler{Log: s.Log, Deps: s.migrationDeps()},
 		&catalogue.Handler{Log: s.Log, Resolver: s.Resolver, Deps: cataloguecommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
 		&customers.Handler{Log: s.Log, Resolver: s.Resolver, Deps: customerscommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
@@ -382,6 +386,11 @@ func (d *delivery) apply(conf payments.Notification) bool {
 			d.retry(d.tenant, err)
 			return false
 		}
+	case payments.KindPaymentMethod:
+		if err := d.s.recordPaymentMethod(d.r.Context(), d.tenant, d.name, d.env, conf); err != nil {
+			d.retry(d.tenant, err)
+			return false
+		}
 	default:
 		if err := d.recordCharge(conf); err != nil {
 			d.retry(d.tenant, err)
@@ -470,6 +479,29 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 	return entry, nil
 }
 
+// recordPaymentMethod keeps what a customer saved at the provider: the provider's customer is remembered (the object `cus:{customer id}`, as when the page was made) and
+// the method becomes the one the customer's invoices are charged with, as if the tenant had set it. A failure is returned so that the provider sends the notification
+// again; with no plans-svc there is nowhere to set it, which is logged and not retried.
+func (s *Server) recordPaymentMethod(ctx context.Context, tenant uuid.UUID, provider, env string, n payments.Notification) error {
+	pm := n.PaymentMethod
+	if pm == nil || pm.ExternalID == "" || pm.Token == "" {
+		return errors.New("payment method notification without a customer or a method")
+	}
+	if pm.PayrudderCustomerID != "" && pm.CustomerRef != "" {
+		if err := s.Objects.Put(ctx, tenant, provider, env, "customer", "cus:"+pm.PayrudderCustomerID, pm.CustomerRef); err != nil {
+			return err
+		}
+	}
+	if s.Plans == nil {
+		s.Log.WarnContext(ctx, "payment method saved but plans-svc is not configured", "provider", provider, "tenant", tenant)
+		return nil
+	}
+	if err := s.Plans.SetCustomerPaymentMethod(ctx, tenant, pm.ExternalID, pm.Token); err != nil {
+		return fmt.Errorf("set the payment method with plans-svc: %w", err)
+	}
+	return nil
+}
+
 // subscriptionEvent is what a provider says about a subscription it runs, and whose account it is.
 type subscriptionEvent struct {
 	tenant   uuid.UUID
@@ -511,7 +543,7 @@ func (s *Server) completeMigration(ctx context.Context, e subscriptionEvent, lin
 	if id, err := uuid.Parse(done.GetSubscription().GetId()); err == nil {
 		linked = &id
 	}
-	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.sub.ScheduledChange, e.occurred); err != nil {
 		return err
 	}
 	return migrationscommand.ReleaseSource(ctx, s.migrationDeps(), e.tenant, e.env, done)
@@ -519,7 +551,7 @@ func (s *Server) completeMigration(ctx context.Context, e subscriptionEvent, lin
 
 // followSubscription stores the provider's view of a subscription and tells plans-svc, which links it to ours and follows its status.
 func (s *Server) followSubscription(ctx context.Context, e subscriptionEvent, linked *uuid.UUID, owner string) error {
-	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.sub.ScheduledChange, e.occurred); err != nil {
 		return err
 	}
 	if s.Plans == nil {

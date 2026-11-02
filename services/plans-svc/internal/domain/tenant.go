@@ -157,7 +157,12 @@ var SandboxPaymentMethods = []string{
 	"pm_sandbox_timeout_not_committed",
 }
 
-// ValidatePaymentMethod enforces scenario tokens in sandbox and keeps them out of live. Empty is allowed.
+// providerToken is a payment method of a payment provider's test mode, in the shape Stripe's adapter charges: "pm_..." or "cus_...:pm_...". A sandbox that is connected
+// to a provider's test mode (phase 54, plan 08) charges it there; a sandbox that is not sends it to the simulator, which cannot play it. It is what a customer's saved
+// card becomes (docs/stripe-compatibility-matrix.md), so the sandbox must be able to hold it.
+var providerToken = regexp.MustCompile(`^(cus_[A-Za-z0-9_]+:)?pm_[A-Za-z0-9_]+$`)
+
+// ValidatePaymentMethod enforces scenario tokens (and a provider's test-mode token) in sandbox and keeps the scenarios out of live. Empty is allowed.
 func ValidatePaymentMethod(environment, pm string) error {
 	if pm == "" {
 		return nil
@@ -170,7 +175,11 @@ func ValidatePaymentMethod(environment, pm string) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("sandbox tenants accept only %s", strings.Join(SandboxPaymentMethods, ", "))
+		// A scenario name is never a provider's token, whatever it looks like: an unknown one (pm_sandbox_typo) stays refused.
+		if !strings.Contains(pm, "pm_sandbox_") && providerToken.MatchString(pm) {
+			return nil
+		}
+		return fmt.Errorf("sandbox tenants accept only %s, or a payment provider's test-mode payment method (pm_... or cus_...:pm_...)", strings.Join(SandboxPaymentMethods, ", "))
 	default:
 		if isScenario {
 			return fmt.Errorf("pm_sandbox_* tokens are only valid in sandbox")

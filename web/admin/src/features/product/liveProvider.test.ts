@@ -68,6 +68,12 @@ describe("the Stripe form", () => {
     expect(PROVIDER_FIELDS.stripe.every((f) => f.secret)).toBe(true);
   });
 
+  it("connects with the key alone: the signing secret comes from the endpoint Payrudder has Stripe create", () => {
+    expect(buildProviderSettings("stripe", { api_key: "sk_test_abc123", webhook_secret: "" })).toEqual({ ok: true, settings: { api_key: "sk_test_abc123" } });
+    // A secret that is typed must still look like one.
+    expect(buildProviderSettings("stripe", { api_key: "sk_test_abc123", webhook_secret: "secret" })).toEqual({ ok: false, errors: { webhook_secret: "badFormat" } });
+  });
+
   it("builds the settings payments-worker stores, and refuses what Stripe would refuse", () => {
     const ok = buildProviderSettings("stripe", { api_key: "sk_live_abc123", webhook_secret: "whsec_abc123" });
     expect(ok).toEqual({ ok: true, settings: { api_key: "sk_live_abc123", webhook_secret: "whsec_abc123" } });

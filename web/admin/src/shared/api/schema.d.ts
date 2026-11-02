@@ -2418,9 +2418,29 @@ export interface paths {
         put?: never;
         /**
          * Pay the invoice by one of the methods the page offers
-         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
          */
         post: operations["hostedInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/return/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Where a provider posts the result of a payment made on its own page
+         * @description The callback URL the gateway gives a provider that sends the payer back with a form (iyzico: the checkout form posts `token`, the 3-D Secure page `paymentId`, `status`, `mdStatus` and `conversationData`). `key` is the key of the payment attempt the gateway opened. The form is not believed: payments-worker asks the provider what the payment is, records it and settles the invoice, and the payer is redirected to the invoice page whatever the outcome, which shows paid, processing, or failed with the reason. The same form posted twice changes nothing. At most 60 a minute per address.
+         */
+        post: operations["hostedInvoiceReturn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2583,6 +2603,26 @@ export interface paths {
          * @description Same as the payment link's pay, scoped to the portal's customer, with the same agreement fields and the same 422. At most 10 a minute per address.
          */
         post: operations["portalInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/return/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Where a provider posts the result of a payment made on its own page, for a portal invoice
+         * @description Same as the payment link's return, scoped to the portal's customer; the payer is redirected to the invoice's page in the portal.
+         */
+        post: operations["portalInvoiceReturn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4372,12 +4412,52 @@ export interface paths {
         get?: never;
         /**
          * Connect the sandbox environment to a payment provider's test mode (the owner only)
-         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; Stripe: api_key, a test key, and webhook_secret unless the endpoint is made through `.../webhook`), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
          */
         put: operations["appConnectSandboxProvider"];
         post?: never;
         /** Remove the sandbox environment's account at a payment provider (the owner only) */
         delete: operations["appRemoveSandboxProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/providers/{provider}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have the provider create the webhook endpoint of a live account (the owner only)
+         * @description For a provider whose API can create it (Stripe): Payrudder asks the provider to send its notifications to this app's address (`/webhooks/{provider}/{tenant}/live` on the public URL) for exactly the events it handles, and stores the signing secret the provider shows then in the account, sealed; the secret is never in the answer. The request has no body and decides no address. A repeated request inside a day makes no second endpoint; a later one makes another, and the first is deleted at the provider. 409 payments.provider.not_supported for a provider without this.
+         */
+        post: operations["appRegisterLiveProviderWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/sandbox/providers/{provider}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have the provider create the webhook endpoint of the sandbox account (the owner only)
+         * @description As for the live account, with the address `/webhooks/{provider}/{tenant}/sandbox` and the provider's test mode.
+         */
+        post: operations["appRegisterSandboxProviderWebhook"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5384,6 +5464,26 @@ export interface paths {
         put?: never;
         /** A page where the customer manages payment methods and sees invoices at the provider */
         post: operations["createProviderPortalLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/payment-method-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A page where the customer saves a payment method for later charges, with nothing charged now (Stripe's Checkout in setup mode)
+         * @description The page is made on the provider's customer for this customer (made once and remembered), in the tenant's currency; the customer comes back to `return_url`. Nothing is set by this call: when the provider's notification says the method was saved (`checkout.session.completed` of the setup, then its SetupIntent), it becomes the customer's payment method (`cus_...:pm_...`), the one their invoices are charged with. The seller's terms for saving and later charging a card (the customer's agreement to be charged when they are not present) are shown by the page the customer comes from, not here. 409 `payments.provider.not_supported` for a provider that has no such page.
+         */
+        post: operations["createProviderPaymentMethodSetup"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8718,6 +8818,23 @@ export interface components {
         };
         ProviderWebhookRequest: Record<string, never>;
         TenantProviderWebhookRequest: Record<string, never>;
+        CreateProviderPaymentMethodSetupRequest: {
+            /**
+             * Format: uri
+             * @description Where the customer comes back to (https only).
+             */
+            return_url: string;
+        };
+        CreateProviderPaymentMethodSetupResponse: {
+            /** @description The provider's page; send the customer there. */
+            url: string;
+            /** @description The provider's id of the page (cs_... at Stripe). */
+            ref: string;
+        };
+        ProviderWebhookEndpoint: {
+            /** @description The provider's id of the endpoint it created (we_... at Stripe). The signing secret is stored, never returned. */
+            endpoint_id: string;
+        };
         ListProviderSubscriptionsResponse: {
             subscriptions: components["schemas"]["ListProviderSubscriptionsSubscription"][];
         };
@@ -8730,6 +8847,21 @@ export interface components {
             status: string;
             /** Format: date-time */
             next_billed_at?: string;
+            /** @description A change the provider has announced and will apply later, as its last notification gave it (a cancellation at the end of the period leaves the status "active" until then). Absent when none is announced. Read-only. */
+            scheduled_change?: {
+                /**
+                 * @description The provider's word: cancel, pause or resume (Paddle)
+                 * @example cancel
+                 */
+                action: string;
+                /** Format: date-time */
+                effective_at: string;
+                /**
+                 * Format: date-time
+                 * @description When a paused subscription resumes, for a pause
+                 */
+                resume_at?: string;
+            };
             /** Format: date-time */
             updated_at: string;
         };
@@ -16756,7 +16888,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            /** @description An agreement the seller requires was not accepted, or the provider needs more about the customer (phone, tax id, address) than the seller has on file: the page says so */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -16764,6 +16896,40 @@ export interface operations {
                 content: {
                     "text/html": string;
                 };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoiceReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Too many requests */
             429: {
@@ -17111,7 +17277,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            /** @description An agreement the seller requires was not accepted, or the provider needs more about the customer than the seller has on file: the page says so */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -17119,6 +17285,41 @@ export interface operations {
                 content: {
                     "text/html": string;
                 };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoiceReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Too many requests */
             429: {
@@ -20269,7 +20470,7 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -20308,7 +20509,7 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -20324,6 +20525,64 @@ export interface operations {
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    appRegisterLiveProviderWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appRegisterSandboxProviderWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle" | "stripe";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderWebhookEndpoint"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
         };
     };
     appGetEInvoiceIntegration: {
@@ -21983,7 +22242,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22018,7 +22277,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22049,7 +22308,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 external_id: string;
             };
             cookie?: never;
@@ -22081,7 +22340,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 external_id: string;
             };
             cookie?: never;
@@ -22105,6 +22364,41 @@ export interface operations {
             503: components["responses"]["Error"];
         };
     };
+    createProviderPaymentMethodSetup: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle" | "stripe";
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProviderPaymentMethodSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProviderPaymentMethodSetupResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     previewProviderSubscriptionChange: {
         parameters: {
             query: {
@@ -22113,7 +22407,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22149,7 +22443,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22190,7 +22484,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22224,7 +22518,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22254,7 +22548,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 id: string;
             };
             cookie?: never;
@@ -22286,7 +22580,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
             };
             cookie?: never;
         };
@@ -22321,7 +22615,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
-                provider: "iyzico" | "paddle";
+                provider: "iyzico" | "paddle" | "stripe";
                 ref: string;
             };
             cookie?: never;

@@ -186,6 +186,9 @@ message ChargePayment {
   string provider = 7;
   // The number of the invoice, for providers that print a payment reference on it (a bank transfer).
   string invoice_number = 8;
+  // The external id of the customer being charged, for a provider that vets the payer and so needs their name, phone, tax id and address (iyzico): payments-worker
+  // reads the customer record then, not before. Empty for a charge nobody is billed for by name.
+  string customer_external_id = 9;
 }
 
 message RefundPayment {
@@ -227,6 +230,9 @@ message PaymentSucceeded {
 
 message PaymentDeclined {
   string decline_code = 1;
+  // The provider said the payment must not be tried again with this payment method (Stripe's advice_code do_not_try_again): dunning stops at once and the invoice is
+  // left for the customer to pay another way. False says nothing about whether a retry would work.
+  bool final = 2;
 }
 
 message PaymentErrored {
@@ -254,6 +260,8 @@ message PaymentStatus {
   State state = 1;
   string psp_charge_id = 2;
   string decline_code = 3;
+  // With STATE_DECLINED: as PaymentDeclined.final.
+  bool final = 4;
 }
 
 message NotificationSent {

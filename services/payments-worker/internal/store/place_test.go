@@ -102,7 +102,7 @@ func TestEveryStoreRefusesAMovingTenant(t *testing.T) {
 			return err
 		},
 		"subscription put": func(tn uuid.UUID) error {
-			return Subscriptions{DB: r}.Upsert(ctx, tn, "paddle", "live", "s", nil, "active", nil, now)
+			return Subscriptions{DB: r}.Upsert(ctx, tn, "paddle", "live", "s", nil, "active", nil, nil, now)
 		},
 		"subscription list": func(tn uuid.UUID) error { _, err := Subscriptions{DB: r}.List(ctx, tn); return err },
 		"transfer receipt": func(tn uuid.UUID) error {
