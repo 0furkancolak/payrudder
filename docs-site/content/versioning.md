@@ -43,3 +43,9 @@ The agreements a seller shows its customers have numbered versions, each marked 
 ## Providers' API versions
 
 Payrudder pins the version of each payment provider's API it talks to: every Stripe request carries `Stripe-Version: 2026-09-30.endive` (a Stripe account's default version moving does not change what the adapter reads), and every Paddle request carries `Paddle-Version: 1`. iyzico's API has no version header. The provider guides say what was read from each provider's documentation and what is **UNVERIFIED**.
+
+## This documentation
+
+The sidebar names the API version the site describes (`API v1`, the version of the OpenAPI file it is built from) and the commit it was built from, so a reader of a hosted copy can tell how old it is: nothing is tagged yet, so the commit is the only date there is. The site documents **one** API version, the current one. **Default (not agreed):** when a second path version exists, the pipeline publishes the frozen site of the old version under its own address (`/v1/`) and the current one at the root, with a link between them in the sidebar; until then there is nothing to switch between, and nothing for the sidebar to link to.
+
+An address that was published keeps working. A page that is renamed or removed leaves a small page at its old address that sends the browser (and a search engine, through a canonical link) to the new one, and a test fails when a page of the site disappears without one (`docs-site/pages.txt` lists every address the site has had).
