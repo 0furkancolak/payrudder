@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowUpRight } from "@lucide/vue";
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { formatDate } from "@/shared/lib/format";
@@ -16,6 +17,7 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Input } from "@/shared/ui/input";
+import { RowActions } from "@/shared/ui/row-actions";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
@@ -191,6 +193,7 @@ async function send() {
           <TableHead>{{ t("support.columns.status") }}</TableHead>
           <TableHead>{{ t("support.columns.assignee") }}</TableHead>
           <TableHead class="text-end">{{ t("support.columns.updated") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -205,6 +208,7 @@ async function send() {
           <TableCell><TicketBadges :ticket="r" /></TableCell>
           <TableCell class="text-sm">{{ r.assignee || t("support.unassigned") }}</TableCell>
           <TableCell class="text-muted-foreground text-end text-sm">{{ formatDate(r.last_message_time, locale, "dateTime") }}</TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" :label="`${t('common.view')} #${r.number}`" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>

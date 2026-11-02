@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQueryClient } from "@tanstack/vue-query";
-import { LifeBuoy, Plus } from "@lucide/vue";
+import { ArrowUpRight, LifeBuoy, Plus } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAccount, useApps } from "@/features/product/api";
@@ -13,6 +13,7 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { HeaderAction, PageHeader } from "@/shared/ui/page-header";
 import { Input } from "@/shared/ui/input";
+import { RowActions } from "@/shared/ui/row-actions";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -144,6 +145,7 @@ const solved = computed(() => shown.value?.status === "solved");
           <TableHead>{{ t("support.columns.subject") }}</TableHead>
           <TableHead>{{ t("support.columns.status") }}</TableHead>
           <TableHead class="text-end">{{ t("support.columns.updated") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -155,6 +157,7 @@ const solved = computed(() => shown.value?.status === "solved");
           </TableCell>
           <TableCell><TicketBadges :ticket="r" /></TableCell>
           <TableCell class="text-muted-foreground text-end text-sm">{{ formatDate(r.last_message_time, locale, "dateTime") }}</TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" :label="`${t('common.view')} #${r.number}`" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
