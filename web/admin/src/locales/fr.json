@@ -949,9 +949,9 @@
         "noticeHelp": "Le délai minimal avant le renouvellement auquel le client est prévenu. Au moins 14.",
         "check": "Vérifier",
         "schedule": "Planifier et prévenir les clients",
-        "confirm": "Planifier le nouveau prix (v{version}) pour {n} abonnements et envoyer un e-mail à leurs clients ?",
-        "willSchedule": "{n} abonnements passeront à la v{version}.",
-        "done": "{n} abonnements planifiés vers la v{version} ; leurs clients sont prévenus par e-mail.",
+        "confirm": "Planifier le nouveau prix (v{version}) pour {n} abonnement et envoyer un e-mail à son client ? | Planifier le nouveau prix (v{version}) pour {n} abonnements et envoyer un e-mail à leurs clients ?",
+        "willSchedule": "{n} abonnement passera à la v{version}. | {n} abonnements passeront à la v{version}.",
+        "done": "{n} abonnement planifié vers la v{version} ; son client est prévenu par e-mail. | {n} abonnements planifiés vers la v{version} ; leurs clients sont prévenus par e-mail.",
         "reasons": {
           "renews_soon": "{n} se renouvellent trop tôt pour le préavis : relancez plus tard.",
           "has_pending_change": "{n} ont déjà un changement en attente et n'ont pas été touchés.",
@@ -972,10 +972,11 @@
         "details": "Clients",
         "hideDetails": "Masquer les clients",
         "retry": "Réessayer les {n} ignorés",
-        "retried": "{n} abonnements de plus planifiés ; {skipped} restent à l'écart.",
+        "retried": "{n} abonnement de plus planifié ; à l'écart : {skipped}. | {n} abonnements de plus planifiés ; à l'écart : {skipped}.",
+        "confirmRetry": "Réessayer {n} abonnement ignoré ? S'il peut être planifié maintenant, il passe au nouveau prix et son client reçoit un e-mail. | Réessayer {n} abonnements ignorés ? Chacun de ceux qui peuvent être planifiés maintenant passe au nouveau prix et son client reçoit un e-mail.",
         "withdraw": "Tout retirer",
-        "withdrawn": "{n} changements en attente retirés. Les clients déjà prévenus par e-mail ne sont pas informés.",
-        "confirmWithdraw": "Annuler les {n} changements encore en attente ? Ces clients gardent l'ancien prix. Les changements déjà appliqués restent et les e-mails envoyés ne sont pas repris.",
+        "withdrawn": "{n} changement en attente retiré. Le client déjà prévenu par e-mail n'est pas informé. | {n} changements en attente retirés. Les clients déjà prévenus par e-mail ne sont pas informés.",
+        "confirmWithdraw": "Annuler {n} changement encore en attente ? Ce client garde l'ancien prix. Les changements déjà appliqués restent et les e-mails envoyés ne sont pas repris. | Annuler les {n} changements encore en attente ? Ces clients gardent l'ancien prix. Les changements déjà appliqués restent et les e-mails envoyés ne sont pas repris.",
         "columns": {
           "customer": "Client",
           "state": "État",
@@ -4977,7 +4978,7 @@
       "onBody": "La connexion demande un code à six chiffres de votre application d'authentification après votre mot de passe, votre code par e-mail ou Google.",
       "since": "Activée le",
       "codesLeft": "Codes de récupération restants",
-      "codesLow": "Il ne reste que {n} codes de récupération. Générez-en de nouveaux avant qu'il n'y en ait plus : si vous perdez votre téléphone, ce sont les seuls moyens de revenir.",
+      "codesLow": "Il ne reste que {n} code de récupération. Générez-en de nouveaux avant qu'il n'y en ait plus : si vous perdez votre téléphone, c'est le seul moyen de revenir. | Il ne reste que {n} codes de récupération. Générez-en de nouveaux avant qu'il n'y en ait plus : si vous perdez votre téléphone, ce sont les seuls moyens de revenir.",
       "turnOn": "Activer",
       "turnOff": "Désactiver",
       "regenerate": "Générer de nouveaux codes de récupération",
@@ -5830,7 +5831,7 @@
       "byPriority": "Encore en attente, par priorité",
       "satisfaction": "Satisfaction, {days} derniers jours",
       "ratingAverage": "{average} sur 5 d'après {n} notes",
-      "stars": "{n} étoiles"
+      "stars": "{n} étoile | {n} étoiles"
     },
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",

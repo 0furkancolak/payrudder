@@ -949,9 +949,9 @@
         "noticeHelp": "El tiempo mínimo antes de la renovación con que se avisa al cliente. Al menos 14.",
         "check": "Comprobar",
         "schedule": "Programar y avisar a los clientes",
-        "confirm": "¿Programar el nuevo precio (v{version}) para {n} suscripciones y avisar por correo a sus clientes?",
-        "willSchedule": "{n} suscripciones pasarán a la v{version}.",
-        "done": "{n} suscripciones programadas hacia la v{version}; se avisa a sus clientes por correo.",
+        "confirm": "¿Programar el nuevo precio (v{version}) para {n} suscripción y avisar por correo a su cliente? | ¿Programar el nuevo precio (v{version}) para {n} suscripciones y avisar por correo a sus clientes?",
+        "willSchedule": "{n} suscripción pasará a la v{version}. | {n} suscripciones pasarán a la v{version}.",
+        "done": "{n} suscripción programada hacia la v{version}; se avisa a su cliente por correo. | {n} suscripciones programadas hacia la v{version}; se avisa a sus clientes por correo.",
         "reasons": {
           "renews_soon": "{n} se renuevan demasiado pronto para el aviso: vuelva a ejecutarlo más tarde.",
           "has_pending_change": "{n} ya tienen un cambio pendiente y no se tocaron.",
@@ -972,10 +972,11 @@
         "details": "Clientes",
         "hideDetails": "Ocultar clientes",
         "retry": "Reintentar las {n} omitidas",
-        "retried": "{n} suscripciones más programadas; {skipped} siguen fuera.",
+        "retried": "{n} suscripción más programada; siguen fuera: {skipped}. | {n} suscripciones más programadas; siguen fuera: {skipped}.",
+        "confirmRetry": "¿Reintentar {n} suscripción omitida? Si ahora se puede programar, pasa al nuevo precio y se avisa por correo a su cliente. | ¿Reintentar {n} suscripciones omitidas? Cada una que ahora se pueda programar pasa al nuevo precio y se avisa por correo a su cliente.",
         "withdraw": "Retirar todo",
-        "withdrawn": "{n} cambios en espera retirados. A los clientes que ya recibieron el correo no se les avisa.",
-        "confirmWithdraw": "¿Cancelar los {n} cambios que siguen en espera? Esos clientes se quedan con el precio anterior. Los cambios ya aplicados se quedan y los correos enviados no se recogen.",
+        "withdrawn": "{n} cambio en espera retirado. Al cliente que ya recibió el correo no se le avisa. | {n} cambios en espera retirados. A los clientes que ya recibieron el correo no se les avisa.",
+        "confirmWithdraw": "¿Cancelar {n} cambio que sigue en espera? Ese cliente se queda con el precio anterior. Los cambios ya aplicados se quedan y los correos enviados no se recogen. | ¿Cancelar los {n} cambios que siguen en espera? Esos clientes se quedan con el precio anterior. Los cambios ya aplicados se quedan y los correos enviados no se recogen.",
         "columns": {
           "customer": "Cliente",
           "state": "Estado",
@@ -4977,7 +4978,7 @@
       "onBody": "El inicio de sesión pide un código de seis dígitos de su aplicación de autenticación después de su contraseña, el código por correo o Google.",
       "since": "Activado el",
       "codesLeft": "Códigos de recuperación restantes",
-      "codesLow": "Solo quedan {n} códigos de recuperación. Genere otros nuevos antes de que se acaben: si pierde el teléfono, son la única forma de volver a entrar.",
+      "codesLow": "Solo queda {n} código de recuperación. Genere otros nuevos antes de que se acabe: si pierde el teléfono, es la única forma de volver a entrar. | Solo quedan {n} códigos de recuperación. Genere otros nuevos antes de que se acaben: si pierde el teléfono, son la única forma de volver a entrar.",
       "turnOn": "Activar",
       "turnOff": "Desactivar",
       "regenerate": "Generar nuevos códigos de recuperación",
@@ -5830,7 +5831,7 @@
       "byPriority": "Aún pendientes, por prioridad",
       "satisfaction": "Satisfacción, últimos {days} días",
       "ratingAverage": "{average} de 5 según {n} valoraciones",
-      "stars": "{n} estrellas"
+      "stars": "{n} estrella | {n} estrellas"
     },
     "badge": {
       "unread": "Tickets con novedades: {n}",

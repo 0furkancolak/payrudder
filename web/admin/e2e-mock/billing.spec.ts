@@ -187,9 +187,11 @@ test.describe("packages", () => {
   });
 
   test("the price changes made are listed with what became of each subscription; the skipped are tried again and what is waiting is withdrawn after asking", async ({ page }) => {
+    // The start date is a UTC day the seller typed: it reads the same west of UTC.
+    await (await page.context().newCDPSession(page)).send("Emulation.setTimezoneOverride", { timezoneId: "America/Los_Angeles" });
     const change = (id: string, extra: Record<string, unknown>): Record<string, unknown> => ({ id, plan_code: "pro", from_version: 1, to_version: 2, notice_days: 30, effective_time: "2026-12-05T10:00:00Z", state: "open", created_by: "boss@example.com",
       create_time: "2026-11-02T09:00:00Z", withdraw_time: null, withdrawn_by: "", scheduled: 3, applied: 0, withdrawn: 0, skipped: 2, ...extra });
-    let open = change("pc-1", {});
+    let open = change("pc-1", { effective_from: "2027-03-01T00:00:00Z" });
     const older = change("pc-0", { state: "withdrawn", withdraw_time: "2026-10-20T09:00:00Z", withdrawn_by: "boss@example.com", scheduled: 0, applied: 4, withdrawn: 1, skipped: 0, create_time: "2026-10-01T09:00:00Z" });
     const items = [
       { subscription_id: "s1", customer_external_id: "cus_a", state: "scheduled", reason: "", effective_time: "2026-12-05T10:00:00Z", notify_time: "2026-11-02T09:00:01Z" },
@@ -219,6 +221,7 @@ test.describe("packages", () => {
     await expect(row).toContainText("Open");
     await expect(row).toContainText("boss@example.com");
     await expect(row).toContainText("3 waiting, 0 moved, 0 withdrawn, 2 skipped");
+    await expect(row).toContainText(/from (1 Mar 2027|Mar 1, 2027)/);
     await expect(sheet.getByTestId("pc-row-pc-0")).toContainText("Withdrawn");
     // A withdrawn price change offers neither action.
     await expect(sheet.getByTestId("pc-retry-pc-0")).toHaveCount(0);
@@ -229,9 +232,14 @@ test.describe("packages", () => {
     await expect(table).toContainText("cus_a");
     await expect(table).toContainText("Waiting");
     await expect(table).toContainText("renews too soon");
-    // Retry runs the price change again, without a question: it only tells customers what the seller already decided to tell them.
+    // Retry moves the skipped subscriptions to the new price and mails their customers, so it asks first; "no" sends nothing.
     await sheet.getByTestId("pc-retry-pc-1").click();
-    await expect(sheet.getByTestId("pc-notice-done")).toContainText("1 more subscriptions scheduled; 1 still left out");
+    await expect(page.getByTestId("confirm-dialog")).toContainText("Try 2 skipped subscriptions again?");
+    await confirmDialog(page, "no");
+    expect(gw.called("POST", "/v1/price-changes/pc-1/retry")).toHaveLength(0);
+    await sheet.getByTestId("pc-retry-pc-1").click();
+    await confirmDialog(page);
+    await expect(sheet.getByTestId("pc-notice-done")).toContainText("1 more subscription scheduled; 1 still left out");
     expect(gw.called("POST", "/v1/price-changes/pc-1/retry")).toHaveLength(1);
     // Withdrawing asks first, and says what stays.
     await sheet.getByTestId("pc-withdraw-pc-1").click();

@@ -949,9 +949,9 @@
         "noticeHelp": "The least time before the renewal that the customer is told. At least 14.",
         "check": "Check",
         "schedule": "Schedule and tell customers",
-        "confirm": "Schedule the new price for {n} subscriptions (to v{version}) and mail their customers?",
-        "willSchedule": "{n} subscriptions will move to v{version}.",
-        "done": "{n} subscriptions scheduled to move to v{version}; their customers are being mailed.",
+        "confirm": "Schedule the new price for {n} subscription (to v{version}) and mail its customer? | Schedule the new price for {n} subscriptions (to v{version}) and mail their customers?",
+        "willSchedule": "{n} subscription will move to v{version}. | {n} subscriptions will move to v{version}.",
+        "done": "{n} subscription scheduled to move to v{version}; its customer is being mailed. | {n} subscriptions scheduled to move to v{version}; their customers are being mailed.",
         "reasons": {
           "renews_soon": "{n} renew too soon to give the notice: run it again later.",
           "has_pending_change": "{n} already have a change waiting and were left alone.",
@@ -972,10 +972,11 @@
         "details": "Customers",
         "hideDetails": "Hide customers",
         "retry": "Try {n} skipped again",
-        "retried": "{n} more subscriptions scheduled; {skipped} still left out.",
+        "retried": "{n} more subscription scheduled; {skipped} still left out. | {n} more subscriptions scheduled; {skipped} still left out.",
+        "confirmRetry": "Try {n} skipped subscription again? If it can be scheduled now, it moves to the new price and its customer is mailed. | Try {n} skipped subscriptions again? Each one that can be scheduled now moves to the new price and its customer is mailed.",
         "withdraw": "Withdraw all",
-        "withdrawn": "{n} waiting changes withdrawn. Customers who were mailed already are not told.",
-        "confirmWithdraw": "Cancel the {n} changes that are still waiting? Those customers stay on the old price. Changes already applied stay, and the mails already sent are not taken back.",
+        "withdrawn": "{n} waiting change withdrawn. A customer who was mailed already is not told. | {n} waiting changes withdrawn. Customers who were mailed already are not told.",
+        "confirmWithdraw": "Cancel the {n} change that is still waiting? That customer stays on the old price. Changes already applied stay, and the mails already sent are not taken back. | Cancel the {n} changes that are still waiting? Those customers stay on the old price. Changes already applied stay, and the mails already sent are not taken back.",
         "columns": {
           "customer": "Customer",
           "state": "State",
@@ -4977,7 +4978,7 @@
       "onBody": "Signing in asks for a six-digit code from your authenticator app after your password, e-mail code or Google.",
       "since": "Turned on",
       "codesLeft": "Recovery codes left",
-      "codesLow": "Only {n} recovery codes left. Generate new ones before they run out: if you lose your phone they are the only way back in.",
+      "codesLow": "Only {n} recovery code left. Generate new ones before it runs out: if you lose your phone it is the only way back in. | Only {n} recovery codes left. Generate new ones before they run out: if you lose your phone they are the only way back in.",
       "turnOn": "Turn on",
       "turnOff": "Turn off",
       "regenerate": "Generate new recovery codes",
@@ -5830,7 +5831,7 @@
       "byPriority": "Still waiting, by priority",
       "satisfaction": "Satisfaction, last {days} days",
       "ratingAverage": "{average} of 5 from {n} ratings",
-      "stars": "{n} stars"
+      "stars": "{n} star | {n} stars"
     },
     "badge": {
       "unread": "Tickets with news: {n}",
