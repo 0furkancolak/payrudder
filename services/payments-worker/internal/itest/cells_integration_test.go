@@ -747,8 +747,9 @@ func TestMovesOfPaymentsTenants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Rows() != 4 {
-		t.Fatalf("copied %d rows, want the attempt, the pending and the manual ledger row, and the receipt", rep.Rows())
+	// The receipt also wrote an entry in the audit log, in its transaction, and a tenant's entries move with it.
+	if rep.Rows() != 5 {
+		t.Fatalf("copied %d rows, want the attempt, the pending and the manual ledger row, the receipt and its audit entry", rep.Rows())
 	}
 	var indexed int
 	if err := w.pools["c1"].QueryRow(ctx, `SELECT count(*) FROM shared.charge_keys WHERE tenant_id = $1 AND idempotency_key = $2`, tn, key).Scan(&indexed); err != nil || indexed != 1 {
