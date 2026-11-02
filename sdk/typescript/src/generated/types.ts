@@ -355,6 +355,8 @@ export interface BlockCustomerRequest {
   category?: CustomerBlockCategory;
   /** When the block ends by itself; must be in the future. Absent: until you lift it. */
   blocked_until?: string;
+  /** Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false. */
+  suspend_service?: boolean;
 }
 
 export interface CancelSubscriptionQuery {
@@ -1133,6 +1135,8 @@ export interface Customer {
   block_category: string;
   /** When the block ends by itself; absent: until it is lifted. */
   blocked_until?: string | null;
+  /** The block also suspends the customer's service: every entitlement check answers allowed false. Read it with block_time and blocked_until, it holds only while the block does. */
+  service_suspended: boolean;
   /** The customer's mobile number as E.164 (+905321234567); empty when none. */
   phone: string;
   /** When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised. */
@@ -1151,6 +1155,8 @@ export interface CustomerBlockEvent {
   category: string;
   reason: string;
   blocked_until?: string | null;
+  /** On a block: whether it also suspended the customer's service */
+  suspend_service: boolean;
   /** A person's address, key:<api key id>, or operator */
   actor: string;
   create_time: string;
@@ -1276,7 +1282,7 @@ export interface EntitlementStatus {
   /** Exact decimal; null when unlimited */
   limit: string | null;
   unlimited: boolean;
-  /** unlimited, used < limit, or a soft or notify limit */
+  /** (unlimited, used < limit, or a soft or notify limit) and not suspended */
   allowed: boolean;
   as_of: string | null;
   /** What the limit counts over; month for a meter without a limit */
@@ -1290,6 +1296,8 @@ export interface EntitlementStatus {
   over_limit: boolean;
   /** The limit is the customer's own override, not its package's */
   overridden: boolean;
+  /** You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with or without a limit. Usage is still accepted and counted. */
+  suspended: boolean;
 }
 
 export interface EntitlementTerms {

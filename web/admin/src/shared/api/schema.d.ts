@@ -136,7 +136,10 @@ export interface paths {
          *     a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
          *     yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
          *     stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
-         *     (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
+         *     (the end of a block by itself sends none). Usage ingestion is not affected, and entitlements are unless you set `suspend_service`: then every entitlement
+         *     check of this customer answers `allowed: false` and `suspended: true` (the limits and the counted usage are untouched, and the events you send are still
+         *     accepted and counted) until you lift the block or it ends by itself. The service is suspended only when the block is new: a block already in force is kept
+         *     as it is, so lift it first to change it.
          */
         post: operations["blockCustomer"];
         delete?: never;
@@ -6267,6 +6270,8 @@ export interface components {
              * @description When the block ends by itself; must be in the future. Absent: until you lift it.
              */
             blocked_until?: string;
+            /** @description Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false. */
+            suspend_service?: boolean;
         };
         /**
          * @description Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open.
@@ -6283,6 +6288,8 @@ export interface components {
             reason: string;
             /** Format: date-time */
             blocked_until?: string | null;
+            /** @description On a block: whether it also suspended the customer's service */
+            suspend_service: boolean;
             /** @description A person's address, key:<api key id>, or operator */
             actor: string;
             /** Format: date-time */
@@ -6726,7 +6733,7 @@ export interface components {
              */
             limit: string | null;
             unlimited: boolean;
-            /** @description unlimited, used < limit, or a soft or notify limit */
+            /** @description (unlimited, used < limit, or a soft or notify limit) and not suspended */
             allowed: boolean;
             /** Format: date-time */
             as_of: string | null;
@@ -6751,6 +6758,8 @@ export interface components {
             over_limit: boolean;
             /** @description The limit is the customer's own override, not its package's */
             overridden: boolean;
+            /** @description You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with or without a limit. Usage is still accepted and counted. */
+            suspended: boolean;
         };
         IngestEventsRequest: {
             events: components["schemas"]["IncomingEvent"][];
@@ -9846,6 +9855,8 @@ export interface components {
              * @description Absent: until lifted
              */
             blocked_until?: string;
+            /** @description The block also suspended the customer's service. Absent on an event queued before this field existed: read it as false. */
+            suspend_service?: boolean;
         };
         /** @description The body of a delivery of type customer.blocked */
         CustomerBlockedEvent: {
@@ -10602,6 +10613,8 @@ export interface components {
              * @description When the block ends by itself; absent: until it is lifted.
              */
             blocked_until?: string | null;
+            /** @description The block also suspends the customer's service: every entitlement check answers allowed false. Read it with block_time and blocked_until, it holds only while the block does. */
+            service_suspended: boolean;
             /** @description The customer's mobile number as E.164 (+905321234567); empty when none. */
             phone: string;
             /**

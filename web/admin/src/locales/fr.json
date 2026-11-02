@@ -682,7 +682,11 @@
           "blocked": "Bloqué",
           "unblocked": "Levé"
         },
-        "by": "par {actor}"
+        "by": "par {actor}",
+        "suspend": "Suspendre aussi son service",
+        "suspendHint": "Les vérifications de droits de ce client répondent « non autorisé » sur chaque compteur jusqu'à la levée ou la fin du blocage. L'usage que vous envoyez reste accepté et compté.",
+        "bannerSuspended": "Service suspendu : les vérifications de droits répondent « non autorisé ».",
+        "suspended": "Service suspendu"
       }
     },
     "packages": {

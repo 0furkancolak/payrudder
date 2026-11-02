@@ -168,7 +168,9 @@ func (s *Queries) statusOf(ctx context.Context, ti tenant.Info, customer uuid.UU
 	if !resets.IsZero() { // the lifetime window never ends
 		out.ResetsAt = timestamppb.New(resets)
 	}
-	out.Allowed = ent == nil || ent.Allows(used)
+	// A customer the seller has suspended is allowed nothing, on a meter with a limit or without one, in any mode.
+	out.Suspended = s.ents.Suspended(tid, customer, s.now())
+	out.Allowed = !out.Suspended && (ent == nil || ent.Allows(used))
 	if v, ok := vals[1].(string); ok {
 		if ms, err := strconv.ParseInt(v, 10, 64); err == nil && ms > 0 {
 			out.AsOf = timestamppb.New(time.UnixMilli(ms).UTC())

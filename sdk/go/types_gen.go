@@ -390,6 +390,9 @@ type BlockCustomerRequest struct {
 	Category string `json:"category,omitempty"`
 	// When the block ends by itself; must be in the future. Absent: until you lift it.
 	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+	// Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the
+	// block is lifted or ends. Usage is still accepted and counted. Default false.
+	SuspendService *bool `json:"suspend_service,omitempty"`
 }
 
 // CancelSubscriptionResponse is the response of CancelSubscription.
@@ -1166,6 +1169,9 @@ type Customer struct {
 	BlockCategory string `json:"block_category"`
 	// When the block ends by itself; absent: until it is lifted.
 	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+	// The block also suspends the customer's service: every entitlement check answers allowed false. Read it with
+	// block_time and blocked_until, it holds only while the block does.
+	ServiceSuspended bool `json:"service_suspended"`
 	// The customer's mobile number as E.164 (+905321234567); empty when none.
 	Phone string `json:"phone"`
 	// When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a
@@ -1188,6 +1194,8 @@ type CustomerBlockEvent struct {
 	Category     string     `json:"category"`
 	Reason       string     `json:"reason"`
 	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+	// On a block: whether it also suspended the customer's service
+	SuspendService bool `json:"suspend_service"`
 	// A person's address, key:<api key id>, or operator
 	Actor      string    `json:"actor"`
 	CreateTime time.Time `json:"create_time"`
@@ -1331,7 +1339,7 @@ type EntitlementStatus struct {
 	// Exact decimal; null when unlimited
 	Limit     *string `json:"limit"`
 	Unlimited bool    `json:"unlimited"`
-	// unlimited, used < limit, or a soft or notify limit
+	// (unlimited, used < limit, or a soft or notify limit) and not suspended
 	Allowed bool       `json:"allowed"`
 	AsOf    *time.Time `json:"as_of"`
 	// What the limit counts over; month for a meter without a limit. One of: hour, day, week, month, year, lifetime.
@@ -1347,6 +1355,9 @@ type EntitlementStatus struct {
 	OverLimit bool `json:"over_limit"`
 	// The limit is the customer's own override, not its package's
 	Overridden bool `json:"overridden"`
+	// You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with
+	// or without a limit. Usage is still accepted and counted.
+	Suspended bool `json:"suspended"`
 }
 
 // EntitlementTerms is an object of the API; see components.schemas.EntitlementTerms in api/openapi/v1.yaml.

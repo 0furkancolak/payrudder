@@ -27,7 +27,7 @@ func (fakeLimits) CheckEntitlement(_ context.Context, req *limitsv1.CheckEntitle
 	}
 	st := &limitsv1.LimitStatus{CustomerId: "cust-uuid", MeterCode: req.GetMeterCode(), PeriodId: "2026-11", Used: "10.500",
 		Limit: "10.500", UsedUnits: 10500, LimitUnits: 10500, QuantityScale: 3, AsOf: timestamppb.New(timestamppb.Now().AsTime()),
-		Window: "day", WindowId: "2026-11-05", ResetsAt: timestamppb.New(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC)), Mode: "hard", OverLimit: true, Overridden: true}
+		Window: "day", WindowId: "2026-11-05", ResetsAt: timestamppb.New(time.Date(2026, 11, 5, 21, 0, 0, 0, time.UTC)), Mode: "hard", OverLimit: true, Overridden: true, Suspended: true}
 	if req.GetMeterCode() == "free" {
 		st = &limitsv1.LimitStatus{CustomerId: "cust-uuid", MeterCode: "free", PeriodId: "2026-11", Used: "3", Limit: "0", Unlimited: true, Allowed: true}
 	}
@@ -46,7 +46,7 @@ func TestGetEntitlement(t *testing.T) {
 		m["unlimited"] != false || m["customer_external_id"] != "cus_1" || m["as_of"] == nil {
 		t.Fatalf("entitlement: %d %v", resp.StatusCode, m)
 	}
-	if m["window"] != "day" || m["window_id"] != "2026-11-05" || m["resets_at"] != "2026-11-05T21:00:00Z" || m["mode"] != "hard" || m["over_limit"] != true || m["overridden"] != true {
+	if m["window"] != "day" || m["window_id"] != "2026-11-05" || m["resets_at"] != "2026-11-05T21:00:00Z" || m["mode"] != "hard" || m["over_limit"] != true || m["overridden"] != true || m["suspended"] != true {
 		t.Fatalf("quota fields: %v", m)
 	}
 	// Unlimited: limit is null.

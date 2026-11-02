@@ -14,7 +14,7 @@ import (
 
 func (f *fakePlans) BlockCustomer(_ context.Context, req *plansv1.BlockCustomerRequest) (*plansv1.BlockCustomerResponse, error) {
 	f.lastBlock = req
-	return &plansv1.BlockCustomerResponse{Customer: &plansv1.Customer{ExternalId: req.GetExternalId(), BlockReason: req.GetReason(), BlockCategory: req.GetCategory(), BlockedUntil: req.GetBlockedUntil()}}, nil
+	return &plansv1.BlockCustomerResponse{Customer: &plansv1.Customer{ExternalId: req.GetExternalId(), BlockReason: req.GetReason(), BlockCategory: req.GetCategory(), BlockedUntil: req.GetBlockedUntil(), ServiceSuspended: req.GetSuspendService()}}, nil
 }
 
 func (f *fakePlans) UnblockCustomer(_ context.Context, req *plansv1.UnblockCustomerRequest) (*plansv1.UnblockCustomerResponse, error) {
@@ -77,12 +77,12 @@ func TestActingAsAFrozenTenantIsReadOnly(t *testing.T) {
 // Who blocks is the gateway's word, never the body's: an API key is "key:<id>", whatever the body says.
 func TestBlockRecordsWhoBlockedAndCarriesTheCategoryAndTheEnd(t *testing.T) {
 	ts, f := newTestServer(t)
-	r, body := do(t, ts, http.MethodPost, "/v1/customers/c1/block", "keyed-key", `{"reason":"chargebacks","category":"chargeback","blocked_until":"2099-01-01T00:00:00Z","actor":"forged@example.com"}`)
+	r, body := do(t, ts, http.MethodPost, "/v1/customers/c1/block", "keyed-key", `{"reason":"chargebacks","category":"chargeback","blocked_until":"2099-01-01T00:00:00Z","suspend_service":true,"actor":"forged@example.com"}`)
 	if r.StatusCode != http.StatusOK {
 		t.Fatalf("block: %d %v", r.StatusCode, body)
 	}
 	got := f.lastBlock
-	if got.GetActor() != "key:key-123" || got.GetCategory() != "chargeback" || got.GetReason() != "chargebacks" || got.GetBlockedUntil().AsTime().Year() != 2099 || got.GetExternalId() != "c1" {
+	if got.GetActor() != "key:key-123" || got.GetCategory() != "chargeback" || got.GetReason() != "chargebacks" || got.GetBlockedUntil().AsTime().Year() != 2099 || got.GetExternalId() != "c1" || !got.GetSuspendService() || body["service_suspended"] != true {
 		t.Errorf("request = %v", got)
 	}
 	if r, body := do(t, ts, http.MethodPost, "/v1/customers/c1/unblock", "keyed-key", ""); r.StatusCode != http.StatusOK || f.lastUnblock.GetActor() != "key:key-123" {

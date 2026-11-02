@@ -682,7 +682,11 @@
           "blocked": "Engellendi",
           "unblocked": "Kaldırıldı"
         },
-        "by": "{actor} tarafından"
+        "by": "{actor} tarafından",
+        "suspend": "Hizmetini de askıya al",
+        "suspendHint": "Engel kaldırılana veya sona erene kadar bu müşterinin yetki kontrolleri her sayaçta “izin yok” yanıtını verir. Gönderdiğiniz kullanım yine kabul edilir ve sayılır.",
+        "bannerSuspended": "Hizmet askıda: yetki kontrolleri “izin yok” yanıtını veriyor.",
+        "suspended": "Hizmet askıya alındı"
       }
     },
     "packages": {

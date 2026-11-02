@@ -281,6 +281,8 @@ type CustomerBlockEventData struct {
 	Reason   string `json:"reason,omitempty"`
 	// BlockedUntil is an RFC 3339 time, set on customer.blocked when the block ends by itself.
 	BlockedUntil string `json:"blocked_until,omitempty"`
+	// SuspendService is set on customer.blocked when the block also suspended the customer's service (every entitlement check answers not allowed). Absent: false.
+	SuspendService bool `json:"suspend_service,omitempty"`
 }
 
 // PriceChangeEventData is the data of price_change.scheduled: the price change (a run that scheduled at least one subscription) and what that run did.
