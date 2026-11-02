@@ -25,18 +25,25 @@ const detail = usePriceChange(() => props.tenantId, opened);
 const items = computed(() => detail.data.value?.pages.flatMap((p) => p.items) ?? []);
 const notice = ref("");
 
+/** The start date is a UTC day the seller chose (sent as its midnight): shown as that day in any reader's zone. */
+function startDay(iso: string): string {
+  const at = new Date(iso);
+  return fmt.utcDay(Number.isNaN(at.getTime()) ? "" : at.toISOString().slice(0, 10), "day", "—");
+}
+
 const tone = (state: PriceChangeItem["state"]) => ({ scheduled: "info", applied: "success", withdrawn: "neutral", skipped: "warning" })[state] as "info" | "success" | "neutral" | "warning";
 
-async function tryAgain(id: string) {
+async function tryAgain(id: string, skipped: number) {
   notice.value = "";
+  if (!(await askConfirm({ body: t("billing.packages.priceChange.confirmRetry", { n: skipped }, skipped), confirmLabel: t("billing.packages.priceChange.retry", { n: skipped }) }))) return;
   const r = await retry.mutateAsync(id).catch(() => null);
-  if (r) notice.value = t("billing.packages.priceChange.retried", { n: r.scheduled, skipped: r.skipped.length });
+  if (r) notice.value = t("billing.packages.priceChange.retried", { n: r.scheduled, skipped: r.skipped.length }, r.scheduled);
 }
 async function withdrawAll(id: string, n: number) {
   notice.value = "";
-  if (!(await askConfirm({ body: t("billing.packages.priceChange.confirmWithdraw", { n }), confirmLabel: t("billing.packages.priceChange.withdraw") }))) return;
+  if (!(await askConfirm({ body: t("billing.packages.priceChange.confirmWithdraw", { n }, n), confirmLabel: t("billing.packages.priceChange.withdraw") }))) return;
   const r = await withdraw.mutateAsync(id).catch(() => null);
-  if (r) notice.value = t("billing.packages.priceChange.withdrawn", { n: r.withdrawn });
+  if (r) notice.value = t("billing.packages.priceChange.withdrawn", { n: r.withdrawn }, r.withdrawn);
 }
 </script>
 
@@ -53,14 +60,14 @@ async function withdrawAll(id: string, n: number) {
       </div>
       <p class="text-muted-foreground mt-1 text-xs">
         {{ t("billing.packages.priceChange.takesEffect", { date: fmt.date(pc.effective_time, "day", "—"), n: pc.notice_days }) }}
-        <template v-if="pc.effective_from"> · {{ t("billing.packages.priceChange.startsFrom", { date: fmt.date(pc.effective_from, "day", "—") }) }}</template>
+        <template v-if="pc.effective_from"> · {{ t("billing.packages.priceChange.startsFrom", { date: startDay(pc.effective_from) }) }}</template>
         · {{ t("billing.packages.priceChange.counts", { scheduled: pc.scheduled, applied: pc.applied, withdrawn: pc.withdrawn, skipped: pc.skipped }) }}
       </p>
       <div class="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="ghost" :data-testid="`pc-details-${pc.id}`" @click="opened = opened === pc.id ? '' : pc.id">
           {{ opened === pc.id ? t("billing.packages.priceChange.hideDetails") : t("billing.packages.priceChange.details") }}
         </Button>
-        <Button v-if="pc.state === 'open' && pc.skipped > 0" type="button" size="sm" variant="outline" :disabled="retry.isPending.value" :data-testid="`pc-retry-${pc.id}`" @click="tryAgain(pc.id)">
+        <Button v-if="pc.state === 'open' && pc.skipped > 0" type="button" size="sm" variant="outline" :disabled="retry.isPending.value" :data-testid="`pc-retry-${pc.id}`" @click="tryAgain(pc.id, pc.skipped)">
           {{ t("billing.packages.priceChange.retry", { n: pc.skipped }) }}
         </Button>
         <Button v-if="pc.state === 'open'" type="button" size="sm" variant="outline" :disabled="withdraw.isPending.value" :data-testid="`pc-withdraw-${pc.id}`" @click="withdrawAll(pc.id, pc.scheduled)">

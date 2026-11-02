@@ -44,7 +44,7 @@ const counted = (list: { value: string; count: number }[] | undefined, key: stri
           <p class="m-0 text-sm" data-testid="report-rating-average">{{ r.rated > 0 ? t("support.report.ratingAverage", { average: r.average_rating.toFixed(1), n: r.rated }) : "—" }}</p>
         </div>
         <ul v-if="r.rated > 0" class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-sm" data-testid="report-rating-counts">
-          <li v-for="c in r.ratings" :key="c.value"><span class="text-muted-foreground">{{ t("support.report.stars", { n: c.value }) }}</span> <span class="font-medium tabular-nums">{{ c.count }}</span></li>
+          <li v-for="c in r.ratings" :key="c.value"><span class="text-muted-foreground">{{ t("support.report.stars", { n: c.value }, c.value) }}</span> <span class="font-medium tabular-nums">{{ c.count }}</span></li>
         </ul>
       </div>
       <div class="grid gap-4 md:grid-cols-2">

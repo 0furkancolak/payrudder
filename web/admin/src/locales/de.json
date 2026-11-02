@@ -949,9 +949,9 @@
         "noticeHelp": "Mindestens so lange vor der Verlängerung wird der Kunde informiert. Mindestens 14.",
         "check": "Prüfen",
         "schedule": "Planen und Kunden informieren",
-        "confirm": "Den neuen Preis (v{version}) für {n} Abonnements planen und ihre Kunden per Mail informieren?",
-        "willSchedule": "{n} Abonnements wechseln auf v{version}.",
-        "done": "{n} Abonnements für den Wechsel auf v{version} geplant; ihre Kunden werden informiert.",
+        "confirm": "Den neuen Preis (v{version}) für {n} Abonnement planen und den Kunden per Mail informieren? | Den neuen Preis (v{version}) für {n} Abonnements planen und ihre Kunden per Mail informieren?",
+        "willSchedule": "{n} Abonnement wechselt auf v{version}. | {n} Abonnements wechseln auf v{version}.",
+        "done": "{n} Abonnement für den Wechsel auf v{version} geplant; der Kunde wird informiert. | {n} Abonnements für den Wechsel auf v{version} geplant; ihre Kunden werden informiert.",
         "reasons": {
           "renews_soon": "{n} verlängern zu bald für den Vorlauf: später erneut ausführen.",
           "has_pending_change": "{n} haben schon eine wartende Änderung und blieben unberührt.",
@@ -972,10 +972,11 @@
         "details": "Kunden",
         "hideDetails": "Kunden ausblenden",
         "retry": "{n} übersprungene erneut versuchen",
-        "retried": "{n} weitere Abonnements geplant; {skipped} bleiben außen vor.",
+        "retried": "{n} weiteres Abonnement geplant; noch außen vor: {skipped}. | {n} weitere Abonnements geplant; noch außen vor: {skipped}.",
+        "confirmRetry": "{n} übersprungenes Abonnement erneut versuchen? Lässt es sich jetzt planen, wechselt es auf den neuen Preis und der Kunde wird per Mail informiert. | {n} übersprungene Abonnements erneut versuchen? Jedes, das sich jetzt planen lässt, wechselt auf den neuen Preis und sein Kunde wird per Mail informiert.",
         "withdraw": "Alle zurückziehen",
-        "withdrawn": "{n} wartende Änderungen zurückgezogen. Kunden, die schon eine E-Mail bekamen, werden nicht informiert.",
-        "confirmWithdraw": "Die {n} noch wartenden Änderungen abbrechen? Diese Kunden bleiben beim alten Preis. Bereits angewendete Änderungen bleiben, versendete E-Mails werden nicht zurückgenommen.",
+        "withdrawn": "{n} wartende Änderung zurückgezogen. Ein Kunde, der schon eine E-Mail bekam, wird nicht informiert. | {n} wartende Änderungen zurückgezogen. Kunden, die schon eine E-Mail bekamen, werden nicht informiert.",
+        "confirmWithdraw": "Die {n} noch wartende Änderung abbrechen? Dieser Kunde bleibt beim alten Preis. Bereits angewendete Änderungen bleiben, versendete E-Mails werden nicht zurückgenommen. | Die {n} noch wartenden Änderungen abbrechen? Diese Kunden bleiben beim alten Preis. Bereits angewendete Änderungen bleiben, versendete E-Mails werden nicht zurückgenommen.",
         "columns": {
           "customer": "Kunde",
           "state": "Status",
@@ -4977,7 +4978,7 @@
       "onBody": "Die Anmeldung fragt nach Passwort, E-Mail-Code oder Google zusätzlich nach einem sechsstelligen Code aus Ihrer Authenticator-App.",
       "since": "Eingeschaltet am",
       "codesLeft": "Verbleibende Wiederherstellungscodes",
-      "codesLow": "Nur noch {n} Wiederherstellungscodes übrig. Erzeugen Sie neue, bevor sie aufgebraucht sind: Wenn Sie Ihr Telefon verlieren, sind sie der einzige Weg zurück.",
+      "codesLow": "Nur noch {n} Wiederherstellungscode übrig. Erzeugen Sie neue, bevor er aufgebraucht ist: Wenn Sie Ihr Telefon verlieren, ist er der einzige Weg zurück. | Nur noch {n} Wiederherstellungscodes übrig. Erzeugen Sie neue, bevor sie aufgebraucht sind: Wenn Sie Ihr Telefon verlieren, sind sie der einzige Weg zurück.",
       "turnOn": "Einschalten",
       "turnOff": "Ausschalten",
       "regenerate": "Neue Wiederherstellungscodes erzeugen",
@@ -5830,7 +5831,7 @@
       "byPriority": "Noch offen, nach Priorität",
       "satisfaction": "Zufriedenheit, letzte {days} Tage",
       "ratingAverage": "{average} von 5 aus {n} Bewertungen",
-      "stars": "{n} Sterne"
+      "stars": "{n} Stern | {n} Sterne"
     },
     "badge": {
       "unread": "Tickets mit Neuigkeiten: {n}",

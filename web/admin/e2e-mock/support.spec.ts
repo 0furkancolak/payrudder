@@ -102,7 +102,7 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     return { ticket: { ...rest, tags: operator ? t.tags : [], sla_tier: operator ? t.sla_tier : "", unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events };
   };
   const find = (path: string) => tickets.find((t) => path.includes(t.id));
-  let days: { day: string; name: string }[] = [];
+  const daysOf = new Map<string, { day: string; name: string }[]>();
   gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/support/operators" ? { body: { operators: [{ email: "sam@example.com", name: "Sam" }, { email: "kim@example.com", name: "" }] } } : undefined));
   gw.on((c) => {
     const upload = /^\/(app|admin)\/v1\/support\/tickets\/([^/]+)\/messages\/([^/]+)\/attachments$/.exec(c.path);
@@ -173,8 +173,10 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     }
     const holidays = /^\/admin\/v1\/support\/apps\/([^/]+)\/holidays$/.exec(c.path);
     if (holidays) {
-      if (c.method === "PUT") days = (c.body?.holidays ?? []) as { day: string; name: string }[];
-      return { body: c.method === "PUT" ? { holidays: days } : { app_name: "Shop", holidays: days } };
+      const id = holidays[1] as string;
+      if (c.method === "PUT") daysOf.set(id, (c.body?.holidays ?? []) as { day: string; name: string }[]);
+      const days = daysOf.get(id) ?? [];
+      return { body: c.method === "PUT" ? { holidays: days } : { app_name: tickets.find((t) => t.app_id === id)?.app_name ?? "Shop", holidays: days } };
     }
     if (c.path.endsWith("/replies") && c.path.startsWith("/admin/v1/")) {
       const t = find(c.path)!;
@@ -761,6 +763,42 @@ test.describe("support: search, links, ratings, merges and days off", () => {
     await dialog.getByTestId("holidays-save").click();
     await expect.poll(() => gw.called("PUT", /\/holidays$/).length).toBe(1);
     expect(gw.called("PUT", /\/holidays$/)[0]?.body).toEqual({ holidays: [{ day: "2026-12-25", name: "Christmas" }] });
+  });
+
+  test("the days off dialog starts empty for another app, and Save waits until that app's list has arrived", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [ticket(), ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1041, app_id: "a1000000-0000-4000-8000-0000000000b2", app_name: "Other" })]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await page.getByTestId("inbox-row-1042").click();
+    await page.getByTestId("holidays-open").click();
+    const dialog = page.getByTestId("holidays-dialog");
+    await dialog.getByTestId("holiday-day").fill("2026-12-25");
+    await dialog.getByTestId("holiday-add").click();
+    await dialog.getByTestId("holidays-save").click();
+    await expect.poll(() => gw.called("PUT", /\/holidays$/).length).toBe(1);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("detail-sheet")).toHaveCount(0);
+
+    // The other app's list is held back: until it arrives the dialog shows no days (not the first app's), no name, and cannot save.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/\/gw\/admin\/v1\/support\/apps\/a1000000-0000-4000-8000-0000000000b2\/holidays$/, async (route) => {
+      await held;
+      await route.fallback();
+    });
+    await page.getByTestId("inbox-row-1041").click();
+    await page.getByTestId("holidays-open").click();
+    await expect(dialog).toContainText("Days off of …");
+    await expect(dialog.getByTestId("holiday-2026-12-25")).toHaveCount(0);
+    await expect(dialog.getByTestId("holidays-save")).toBeDisabled();
+    release();
+    await expect(dialog).toContainText("Days off of Other");
+    await expect(dialog).toContainText("No days off yet");
+    await expect(dialog.getByTestId("holidays-save")).toBeEnabled();
   });
 
   test("the operator's search is sent to the server and finds a ticket by the words of its messages, notes included", async ({ page }) => {

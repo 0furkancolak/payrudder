@@ -64,7 +64,7 @@ async function check() {
 }
 async function schedule() {
   if (!checked.value || checked.value.scheduled === 0) return;
-  if (!(await askConfirm({ body: t("billing.packages.priceChange.confirm", { n: checked.value.scheduled, version: checked.value.to_version }) }))) return;
+  if (!(await askConfirm({ body: t("billing.packages.priceChange.confirm", { n: checked.value.scheduled, version: checked.value.to_version }, checked.value.scheduled) }))) return;
   const r = await run.mutateAsync(args(false)).catch(() => null);
   if (r) {
     done.value = r;
@@ -130,14 +130,14 @@ const reasons = (r: PriceChangeResult) => {
         </section>
 
         <div v-if="checked" class="bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="pc-check">
-          <p class="font-medium">{{ t("billing.packages.priceChange.willSchedule", { n: checked.scheduled, version: checked.to_version }) }}</p>
+          <p class="font-medium">{{ t("billing.packages.priceChange.willSchedule", { n: checked.scheduled, version: checked.to_version }, checked.scheduled) }}</p>
           <ul v-if="checked.skipped.length > 0 || checked.already_scheduled > 0" class="text-muted-foreground mt-1 list-disc ps-5 text-xs">
             <li v-if="checked.already_scheduled > 0">{{ t("billing.packages.priceChange.alreadyScheduled", { n: checked.already_scheduled }) }}</li>
             <li v-for="[reason, n] in reasons(checked)" :key="reason">{{ t(`billing.packages.priceChange.reasons.${reason}`, { n }) }}</li>
           </ul>
         </div>
         <div v-if="done" class="bg-success/10 text-success rounded-2xl px-4 py-3 text-sm" role="status" data-testid="pc-done">
-          <p class="font-medium">{{ t("billing.packages.priceChange.done", { n: done.scheduled, version: done.to_version }) }}</p>
+          <p class="font-medium">{{ t("billing.packages.priceChange.done", { n: done.scheduled, version: done.to_version }, done.scheduled) }}</p>
           <ul v-if="done.skipped.length > 0 || done.already_scheduled > 0" class="mt-1 list-disc ps-5 text-xs">
             <li v-if="done.already_scheduled > 0">{{ t("billing.packages.priceChange.alreadyScheduled", { n: done.already_scheduled }) }}</li>
             <li v-for="[reason, n] in reasons(done)" :key="reason">{{ t(`billing.packages.priceChange.reasons.${reason}`, { n }) }}</li>

@@ -949,9 +949,9 @@
         "noticeHelp": "Müşteriye yenilemeden en az bu kadar önce haber verilir. En az 14.",
         "check": "Kontrol et",
         "schedule": "Planla ve müşterilere bildir",
-        "confirm": "{n} abonelik için yeni fiyat (v{version}) planlansın ve müşterilerine e-posta gönderilsin mi?",
-        "willSchedule": "{n} abonelik v{version} sürümüne taşınacak.",
-        "done": "{n} abonelik v{version} sürümüne taşınmak üzere planlandı; müşterilerine e-posta gönderiliyor.",
+        "confirm": "{n} abonelik için yeni fiyat (v{version}) planlansın ve müşterilerine e-posta gönderilsin mi? | {n} abonelik için yeni fiyat (v{version}) planlansın ve müşterilerine e-posta gönderilsin mi?",
+        "willSchedule": "{n} abonelik v{version} sürümüne taşınacak. | {n} abonelik v{version} sürümüne taşınacak.",
+        "done": "{n} abonelik v{version} sürümüne taşınmak üzere planlandı; müşterilerine e-posta gönderiliyor. | {n} abonelik v{version} sürümüne taşınmak üzere planlandı; müşterilerine e-posta gönderiliyor.",
         "reasons": {
           "renews_soon": "{n} abonelik bildirim süresini vermek için çok yakın yenileniyor: daha sonra yeniden çalıştırın.",
           "has_pending_change": "{n} aboneliğin zaten bekleyen bir değişikliği var, dokunulmadı.",
@@ -972,10 +972,11 @@
         "details": "Müşteriler",
         "hideDetails": "Müşterileri gizle",
         "retry": "Atlanan {n} aboneliği yeniden dene",
-        "retried": "{n} abonelik daha planlandı; {skipped} hâlâ dışarıda.",
+        "retried": "{n} abonelik daha planlandı; {skipped} hâlâ dışarıda. | {n} abonelik daha planlandı; {skipped} hâlâ dışarıda.",
+        "confirmRetry": "Atlanan {n} abonelik yeniden denensin mi? Şimdi planlanabilen her abonelik yeni fiyata geçer ve müşterisine e-posta gönderilir. | Atlanan {n} abonelik yeniden denensin mi? Şimdi planlanabilen her abonelik yeni fiyata geçer ve müşterisine e-posta gönderilir.",
         "withdraw": "Tümünü geri çek",
-        "withdrawn": "Bekleyen {n} değişiklik geri çekildi. Daha önce e-posta alan müşterilere haber verilmez.",
-        "confirmWithdraw": "Hâlâ bekleyen {n} değişiklik iptal edilsin mi? Bu müşteriler eski fiyatta kalır. Uygulanmış değişiklikler kalır, gönderilmiş e-postalar geri alınmaz.",
+        "withdrawn": "Bekleyen {n} değişiklik geri çekildi. Daha önce e-posta alan müşterilere haber verilmez. | Bekleyen {n} değişiklik geri çekildi. Daha önce e-posta alan müşterilere haber verilmez.",
+        "confirmWithdraw": "Hâlâ bekleyen {n} değişiklik iptal edilsin mi? Bu müşteriler eski fiyatta kalır. Uygulanmış değişiklikler kalır, gönderilmiş e-postalar geri alınmaz. | Hâlâ bekleyen {n} değişiklik iptal edilsin mi? Bu müşteriler eski fiyatta kalır. Uygulanmış değişiklikler kalır, gönderilmiş e-postalar geri alınmaz.",
         "columns": {
           "customer": "Müşteri",
           "state": "Durum",
@@ -4977,7 +4978,7 @@
       "onBody": "Giriş, parolanızdan, e-posta kodunuzdan veya Google'dan sonra kimlik doğrulayıcı uygulamanızdan altı haneli bir kod ister.",
       "since": "Açıldığı tarih",
       "codesLeft": "Kalan kurtarma kodları",
-      "codesLow": "Yalnızca {n} kurtarma kodu kaldı. Bitmeden yenilerini oluşturun: telefonunuzu kaybederseniz içeri girmenin tek yolu bunlardır.",
+      "codesLow": "Yalnızca {n} kurtarma kodu kaldı. Bitmeden yenilerini oluşturun: telefonunuzu kaybederseniz içeri girmenin tek yolu bunlardır. | Yalnızca {n} kurtarma kodu kaldı. Bitmeden yenilerini oluşturun: telefonunuzu kaybederseniz içeri girmenin tek yolu bunlardır.",
       "turnOn": "Aç",
       "turnOff": "Kapat",
       "regenerate": "Yeni kurtarma kodları oluştur",
@@ -5830,7 +5831,7 @@
       "byPriority": "Hâlâ bekleyenler, önceliğe göre",
       "satisfaction": "Memnuniyet, son {days} gün",
       "ratingAverage": "{n} puandan ortalama 5 üzerinden {average}",
-      "stars": "{n} yıldız"
+      "stars": "{n} yıldız | {n} yıldız"
     },
     "badge": {
       "unread": "Yenilik olan talepler: {n}",

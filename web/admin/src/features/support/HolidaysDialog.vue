@@ -19,8 +19,13 @@ const actions = useOperatorSupportActions();
 const days = ref<SupportHoliday[]>([]);
 const day = ref("");
 const name = ref("");
-watch(() => holidays.data.value, (d) => d && (days.value = [...d.holidays]), { immediate: true });
-watch(open, (isOpen) => isOpen && actions.saveHolidays.reset());
+// The list is the server's for the app shown: while it loads, and when the dialog opens again or for another app, it starts empty, never with the days of the last one.
+watch(() => holidays.data.value, (d) => (days.value = d ? [...d.holidays] : []), { immediate: true });
+watch(open, (isOpen) => {
+  if (!isOpen) return;
+  actions.saveHolidays.reset();
+  day.value = name.value = "";
+});
 
 function add() {
   if (!day.value || days.value.some((h) => h.day === day.value)) return;
@@ -34,7 +39,7 @@ const save = () => actions.saveHolidays.mutate({ appId: props.appId, holidays: d
   <Dialog v-model:open="open">
     <DialogContent class="sm:max-w-xl" data-testid="holidays-dialog">
       <DialogHeader>
-        <DialogTitle>{{ t("support.holidays.title", { app: holidays.data.value?.app_name ?? "" }) }}</DialogTitle>
+        <DialogTitle>{{ t("support.holidays.title", { app: holidays.data.value?.app_name ?? "…" }) }}</DialogTitle>
         <DialogDescription>{{ t("support.holidays.hint") }}</DialogDescription>
       </DialogHeader>
       <ErrorText :error="holidays.error.value" />
@@ -53,7 +58,7 @@ const save = () => actions.saveHolidays.mutate({ appId: props.appId, holidays: d
       <ErrorText :error="actions.saveHolidays.error.value" />
       <DialogFooter>
         <Button type="button" variant="ghost" @click="open = false">{{ t("common.close") }}</Button>
-        <Button type="button" :disabled="actions.saveHolidays.isPending.value" data-testid="holidays-save" @click="save">{{ t("support.holidays.save") }}</Button>
+        <Button type="button" :disabled="!holidays.data.value || actions.saveHolidays.isPending.value" data-testid="holidays-save" @click="save">{{ t("support.holidays.save") }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

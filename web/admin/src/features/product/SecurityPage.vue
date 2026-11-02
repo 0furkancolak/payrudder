@@ -69,7 +69,7 @@ function renew(code: string): void {
           <dt class="text-muted-foreground">{{ t("product.twoFactor.codesLeft") }}</dt>
           <dd class="tabular-nums" data-testid="two-factor-left">{{ left }}</dd>
         </dl>
-        <p v-if="low" class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="status" data-testid="two-factor-low">{{ t("product.twoFactor.codesLow", { n: left }) }}</p>
+        <p v-if="low" class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="status" data-testid="two-factor-low">{{ t("product.twoFactor.codesLow", { n: left }, left) }}</p>
         <div class="flex flex-wrap gap-2">
           <Button v-if="!enabled" type="button" data-testid="two-factor-enable" @click="setting = true">{{ t("product.twoFactor.turnOn") }}</Button>
           <template v-else>
