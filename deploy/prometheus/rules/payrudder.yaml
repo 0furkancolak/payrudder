@@ -214,6 +214,35 @@ groups:
         annotations:
           summary: "{{ $value }} paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
 
+      # provider_account_up{provider,account} (payments-worker's health monitor, every PAYMENTS_HEALTH_INTERVAL, 5 min by default): one series per LIVE account, account being
+      # "<tenant id>/<account key>"; 1 = the provider answered with the key accepted, 0 = unreachable or the key refused. No series means no signal (never checked, nothing
+      # to ask, sandbox, removed). A tenant's own revoked key reads 0 too, which is why this warns and the provider-wide outage (ProviderChargesRefused) pages.
+      - alert: ProviderAccountDown
+        expr: provider_account_up == 0
+        for: 15m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }} account {{ $labels.account }} has failed its health check for 15 minutes (the provider is unreachable from here, or it refuses the account's key)"
+
+      # reconciliation_last_pass_timestamp_seconds: when the last scheduled reconciliation pass of a payments-worker finished (PAYMENTS_RECONCILE_INTERVAL, 6 h by default). 13 h
+      # is two intervals and an hour: change it with the interval. No series when the schedule is off or has not finished a pass yet.
+      - alert: ReconciliationRunStalled
+        expr: time() - max(reconciliation_last_pass_timestamp_seconds) > 13 * 3600
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "no scheduled reconciliation pass has finished for over 13 hours (it runs every 6): the review queue is not being kept up to date"
+
+      # audit_write_failed_total{area,reason}: an audit entry that the database refused. The change the entry belongs to fails with it (pkg/audit), so this is refused sign-ins,
+      # key changes and price changes, not a missing log line. "insert" is the database (a missing partition or grant, a full disk, a lost connection); a "bad_event" is a bug
+      # and reaches the error tracker as the failure it caused. Three in ten minutes is the default, not agreed.
+      - alert: AuditWriteFailed
+        expr: sum by (service) (increase(audit_write_failed_total{reason="insert"}[10m])) >= 3
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $labels.service }} could not write {{ printf "%.0f" $value }} audit entries in ten minutes: the changes they belong to are failing'
+
       # DLQNotEmpty says a queue holds something; this says it is filling.
       - alert: DLQGrowing
         expr: delta(dlq_messages[15m]) >= 10

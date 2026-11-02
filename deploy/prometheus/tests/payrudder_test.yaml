@@ -548,6 +548,97 @@ tests:
         exp_alerts: []
 
   - interval: 1m
+    name: ProviderAccountDown warns when a live account fails its health check for fifteen minutes, and not for a blip or a healthy one
+    input_series:
+      - series: 'provider_account_up{provider="stripe",account="t1/stripe",service="payments-worker"}'
+        values: '1+0x30 0+0x12 1+0x40'
+      - series: 'provider_account_up{provider="iyzico",account="t2/iyzico",service="payments-worker"}'
+        values: '0+0x10 1+0x80'
+      - series: 'provider_account_up{provider="paddle",account="t3/paddle~eu",service="payments-worker"}'
+        values: '0+0x90'
+    alert_rule_test:
+      # t1/stripe is down from minute 31 to 42 only: 12 minutes, under the 15 it takes. t2/iyzico is down for ten minutes. t3/paddle~eu is down throughout.
+      - eval_time: 14m
+        alertname: ProviderAccountDown
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ProviderAccountDown
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker, provider: paddle, account: "t3/paddle~eu" }
+            exp_annotations:
+              summary: "paddle account t3/paddle~eu has failed its health check for 15 minutes (the provider is unreachable from here, or it refuses the account's key)"
+
+  - interval: 1m
+    name: ProviderAccountDown names the account that stays down for fifteen minutes and clears when it answers again
+    input_series:
+      - series: 'provider_account_up{provider="stripe",account="t1/stripe"}'
+        values: '1+0x10 0+0x20 1+0x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ProviderAccountDown
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker, provider: stripe, account: "t1/stripe" }
+            exp_annotations:
+              summary: "stripe account t1/stripe has failed its health check for 15 minutes (the provider is unreachable from here, or it refuses the account's key)"
+      - eval_time: 45m
+        alertname: ProviderAccountDown
+        exp_alerts: []
+
+  - interval: 1m
+    name: ReconciliationRunStalled warns when no pass finished for thirteen hours, and not while the passes keep finishing or the schedule never ran
+    input_series:
+      # A pass at minute 0, 6 h, 12 h, then none: the newest is at 12 h.
+      - series: 'reconciliation_last_pass_timestamp_seconds{service="payments-worker"}'
+        values: '0+0x359 21600+0x360 43200+0x2000'
+    alert_rule_test:
+      - eval_time: 24h
+        alertname: ReconciliationRunStalled
+        exp_alerts: []
+      # 12 h newest pass + 13 h = 25 h; the rule waits 10 minutes more.
+      - eval_time: 25h30m
+        alertname: ReconciliationRunStalled
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "no scheduled reconciliation pass has finished for over 13 hours (it runs every 6): the review queue is not being kept up to date"
+
+  - interval: 1m
+    name: ReconciliationRunStalled is quiet when there is no series at all
+    input_series:
+      - series: 'up{job="payrudder",service="payments-worker"}'
+        values: '1+0x2000'
+    alert_rule_test:
+      - eval_time: 30h
+        alertname: ReconciliationRunStalled
+        exp_alerts: []
+
+  - interval: 1m
+    name: AuditWriteFailed pages on three refused entries in ten minutes, names the service, and ignores a blip and programming errors
+    input_series:
+      # plans-svc: nothing for ten minutes, then one more refusal a minute for five minutes (six in all).
+      - series: 'audit_write_failed_total{service="plans-svc",area="api_key",reason="insert"}'
+        values: '0+0x9 1+1x5 6+0x40'
+      # billing-svc: a single refusal.
+      - series: 'audit_write_failed_total{service="billing-svc",area="price",reason="insert"}'
+        values: '0+0x20 1+0x30'
+      # gateway: fifty refused events, but a bad event is a bug, not the database.
+      - series: 'audit_write_failed_total{service="gateway",area="invalid",reason="bad_event"}'
+        values: '0+0x10 50+0x40'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: AuditWriteFailed
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AuditWriteFailed
+        exp_alerts:
+          - exp_labels: { severity: page, service: plans-svc }
+            exp_annotations:
+              summary: "plans-svc could not write 4 audit entries in ten minutes: the changes they belong to are failing"
+      - eval_time: 40m
+        alertname: AuditWriteFailed
+        exp_alerts: []
+
+  - interval: 1m
     name: SettlementOverdue warns on a payment past the settlement lag for an hour, and ignores the other kinds
     input_series:
       - series: 'reconciliation_discrepancies_open{kind="settlement_missing"}'
