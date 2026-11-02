@@ -76,7 +76,7 @@ func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (Api
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, name, created_at, platform FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -87,6 +87,7 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }
@@ -170,7 +171,7 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 
 const insertAccount = `-- name: InsertAccount :one
 
-INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform
+INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform, require_two_factor
 `
 
 type InsertAccountParams struct {
@@ -187,6 +188,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }
@@ -839,6 +841,51 @@ func (q *Queries) SetTenantStatus(ctx context.Context, arg SetTenantStatusParams
 		&i.PlacementStatus,
 	)
 	return i, err
+}
+
+const tenantStatusMailTargets = `-- name: TenantStatusMailTargets :many
+SELECT lower(u.email)::text AS email, u.locale, a.name AS account_name, ap.name AS app_name
+FROM tenants t
+JOIN accounts a ON a.id = t.account_id
+JOIN apps ap ON ap.id = t.app_id
+JOIN account_members m ON m.account_id = a.id AND m.role = 'owner'
+JOIN users u ON u.id = m.user_id
+WHERE t.id = $1 AND u.email_verified_at IS NOT NULL
+ORDER BY m.created_at, u.id
+`
+
+type TenantStatusMailTargetsRow struct {
+	Email       string
+	Locale      string
+	AccountName string
+	AppName     string
+}
+
+// Who is told when the operator changes a live tenant's status: the owners of its account who have proven their address, in their own language, with the names the mail
+// is about (the app, the account). An owner with an unproven address gets nothing: the address may not be theirs.
+func (q *Queries) TenantStatusMailTargets(ctx context.Context, tenantID uuid.UUID) ([]TenantStatusMailTargetsRow, error) {
+	rows, err := q.db.Query(ctx, tenantStatusMailTargets, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TenantStatusMailTargetsRow{}
+	for rows.Next() {
+		var i TenantStatusMailTargetsRow
+		if err := rows.Scan(
+			&i.Email,
+			&i.Locale,
+			&i.AccountName,
+			&i.AppName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const touchApiKey = `-- name: TouchApiKey :exec

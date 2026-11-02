@@ -7,6 +7,7 @@ import {
   AffiliatesResource,
   AnalyticsResource,
   AssetsResource,
+  AuditEventsResource,
   ContractAcceptancesResource,
   ContractWithdrawalsResource,
   ContractsResource,
@@ -55,6 +56,8 @@ import type {
   ListAffiliatesResponse,
   ListAssetsQuery,
   ListAssetsResponse,
+  ListAuditEventsQuery,
+  ListAuditEventsResponse,
   ListCouponRedemptionsQuery,
   ListCouponRedemptionsResponse,
   ListCreditLedgerQuery,
@@ -208,6 +211,14 @@ export class Paginators {
     );
   }
 
+  listAuditEvents(query?: ListAuditEventsQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListAuditEventsResponse["events"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.auditEvents.listAuditEvents(q, options),
+      (page) => page.events,
+      query,
+    );
+  }
+
   listAssets(query?: ListAssetsQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListAssetsResponse["assets"]>[number], void, undefined> {
     return paginate(
       (q) => this.r.assets.listAssets(q, options),
@@ -223,6 +234,7 @@ export abstract class PayrudderResources {
   readonly affiliates: AffiliatesResource;
   readonly analytics: AnalyticsResource;
   readonly assets: AssetsResource;
+  readonly auditEvents: AuditEventsResource;
   readonly contractAcceptances: ContractAcceptancesResource;
   readonly contractWithdrawals: ContractWithdrawalsResource;
   readonly contracts: ContractsResource;
@@ -263,6 +275,7 @@ export abstract class PayrudderResources {
     this.affiliates = new AffiliatesResource(t);
     this.analytics = new AnalyticsResource(t);
     this.assets = new AssetsResource(t);
+    this.auditEvents = new AuditEventsResource(t);
     this.contractAcceptances = new ContractAcceptancesResource(t);
     this.contractWithdrawals = new ContractWithdrawalsResource(t);
     this.contracts = new ContractsResource(t);

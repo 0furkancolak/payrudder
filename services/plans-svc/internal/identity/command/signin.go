@@ -132,7 +132,7 @@ func (c *Commands) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLogin
 				return err
 			}
 		}
-		out, err = c.openSession(ctx, q, user)
+		out, err = c.openOrChallenge(ctx, q, user)
 		return err
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
@@ -142,7 +142,7 @@ func (c *Commands) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLogin
 	if err != nil {
 		return Opened{}, convert.Err(err, "session")
 	}
-	c.log.InfoContext(ctx, "signed in with a code", "user_id", out.User.GetId())
+	c.log.InfoContext(ctx, "first step with a code passed", "user_id", out.User.GetId(), "second_factor", out.Challenge != "")
 	return out, nil
 }
 
@@ -241,7 +241,7 @@ func (c *Commands) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWi
 		default:
 			return err
 		}
-		out, err = c.openSession(ctx, q, user)
+		out, err = c.openOrChallenge(ctx, q, user)
 		return err
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
@@ -250,6 +250,6 @@ func (c *Commands) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWi
 	if err != nil {
 		return Opened{}, convert.Err(err, "session")
 	}
-	c.log.InfoContext(ctx, "signed in with an identity provider", "user_id", out.User.GetId(), "provider", provider)
+	c.log.InfoContext(ctx, "first step with an identity provider passed", "user_id", out.User.GetId(), "provider", provider, "second_factor", out.Challenge != "")
 	return out, nil
 }

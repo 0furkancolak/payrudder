@@ -1547,9 +1547,12 @@ type Customer struct {
 	// A hint, never a refusal: the id does not look like the kind of number this customer should have ("tr_individual", "tr_business", "tr_any", "tr_is_tckn",
 	// "tr_is_vkn", "eu_vat"; the same keys as the console's form hint). Worked out from the stored id, country and kind, so it is also right after the country or the
 	// kind changed. Empty = nothing to say.
-	TaxIdWarning  string `protobuf:"bytes,21,opt,name=tax_id_warning,json=taxIdWarning,proto3" json:"tax_id_warning,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TaxIdWarning string `protobuf:"bytes,21,opt,name=tax_id_warning,json=taxIdWarning,proto3" json:"tax_id_warning,omitempty"`
+	// The block also suspends the customer's service (entitlement checks answer "not allowed" on every meter). Read it with block_time and blocked_until: it holds
+	// only while the block does.
+	ServiceSuspended bool `protobuf:"varint,22,opt,name=service_suspended,json=serviceSuspended,proto3" json:"service_suspended,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Customer) Reset() {
@@ -1727,6 +1730,13 @@ func (x *Customer) GetTaxIdWarning() string {
 		return x.TaxIdWarning
 	}
 	return ""
+}
+
+func (x *Customer) GetServiceSuspended() bool {
+	if x != nil {
+		return x.ServiceSuspended
+	}
+	return false
 }
 
 // FilterValues is the set of accepted values for one event property (equality only).
@@ -3618,7 +3628,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"SCOPE_FULL\x10\x01\x12\x10\n" +
 	"\fSCOPE_INGEST\x10\x02\x12\x0e\n" +
 	"\n" +
-	"SCOPE_READ\x10\x03\"\xb7\x06\n" +
+	"SCOPE_READ\x10\x03\"\xe4\x06\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\tR\n" +
@@ -3645,7 +3655,8 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\rblocked_until\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedUntil\x12\x14\n" +
 	"\x05phone\x18\x13 \x01(\tR\x05phone\x12I\n" +
 	"\x13tax_id_validated_at\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\x10taxIdValidatedAt\x12$\n" +
-	"\x0etax_id_warning\x18\x15 \x01(\tR\ftaxIdWarning\"&\n" +
+	"\x0etax_id_warning\x18\x15 \x01(\tR\ftaxIdWarning\x12+\n" +
+	"\x11service_suspended\x18\x16 \x01(\bR\x10serviceSuspended\"&\n" +
 	"\fFilterValues\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\xda\x03\n" +
 	"\x05Meter\x12\x12\n" +

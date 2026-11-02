@@ -61,6 +61,13 @@ SELECT status, kind, count(*)::bigint AS n FROM reconciliation_discrepancies
 WHERE tenant_id = @tenant_id AND (@period::text = '' OR period = @period)
 GROUP BY status, kind ORDER BY status, kind;
 
+-- The live discrepancies waiting for an operator (open, not explained or resolved), by kind, for the metric reconciliation_discrepancies_open. It names no tenant: it counts
+-- the pooled database, or the schema of the one tenant a cell holds.
+-- name: CountOpenLiveDiscrepancies :many
+SELECT kind, count(*)::bigint AS n FROM reconciliation_discrepancies
+WHERE status = 'open' AND environment = 'live'
+GROUP BY kind ORDER BY kind;
+
 -- name: InsertReconciliationEvent :exec
 INSERT INTO reconciliation_events (tenant_id, environment, discrepancy_id, action, actor, from_status, to_status, resolution, note)
 VALUES (@tenant_id, @environment, @discrepancy_id, @action, @actor, @from_status, @to_status, @resolution, @note);

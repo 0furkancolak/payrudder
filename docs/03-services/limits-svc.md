@@ -161,6 +161,15 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
 - **Mode** decides `allowed`: `hard` (and a state published before modes) is `used < limit`, `soft` and `notify` are always allowed.
   `LimitStatus` adds `window`, `window_id`, `resets_at` (unset for the lifetime window), `mode`, `over_limit` and `overridden`. A window other than the month
   always reports the current one; `period_id` only picks the month of monthly limits.
+- **Suspension** (plan 13, "suspend service"): `LimitStatus.suspended` is true for every meter of a customer the seller blocked with `suspend_service`, and `allowed`
+  is then false whatever the limit, the mode and the usage, for a meter with a limit and for one without any (a meter that does not exist is still `NOT_FOUND`).
+  The record is an `EntitlementState` on the same topic with an **empty `meter_code`**, key `{tenant}/{customer}/`, `suspended = true`, `valid_from` the time of the
+  block and `valid_until` the end of the block when it has one; a tombstone on that key lifts it. `Store.Suspended` reads it (so the suspension also ends at
+  `valid_until` with no job), the Redis mirror is `lim:ent:{tenant}:{customer}:` (written, not read, like the other mirrors). The customer's limits are not
+  touched. **Ingestion is not changed** (default, not agreed): ingest-svc does not look at limits by design, a suspended customer's events are still accepted and
+  counted (they are facts the seller is owed for, and a suspension that ends must not leave a hole), and `used` keeps growing; only the answer to the seller's
+  check changes. Not flagged on the event either (flagging would make ingest-svc read the entitlements topic). A suspension is not a security control: it is the
+  seller's own switch, and the seller's service has to ask (`CheckEntitlement`) before it serves.
 - **Enforcement and invoicing agree** because they count the same events: a short window is reconciled against hour totals the aggregator writes in the transaction
   of the month row that invoicing rates, with the same on-time rule; year and lifetime are sums of the very month rows. They can still differ in two bounded
   ways: by the reconciliation interval, and for an event that limits-svc counts as on time by the tenant's current grace while the aggregator classified it by the

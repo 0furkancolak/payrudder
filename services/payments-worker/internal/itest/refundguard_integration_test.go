@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.opentelemetry.io/otel/attribute"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -187,8 +188,12 @@ func TestRefundResendNeverRefundsTwice(t *testing.T) {
 
 			t.Run("the ledger write failed: the stored reply answers the resend and the ledger row is written then", func(t *testing.T) {
 				r := scenario(t, "ok")
+				failures := counted(t, "ledger_write_failures", attribute.String("provider", p.name), attribute.String("kind", store.KindRefund))
 				first, err := send(hNoLedger, r, uuid.New(), r.key)
 				wantRefunded(t, first, err) // the money moved: the command is answered, the bookkeeping error does not undo it
+				if got := counted(t, "ledger_write_failures", attribute.String("provider", p.name), attribute.String("kind", store.KindRefund)); got != failures+1 {
+					t.Errorf("ledger_write_failures went from %d to %d, want one more (the alert LedgerWriteFailed reads it)", failures, got)
+				}
 				if _, ok, _ := ledger.RefundFact(ctx, r.tenant, r.invoice, r.key); ok {
 					t.Fatal("the ledger row was written although its write must have failed")
 				}
@@ -226,8 +231,12 @@ func TestRefundResendNeverRefundsTwice(t *testing.T) {
 				if _, err := attempts.Start(ctx, uuid.New(), r.tenant, r.invoice, store.KindRefund, "live", p.name, r.key, nil); err != nil {
 					t.Fatal(err)
 				}
+				unknown := counted(t, "refund_outcome_unknown", attribute.String("provider", p.name))
 				resent, err := send(h, r, uuid.New(), r.key)
 				wantUnknown(t, resent, err)
+				if got := counted(t, "refund_outcome_unknown", attribute.String("provider", p.name)); got != unknown+1 {
+					t.Errorf("refund_outcome_unknown went from %d to %d, want one more (the alert RefundOutcomeUnknown reads it)", unknown, got)
+				}
 				if fake.asked() != 0 {
 					t.Fatalf("the provider was asked to refund %d times, want 0", fake.asked())
 				}

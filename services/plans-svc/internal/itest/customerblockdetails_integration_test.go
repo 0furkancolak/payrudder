@@ -5,14 +5,17 @@ package itest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
@@ -123,7 +126,7 @@ func testCustomerBlockDetails(t *testing.T) {
 		if _, err := e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: rcv.URL, EventTypes: []string{"customer.blocked", "customer.unblocked"}}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: "cus_b", Reason: "no more", Category: "request", BlockedUntil: timestamppb.New(until)}); err != nil {
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: "cus_b", Reason: "no more", Category: "request", BlockedUntil: timestamppb.New(until), SuspendService: true}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: "cus_b"}); err != nil { // a repeat: no second event
@@ -149,11 +152,104 @@ func testCustomerBlockDetails(t *testing.T) {
 			got[env.Type] = env.Data
 		}
 		b, u := got["customer.blocked"], got["customer.unblocked"]
-		if b == nil || b["customer_external_id"] != "cus_b" || b["category"] != "request" || b["reason"] != "no more" || b["blocked_until"] == nil || b["customer_id"] == "" {
+		if b == nil || b["customer_external_id"] != "cus_b" || b["category"] != "request" || b["reason"] != "no more" || b["blocked_until"] == nil || b["customer_id"] == "" || b["suspend_service"] != true {
 			t.Errorf("customer.blocked data = %v", b)
 		}
 		if u == nil || u["customer_external_id"] != "cus_b" {
 			t.Errorf("customer.unblocked data = %v", u)
+		}
+	})
+
+	t.Run("a block that suspends the service publishes the customer's suspension, and a lift or a plain block ends it", func(t *testing.T) {
+		const ext = "cus_susp"
+		created, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: ext, Name: ext, Email: ext + "@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := fmt.Sprintf("%s/%s/", live.GetId(), created.GetCustomer().GetId()) // the key of an empty meter: the customer, not a limit
+		// last is what the compacted topic would keep on the customer's key after the relay has run: the record, a tombstone (present, nil), or nothing (absent).
+		last := func() (*eventsv1.EntitlementState, bool) {
+			t.Helper()
+			sink := &captureSink{}
+			e.relayAll(t, sink)
+			var rec *eventsv1.EntitlementState
+			var seen bool
+			for _, row := range sink.rows {
+				if row.Topic != "plans.entitlements.v1" || row.PartitionKey != key {
+					continue
+				}
+				seen, rec = true, nil
+				if row.Payload != nil {
+					rec = &eventsv1.EntitlementState{}
+					if err := proto.Unmarshal(row.Payload, rec); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			return rec, seen
+		}
+		last() // drain
+
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext, Category: "abuse"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, seen := last(); seen {
+			t.Fatal("a block that does not suspend the service published a suspension")
+		}
+		if _, err := e.plans.UnblockCustomer(ctx, &plansv1.UnblockCustomerRequest{ExternalId: ext}); err != nil {
+			t.Fatal(err)
+		}
+		if _, seen := last(); seen {
+			t.Fatal("lifting a block that never suspended published a tombstone")
+		}
+
+		b, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext, Category: "fraud", SuspendService: true, BlockedUntil: timestamppb.New(until)})
+		if err != nil || !b.GetCustomer().GetServiceSuspended() {
+			t.Fatalf("block with suspension: %v %v", b, err)
+		}
+		rec, seen := last()
+		if !seen || rec == nil || !rec.GetSuspended() || rec.GetMeterCode() != "" || rec.GetTenantId() != live.GetId() || rec.GetCustomerId() != created.GetCustomer().GetId() ||
+			rec.GetValidFrom() == nil || !rec.GetValidUntil().AsTime().Equal(until) {
+			t.Fatalf("suspension record = %v (seen %v)", rec, seen)
+		}
+		if ev := events(ext); ev[0].GetAction() != "blocked" || !ev[0].GetSuspendService() {
+			t.Fatalf("history = %v: want the block to say it suspended the service", ev)
+		}
+		// Blocking again keeps the block in force, and with it the suspension: nothing new is published.
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext}); err != nil {
+			t.Fatal(err)
+		}
+		if _, seen := last(); seen {
+			t.Fatal("a repeated block published again")
+		}
+
+		l, err := e.plans.UnblockCustomer(ctx, &plansv1.UnblockCustomerRequest{ExternalId: ext})
+		if err != nil || l.GetCustomer().GetServiceSuspended() {
+			t.Fatalf("lift: %v %v", l, err)
+		}
+		if rec, seen := last(); !seen || rec != nil {
+			t.Fatalf("after the lift: record %v, seen %v (want a tombstone)", rec, seen)
+		}
+		if ev := events(ext); ev[0].GetAction() != "unblocked" || ev[0].GetSuspendService() {
+			t.Fatalf("history = %v", ev)
+		}
+
+		// A block that suspended the service ran out by itself; the next block does not suspend it, and so ends the record that is still on the topic.
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext, SuspendService: true, BlockedUntil: timestamppb.New(until)}); err != nil {
+			t.Fatal(err)
+		}
+		last()
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+			_, err := tx.Exec(context.Background(), `UPDATE customers SET blocked_at = now() - interval '2 hours', blocked_until = now() - interval '1 hour' WHERE external_id = $1`, ext)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext, Category: "abuse"}); err != nil {
+			t.Fatal(err)
+		}
+		if rec, seen := last(); !seen || rec != nil {
+			t.Fatalf("a plain block after one that suspended: record %v, seen %v (want a tombstone)", rec, seen)
 		}
 	})
 

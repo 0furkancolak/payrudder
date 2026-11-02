@@ -24,7 +24,7 @@ A key has a **role** that decides what it may do, so a key can be as small as th
 | `ingest_only` | send usage events (`events:write`) and nothing else: the key to put in a service that only reports usage |
 | `custom` | exactly the permissions chosen when the key was made |
 
-A permission is `resource:action` (`customers:read`, `invoices:write`, `events:write`, `sandbox:write`, ...). A `GET` under `/v1/<resource>` needs `<resource>:read`, any other method `<resource>:write`. A request the key is not allowed to make is `403` with the key `gateway.auth.permission_denied`, and the message names the permission it lacked. Give each service the narrowest role that works.
+A permission is `resource:action` (`customers:read`, `invoices:write`, `events:write`, `sandbox:write`, ...). A `GET` under `/v1/<resource>` needs `<resource>:read`, any other method `<resource>:write`. `audit:read` (the audit log, `GET /v1/audit-events`) is held by `admin` keys and by a `custom` key given it on purpose; `read_only` does not have it, because the log names people and addresses. A request the key is not allowed to make is `403` with the key `gateway.auth.permission_denied`, and the message names the permission it lacked. Give each service the narrowest role that works.
 
 ## Rotating and revoking
 

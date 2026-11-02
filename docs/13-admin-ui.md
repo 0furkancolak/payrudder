@@ -279,3 +279,9 @@ A tour starts by itself only when `tourReady` (the person is known and the serve
 | "Show the tour again" | `forgetTours` clears the local copy and tells the server. | "writes through: a tour marked seen or forgotten is told to the server" |
 
 Not reproduced against the real stack (a second device on a slow connection): listed in `docs/plans/03-sheets-onboarding-tours.md` as still open.
+
+## The audit log and two-factor sign-in (plan 22, G4 and G9)
+
+* **Audit log** (`features/audit`): one list component for the person (`/app/t/{tenant}/audit`, owners and administrators) and the operator (`/audit`, `/tenants/{id}/audit`, with a tenant filter). Filters by area, actor and date apply on a button (the plan 02 contract), no bulk actions and no sort (newest first), "Load more" follows `next_page_token`, `incomplete` shows which service did not answer, the row opens a sheet with every field, and Export downloads the CSV with the current filter through the authenticated client.
+* **Security** (`/app/security`, the user menu): two-factor sign-in status, the setup (the QR code is drawn locally from the `otpauth_uri` with `qrcode-generator`, never by a third party; the secret is also shown as text), the recovery codes (shown once, downloadable as a text file, a checkbox before the dialog closes), turning off and new codes (each asks for a code). The switch "Require two-factor sign-in for owners" is in the organisation settings (owners, default off).
+* **Sign-in**: `signIn` and `verifyLoginCode` answer a session or `{second_factor_required, challenge}`; the second step (`TwoFactorStep`) takes six digits or a recovery code, for the password form, the mailed code and Google (`/signin/complete#challenge=...`). A person who must set up two-factor sign-in is redirected to `/app/security` until they have.

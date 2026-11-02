@@ -15,7 +15,8 @@ import { PageHeader } from "@/shared/ui/page-header";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { useAccount, useMe, useRenameAccount } from "./api";
+import { Switch } from "@/shared/ui/switch";
+import { useAccount, useMe, useRenameAccount, useSetAccountSecurity } from "./api";
 import { useLeave } from "./useLeave";
 import AccountSwitcher from "./AccountSwitcher.vue";
 
@@ -27,6 +28,7 @@ const account = useAccount();
 const { leave, pending: leaving } = useLeave();
 
 const rename = useRenameAccount();
+const security = useSetAccountSecurity();
 const accountName = ref("");
 watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { immediate: true });
 const isOwner = computed(() => account.data.value?.role === "owner");
@@ -72,6 +74,17 @@ const themes = computed(() => [
           <Button type="submit" variant="outline" :disabled="rename.isPending.value || !nameChanged">{{ t("product.account.save") }}</Button>
           <ErrorText :error="rename.error.value" class="w-full" />
         </form>
+        <!-- The policy of the organisation: its owners must sign in with a second factor. Off by default; owners only (the server checks again). -->
+        <div v-if="isOwner" class="border-border/70 flex flex-col gap-2 border-t pt-4">
+          <div class="flex items-start justify-between gap-4">
+            <label for="acct-2fa" class="min-w-0 flex-1 cursor-pointer">
+              <span class="block text-sm font-medium">{{ t("product.account.requireTwoFactor") }}</span>
+              <span class="text-muted-foreground block text-xs">{{ t("product.account.requireTwoFactorHint") }}</span>
+            </label>
+            <Switch id="acct-2fa" data-testid="require-two-factor" :model-value="account.data.value?.require_two_factor_for_owners === true" :disabled="account.isPending.value || security.isPending.value" @update:model-value="(v: boolean) => security.mutate(v)" />
+          </div>
+          <ErrorText :error="security.error.value" />
+        </div>
       </section>
 
       <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.settings.you')">

@@ -23,6 +23,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -53,6 +54,10 @@ type Principal struct {
 	Permissions []string
 	// ReadOnly is set for a tenant the operator has frozen: it may read, nothing it sends writes.
 	ReadOnly bool
+	// Actor is who the caller is for the audit log (pkg/audit); the address and request id are added per request.
+	Actor audit.Actor
+	// MemberRole is the role in the tenant's account (owner, admin, viewer) of a signed-in person acting as the tenant; empty for an API key and an operator.
+	MemberRole string
 }
 
 // Entry is the cached resolution of a key prefix.

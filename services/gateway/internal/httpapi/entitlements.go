@@ -24,13 +24,14 @@ type entitlementJSON struct {
 	Mode               string  `json:"mode"`
 	OverLimit          bool    `json:"over_limit"`
 	Overridden         bool    `json:"overridden"`
+	Suspended          bool    `json:"suspended"`
 }
 
 func entitlementOf(external string, s *limitsv1.LimitStatus) entitlementJSON {
 	out := entitlementJSON{
 		CustomerExternalID: external, MeterCode: s.GetMeterCode(), PeriodID: s.GetPeriodId(), Used: s.GetUsed(),
 		Unlimited: s.GetUnlimited(), Allowed: s.GetAllowed(), Window: s.GetWindow(), WindowID: s.GetWindowId(), Mode: s.GetMode(),
-		OverLimit: s.GetOverLimit(), Overridden: s.GetOverridden(),
+		OverLimit: s.GetOverLimit(), Overridden: s.GetOverridden(), Suspended: s.GetSuspended(),
 	}
 	if s.GetResetsAt() != nil {
 		t := s.GetResetsAt().AsTime().UTC().Format(time.RFC3339Nano)

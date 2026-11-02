@@ -3,11 +3,14 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -45,7 +48,11 @@ func drive(ctx context.Context, db *tenantdb.DB, eng *Engine, tid, invID uuid.UU
 		}
 		out, err := eng.Handle(ctx, tx, tid, sagaID, ev, cause, nil)
 		applied, state = out.Applied, out.From
-		return err
+		if err != nil || !out.Applied {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: tid, Action: "invoice." + strings.ToLower(string(ev)), TargetType: "invoice", TargetID: invID.String(),
+			Summary: fmt.Sprintf("operator action %s on the invoice; its saga was in %s", ev, out.From), Detail: map[string]any{"saga_id": sagaID.String(), "from": string(out.From), "cause": cause}})
 	})
 	if err != nil {
 		return sqlc.GetSagaRow{}, apierr.Wrap(ctx, err)

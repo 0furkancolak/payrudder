@@ -59,7 +59,7 @@ A charge that finds the circuit open is **not sent**: `Allow` returns a `*Transi
 
 The outcome is also fed to the account's breaker: a provider that came back closes the circuit before a charge has to probe it, and one that is down opens it without a charge having to fail first. `GET /admin/v1/tenants/{id}/account-health` lists every account with its last check, breaker and failover target. The seller's integrations page shows it too, through three session routes that go to the app's live tenant: `GET /app/v1/apps/{id}/integrations/payment-accounts/health` (any member) and `PUT/DELETE .../payment-accounts/{account}/failover` (the owner; the environment is always live, whatever the request says). A pill per account, a Health filter and a Failover sheet are on the page (docs/13-admin-ui.md).
 
-Metrics (payments-worker): `provider_health_checks{provider,result}`, `provider_breaker_transitions{provider,to}`, `provider_breaker_rejections{provider}`. **No alert uses them yet** (promtool was not run; a rule such as "a live account `down` for 10 minutes" belongs with plan 22 G6).
+Metrics (payments-worker): `provider_health_checks{provider,result}`, `provider_breaker_transitions{provider,to}`, `provider_breaker_rejections{provider}`. Two alerts read them (`deploy/prometheus/rules/payrudder.yaml`, tested with promtool): `ProviderCircuitOpened` (a breaker opened; warn) and `ProviderChargesRefused` (charges refused by an open breaker for ten minutes; page). **No alert reads `provider_health_checks` yet**: a per-account `down` or `bad_credentials` has no series that names the account (the counter is by provider and result), so a rule such as "a live account is `down` for 10 minutes" needs the state as a gauge first.
 
 ## Not done, not verified
 

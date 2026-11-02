@@ -161,14 +161,14 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		PaymentMethod: Str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
 		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
 		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType,
-		BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason, BlockCategory: c.BlockCategory, BlockedUntil: tsPtr(c.BlockedUntil),
+		BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason, BlockCategory: c.BlockCategory, BlockedUntil: tsPtr(c.BlockedUntil), ServiceSuspended: c.BlockSuspendService,
 		Phone: c.Phone, TaxIdValidatedAt: tsPtr(c.TaxIDValidatedAt), TaxIdWarning: string(taxid.Check(c.TaxID, Str(c.Country), c.CustomerType)),
 	}
 }
 
 // CustomerBlockEvent maps a row of a customer's block history.
 func CustomerBlockEvent(e sqlc.CustomerBlockEvent) *plansv1.CustomerBlockEvent {
-	return &plansv1.CustomerBlockEvent{Id: e.ID.String(), Action: e.Action, Category: e.Category, Reason: e.Reason, BlockedUntil: tsPtr(e.BlockedUntil), Actor: e.Actor, CreateTime: ts(e.CreatedAt)}
+	return &plansv1.CustomerBlockEvent{Id: e.ID.String(), Action: e.Action, Category: e.Category, Reason: e.Reason, BlockedUntil: tsPtr(e.BlockedUntil), SuspendService: e.SuspendService, Actor: e.Actor, CreateTime: ts(e.CreatedAt)}
 }
 
 // BlockOf is the block of a customer row, as the payment gate reads it.

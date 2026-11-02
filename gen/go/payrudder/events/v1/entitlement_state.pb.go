@@ -25,6 +25,10 @@ const (
 // EntitlementState is the limit a customer has on one meter, published by plans-svc on plans.entitlements.v1
 // (compacted; key: "{tenant_id}/{customer_id}/{meter_code}"). A tombstone (empty value) ends the entitlement.
 //
+// A record with an empty meter_code is not a limit: it is the customer's suspension (key: "{tenant_id}/{customer_id}/", suspended = true), which the seller
+// set by blocking the customer with suspend_service. While it holds (valid_from <= now < valid_until, open-ended when valid_until is unset) limits-svc answers
+// "not allowed" for every meter of that customer. A tombstone on that key lifts it; so does valid_until passing.
+//
 // Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
 type EntitlementState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -44,7 +48,9 @@ type EntitlementState struct {
 	// "hard" (also when empty), "soft" or "notify": whether CheckEntitlement still allows usage at the limit.
 	Mode string `protobuf:"bytes,11,opt,name=mode,proto3" json:"mode,omitempty"`
 	// The limit is the customer's own (an override), not the plan version's.
-	Override      bool `protobuf:"varint,12,opt,name=override,proto3" json:"override,omitempty"`
+	Override bool `protobuf:"varint,12,opt,name=override,proto3" json:"override,omitempty"`
+	// Only on the customer's suspension record (empty meter_code): the customer may use nothing. Ignored on a limit.
+	Suspended     bool `protobuf:"varint,13,opt,name=suspended,proto3" json:"suspended,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -163,11 +169,18 @@ func (x *EntitlementState) GetOverride() bool {
 	return false
 }
 
+func (x *EntitlementState) GetSuspended() bool {
+	if x != nil {
+		return x.Suspended
+	}
+	return false
+}
+
 var File_payrudder_events_v1_entitlement_state_proto protoreflect.FileDescriptor
 
 const file_payrudder_events_v1_entitlement_state_proto_rawDesc = "" +
 	"\n" +
-	"+payrudder/events/v1/entitlement_state.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd1\x03\n" +
+	"+payrudder/events/v1/entitlement_state.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xef\x03\n" +
 	"\x10EntitlementState\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -186,7 +199,8 @@ const file_payrudder_events_v1_entitlement_state_proto_rawDesc = "" +
 	"\x06window\x18\n" +
 	" \x01(\tR\x06window\x12\x12\n" +
 	"\x04mode\x18\v \x01(\tR\x04mode\x12\x1a\n" +
-	"\boverride\x18\f \x01(\bR\boverrideB\xe5\x01\n" +
+	"\boverride\x18\f \x01(\bR\boverride\x12\x1c\n" +
+	"\tsuspended\x18\r \x01(\bR\tsuspendedB\xe5\x01\n" +
 	"\x17com.payrudder.events.v1B\x15EntitlementStateProtoP\x01ZEgithub.com/0furkancolak/payrudder/gen/go/payrudder/events/v1;eventsv1\xa2\x02\x03PEX\xaa\x02\x13Payrudder.Events.V1\xca\x02\x13Payrudder\\Events\\V1\xe2\x02\x1fPayrudder\\Events\\V1\\GPBMetadata\xea\x02\x15Payrudder::Events::V1b\x06proto3"
 
 var (

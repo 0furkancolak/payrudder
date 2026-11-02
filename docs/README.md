@@ -24,6 +24,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [11-repo-layout.md](11-repo-layout.md) | Planned monorepo structure |
 | [12-kubernetes.md](12-kubernetes.md) | Running Payrudder on kind with Helm: charts, profiles, hooks, network policies, what is not covered |
 | [deploy/railway/README.md](../deploy/railway/README.md) | Running Payrudder on Railway: services, images, variables, bootstrap script, what is not verified (phase 31) |
+| [audit-log-and-two-factor.md](audit-log-and-two-factor.md) | The audit log (one table per service database, written with the change, read through the gateway) and two-factor sign-in (TOTP, recovery codes, the second step of every sign-in method, the owners' requirement) |
 | [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
 | [17-platform-direction.md](17-platform-direction.md) | Rename-able product, apps and addresses, isolation modes, licence, demo, dev and edge: the requirements and the phases that build them |
 | [16-webhooks.md](16-webhooks.md) | Signed outbound events, endpoint management, delivery and retries, the hosted invoice page |

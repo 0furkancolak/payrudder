@@ -201,6 +201,9 @@ message Customer {
   // "tr_is_vkn", "eu_vat"; the same keys as the console's form hint). Worked out from the stored id, country and kind, so it is also right after the country or the
   // kind changed. Empty = nothing to say.
   string tax_id_warning = 21;
+  // The block also suspends the customer's service (entitlement checks answer "not allowed" on every meter). Read it with block_time and blocked_until: it holds
+  // only while the block does.
+  bool service_suspended = 22;
 }
 
 enum Aggregation {
