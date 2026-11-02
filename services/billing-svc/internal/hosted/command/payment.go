@@ -275,7 +275,14 @@ func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in Se
 			return errkey.New(codes.FailedPrecondition, "billing.payment.amount_mismatch", "the payment is not for the amount of the invoice")
 		}
 		out, err := d.Engine.Handle(ctx, tx, tenantID, sagaID, sagamodel.EvProviderSettled, cause, nil)
+		if err != nil {
+			return err
+		}
 		applied = out.Applied
+		if !applied {
+			// The same confirmation delivered twice at once: both read the invoice as open, the second waited for the saga's lock and found it paid by the first.
+			repeat, err = q.SagaEventCauseExists(ctx, sqlc.SagaEventCauseExistsParams{TenantID: tenantID, SagaID: sagaID, Cause: cause})
+		}
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

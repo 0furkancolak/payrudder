@@ -591,9 +591,34 @@ func testSettleInvoicePayment(t *testing.T) {
 	if got, _ := l.page(child); got.GetPaymentState() != "open" {
 		t.Fatalf("a refused settle changed the state: %v", got.GetPaymentState())
 	}
-	ok, err := settle(l.mine, 2500, "EUR")
-	if err != nil || !ok.GetSettled() {
-		t.Fatalf("settle = %v, %v", ok, err)
+	// The same confirmation delivered several times at once (a provider redelivers while the first is handled): one settles, the others are repeats, and none of
+	// them reads as a second payment.
+	type answer struct {
+		r   *billingv1.SettleInvoicePaymentResponse
+		err error
+	}
+	const deliveries = 6
+	answers := make(chan answer, deliveries)
+	for range deliveries {
+		go func() {
+			r, err := settle(l.mine, 2500, "EUR")
+			answers <- answer{r, err}
+		}()
+	}
+	settled, repeats := 0, 0
+	for range deliveries {
+		a := <-answers
+		switch {
+		case a.err != nil:
+			t.Fatalf("settle = %v", a.err)
+		case a.r.GetSettled():
+			settled++
+		case a.r.GetRepeat():
+			repeats++
+		}
+	}
+	if settled != 1 || repeats != deliveries-1 {
+		t.Fatalf("%d deliveries of one payment: %d settled, %d repeats; want 1 and %d (a delivery that is neither would be reported as a second payment)", deliveries, settled, repeats, deliveries-1)
 	}
 	paid := l.waitState(child, "paid")
 	if paid.GetInvoice().GetStatus() != "paid" {

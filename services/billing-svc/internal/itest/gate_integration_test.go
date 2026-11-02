@@ -243,17 +243,33 @@ func testTheFirstChargeIsHeldByThePaymentGate(t *testing.T) {
 		t.Fatalf("held sagas with a step deadline: %d, with a time to look again: %d (%v); want 0 and 1", deadlines, scheduled, err)
 	}
 
-	// The seller's Retry asks the gate again: still no, still held, no charge.
+	// The seller's Retry asks the gate again: still no, still held, no charge. It is a person's act and is logged.
+	eventsOf := func(inv string) int {
+		var n int
+		if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND saga_id = (SELECT id FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2::uuid)`, e.tid, inv).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
 	admin := e.api()
+	beforeRetry := eventsOf(invoice("cus_a"))
 	if _, err := admin.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoice("cus_a")}); err != nil {
 		t.Fatal(err)
 	}
-	// The sweep, while the gate still says no, charges nothing and does not give up.
+	afterRetry := eventsOf(invoice("cus_a"))
+	if afterRetry != beforeRetry+1 {
+		t.Errorf("saga events before and after the seller's Retry of a held invoice: %d and %d; want one more", beforeRetry, afterRetry)
+	}
+	// The sweep, while the gate still says no, charges nothing and does not give up. Its look is not logged: the log cannot be pruned, and a held invoice
+	// would add a row an hour.
 	e.clk.Advance(sagacommand.DunningHold + time.Minute)
 	if _, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(500 * time.Millisecond)
+	if n := eventsOf(invoice("cus_a")); n != afterRetry {
+		t.Errorf("saga events after a sweep that found the invoice still held: %d, before it %d; want no new row", n, afterRetry)
+	}
 	if s := e.sagaStates("2026-10"); s["cus_a"] != "PAYMENT_HELD" || chargesOf(invoice("cus_a")) != 0 {
 		t.Fatalf("while the gate says no: %v, %d charges; want PAYMENT_HELD and none", s, chargesOf(invoice("cus_a")))
 	}
