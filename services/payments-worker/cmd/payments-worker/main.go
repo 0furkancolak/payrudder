@@ -100,6 +100,9 @@ type Config struct {
 	ReconcileInterval time.Duration `env:"PAYMENTS_RECONCILE_INTERVAL"`
 	// SettlementLag is how long a payment may go unreported by its provider before the reconciliation calls that a discrepancy. Default (not agreed): 7 days.
 	SettlementLag time.Duration `env:"PAYMENTS_SETTLEMENT_LAG"`
+	// WebhookReclaimAfter is how long a provider notification may stay received or failed in the inbox before the provider's retry takes it over and processes it again (the
+	// delivery that recorded it is taken to have died). Default (not agreed): 10 minutes.
+	WebhookReclaimAfter time.Duration `env:"PAYMENTS_WEBHOOK_RECLAIM_AFTER"`
 	// The circuit breaker of every provider account (docs/provider-health.md), all default (not agreed): this many outages in a row open it (5), it stays open this long
 	// (30s) and then lets one charge through to see whether the provider is back.
 	BreakerFailures int           `env:"PAYMENTS_BREAKER_FAILURES"`
@@ -138,6 +141,9 @@ func (c *Config) Validate() error {
 	}
 	if c.RetryCeiling < rabbitx.Tiers[len(rabbitx.Tiers)-1].Delay {
 		errs = append(errs, fmt.Errorf("PAYMENTS_RETRY_CEILING must be at least %s, the longest ordinary retry delay", rabbitx.Tiers[len(rabbitx.Tiers)-1].Delay))
+	}
+	if c.WebhookReclaimAfter < time.Minute {
+		errs = append(errs, errors.New("PAYMENTS_WEBHOOK_RECLAIM_AFTER must be at least 1m"))
 	}
 	if c.SettlementLag < 24*time.Hour {
 		errs = append(errs, errors.New("PAYMENTS_SETTLEMENT_LAG must be at least 24h"))
@@ -370,7 +376,7 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 	}
 	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
-	return &webhook.Server{Plans: plansSync, Billing: billing, Disputes: disputes, DisputeCases: store.Disputes{DB: db}, SettlementLag: cfg.SettlementLag, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
+	return &webhook.Server{Plans: plansSync, Billing: billing, Disputes: disputes, DisputeCases: store.Disputes{DB: db}, SettlementLag: cfg.SettlementLag, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db, ReclaimAfter: cfg.WebhookReclaimAfter},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
