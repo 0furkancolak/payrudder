@@ -775,7 +775,7 @@ func (s *ContractWithdrawalsService) ListContractWithdrawals(ctx context.Context
 // plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0
 // is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than
 // what is left of it, only a payment a provider can return). The answer is the withdrawal with its
-// `refund_state`.
+// `refund_state`. Needs invoices:write, not only customers:write: it returns money to a card.
 func (s *ContractWithdrawalsService) RequestContractWithdrawalRefund(ctx context.Context, id string, req *RequestContractWithdrawalRefundRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	var body any
 	if req != nil {
@@ -798,7 +798,10 @@ func (s *ContractWithdrawalsService) RequestContractWithdrawalRefund(ctx context
 // decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`,
 // `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash
 // cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks
-// the withdrawal refunded.
+// the withdrawal refunded. Needs customers:write. A key that does not also hold invoices:write cannot accept a
+// withdrawal while the settings say `withdrawal_refund: full` (403 gateway.auth.permission_denied, nothing is
+// decided): the refund is a credit note, and creating one needs invoices:write everywhere. Rejecting, or
+// accepting while the setting is `none`, needs customers:write only.
 func (s *ContractWithdrawalsService) SetContractWithdrawalStatus(ctx context.Context, id string, req *SetContractWithdrawalStatusRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	if req == nil {
 		req = &SetContractWithdrawalStatusRequest{}
@@ -1345,7 +1348,7 @@ func (s *CustomersService) GetContractRequirements(ctx context.Context, external
 //
 // The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the
 // webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement:
-// see setContractWithdrawalStatus and requestContractWithdrawalRefund.
+// see setContractWithdrawalStatus and requestContractWithdrawalRefund. Needs customers:write.
 func (s *CustomersService) CreateContractWithdrawal(ctx context.Context, externalID string, req *CreateContractWithdrawalRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	var body any
 	if req != nil {
