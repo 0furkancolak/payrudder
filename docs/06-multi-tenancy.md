@@ -107,7 +107,7 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
    Currency and time zone are immutable afterwards, and grace can change for future periods. The tenant currency is the default: since phase 13 a
    subscription may be sold in another currency, fixed for its life ([ADR 0016](adr/0016-provider-capabilities-and-routing.md)).
 2. Operator: `POST /admin/v1/tenants/{id}/api-keys` → plaintext key returned once (`qk_test_` for the sandbox, `qk_live_` for live; a live tenant must be active first: `PUT /admin/v1/tenants/{id}/status`, or the owner's go-live checklist in the console).
-3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/periods/{p}/close`.
+3. Tenant integrates in the sandbox: meters, plans, customers with `pm_sandbox_*` scenarios, events, `POST /v1/sandbox/close-period`.
    Then it repeats the setup in live. Copying config from sandbox to live is a documented extension, not in v1.
 4. A deployment running `values-sandbox.yaml` (`PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
 5. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by

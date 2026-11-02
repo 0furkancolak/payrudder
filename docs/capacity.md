@@ -20,7 +20,7 @@ Machine: Apple M4, **6 vCPU and 2.9 GiB for the whole Docker VM**, which ran Pos
 | Idempotency table insert | batches of 500, partitioned by month | **198,150 rows/s**, batch p50 7.2 ms, p99 47.7 ms | none |
 | Gateway upload, assets-svc | 20 x 1 MiB form; 1 GiB direct upload | 10 MiB RSS growth; 12.4 MiB peak | none |
 
-Chaos (`make chaos N=20000`): A1-A4, A8, A9 pass with 10 container kills and 2 network faults; A5, A6 pass in the month-close test; A7 skipped. The 1M-event nightly has not run on a CI runner at the time of writing ([benchmarks.md](benchmarks.md#correctness-under-chaos)).
+Chaos (`make chaos N=20000`): A1-A4, A8, A9 pass with 10 container kills and 2 network faults; A5, A6 pass in the month-close test; A7 skipped. The 1M-event nightly has run on a CI runner (green on 2026-10-30 to 11-02 on GitHub); its numbers are not copied into [benchmarks.md](benchmarks.md#correctness-under-chaos).
 
 ## The one finding: ingest at 20k events/s
 

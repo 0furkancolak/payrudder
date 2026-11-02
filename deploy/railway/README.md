@@ -114,7 +114,7 @@ variables; `<role>` below is `app`, `system` or `migrator`. The names here are t
 `cmd/*/config.default.yaml`.
 
 **Error tracking** (optional): `ERROR_TRACKING_URL=https://<public key>@host/<project id> deploy/railway/bootstrap.sh ...` sets `PAYRUDDER_ERROR_TRACKING_URL` on every Go service
-(panics and unexpected errors go to a GlitchTip or Sentry project; [docs/08-observability.md](../../docs/08-observability.md#error-tracking)); unset, nothing is sent. The DSN holds a key,
+(panics and unexpected errors go to a GlitchTip or Sentry project; [docs/08-observability.md](../../docs/08-observability.md#error-tracking-off-by-default)); unset, nothing is sent. The DSN holds a key,
 so it lives in Railway's variables only. Not exercised against a real server.
 
 Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<ROLE>_PASSWORD}}@${{Postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/<db>_db`,

@@ -15,7 +15,7 @@ payrudder/
 │       ├── plans/v1/  ingest/v1/  aggregator/v1/  limits/v1/  billing/v1/  analytics/v1/
 │       └── testdata/               # golden binary fixtures per release
 ├── sdk/                            # client libraries of the tenant API: typescript/ go/ python/ php/ (docs/18-sdks.md)
-├── examples/                       # small apps to copy: express/ fastapi/ go-nethttp/ nextjs/ laravel/ (usage + webhook verification), smoke-tested in CI against a fake API made from the OpenAPI file
+├── examples/                       # small apps to copy: express/ fastapi/ go-nethttp/ nextjs/ laravel/ rails/ django/ (usage + webhook verification), smoke-tested in CI against a fake API made from the OpenAPI file
 ├── gen/go/                         # module github.com/0furkancolak/payrudder/gen/go — generated, committed
 ├── pkg/                            # module github.com/0furkancolak/payrudder/pkg
 │   ├── config/                     # env parsing
@@ -59,12 +59,11 @@ payrudder/
 ├── tools/
 │   ├── go.mod                      # pinned dev tools (tools directive)
 │   ├── mockpsp/                    # fake payment provider (HTTP)
-│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed, cells, secrets, audit
-│   └── eventgen/                   # load + correctness generator (shared with tests/chaos)
+│   └── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed, cells, secrets, audit
 ├── tests/
 │   ├── go.mod
 │   ├── e2e/
-│   ├── chaos/                      # chaosmonkey, assertions, report
+│   ├── chaos/                      # the event generator, the monkey (monkey.go, toxiproxy.go), assertions A1-A9, report
 │   └── load/                       # k6 scripts
 ├── deploy/
 │   ├── compose/                    # compose.yaml, init SQL, .env.example
@@ -78,7 +77,7 @@ payrudder/
 │       │   ├── values-kind.yaml, values-kind-min.yaml
 │       │   └── values-sandbox.yaml # sandbox-only deployment
 │       └── payrudder-infra/          # Postgres, Redpanda, RabbitMQ, Redis, ClickHouse, MinIO, Mailpit (replaceable by managed services)
-├── .github/workflows/              # ci.yml, e2e.yml, nightly.yml, release.yml
+├── .github/workflows/              # ci.yml, nightly.yml, nightly-providers.yml, sdk-*.yml, docs.yml, mcp.yml and more: see 09-testing-strategy.md (no release workflow)
 └── docs/
 ```
 

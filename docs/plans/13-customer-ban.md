@@ -63,6 +63,8 @@ Defaults the implementer chose, because the owner said not to ask (**default, no
 
 ### Path by gate
 
+This is the canonical list of paths (working agreement 9 in the [plans README](README.md)) and the table for the payment gate. The agreement gate of plan 21 has its own table over the same paths: [the gate matrix](21-contracts.md#the-gate-matrix-every-path-that-starts-a-payment-or-grants-access).
+
 Every path that starts a payment or grants access, the gate it asks, and the test that holds the row. "Held" is a tenant the operator has suspended, frozen or banned.
 
 | # | Path | Gate | Customer blocked | Tenant held | Where | Test |
@@ -114,7 +116,7 @@ Defaults the implementer chose (**default, not agreed**):
 2. **Row 12 has tests.** The seller's own calls are not gated, and now a test holds that: billing `TheGateRefusesPayments` (credits granted to a customer blocked for fraud), `OfflinePaymentsSettleAnInvoice` (a payment recorded while the customer is blocked for fraud) and plans-svc `CustomerBlockSweep` (a coupon applied by hand). They are pin tests: the cells were already allowed by absence of a check, and a future gate would break them.
 3. **The first charge of an invoice finalized before a freeze stays as the plan says** (documented above, **default, not agreed**): it needs a hold outcome in the payment saga's transition table, which is not small. Not built.
 
-Tests: plans-svc integration `TestPlansSvc/CustomerBlockSweep` (ended block cleared, running and unending blocks left, history by `system`, one tombstone, one webhook, second pass nothing, coupon by hand), `TestCellsJobs/{pooled,cells,mixed}/BlockSweep` (every serving tenant visited once, a moving tenant left until it is released); billing `TestBilling/TheGateRefusesPayments`, `OfflinePaymentsSettleAnInvoice`. **Not verified here:** the sweep against a production-size customer table; its list reads a partial index (migration 00018, tenant 00014) that holds only blocked customers with an end.
+Tests: plans-svc integration `TestPlansSvc/CustomerBlockSweep` (ended block cleared, running and unending blocks left, history by `system`, one tombstone, one webhook, second pass nothing, coupon by hand), `TestCellsJobs/{pooled,cells,mixed}/BlockSweep` (every serving tenant visited once, a moving tenant left until it is released); billing `TestBilling/TheGateRefusesPayments`, `OfflinePaymentsSettleAnInvoice`. **Not verified here:** the sweep against a production-size customer table; its list reads a partial index (plans-svc migration 00019, tenant 00015) that holds only blocked customers with an end.
 
 ## Leftovers built (2026-11-02, branch `feat/payments-hold-first-charge`): the held first charge
 

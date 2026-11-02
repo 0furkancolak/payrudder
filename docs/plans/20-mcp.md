@@ -27,7 +27,7 @@ Audience, hosting, authentication (API key vs OAuth with the console's sign-in),
 
 ## Work
 1. Spec of audiences and tool sets, with a risk table per tool. *(Draft table written, not signed: `mcp/README.md`.)*
-2. Generate read tools from the OpenAPI (with an allow-list) so tools and API never drift; test the mapping. *(Done; 25 read tools, see the third progress part.)*
+2. Generate read tools from the OpenAPI (with an allow-list) so tools and API never drift; test the mapping. *(Done; 25 read tools at the third progress part, 30 now: see the last progress part and `mcp/scripts/read-tools.config.mjs`.)*
 3. Streamable HTTP transport + OAuth (if hosted); per-key rate limits and audit log. *(HTTP with a bearer key, the audit log and a per-key limit in the server are done; OAuth and a per-key limit in the gateway are designed, not built.)*
 4. Resources: OpenAPI and docs as MCP resources; a few prompts (monthly revenue review, find the customer over limit). *(Done: resources, and four prompts.)*
 5. Operator MCP in a separate server with its own auth and an approval step for any write.
