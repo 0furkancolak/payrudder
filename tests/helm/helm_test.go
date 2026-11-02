@@ -546,3 +546,80 @@ func TestErrorTrackingURLReachesEveryServiceThroughItsSecret(t *testing.T) {
 		}
 	}
 }
+
+// The notifier's signed listener is what the console's mail page talks to (through the gateway): without it the page says "not connected" (plan 11). Both ends get the
+// same secret through their Secrets, the gateway the notifier's address, the notifier an address to listen on, the port is open to the gateway only, and an empty
+// secret switches the whole thing off at both ends (the services refuse one end without the other).
+func TestMailEventsListenerIsWiredBetweenTheGatewayAndTheNotifier(t *testing.T) {
+	secret := func(docs []obj, name string) map[string]any {
+		s := find(docs, "Secret", "x-"+name+"-env")
+		if s == nil {
+			t.Fatalf("no secret for %s", name)
+		}
+		m, _ := s.get("stringData").(map[string]any)
+		return m
+	}
+	docs := render(t, "payrudder")
+	notifier, gateway := secret(docs, "notifier"), secret(docs, "gateway")
+	key := notifier["NOTIFIER_MAIL_EVENTS_SECRET"]
+	if s, _ := key.(string); len(s) < 16 {
+		t.Fatalf("the notifier's secret = %v: the listener refuses to start with fewer than 16 characters", key)
+	}
+	if gateway["PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"] != key {
+		t.Errorf("the gateway signs with %v, the notifier checks %v", gateway["PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"], key)
+	}
+	if got := envOf(findContainer(t, docs, "notifier"))["NOTIFIER_EVENTS_ADDR"]; got != ":9111" {
+		t.Errorf("the notifier listens on %q, want :9111", got)
+	}
+	if got := envOf(findContainer(t, docs, "gateway"))["PAYRUDDER_NOTIFIER_EVENTS_URL"]; got != "http://notifier:9111" {
+		t.Errorf("the gateway calls %q, want http://notifier:9111", got)
+	}
+	svc := find(docs, "Service", "notifier")
+	if svc == nil {
+		t.Fatal("the notifier has no Service: the gateway cannot reach its listener")
+	}
+	found := false
+	for _, p := range svc.get("spec", "ports").([]any) {
+		if pm, _ := p.(map[string]any); pm["port"] == 9111 {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the notifier's Service has no port 9111: %v", svc.get("spec", "ports"))
+	}
+	np := find(docs, "NetworkPolicy", "allow-notifier")
+	if np == nil {
+		t.Fatal("no policy allow-notifier")
+	}
+	rules, _ := np.get("spec", "ingress").([]any)
+	var from []string
+	for _, f := range rules[0].(map[string]any)["from"].([]any) {
+		from = append(from, obj(f.(map[string]any)).str("podSelector", "matchLabels", "app.kubernetes.io/name"))
+	}
+	if strings.Join(from, ",") != "gateway" {
+		t.Errorf("the notifier's listener accepts calls from %v, want the gateway only: it can suppress a tenant's mail", from)
+	}
+	// The secret is never plain environment of a container.
+	for _, c := range containers(docs) {
+		for k := range envOf(c) {
+			if k == "NOTIFIER_MAIL_EVENTS_SECRET" || k == "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET" {
+				t.Errorf("%s is a plain environment variable of container %s; it belongs in the Secret", k, c.str("name"))
+			}
+		}
+	}
+
+	off := render(t, "payrudder", "--set", "mail.eventsSecret=")
+	if got := envOf(findContainer(t, off, "notifier"))["NOTIFIER_EVENTS_ADDR"]; got != "" {
+		t.Errorf("with no secret the notifier still listens on %q", got)
+	}
+	if got := envOf(findContainer(t, off, "gateway"))["PAYRUDDER_NOTIFIER_EVENTS_URL"]; got != "" {
+		t.Errorf("with no secret the gateway still calls %q", got)
+	}
+	for _, name := range []string{"notifier", "gateway"} {
+		for k := range secret(off, name) {
+			if strings.Contains(k, "MAIL_EVENTS_SECRET") {
+				t.Errorf("with no secret %s's Secret still holds %s", name, k)
+			}
+		}
+	}
+}
