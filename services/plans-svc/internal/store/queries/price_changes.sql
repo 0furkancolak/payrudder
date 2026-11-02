@@ -87,7 +87,7 @@ SELECT paused, reason, updated_by, updated_at FROM price_change_pause;
 -- name: SetPriceChangePause :one
 UPDATE price_change_pause SET paused = @paused, reason = @reason, updated_by = @updated_by, updated_at = now() RETURNING paused, reason, updated_by, updated_at;
 
--- The notice rules of price changes (migration 00027): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
+-- The notice rules of price changes (migration 00028): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
 -- data on the system pool; the operator replaces the whole table in one transaction.
 -- name: GetPriceChangeNoticeSettings :one
 SELECT default_notice_days, updated_by, updated_at FROM price_change_notice_settings;
