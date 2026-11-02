@@ -145,9 +145,9 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - `SagaStuck`: `saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"} > 0` for 15m
 - `FrozenPeriodViolation`: any increase (page)
 - `ReconcileDriftHigh`: corrections > 1% of active keys per cycle
-- Provider health (plan 22 G8, no alert yet): `provider_health_checks{provider,result}`, `provider_breaker_transitions{provider,to}`, `provider_breaker_rejections{provider}` (payments-worker)
-- Reconciliation (plan 22 G7, no alert yet): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (payments-worker)
-- Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page)
+- Provider health (plan 22 G8): `provider_health_checks{provider,result}` (no alert), `provider_breaker_transitions{provider,to}` (`ProviderCircuitOpened`), `provider_breaker_rejections{provider}` (`ProviderChargesRefused`) (payments-worker)
+- Reconciliation (plan 22 G7): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (no alert), and the gauge `reconciliation_discrepancies_open{kind}` (live discrepancies with status open, read on each scrape; `ReconciliationBacklog`, `SettlementOverdue`) (payments-worker)
+- Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page); from the counters of G1, G7 and G8: `LedgerWriteFailed` (`ledger_write_failures{provider,kind}`, page), `RefundOutcomeUnknown` (`refund_outcome_unknown{provider}`, warn), `ProviderCircuitOpened` (warn), `ProviderChargesRefused` (page), `ReconciliationBacklog` and `SettlementOverdue` (warn)
 - Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified` (warn). A stack that never ran PITR raises no PITR alert (there is no metric to go stale); a stack that should run it watches the `pitr-agent` container itself
 - `Watchdog`: always firing, routed to its own receiver, the dead man's switch
 

@@ -5,6 +5,7 @@ package identity
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -126,7 +127,8 @@ func (h *Handler) SignIn(ctx context.Context, req *plansv1.SignInRequest) (*plan
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.SignInResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: expireOf(o.Token, o.ExpireTime), Challenge: o.Challenge,
+		ChallengeExpireTime: expireOf(o.Challenge, o.ChallengeExpire)}, nil
 }
 
 func (h *Handler) SignOut(ctx context.Context, req *plansv1.SignOutRequest) (*plansv1.SignOutResponse, error) {
@@ -229,7 +231,8 @@ func (h *Handler) VerifyLoginCode(ctx context.Context, req *plansv1.VerifyLoginC
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.VerifyLoginCodeResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.VerifyLoginCodeResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: expireOf(o.Token, o.ExpireTime), Challenge: o.Challenge,
+		ChallengeExpireTime: expireOf(o.Challenge, o.ChallengeExpire)}, nil
 }
 
 func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWithIdentityRequest) (*plansv1.SignInWithIdentityResponse, error) {
@@ -237,7 +240,8 @@ func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWit
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.SignInWithIdentityResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+	return &plansv1.SignInWithIdentityResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: expireOf(o.Token, o.ExpireTime), Challenge: o.Challenge,
+		ChallengeExpireTime: expireOf(o.Challenge, o.ChallengeExpire)}, nil
 }
 
 func (h *Handler) CreateMyAccount(ctx context.Context, req *plansv1.CreateMyAccountRequest) (*plansv1.CreateMyAccountResponse, error) {
@@ -316,4 +320,59 @@ func (h *Handler) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvit
 
 func (h *Handler) AcceptInvitationAsUser(ctx context.Context, req *plansv1.AcceptInvitationAsUserRequest) (*plansv1.AcceptInvitationAsUserResponse, error) {
 	return h.cmd.AcceptInvitationAsUser(ctx, req)
+}
+
+// expireOf is the time as a timestamp when there is a token for it to belong to: the answer of a sign-in that needs a second factor has a challenge and no session.
+func expireOf(token string, t time.Time) *timestamppb.Timestamp {
+	if token == "" {
+		return nil
+	}
+	return timestamppb.New(t)
+}
+
+func (h *Handler) VerifyTwoFactor(ctx context.Context, req *plansv1.VerifyTwoFactorRequest) (*plansv1.VerifyTwoFactorResponse, error) {
+	o, err := h.cmd.VerifyTwoFactor(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.VerifyTwoFactorResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
+}
+
+func (h *Handler) GetTwoFactor(ctx context.Context, req *plansv1.GetTwoFactorRequest) (*plansv1.GetTwoFactorResponse, error) {
+	return h.cmd.TwoFactor(ctx, req.GetUserId())
+}
+
+func (h *Handler) SetupTwoFactor(ctx context.Context, req *plansv1.SetupTwoFactorRequest) (*plansv1.SetupTwoFactorResponse, error) {
+	return h.cmd.Setup(ctx, req.GetUserId())
+}
+
+func (h *Handler) ConfirmTwoFactor(ctx context.Context, req *plansv1.ConfirmTwoFactorRequest) (*plansv1.ConfirmTwoFactorResponse, error) {
+	codes, err := h.cmd.Confirm(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ConfirmTwoFactorResponse{RecoveryCodes: codes}, nil
+}
+
+func (h *Handler) DisableTwoFactor(ctx context.Context, req *plansv1.DisableTwoFactorRequest) (*plansv1.DisableTwoFactorResponse, error) {
+	if err := h.cmd.Disable(ctx, req); err != nil {
+		return nil, err
+	}
+	return &plansv1.DisableTwoFactorResponse{}, nil
+}
+
+func (h *Handler) RegenerateRecoveryCodes(ctx context.Context, req *plansv1.RegenerateRecoveryCodesRequest) (*plansv1.RegenerateRecoveryCodesResponse, error) {
+	codes, err := h.cmd.RegenerateRecoveryCodes(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RegenerateRecoveryCodesResponse{RecoveryCodes: codes}, nil
+}
+
+func (h *Handler) SetAccountSecurity(ctx context.Context, req *plansv1.SetAccountSecurityRequest) (*plansv1.SetAccountSecurityResponse, error) {
+	on, err := h.cmd.SetAccountSecurity(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetAccountSecurityResponse{RequireTwoFactorForOwners: on}, nil
 }

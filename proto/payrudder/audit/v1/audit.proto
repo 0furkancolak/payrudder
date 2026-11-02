@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package payrudder.audit.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AuditService reads the audit log (pkg/audit, docs/plans/22 G4) of the service it is registered on. plans-svc and billing-svc serve it (payments-worker answers the
+// same question over HTTP); the gateway asks each and puts the pages together, newest first. The tenant comes from gRPC metadata, never from a request body: a call
+// for a tenant sees that tenant's entries, an operator call sees every entry or those of the tenant it names.
+service AuditService {
+  // ListAuditEvents returns the entries that match, newest first, at most page_size, the ones after page_token. A call for a tenant also gets the entries of the tenant's
+  // account that belong to no tenant (its members) where the service keeps them (plans-svc).
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+}
+
+message AuditEvent {
+  string id = 1;
+  // Empty for an entry that belongs to no tenant (a sign-in, a member of an account).
+  string tenant_id = 2;
+  string account_id = 3;
+  // "user", "api_key", "operator" or "system".
+  string actor_type = 4;
+  string actor_id = 5;
+  string actor_email = 6;
+  // "<area>.<what>": api_key.created, member.role_changed, two_factor.enabled.
+  string action = 7;
+  string target_type = 8;
+  string target_id = 9;
+  // One line for a person; secrets are masked.
+  string summary = 10;
+  // A small JSON object of what changed, with no secret in it.
+  string detail_json = 11;
+  // SHA-256 (hex) of the state before and after, when the change had one.
+  string before_hash = 12;
+  string after_hash = 13;
+  string source_ip = 14;
+  string request_id = 15;
+  google.protobuf.Timestamp create_time = 16;
+}
+
+message ListAuditEventsRequest {
+  // Operator calls only: narrow to one tenant. A call for a tenant always means that tenant.
+  string tenant_id = 1;
+  // Operator calls only: narrow to the entries of one account that belong to no tenant.
+  string account_id = 2;
+  // Exact action names, or an area as "api_key.*".
+  repeated string actions = 3;
+  // An actor id or e-mail address.
+  string actor = 4;
+  string target_type = 5;
+  string target_id = 6;
+  // from_time is inclusive, to_time exclusive.
+  google.protobuf.Timestamp from_time = 7;
+  google.protobuf.Timestamp to_time = 8;
+  // The position of the last entry of the previous page: entries older than it are returned. Empty: the newest.
+  string page_token = 9;
+  // At most 200; 0 means 50.
+  int32 page_size = 10;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  // Set by the gateway (a service leaves it empty): the token of the next page, empty on the last.
+  string next_page_token = 2;
+  // Set by the gateway: a service that was asked did not answer, so the page may lack its entries. unavailable_sources names them ("plans", "billing", "payments").
+  bool incomplete = 3;
+  repeated string unavailable_sources = 4;
+}

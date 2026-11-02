@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/resolver/dns"
 	"google.golang.org/grpc/status"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
@@ -112,11 +113,11 @@ func defaultDeadline(d time.Duration) grpc.UnaryClientInterceptor {
 	}
 }
 
-// NewTenantClient is NewClient plus tenant forwarding on unary calls: the tenant of the caller's context travels to the
+// NewTenantClient is NewClient plus tenant and audit-actor forwarding on unary calls: the tenant (and who is acting) of the caller's context travel to the
 // callee as metadata. Failures read "<name> client: <cause>". Callers needing streams pass tenant.StreamClientInterceptor
 // through extra.
 func NewTenantClient(name, target string, extra ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts := append([]grpc.DialOption{grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())}, extra...)
+	opts := append([]grpc.DialOption{grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor(), audit.UnaryClientInterceptor())}, extra...)
 	conn, err := NewClient(target, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%s client: %w", name, err)

@@ -84,11 +84,15 @@ func (q *Queries) Session(ctx context.Context, token string) (Session, error) {
 	if err != nil {
 		return Session{}, err
 	}
+	factor, err := db.GetTwoFactorState(ctx, row.UserID)
+	if err != nil {
+		return Session{}, convert.Err(err, "session")
+	}
 	now := q.now()
 	s := Session{
 		ID: row.ID,
 		User: &plansv1.User{Id: row.UserID.String(), Email: row.Email, DisplayName: row.DisplayName, CreateTime: timestamppb.New(row.UserCreatedAt),
-			EmailVerified: row.EmailVerifiedAt != nil},
+			EmailVerified: row.EmailVerifiedAt != nil, TwoFactorEnabled: factor.ConfirmedAt != nil, TwoFactorSetupRequired: factor.OwnerRequires && factor.ConfirmedAt == nil},
 		Memberships: ms,
 		ExpireTime:  row.ExpiresAt,
 	}
@@ -189,7 +193,7 @@ func (q *Queries) Account(ctx context.Context, userID, accountID string) (*plans
 	if err != nil {
 		return nil, convert.Err(err, "member")
 	}
-	resp := &plansv1.GetMyAccountResponse{Id: aid.String(), Name: m.AccountName, Role: m.Role, CreateTime: timestamppb.New(m.CreatedAt)}
+	resp := &plansv1.GetMyAccountResponse{Id: aid.String(), Name: m.AccountName, Role: m.Role, CreateTime: timestamppb.New(m.CreatedAt), RequireTwoFactorForOwners: m.RequireTwoFactor}
 	for _, r := range rows {
 		resp.Members = append(resp.Members, &plansv1.AccountMember{
 			UserId: r.UserID.String(), Email: r.Email, DisplayName: r.DisplayName, Role: r.Role, CreateTime: timestamppb.New(r.CreatedAt)})

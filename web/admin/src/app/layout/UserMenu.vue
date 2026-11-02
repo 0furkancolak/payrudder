@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useNavigate } from "@tanstack/vue-router";
-import { Check, ChevronRight, Globe, LogOut, Monitor, Moon, Plus, Settings, Sun } from "@lucide/vue";
+import { Check, ChevronRight, Globe, Lock, LogOut, Monitor, Moon, Plus, Settings, Sun } from "@lucide/vue";
 import { DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -125,6 +125,7 @@ const subContent = 'bg-popover text-popover-foreground shadow-pop z-50 min-w-40 
       </DropdownMenuSub>
       <DropdownMenuSeparator />
       <DropdownMenuItem class="rounded-xl" @select="navigate({ to: '/app/settings' })"><Settings class="size-4" />{{ t("product.nav.settings") }}</DropdownMenuItem>
+      <DropdownMenuItem class="rounded-xl" data-testid="menu-security" @select="navigate({ to: '/app/security' })"><Lock class="size-4" />{{ t("product.nav.security") }}</DropdownMenuItem>
       <DropdownMenuItem class="rounded-xl" @select="leave"><LogOut class="size-4" />{{ t("nav.signOut") }}</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

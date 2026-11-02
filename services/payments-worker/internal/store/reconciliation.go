@@ -415,3 +415,31 @@ func (d Discrepancies) LiveTenants(ctx context.Context) ([]uuid.UUID, error) {
 	}
 	return out, err
 }
+
+// OpenCounts is how many live discrepancies wait for an operator (status open), by kind, over every place a tenant's rows can be: the pooled database, and each serving
+// tenant of a cell. What could be counted is returned with the error of what could not.
+func (d Discrepancies) OpenCounts(ctx context.Context) (map[string]int64, error) {
+	out := map[string]int64{}
+	add := func(rows []sqlc.CountOpenLiveDiscrepanciesRow) {
+		for _, r := range rows {
+			out[r.Kind] += r.N
+		}
+	}
+	rows, err := get(ctx, d.DB, uuid.Nil, func(q *sqlc.Queries) ([]sqlc.CountOpenLiveDiscrepanciesRow, error) {
+		return q.CountOpenLiveDiscrepancies(ctx)
+	})
+	add(rows)
+	if err != nil {
+		return out, err
+	}
+	if r, ok := d.DB.(*pgxx.Router); ok {
+		err = r.EachReady(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+			rows, err := get(ctx, d.DB, t.TenantID, func(q *sqlc.Queries) ([]sqlc.CountOpenLiveDiscrepanciesRow, error) {
+				return q.CountOpenLiveDiscrepancies(ctx)
+			})
+			add(rows)
+			return err
+		})
+	}
+	return out, err
+}
