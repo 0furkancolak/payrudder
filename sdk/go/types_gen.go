@@ -879,6 +879,14 @@ type CreatePaymentLinkRequest struct {
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
+// CreatePaymentMethodSetupRequest is the request body of CreatePaymentMethodSetup.
+type CreatePaymentMethodSetupRequest struct {
+	// The provider whose page it is; only Stripe has one. One of: stripe.
+	Provider string `json:"provider,omitempty"`
+	// Where the provider sends the customer after the page. `https` only
+	ReturnURL string `json:"return_url"`
+}
+
 // CreatePlanRequest is the request body of CreatePlan.
 type CreatePlanRequest struct {
 	Code string `json:"code"`
@@ -2209,6 +2217,14 @@ type PaymentLink struct {
 	// Invoices the link created (ad hoc)
 	UseCount       int    `json:"use_count"`
 	IdempotencyKey string `json:"idempotency_key"`
+}
+
+// PaymentMethodSetup is an object of the API; see components.schemas.PaymentMethodSetup in api/openapi/v1.yaml.
+type PaymentMethodSetup struct {
+	// The provider's page: send it to the customer
+	URL string `json:"url"`
+	// The provider's reference of the page (Stripe's Checkout Session id)
+	Ref string `json:"ref"`
 }
 
 // Plan is an object of the API; see components.schemas.Plan in api/openapi/v1.yaml.

@@ -720,6 +720,26 @@
         "deleteInUse": "Müşterinin faturalarının tahsil edildiği kart bu. Silindikten sonra müşteriye yeni bir ödeme yöntemi tanımlanana kadar sonraki tahsilat başarısız olur. Kart ödeme sağlayıcısında silinir ve bu geri alınamaz.",
         "deletedInUse": "Kart silindi. Müşterinin faturalarının tahsil edildiği karttı: müşteriye yeni bir ödeme yöntemi tanımlayın.",
         "hint": "Payrudder kart numarası tutmaz: kart, ödeyenin yazdığı yerde kaydedilir ve müşterinin ödeme yöntemi onu gösterir. Burada kartları görebilir ve birini silebilirsiniz."
+      },
+      "askCard": {
+        "action": "Kart iste",
+        "title": "Müşteriden kart isteyin",
+        "hint": "Stripe, müşterinin sonraki tahsilatlar için kartını kaydettiği kendi sayfasını açar. Şimdi hiçbir şey tahsil edilmez ve hiçbir kart numarası Payrudder'dan geçmez. Bağlantıyı siz müşteriye gönderirsiniz.",
+        "consent": "Bu akışta Payrudder onay toplamaz ve saklamaz. Stripe'ın kılavuzu, müşteri yokken tahsilat yapılması için müşterinin açık onayını almanızı (tutar ve zamanı, tutarın nasıl belirlendiği, nasıl iptal edileceği) ve bunun kaydını tutmanızı ister. Bağlantıyı kendi şartlarınızla birlikte gönderin ve müşterinin onayını kendiniz saklayın.",
+        "returnUrl": "Dönüş adresi",
+        "returnUrlHint": "Sayfadan sonra Stripe'ın müşteriyi yönlendireceği yer: size ait bir adres, yalnızca https.",
+        "errors": {
+          "required": "Müşterinin döneceği adresi girin.",
+          "notHttps": "Adres https:// ile başlamalı ve bir site belirtmelidir.",
+          "tooLong": "Adres çok uzun (en fazla 2000 karakter)."
+        },
+        "made": "Bağlantı hazır. Müşteriye gönderin.",
+        "link": "Stripe sayfasının bağlantısı",
+        "copy": "Kopyala",
+        "after": "Müşteri kartı kaydettiğinde Stripe, Payrudder'a bildirir ve kart müşterinin ödeme yöntemi olur: sonraki faturalar bununla tahsil edilir. Burada yapılacak başka bir şey yok. Bağlantı çalışmazsa yenisini oluşturun.",
+        "close": "Kapat",
+        "make": "Bağlantıyı oluştur",
+        "again": "Yeni bağlantı oluştur"
       }
     },
     "packages": {

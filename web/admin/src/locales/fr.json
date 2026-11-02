@@ -720,6 +720,26 @@
         "deleteInUse": "C'est la carte avec laquelle les factures du client sont débitées. Une fois supprimée, le prochain prélèvement échoue tant qu'un nouveau moyen de paiement n'est pas défini pour le client. Elle est supprimée chez le prestataire de paiement, c'est irréversible.",
         "deletedInUse": "La carte a été supprimée. C'était celle des prélèvements des factures du client : définissez un nouveau moyen de paiement pour le client.",
         "hint": "Payrudder ne conserve aucun numéro de carte : une carte est enregistrée là où le payeur la saisit, et le moyen de paiement du client la désigne. Ici, vous voyez les cartes et pouvez en supprimer une."
+      },
+      "askCard": {
+        "action": "Demander une carte",
+        "title": "Demander une carte au client",
+        "hint": "Stripe ouvre sa propre page où le client enregistre une carte pour des prélèvements ultérieurs. Rien n'est prélevé maintenant et aucun numéro de carte ne passe par Payrudder. Vous envoyez le lien au client.",
+        "consent": "Dans ce parcours, Payrudder ne recueille ni ne conserve aucun consentement. Le guide de Stripe demande que vous obteniez l'accord explicite du client pour être prélevé en son absence (montant et moment, comment le montant est déterminé, comment résilier) et que vous en gardiez une trace. Envoyez le lien avec vos conditions et conservez vous-même leur accord.",
+        "returnUrl": "Adresse de retour",
+        "returnUrlHint": "Où Stripe renvoie le client après la page : une adresse à vous, https uniquement.",
+        "errors": {
+          "required": "Saisissez l'adresse à laquelle le client revient.",
+          "notHttps": "L'adresse doit commencer par https:// et désigner un site.",
+          "tooLong": "L'adresse est trop longue (2000 caractères au plus)."
+        },
+        "made": "Le lien est prêt. Envoyez-le au client.",
+        "link": "Lien vers la page de Stripe",
+        "copy": "Copier",
+        "after": "Quand le client a enregistré la carte, Stripe le signale à Payrudder et la carte devient son moyen de paiement : les factures suivantes sont prélevées dessus. Il n'y a rien d'autre à faire ici. Si le lien ne fonctionne plus, créez-en un autre.",
+        "close": "Fermer",
+        "make": "Créer le lien",
+        "again": "Créer un autre lien"
       }
     },
     "packages": {

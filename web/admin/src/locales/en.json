@@ -720,6 +720,26 @@
         "deleteInUse": "This is the card the customer's invoices are charged with. After it is deleted the next charge fails until a new payment method is set for the customer. It is deleted at the payment provider and this cannot be undone.",
         "deletedInUse": "The card was deleted. It was the one the customer's invoices are charged with: set a new payment method for the customer.",
         "hint": "Payrudder holds no card numbers: a card is saved where the payer types it, and the customer's payment method names it. Here you can see the cards and delete one."
+      },
+      "askCard": {
+        "action": "Ask for a card",
+        "title": "Ask the customer for a card",
+        "hint": "Stripe opens its own page where the customer saves a card for later charges. Nothing is charged now and no card number passes through Payrudder. You send them the link.",
+        "consent": "Payrudder collects and keeps no consent in this flow. Stripe's guide asks you to get the customer's explicit agreement to be charged without them present (the amount and when, how the amount is decided, how to cancel) and to keep a record of it. Send the link together with your terms and keep their agreement yourself.",
+        "returnUrl": "Return address",
+        "returnUrlHint": "Where Stripe sends the customer after the page: an address of yours, https only.",
+        "errors": {
+          "required": "Enter the address the customer returns to.",
+          "notHttps": "The address must start with https:// and name a site.",
+          "tooLong": "The address is too long (2000 characters at most)."
+        },
+        "made": "The link is ready. Send it to the customer.",
+        "link": "Link to Stripe's page",
+        "copy": "Copy",
+        "after": "When the customer has saved the card, Stripe tells Payrudder and the card becomes their payment method: later invoices are charged with it. There is nothing more to do here. If the link stops working, make another.",
+        "close": "Close",
+        "make": "Make the link",
+        "again": "Make another link"
       }
     },
     "packages": {

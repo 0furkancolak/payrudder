@@ -131,6 +131,19 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
+class _CreatePaymentMethodSetupRequestRequired(TypedDict):
+    return_url: str
+
+
+class CreatePaymentMethodSetupRequest(_CreatePaymentMethodSetupRequestRequired, total=False):
+    provider: Literal["stripe"]
+
+
+class PaymentMethodSetup(TypedDict):
+    url: str
+    ref: str
+
+
 class StoredCard(TypedDict):
     token: str
     alias: str

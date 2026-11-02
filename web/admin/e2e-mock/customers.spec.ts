@@ -369,6 +369,41 @@ test.describe("customer sheet", () => {
     await expect(sheet).toContainText("No payments yet.");
   });
 
+  test("a card is asked for from the sheet: the consent is the seller's and says so, the address is checked before anything is sent, and the link comes back to copy", async ({ page }) => {
+    const gw = await openCustomers(page);
+    let refuse = false;
+    gw.on((c) => {
+      if (c.method !== "POST" || c.path !== "/v1/customers/cus_1/payment-method-setup") return undefined;
+      if (refuse) return { status: 404, body: { error: { code: "NOT_FOUND", key: "payments.customer.not_ready", message: "no such customer" } } };
+      return { status: 201, body: { url: "https://checkout.stripe.com/c/pay/cs_test_1", ref: "cs_test_1" } };
+    });
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-ask-card").click();
+    await expect(page.getByTestId("ask-card-consent")).toContainText("collects and keeps no consent");
+    await expect(page.getByTestId("ask-card-consent")).toContainText("keep their agreement yourself");
+
+    // Nothing is sent until the address is one the API takes.
+    await page.getByTestId("ask-card-make").click();
+    await expect(page.getByTestId("ask-card-problem")).toHaveText("Enter the address the customer returns to.");
+    await page.getByTestId("ask-card-return").fill("http://shop.example.com/thanks");
+    await page.getByTestId("ask-card-make").click();
+    await expect(page.getByTestId("ask-card-problem")).toHaveText("The address must start with https:// and name a site.");
+    expect(gw.called("POST", "/v1/customers/cus_1/payment-method-setup")).toHaveLength(0);
+
+    await page.getByTestId("ask-card-return").fill(" https://shop.example.com/thanks ");
+    await page.getByTestId("ask-card-make").click();
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/payment-method-setup").length).toBe(1);
+    expect(gw.called("POST", "/v1/customers/cus_1/payment-method-setup")[0]?.body).toEqual({ provider: "stripe", return_url: "https://shop.example.com/thanks" });
+    await expect(page.getByTestId("ask-card-link")).toHaveValue("https://checkout.stripe.com/c/pay/cs_test_1");
+    await expect(page.getByTestId("ask-card-result")).toContainText("the card becomes their payment method");
+    await expect(page.getByTestId("ask-card-make")).toHaveText("Make another link");
+
+    // The API's refusal is shown in the reader's language, and the form stays.
+    refuse = true;
+    await page.getByTestId("ask-card-make").click();
+    await expect(page.getByText("The customer could not be prepared at the provider.")).toBeVisible();
+  });
+
   test("usage is corrected from the sheet: only meters that add are offered, a refusal says why and an accepted correction closes the sheet", async ({ page }) => {
     const gw = await openCustomers(page);
     await page.getByTestId("customer-cus_1").click();
