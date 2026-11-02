@@ -5368,7 +5368,7 @@
     "steps": {
       "key": {
         "title": "Une clé d'API",
-        "todo": "Créez-en une sur la page Clés API de l'app ; elle n'est montrée qu'une fois.",
+        "todo": "Créez-en une ci-dessous (ou sur la page Clés d'API de l'application) ; elle n'est affichée qu'une fois.",
         "done": "Vous avez une clé."
       },
       "meter": {
@@ -5409,6 +5409,31 @@
       "queued": "En attente de la réponse de votre serveur.",
       "delivered": "Votre serveur l'a accepté ({answer}).",
       "failed": "Votre serveur ne l'a pas accepté : {answer}. Corrigez votre gestionnaire puis envoyez-en un autre ; Payrudder réessaie aussi de lui-même."
+    },
+    "key": {
+      "title": "Créer une clé d'API",
+      "help": "Crée une clé qui ne peut qu'envoyer des événements d'usage, pour l'environnement que vous regardez. Elle est affichée une seule fois, ici : cette page ne la garde en mémoire que jusqu'à ce que vous disiez l'avoir copiée.",
+      "create": "Créer une clé d'envoi",
+      "once": "Copiez-la maintenant. Elle ne sera plus affichée et cette page ne la conserve pas. Placez-la dans PAYRUDDER_API_KEY.",
+      "done": "Je l'ai copiée"
+    },
+    "sample": {
+      "create": "Créer un compteur et un client d'exemple",
+      "help": "Bac à sable uniquement. Crée le compteur {meter} et le client {customer}, selon ce qui manque, pour que le code ci-dessous fonctionne tel quel."
+    },
+    "testEvent": {
+      "title": "Envoyer un événement de test",
+      "help": "Envoie depuis cette page un événement de quantité 1 pour {customer} sur {meter}. Bac à sable uniquement.",
+      "need": "Choisissez d'abord un compteur et saisissez un identifiant de client.",
+      "send": "Envoyer un événement de test",
+      "badge": {
+        "accepted": "Accepté",
+        "duplicate": "Déjà compté",
+        "rejected": "Rejeté"
+      },
+      "accepted": "L'événement a été accepté. La liste passe au vert dès qu'il est compté, dans quelques secondes.",
+      "duplicate": "Un événement avec cette clé a déjà été compté ; rien n'a été ajouté.",
+      "rejected": "L'événement a été rejeté : {code}. {message}"
     }
   },
   "contracts": {
