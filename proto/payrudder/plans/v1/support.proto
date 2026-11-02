@@ -10,6 +10,11 @@ import "google/protobuf/timestamp.proto";
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
 // language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
 //
+// A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
+// the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
+// does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
+// messages only.
+//
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
 service SupportService {
@@ -27,6 +32,19 @@ service SupportService {
   // ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
   rpc ReplySupportTicket(ReplySupportTicketRequest) returns (ReplySupportTicketResponse);
   rpc UpdateSupportTicket(UpdateSupportTicketRequest) returns (UpdateSupportTicketResponse);
+
+  // GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
+  rpc GetMySupportSummary(GetMySupportSummaryRequest) returns (GetMySupportSummaryResponse);
+  // GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
+  rpc GetSupportSummary(GetSupportSummaryRequest) returns (GetSupportSummaryResponse);
+
+  // AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
+  // the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
+  rpc AuthorizeSupportAttachment(AuthorizeSupportAttachmentRequest) returns (AuthorizeSupportAttachmentResponse);
+  // AddSupportAttachment records an uploaded file on the message, checking the limits again under the ticket's lock. Same caller rules as the call above.
+  rpc AddSupportAttachment(AddSupportAttachmentRequest) returns (AddSupportAttachmentResponse);
+  // GetSupportAttachment says where a file is stored. With user_id it is the person's call and refuses the files of internal notes; without, the operator's.
+  rpc GetSupportAttachment(GetSupportAttachmentRequest) returns (GetSupportAttachmentResponse);
 }
 
 message SupportTicket {
@@ -87,6 +105,27 @@ message SupportMessage {
   // An operator's note the person does not see.
   bool internal = 5;
   google.protobuf.Timestamp create_time = 6;
+  repeated SupportAttachment attachments = 7;
+}
+
+// SupportAttachment is a file on a message. Its bytes are fetched through the download call, never through this message.
+message SupportAttachment {
+  string id = 1;
+  string filename = 2;
+  string content_type = 3;
+  int64 size_bytes = 4;
+  google.protobuf.Timestamp create_time = 5;
+}
+
+// SupportAttachmentTarget is where a file is (or is to be) stored: the tenant that holds it in assets-svc, as the gateway must present it, and for a stored file
+// its asset and name.
+message SupportAttachmentTarget {
+  string tenant_id = 1;
+  string environment = 2;
+  string timezone = 3;
+  string tier = 4;
+  string asset_id = 5;
+  string filename = 6;
 }
 
 message OpenMySupportTicketRequest {
@@ -101,6 +140,8 @@ message OpenMySupportTicketRequest {
 }
 message OpenMySupportTicketResponse {
   SupportTicket ticket = 1;
+  // The first message, the one files may be attached to.
+  SupportMessage message = 2;
 }
 
 message ListMySupportTicketsRequest {
@@ -130,6 +171,7 @@ message ReplyMySupportTicketRequest {
 }
 message ReplyMySupportTicketResponse {
   SupportTicket ticket = 1;
+  SupportMessage message = 2;
 }
 
 message SetMySupportTicketStatusRequest {
@@ -176,6 +218,7 @@ message ReplySupportTicketRequest {
 }
 message ReplySupportTicketResponse {
   SupportTicket ticket = 1;
+  SupportMessage message = 2;
 }
 
 message UpdateSupportTicketRequest {
@@ -189,4 +232,52 @@ message UpdateSupportTicketRequest {
 }
 message UpdateSupportTicketResponse {
   SupportTicket ticket = 1;
+}
+
+message GetMySupportSummaryRequest {
+  string user_id = 1;
+}
+message GetMySupportSummaryResponse {
+  int32 unread = 1;
+}
+
+message GetSupportSummaryRequest {}
+message GetSupportSummaryResponse {
+  // Tickets with status open (waiting for the operator).
+  int32 waiting = 1;
+  // Of those: tickets whose first answer is overdue and still not given. (The ticket's own sla_breached also stays true for an answer that was late.)
+  int32 sla_breached = 2;
+}
+
+message AuthorizeSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string message_id = 3;
+}
+message AuthorizeSupportAttachmentResponse {
+  SupportAttachmentTarget target = 1;
+}
+
+message AddSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string message_id = 3;
+  // Where the gateway stored it (the target of the Authorize call) and what it stored.
+  string tenant_id = 4;
+  string asset_id = 5;
+  string filename = 6;
+  string content_type = 7;
+  int64 size_bytes = 8;
+}
+message AddSupportAttachmentResponse {
+  SupportAttachment attachment = 1;
+}
+
+message GetSupportAttachmentRequest {
+  string user_id = 1;
+  string ticket_id = 2;
+  string attachment_id = 3;
+}
+message GetSupportAttachmentResponse {
+  SupportAttachmentTarget target = 1;
 }

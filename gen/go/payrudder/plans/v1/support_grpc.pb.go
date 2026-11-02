@@ -19,15 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SupportService_OpenMySupportTicket_FullMethodName      = "/payrudder.plans.v1.SupportService/OpenMySupportTicket"
-	SupportService_ListMySupportTickets_FullMethodName     = "/payrudder.plans.v1.SupportService/ListMySupportTickets"
-	SupportService_GetMySupportTicket_FullMethodName       = "/payrudder.plans.v1.SupportService/GetMySupportTicket"
-	SupportService_ReplyMySupportTicket_FullMethodName     = "/payrudder.plans.v1.SupportService/ReplyMySupportTicket"
-	SupportService_SetMySupportTicketStatus_FullMethodName = "/payrudder.plans.v1.SupportService/SetMySupportTicketStatus"
-	SupportService_ListSupportTickets_FullMethodName       = "/payrudder.plans.v1.SupportService/ListSupportTickets"
-	SupportService_GetSupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/GetSupportTicket"
-	SupportService_ReplySupportTicket_FullMethodName       = "/payrudder.plans.v1.SupportService/ReplySupportTicket"
-	SupportService_UpdateSupportTicket_FullMethodName      = "/payrudder.plans.v1.SupportService/UpdateSupportTicket"
+	SupportService_OpenMySupportTicket_FullMethodName        = "/payrudder.plans.v1.SupportService/OpenMySupportTicket"
+	SupportService_ListMySupportTickets_FullMethodName       = "/payrudder.plans.v1.SupportService/ListMySupportTickets"
+	SupportService_GetMySupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/GetMySupportTicket"
+	SupportService_ReplyMySupportTicket_FullMethodName       = "/payrudder.plans.v1.SupportService/ReplyMySupportTicket"
+	SupportService_SetMySupportTicketStatus_FullMethodName   = "/payrudder.plans.v1.SupportService/SetMySupportTicketStatus"
+	SupportService_ListSupportTickets_FullMethodName         = "/payrudder.plans.v1.SupportService/ListSupportTickets"
+	SupportService_GetSupportTicket_FullMethodName           = "/payrudder.plans.v1.SupportService/GetSupportTicket"
+	SupportService_ReplySupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/ReplySupportTicket"
+	SupportService_UpdateSupportTicket_FullMethodName        = "/payrudder.plans.v1.SupportService/UpdateSupportTicket"
+	SupportService_GetMySupportSummary_FullMethodName        = "/payrudder.plans.v1.SupportService/GetMySupportSummary"
+	SupportService_GetSupportSummary_FullMethodName          = "/payrudder.plans.v1.SupportService/GetSupportSummary"
+	SupportService_AuthorizeSupportAttachment_FullMethodName = "/payrudder.plans.v1.SupportService/AuthorizeSupportAttachment"
+	SupportService_AddSupportAttachment_FullMethodName       = "/payrudder.plans.v1.SupportService/AddSupportAttachment"
+	SupportService_GetSupportAttachment_FullMethodName       = "/payrudder.plans.v1.SupportService/GetSupportAttachment"
 )
 
 // SupportServiceClient is the client API for SupportService service.
@@ -39,6 +44,11 @@ const (
 // sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
 // language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
+//
+// A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
+// the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
+// does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
+// messages only.
 //
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
@@ -56,6 +66,17 @@ type SupportServiceClient interface {
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(ctx context.Context, in *ReplySupportTicketRequest, opts ...grpc.CallOption) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(ctx context.Context, in *UpdateSupportTicketRequest, opts ...grpc.CallOption) (*UpdateSupportTicketResponse, error)
+	// GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
+	GetMySupportSummary(ctx context.Context, in *GetMySupportSummaryRequest, opts ...grpc.CallOption) (*GetMySupportSummaryResponse, error)
+	// GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
+	GetSupportSummary(ctx context.Context, in *GetSupportSummaryRequest, opts ...grpc.CallOption) (*GetSupportSummaryResponse, error)
+	// AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
+	// the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
+	AuthorizeSupportAttachment(ctx context.Context, in *AuthorizeSupportAttachmentRequest, opts ...grpc.CallOption) (*AuthorizeSupportAttachmentResponse, error)
+	// AddSupportAttachment records an uploaded file on the message, checking the limits again under the ticket's lock. Same caller rules as the call above.
+	AddSupportAttachment(ctx context.Context, in *AddSupportAttachmentRequest, opts ...grpc.CallOption) (*AddSupportAttachmentResponse, error)
+	// GetSupportAttachment says where a file is stored. With user_id it is the person's call and refuses the files of internal notes; without, the operator's.
+	GetSupportAttachment(ctx context.Context, in *GetSupportAttachmentRequest, opts ...grpc.CallOption) (*GetSupportAttachmentResponse, error)
 }
 
 type supportServiceClient struct {
@@ -156,6 +177,56 @@ func (c *supportServiceClient) UpdateSupportTicket(ctx context.Context, in *Upda
 	return out, nil
 }
 
+func (c *supportServiceClient) GetMySupportSummary(ctx context.Context, in *GetMySupportSummaryRequest, opts ...grpc.CallOption) (*GetMySupportSummaryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMySupportSummaryResponse)
+	err := c.cc.Invoke(ctx, SupportService_GetMySupportSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) GetSupportSummary(ctx context.Context, in *GetSupportSummaryRequest, opts ...grpc.CallOption) (*GetSupportSummaryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSupportSummaryResponse)
+	err := c.cc.Invoke(ctx, SupportService_GetSupportSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) AuthorizeSupportAttachment(ctx context.Context, in *AuthorizeSupportAttachmentRequest, opts ...grpc.CallOption) (*AuthorizeSupportAttachmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthorizeSupportAttachmentResponse)
+	err := c.cc.Invoke(ctx, SupportService_AuthorizeSupportAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) AddSupportAttachment(ctx context.Context, in *AddSupportAttachmentRequest, opts ...grpc.CallOption) (*AddSupportAttachmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddSupportAttachmentResponse)
+	err := c.cc.Invoke(ctx, SupportService_AddSupportAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) GetSupportAttachment(ctx context.Context, in *GetSupportAttachmentRequest, opts ...grpc.CallOption) (*GetSupportAttachmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSupportAttachmentResponse)
+	err := c.cc.Invoke(ctx, SupportService_GetSupportAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SupportServiceServer is the server API for SupportService service.
 // All implementations must embed UnimplementedSupportServiceServer
 // for forward compatibility.
@@ -165,6 +236,11 @@ func (c *supportServiceClient) UpdateSupportTicket(ctx context.Context, in *Upda
 // sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
 // language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
+//
+// A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
+// the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
+// does the transfer: Authorize..., upload, Add...; and for a download Get... and then asks assets-svc for the link. The person's calls see the attachments of public
+// messages only.
 //
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
@@ -182,6 +258,17 @@ type SupportServiceServer interface {
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(context.Context, *ReplySupportTicketRequest) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error)
+	// GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
+	GetMySupportSummary(context.Context, *GetMySupportSummaryRequest) (*GetMySupportSummaryResponse, error)
+	// GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
+	GetSupportSummary(context.Context, *GetSupportSummaryRequest) (*GetSupportSummaryResponse, error)
+	// AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
+	// the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
+	AuthorizeSupportAttachment(context.Context, *AuthorizeSupportAttachmentRequest) (*AuthorizeSupportAttachmentResponse, error)
+	// AddSupportAttachment records an uploaded file on the message, checking the limits again under the ticket's lock. Same caller rules as the call above.
+	AddSupportAttachment(context.Context, *AddSupportAttachmentRequest) (*AddSupportAttachmentResponse, error)
+	// GetSupportAttachment says where a file is stored. With user_id it is the person's call and refuses the files of internal notes; without, the operator's.
+	GetSupportAttachment(context.Context, *GetSupportAttachmentRequest) (*GetSupportAttachmentResponse, error)
 	mustEmbedUnimplementedSupportServiceServer()
 }
 
@@ -218,6 +305,21 @@ func (UnimplementedSupportServiceServer) ReplySupportTicket(context.Context, *Re
 }
 func (UnimplementedSupportServiceServer) UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateSupportTicket not implemented")
+}
+func (UnimplementedSupportServiceServer) GetMySupportSummary(context.Context, *GetMySupportSummaryRequest) (*GetMySupportSummaryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMySupportSummary not implemented")
+}
+func (UnimplementedSupportServiceServer) GetSupportSummary(context.Context, *GetSupportSummaryRequest) (*GetSupportSummaryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSupportSummary not implemented")
+}
+func (UnimplementedSupportServiceServer) AuthorizeSupportAttachment(context.Context, *AuthorizeSupportAttachmentRequest) (*AuthorizeSupportAttachmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AuthorizeSupportAttachment not implemented")
+}
+func (UnimplementedSupportServiceServer) AddSupportAttachment(context.Context, *AddSupportAttachmentRequest) (*AddSupportAttachmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddSupportAttachment not implemented")
+}
+func (UnimplementedSupportServiceServer) GetSupportAttachment(context.Context, *GetSupportAttachmentRequest) (*GetSupportAttachmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSupportAttachment not implemented")
 }
 func (UnimplementedSupportServiceServer) mustEmbedUnimplementedSupportServiceServer() {}
 func (UnimplementedSupportServiceServer) testEmbeddedByValue()                        {}
@@ -402,6 +504,96 @@ func _SupportService_UpdateSupportTicket_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SupportService_GetMySupportSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMySupportSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).GetMySupportSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_GetMySupportSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).GetMySupportSummary(ctx, req.(*GetMySupportSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_GetSupportSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSupportSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).GetSupportSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_GetSupportSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).GetSupportSummary(ctx, req.(*GetSupportSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_AuthorizeSupportAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthorizeSupportAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).AuthorizeSupportAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_AuthorizeSupportAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).AuthorizeSupportAttachment(ctx, req.(*AuthorizeSupportAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_AddSupportAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddSupportAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).AddSupportAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_AddSupportAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).AddSupportAttachment(ctx, req.(*AddSupportAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_GetSupportAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSupportAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).GetSupportAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_GetSupportAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).GetSupportAttachment(ctx, req.(*GetSupportAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SupportService_ServiceDesc is the grpc.ServiceDesc for SupportService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -444,6 +636,26 @@ var SupportService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSupportTicket",
 			Handler:    _SupportService_UpdateSupportTicket_Handler,
+		},
+		{
+			MethodName: "GetMySupportSummary",
+			Handler:    _SupportService_GetMySupportSummary_Handler,
+		},
+		{
+			MethodName: "GetSupportSummary",
+			Handler:    _SupportService_GetSupportSummary_Handler,
+		},
+		{
+			MethodName: "AuthorizeSupportAttachment",
+			Handler:    _SupportService_AuthorizeSupportAttachment_Handler,
+		},
+		{
+			MethodName: "AddSupportAttachment",
+			Handler:    _SupportService_AddSupportAttachment_Handler,
+		},
+		{
+			MethodName: "GetSupportAttachment",
+			Handler:    _SupportService_GetSupportAttachment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

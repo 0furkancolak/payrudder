@@ -59,6 +59,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Open the ticket",
 			Ignore:  "You get this because your address is listed as a Payrudder operator.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "{account} answered ticket {ticket}: {subject}",
+			Lines:   []string{"{account} wrote on ticket {ticket}: {subject}", "Open the ticket in the operator console to read it and answer."},
+			Button:  "Open the ticket",
+			Ignore:  "You get this because your address is listed as a Payrudder operator (or the ticket is assigned to you).",
+		},
 		KindTicketReply: {
 			Subject: "Payrudder support answered ticket {ticket}",
 			Lines:   []string{"Payrudder support answered your ticket {ticket}: {subject}", "Open the ticket to read the answer and reply."},
@@ -156,6 +162,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"{account}, {priority} öncelikli {ticket} numaralı talebi açtı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
 			Button:  "Talebi aç",
 			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "{account}, {ticket} numaralı talebe yazdı: {subject}",
+			Lines:   []string{"{account}, {ticket} numaralı talebe yeni bir ileti yazdı: {subject}", "Okumak ve yanıtlamak için talebi operatör konsolunda açın."},
+			Button:  "Talebi aç",
+			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği (ya da talep size atandığı) için bu iletiyi alıyorsunuz.",
 		},
 		KindTicketReply: {
 			Subject: "Payrudder destek ekibi {ticket} numaralı talebinizi yanıtladı",
@@ -255,6 +267,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Ticket öffnen",
 			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "{account} hat auf Ticket {ticket} geantwortet: {subject}",
+			Lines:   []string{"{account} hat zum Ticket {ticket} geschrieben: {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um es zu lesen und zu antworten."},
+			Button:  "Ticket öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator geführt wird (oder das Ticket Ihnen zugewiesen ist).",
+		},
 		KindTicketReply: {
 			Subject: "Der Payrudder-Support hat auf Ticket {ticket} geantwortet",
 			Lines:   []string{"Der Payrudder-Support hat auf Ihr Ticket {ticket} geantwortet: {subject}", "Öffnen Sie das Ticket, um die Antwort zu lesen und zu antworten."},
@@ -352,6 +370,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"{account} a ouvert le ticket {ticket} (priorité {priority}) : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
 			Button:  "Ouvrir le ticket",
 			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "{account} a répondu au ticket {ticket} : {subject}",
+			Lines:   []string{"{account} a écrit sur le ticket {ticket} : {subject}", "Ouvrez le ticket dans la console des opérateurs pour le lire et répondre."},
+			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder (ou que le ticket vous est assigné).",
 		},
 		KindTicketReply: {
 			Subject: "Le support Payrudder a répondu au ticket {ticket}",
@@ -451,6 +475,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Abrir el ticket",
 			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "{account} respondió al ticket {ticket}: {subject}",
+			Lines:   []string{"{account} escribió en el ticket {ticket}: {subject}", "Abre el ticket en la consola de operadores para leerlo y responder."},
+			Button:  "Abrir el ticket",
+			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder (o el ticket te está asignado).",
+		},
 		KindTicketReply: {
 			Subject: "El soporte de Payrudder respondió al ticket {ticket}",
 			Lines:   []string{"El soporte de Payrudder respondió a tu ticket {ticket}: {subject}", "Abre el ticket para leer la respuesta y contestar."},
@@ -548,6 +578,12 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"فتحت {account} التذكرة {ticket} (أولوية {priority}): {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
 			Button:  "فتح التذكرة",
 			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
+		},
+		KindTicketCustomerReply: {
+			Subject: "ردّت {account} على التذكرة {ticket}: {subject}",
+			Lines:   []string{"كتبت {account} في التذكرة {ticket}: {subject}", "افتح التذكرة في لوحة المشغّلين لقراءتها والرد عليها."},
+			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder (أو لأن التذكرة مسندة إليك).",
 		},
 		KindTicketReply: {
 			Subject: "ردّ دعم Payrudder على التذكرة {ticket}",

@@ -550,6 +550,29 @@ tests:
               summary: "2 paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
 
   - interval: 1m
+    name: SupportAnswerOverdue warns when a ticket has been past its first-answer deadline for a quarter of an hour, and not for a shorter lapse or an empty queue
+    input_series:
+      - series: 'support_tickets_sla_breached'
+        values: '0x5 1+0x4 0x10 2+0x30'
+      - series: 'support_tickets_waiting'
+        values: '4+0x60'
+    alert_rule_test:
+      # One late ticket for five minutes (minutes 5-9) is not enough, and it is gone again at 10.
+      - eval_time: 12m
+        alertname: SupportAnswerOverdue
+        exp_alerts: []
+      # Two from minute 20: firing from 35.
+      - eval_time: 30m
+        alertname: SupportAnswerOverdue
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: SupportAnswerOverdue
+        exp_alerts:
+          - exp_labels: { severity: warn, service: plans-svc }
+            exp_annotations:
+              summary: "2 support tickets are past their first-answer deadline (the \"late\" filter of the support inbox)"
+
+  - interval: 1m
     name: DLQGrowing fires when a queue gains ten dead letters in a quarter of an hour, and not for a standing backlog
     input_series:
       - series: 'rabbitmq_detailed_queue_messages_ready{queue="payment.charge.dlq"}'

@@ -4527,6 +4527,51 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /app/v1/support/summary:
+    get:
+      operationId: appSupportSummary
+      tags: [Support]
+      summary: How many of the person's tickets have news they have not read (the sidebar's badge)
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportMySummary" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /app/v1/support/tickets/{id}/messages/{message_id}/attachments:
+    post:
+      operationId: appAttachToSupportMessage
+      tags: [Support]
+      summary: Attach one file to a message the person wrote (multipart, field `file`)
+      description: |
+        png, jpeg, pdf or plain text, at most 5 MiB; a ticket holds at most 10 files and an organisation keeps at most 50 MiB of them. The file is stored under the first tenant of the organisation's oldest app (`409 support.attachment.no_app` before one exists) with the purpose `support_attachment`, which the tenant API never lists. Refusals: `400 support.attachment.bad_type`, `400 support.attachment.too_large`, `429 support.attachment.too_many`, `429 support.attachment.account_full`, `429 support.attachment.storage_full`, `409 support.ticket.closed`.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: message_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "201": { description: Attached, content: { application/json: { schema: { $ref: "#/components/schemas/SupportAttachment" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /app/v1/support/tickets/{id}/attachments/{attachment_id}:
+    get:
+      operationId: appSupportAttachmentLink
+      tags: [Support]
+      summary: A presigned link that downloads a file of a ticket (never one of the operator's internal notes)
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: attachment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/support/tickets/{id}/status:
     put:
       operationId: appSetSupportTicketStatus
@@ -4595,6 +4640,50 @@ paths:
       responses:
         "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/SupportTicketResult" } } } }
         "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/summary:
+    get:
+      operationId: getSupportSummary
+      tags: [Support]
+      summary: What waits for the operators - tickets waiting for an answer and the ones whose first answer is overdue (the sidebar's badge)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportSummary" } } } }
+  /admin/v1/support/operators:
+    get:
+      operationId: listSupportOperators
+      tags: [Support]
+      summary: The addresses a ticket can be assigned to (PAYRUDDER_OPERATOR_EMAILS). When the list is not empty, an assignee must be one of them
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SupportOperators" } } } }
+  /admin/v1/support/tickets/{id}/messages/{message_id}/attachments:
+    post:
+      operationId: attachToSupportMessage
+      tags: [Support]
+      summary: Attach one file to an operator message or note (multipart, field `file`; same types and limits as the person's)
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: message_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        "201": { description: Attached, content: { application/json: { schema: { $ref: "#/components/schemas/SupportAttachment" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /admin/v1/support/tickets/{id}/attachments/{attachment_id}:
+    get:
+      operationId: getSupportAttachmentLink
+      tags: [Support]
+      summary: A presigned link that downloads a file of a ticket, internal notes included (operator)
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: attachment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts:
     get:
@@ -6116,6 +6205,32 @@ components:
         body: { type: string }
         internal: { type: boolean, description: An operator note the person does not see }
         create_time: { type: string, format: date-time }
+        attachments: { type: array, items: { $ref: "#/components/schemas/SupportAttachment" }, description: "Files on the message; the person sees those of public messages only" }
+    SupportAttachment:
+      type: object
+      required: [id, filename, content_type, size_bytes, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        content_type: { type: string, enum: [image/png, image/jpeg, application/pdf, text/plain] }
+        size_bytes: { type: integer, format: int64 }
+        create_time: { type: string, format: date-time }
+    SupportMySummary:
+      type: object
+      required: [unread]
+      properties:
+        unread: { type: integer, description: Tickets the person opened with an answer or a status change they have not read }
+    SupportSummary:
+      type: object
+      required: [waiting, sla_breached]
+      properties:
+        waiting: { type: integer, description: Tickets waiting for an operator (status open) }
+        sla_breached: { type: integer, description: Of those, the ones whose first answer is overdue and still not given }
+    SupportOperators:
+      type: object
+      required: [operators]
+      properties:
+        operators: { type: array, items: { type: string } }
     SupportTicketList:
       type: object
       required: [tickets]
@@ -6126,6 +6241,7 @@ components:
       required: [ticket]
       properties:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
+        message: { $ref: "#/components/schemas/SupportMessage", description: "The message that was written (when a message was): files are attached to it" }
     SupportTicketThread:
       type: object
       required: [ticket, messages, events]

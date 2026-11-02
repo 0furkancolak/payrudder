@@ -126,3 +126,57 @@ WHERE id IN (
   ORDER BY s.last_message_at LIMIT @batch::int FOR UPDATE SKIP LOCKED
 )
 RETURNING id;
+
+-- --- attachments (plan 12). The bytes are in assets-svc; these rows are the record.
+
+-- The message as the attachment calls need it: whose it is, whether it is a note, and the ticket and account it belongs to.
+-- name: SupportMessageForAttachment :one
+SELECT m.id, m.ticket_id, m.author_kind, m.author_user_id, m.internal, t.account_id, t.status
+FROM support_messages m JOIN support_tickets t ON t.id = m.ticket_id
+WHERE m.id = @id AND m.ticket_id = @ticket_id;
+
+-- The tenant whose storage holds an account's help desk files: the oldest live app's live tenant, else the oldest app's sandbox tenant. No row: the account has
+-- no app yet.
+-- name: SupportStorageTenant :one
+SELECT t.id, t.environment, t.timezone, t.tier
+FROM tenants t JOIN apps p ON p.id = t.app_id
+WHERE t.account_id = @account_id AND p.archived_at IS NULL
+ORDER BY (t.environment = 'live') DESC, p.created_at, t.id LIMIT 1;
+
+-- True when the tenant belongs to the account (the gateway names the tenant it stored under; it must be one of the account's).
+-- name: SupportTenantInAccount :one
+SELECT t.id, t.environment, t.timezone, t.tier FROM tenants t WHERE t.id = @id AND t.account_id = @account_id;
+
+-- name: SupportAttachmentTotals :one
+SELECT count(*) FILTER (WHERE a.ticket_id = @ticket_id)::int AS on_ticket, COALESCE(sum(a.size_bytes), 0)::bigint AS account_bytes
+FROM support_attachments a JOIN support_tickets t ON t.id = a.ticket_id
+WHERE t.account_id = @account_id;
+
+-- name: InsertSupportAttachment :exec
+INSERT INTO support_attachments (id, ticket_id, message_id, tenant_id, asset_id, filename, content_type, size_bytes)
+VALUES (@id, @ticket_id, @message_id, @tenant_id, @asset_id, @filename, @content_type, @size_bytes);
+
+-- The attachments of a ticket's messages (those of internal notes only when asked for), oldest first.
+-- name: ListSupportAttachments :many
+SELECT a.id, a.message_id, a.filename, a.content_type, a.size_bytes, a.created_at
+FROM support_attachments a JOIN support_messages m ON m.id = a.message_id
+WHERE a.ticket_id = @ticket_id AND (@with_internal::boolean OR NOT m.internal)
+ORDER BY a.created_at, a.id;
+
+-- One attachment with where it is stored and whether its message is an internal note.
+-- name: GetSupportAttachment :one
+SELECT a.id, a.ticket_id, a.tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
+FROM support_attachments a
+JOIN support_messages m ON m.id = a.message_id
+JOIN support_tickets t ON t.id = a.ticket_id
+JOIN tenants tn ON tn.id = a.tenant_id
+WHERE a.id = @id AND a.ticket_id = @ticket_id;
+
+-- The sidebar's counts. A person: the tickets they opened with news they have not read. The operators: tickets waiting for an answer, and the late ones.
+-- name: SupportUnreadCount :one
+SELECT count(*)::int FROM support_tickets WHERE opened_by = @user_id AND opener_seen_at IS NULL;
+
+-- name: SupportOperatorCounts :one
+SELECT (count(*) FILTER (WHERE status = 'open'))::int AS waiting,
+       (count(*) FILTER (WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now()))::int AS sla_breached
+FROM support_tickets;

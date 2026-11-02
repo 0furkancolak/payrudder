@@ -21,7 +21,9 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { useBulk } from "@/shared/lib/bulk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { PRIORITIES, STATUSES, useOperatorSupportActions, useOperatorTicket, useQueue, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import { attachFiles, PRIORITIES, STATUSES, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import AttachFailures from "./AttachFailures.vue";
+import AttachPicker from "./AttachPicker.vue";
 import TicketBadges from "./TicketBadges.vue";
 import TicketThread from "./TicketThread.vue";
 
@@ -34,6 +36,11 @@ const { t, locale } = useI18n();
 const filter = reactive<QueueFilter>({ status: "active", priority: "", assignee: "", search: "", late: false });
 const queue = useQueue(() => ({ ...filter }));
 const actions = useOperatorSupportActions();
+// The operators a ticket can go to. A deployment that lists none keeps the free-text box.
+const operatorList = useSupportOperators();
+const operators = computed(() => operatorList.data.value ?? []);
+// The list, plus the name a ticket already carries from before the list was used.
+const assigneeChoices = (current: string) => (current !== "" && !operators.value.includes(current) ? [...operators.value, current] : operators.value);
 // The filters that are a choice wait for Apply (FilterSelect); the two text boxes are searches and apply when left or on Enter.
 const statusOptions = computed(() => [
   { value: "active", label: t("support.status.active") },
@@ -65,12 +72,16 @@ const shown = computed(() => thread.data.value?.ticket ?? current.value);
 const assignee = ref("");
 const reply = ref("");
 const internal = ref(false);
+const replyFiles = ref<File[]>([]);
+const replyFailures = ref<Awaited<ReturnType<typeof attachFiles>>>([]);
 watch(
   () => shown.value?.id,
   () => {
     assignee.value = shown.value?.assignee ?? "";
     reply.value = "";
     internal.value = false;
+    replyFiles.value = [];
+    replyFailures.value = [];
     actions.reply.reset();
     actions.update.reset();
   },
@@ -95,10 +106,20 @@ function change(patch: { status?: SupportStatus; priority?: SupportPriority; ass
   const id = shown.value?.id;
   if (id) actions.update.mutate({ id, ...patch });
 }
-function send() {
+async function send() {
   const id = shown.value?.id;
   if (!id || reply.value.trim() === "") return;
-  actions.reply.mutate({ id, body: reply.value.trim(), internal: internal.value }, { onSuccess: () => ((reply.value = ""), (internal.value = false)) });
+  try {
+    const made = await actions.reply.mutateAsync({ id, body: reply.value.trim(), internal: internal.value });
+    reply.value = "";
+    internal.value = false;
+    const sent = replyFiles.value;
+    replyFiles.value = [];
+    replyFailures.value = made.message && sent.length > 0 ? await attachFiles("operator", id, made.message.id, sent) : [];
+    if (sent.length > 0) await thread.refetch();
+  } catch {
+    // The mutation's error is shown under the form.
+  }
 }
 </script>
 
@@ -116,7 +137,11 @@ function send() {
         <option value="">{{ t("support.fields.priority") }}</option>
         <option v-for="p in PRIORITIES" :key="p" :value="p">{{ t(`support.priority.${p}`) }}</option>
       </NativeSelect>
-      <Input v-model="bulkAssignee" class="w-36" maxlength="100" :placeholder="t('support.columns.assignee')" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee" />
+      <NativeSelect v-if="operators.length > 0" v-model="bulkAssignee" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee">
+        <option value="">{{ t("support.columns.assignee") }}</option>
+        <option v-for="o in operators" :key="o" :value="o">{{ o }}</option>
+      </NativeSelect>
+      <Input v-else v-model="bulkAssignee" class="w-36" maxlength="100" :placeholder="t('support.columns.assignee')" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee" />
       <Button type="button" size="sm" :disabled="bulk.busy.value" data-testid="bulk-apply" @click="applyBulk">{{ t("common.applyFilter") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
@@ -175,17 +200,23 @@ function send() {
           </NativeSelect>
         </label>
         <label class="grid gap-1 text-xs">{{ t("support.columns.assignee") }}
-          <Input v-model="assignee" maxlength="100" data-testid="ticket-assignee" @change="change({ assignee })" />
+          <NativeSelect v-if="operators.length > 0" :model-value="shown.assignee" data-testid="ticket-assignee" @change="change({ assignee: ($event.target as HTMLSelectElement).value })">
+            <option value="">{{ t("support.unassigned") }}</option>
+            <option v-for="o in assigneeChoices(shown.assignee)" :key="o" :value="o">{{ o }}</option>
+          </NativeSelect>
+          <Input v-else v-model="assignee" maxlength="100" data-testid="ticket-assignee" @change="change({ assignee })" />
         </label>
       </div>
       <p class="text-xs" :class="shown.sla_breached ? 'text-destructive' : 'text-muted-foreground'" data-testid="ticket-sla">
         {{ shown.first_response_time ? t("support.answeredAt", { time: formatDate(shown.first_response_time, locale, "dateTime") }) : t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
         <TicketBadges :ticket="shown" class="ms-2" />
       </p>
-      <TicketThread :messages="messages" :events="events" />
+      <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="operator" />
       <form class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="5" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="internal ? t('support.fields.note') : t('support.fields.reply')" data-testid="inbox-reply" />
+        <AttachPicker v-model="replyFiles" />
         <ErrorText :error="actions.reply.error.value ?? actions.update.error.value" />
+        <AttachFailures :failures="replyFailures" />
         <div class="flex flex-wrap items-center justify-between gap-2">
           <label class="flex items-center gap-2 text-sm">
             <Checkbox :model-value="internal" data-testid="inbox-internal" @update:model-value="(v: boolean | 'indeterminate') => (internal = v === true)" />{{ t("support.internalNote") }}

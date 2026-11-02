@@ -3755,6 +3755,19 @@
       },
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
+      },
+      "assignee": {
+        "not_operator": "Un ticket ne peut être assigné qu'à l'un des opérateurs."
+      },
+      "attachment": {
+        "account_full": "Votre organisation a atteint la limite de 50 Mo de fichiers de support.",
+        "bad_type": "Seuls les fichiers png, jpeg, pdf et texte brut peuvent être joints.",
+        "no_app": "Les fichiers sont stockés avec une application : créez-en une d'abord, puis joignez le fichier.",
+        "not_found": "Ce fichier n'existe pas.",
+        "rejected": "Le fichier ne peut pas être joint.",
+        "storage_full": "Le stockage des fichiers de support est plein. Libérez de l'espace dans les fichiers de votre application, ou écrivez-nous sans le fichier.",
+        "too_large": "Un fichier ne peut pas dépasser 5 Mo.",
+        "too_many": "Un ticket peut contenir au plus 10 fichiers."
       }
     },
     "audit": {
@@ -4971,7 +4984,11 @@
       "auditLog": "Journal d'audit"
     },
     "noApps": "Aucune application",
-    "newApp": "Nouvelle application"
+    "newApp": "Nouvelle application",
+    "badge": {
+      "support": "{count} avec du nouveau",
+      "inbox": "{count} en attente de réponse, {late} en retard"
+    }
   },
   "privacy": {
     "hide": "Masquer les montants",
@@ -5626,7 +5643,15 @@
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord",
     "unread": "Nouveau",
-    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application."
+    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application.",
+    "attach": {
+      "add": "Joindre des fichiers",
+      "hint": "png, jpeg, pdf ou texte ; 5 Mo au plus chacun, 10 par ticket.",
+      "remove": "Retirer {name}",
+      "failed": "Ces fichiers n'ont pas été joints :",
+      "openedButFailed": "Votre ticket a été ouvert, mais certains fichiers n'ont pas été joints. Vous pouvez les joindre à une réponse.",
+      "download": "Télécharger {name}"
+    }
   },
   "connect": {
     "nav": "Connecter votre app",

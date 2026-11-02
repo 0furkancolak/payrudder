@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -42,16 +43,21 @@ func (s *Service) openerMail(ctx context.Context, q *sqlc.Queries, id uuid.UUID,
 	return []usermail.Mail{{Kind: kind, To: r.OpenerEmail, Locale: r.OpenerLocale, Link: s.link("/app/support", id), Ticket: number(r.Number), Subject: r.Subject, Status: r.Status}}, nil
 }
 
-// operatorMails is the notice of a new ticket, one mail to each operator address, in the language of the operator's user (English for an address without one).
-func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UUID) ([]usermail.Mail, error) {
+// operatorMails is a notice to the operators about a ticket (a new one, or the person's answer), one mail to each operator address in the language of the
+// operator's user (English for an address without one). A ticket assigned to one of the operators is mailed to that operator alone.
+func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UUID, kind usermail.Kind, assignee string) ([]usermail.Mail, error) {
 	if s.cfg.Mail == nil || len(s.cfg.Operators) == 0 {
 		return nil, nil
+	}
+	to := s.cfg.Operators
+	if assignee = strings.ToLower(assignee); assignee != "" && slices.Contains(to, assignee) {
+		to = []string{assignee}
 	}
 	r, err := q.SupportMailTarget(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	known, err := q.SupportOperatorLocales(ctx, s.cfg.Operators)
+	known, err := q.SupportOperatorLocales(ctx, to)
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +65,9 @@ func (s *Service) operatorMails(ctx context.Context, q *sqlc.Queries, id uuid.UU
 	for _, k := range known {
 		locale[k.Email] = k.Locale
 	}
-	out := make([]usermail.Mail, len(s.cfg.Operators))
-	for i, to := range s.cfg.Operators {
-		out[i] = usermail.Mail{Kind: usermail.KindTicketNew, To: to, Locale: locale[to], Link: s.link("/support", id), Account: r.AccountName, Ticket: number(r.Number), Subject: r.Subject, Priority: r.Priority}
+	out := make([]usermail.Mail, len(to))
+	for i, addr := range to {
+		out[i] = usermail.Mail{Kind: kind, To: addr, Locale: locale[addr], Link: s.link("/support", id), Account: r.AccountName, Ticket: number(r.Number), Subject: r.Subject, Priority: r.Priority}
 	}
 	return out, nil
 }

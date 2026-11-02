@@ -3755,6 +3755,19 @@
       },
       "tickets": {
         "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
+      },
+      "assignee": {
+        "not_operator": "Ein Ticket kann nur einem der Operatoren zugewiesen werden."
+      },
+      "attachment": {
+        "account_full": "Ihre Organisation hat das Limit von 50 MB an Support-Dateien erreicht.",
+        "bad_type": "Es können nur PNG-, JPEG-, PDF- und reine Textdateien angehängt werden.",
+        "no_app": "Dateien werden bei einer App gespeichert: Legen Sie zuerst eine App an und hängen Sie die Datei dann an.",
+        "not_found": "Diese Datei gibt es nicht.",
+        "rejected": "Die Datei kann nicht angehängt werden.",
+        "storage_full": "Der Speicher für Support-Dateien ist voll. Geben Sie Platz in den Dateien Ihrer App frei oder schreiben Sie uns ohne die Datei.",
+        "too_large": "Eine Datei darf höchstens 5 MB groß sein.",
+        "too_many": "Ein Ticket kann höchstens 10 Dateien enthalten."
       }
     },
     "audit": {
@@ -4971,7 +4984,11 @@
       "auditLog": "Audit-Protokoll"
     },
     "noApps": "Noch keine Apps",
-    "newApp": "Neue App"
+    "newApp": "Neue App",
+    "badge": {
+      "support": "{count} mit Neuigkeiten",
+      "inbox": "{count} warten auf eine Antwort, {late} überfällig"
+    }
   },
   "privacy": {
     "hide": "Beträge ausblenden",
@@ -5626,7 +5643,15 @@
     "sortPriority": "Höchste Priorität zuerst",
     "sortDue": "Früheste Frist zuerst",
     "unread": "Neu",
-    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App."
+    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App.",
+    "attach": {
+      "add": "Dateien anhängen",
+      "hint": "PNG, JPEG, PDF oder Text; je höchstens 5 MB, 10 pro Ticket.",
+      "remove": "{name} entfernen",
+      "failed": "Diese Dateien wurden nicht angehängt:",
+      "openedButFailed": "Ihr Ticket wurde eröffnet, aber einige Dateien wurden nicht angehängt. Sie können sie an eine Antwort anhängen.",
+      "download": "{name} herunterladen"
+    }
   },
   "connect": {
     "nav": "App verbinden",

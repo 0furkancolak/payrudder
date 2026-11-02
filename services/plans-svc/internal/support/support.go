@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -106,10 +107,11 @@ func ticketOf(r sqlc.GetSupportTicketRow) *plansv1.SupportTicket {
 	return t
 }
 
-func messagesOf(rows []sqlc.ListSupportMessagesRow) []*plansv1.SupportMessage {
+func messagesOf(rows []sqlc.ListSupportMessagesRow, files map[uuid.UUID][]*plansv1.SupportAttachment) []*plansv1.SupportMessage {
 	out := make([]*plansv1.SupportMessage, len(rows))
 	for i, m := range rows {
-		out[i] = &plansv1.SupportMessage{Id: m.ID.String(), AuthorKind: m.AuthorKind, AuthorName: m.AuthorName, Body: m.Body, Internal: m.Internal, CreateTime: timestamppb.New(m.CreatedAt)}
+		out[i] = &plansv1.SupportMessage{Id: m.ID.String(), AuthorKind: m.AuthorKind, AuthorName: m.AuthorName, Body: m.Body, Internal: m.Internal, CreateTime: timestamppb.New(m.CreatedAt),
+			Attachments: files[m.ID]}
 	}
 	return out
 }
@@ -203,6 +205,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		appID = &a
 	}
 	var out *plansv1.SupportTicket
+	var first *plansv1.SupportMessage
 	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
@@ -240,14 +243,15 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		if err != nil {
 			return err
 		}
-		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.New(), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: t.GetOpenedByName(), Body: strings.TrimSpace(req.GetBody())}); err != nil {
+		first = &plansv1.SupportMessage{Id: uuid.NewString(), AuthorKind: "customer", AuthorName: t.GetOpenedByName(), Body: strings.TrimSpace(req.GetBody()), CreateTime: timestamppb.New(s.now())}
+		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.MustParse(first.Id), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: first.AuthorName, Body: first.Body}); err != nil {
 			return err
 		}
 		out, err = ticket(ctx, q, id, &user)
 		if err != nil {
 			return err
 		}
-		mails, err = s.operatorMails(ctx, q, id)
+		mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketNew, "")
 		return err
 	})
 	if err != nil {
@@ -255,7 +259,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 	}
 	s.send(ctx, mails)
 	s.log.InfoContext(ctx, "support ticket opened", "ticket", out.GetId(), "number", out.GetNumber(), "account_id", out.GetAccountId(), "priority", out.GetPriority())
-	return &plansv1.OpenMySupportTicketResponse{Ticket: out}, nil
+	return &plansv1.OpenMySupportTicketResponse{Ticket: out, Message: first}, nil
 }
 
 func (s *Service) ListMySupportTickets(ctx context.Context, req *plansv1.ListMySupportTicketsRequest) (*plansv1.ListMySupportTicketsResponse, error) {
@@ -300,11 +304,15 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 	if err != nil {
 		return nil, err
 	}
+	files, err := attachmentsOf(ctx, q, id, false)
+	if err != nil {
+		return nil, err
+	}
 	events, err := q.ListSupportEvents(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs), Events: eventsOf(events)}, nil
+	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events)}, nil
 }
 
 // lockedFor locks the ticket and, for a person, checks they belong to its account.
@@ -337,6 +345,8 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		return nil, err
 	}
 	var out *plansv1.SupportTicket
+	var msg *plansv1.SupportMessage
+	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := lockedFor(ctx, q, id, &user)
@@ -352,7 +362,11 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		if err != nil {
 			return err
 		}
-		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.New(), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: name, Body: strings.TrimSpace(req.GetBody())}); err != nil {
+		// The operators are told when the ticket was waiting for the person or was solved, or the last word was theirs; a person who writes twice in a row, while
+		// the ticket already waits for support, does not mail them twice.
+		told := prev.Status == "open" && lastAuthorOf(ctx, q, id) == "customer"
+		msg = &plansv1.SupportMessage{Id: uuid.NewString(), AuthorKind: "customer", AuthorName: name, Body: strings.TrimSpace(req.GetBody()), CreateTime: timestamppb.New(s.now())}
+		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.MustParse(msg.Id), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: name, Body: msg.Body}); err != nil {
 			return err
 		}
 		if err := save(ctx, q, id, prev, next, "customer", true, actor{"customer", name}); err != nil {
@@ -362,13 +376,19 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		if err := q.MarkSupportTicketSeen(ctx, sqlc.MarkSupportTicketSeenParams{ID: id, UserID: user}); err != nil {
 			return err
 		}
+		if !told {
+			if mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketCustomerReply, prev.Assignee); err != nil {
+				return err
+			}
+		}
 		out, err = ticket(ctx, q, id, &user)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.ReplyMySupportTicketResponse{Ticket: out}, nil
+	s.send(ctx, mails)
+	return &plansv1.ReplyMySupportTicketResponse{Ticket: out, Message: msg}, nil
 }
 
 func (s *Service) SetMySupportTicketStatus(ctx context.Context, req *plansv1.SetMySupportTicketStatusRequest) (*plansv1.SetMySupportTicketStatusResponse, error) {
@@ -451,11 +471,15 @@ func (s *Service) GetSupportTicket(ctx context.Context, req *plansv1.GetSupportT
 	if err != nil {
 		return nil, err
 	}
+	files, err := attachmentsOf(ctx, q, id, true)
+	if err != nil {
+		return nil, err
+	}
 	events, err := q.ListSupportEvents(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs), Events: eventsOf(events)}, nil
+	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs, files), Events: eventsOf(events)}, nil
 }
 
 func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupportTicketRequest) (*plansv1.ReplySupportTicketResponse, error) {
@@ -474,6 +498,7 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 		author = "Payrudder support"
 	}
 	var out *plansv1.SupportTicket
+	var msg *plansv1.SupportMessage
 	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
@@ -481,7 +506,8 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 		if err != nil {
 			return err
 		}
-		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.New(), TicketID: id, AuthorKind: "operator", AuthorName: author, Internal: req.GetInternal(), Body: strings.TrimSpace(req.GetBody())}); err != nil {
+		msg = &plansv1.SupportMessage{Id: uuid.NewString(), AuthorKind: "operator", AuthorName: author, Internal: req.GetInternal(), Body: strings.TrimSpace(req.GetBody()), CreateTime: timestamppb.New(s.now())}
+		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.MustParse(msg.Id), TicketID: id, AuthorKind: "operator", AuthorName: author, Internal: msg.Internal, Body: msg.Body}); err != nil {
 			return err
 		}
 		if !req.GetInternal() {
@@ -505,7 +531,7 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 		return nil, err
 	}
 	s.send(ctx, mails)
-	return &plansv1.ReplySupportTicketResponse{Ticket: out}, nil
+	return &plansv1.ReplySupportTicketResponse{Ticket: out, Message: msg}, nil
 }
 
 func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSupportTicketRequest) (*plansv1.UpdateSupportTicketResponse, error) {
@@ -545,6 +571,14 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 				return err
 			}
 			next.Assignee = strings.TrimSpace(req.GetAssignee())
+			// With operators configured the assignee is one of them (kept as that address); a name an older ticket already carries may stay.
+			if next.Assignee != prev.Assignee && next.Assignee != "" && len(s.cfg.Operators) > 0 {
+				low := strings.ToLower(next.Assignee)
+				if !slices.Contains(s.cfg.Operators, low) {
+					return errkey.New(codes.InvalidArgument, "support.assignee.not_operator", "the assignee must be one of the operators")
+				}
+				next.Assignee = low
+			}
 		}
 		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"operator", by}); err != nil {
 			return err

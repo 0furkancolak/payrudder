@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
+import { useNavBadges } from "@/features/support/badges";
 import { cn } from "@/shared/lib/utils";
 import type { NavItem, NavSection } from "./nav";
 
@@ -11,6 +12,9 @@ import type { NavItem, NavSection } from "./nav";
 const props = defineProps<{ sections: NavSection[]; current: NavItem | undefined; collapsed?: boolean; label: string }>();
 const emit = defineEmits<{ navigate: [] }>();
 const { t } = useI18n();
+const badges = useNavBadges(() => props.sections);
+/** The count beside an item, if it has one and it is not zero. */
+const badge = (it: NavItem) => (badges.value[it.key]?.count ?? 0) > 0 ? badges.value[it.key] : undefined;
 
 const isCurrent = (it: NavItem) => props.current?.key === it.key && props.current?.to === it.to;
 
@@ -42,6 +46,15 @@ function row(it: NavItem): string {
             <span v-if="isCurrent(it)" class="bg-rail-primary absolute inset-y-2 start-0 w-1 rounded-full" aria-hidden="true" />
             <component :is="it.icon" class="size-[1.15rem] shrink-0" aria-hidden="true" />
             <span :class="collapsed ? 'sr-only' : 'truncate'">{{ t(`shell.items.${it.label}`) }}</span>
+            <span
+              v-if="badge(it)"
+              :class="cn('bg-rail-primary text-rail rounded-full text-[0.7rem] leading-none font-semibold', collapsed ? 'absolute end-1.5 top-1.5 size-2' : 'ms-auto px-1.5 py-1', (badge(it)?.late ?? 0) > 0 && 'bg-destructive text-white')"
+              :title="it.key === 'supportInbox' ? t('shell.badge.inbox', { count: badge(it)?.count ?? 0, late: badge(it)?.late ?? 0 }) : t('shell.badge.support', { count: badge(it)?.count ?? 0 })"
+              :data-testid="`nav-badge-${it.key}`"
+            >
+              <template v-if="!collapsed">{{ badge(it)?.count }}</template>
+              <span class="sr-only">{{ it.key === "supportInbox" ? t("shell.badge.inbox", { count: badge(it)?.count ?? 0, late: badge(it)?.late ?? 0 }) : t("shell.badge.support", { count: badge(it)?.count ?? 0 }) }}</span>
+            </span>
           </Link>
         </li>
       </ul>

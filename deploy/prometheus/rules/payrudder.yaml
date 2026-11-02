@@ -214,6 +214,15 @@ groups:
         annotations:
           summary: "{{ $value }} paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
 
+      # support_tickets_sla_breached is read on every scrape (plans-svc): help desk tickets waiting for an operator whose first answer is overdue and still not given (the
+      # inbox's "late" filter). The quarter of an hour is a default (not agreed).
+      - alert: SupportAnswerOverdue
+        expr: sum(support_tickets_sla_breached) > 0
+        for: 15m
+        labels: { severity: warn, service: plans-svc }
+        annotations:
+          summary: "{{ $value }} support tickets are past their first-answer deadline (the \"late\" filter of the support inbox)"
+
       # DLQNotEmpty says a queue holds something; this says it is filling.
       - alert: DLQGrowing
         expr: delta(dlq_messages[15m]) >= 10

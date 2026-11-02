@@ -3755,6 +3755,19 @@
       },
       "tickets": {
         "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
+      },
+      "assignee": {
+        "not_operator": "Bir talep yalnızca operatörlerden birine atanabilir."
+      },
+      "attachment": {
+        "account_full": "Kuruluşunuz 50 MB'lık destek dosyası sınırına ulaştı.",
+        "bad_type": "Yalnızca png, jpeg, pdf ve düz metin dosyaları eklenebilir.",
+        "no_app": "Dosyalar bir uygulamayla saklanır: önce bir uygulama oluşturun, sonra dosyayı ekleyin.",
+        "not_found": "Bu dosya bulunamadı.",
+        "rejected": "Dosya eklenemiyor.",
+        "storage_full": "Destek dosyalarının saklandığı alan dolu. Uygulamanızın dosyalarında yer açın ya da dosyayı eklemeden yazın.",
+        "too_large": "Bir dosya en fazla 5 MB olabilir.",
+        "too_many": "Bir talepte en fazla 10 dosya olabilir."
       }
     },
     "audit": {
@@ -4971,7 +4984,11 @@
       "auditLog": "Denetim günlüğü"
     },
     "noApps": "Henüz uygulama yok",
-    "newApp": "Yeni uygulama"
+    "newApp": "Yeni uygulama",
+    "badge": {
+      "support": "{count} talepte yenilik var",
+      "inbox": "{count} yanıt bekliyor, {late} gecikmiş"
+    }
   },
   "privacy": {
     "hide": "Tutarları gizle",
@@ -5626,7 +5643,15 @@
     "sortPriority": "Önce en yüksek öncelik",
     "sortDue": "Yanıt süresi en yakın önce",
     "unread": "Yeni",
-    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde."
+    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde.",
+    "attach": {
+      "add": "Dosya ekle",
+      "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",
+      "remove": "{name} dosyasını kaldır",
+      "failed": "Bu dosyalar eklenemedi:",
+      "openedButFailed": "Talebiniz açıldı ancak bazı dosyalar eklenemedi. Dosyaları bir yanıta ekleyebilirsiniz.",
+      "download": "{name} dosyasını indir"
+    }
   },
   "connect": {
     "nav": "Uygulamanı bağla",

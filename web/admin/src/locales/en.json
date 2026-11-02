@@ -3755,6 +3755,19 @@
       },
       "tickets": {
         "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
+      },
+      "assignee": {
+        "not_operator": "A ticket can only be assigned to one of the operators."
+      },
+      "attachment": {
+        "account_full": "Your organisation has reached the limit of 50 MB of support files.",
+        "bad_type": "Only png, jpeg, pdf and plain text files can be attached.",
+        "no_app": "Files are stored with an app: create an app first, then attach the file.",
+        "not_found": "That file is not there.",
+        "rejected": "The file cannot be attached.",
+        "storage_full": "The storage that holds support files is full. Free some space in your app's files, or write to us without the file.",
+        "too_large": "A file can be at most 5 MB.",
+        "too_many": "A ticket can hold at most 10 files."
       }
     },
     "audit": {
@@ -4971,7 +4984,11 @@
       "auditLog": "Audit log"
     },
     "noApps": "No apps yet",
-    "newApp": "New app"
+    "newApp": "New app",
+    "badge": {
+      "support": "{count} with news",
+      "inbox": "{count} waiting for an answer, {late} late"
+    }
   },
   "privacy": {
     "hide": "Hide amounts",
@@ -5626,7 +5643,15 @@
     "sortPriority": "Highest priority first",
     "sortDue": "Answer due soonest",
     "unread": "New",
-    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app."
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app.",
+    "attach": {
+      "add": "Attach files",
+      "hint": "png, jpeg, pdf or text; up to 5 MB each, 10 per ticket.",
+      "remove": "Remove {name}",
+      "failed": "These files were not attached:",
+      "openedButFailed": "Your ticket was opened, but some files were not attached. You can attach them to a reply.",
+      "download": "Download {name}"
+    }
   },
   "connect": {
     "nav": "Connect your app",

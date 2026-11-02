@@ -29,6 +29,9 @@ const (
 	Purpose_PURPOSE_INVOICE_LOGO       Purpose = 1
 	Purpose_PURPOSE_INVOICE_ATTACHMENT Purpose = 2
 	Purpose_PURPOSE_GENERAL            Purpose = 3
+	// A file attached to a support ticket (png, jpeg, pdf or plain text, at most 5 MiB). It belongs to the help desk, not to the tenant it is stored under: it is
+	// never listed by ListAssets without this purpose, and the tenant API cannot name it.
+	Purpose_PURPOSE_SUPPORT_ATTACHMENT Purpose = 4
 )
 
 // Enum value maps for Purpose.
@@ -38,12 +41,14 @@ var (
 		1: "PURPOSE_INVOICE_LOGO",
 		2: "PURPOSE_INVOICE_ATTACHMENT",
 		3: "PURPOSE_GENERAL",
+		4: "PURPOSE_SUPPORT_ATTACHMENT",
 	}
 	Purpose_value = map[string]int32{
 		"PURPOSE_UNSPECIFIED":        0,
 		"PURPOSE_INVOICE_LOGO":       1,
 		"PURPOSE_INVOICE_ATTACHMENT": 2,
 		"PURPOSE_GENERAL":            3,
+		"PURPOSE_SUPPORT_ATTACHMENT": 4,
 	}
 )
 
@@ -1898,12 +1903,13 @@ const file_payrudder_assets_v1_assets_proto_rawDesc = "" +
 	"\vexpire_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"expireTime\"/\n" +
 	"\x12DeleteAssetRequest\x12\x19\n" +
-	"\basset_id\x18\x01 \x01(\tR\aassetId*q\n" +
+	"\basset_id\x18\x01 \x01(\tR\aassetId*\x91\x01\n" +
 	"\aPurpose\x12\x17\n" +
 	"\x13PURPOSE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14PURPOSE_INVOICE_LOGO\x10\x01\x12\x1e\n" +
 	"\x1aPURPOSE_INVOICE_ATTACHMENT\x10\x02\x12\x13\n" +
-	"\x0fPURPOSE_GENERAL\x10\x03*\xfd\x01\n" +
+	"\x0fPURPOSE_GENERAL\x10\x03\x12\x1e\n" +
+	"\x1aPURPOSE_SUPPORT_ATTACHMENT\x10\x04*\xfd\x01\n" +
 	"\vAssetStatus\x12\x1c\n" +
 	"\x18ASSET_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14ASSET_STATUS_PENDING\x10\x01\x12\x1a\n" +

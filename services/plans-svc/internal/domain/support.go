@@ -21,6 +21,17 @@ const SupportMaxBody = 10000
 // one. A default (plan 12, not agreed).
 const SupportMaxOpen = 20
 
+// What may be attached to a message (plan 12, defaults not agreed). The types and the size are assets-svc's rule for the purpose support_attachment; the count and the
+// account's total are this module's.
+const (
+	SupportMaxAttachments            = 10
+	SupportMaxAttachmentBytes        = 5 << 20
+	SupportMaxAccountAttachmentBytes = 50 << 20
+)
+
+// SupportAttachmentTypes are the content types an attachment may have.
+var SupportAttachmentTypes = []string{"image/png", "image/jpeg", "application/pdf", "text/plain"}
+
 // The first-answer clock counts business hours only: Monday to Friday, 09:00 to 18:00 in the ticket's time zone (a default, plan 12, not agreed).
 const (
 	supportOpenHour  = 9

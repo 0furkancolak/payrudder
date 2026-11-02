@@ -24,7 +24,7 @@ func placeholders(c copyText) string {
 }
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
-	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketReply, KindTicketStatus,
+	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketCustomerReply, KindTicketReply, KindTicketStatus,
 		KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated}
 	for _, l := range Locales {
 		for _, k := range kinds {
@@ -109,6 +109,9 @@ func TestTicketMailNamesTheTicketInTheLanguageAndStaysOnOneLine(t *testing.T) {
 	}
 	if _, _, en := Render(Mail{Kind: KindTicketNew, Locale: "en", Account: "Ada Labs", Ticket: "#7", Priority: "urgent", Subject: "Webhooks"}); !strings.Contains(en, "Ada Labs opened ticket #7 (urgent priority)") {
 		t.Fatalf("operator mail: %s", en)
+	}
+	if subject, text, _ := Render(Mail{Kind: KindTicketCustomerReply, Locale: "de", Account: "Ada Labs", Ticket: "#7", Subject: "Webhooks"}); !strings.Contains(subject, "Ada Labs hat auf Ticket #7 geantwortet") || !strings.Contains(text, "Webhooks") {
+		t.Fatalf("customer reply mail: %q %q", subject, text)
 	}
 }
 

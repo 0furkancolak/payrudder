@@ -3755,6 +3755,19 @@
       },
       "tickets": {
         "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
+      },
+      "assignee": {
+        "not_operator": "Un ticket solo puede asignarse a uno de los operadores."
+      },
+      "attachment": {
+        "account_full": "Tu organización alcanzó el límite de 50 MB de archivos de soporte.",
+        "bad_type": "Solo se pueden adjuntar archivos png, jpeg, pdf y de texto sin formato.",
+        "no_app": "Los archivos se guardan con una app: crea una primero y luego adjunta el archivo.",
+        "not_found": "Ese archivo no existe.",
+        "rejected": "No se puede adjuntar el archivo.",
+        "storage_full": "El almacenamiento de los archivos de soporte está lleno. Libera espacio en los archivos de tu app o escríbenos sin el archivo.",
+        "too_large": "Un archivo puede pesar como máximo 5 MB.",
+        "too_many": "Un ticket puede tener como máximo 10 archivos."
       }
     },
     "audit": {
@@ -4971,7 +4984,11 @@
       "auditLog": "Registro de auditoría"
     },
     "noApps": "Aún no hay aplicaciones",
-    "newApp": "Nueva aplicación"
+    "newApp": "Nueva aplicación",
+    "badge": {
+      "support": "{count} con novedades",
+      "inbox": "{count} esperando respuesta, {late} con retraso"
+    }
   },
   "privacy": {
     "hide": "Ocultar importes",
@@ -5626,7 +5643,15 @@
     "sortPriority": "Mayor prioridad primero",
     "sortDue": "Vence antes primero",
     "unread": "Nuevo",
-    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación."
+    "businessHours": "Los plazos de respuesta cuentan horas laborables: de lunes a viernes, de 09:00 a 18:00, en la zona horaria de su aplicación.",
+    "attach": {
+      "add": "Adjuntar archivos",
+      "hint": "png, jpeg, pdf o texto; hasta 5 MB cada uno, 10 por ticket.",
+      "remove": "Quitar {name}",
+      "failed": "Estos archivos no se adjuntaron:",
+      "openedButFailed": "Tu ticket se abrió, pero algunos archivos no se adjuntaron. Puedes adjuntarlos a una respuesta.",
+      "download": "Descargar {name}"
+    }
   },
   "connect": {
     "nav": "Conectar su app",

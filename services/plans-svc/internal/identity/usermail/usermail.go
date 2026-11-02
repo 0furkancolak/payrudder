@@ -36,6 +36,8 @@ const (
 	KindTicketNew Kind = "ticket_new"
 	// KindTicketReply tells the person who opened a ticket that the operator answered it.
 	KindTicketReply Kind = "ticket_reply"
+	// KindTicketCustomerReply tells an operator (the ticket's assignee, else all of them) that the person answered a ticket that was waiting for them or solved.
+	KindTicketCustomerReply Kind = "ticket_customer_reply"
 	// KindTicketStatus tells the person who opened a ticket that its status changed (the operator solved or closed it, or it closed by itself).
 	KindTicketStatus Kind = "ticket_status"
 	// KindTenantSuspended, KindTenantFrozen and KindTenantBanned tell the owners of an account that the operator took a live app out of service, and
