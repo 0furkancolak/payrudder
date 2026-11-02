@@ -31,7 +31,7 @@ final class ClientTest extends TestCase
         self::assertSame('GET', $r->method);
         self::assertSame('https://api.example.test/v1/meters', $r->url);
         self::assertSame('Bearer qk_test_abcdefgh_secret', $r->headers['Authorization']);
-        self::assertSame('payrudder-php/0.0.0', $r->headers['User-Agent']);
+        self::assertSame('payrudder-php/' . Client::VERSION, $r->headers['User-Agent']);
         self::assertSame('application/json', $r->headers['Accept']);
         self::assertArrayNotHasKey('Content-Type', $r->headers);
         self::assertSame(30.0, $r->timeout);

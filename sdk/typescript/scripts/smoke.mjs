@@ -1,7 +1,9 @@
 // Imports the built ESM and CJS bundles the way a consumer would and exercises the parts that need no network.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
+const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const esm = await import("@payrudder/sdk");
 const cjs = createRequire(import.meta.url)("@payrudder/sdk");
 
@@ -11,7 +13,7 @@ for (const [name, mod] of [
 ]) {
   assert.equal(typeof mod.Payrudder, "function", `${name}: Payrudder`);
   assert.equal(typeof mod.verifyWebhook, "function", `${name}: verifyWebhook`);
-  assert.equal(mod.VERSION, "0.0.0", `${name}: VERSION`);
+  assert.equal(mod.VERSION, version, `${name}: VERSION`);
 
   const client = new mod.Payrudder({ apiKey: "qk_test_smoke", baseUrl: "http://127.0.0.1:1" });
   assert.equal(typeof client.customers.createCustomer, "function", `${name}: customers.createCustomer`);

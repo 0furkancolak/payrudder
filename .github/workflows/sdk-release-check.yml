@@ -1,0 +1,36 @@
+name: sdk-release-check
+
+# Release readiness of the four SDKs (docs/plans/22, G16): one version everywhere it is written, a LICENSE and a CHANGELOG in each, the metadata a registry shows, and
+# the guards that keep a 0.0.0 package from being published by accident. It publishes nothing; the workflow that could, sdk-publish.yml, is manual and a dry run by default.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sdk/**"
+      - "scripts/sdk-release*"
+      - ".github/workflows/sdk-publish.yml"
+      - ".github/workflows/sdk-release-check.yml"
+  pull_request:
+    paths:
+      - "sdk/**"
+      - "scripts/sdk-release*"
+      - ".github/workflows/sdk-publish.yml"
+      - ".github/workflows/sdk-release-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node --test scripts/sdk-release.test.mjs
+      - run: node scripts/sdk-release.mjs check
