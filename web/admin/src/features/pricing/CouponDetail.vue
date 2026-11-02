@@ -51,7 +51,7 @@ const rows = computed(() => {
     <section class="flex flex-col gap-3" :aria-label="t('billing.pricing.promotions.codes.title', { coupon: code })">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="text-base font-semibold">{{ t("billing.coupons.tabs.codes") }}</h3>
-        <Button v-if="coupon.active" type="button" size="sm" variant="outline" :disabled="!canWrite" data-testid="detail-new-code" @click="emit('newCode', code)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
+        <Button v-if="coupon.active && canWrite" type="button" size="sm" variant="outline" data-testid="detail-new-code" @click="emit('newCode', code)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
       </div>
       <ErrorState :error="codes.error.value" :retrying="codes.isFetching.value" compact class="mx-0" @retry="codes.refetch()" />
       <ErrorText :error="act.deactivate.error.value" />

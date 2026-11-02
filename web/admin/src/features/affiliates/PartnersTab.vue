@@ -91,8 +91,12 @@ for (const [kind, isOpen] of [["edit-affiliate", editOpen], ["affiliate-link", l
 const statusStep = (a: Affiliate) => (a.status === "pending" ? { key: "approve", to: "active" as const } : a.status === "active" ? { key: "suspend", to: "suspended" as const } : { key: "reinstate", to: "active" as const });
 const actionsOf = (a: Affiliate, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => (index.value = i) },
-  { key: statusStep(a).key, label: t(`affiliates.partners.${statusStep(a).key}`), disabled: !canWrite.value || update.isPending.value, onSelect: () => setStatus(a, statusStep(a).to) },
-  { key: "edit", label: t("affiliates.partners.edit"), icon: Pencil, disabled: !canWrite.value, onSelect: () => open("edit", a) },
+  ...(canWrite.value
+    ? [
+        { key: statusStep(a).key, label: t(`affiliates.partners.${statusStep(a).key}`), disabled: update.isPending.value, onSelect: () => setStatus(a, statusStep(a).to) },
+        { key: "edit", label: t("affiliates.partners.edit"), icon: Pencil, onSelect: () => open("edit", a) },
+      ]
+    : []),
   { key: "link", label: t("affiliates.partners.linkAndCode"), icon: Link2, onSelect: () => open("link", a) },
   { key: "referrals", label: t("affiliates.partners.referralsOf"), icon: Users, onSelect: () => open("referrals", a) },
 ];

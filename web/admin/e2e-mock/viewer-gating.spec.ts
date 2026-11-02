@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
+import { METERS } from "./usage";
 import { ACCOUNT, APP, billingGateway, INVOICE_2, invoice, invoiceLines, LIVE, productGateway, SANDBOX, signInAsAda } from "./product";
 
 // A viewer reads; the server refuses a viewer's write. So a page shared with the operator's console (useCanWrite, shared/lib/access.ts) offers a viewer no button
@@ -49,6 +50,10 @@ const card = { token: "ct", alias: "work", bin: "55287900", last4: "0008", type:
 const get = (path: string, body: unknown) => (gw: MockGateway) => gw.on((c) => (c.method === "GET" && c.path === path ? { body } : undefined));
 
 const coupon = { id: "c1", code: "WELCOME", name: "Welcome", percent_bps: 1000, duration: "COUPON_DURATION_ONCE", applies_to: ["COUPON_TARGET_SUBSCRIPTION"], active: true, redeemed: 2, promotion_code_count: 2, create_time: "2026-10-01T09:00:00Z" };
+
+const partner = { id: "11111111-0000-4000-8000-000000000001", code: "ANNA", email: "anna@partners.example", name: "ANNA Partner", status: "active", payout_method: "bank_transfer", payout_details: "TR00", source: "owner", signed_in: false, clicks: "1", referrals: "1", create_time: "2026-10-01T09:00:00Z" };
+const payout = { id: "33333333-0000-4000-8000-000000000001", affiliate_id: partner.id, affiliate_code: "ANNA", currency: "TRY", total_minor: "2500", commission_count: 3, method: "bank_transfer", payout_details: "TR00", status: "open", fake: false, create_time: "2026-10-20T09:00:00Z" };
+const commission = { id: "55555555-0000-4000-8000-000000000001", affiliate_id: partner.id, affiliate_code: "ANNA", customer_external_id: "cus_100", kind: "commission", invoice_id: "22222222-0000-4000-8000-000000000001", invoice_number: "INV-0001", currency: "TRY", invoice_total_minor: "12000", net_minor: "10000", amount_minor: "1000", reversed_minor: "0", status: "approved", earn_time: "2026-10-10T09:00:00Z" };
 
 const CASES: Case[] = [
   {
@@ -114,6 +119,58 @@ const CASES: Case[] = [
     ready: (page) => page.getByRole("row", { name: /Hetzner/ }),
     offered: (page) => [page.getByTestId("add-expense"), page.getByTestId("scan-receipts"), page.getByTestId("inbox-review"), page.getByTestId("inbox-rules")],
     menu: { row: (page) => page.getByRole("row", { name: /Hetzner/ }), owner: ["Edit", "Void"], viewer: [], absent: ["Edit", "Void"] },
+  },
+  {
+    name: "meters",
+    path: "/usage",
+    mock: get("/v1/meters", { meters: METERS }),
+    ready: (page) => page.getByTestId("usage-tab-meters"),
+    after: async (page) => {
+      await page.getByTestId("usage-tab-meters").click();
+      await expect(page.getByRole("row", { name: /api_calls/ })).toBeVisible();
+    },
+    offered: (page) => [page.getByTestId("meters-new")],
+    menu: { row: (page) => page.getByRole("row", { name: /api_calls/ }), owner: ["View", "New version"], viewer: ["View"], absent: ["New version"] },
+  },
+  {
+    name: "affiliates: partners",
+    path: "/affiliates",
+    mock: get("/v1/affiliates", { affiliates: [partner], total: 1 }),
+    ready: (page) => page.getByRole("tab", { name: "Affiliates", exact: true }),
+    after: async (page) => {
+      await page.getByRole("tab", { name: "Affiliates", exact: true }).click();
+      await expect(page.getByRole("row", { name: /ANNA/ })).toBeVisible();
+    },
+    offered: () => [],
+    menu: {
+      row: (page) => page.getByRole("row", { name: /ANNA/ }),
+      owner: ["View", "Suspend", "Edit", "Link and code", "Referrals"],
+      viewer: ["View", "Link and code", "Referrals"],
+      absent: ["Suspend", "Edit"],
+    },
+  },
+  {
+    name: "affiliates: payouts",
+    path: "/affiliates",
+    mock: get("/v1/affiliates/payouts", { payouts: [payout], total: 1 }),
+    ready: (page) => page.getByRole("tab", { name: "Payouts", exact: true }),
+    after: async (page) => {
+      await page.getByRole("tab", { name: "Payouts", exact: true }).click();
+      await expect(page.getByRole("row", { name: /ANNA/ })).toBeVisible();
+    },
+    offered: () => [],
+    menu: { row: (page) => page.getByRole("row", { name: /ANNA/ }), owner: ["Commissions", "Mark paid", "Cancel"], viewer: ["Commissions"], absent: ["Mark paid", "Cancel"] },
+  },
+  {
+    name: "affiliates: commissions",
+    path: "/affiliates",
+    mock: get("/v1/affiliates/commissions", { commissions: [commission], total: 1 }),
+    ready: (page) => page.getByRole("tab", { name: "Commissions", exact: true }),
+    after: async (page) => {
+      await page.getByRole("tab", { name: "Commissions", exact: true }).click();
+      await expect(page.getByRole("row", { name: /ANNA/ })).toBeVisible();
+    },
+    offered: (page) => [page.getByTestId("row-action-reverse")],
   },
   // --- what lives inside a sheet or a card of a page (the review of 2026-11-02 found these still offering writes)
   {
@@ -217,6 +274,7 @@ for (const c of CASES) {
         await row.getByTestId("row-actions").click();
         for (const name of c.menu.viewer) await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
       }
+      else await expect(row.getByTestId("row-actions")).toHaveCount(0);
       for (const name of c.menu.absent) await expect(page.getByRole(c.menu.viewer.length > 1 ? "menuitem" : "button", { name, exact: true })).toHaveCount(0);
     }
   });

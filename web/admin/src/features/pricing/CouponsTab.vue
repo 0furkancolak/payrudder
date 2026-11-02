@@ -71,8 +71,8 @@ async function deactivate(code: string | undefined) {
 const current = table.row;
 const actionsOf = (c: Coupon, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
-  ...(c.active ? [{ key: "code", label: t("billing.pricing.promotions.codes.create"), icon: Ticket, disabled: !canWrite.value, onSelect: () => emit("newCode", c.code ?? "") }] : []),
-  ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => deactivate(c.code) }] : []),
+  ...(c.active && canWrite.value ? [{ key: "code", label: t("billing.pricing.promotions.codes.create"), icon: Ticket, onSelect: () => emit("newCode", c.code ?? "") }] : []),
+  ...(c.active && canWrite.value ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, onSelect: () => deactivate(c.code) }] : []),
 ];
 </script>
 

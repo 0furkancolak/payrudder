@@ -148,8 +148,10 @@ function confirm() {
             </TableCell>
             <TableCell>
               <div class="flex flex-wrap justify-end gap-1.5">
-                <Button v-if="canRequestRefund(w)" size="sm" variant="outline" :disabled="!canWrite" :data-testid="`withdrawal-refund-${w.id}`" @click="ask(w, 'refund')">{{ t("contracts.withdrawals.actions.refund") }}</Button>
-                <Button v-for="s in withdrawalMoves(w.status)" :key="s" size="sm" :variant="s === 'rejected' ? 'outline' : 'default'" :disabled="!canWrite" :data-testid="`withdrawal-${s}-${w.id}`" @click="ask(w, s)">{{ t(`contracts.withdrawals.actions.${s}`) }}</Button>
+                <template v-if="canWrite">
+                  <Button v-if="canRequestRefund(w)" size="sm" variant="outline" :data-testid="`withdrawal-refund-${w.id}`" @click="ask(w, 'refund')">{{ t("contracts.withdrawals.actions.refund") }}</Button>
+                  <Button v-for="s in withdrawalMoves(w.status)" :key="s" size="sm" :variant="s === 'rejected' ? 'outline' : 'default'" :data-testid="`withdrawal-${s}-${w.id}`" @click="ask(w, s)">{{ t(`contracts.withdrawals.actions.${s}`) }}</Button>
+                </template>
               </div>
             </TableCell>
           </TableRow>

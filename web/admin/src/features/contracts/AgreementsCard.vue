@@ -110,7 +110,7 @@ useSheetTarget("agreement-history", readingOpen, reading, { id: (s) => seriesKey
               <TableCell class="text-end">
                 <div class="flex justify-end gap-1.5">
                   <Button v-if="r.version" size="sm" variant="ghost" :aria-label="`${t('contracts.agreements.history')}: ${seriesName(r.kind, r.audience)}`" :data-testid="`agreement-history-${r.key}`" @click="reading = { kind: r.kind, audience: r.audience }"><History aria-hidden="true" />{{ t("contracts.agreements.history") }}</Button>
-                  <Button size="sm" :variant="r.version ? 'outline' : 'default'" :disabled="!canWrite" :data-testid="`agreement-publish-${r.key}`" @click="editing = { kind: r.kind, audience: r.audience }">{{ r.version ? t("contracts.agreements.newVersion") : t("contracts.agreements.publishFirst") }}</Button>
+                  <Button v-if="canWrite" size="sm" :variant="r.version ? 'outline' : 'default'" :data-testid="`agreement-publish-${r.key}`" @click="editing = { kind: r.kind, audience: r.audience }">{{ r.version ? t("contracts.agreements.newVersion") : t("contracts.agreements.publishFirst") }}</Button>
                 </div>
               </TableCell>
             </TableRow>

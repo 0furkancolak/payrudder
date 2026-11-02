@@ -78,10 +78,10 @@ watch(
 const statusOptions = computed(() => [{ value: "", label: t("affiliates.payouts.allStatuses") }, ...["open", "paid", "cancelled"].map((s) => ({ value: s, label: t(`affiliates.status.payout.${s}`) }))]);
 const actionsOf = (p: Payout, i: number) => [
   { key: "commissions", label: t("affiliates.payouts.commissions"), icon: ArrowUpRight, onSelect: () => (index.value = i) },
-  ...(p.status === "open"
+  ...(p.status === "open" && canWrite.value
     ? [
-        { key: "markPaid", label: t("affiliates.payouts.markPaid"), icon: Banknote, disabled: !canWrite.value, onSelect: () => pay(p) },
-        { key: "cancel", label: t("affiliates.payouts.cancel"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value || cancel.isPending.value, onSelect: () => cancelPayout(p) },
+        { key: "markPaid", label: t("affiliates.payouts.markPaid"), icon: Banknote, onSelect: () => pay(p) },
+        { key: "cancel", label: t("affiliates.payouts.cancel"), icon: Ban, destructive: true, separatorBefore: true, disabled: cancel.isPending.value, onSelect: () => cancelPayout(p) },
       ]
     : []),
 ];

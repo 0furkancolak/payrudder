@@ -97,7 +97,7 @@ function openForm(m: Meter | null) {
 useSheetTarget("meter-version", sheet, base, { id: (m) => m.code ?? "", find: (code) => list.value.find((m) => m.code === code), restore: openForm });
 const actionsOf = (m: Meter, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
-  { key: "version", label: t("billing.usage.meters.newVersion"), icon: GitBranchPlus, disabled: !canWrite.value, onSelect: () => openForm(m) },
+  ...(canWrite.value ? [{ key: "version", label: t("billing.usage.meters.newVersion"), icon: GitBranchPlus, onSelect: () => openForm(m) }] : []),
 ];
 </script>
 
@@ -108,7 +108,7 @@ const actionsOf = (m: Meter, i: number) => [
       <FilterSelect v-model="aggregation" multiple :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
-      <HeaderAction test-id="meters-new" :disabled="!canWrite" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
+      <HeaderAction v-if="canWrite" test-id="meters-new" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
     </DataToolbar>
     <Table>
       <TableHeader>
@@ -169,8 +169,8 @@ const actionsOf = (m: Meter, i: number) => [
         <BarList v-else :items="ranking" />
       </section>
     </div>
-    <template #footer>
-      <Button type="button" variant="outline" :disabled="!canWrite" @click="openForm(current ?? null)"><GitBranchPlus class="size-4" aria-hidden="true" />{{ t("billing.usage.meters.newVersion") }}</Button>
+    <template v-if="canWrite" #footer>
+      <Button type="button" variant="outline" @click="openForm(current ?? null)"><GitBranchPlus class="size-4" aria-hidden="true" />{{ t("billing.usage.meters.newVersion") }}</Button>
     </template>
   </DetailSheet>
 

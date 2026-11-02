@@ -155,7 +155,7 @@ const canReverse = (c: Commission) => !isReversal(c) && c.status !== "reversed" 
             <span v-else class="text-muted-foreground">—</span>
           </TableCell>
           <TableCell class="text-end">
-            <RowActions :actions="canReverse(c) ? [{ key: 'reverse', label: t('affiliates.commissions.reverse'), icon: Undo2, disabled: !canWrite, onSelect: () => reverse(c) }] : []" />
+            <RowActions :actions="canReverse(c) && canWrite ? [{ key: 'reverse', label: t('affiliates.commissions.reverse'), icon: Undo2, onSelect: () => reverse(c) }] : []" />
           </TableCell>
         </TableRow>
       </TableBody>
@@ -186,8 +186,8 @@ const canReverse = (c: Commission) => !isReversal(c) && c.status !== "reversed" 
         <dd class="text-end"><Button type="button" variant="link" size="sm" class="mono h-auto p-0" @click="index = null; emit('payout', current.payout_id!)">{{ current.payout_id.slice(0, 8) }}</Button></dd>
       </template>
     </dl>
-    <template v-if="current && canReverse(current)" #footer>
-      <Button type="button" variant="outline" :disabled="!canWrite" @click="reverseFrom(current)">{{ t("affiliates.commissions.reverse") }}</Button>
+    <template v-if="current && canReverse(current) && canWrite" #footer>
+      <Button type="button" variant="outline" @click="reverseFrom(current)">{{ t("affiliates.commissions.reverse") }}</Button>
     </template>
   </DetailSheet>
   <ReverseDialog v-model:open="reverseOpen" :tenant-id="tenantId" :commission="reversing" />
