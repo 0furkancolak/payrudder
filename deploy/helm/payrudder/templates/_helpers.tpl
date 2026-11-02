@@ -71,13 +71,23 @@ see the schema owner's password while the Job still loads the service's complete
   {{- else if eq . "paymentsToken" -}}
     {{- $_ := set $out "PAYRUDDER_PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
   {{- else if eq . "secretsKey" -}}
-    {{- $_ := set $out "PAYRUDDER_SECRETS_KEY" $root.Values.payments.secretsKey -}}
+    {{- $_ := include "payrudder.secretsKeys" (dict "root" $root "out" $out) -}}
   {{- else if eq . "paymentsSecrets" -}}
     {{- $_ := set $out "PAYMENTS_INTERNAL_TOKEN" $root.Values.payments.internalToken -}}
-    {{- $_ := set $out "PAYRUDDER_SECRETS_KEY" $root.Values.payments.secretsKey -}}
+    {{- $_ := include "payrudder.secretsKeys" (dict "root" $root "out" $out) -}}
   {{- end -}}
 {{- end -}}
 {{- toJson $out -}}
+{{- end -}}
+
+{{/* The secrets key of payments-worker and plans-svc, and while it is being replaced (docs/runbooks/secrets-key-rotation.md) its id and the key it replaces with its id.
+Adds to .out; the ids and the previous key are set only when the values hold them, so a chart that is not rotating renders what it always did. */}}
+{{- define "payrudder.secretsKeys" -}}
+{{- $v := .root.Values.payments -}}
+{{- $_ := set .out "PAYRUDDER_SECRETS_KEY" $v.secretsKey -}}
+{{- if $v.secretsKeyId -}}{{- $_ := set .out "PAYRUDDER_SECRETS_KEY_ID" (toString $v.secretsKeyId) -}}{{- end -}}
+{{- if $v.secretsKeyPrevious -}}{{- $_ := set .out "PAYRUDDER_SECRETS_KEY_PREVIOUS" $v.secretsKeyPrevious -}}{{- end -}}
+{{- if $v.secretsKeyPreviousId -}}{{- $_ := set .out "PAYRUDDER_SECRETS_KEY_PREVIOUS_ID" (toString $v.secretsKeyPreviousId) -}}{{- end -}}
 {{- end -}}
 
 {{/* Plain environment shared by every container of a service (also the migration Job). */}}

@@ -95,7 +95,7 @@ Each service reads its container memory limit and tells the Go runtime to collec
 
 payments-worker is an `http` service in the chart (port 8095, only the gateway may call it) besides consuming RabbitMQ. It needs `payments.secretsKey` (32 bytes, base64, which seals tenants' provider credentials) and
 `payments.internalToken` (shared with the gateway): both are secret-backed settings, rendered into the services' Secrets like the other secrets and replaceable with `secrets.existingSecrets`. The chart's values are local
-defaults: generate your own (`openssl rand -base64 32`). It reaches plans-svc and billing-svc, whose policies accept it. Without a secrets key the worker starts with provider accounts and webhooks off.
+defaults: generate your own (`openssl rand -base64 32`). It reaches plans-svc and billing-svc, whose policies accept it. Without a secrets key the worker starts with provider accounts and webhooks off. While the key is being replaced, `payments.secretsKeyId`, `payments.secretsKeyPrevious` and `payments.secretsKeyPreviousId` carry the second key to payments-worker and plans-svc ([runbook](runbooks/secrets-key-rotation.md)); they are empty otherwise.
 
 ## The console is not in the charts
 

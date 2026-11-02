@@ -464,3 +464,38 @@ func findContainer(t *testing.T, docs []obj, deployment string) obj {
 	}
 	return obj(cs[0].(map[string]any))
 }
+
+// While the secrets key is replaced, payments-worker and plans-svc both get the key's id and the key it replaces with its id, in their Secrets and not in plain
+// environment; a chart that is not rotating renders none of the three (docs/runbooks/secrets-key-rotation.md).
+func TestSecretsKeyRotationValuesReachPaymentsWorkerAndPlansSvc(t *testing.T) {
+	rotation := []string{"PAYRUDDER_SECRETS_KEY_ID", "PAYRUDDER_SECRETS_KEY_PREVIOUS", "PAYRUDDER_SECRETS_KEY_PREVIOUS_ID"}
+	secret := func(docs []obj, name string) map[string]any {
+		s := find(docs, "Secret", "x-"+name+"-env")
+		if s == nil {
+			t.Fatalf("no secret for %s", name)
+		}
+		m, _ := s.get("stringData").(map[string]any)
+		return m
+	}
+	for _, name := range []string{"payments-worker", "plans-svc"} {
+		for _, k := range rotation {
+			if v, ok := secret(render(t, "payrudder"), name)[k]; ok {
+				t.Errorf("%s has %s=%v without a rotation", name, k, v)
+			}
+		}
+	}
+	docs := render(t, "payrudder", "--set", "payments.secretsKeyId=2", "--set", "payments.secretsKeyPrevious=b2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkMDA=", "--set", "payments.secretsKeyPreviousId=1")
+	for _, name := range []string{"payments-worker", "plans-svc"} {
+		got := secret(docs, name)
+		if got["PAYRUDDER_SECRETS_KEY_ID"] != "2" || got["PAYRUDDER_SECRETS_KEY_PREVIOUS"] != "b2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkb2xkMDA=" || got["PAYRUDDER_SECRETS_KEY_PREVIOUS_ID"] != "1" {
+			t.Errorf("%s's secret = %v: the rotation values did not arrive", name, got)
+		}
+	}
+	for _, c := range containers(docs) {
+		for _, k := range rotation {
+			if _, ok := envOf(c)[k]; ok {
+				t.Errorf("%s is a plain environment variable of a container; it belongs in the Secret", k)
+			}
+		}
+	}
+}
