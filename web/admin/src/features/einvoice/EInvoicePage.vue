@@ -112,7 +112,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   <Card>
     <h2 class="text-lg font-semibold">{{ t("einvoice.settings.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("einvoice.settings.hint") }}</p>
-    <ErrorText :error="tenant.error.value" />
+    <ErrorState :error="tenant.error.value" :retrying="tenant.isFetching.value" compact class="mx-0" @retry="tenant.refetch()" />
     <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="form" :aria-label="t('einvoice.settings.formLabel')" @submit.prevent="saveSettings">
       <NativeSelect v-model="eInvoiceOn" :aria-label="t('einvoice.settings.on')">
         <option value="off">{{ t("einvoice.settings.onOff") }}</option>

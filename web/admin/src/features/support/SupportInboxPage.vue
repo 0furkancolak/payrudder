@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { askConfirm } from "@/shared/lib/confirm";
 import { formatDate } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
@@ -100,10 +101,21 @@ async function applyBulk() {
   if (bulkPriority.value) patch.priority = bulkPriority.value as SupportPriority;
   if (bulkAssignee.value) patch.assignee = bulkAssignee.value;
   if (Object.keys(patch).length === 0) return;
-  await bulk.run((row) => actions.update.mutateAsync({ id: row.id, ...patch }));
+  // A closed ticket takes no more answers, so closing asks first (with the count, as every bulk question does).
+  const closing = patch.status === "closed" ? (rows: readonly unknown[]) => ({ title: t("support.confirmCloseMany", { n: rows.length }, rows.length), body: t("support.confirmCloseBody") }) : undefined;
+  await bulk.run((row) => actions.update.mutateAsync({ id: row.id, ...patch }), { confirm: closing });
   bulkStatus.value = bulkPriority.value = bulkAssignee.value = "";
 }
 
+/** Closing is the one status the person cannot take back: the select asks first and goes back to the ticket's status when the answer is no. */
+async function setStatus(el: HTMLSelectElement) {
+  const status = el.value as SupportStatus;
+  if (status === "closed" && !(await askConfirm({ title: t("support.confirmCloseTitle", { number: shown.value?.number ?? "" }), body: t("support.confirmCloseBody") }))) {
+    el.value = shown.value?.status ?? "";
+    return;
+  }
+  change({ status });
+}
 function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[] }) {
   const id = shown.value?.id;
   if (id) actions.update.mutate({ id, ...patch });
@@ -201,7 +213,7 @@ function send() {
       <p class="text-muted-foreground text-xs">{{ shown.opened_by_name }} · {{ shown.account_name }}<template v-if="shown.app_name"> · {{ shown.app_name }}</template> · {{ t(`support.category.${shown.category}`) }}</p>
       <div class="grid gap-3 sm:grid-cols-3">
         <label class="grid gap-1 text-xs">{{ t("support.columns.status") }}
-          <NativeSelect :model-value="shown.status" data-testid="ticket-status" @change="change({ status: ($event.target as HTMLSelectElement).value as SupportStatus })">
+          <NativeSelect :model-value="shown.status" data-testid="ticket-status" @change="setStatus($event.target as HTMLSelectElement)">
             <option v-for="s in STATUSES" :key="s" :value="s">{{ t(`support.status.${s}`) }}</option>
           </NativeSelect>
         </label>

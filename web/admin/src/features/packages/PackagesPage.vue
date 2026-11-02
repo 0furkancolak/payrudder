@@ -13,6 +13,7 @@ import { useTenantCurrency } from "@/features/tenants/currency";
 import { useMeters } from "@/features/meters/api";
 import QuotaFields from "@/features/meters/QuotaFields.vue";
 import { modeWord, newQuota, windowWord } from "@/features/meters/quota";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -246,7 +247,7 @@ function submit() {
   </Sheet>
 
   <Card class="p-3">
-    <ErrorText :error="packages.error.value" class="px-3" />
+    <ErrorState :error="packages.error.value" :retrying="packages.isFetching.value" compact @retry="packages.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <DateRangePicker v-model="range" />

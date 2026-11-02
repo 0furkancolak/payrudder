@@ -1204,7 +1204,8 @@
           "deactivate": "Auswahl deaktivieren",
           "title": "{n} Gutschein deaktivieren? | {n} Gutscheine deaktivieren?",
           "confirm": "Sie nehmen keine neuen Einlösungen mehr an, und ein deaktivierter Gutschein lässt sich nicht wieder einschalten. Abonnements, die bereits einen haben, behalten ihn."
-        }
+        },
+        "confirmTitle": "Gutschein {code} deaktivieren?"
       },
       "tax": {
         "title": "Steuer",
@@ -1306,7 +1307,9 @@
             "expires": "Das Ablaufdatum muss ein Tag in der Zukunft sein.",
             "minAmount": "Kein Betrag in dieser Währung: nur Ziffern, mit höchstens so vielen Dezimalstellen wie die Währung.",
             "currencies": "Währungen sind dreistellige Codes wie USD, durch Kommas getrennt."
-          }
+          },
+          "confirmTitle": "Code {code} deaktivieren?",
+          "confirmBody": "Er nimmt keine neuen Einlösungen mehr an. Der Gutschein und seine anderen Codes funktionieren weiter."
         },
         "redemptions": {
           "title": "Einlösungen",
@@ -1481,7 +1484,8 @@
         "regenerate": "Link neu erzeugen",
         "copied": "Link zur Zahlungsseite kopiert",
         "regenerated": "Neuer Link erstellt und kopiert; die alten funktionieren nicht mehr",
-        "validFor": "Links sind {days} Tage gültig"
+        "validFor": "Links sind {days} Tage gültig",
+        "confirmRegenerate": "Einen neuen Link zur Zahlungsseite für diesen Kunden erzeugen? Bereits versendete Links funktionieren nicht mehr."
       },
       "for": "Für",
       "promotionCode": "Aktionscode (optional)",
@@ -2159,7 +2163,8 @@
       "errors": {
         "limit": "Das Limit muss eine Menge mit höchstens {n} Nachkommastellen sein.",
         "thresholds": "Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000."
-      }
+      },
+      "confirmRemove": "Ausnahme für {meter} entfernen? Für diesen Kunden gilt wieder das Limit des Pakets."
     },
     "reconcile": {
       "title": "Prüfwarteschlange",
@@ -2547,7 +2552,9 @@
       "commissions": "Provisionen",
       "commissionsOf": "Provisionen der Auszahlung von {code}",
       "markPaid": "Als bezahlt markieren",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "confirmTitle": "Diese Auszahlung stornieren?",
+      "confirmBody": "Die Provisionen können wieder in einer anderen Auszahlung ausgezahlt werden."
     },
     "pay": {
       "title": "Auszahlung als bezahlt markieren",
@@ -4184,7 +4191,11 @@
       "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos.",
       "allRoles": "Alle Rollen",
       "expiresHead": "Gültig bis",
-      "soleOwner": "Sie sind der einzige Inhaber und können daher noch nicht gehen. Machen Sie zuerst jemand anderen zum Inhaber."
+      "soleOwner": "Sie sind der einzige Inhaber und können daher noch nicht gehen. Machen Sie zuerst jemand anderen zum Inhaber.",
+      "cancelInviteTitle": "Diese Einladung zurückziehen?",
+      "cancelInviteBody": "{email} kann dem Konto mit dem gesendeten Link nicht mehr beitreten.",
+      "lowerTitle": "Rolle von {name} herabstufen?",
+      "lowerBody": "Von {from} zu {to}: {name} verliert sofort, was {from} darf."
     },
     "account": {
       "switch": "Konto",
@@ -5690,7 +5701,10 @@
     "badge": {
       "unread": "Tickets mit Neuigkeiten: {n}",
       "waiting": "Warten auf uns: {n}"
-    }
+    },
+    "confirmCloseTitle": "Ticket #{number} schließen?",
+    "confirmCloseMany": "{n} Ticket schließen? | {n} Tickets schließen?",
+    "confirmCloseBody": "Auf ein geschlossenes Ticket kann nicht mehr geantwortet werden; die Person muss ein neues eröffnen."
   },
   "connect": {
     "nav": "App verbinden",

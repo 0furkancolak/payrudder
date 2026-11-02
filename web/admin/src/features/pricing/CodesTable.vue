@@ -7,7 +7,7 @@ import { Badge } from "@/shared/ui/badge";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import type { PromotionCode } from "./api";
-import { codeRules } from "./promotions";
+import { codeRules, confirmDeactivateCode } from "./promotions";
 
 /** Promotion codes as rows: the code, how often it was used, its expiry and rules. A row opens (the page shows its sheet); an active one can be deactivated. */
 defineProps<{ rows: readonly PromotionCode[]; selected?: number | null; showCoupon?: boolean }>();
@@ -15,6 +15,9 @@ const emit = defineEmits<{ select: [number]; deactivate: [string] }>();
 const { t, locale } = useI18n();
 const fmt = useFormat();
 const canWrite = useCanWrite();
+async function deactivate(code: string) {
+  if (await confirmDeactivateCode(t, code)) emit("deactivate", code);
+}
 </script>
 
 <template>
@@ -39,7 +42,7 @@ const canWrite = useCanWrite();
         <TableCell class="text-xs max-lg:hidden">{{ codeRules(c, t, locale).join(" · ") || "—" }}</TableCell>
         <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
         <TableCell>
-          <RowActions :actions="c.active ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), icon: Ban, disabled: !canWrite, onSelect: () => emit('deactivate', c.code ?? '') }] : []" :label="`${t('common.moreActions')} ${c.code}`" />
+          <RowActions :actions="c.active ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), icon: Ban, disabled: !canWrite, onSelect: () => deactivate(c.code ?? '') }] : []" :label="`${t('common.moreActions')} ${c.code}`" />
         </TableCell>
       </TableRow>
     </TableBody>

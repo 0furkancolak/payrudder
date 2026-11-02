@@ -8,6 +8,7 @@ import { appRows } from "@/features/providers/connections";
 import ProviderSheet from "@/features/providers/ProviderSheet.vue";
 import { liveTenant } from "@/shared/lib/environment";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -66,7 +67,7 @@ async function removeAccount(p: string) {
     <Skeleton v-if="app.isPending.value || providers.isPending.value" class="h-24 rounded-2xl" />
     <p v-else-if="!live" class="text-muted-foreground text-sm">{{ t("product.goLive.noLive") }}</p>
     <template v-else>
-      <ErrorText :error="providers.error.value" />
+      <ErrorState :error="providers.error.value" :retrying="providers.isFetching.value" compact class="mx-0" @retry="providers.refetch()" />
       <ul v-if="accounts.length > 0" class="flex flex-col gap-2" :aria-label="t('product.goLive.provider.connected')" data-testid="live-accounts">
         <li v-for="a in accounts" :key="a.provider" class="bg-muted flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3" :data-testid="`live-account-${a.provider}`" :data-working="a.working">
           <div class="min-w-0">

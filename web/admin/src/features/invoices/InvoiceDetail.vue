@@ -115,7 +115,7 @@ function askReject(outcome: "rejected" | "expired") {
 
     <section class="flex flex-col gap-3" :aria-label="t('invoice.saga')">
       <h2 class="text-lg font-semibold tracking-tight">{{ t("invoice.saga") }}</h2>
-      <ErrorText :error="saga.error.value" />
+      <ErrorState :error="saga.error.value" :retrying="saga.isFetching.value" compact class="mx-0" @retry="saga.refetch()" />
       <Table :aria-label="t('invoice.saga')">
         <TableHeader>
           <TableRow class="hover:bg-transparent">

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { dashboardFixture } from "./dashboard";
 import { APP, HOME, INVOICE_2, INVOICE_3, LIVE, SESSION, billingGateway, liveGateway, openAllApps, productGateway, signInAsAda, user } from "./product";
-import { pickCurrency, pickTheme } from "./ui";
+import { confirmDialog, pickCurrency, pickTheme } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
 // of the pages (desktop and phone, light and dark) so the look can be reviewed.
@@ -457,6 +457,7 @@ test.describe("members and invitations", () => {
     await expect.poll(() => gw.called("POST", /\/app\/v1\/account\/invitations\/inv-1\/resend$/).length).toBe(1);
     await pending.getByTestId("row-actions").click();
     await page.getByTestId("row-action-cancel").click();
+    await confirmDialog(page);
     await expect(pending).toHaveCount(0);
     expect(gw.called("DELETE", /\/app\/v1\/account\/invitations\/inv-1$/)).toHaveLength(1);
   });

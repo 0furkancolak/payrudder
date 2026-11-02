@@ -15,6 +15,7 @@ import { useCanWrite } from "@/shared/lib/access";
 import { useServerPageSelection } from "@/shared/lib/selection";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
@@ -118,7 +119,7 @@ const when = (v?: string | null) => fmt.date(v, "short", "—");
 const usesOf = (l: { use_count?: number; paid_count?: number }) => t("billing.paymentLinks.usesValue", { used: l.use_count ?? 0, paid: l.paid_count ?? 0 });
 const rowActions = (l: { id?: string; status?: string }, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => (detail.value = i) },
-  ...(canRevoke(l) ? [{ key: "revoke", label: t("billing.paymentLinks.revoke"), icon: Ban, destructive: true, separatorBefore: true, disabled: act.revoke.isPending.value, onSelect: () => revoke(l.id) }] : []),
+  ...(canWrite.value && canRevoke(l) ? [{ key: "revoke", label: t("billing.paymentLinks.revoke"), icon: Ban, destructive: true, separatorBefore: true, disabled: act.revoke.isPending.value, onSelect: () => revoke(l.id) }] : []),
 ];
 const detailRows = computed(() => {
   const l = current.value;
@@ -147,9 +148,9 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       <FilterSelect v-model="kind" :label="t('billing.paymentLinks.kind')" :options="kinds" />
       <FilterSelect v-model="status" :label="t('billing.paymentLinks.status')" :options="statuses" />
       <DateRangePicker v-model="range" />
-      <HeaderAction :label="t('billing.paymentLinks.create')" @click="open = true" />
+      <HeaderAction v-if="canWrite" :label="t('billing.paymentLinks.create')" @click="open = true" />
     </DataToolbar>
-    <ErrorText :error="links.error.value" class="px-3" />
+    <ErrorState :error="links.error.value" :retrying="links.isFetching.value" compact @retry="links.refetch()" />
     <ErrorText :error="act.revoke.error.value" class="px-3" />
     <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-revoke" @click="bulkRevoke">{{ t("billing.paymentLinks.bulk.revoke") }}</Button>

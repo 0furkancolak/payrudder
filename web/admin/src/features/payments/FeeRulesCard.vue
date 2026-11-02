@@ -14,6 +14,7 @@ import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
@@ -112,7 +113,8 @@ const rowActions = (r: Rule, i: number) => [
       </div>
       <Button size="sm" variant="outline" :disabled="!environment" data-testid="fee-rule-add" @click="openForm(null)"><Plus aria-hidden="true" />{{ t("billing.feeRules.add") }}</Button>
     </div>
-    <ErrorText :error="rules.error.value ?? del.error.value" />
+    <ErrorState :error="rules.error.value" :retrying="rules.isFetching.value" compact class="mx-0" @retry="rules.refetch()" />
+    <ErrorText :error="del.error.value" />
     <div class="-mx-3 border-t pt-3">
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
         <FilterSelect v-model="providerFilter" multiple :label="t('billing.feeRules.provider')" :options="providerOptions" />

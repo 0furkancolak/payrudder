@@ -124,3 +124,17 @@ covered by `list-contract.spec.ts`: accounting expenses, withdrawals, credit pac
 **No batch endpoint (default, not agreed).** The brief allowed `POST /v1/.../batch` for customers block and unblock if they are idempotent, and they are per customer (`Block` keeps a block that is in force and records nothing new; `Unblock` returns a customer who was never blocked as it is). It is not built: the definition of done for an API change (proto or gateway route, `openapi`, four generated SDKs, the TypeScript types, docs-site, MCP tool list, error keys) is a change of its own, other agents edit the same generated files in parallel, and the cost it would remove is requests, not correctness (a 340-customer block makes 340 requests and 340 list refetches; the progress panel makes that visible). Revisit when a seller blocks thousands at once; a gateway loop over the existing calls with a per-row result (`{external_id, ok, error}`), each customer in its own transaction as now, would keep the partial-failure behaviour the console already has.
 
 **Still open:** the support inbox's filters and the catalogue's choices are not in the address; the screens were not looked at on a phone or in Arabic with the new panel (the bar at 1440 px in English was); no screen reader.
+
+## Status (2026-11-02, branch `fix/console-review-3`): the final console review, controls around the lists
+
+The last review of the console (every page read against `docs/13-admin-ui.md`) found the contract kept on the lists and broken around them. Fixed, each with a mock e2e:
+
+| Finding | Fix | Held by |
+|---|---|---|
+| A viewer was offered controls the server refuses: new customer and bulk block, new webhook endpoint and its bulk pause, resume and delete, scan receipts and add expense, new credit pack, the mail switches, the new subscription and payment link buttons. | `useCanWrite` in each (the "new" button, the ticks and the bar, the row actions and the sheet buttons that write; the mail switches stay and are off). The customer's sheet is read-only for a viewer as it is in a peek. | `viewer-gating.spec.ts` (one test per page and role) |
+| One-click destructive actions: deactivating a coupon or a promotion code, cancelling a payout, regenerating a customer's payment page (it revokes the links already sent), removing a customer's quota override, cancelling an invitation, lowering a role, closing a ticket. | `askConfirm` with the words of the bulk equivalent where there is one; closing tickets in the support inbox's bulk bar asks with the count. A refused role change draws the select again with the member's real role. | `destructive-confirm.spec.ts` |
+| A failed read looked like an empty list: the related invoices, subscriptions, payments and credit notes of a sheet, a customer's block history, and the lists and cards that showed an `ErrorText` line. | `ErrorState` with "Try again" (`RelatedSection` takes `error`). | `failed-queries.spec.ts` |
+
+**Defaults (not agreed):** a viewer loses the selected-customers CSV export (the contract gives a viewer no ticks; the export is a button of the bulk bar); coupons keep their disabled "new" button for a viewer (a choice of that page that the finding did not name).
+
+**Still open:** the subscription's manage sheet and the credits page's other cards (grant, low-balance alert, purchase links) still show write buttons to a viewer. Not looked at on a phone.

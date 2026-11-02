@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { pickCurrency, pickFilter, rowAction } from "./ui";
+import { confirmDialog, pickCurrency, pickFilter, rowAction } from "./ui";
 
 const ALL = ["COUPON_TARGET_SUBSCRIPTION", "COUPON_TARGET_CREDIT_PURCHASE", "COUPON_TARGET_PAYMENT"];
 const WELCOME = { id: "c1", code: "WELCOME", name: "Welcome", percent_bps: 1000, duration: "COUPON_DURATION_ONCE", applies_to: ALL, active: true, redeemed: 2, promotion_code_count: 2, create_time: "2026-10-01T09:00:00Z" };
@@ -173,9 +173,11 @@ test.describe("coupons", () => {
     const gw = couponGateway();
     await open(page, gw);
     await rowAction(page.getByTestId("coupon-WELCOME"), "Deactivate");
+    await confirmDialog(page);
     await expect.poll(() => gw.called("DELETE", "/v1/coupons/WELCOME").length).toBeGreaterThan(0);
     await page.getByTestId("coupon-BONUS25").click();
     await page.getByTestId("detail-sheet").getByRole("button", { name: "Deactivate" }).last().click();
+    await confirmDialog(page);
     await expect.poll(() => gw.called("DELETE", "/v1/coupons/BONUS25").length).toBeGreaterThan(0);
   });
 });
@@ -252,6 +254,7 @@ test.describe("promotion codes", () => {
     await open(page, gw);
     await page.getByTestId("coupons-tab-codes").click();
     await page.getByTestId("code-SUMMER").getByRole("button", { name: "Deactivate" }).click();
+    await confirmDialog(page);
     await expect.poll(() => gw.called("DELETE", "/v1/promotion-codes/SUMMER").length).toBeGreaterThan(0);
   });
 });

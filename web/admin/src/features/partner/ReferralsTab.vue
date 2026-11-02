@@ -4,7 +4,7 @@ import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "@/features/affiliates/paging";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useReferrals } from "./api";
@@ -20,7 +20,7 @@ const list = useReferrals(() => props.id, pager.token, pager.size);
 <template>
   <Card class="p-3" data-testid="referrals">
     <p class="text-muted-foreground m-0 px-3 pt-2 text-xs">{{ t("partner.referrals.hint") }}</p>
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-24" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground m-0 px-3 py-4 text-sm">{{ t("partner.referrals.empty") }}</p>
     <Table v-else-if="list.data.value">

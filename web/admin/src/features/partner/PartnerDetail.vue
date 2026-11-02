@@ -7,7 +7,7 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
 import { CopyField } from "@/shared/ui/copy-field";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
@@ -45,7 +45,7 @@ const balances = computed(() => sumBalances(detail.data.value?.balances));
 
 <template>
   <div class="flex flex-col gap-6">
-    <ErrorText :error="detail.error.value" />
+    <ErrorState :error="detail.error.value" :retrying="detail.isFetching.value" compact class="mx-0" @retry="detail.refetch()" />
     <Skeleton v-if="detail.isPending.value" class="h-40" />
 
     <template v-if="a">

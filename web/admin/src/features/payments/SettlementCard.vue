@@ -12,6 +12,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
@@ -81,7 +82,7 @@ async function importFile() {
     <ul class="flex flex-wrap gap-2" :aria-label="t('billing.settlement.counts')">
       <li v-for="s in states" :key="s"><Badge variant="secondary">{{ label(t, te, "settlementState", s) }}: {{ counts[s] ?? 0 }}</Badge></li>
     </ul>
-    <ErrorText :error="payments.error.value" />
+    <ErrorState :error="payments.error.value" :retrying="payments.isFetching.value" compact class="mx-0" @retry="payments.refetch()" />
     <div class="-mx-3 border-t pt-3">
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
         <FilterSelect v-model="periodDraft" :label="t('billing.reconcile.period')" :options="periodOptions" />

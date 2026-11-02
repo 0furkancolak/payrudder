@@ -12,13 +12,14 @@ import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { PAGE_SIZES } from "@/shared/lib/paging";
 import { useCodeActions, useCoupons, usePromotionCodes, useRedemptions } from "./api";
 import CodesTable from "./CodesTable.vue";
-import { codeRules, describeCoupon } from "./promotions";
+import { codeRules, confirmDeactivateCode, describeCoupon } from "./promotions";
 import RedemptionsTable from "./RedemptionsTable.vue";
 import { TableEmpty } from "@/shared/ui/table";
 
@@ -70,6 +71,10 @@ function back() {
 // The open code.
 const index = ref<number | null>(null);
 const current = computed(() => (index.value === null ? undefined : rows.value[index.value]));
+async function deactivateCurrent() {
+  const code = current.value?.code;
+  if (code && (await confirmDeactivateCode(t, code))) act.deactivate.mutate(code);
+}
 const parent = computed(() => (coupons.data.value?.coupons ?? []).find((c) => c.code === current.value?.coupon_code));
 const used = useRedemptions(() => props.tenantId, () => ({ promotionCode: current.value?.code ?? "" }), "", 10, () => !!current.value);
 const usedRows = computed(() => (current.value ? (used.data.value?.redemptions ?? []) : []));
@@ -90,7 +95,7 @@ const detailRows = computed(() => {
 
 <template>
   <Card class="p-3" data-testid="codes-list">
-    <ErrorText :error="codes.error.value" class="px-3 pb-2" />
+    <ErrorState :error="codes.error.value" :retrying="codes.isFetching.value" compact @retry="codes.refetch()" />
     <ErrorText :error="act.deactivate.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="search" :placeholder="t('billing.pricing.promotions.codes.search')" :active="active" @clear="clear">
       <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
@@ -114,14 +119,14 @@ const detailRows = computed(() => {
       </DetailList>
       <section class="flex flex-col gap-3" :aria-label="t('billing.coupons.tabs.redemptions')">
         <h3 class="text-base font-semibold">{{ t("billing.coupons.tabs.redemptions") }}</h3>
-        <ErrorText :error="used.error.value" />
+        <ErrorState :error="used.error.value" :retrying="used.isFetching.value" compact class="mx-0" @retry="used.refetch()" />
         <Skeleton v-if="used.isPending.value" class="h-16 w-full" />
         <p v-else-if="usedRows.length === 0" class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.redemptions.none") }}</p>
         <RedemptionsTable v-else :rows="usedRows" :tenant-id="tenantId" :show-coupon="false" />
       </section>
     </div>
     <template v-if="current?.active && canWrite" #footer>
-      <Button type="button" variant="outline" :disabled="act.deactivate.isPending.value" @click="act.deactivate.mutate(current?.code ?? '')"><Ban class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.deactivate") }}</Button>
+      <Button type="button" variant="outline" :disabled="act.deactivate.isPending.value" @click="deactivateCurrent"><Ban class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.deactivate") }}</Button>
     </template>
   </DetailSheet>
 </template>

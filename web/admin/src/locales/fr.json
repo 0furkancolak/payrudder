@@ -1204,7 +1204,8 @@
           "deactivate": "Désactiver la sélection",
           "title": "Désactiver {n} coupon ? | Désactiver {n} coupons ?",
           "confirm": "Ils n'acceptent plus de nouvelles utilisations, et un coupon désactivé ne peut pas être réactivé. Les abonnements qui en ont déjà un le gardent."
-        }
+        },
+        "confirmTitle": "Désactiver le coupon {code} ?"
       },
       "tax": {
         "title": "Taxes",
@@ -1306,7 +1307,9 @@
             "expires": "L'expiration doit être un jour à venir.",
             "minAmount": "Pas un montant dans cette devise : des chiffres seulement, avec au plus autant de décimales que la devise.",
             "currencies": "Les devises sont des codes de trois lettres comme USD, séparés par des virgules."
-          }
+          },
+          "confirmTitle": "Désactiver le code {code} ?",
+          "confirmBody": "Il n'accepte plus de nouvelles utilisations. Le coupon et ses autres codes continuent de fonctionner."
         },
         "redemptions": {
           "title": "Utilisations",
@@ -1481,7 +1484,8 @@
         "regenerate": "Régénérer le lien",
         "copied": "Lien de la page de paiement copié",
         "regenerated": "Nouveau lien créé et copié ; les anciens ne fonctionnent plus",
-        "validFor": "Les liens sont valables {days} jours"
+        "validFor": "Les liens sont valables {days} jours",
+        "confirmRegenerate": "Créer un nouveau lien vers la page de paiement de ce client ? Les liens déjà envoyés cessent de fonctionner."
       },
       "for": "Pour",
       "promotionCode": "Code promotionnel (facultatif)",
@@ -2159,7 +2163,8 @@
       "errors": {
         "limit": "La limite doit être une quantité avec au plus {n} décimales.",
         "thresholds": "Les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000."
-      }
+      },
+      "confirmRemove": "Supprimer l'exception sur {meter} ? La limite du forfait s'applique de nouveau à ce client."
     },
     "reconcile": {
       "title": "File de revue",
@@ -2547,7 +2552,9 @@
       "commissions": "Commissions",
       "commissionsOf": "Commissions du versement de {code}",
       "markPaid": "Marquer payé",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "confirmTitle": "Annuler ce versement ?",
+      "confirmBody": "Ses commissions redeviennent payables dans un autre versement."
     },
     "pay": {
       "title": "Marquer le versement comme payé",
@@ -4184,7 +4191,11 @@
       "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte.",
       "allRoles": "Tous les rôles",
       "expiresHead": "Valable jusqu'au",
-      "soleOwner": "Vous êtes le seul propriétaire, vous ne pouvez donc pas encore partir. Nommez d'abord un autre propriétaire."
+      "soleOwner": "Vous êtes le seul propriétaire, vous ne pouvez donc pas encore partir. Nommez d'abord un autre propriétaire.",
+      "cancelInviteTitle": "Annuler cette invitation ?",
+      "cancelInviteBody": "{email} ne pourra plus rejoindre le compte avec le lien reçu.",
+      "lowerTitle": "Réduire le rôle de {name} ?",
+      "lowerBody": "De {from} à {to} : {name} perd aussitôt ce que {from} peut faire."
     },
     "account": {
       "switch": "Compte",
@@ -5690,7 +5701,10 @@
     "badge": {
       "unread": "Tickets avec du nouveau : {n}",
       "waiting": "En attente de nous : {n}"
-    }
+    },
+    "confirmCloseTitle": "Fermer le ticket n° {number} ?",
+    "confirmCloseMany": "Fermer {n} ticket ? | Fermer {n} tickets ?",
+    "confirmCloseBody": "Un ticket clos ne peut plus recevoir de réponse ; la personne doit en ouvrir un nouveau."
   },
   "connect": {
     "nav": "Connecter votre app",

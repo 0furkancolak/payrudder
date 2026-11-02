@@ -57,6 +57,7 @@ async function openPage() {
   else window.open(url, "_blank", "noopener");
 }
 async function regenerate() {
+  if (!(await askConfirm({ body: t("billing.paymentLinks.portal.confirmRegenerate") }))) return;
   await guard(async () => {
     await act.revoke.mutateAsync(props.customer);
     const url = await make();

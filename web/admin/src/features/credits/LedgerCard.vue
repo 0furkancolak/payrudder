@@ -8,7 +8,7 @@ import { SortSelect } from "@/shared/ui/sort-select";
 import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -49,7 +49,7 @@ const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v
       <DateRangePicker v-model="range" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
-    <ErrorText :error="ledger.error.value" class="px-3" />
+    <ErrorState :error="ledger.error.value" :retrying="ledger.isFetching.value" compact @retry="ledger.refetch()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

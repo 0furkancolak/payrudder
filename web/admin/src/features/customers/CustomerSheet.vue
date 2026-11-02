@@ -10,10 +10,12 @@ import { formatCredits } from "@/features/credits/lib";
 import LedgerCard from "@/features/credits/LedgerCard.vue";
 import { CustomerRelated, InvoiceRows, PaymentRows, SubscriptionRows, useCustomerInvoices } from "@/features/related";
 import { useTenantCurrency } from "@/features/tenants/currency";
+import { useCanWrite } from "@/shared/lib/access";
 import { copyText } from "@/shared/lib/clipboard";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
+import { ErrorState } from "@/shared/ui/error-state";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
@@ -34,6 +36,9 @@ import { countryName, flagOf, headline, isBlocked, type Customer, type CustomerS
 const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean; readonly?: boolean }>();
 const emit = defineEmits<{ editContact: []; editAddress: []; editTax: []; block: []; unblock: []; newSubscription: []; paymentLink: []; credits: [] }>();
 const tab = defineModel<CustomerTab>("tab", { default: "overview" });
+const canWrite = useCanWrite();
+/** Nothing is offered that changes the customer: in a peek, and to a viewer, whom the server would refuse. */
+const locked = computed(() => props.readonly || !canWrite.value);
 const { t, locale } = useI18n();
 const fmt = useFormat();
 
@@ -106,11 +111,11 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         <span v-if="blocked && customer.service_suspended" class="text-xs font-medium" data-testid="customer-suspended">{{ t("billing.customers.block.bannerSuspended") }}</span>
         <span v-if="customer.block_category || customer.block_reason" class="text-xs break-words" dir="auto">{{ [categoryText(customer.block_category), customer.block_reason].filter(Boolean).join(" · ") }}</span>
       </div>
-      <Button v-if="!readonly" size="sm" variant="outline" data-testid="customer-unblock" @click="emit('unblock')"><CircleCheck aria-hidden="true" />{{ t("billing.customers.block.lift") }}</Button>
+      <Button v-if="!locked" size="sm" variant="outline" data-testid="customer-unblock" @click="emit('unblock')"><CircleCheck aria-hidden="true" />{{ t("billing.customers.block.lift") }}</Button>
     </div>
 
     <!-- What can be done -->
-    <div v-if="!readonly" class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
+    <div v-if="!locked" class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />
@@ -157,7 +162,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       </div>
     </dl>
 
-    <CorrectUsageSheet v-if="!readonly" v-model:open="correcting" :tenant-id="tenantId" :customer="id" />
+    <CorrectUsageSheet v-if="!locked" v-model:open="correcting" :tenant-id="tenantId" :customer="id" />
 
     <Tabs v-model="tab" class="min-w-0 gap-4">
       <TabsList class="border-border/70 w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b" :aria-label="t('billing.customers.sheet.sections')">
@@ -185,7 +190,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       </TabsContent>
       <TabsContent value="subscriptions" class="flex flex-col gap-3 outline-none">
         <SubscriptionRows :tenant-id="tenantId" :customer="id" bare :empty-text="t('billing.customers.sheet.noSubscriptions')" />
-        <Button size="sm" variant="outline" class="self-start" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
+        <Button v-if="!locked" size="sm" variant="outline" class="self-start" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       </TabsContent>
       <TabsContent value="credits" class="flex flex-col gap-4 outline-none">
         <div class="flex flex-wrap items-end justify-between gap-3">
@@ -195,7 +200,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <span v-if="balance.data.value?.next_expire_time" class="text-muted-foreground text-xs">{{ t("billing.credits.customer.nextExpiry", { when: fmt.date(balance.data.value.next_expire_time, "dateTime") }) }}</span>
           </div>
           <div class="flex flex-wrap gap-2">
-            <Button size="sm" data-testid="customer-grant-credits" @click="granting = true"><Coins aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
+            <Button v-if="!locked" size="sm" data-testid="customer-grant-credits" @click="granting = true"><Coins aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
             <Button size="sm" variant="outline" @click="emit('credits')">{{ t("billing.customers.sheet.manageCredits") }}</Button>
           </div>
         </div>
@@ -203,7 +208,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         <LedgerCard :tenant-id="tenantId" :customer="id" class="-mx-3 gap-2 border-0 bg-transparent p-0 shadow-none [&>h2]:pt-0" />
       </TabsContent>
       <TabsContent value="agreements" class="outline-none">
-        <CustomerAgreements :tenant-id="tenantId" :external-id="id" :readonly="readonly" />
+        <CustomerAgreements :tenant-id="tenantId" :external-id="id" :readonly="locked" />
       </TabsContent>
       <TabsContent value="details" class="outline-none">
         <dl class="divide-border/70 m-0 flex flex-col divide-y text-sm" data-testid="customer-details">
@@ -239,7 +244,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <dt class="text-muted-foreground">{{ t("billing.customers.address.title") }}</dt>
             <dd class="m-0 flex items-start justify-between gap-3">
               <span class="break-words" dir="auto">{{ address || "—" }}</span>
-              <Button size="xs" variant="ghost" :aria-label="t('billing.customers.address.edit')" @click="emit('editAddress')"><Pencil aria-hidden="true" /></Button>
+              <Button v-if="!locked" size="xs" variant="ghost" :aria-label="t('billing.customers.address.edit')" @click="emit('editAddress')"><Pencil aria-hidden="true" /></Button>
             </dd>
           </div>
           <div class="grid gap-1 py-2.5 sm:grid-cols-[10rem_1fr] sm:gap-4">
@@ -250,7 +255,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
                 <span v-if="customer.tax_id_warning" class="text-warning text-xs" data-testid="customer-tax-warning">{{ t("einvoice.customer.warned") }}</span>
                 <span v-if="customer.e_invoice_registered" class="text-muted-foreground text-xs">{{ t("einvoice.customer.registered") }}</span>
               </span>
-              <Button size="xs" variant="ghost" :aria-label="t('einvoice.customer.edit')" @click="emit('editTax')"><Pencil aria-hidden="true" /></Button>
+              <Button v-if="!locked" size="xs" variant="ghost" :aria-label="t('einvoice.customer.edit')" @click="emit('editTax')"><Pencil aria-hidden="true" /></Button>
             </dd>
           </div>
           <div v-if="customer.payment_method" class="grid gap-1 py-2.5 sm:grid-cols-[10rem_1fr] sm:gap-4">
@@ -262,6 +267,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         <section class="mt-6 flex flex-col gap-2" :aria-label="t('billing.customers.block.history')" data-testid="customer-block-history">
           <h3 class="m-0 text-sm font-semibold">{{ t("billing.customers.block.history") }}</h3>
           <Skeleton v-if="blockEvents.isPending.value" class="h-5 w-40" />
+          <ErrorState v-else-if="blockEvents.error.value" compact class="mx-0 mb-0" :error="blockEvents.error.value" :retrying="blockEvents.isFetching.value" @retry="blockEvents.refetch()" />
           <p v-else-if="(blockEvents.data.value?.events ?? []).length === 0" class="text-muted-foreground m-0 text-sm">{{ t("billing.customers.block.historyEmpty") }}</p>
           <ul v-else class="divide-border/70 m-0 flex list-none flex-col divide-y p-0 text-sm">
             <li v-for="e in blockEvents.data.value?.events" :key="e.id" class="flex flex-col gap-0.5 py-2" data-testid="customer-block-event">

@@ -12,7 +12,7 @@ import { amount, amountHigh, amountLow, expiresSoon, newest, time } from "@/shar
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -67,7 +67,7 @@ const TAB_CLASS =
 
     <p v-if="!customer" class="text-muted-foreground px-3 pb-3 text-sm">{{ t("billing.credits.customer.empty") }}</p>
     <template v-else>
-      <ErrorText :error="balance.error.value" class="px-3 pb-2" />
+      <ErrorState :error="balance.error.value" :retrying="balance.isFetching.value" compact @retry="balance.refetch()" />
       <div class="bg-muted/50 mx-3 mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl p-4">
         <Skeleton v-if="balance.isPending.value" class="h-12 w-48" />
         <div v-else-if="balance.data.value" class="flex min-w-0 flex-col gap-0.5" role="status" :aria-label="t('billing.credits.customer.balance')">
