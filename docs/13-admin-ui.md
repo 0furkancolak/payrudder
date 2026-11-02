@@ -113,7 +113,7 @@ a paid invoice, then drives the browser: open the console as the operator user (
 and disappears when redriven (the notifier delivers it; the saga it names is already final, so its reply is ignored).
 
 `make web-check` runs install, ESLint, the type check (`vue-tsc`), the unit tests (Vitest: locale parity, error-key coverage, address rules and money formatting), the OpenAPI type check and the build.
-`web/admin/e2e/complaints-real.spec.ts` is plan 03's five complaints on the real stack (a fresh sign-up skips the wizard, the server's record keeps the wizard and the tour from coming back in a second browser, the sidebar's icons differ, a sheet on a long list leaves the page where it was, the lists of a form sheet work); it was written without a stack and has not been run by its author, so CI's end-to-end job is its first run. `web/admin/e2e/i18n.spec.ts` checks that the language follows the browser, can be changed and remembered, that Arabic is right-to-left, and that the signed-in pages and the playground are translated.
+`web/admin/e2e/complaints-real.spec.ts` is plan 03's five complaints on the real stack (a fresh sign-up skips the wizard, the server's record keeps the wizard and the tour from coming back in a second browser, the sidebar's icons differ, a sheet on a long list leaves the page where it was, the lists of a form sheet work); it was written without a stack and ran for the first time in CI's end-to-end job, where its three tests passed. `web/admin/e2e/i18n.spec.ts` checks that the language follows the browser, can be changed and remembered, that Arabic is right-to-left, and that the signed-in pages and the playground are translated.
 
 ## Not covered
 

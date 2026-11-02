@@ -74,7 +74,7 @@ Default (not agreed): the lock is `overflow: hidden` on `<html>` with the scroll
 
 ## Status (2026-11-02, branch `feat/console-bulk-more`)
 
-Done in `web/admin` (no Go code). The five complaints of the request are each a mock e2e now (`e2e-mock/complaints.spec.ts`, with the older specs named in its header); what the mock cannot say (a fresh sign-up, the server's own record, a second browser, a real phone) is in `e2e/complaints-real.spec.ts`, which **only CI's end-to-end job runs and which has not been run by its author** (no stack here): expect to adjust a locator or a wait the first time.
+Done in `web/admin` (no Go code). The five complaints of the request are each a mock e2e now (`e2e-mock/complaints.spec.ts`, with the older specs named in its header); what the mock cannot say (a fresh sign-up, the server's own record, a second browser, a real phone) is in `e2e/complaints-real.spec.ts`, which **only CI's end-to-end job runs** (no stack where it was written); its three tests passed on their first CI run (2026-11-02).
 
 | Complaint | Covered by | Found |
 |---|---|---|
