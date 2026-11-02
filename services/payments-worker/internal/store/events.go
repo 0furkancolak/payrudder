@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -125,4 +126,26 @@ func (a Attempts) ChargeProvider(ctx context.Context, tenant, invoice uuid.UUID)
 	return lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (string, error) {
 		return q.GetChargeProvider(ctx, sqlc.GetChargeProviderParams{TenantID: tenant, InvoiceID: invoice})
 	})
+}
+
+// SetRef keeps the provider's reference of a charge (a Stripe PaymentIntent id) with the attempt that got it. Only the first one is kept.
+func (a Attempts) SetRef(ctx context.Context, tenant, commandID uuid.UUID, ref string) error {
+	if err := requireTenant(a.DB, tenant); err != nil {
+		return err
+	}
+	return at(ctx, a.DB, tenant, func(q *sqlc.Queries) error {
+		return q.SetAttemptRef(ctx, sqlc.SetAttemptRefParams{CommandID: commandID, ProviderRef: &ref})
+	})
+}
+
+// ChargeRef says what the charge attempts of an invoice under a key hold: the provider's reference (empty when none answered with one), when the first was started, and
+// whether there is any attempt at all.
+func (a Attempts) ChargeRef(ctx context.Context, tenant, invoice uuid.UUID, key string) (ref string, started time.Time, found bool, err error) {
+	if err := requireTenant(a.DB, tenant); err != nil {
+		return "", time.Time{}, false, err
+	}
+	r, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetChargeAttemptRefRow, error) {
+		return q.GetChargeAttemptRef(ctx, sqlc.GetChargeAttemptRefParams{TenantID: tenant, InvoiceID: invoice, IdempotencyKey: key})
+	})
+	return r.ProviderRef, r.StartedAt, r.Attempts > 0, err
 }

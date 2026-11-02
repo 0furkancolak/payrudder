@@ -115,6 +115,7 @@ stateDiagram-v2
     PAYMENT_REQUESTED --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / PaymentDeclinedFinal [we charge, provider says do not retry]
     PAYMENT_REQUESTED --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning] / PaymentDeclinedFinal [customer pays, no dunning]
     PAYMENT_REQUESTED --> PAYMENT_UNKNOWN: PaymentErrored / StepExhausted
+    PAYMENT_REQUESTED --> PAYMENT_ACTION_REQUIRED: PaymentActionRequired
     PAYMENT_UNKNOWN --> PAID: PaymentSucceeded / StatusSucceeded / OfflineSettlement / Settled
     PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
     PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / PaymentDeclinedFinal [we charge, provider says do not retry] / StatusDeclinedFinal [we charge, provider says do not retry] / StatusDeclined [dunning exhausted]
@@ -122,12 +123,19 @@ stateDiagram-v2
     PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: StatusNotFound [not found, charge younger than the grace period] / StatusNotFound [not found, charge older than the key horizon] / Retry / StepExhausted
     PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound [not found, charge old enough to be sure]
     PAYMENT_UNKNOWN --> PAYMENT_PENDING: StatusPending
+    PAYMENT_UNKNOWN --> PAYMENT_ACTION_REQUIRED: PaymentActionRequired / StatusActionRequired
     PAYMENT_PENDING --> PAYMENT_PENDING: StatusPending / PollDue / Retry / StepExhausted
     PAYMENT_PENDING --> PAID: StatusSucceeded / OfflineSettlement
     PAYMENT_PENDING --> PAYMENT_REQUESTED: StatusNotFound
     PAYMENT_PENDING --> PAYMENT_DECLINED: StatusDeclined [dunning attempts left]
     PAYMENT_PENDING --> UNCOLLECTIBLE: StatusDeclined [dunning exhausted] / StatusDeclinedFinal [we charge, provider says do not retry]
     PAYMENT_PENDING --> AWAITING_PAYMENT: StatusDeclined [customer pays, no dunning] / StatusDeclinedFinal [customer pays, no dunning]
+    PAYMENT_ACTION_REQUIRED --> PAYMENT_ACTION_REQUIRED: StatusActionRequired / PollDue / Retry / StepExhausted
+    PAYMENT_ACTION_REQUIRED --> PAID: StatusSucceeded / OfflineSettlement / Settled
+    PAYMENT_ACTION_REQUIRED --> PAYMENT_REQUESTED: StatusNotFound
+    PAYMENT_ACTION_REQUIRED --> PAYMENT_DECLINED: StatusDeclined [dunning attempts left]
+    PAYMENT_ACTION_REQUIRED --> UNCOLLECTIBLE: StatusDeclined [dunning exhausted] / StatusDeclinedFinal [we charge, provider says do not retry]
+    PAYMENT_ACTION_REQUIRED --> AWAITING_PAYMENT: StatusDeclined [customer pays, no dunning] / StatusDeclinedFinal [customer pays, no dunning]
     PAYMENT_DECLINED --> PAYMENT_REQUESTED: DunningDue / PayRequested
     PAYMENT_DECLINED --> PAYMENT_UNKNOWN: Retry
     PAYMENT_DECLINED --> PAID: OfflineSettlement / Settled
@@ -148,6 +156,7 @@ stateDiagram-v2
     PAYMENT_DECLINED --> VOIDED: Void
     AWAITING_PAYMENT --> VOIDED: Void
     PAYMENT_PENDING --> VOIDED: Void
+    PAYMENT_ACTION_REQUIRED --> VOIDED: Void
     NOTIFY_REQUESTED --> REFUND_REQUESTED: Void [paid, total > 0]
     NOTIFY_REQUESTED --> VOIDED: Void [nothing to refund]
     NOTIFY_FAILED --> REFUND_REQUESTED: Void [paid, total > 0]
@@ -179,6 +188,7 @@ stateDiagram-v2
   customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `PAYRUDDER_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
   operator confirmed a receipt. The payment window is enforced by the status answer: past it the status is a decline, and the tenant's dunning delays decide whether a new window opens (a new charge, a new mail) or the invoice becomes uncollectible.
   `RecordInvoicePayment` (`OfflineSettlement`) settles an invoice with money received outside any provider, from `PAYMENT_UNKNOWN`, `PAYMENT_PENDING`, `PAYMENT_DECLINED` or after the saga gave up; the payments are rows of `invoice_payments` (who, when, method, reference).
+- **A charge that needs the customer** (Stripe's 3-D Secure on an off-session payment: `requires_action`, or the decline `authentication_required` / `authentication_not_handled`) is not a decline. payments-worker answers `PaymentActionRequired` (with the PaymentIntent id; no ledger row, so the hosted page does not say "processing") and the saga enters `PAYMENT_ACTION_REQUIRED` (plan 08, default, not agreed): the customer is mailed **once** (`payment_action_required.v1`, six languages, category `system`) a link to the invoice's page (`/i/<token>`, 30 days, `PAYRUDDER_PUBLIC_URL` of billing-svc; the mail goes without a link when there is none), where the Pay button starts Stripe's hosted Checkout. Stripe documents no hosted page for authenticating an off-session card payment (`next_action.use_stripe_sdk` "is only intended to be used by Stripe.js", `redirect_to_url` belongs to redirect methods; docs.stripe.com/api/payment_intents/object, read 2026-11-02), which is why the link is Payrudder's own. No command is outstanding, so no step deadline: the status is asked every `PAYRUDDER_TRANSFER_POLL` (and a customer who pays settles it at once, `Settled`), by the stored PaymentIntent id. The window is the bank transfer's (`PAYMENTS_TRANSFER_WINDOW_DAYS`, 14): past it the status is a decline `authentication_required` (not final) and the tenant's dunning applies. The invoice page is payable in this state (`open`).
 - **A decline the provider says must not be retried** (`PaymentDeclined.final`, `PaymentStatus.final`; today only Stripe's `advice_code` `do_not_try_again`, [matrix](../stripe-compatibility-matrix.md) finding 7) ends dunning at once whatever attempts are left: `PaymentDeclinedFinal` / `StatusDeclinedFinal` go to `UNCOLLECTIBLE` (the `payment_failed` mail goes out; the invoice stays payable on the hosted page), or back to `AWAITING_PAYMENT` for a link-collected invoice. Default (not agreed): Payrudder reads "shouldn't use it again for the same transaction" as covering the later dunning attempts of the same invoice.
 - **Dunning** delays are days long, so they're scheduled in Postgres (`next_attempt_at`), not as RabbitMQ TTLs. A tenant may set its own delays (0 to 6 retries, 1–720 hours each; minutes in a sandbox tenant) with `PUT /v1/dunning-settings`; without a row the service-wide defaults apply, and an empty list gives up on the first decline.
   RabbitMQ TTL retries handle **seconds to minutes** of transient failure inside a worker.

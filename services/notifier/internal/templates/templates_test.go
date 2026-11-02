@@ -34,7 +34,7 @@ func TestRenderAllTemplates(t *testing.T) {
 	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",
 		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80", "plan_code": "pro", "trial_end": "6 Nov 2026, 21:30 (UTC)", "trial_end_date": "6 Nov 2026", "effective_date": "6 Dec 2026", "new_renewal": "12.00 USD", "accepted_at": "2 Nov 2026, 10:00 UTC", "snapshot_html": "<h2>Terms</h2><p>Acme terms</p>", "snapshot_sha256": "abc123",
 		"renewal_date": "9 Nov 2026", "price": "30.00 TRY", "interval": "month", "cancel_text": "Cancel in your account.", "statement": "I withdraw.", "received_at": "2 Nov 2026, 10:00 UTC"}
-	if len(Names()) != 9 {
+	if len(Names()) != 10 {
 		t.Fatalf("templates = %v", Names())
 	}
 	for _, n := range Names() {
@@ -81,6 +81,27 @@ func TestTransferMailCarriesTheBankDetails(t *testing.T) {
 	card, _ := Render("payment_failed.v1", map[string]string{"customer_name": "Ada"}, false)
 	if strings.Contains(card.HTML, "bank transfer") {
 		t.Error("a customer who did not pay by transfer is not told about one")
+	}
+}
+
+// The mail that asks a customer to confirm a payment carries the link to the invoice page in every language, and says what to do instead when there is none.
+func TestActionRequiredMailCarriesTheLink(t *testing.T) {
+	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001", "period": "2026-10", "tenant_name": "Acme",
+		"pay_url": "https://api.example.com/i/tok_123"}
+	for _, l := range Locales {
+		d := map[string]string{"locale": l}
+		for k, v := range data {
+			d[k] = v
+		}
+		with, err := Render("payment_action_required.v1", d, false)
+		if err != nil || strings.Count(with.HTML, "https://api.example.com/i/tok_123") != 2 || !strings.Contains(with.HTML, "INV-2026-000001") || !strings.Contains(with.HTML, "11.16 USD") {
+			t.Fatalf("%s: %v %s", l, err, with.HTML)
+		}
+		delete(d, "pay_url")
+		without, err := Render("payment_action_required.v1", d, false)
+		if err != nil || strings.Contains(without.HTML, "<a href") || !strings.Contains(without.HTML, "Acme") {
+			t.Fatalf("%s without a link: %v %s", l, err, without.HTML)
+		}
 	}
 }
 

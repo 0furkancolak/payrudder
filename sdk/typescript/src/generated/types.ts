@@ -1617,7 +1617,7 @@ export interface GetDunningReportInvoice {
   provider: string;
   currency: string;
   total_minor: Int64;
-  state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
+  state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "PAYMENT_ACTION_REQUIRED" | "UNCOLLECTIBLE";
   dunning_attempt: number;
   next_attempt_time: string | null;
   last_error: string;

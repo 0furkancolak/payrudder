@@ -153,7 +153,8 @@
     "dunningState": {
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
-      "UNCOLLECTIBLE": "vazgeçildi"
+      "UNCOLLECTIBLE": "vazgeçildi",
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
     },
     "sagaState": {
       "PAYMENT_PENDING": "havale bekleniyor",
@@ -174,7 +175,8 @@
       "REFUND_FAILED": "iade başarısız",
       "REFUNDED": "iade edildi",
       "VOIDED": "iptal edildi",
-      "AWAITING_PAYMENT": "ödeme bekleniyor"
+      "AWAITING_PAYMENT": "ödeme bekleniyor",
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
     },
     "paymentMethod": {
       "bank_transfer": "Banka havalesi",

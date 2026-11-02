@@ -139,6 +139,42 @@ func TestPendingPaymentTransitions(t *testing.T) {
 	}
 }
 
+// A charge the provider will not take without the customer (3-D Secure) is not a decline: the customer is mailed once, the status is polled, the customer's own payment on
+// the invoice page settles it, and what the status says afterwards decides (a decline only after the window of the pending payments, then dunning as usual).
+func TestPaymentThatNeedsTheCustomerTransitions(t *testing.T) {
+	c := Ctx{TotalMinor: 500, MaxDunning: 3}
+	check := func(s State, ev Event, ctx Ctx, to State, eff Effect) {
+		t.Helper()
+		r, ok := Next(s, ev, ctx)
+		if !ok || r.To != to || r.Effect != eff {
+			t.Errorf("Next(%s, %s) = %+v %v, want %s/%q", s, ev, r, ok, to, eff)
+		}
+	}
+	check(PaymentRequested, EvPaymentActionRequired, c, PaymentActionRequired, EffAwaitAction)      // the mail, once
+	check(PaymentUnknown, EvPaymentActionRequired, c, PaymentActionRequired, EffAwaitAction)        // the original reply arrives late
+	check(PaymentUnknown, EvStatusActionRequired, c, PaymentActionRequired, EffAwaitAction)         // the status of a charge whose answer was lost
+	check(PaymentActionRequired, EvStatusActionRequired, c, PaymentActionRequired, EffSchedulePoll) // later polls: no second mail
+	check(PaymentActionRequired, EvPollDue, c, PaymentActionRequired, EffQueryStatus)
+	check(PaymentActionRequired, EvRetry, c, PaymentActionRequired, EffQueryStatus)
+	check(PaymentActionRequired, EvExhausted, c, PaymentActionRequired, EffSchedulePoll)
+	check(PaymentActionRequired, EvStatusSucceeded, c, Paid, EffNone)
+	check(PaymentActionRequired, EvProviderSettled, c, Paid, EffNone) // the customer paid on the invoice page
+	check(PaymentActionRequired, EvSettled, c, Paid, EffNone)         // or the seller recorded a transfer
+	check(PaymentActionRequired, EvVoid, c, Voided, EffNone)
+	check(PaymentActionRequired, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 1, MaxDunning: 3}, PaymentDeclined, EffScheduleDunning)
+	check(PaymentActionRequired, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 3, MaxDunning: 3}, Uncollectible, EffNone)
+	check(PaymentActionRequired, EvStatusDeclinedFinal, c, Uncollectible, EffNone)
+	if PaymentActionRequired.Awaiting() || PaymentActionRequired.Terminal() {
+		t.Error("no command is outstanding while the customer is asked to act: there is no step deadline, and the invoice is not over")
+	}
+	// A reply of the charge cannot be a decline or a success again once the saga waits for the customer: those would be a second charge's.
+	for _, ev := range []Event{EvPaymentOK, EvPaymentDeclined, EvPaymentErrored} {
+		if _, ok := Next(PaymentActionRequired, ev, c); ok {
+			t.Errorf("(%s, %s) must be invalid", PaymentActionRequired, ev)
+		}
+	}
+}
+
 // The diagram in docs/03-services/billing-svc.md between the markers is generated from the table.
 func TestDocsDiagramIsInSync(t *testing.T) {
 	raw, err := os.ReadFile("../../../../../docs/03-services/billing-svc.md")
