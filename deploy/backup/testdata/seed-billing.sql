@@ -1,3 +1,5 @@
+-- Test data is loaded as the superuser with the immutability triggers off (invoices are seeded finished, with their lines).
+SET session_replication_role = replica;
 -- Invoices lo..hi of one tenant with their lines (base fee, usage, 20% tax), a credit lot each and its ledger (a grant and a consume): psql -v lo=1 -v hi=10 -f seed-billing.sql.
 -- Ids come from the number, so another range adds new rows and the same range fails on the primary key. The totals are the ones invariants.sh expects.
 \set tenant '''11111111-1111-1111-1111-111111111111''::uuid'

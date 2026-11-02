@@ -84,7 +84,7 @@ func TestOwnerProviderConnection(t *testing.T) {
 		}
 		return out
 	}
-	iyzicoSettings := `{"api_key":"api","secret_key":"OWNER-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	iyzicoSettings := `{"api_key":"api","secret_key":"OWNER-SECRET-KEY","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","gsm_number":"+905550000000","email":"b@example.com"}}`
 	bankSettings := `{"bank_name":"Bank","account_holder":"Ada Labs","iban":"DE89370400440532013000","currencies":["EUR"]}`
 	actor := "user:" + uuid.NewString()
 
