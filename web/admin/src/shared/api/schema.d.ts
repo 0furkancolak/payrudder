@@ -969,6 +969,8 @@ export interface paths {
          * Move every subscription on one plan version to another at its next renewal, and tell the customers
          * @description For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
          *     (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+         *     With `effective_from` the subscription moves on its first period start on or after that date instead (the customer is still mailed when the run schedules it, so at
+         *     least `notice_days` before). The notice is the longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
          *     The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
          *     `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
          *     Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
@@ -6672,6 +6674,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/price-change-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The notice rules of price changes
+         * @description The notice a run uses when its request names none, and the least notice per country (`*` is any country without a row). Plan 15, default (not agreed): the code's
+         *     floor of 14 days for every country. The rows are the operator's words: UNVERIFIED and not legal advice.
+         */
+        get: operations["getPriceChangeNotice"];
+        /**
+         * Replace the notice rules of price changes
+         * @description Replaces the default and the whole table in one step; a row not listed is removed. A country row can raise the floor, never lower the code's 14 days. A run that
+         *     has scheduled a subscription is not changed; the next run reads the new rules. Recorded in the audit log.
+         */
+        put: operations["setPriceChangeNotice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -7038,8 +7066,13 @@ export interface components {
             from_version: number;
             /** @description The version they move to; 0 or absent is the latest published */
             to_version?: number;
-            /** @description Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+            /** @description Days before the new price starts that the customer must be told at the least: absent or 0 is the platform's default (30 until the operator changes it), otherwise at least 14. A customer in a country with a longer minimum (the operator's table) is told that much earlier, or skipped as `renews_soon`. */
             notice_days?: number;
+            /**
+             * Format: date-time
+             * @description The date the new price starts from. Each subscription then moves on its first period start on or after it (a monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next renewal. At least `notice_days` from now and at most two years. A run that continues an open price change must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`).
+             */
+            effective_from?: string | null;
             /** @description Only count; change nothing and mail nobody */
             dry_run?: boolean;
         };
@@ -7075,6 +7108,11 @@ export interface components {
              * @description The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice)
              */
             effective_time: string;
+            /**
+             * Format: date-time
+             * @description The date the seller chose the new price to start from; null when each subscription moves on its next renewal
+             */
+            effective_from: string | null;
             /** @enum {string} */
             state: "open" | "withdrawn";
             /** @description The signed-in person's address, key:<id> for an API key, or the operator */
@@ -7119,6 +7157,26 @@ export interface components {
             paused: boolean;
             /** @description Why; kept with the setting and shown to the next operator. */
             reason?: string;
+        };
+        PriceChangeNoticeRule: {
+            /** @description ISO 3166-1 alpha-2 in capitals, or * for any other country */
+            country: string;
+            min_notice_days: number;
+            /** @description A source, a date, who checked it */
+            note: string;
+        };
+        SetPriceChangeNoticeRequest: {
+            /** @description The notice a run uses when its request names none */
+            default_notice_days: number;
+            /** @description The whole table, each country once */
+            rules: components["schemas"]["PriceChangeNoticeRule"][];
+        };
+        PriceChangeNotice: {
+            default_notice_days: number;
+            rules: components["schemas"]["PriceChangeNoticeRule"][];
+            updated_by: string;
+            /** Format: date-time */
+            update_time: string | null;
         };
         PriceChangePause: {
             paused: boolean;
@@ -25453,6 +25511,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getPriceChangeNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangeNotice"];
+                };
+            };
+        };
+    };
+    setPriceChangeNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPriceChangeNoticeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangeNotice"];
                 };
             };
             400: components["responses"]["Error"];

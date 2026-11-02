@@ -261,6 +261,22 @@
       "resume": "Reprendre les changements de prix",
       "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
       "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    },
+    "priceNotice": {
+      "title": "Préavis des changements de prix",
+      "unverified": "Non vérifié, pas un avis juridique",
+      "hint": "Le préavis que le changement de prix d'un vendeur utilise quand il n'en indique pas, et le préavis minimal par pays. Personne n'a vérifié ces lignes au regard des règles d'un pays : c'est ce que vous saisissez. Un pays peut relever le plancher, jamais descendre sous les 14 jours que la plateforme garde pour tous. Un client d'un pays au minimum plus long est prévenu d'autant plus tôt, ou écarté de l'exécution car il se renouvelle trop tôt.",
+      "defaultDays": "Préavis par défaut, en jours",
+      "defaultHint": "Utilisé quand un changement de prix n'indique pas de préavis. De 14 à 365.",
+      "rules": "Préavis minimal par pays",
+      "country": "Pays (code ISO ou *)",
+      "days": "Jours",
+      "note": "Note (source, date, qui a vérifié)",
+      "remove": "Retirer",
+      "add": "Ajouter un pays",
+      "save": "Enregistrer les règles de préavis",
+      "star": "La ligne * vaut pour tout pays sans ligne propre (et pour un client sans pays). Sans elle, la plateforme garde 14 jours.",
+      "updated": "Dernier enregistrement par {who} le {date}."
     }
   },
   "tenant": {
@@ -933,7 +949,10 @@
           "tenantDefault": "Langue par défaut de cette application",
           "show": "Aperçu de l'e-mail",
           "subject": "Objet :"
-        }
+        },
+        "fromDate": "À partir du (facultatif)",
+        "fromDateHelp": "Laissez vide pour déplacer chaque abonnement à son prochain renouvellement. Avec une date, chaque abonnement passe à son premier renouvellement à cette date ou après : un plan mensuel au premier, un plan annuel parfois des mois plus tard. Au moins le délai de préavis, au plus deux ans.",
+        "startsFrom": "à partir du {date}"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -3197,7 +3216,8 @@
       "price_change": {
         "not_found": "Modification de prix introuvable.",
         "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
-        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard.",
+        "date_differs": "Un changement de prix ouvert pour ces versions commence à une autre date. Retirez-le pour en faire un nouveau."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",

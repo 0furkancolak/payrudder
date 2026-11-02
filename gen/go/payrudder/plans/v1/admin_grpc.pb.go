@@ -33,6 +33,8 @@ const (
 	AdminService_ListTenantStatusEvents_FullMethodName = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
 	AdminService_GetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/GetPriceChangePause"
 	AdminService_SetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/SetPriceChangePause"
+	AdminService_GetPriceChangeNotice_FullMethodName   = "/payrudder.plans.v1.AdminService/GetPriceChangeNotice"
+	AdminService_SetPriceChangeNotice_FullMethodName   = "/payrudder.plans.v1.AdminService/SetPriceChangeNotice"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -72,6 +74,11 @@ type AdminServiceClient interface {
 	// a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
 	// already scheduled is still applied at its renewal; withdraw the price change to stop that.
 	SetPriceChangePause(ctx context.Context, in *SetPriceChangePauseRequest, opts ...grpc.CallOption) (*SetPriceChangePauseResponse, error)
+	// GetPriceChangeNotice returns the notice rules of price changes: the notice a run uses when it names none and the least notice per country (plan 15). The rows are
+	// not legal advice and nobody has checked them.
+	GetPriceChangeNotice(ctx context.Context, in *GetPriceChangeNoticeRequest, opts ...grpc.CallOption) (*GetPriceChangeNoticeResponse, error)
+	// SetPriceChangeNotice replaces the notice rules in one step (operator only).
+	SetPriceChangeNotice(ctx context.Context, in *SetPriceChangeNoticeRequest, opts ...grpc.CallOption) (*SetPriceChangeNoticeResponse, error)
 }
 
 type adminServiceClient struct {
@@ -222,6 +229,26 @@ func (c *adminServiceClient) SetPriceChangePause(ctx context.Context, in *SetPri
 	return out, nil
 }
 
+func (c *adminServiceClient) GetPriceChangeNotice(ctx context.Context, in *GetPriceChangeNoticeRequest, opts ...grpc.CallOption) (*GetPriceChangeNoticeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPriceChangeNoticeResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetPriceChangeNotice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) SetPriceChangeNotice(ctx context.Context, in *SetPriceChangeNoticeRequest, opts ...grpc.CallOption) (*SetPriceChangeNoticeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPriceChangeNoticeResponse)
+	err := c.cc.Invoke(ctx, AdminService_SetPriceChangeNotice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -259,6 +286,11 @@ type AdminServiceServer interface {
 	// a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
 	// already scheduled is still applied at its renewal; withdraw the price change to stop that.
 	SetPriceChangePause(context.Context, *SetPriceChangePauseRequest) (*SetPriceChangePauseResponse, error)
+	// GetPriceChangeNotice returns the notice rules of price changes: the notice a run uses when it names none and the least notice per country (plan 15). The rows are
+	// not legal advice and nobody has checked them.
+	GetPriceChangeNotice(context.Context, *GetPriceChangeNoticeRequest) (*GetPriceChangeNoticeResponse, error)
+	// SetPriceChangeNotice replaces the notice rules in one step (operator only).
+	SetPriceChangeNotice(context.Context, *SetPriceChangeNoticeRequest) (*SetPriceChangeNoticeResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -310,6 +342,12 @@ func (UnimplementedAdminServiceServer) GetPriceChangePause(context.Context, *Get
 }
 func (UnimplementedAdminServiceServer) SetPriceChangePause(context.Context, *SetPriceChangePauseRequest) (*SetPriceChangePauseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPriceChangePause not implemented")
+}
+func (UnimplementedAdminServiceServer) GetPriceChangeNotice(context.Context, *GetPriceChangeNoticeRequest) (*GetPriceChangeNoticeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPriceChangeNotice not implemented")
+}
+func (UnimplementedAdminServiceServer) SetPriceChangeNotice(context.Context, *SetPriceChangeNoticeRequest) (*SetPriceChangeNoticeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPriceChangeNotice not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -584,6 +622,42 @@ func _AdminService_SetPriceChangePause_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_GetPriceChangeNotice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPriceChangeNoticeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetPriceChangeNotice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetPriceChangeNotice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetPriceChangeNotice(ctx, req.(*GetPriceChangeNoticeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_SetPriceChangeNotice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPriceChangeNoticeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).SetPriceChangeNotice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_SetPriceChangeNotice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).SetPriceChangeNotice(ctx, req.(*SetPriceChangeNoticeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -646,6 +720,14 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPriceChangePause",
 			Handler:    _AdminService_SetPriceChangePause_Handler,
+		},
+		{
+			MethodName: "GetPriceChangeNotice",
+			Handler:    _AdminService_GetPriceChangeNotice_Handler,
+		},
+		{
+			MethodName: "SetPriceChangeNotice",
+			Handler:    _AdminService_SetPriceChangeNotice_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

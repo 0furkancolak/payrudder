@@ -28,9 +28,10 @@ import (
 
 // Commands changes subscriptions from one plan version or interval to another.
 type Commands struct {
-	db    *store.DB
-	now   func() time.Time
-	pause PauseSource
+	db     *store.DB
+	now    func() time.Time
+	pause  PauseSource
+	notice NoticeSource
 }
 
 // PauseSource tells whether the operator has paused price changes (plan 15). The switch is one row of the pooled database, which a tenant placed in a cell cannot

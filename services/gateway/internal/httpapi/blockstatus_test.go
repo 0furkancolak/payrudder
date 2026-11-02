@@ -40,6 +40,20 @@ func (f *fakePlans) GetPriceChangePause(context.Context, *plansv1.GetPriceChange
 	return &plansv1.GetPriceChangePauseResponse{Pause: &plansv1.PriceChangePause{}}, nil
 }
 
+func (f *fakePlans) SetPriceChangeNotice(_ context.Context, req *plansv1.SetPriceChangeNoticeRequest) (*plansv1.SetPriceChangeNoticeResponse, error) {
+	f.lastNotice = req
+	return &plansv1.SetPriceChangeNoticeResponse{Notice: &plansv1.PriceChangeNotice{DefaultNoticeDays: req.GetDefaultNoticeDays(), Rules: req.GetRules(), UpdatedBy: req.GetActor()}}, nil
+}
+
+func (f *fakePlans) GetPriceChangeNotice(context.Context, *plansv1.GetPriceChangeNoticeRequest) (*plansv1.GetPriceChangeNoticeResponse, error) {
+	return &plansv1.GetPriceChangeNoticeResponse{Notice: &plansv1.PriceChangeNotice{DefaultNoticeDays: 30, Rules: []*plansv1.PriceChangeNoticeRule{{Country: "*", MinNoticeDays: 14}}}}, nil
+}
+
+func (f *fakePlans) SchedulePriceChange(_ context.Context, req *plansv1.SchedulePriceChangeRequest) (*plansv1.SchedulePriceChangeResponse, error) {
+	f.lastSched = req
+	return &plansv1.SchedulePriceChangeResponse{}, nil
+}
+
 func (f *fakePlans) GetPriceChange(_ context.Context, req *plansv1.GetPriceChangeRequest) (*plansv1.GetPriceChangeResponse, error) {
 	f.lastItems = req
 	return &plansv1.GetPriceChangeResponse{PriceChange: &plansv1.PriceChange{Id: req.GetId()}, NextPageToken: "next"}, nil
@@ -149,5 +163,25 @@ func TestOperatorPausesPriceChangesAndTenantsPageThem(t *testing.T) {
 	}
 	if r, _ := do(t, ts, http.MethodGet, "/v1/price-changes/"+id+"?page_size=many", "live-key", ""); r.StatusCode != http.StatusBadRequest {
 		t.Errorf("a page size that is no number: %d", r.StatusCode)
+	}
+}
+
+// The operator edits the table of notice per country (plan 15); a tenant key does not reach it. A seller's price change carries the date it starts from.
+func TestOperatorEditsThePriceChangeNoticeRulesAndASellerNamesADate(t *testing.T) {
+	ts, f := newTestServer(t)
+	if r, body := do(t, ts, http.MethodGet, "/admin/v1/price-change-notice", operatorToken, ""); r.StatusCode != http.StatusOK || body["default_notice_days"] != float64(30) {
+		t.Errorf("read: %d %v", r.StatusCode, body)
+	}
+	put := `{"default_notice_days":45,"rules":[{"country":"DE","min_notice_days":60,"note":"checked by nobody"}]}`
+	if r, body := do(t, ts, http.MethodPut, "/admin/v1/price-change-notice", operatorToken, put); r.StatusCode != http.StatusOK || f.lastNotice.GetDefaultNoticeDays() != 45 ||
+		f.lastNotice.GetRules()[0].GetCountry() != "DE" || f.lastNotice.GetRules()[0].GetMinNoticeDays() != 60 || f.lastNotice.GetActor() != "operator" || body["default_notice_days"] != float64(45) {
+		t.Errorf("set: %d %v %v", r.StatusCode, body, f.lastNotice)
+	}
+	if r, _ := do(t, ts, http.MethodPut, "/admin/v1/price-change-notice", "live-key", put); r.StatusCode == http.StatusOK {
+		t.Errorf("a tenant key reached the notice rules")
+	}
+	if r, _ := do(t, ts, http.MethodPost, "/v1/plans/basic/price-changes", "live-key", `{"from_version":1,"notice_days":30,"effective_from":"2027-03-01T00:00:00Z"}`); r.StatusCode != http.StatusOK ||
+		f.lastSched.GetEffectiveFrom().AsTime().Format("2006-01-02") != "2027-03-01" || f.lastSched.GetPlanCode() != "basic" {
+		t.Errorf("a dated price change: %d %v", r.StatusCode, f.lastSched)
 	}
 }

@@ -845,6 +845,7 @@ class _SchedulePriceChangeRequestRequired(TypedDict):
 class SchedulePriceChangeRequest(_SchedulePriceChangeRequestRequired, total=False):
     to_version: int
     notice_days: int
+    effective_from: str | datetime | None
     dry_run: bool
 
 
@@ -874,6 +875,7 @@ class PriceChange(TypedDict):
     to_version: int
     notice_days: int
     effective_time: str
+    effective_from: str | None
     state: Literal["open", "withdrawn"]
     created_by: str
     create_time: str
