@@ -8,6 +8,7 @@ namespace Payrudder\Model;
 
 use Payrudder\Contract\RequestBody;
 use Payrudder\Enum\ContractKind;
+use Payrudder\Enum\SetContractSettingsRequestWithdrawalRefund;
 use Payrudder\Internal\Cast;
 
 /**
@@ -19,11 +20,19 @@ final class SetContractSettingsRequest implements RequestBody
      * @param list<ContractKind|string>|null $requiredKinds
      * @param bool|null $immediateStart
      * @param int|null $retentionMonths
+     * @param SetContractSettingsRequestWithdrawalRefund|string|null $withdrawalRefund
+     * @param int|null $renewalNoticeDays
+     * @param array<string,string>|null $renewalCancelTexts
+     * @param bool|null $withdrawalFunction
      */
     public function __construct(
         public readonly ?array $requiredKinds = null,
         public readonly ?bool $immediateStart = null,
         public readonly ?int $retentionMonths = null,
+        public readonly SetContractSettingsRequestWithdrawalRefund|string|null $withdrawalRefund = null,
+        public readonly ?int $renewalNoticeDays = null,
+        public readonly ?array $renewalCancelTexts = null,
+        public readonly ?bool $withdrawalFunction = null,
     ) {}
 
     /**
@@ -35,6 +44,10 @@ final class SetContractSettingsRequest implements RequestBody
             'required_kinds' => Cast::wire($this->requiredKinds),
             'immediate_start' => $this->immediateStart,
             'retention_months' => $this->retentionMonths,
+            'withdrawal_refund' => Cast::wire($this->withdrawalRefund),
+            'renewal_notice_days' => $this->renewalNoticeDays,
+            'renewal_cancel_texts' => Cast::wireMap($this->renewalCancelTexts),
+            'withdrawal_function' => $this->withdrawalFunction,
         ]);
     }
 }

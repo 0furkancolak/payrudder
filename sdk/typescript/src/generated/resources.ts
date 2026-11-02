@@ -184,6 +184,7 @@ import type {
   PublishPlanVersionRequestParams,
   RecordContractAcceptanceRequest,
   RecordContractAcceptanceResponse,
+  RequestContractWithdrawalRefundRequestParams,
   ResolveInboxItemRequest,
   ReverseAffiliateCommissionRequestParams,
   ReverseAffiliateCommissionResponse,
@@ -199,7 +200,7 @@ import type {
   SchedulePriceChangeRequest,
   SchedulePriceChangeResponse,
   SetContractSettingsRequest,
-  SetContractWithdrawalStatusRequest,
+  SetContractWithdrawalStatusRequestParams,
   SetInvoiceLogoRequest,
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
@@ -623,12 +624,23 @@ export class ContractWithdrawalsResource {
   /**
    * Decide a withdrawal request, or mark an accepted one refunded
    *
-   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise).
+   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
    *
    * `PUT /v1/contract-withdrawals/{id}/status`
    */
-  setContractWithdrawalStatus(id: string, body: SetContractWithdrawalStatusRequest, options?: RequestOptions): Promise<ContractWithdrawal> {
+  setContractWithdrawalStatus(id: string, body: SetContractWithdrawalStatusRequestParams, options?: RequestOptions): Promise<ContractWithdrawal> {
     return this.t.request<ContractWithdrawal>({ method: "PUT", path: `/v1/contract-withdrawals/${seg(id)}/status`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Ask for the refund of an accepted withdrawal
+   *
+   * For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+   *
+   * `POST /v1/contract-withdrawals/{id}/refund`
+   */
+  requestContractWithdrawalRefund(id: string, body?: RequestContractWithdrawalRefundRequestParams, options?: RequestOptions): Promise<ContractWithdrawal> {
+    return this.t.request<ContractWithdrawal>({ method: "POST", path: `/v1/contract-withdrawals/${seg(id)}/refund`, body, bodyKind: "json", response: "json" }, options);
   }
 }
 
@@ -1004,7 +1016,7 @@ export class CustomersResource {
   /**
    * Record that the customer withdrew from a contract
    *
-   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund.
    *
    * `POST /v1/customers/{external_id}/contract-withdrawals`
    */

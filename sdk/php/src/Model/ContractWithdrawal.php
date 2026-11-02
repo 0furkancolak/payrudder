@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Payrudder\Model;
 
 use Payrudder\Contract\Model;
+use Payrudder\Enum\ContractWithdrawalRefundState;
 use Payrudder\Enum\ContractWithdrawalSource;
 use Payrudder\Enum\ContractWithdrawalStatus;
 use Payrudder\Internal\Cast;
@@ -29,6 +30,10 @@ final class ContractWithdrawal implements Model
      * @param string|null $decideTime
      * @param string|null $decidedBy
      * @param string|null $decisionNote
+     * @param string|null $creditNoteId
+     * @param ContractWithdrawalRefundState|string|null $refundState
+     * @param string|null $refundNote
+     * @param string|null $refundTime
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -43,6 +48,10 @@ final class ContractWithdrawal implements Model
         public readonly ?string $decideTime = null,
         public readonly ?string $decidedBy = null,
         public readonly ?string $decisionNote = null,
+        public readonly ?string $creditNoteId = null,
+        public readonly ContractWithdrawalRefundState|string|null $refundState = null,
+        public readonly ?string $refundNote = null,
+        public readonly ?string $refundTime = null,
     ) {}
 
     /**
@@ -63,6 +72,10 @@ final class ContractWithdrawal implements Model
             decideTime: Cast::string($data['decide_time'] ?? null),
             decidedBy: Cast::string($data['decided_by'] ?? null),
             decisionNote: Cast::string($data['decision_note'] ?? null),
+            creditNoteId: Cast::string($data['credit_note_id'] ?? null),
+            refundState: Cast::enum(ContractWithdrawalRefundState::class, $data['refund_state'] ?? null),
+            refundNote: Cast::string($data['refund_note'] ?? null),
+            refundTime: Cast::string($data['refund_time'] ?? null),
         );
     }
 
@@ -84,6 +97,10 @@ final class ContractWithdrawal implements Model
             'decide_time' => $this->decideTime,
             'decided_by' => $this->decidedBy,
             'decision_note' => $this->decisionNote,
+            'credit_note_id' => $this->creditNoteId,
+            'refund_state' => Cast::wire($this->refundState),
+            'refund_note' => $this->refundNote,
+            'refund_time' => $this->refundTime,
         ]);
     }
 }

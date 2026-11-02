@@ -493,6 +493,14 @@ export interface ContractSettings {
   /** Kinds that have a published consumer version. */
   published_kinds: Array<ContractKind>;
   update_time: string | null;
+  /** What accepting a withdrawal does about the money. full (the default) asks billing for a refund of the invoice to the card; none leaves it to the seller. The seller decides the withdrawal either way. */
+  withdrawal_refund: "full" | "none";
+  /** How many days before a renewal the customer is mailed the renewal notice (price, date, how to cancel). 0 is off; default 7. Only for a subscription whose fixed fee is invoiced in advance and a customer who accepted an agreement. */
+  renewal_notice_days: number;
+  /** Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice. */
+  renewal_cancel_texts: Record<string, string>;
+  /** Consumers can withdraw from a contract on the hosted pages and are sent an acknowledgement (Directive 2011/83/EU art. 11a). Only while agreements are required. Default on. */
+  withdrawal_function: boolean;
 }
 
 export interface ContractVersion {
@@ -529,6 +537,12 @@ export interface ContractWithdrawal {
   decide_time: string | null;
   decided_by: string;
   decision_note: string;
+  /** The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went). */
+  credit_note_id: string;
+  /** none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund. */
+  refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+  refund_note: string;
+  refund_time: string | null;
 }
 
 export interface Coupon {
@@ -2512,6 +2526,16 @@ export interface RecordContractAcceptanceResponse {
   acceptances: Array<ContractAcceptance>;
 }
 
+export interface RequestContractWithdrawalRefundRequest {
+  /** In minor units; 0 or absent is whatever is left of the invoice. */
+  amount_minor?: Int64;
+}
+
+export interface RequestContractWithdrawalRefundRequestParams {
+  /** In minor units; 0 or absent is whatever is left of the invoice. */
+  amount_minor?: Int64Input;
+}
+
 export interface ResolveInboxItemRequest {
   status: "accepted" | "dismissed";
   expense_id?: string;
@@ -2645,11 +2669,28 @@ export interface SetContractSettingsRequest {
   immediate_start?: boolean;
   /** 0 keeps the current value. */
   retention_months?: number;
+  /** Empty keeps the current value. */
+  withdrawal_refund?: "full" | "none";
+  /** Absent keeps the current value; 0 switches the notice off. */
+  renewal_notice_days?: number;
+  /** A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text. */
+  renewal_cancel_texts?: Record<string, string>;
+  /** Absent keeps the current value. */
+  withdrawal_function?: boolean;
 }
 
 export interface SetContractWithdrawalStatusRequest {
   status: "accepted" | "rejected" | "refunded";
   note?: string;
+  /** Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice. */
+  refund_amount_minor?: Int64;
+}
+
+export interface SetContractWithdrawalStatusRequestParams {
+  status: "accepted" | "rejected" | "refunded";
+  note?: string;
+  /** Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice. */
+  refund_amount_minor?: Int64Input;
 }
 
 export interface SetInvoiceLogoRequest {
@@ -2816,7 +2857,7 @@ export interface WebhookEndpointInput {
   active: boolean;
 }
 
-export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
+export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
 
 export interface WithdrawPriceChangeResponse {
   price_change: PriceChange;

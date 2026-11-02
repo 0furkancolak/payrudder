@@ -362,7 +362,14 @@ class ContractWithdrawalsResource:
 
         ``PUT /v1/contract-withdrawals/{id}/status``
         """
-        return cast("m.ContractWithdrawal", self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, options=options))
+        return cast("m.ContractWithdrawal", self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, body_wire='SetContractWithdrawalStatusRequest', options=options))
+
+    def request_contract_withdrawal_refund(self, id: str, body: m.RequestContractWithdrawalRefundRequest | None = None, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Ask for the refund of an accepted withdrawal.
+
+        ``POST /v1/contract-withdrawals/{id}/refund``
+        """
+        return cast("m.ContractWithdrawal", self._client._request("POST", f"/v1/contract-withdrawals/{_p(id)}/refund", body=body, body_wire='RequestContractWithdrawalRefundRequest', options=options))
 
 
 class EInvoicesResource:
@@ -2052,7 +2059,14 @@ class AsyncContractWithdrawalsResource:
 
         ``PUT /v1/contract-withdrawals/{id}/status``
         """
-        return cast("m.ContractWithdrawal", await self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, options=options))
+        return cast("m.ContractWithdrawal", await self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, body_wire='SetContractWithdrawalStatusRequest', options=options))
+
+    async def request_contract_withdrawal_refund(self, id: str, body: m.RequestContractWithdrawalRefundRequest | None = None, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Ask for the refund of an accepted withdrawal.
+
+        ``POST /v1/contract-withdrawals/{id}/refund``
+        """
+        return cast("m.ContractWithdrawal", await self._client._request("POST", f"/v1/contract-withdrawals/{_p(id)}/refund", body=body, body_wire='RequestContractWithdrawalRefundRequest', options=options))
 
 
 class AsyncEInvoicesResource:

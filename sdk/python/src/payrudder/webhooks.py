@@ -54,6 +54,7 @@ class EventType:
     CONTRACT_ACCEPTED = "contract.accepted"
     CONTRACT_VERSION_PUBLISHED = "contract.version_published"
     CONTRACT_WITHDRAWAL_REQUESTED = "contract.withdrawal_requested"
+    CONTRACT_WITHDRAWAL_DECIDED = "contract.withdrawal_decided"
     PING = "ping"  # sent by POST /v1/webhook-endpoints/{id}/test
 
 
@@ -281,6 +282,20 @@ class ContractWithdrawalRequestedEventData(TypedDict):
     received_at: str
 
 
+class ContractWithdrawalDecidedEventData(TypedDict):
+    """``data`` of ``contract.withdrawal_decided``."""
+
+    withdrawal_id: str
+    customer_id: str
+    customer_external_id: str
+    subscription_id: str
+    invoice_id: str
+    status: str
+    decided_by: str
+    decided_at: str
+    note: str
+
+
 class WebhookEvent(TypedDict):
     """A delivery's JSON body. ``data`` depends on ``type``; its ``*_minor`` values are ints.
 
@@ -293,8 +308,9 @@ class WebhookEvent(TypedDict):
     ``PriceChangeScheduledEventData``).
     ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``;
     ``contract.accepted`` / ``contract.version_published`` /
-    ``contract.withdrawal_requested`` are ``ContractAcceptedEventData`` / ``ContractVersionPublishedEventData`` /
-    ``ContractWithdrawalRequestedEventData``).
+    ``contract.withdrawal_requested`` / ``contract.withdrawal_decided`` are ``ContractAcceptedEventData`` /
+    ``ContractVersionPublishedEventData`` / ``ContractWithdrawalRequestedEventData`` /
+    ``ContractWithdrawalDecidedEventData``).
     """
 
     id: str
