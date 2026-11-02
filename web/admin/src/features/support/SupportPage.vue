@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useQueryClient } from "@tanstack/vue-query";
 import { LifeBuoy, Plus } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -19,7 +20,9 @@ import { Textarea } from "@/shared/ui/textarea";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
-import { CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority } from "./api";
+import { attachFiles, CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority, supportKeys } from "./api";
+import AttachFailures from "./AttachFailures.vue";
+import AttachPicker from "./AttachPicker.vue";
 import TicketBadges from "./TicketBadges.vue";
 import TicketThread from "./TicketThread.vue";
 
@@ -44,11 +47,14 @@ const thread = useMyTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
 const events = computed(() => thread.data.value?.events ?? []);
 const shown = computed(() => thread.data.value?.ticket ?? current.value);
-// Reading a ticket clears its "new" mark on the server: the list is read again so the row loses it.
+// Reading a ticket clears its "new" mark on the server: the list is read again so the row loses it, and so does the count in the sidebar.
+const client = useQueryClient();
 watch(
   () => thread.data.value,
   () => {
-    if (current.value?.unread) void tickets.refetch();
+    if (!current.value?.unread) return;
+    void tickets.refetch();
+    void client.invalidateQueries({ queryKey: supportKeys.unread });
   },
 );
 
@@ -59,6 +65,10 @@ const category = ref<SupportCategory>("question");
 const priority = ref<SupportPriority>("normal");
 const appId = ref("");
 const body = ref("");
+const newFiles = ref<File[]>([]);
+// The ticket exists once its message is sent; files that then fail are named here and the sheet stays open until the person has read it.
+const openedNumber = ref(0);
+const newFailures = ref<Awaited<ReturnType<typeof attachFiles>>>([]);
 const appOptions = computed(() => (apps.data.value?.apps ?? []).map((a) => ({ id: a.id ?? "", name: a.name ?? "" })).filter((a) => a.id !== ""));
 watch(creating, (open) => {
   if (!open) return;
@@ -67,27 +77,52 @@ watch(creating, (open) => {
   category.value = "question";
   priority.value = "normal";
   appId.value = "";
+  newFiles.value = [];
+  newFailures.value = [];
+  openedNumber.value = 0;
   actions.open.reset();
 });
-function submit() {
+async function submit() {
   const accountId = account.data.value?.id;
-  if (!accountId) return;
-  actions.open.mutate(
-    { account_id: accountId, subject: subject.value.trim(), category: category.value, priority: priority.value, body: body.value.trim(), ...(appId.value ? { app_id: appId.value } : {}) },
-    { onSuccess: () => (creating.value = false) },
-  );
+  if (!accountId || openedNumber.value > 0) return;
+  try {
+    const made = await actions.open.mutateAsync({ account_id: accountId, subject: subject.value.trim(), category: category.value, priority: priority.value, body: body.value.trim(), ...(appId.value ? { app_id: appId.value } : {}) });
+    const failed = made.message ? await attachFiles("person", made.ticket.id, made.message.id, newFiles.value) : [];
+    if (failed.length === 0) {
+      creating.value = false;
+      return;
+    }
+    openedNumber.value = made.ticket.number;
+    newFailures.value = failed;
+  } catch {
+    // The mutation's error is shown under the form.
+  }
 }
 
 // --- the thread
 const reply = ref("");
+const replyFiles = ref<File[]>([]);
+const replyFailures = ref<Awaited<ReturnType<typeof attachFiles>>>([]);
 watch(() => current.value?.id, () => {
   reply.value = "";
+  replyFiles.value = [];
+  replyFailures.value = [];
   actions.reply.reset();
 });
-function send() {
+async function send() {
   const id = current.value?.id;
   if (!id || reply.value.trim() === "") return;
-  actions.reply.mutate({ id, body: reply.value.trim() }, { onSuccess: () => (reply.value = "") });
+  try {
+    const made = await actions.reply.mutateAsync({ id, body: reply.value.trim() });
+    reply.value = "";
+    const sent = replyFiles.value;
+    replyFiles.value = [];
+    replyFailures.value = made.message && sent.length > 0 ? await attachFiles("person", id, made.message.id, sent) : [];
+    // The files are part of the thread: read it again now that they are on the message.
+    if (sent.length > 0) await thread.refetch();
+  } catch {
+    // The mutation's error is shown under the form.
+  }
 }
 const closed = computed(() => shown.value?.status === "closed");
 const solved = computed(() => shown.value?.status === "solved");
@@ -165,12 +200,14 @@ const solved = computed(() => shown.value?.status === "solved");
           <label class="grid gap-1 text-sm">{{ t("support.fields.body") }}
             <Textarea v-model="body" required rows="7" maxlength="10000" data-testid="support-body" />
           </label>
+          <AttachPicker v-model="newFiles" />
         </form>
         <ErrorText :error="actions.open.error.value" />
+        <AttachFailures :failures="newFailures" :note="openedNumber > 0 ? t('support.attach.openedButFailed') : undefined" class="mt-3" />
       </SheetBody>
       <SheetFooter>
-        <Button variant="ghost" type="button" @click="creating = false">{{ t("common.cancel") }}</Button>
-        <Button type="submit" form="support-form" :disabled="actions.open.isPending.value || !account.data.value" data-testid="support-submit">{{ t("support.send") }}</Button>
+        <Button variant="ghost" type="button" @click="creating = false">{{ openedNumber > 0 ? t("common.close") : t("common.cancel") }}</Button>
+        <Button v-if="openedNumber === 0" type="submit" form="support-form" :disabled="actions.open.isPending.value || !account.data.value" data-testid="support-submit">{{ t("support.send") }}</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>
@@ -184,11 +221,13 @@ const solved = computed(() => shown.value?.status === "solved");
       <p v-if="!shown.first_response_time && shown.status === 'open'" class="text-muted-foreground text-xs" data-testid="support-due">
         {{ t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
       </p>
-      <TicketThread :messages="messages" :events="events" />
+      <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="person" />
       <p v-if="closed" class="text-muted-foreground bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="support-closed">{{ t("support.closedNote") }}</p>
       <form v-else class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="4" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="t('support.fields.reply')" data-testid="support-reply" />
+        <AttachPicker v-model="replyFiles" />
         <ErrorText :error="actions.reply.error.value ?? actions.setStatus.error.value" />
+        <AttachFailures :failures="replyFailures" />
         <div class="flex flex-wrap items-center justify-between gap-2">
           <Button v-if="!solved" type="button" variant="outline" :disabled="actions.setStatus.isPending.value" data-testid="support-solve" @click="actions.setStatus.mutate({ id: shown.id, status: 'solved' })">{{ t("support.markSolved") }}</Button>
           <Button v-else type="button" variant="outline" :disabled="actions.setStatus.isPending.value" data-testid="support-reopen" @click="actions.setStatus.mutate({ id: shown.id, status: 'open' })">{{ t("support.reopen") }}</Button>

@@ -7,7 +7,7 @@ import { confirmDialog, pickFilter, rowAction } from "./ui";
 
 const customers = [
   { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-10-01T10:00:00Z", address: { line1: "Atatürk Cd. 1", city: "İstanbul", country: "TR" }, tax_id: "11111111111", tax_id_warning: "tr_any", phone: "+905321234567" },
-  { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", country: "DE", billing_currency: "EUR", create_time: "2026-10-02T10:00:00Z" },
+  { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", country: "DE", billing_currency: "EUR", create_time: "2026-10-02T10:00:00Z", payment_method: "ck:ct" },
   { id: "id-3", external_id: "cus_3", name: "", email: "", create_time: "2026-10-10T10:00:00Z" },
 ];
 const invoices = [
@@ -22,7 +22,20 @@ const subscriptions = [
 ];
 
 function customerGateway() {
+  // The cards the provider holds for cus_2 (their payment method names the user key and the card in use).
+  let stored = [
+    { token: "ct", alias: "work", bin: "55287900", last4: "0008", type: "CREDIT_CARD", association: "MASTER_CARD", family: "World", bank: "Halkbank", expire_month: "12", expire_year: "2030", in_use: true },
+    { token: "ct2", alias: "", bin: "41595400", last4: "4242", type: "DEBIT_CARD", association: "VISA", family: "", bank: "Garanti", expire_month: "", expire_year: "", in_use: false },
+  ];
   return baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "GET" && c.path === "/v1/customers/cus_2/cards") return { body: { provider: "iyzico", cards: stored } };
+    const del = /^\/v1\/customers\/cus_2\/cards\/([^/]+)$/.exec(c.path);
+    if (c.method === "DELETE" && del) {
+      const gone = stored.find((k) => k.token === del[1]);
+      if (!gone) return { status: 404, body: { error: { code: "NOT_FOUND", key: "payments.card.not_found", message: "no" } } };
+      stored = stored.filter((k) => k !== gone);
+      return { body: { provider: "iyzico", deleted: true, was_in_use: gone.in_use } };
+    }
     if (c.method === "POST" && c.path === "/v1/events/corrections") {
       const first = (c.body?.corrections as { corrects: string }[])[0];
       return { status: 202, body: { results: [first?.corrects === "evt-404" ? { status: "rejected", error_code: "CORRECTION_UNKNOWN_EVENT", error_message: "no" } : { status: "accepted", event_id: "01CORR" }] } };
@@ -261,6 +274,52 @@ test.describe("customer block", () => {
 
 test.describe("customer sheet", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("the stored cards are listed with the one in use marked; a card is deleted after a question, and deleting the one in use says what to do next", async ({ page }) => {
+    const gw = await openCustomers(page);
+    await page.getByTestId("customer-cus_2").click();
+    const sheet = page.getByTestId("customer-detail");
+    await sheet.getByTestId("customer-tab-details").click();
+    const cards = sheet.getByTestId("customer-cards");
+    await expect(cards.getByTestId("customer-card")).toHaveCount(2);
+    const first = cards.getByTestId("customer-card").nth(0);
+    await expect(first).toContainText("work · Halkbank");
+    await expect(first).toContainText("•••• 0008");
+    await expect(first).toContainText("12/2030");
+    await expect(first).toContainText("MASTER_CARD");
+    await expect(first.getByTestId("card-in-use")).toHaveText("Charged for invoices");
+    await expect(cards.getByTestId("customer-card").nth(1).getByTestId("card-in-use")).toHaveCount(0);
+    // Not a card number anywhere: the BIN is cut to six digits and the rest is dots.
+    await expect(cards).not.toContainText("55287900");
+
+    // Declined: nothing is sent.
+    await cards.getByTestId("customer-card").nth(1).getByTestId("card-delete").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("Delete the card ending 4242?");
+    await confirmDialog(page, "no");
+    expect(gw.called("DELETE", /\/cards\//)).toHaveLength(0);
+
+    // Confirmed: deleted, listed again without it, no warning for a card that was not in use.
+    await cards.getByTestId("customer-card").nth(1).getByTestId("card-delete").click();
+    await confirmDialog(page);
+    await expect(cards.getByTestId("customer-card")).toHaveCount(1);
+    expect(gw.called("DELETE", "/v1/customers/cus_2/cards/ct2")).toHaveLength(1);
+    await expect(cards.getByTestId("card-warning")).toHaveCount(0);
+
+    // The card in use asks with its own words, and afterwards says to set a new payment method.
+    await cards.getByTestId("card-delete").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("the next charge fails until a new payment method is set");
+    await confirmDialog(page);
+    await expect(cards.getByTestId("cards-empty")).toBeVisible();
+    await expect(cards.getByTestId("card-warning")).toContainText("set a new payment method");
+  });
+
+  test("a customer with no payment method has no cards section", async ({ page }) => {
+    await openCustomers(page);
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-detail").getByTestId("customer-tab-details").click();
+    await expect(page.getByTestId("customer-details")).toBeVisible();
+    await expect(page.getByTestId("customer-cards")).toHaveCount(0);
+  });
 
   test("the head says who, the strip shows the figures, and the tabs hold the records", async ({ page }) => {
     await openCustomers(page);

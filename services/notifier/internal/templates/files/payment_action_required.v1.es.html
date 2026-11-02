@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es una factura real.</strong></p>{{end}}
+<h2>Confirme su pago de la factura {{index .D "invoice_number"}}</h2>
+<p>Hola {{index .D "customer_name"}}, su banco necesita que confirme el pago de <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> de la factura <strong>{{index .D "invoice_number"}}</strong> (periodo {{index .D "period"}}). Todavía no se ha cobrado nada.</p>
+{{if index .D "pay_url"}}<p><a href="{{index .D "pay_url"}}">Confirmar el pago</a></p>
+<p>Si el enlace no se abre, copie esta dirección en su navegador: {{index .D "pay_url"}}</p>{{else}}<p>Abra la página de pago de esta factura desde el enlace que le enviamos antes, o pida uno nuevo a {{index .D "tenant_name"}}.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>
