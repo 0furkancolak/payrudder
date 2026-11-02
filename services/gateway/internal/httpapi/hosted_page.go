@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/brand"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -92,8 +93,8 @@ func langSuffix(r *http.Request) string {
 	return ""
 }
 
-func htmlPage(w http.ResponseWriter, code int, formAction string) {
-	hostedHeadersCSP(w, formAction)
+func htmlPage(w http.ResponseWriter, code int, logo bool, forms string) {
+	hostedHeadersCSP(w, pageCSP(logo, forms))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
 }
@@ -107,7 +108,14 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, code int, name s
 		http.Error(w, "the page cannot be shown right now", http.StatusInternalServerError)
 		return
 	}
-	htmlPage(w, code, "form-action 'self' https:")
+	p, _ := data.(interface {
+		hasLogo() bool
+		formTargets() string
+	})
+	if p == nil {
+		p = pageBase{}
+	}
+	htmlPage(w, code, p.hasLogo(), p.formTargets())
 	_, _ = w.Write(buf.Bytes())
 }
 
@@ -134,14 +142,16 @@ type methodView struct{ ID, Label string }
 type pageBase struct {
 	L                map[string]string
 	Lang, Dir, Brand string
-	Logo             string
-	Test, Refresh    bool
+	// F writes the numbers and dates of the page in its language.
+	F    *localefmt.Format
+	Logo string
+	Test bool
 	// What the coloured side of the page says: who the page is from, the amount it is about and a line under it (the state of the invoice, the customer).
 	SideSeller, SideAmount, SideNote string
 }
 
 func newBase(lang string) pageBase {
-	return pageBase{L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Brand: brand.Name()}
+	return pageBase{L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Brand: brand.Name(), F: localefmt.For(lang)}
 }
 
 // hostedBank is where to send the money for an invoice paid by bank transfer.
@@ -168,19 +178,19 @@ type invoiceHeader struct {
 
 // newInvoiceHeader reads the header from billing's answer. The lines carry their service period when withPeriod is set (the invoice page shows it, the
 // receipt does not).
-func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, withPeriod bool) invoiceHeader {
+func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, f *localefmt.Format, withPeriod bool) invoiceHeader {
 	inv := resp.GetInvoice()
 	exp := int(resp.GetCurrencyExponent())
 	h := invoiceHeader{Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(), Currency: inv.GetCurrency(),
-		Total:         money.FormatMinorGrouped(inv.GetTotalMinor(), exp),
+		Total:         f.Amount(inv.GetTotalMinor(), exp),
 		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines()}
 	if t := inv.GetFinalizeTime(); t != nil {
-		h.Date = t.AsTime().UTC().Format(time.DateOnly)
+		h.Date = f.Date(t.AsTime().UTC())
 	}
 	for _, l := range inv.GetLines() {
-		line := hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
-		if f, t := l.GetServiceFrom(), l.GetServiceTo(); withPeriod && f != nil && t != nil {
-			line.Period = f.AsTime().UTC().Format(time.DateOnly) + " – " + t.AsTime().UTC().Format(time.DateOnly)
+		line := hostedLine{Description: l.GetDescription(), Amount: f.Amount(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
+		if from, to := l.GetServiceFrom(), l.GetServiceTo(); withPeriod && from != nil && to != nil {
+			line.Period = f.Date(from.AsTime().UTC()) + " – " + f.Date(to.AsTime().UTC())
 		}
 		h.Lines = append(h.Lines, line)
 	}
@@ -203,8 +213,8 @@ type invoiceView struct {
 	invoiceHeader
 	Status, State, StateLabel, Subtotal string
 	HasPDF                              bool
-	PDF, Receipt, Back, Pay             string
-	Payable, NoMethod                   bool
+	PDF, Receipt, Back, Pay, Self       string
+	Payable, NoMethod, CheckAgain       bool
 	Bank                                *hostedBank
 	Methods                             []methodView
 	Hint                                string
@@ -272,10 +282,11 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse) *invoiceView {
 	inv := resp.GetInvoice()
 	q := langSuffix(r)
+	base := hostedBase(resp, sc, lang)
 	v := &invoiceView{
-		pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, true), Status: inv.GetStatus(),
-		Subtotal: money.FormatMinorGrouped(inv.GetSubtotalMinor(), int(resp.GetCurrencyExponent())), HasPDF: resp.GetPdfAvailable(),
-		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Back: sc.back(), State: stateOf(resp),
+		pageBase: base, invoiceHeader: newInvoiceHeader(resp, base.F, true), Status: inv.GetStatus(),
+		Subtotal: base.F.Amount(inv.GetSubtotalMinor(), int(resp.GetCurrencyExponent())), HasPDF: resp.GetPdfAvailable(),
+		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Self: sc.page() + q, Back: sc.back(), State: stateOf(resp),
 	}
 	if v.Back != "" {
 		v.Back += q
@@ -288,7 +299,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	v.SideAmount, v.SideNote = v.Total+" "+v.Currency, v.StateLabel
 	switch v.State {
 	case "processing":
-		v.Refresh, v.Hint = true, v.L["hint_processing"]
+		v.CheckAgain, v.Hint = true, v.L["hint_processing"]
 	case "failed":
 		// An invoice the provider could not collect and the seller wrote off has no way to pay; saying "you can try again" with no button would be a lie.
 		if inv.GetStatus() == "uncollectible" {
@@ -389,17 +400,17 @@ func (s *Server) adhocPage(w http.ResponseWriter, r *http.Request, sc scope, lan
 func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse, in promoInput) {
 	a := resp.GetAdhoc()
 	v := &adhocView{pageBase: newBase(lang), Seller: cmp.Or(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
-		Amount: money.FormatMinorGrouped(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
+		Amount: localefmt.For(lang).Amount(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
 		PromoAction: sc.page() + "/promo" + langSuffix(r), Code: in.Code}
 	v.Test = cmp.Or(a.GetEnvironment(), resp.GetEnvironment()) == env.Sandbox.String()
 	if k := a.GetPack(); k != nil {
-		v.Pack = &packView{Name: k.GetName(), Credits: money.FormatMinorGrouped(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
+		v.Pack = &packView{Name: k.GetName(), Credits: v.F.Amount(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
 	}
 	if q := in.Quote; q != nil {
 		exp := int(a.GetCurrencyExponent())
-		v.Quote = &quoteView{Discount: money.FormatMinorGrouped(q.GetDiscountMinor(), exp), Total: money.FormatMinorGrouped(q.GetTotalMinor(), exp), HasDiscount: q.GetDiscountMinor() > 0}
+		v.Quote = &quoteView{Discount: v.F.Amount(q.GetDiscountMinor(), exp), Total: v.F.Amount(q.GetTotalMinor(), exp), HasDiscount: q.GetDiscountMinor() > 0}
 		if q.GetBonusCredits() > 0 {
-			v.Quote.Bonus = money.FormatMinorGrouped(q.GetBonusCredits(), 0)
+			v.Quote.Bonus = v.F.Amount(q.GetBonusCredits(), 0)
 		}
 	}
 	if in.ErrKey != "" {
@@ -645,11 +656,12 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	inv := resp.GetInvoice()
 	lang = customerLang(r, resp.GetCustomerLocale())
-	v := &receiptView{pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, false), Back: sc.page() + langSuffix(r)}
+	base := hostedBase(resp, sc, lang)
+	v := &receiptView{pageBase: base, invoiceHeader: newInvoiceHeader(resp, base.F, false), Back: sc.page() + langSuffix(r)}
 	v.SideAmount = v.Total + " " + v.Currency
 	for _, row := range s.ledgerRowsOf(r.Context(), resp) {
 		if row.InvoiceID == inv.GetId() && row.Kind == "charge" && row.Status == "succeeded" {
-			v.PaidOn, v.PaidWith = row.OccurredAt.UTC().Format(time.DateOnly), row.Provider
+			v.PaidOn, v.PaidWith = v.F.Date(row.OccurredAt.UTC()), row.Provider
 		}
 	}
 	s.render(w, r, http.StatusOK, "receipt", v)
@@ -740,7 +752,8 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
-	v := &instructionsView{pageBase: newBase(lang), Number: p.GetNumber(), Total: money.FormatMinorGrouped(p.GetAmountMinor(), exponentOf(p.GetCurrency())),
+	base := newBase(lang)
+	v := &instructionsView{pageBase: base, Number: p.GetNumber(), Total: base.F.Amount(p.GetAmountMinor(), exponentOf(p.GetCurrency())),
 		Currency: p.GetCurrency(), Reference: out.Reference, Back: back}
 	v.Test = p.GetEnvironment() == env.Sandbox.String()
 	for _, ln := range out.Lines {

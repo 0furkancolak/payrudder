@@ -72,20 +72,17 @@ func rejectRateLimited(w http.ResponseWriter) {
 	http.Error(w, "too many requests", http.StatusTooManyRequests)
 }
 
-// hostedHeaders makes a page that is private to whoever holds the link: not indexed, not cached, not leaking the link in a Referer, and unable to load anything.
-func hostedHeaders(w http.ResponseWriter) {
-	hostedHeadersCSP(w, "form-action 'none'")
-}
+// hostedHeaders makes a response that is private to whoever holds the link: not indexed, not cached, not leaking the link in a Referer, and unable to load anything. It is
+// for the answers that have no page (a redirect, a plain error); a page has its own policy (pageCSP).
+func hostedHeaders(w http.ResponseWriter) { hostedHeadersCSP(w, pageCSP(false, formsNone)) }
 
-// hostedHeadersCSP is hostedHeaders with the form-action of the page: the pages with a pay form post to themselves, and the provider's checkout is an https redirect of
-// that post. img-src 'self' is for the seller's logo, which the gateway serves itself.
-func hostedHeadersCSP(w http.ResponseWriter, formAction string) {
+func hostedHeadersCSP(w http.ResponseWriter, csp string) {
 	h := w.Header()
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Robots-Tag", "noindex, nofollow")
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; "+formAction+"; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", csp)
 }
 
 func hostedNotFound(w http.ResponseWriter, lang string) {
@@ -107,7 +104,7 @@ func hostedMessage(w http.ResponseWriter, code int, lang, heading, text string) 
 		http.Error(w, heading, code)
 		return
 	}
-	htmlPage(w, code, "form-action 'none'")
+	htmlPage(w, code, false, formsNone)
 	_, _ = w.Write(buf.Bytes())
 }
 
@@ -140,15 +137,18 @@ func hostedDir(lang string) string {
 	return "ltr"
 }
 
+// textSources are the maps of text the public pages merge, English first.
+var textSources = []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings, subscriptionStrings}
+
 // hostedTexts is the text of the public pages per language: English first, then the language's own over it, so a text a translation lacks reads in English.
 var hostedTexts = func() map[string]map[string]string {
 	out := map[string]map[string]string{}
 	for _, lang := range hostedLangs {
 		merged := map[string]string{}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings} {
+		for _, src := range textSources {
 			maps.Copy(merged, src["en"])
 		}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings} {
+		for _, src := range textSources {
 			maps.Copy(merged, src[lang])
 		}
 		out[lang] = merged
@@ -166,32 +166,36 @@ func hostedText(lang string) map[string]string {
 
 var hostedStrings = map[string]map[string]string{
 	"en": {"invoice": "Invoice", "from": "From", "to": "Billed to", "date": "Date", "status": "Status", "description": "Description", "amount": "Amount", "subtotal": "Subtotal", "total": "Total",
-		"pdf": "Download PDF", "gone": "This link does not exist or has expired.", "goneHint": "Ask the sender for a new link.",
+		"action": "Action", "pdf": "Download PDF", "gone": "This link does not exist or has expired.", "goneHint": "Ask the sender for a new link.",
 		"payBy": "Pay by bank transfer", "bank": "Bank", "holder": "Account holder", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Payment reference", "referenceHint": "Write this reference on your transfer so that we can match the payment to this invoice.",
 		"paid": "Paid", "open": "Open", "void": "Void", "uncollectible": "Uncollectible", "draft": "Draft"},
 	"tr": {"invoice": "Fatura", "from": "Düzenleyen", "to": "Fatura edilen", "date": "Tarih", "status": "Durum", "description": "Açıklama", "amount": "Tutar", "subtotal": "Ara toplam", "total": "Toplam",
-		"pdf": "PDF indir", "gone": "Bu bağlantı yok ya da süresi dolmuş.", "goneHint": "Gönderenden yeni bir bağlantı isteyin.",
+		"action": "İşlem", "pdf": "PDF indir", "gone": "Bu bağlantı yok ya da süresi dolmuş.", "goneHint": "Gönderenden yeni bir bağlantı isteyin.",
 		"payBy": "Havale / EFT ile ödeyin", "bank": "Banka", "holder": "Hesap sahibi", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Ödeme referansı", "referenceHint": "Ödemenizi bu faturayla eşleştirebilmemiz için havale açıklamasına bu referansı yazın.",
 		"paid": "Ödendi", "open": "Açık", "void": "İptal", "uncollectible": "Tahsil edilemedi", "draft": "Taslak"},
 	"de": {"invoice": "Rechnung", "from": "Von", "to": "Rechnungsempfänger", "date": "Datum", "status": "Status", "description": "Beschreibung", "amount": "Betrag", "subtotal": "Zwischensumme", "total": "Gesamt",
-		"pdf": "PDF herunterladen", "gone": "Dieser Link existiert nicht oder ist abgelaufen.", "goneHint": "Bitten Sie den Absender um einen neuen Link.",
+		"action": "Aktion", "pdf": "PDF herunterladen", "gone": "Dieser Link existiert nicht oder ist abgelaufen.", "goneHint": "Bitten Sie den Absender um einen neuen Link.",
 		"payBy": "Per Überweisung zahlen", "bank": "Bank", "holder": "Kontoinhaber", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Zahlungsreferenz", "referenceHint": "Geben Sie diese Referenz bei der Überweisung an, damit wir die Zahlung dieser Rechnung zuordnen können.",
 		"paid": "Bezahlt", "open": "Offen", "void": "Storniert", "uncollectible": "Uneinbringlich", "draft": "Entwurf"},
 	"fr": {"invoice": "Facture", "from": "De", "to": "Facturé à", "date": "Date", "status": "Statut", "description": "Description", "amount": "Montant", "subtotal": "Sous-total", "total": "Total",
-		"pdf": "Télécharger le PDF", "gone": "Ce lien n'existe pas ou a expiré.", "goneHint": "Demandez un nouveau lien à l'expéditeur.",
+		"action": "Action", "pdf": "Télécharger le PDF", "gone": "Ce lien n'existe pas ou a expiré.", "goneHint": "Demandez un nouveau lien à l'expéditeur.",
 		"payBy": "Payer par virement", "bank": "Banque", "holder": "Titulaire du compte", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Référence de paiement", "referenceHint": "Indiquez cette référence sur votre virement afin que nous puissions rattacher le paiement à cette facture.",
 		"paid": "Payée", "open": "Ouverte", "void": "Annulée", "uncollectible": "Irrécouvrable", "draft": "Brouillon"},
 	"es": {"invoice": "Factura", "from": "De", "to": "Facturado a", "date": "Fecha", "status": "Estado", "description": "Descripción", "amount": "Importe", "subtotal": "Subtotal", "total": "Total",
-		"pdf": "Descargar PDF", "gone": "Este enlace no existe o ha caducado.", "goneHint": "Pide un enlace nuevo a quien te lo envió.",
+		"action": "Acción", "pdf": "Descargar PDF", "gone": "Este enlace no existe o ha caducado.", "goneHint": "Pide un enlace nuevo a quien te lo envió.",
 		"payBy": "Pagar por transferencia", "bank": "Banco", "holder": "Titular de la cuenta", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "Referencia de pago", "referenceHint": "Indica esta referencia en tu transferencia para que podamos asociar el pago a esta factura.",
 		"paid": "Pagada", "open": "Abierta", "void": "Anulada", "uncollectible": "Incobrable", "draft": "Borrador"},
 	"ar": {"invoice": "فاتورة", "from": "من", "to": "الفاتورة إلى", "date": "التاريخ", "status": "الحالة", "description": "الوصف", "amount": "المبلغ", "subtotal": "المجموع الفرعي", "total": "الإجمالي",
-		"pdf": "تنزيل PDF", "gone": "هذا الرابط غير موجود أو انتهت صلاحيته.", "goneHint": "اطلب رابطًا جديدًا من المرسل.",
+		"action": "إجراء", "pdf": "تنزيل PDF", "gone": "هذا الرابط غير موجود أو انتهت صلاحيته.", "goneHint": "اطلب رابطًا جديدًا من المرسل.",
 		"payBy": "الدفع بالتحويل المصرفي", "bank": "البنك", "holder": "صاحب الحساب", "iban": "IBAN", "bic": "BIC / SWIFT", "bankRef": "مرجع الدفع", "referenceHint": "اكتب هذا المرجع في التحويل حتى نتمكن من مطابقة الدفعة مع هذه الفاتورة.",
 		"paid": "مدفوعة", "open": "مفتوحة", "void": "ملغاة", "uncollectible": "غير قابلة للتحصيل", "draft": "مسودة"},
 }
 
-const hostedCSS = `:root{color-scheme:light dark;--radius:1rem;--background:oklch(.965 .007 258);--foreground:oklch(.192 .017 269);--card:oklch(1 0 0);--primary:oklch(.519 .212 266);--primary-foreground:oklch(.985 0 0);--secondary:oklch(.945 .012 258);--muted:oklch(.955 .008 258);--muted-foreground:oklch(.5 .02 264);--accent:oklch(.95 .028 258);--accent-foreground:oklch(.437 .19 265);--destructive:oklch(.55 .21 27);--destructive-soft:oklch(.955 .03 25);--success:oklch(.5 .13 155);--success-soft:oklch(.95 .045 155);--warning:oklch(.52 .11 65);--warning-soft:oklch(.96 .055 85);--border:oklch(.915 .009 258);--input:oklch(.885 .011 258);--ring:oklch(.673 .164 261);--info:oklch(.437 .19 265);--info-soft:oklch(.95 .03 255);--shadow:0 1px 2px rgb(16 24 40/.04),0 10px 28px -12px rgb(16 24 40/.1)}
+// lightColors are the custom properties of the light theme. The dark theme overrides them in a media query; a printed page puts them back (a dark-mode reader's receipt
+// is black on white). TestHostedTextContrastMeetsAA checks every text pair of both themes.
+const lightColors = `--radius:1rem;--background:oklch(.965 .007 258);--foreground:oklch(.192 .017 269);--card:oklch(1 0 0);--primary:oklch(.519 .212 266);--primary-foreground:oklch(.985 0 0);--secondary:oklch(.945 .012 258);--muted:oklch(.955 .008 258);--muted-foreground:oklch(.5 .02 264);--accent:oklch(.95 .028 258);--accent-foreground:oklch(.437 .19 265);--destructive:oklch(.55 .21 27);--destructive-soft:oklch(.955 .03 25);--success:oklch(.5 .13 155);--success-soft:oklch(.95 .045 155);--warning:oklch(.52 .11 65);--warning-soft:oklch(.96 .055 85);--border:oklch(.915 .009 258);--input:oklch(.885 .011 258);--ring:oklch(.6 .164 261);--info:oklch(.437 .19 265);--info-soft:oklch(.95 .03 255);--shadow:0 1px 2px rgb(16 24 40/.04),0 10px 28px -12px rgb(16 24 40/.1)`
+
+const hostedCSS = `:root{color-scheme:light dark;` + lightColors + `}
 @media (prefers-color-scheme:dark){:root{--background:oklch(.16 .013 270);--foreground:oklch(.969 .007 261);--card:oklch(.192 .017 269);--primary:oklch(.762 .123 256);--primary-foreground:oklch(.192 .017 269);--secondary:oklch(.26 .02 268);--muted:oklch(.235 .018 268);--muted-foreground:oklch(.72 .02 262);--accent:oklch(.29 .045 262);--accent-foreground:oklch(.93 .03 255);--destructive:oklch(.7 .18 25);--destructive-soft:oklch(.31 .07 25);--success:oklch(.78 .14 155);--success-soft:oklch(.3 .06 155);--warning:oklch(.82 .12 80);--warning-soft:oklch(.32 .06 80);--border:oklch(1 0 0/9%);--input:oklch(1 0 0/14%);--info:oklch(.84 .081 254);--info-soft:oklch(.3 .06 262);--shadow:0 1px 2px rgb(0 0 0/.3)}}
 *{box-sizing:border-box}
 body{font:15px/1.55 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:0;background:var(--background);color:var(--foreground);-webkit-font-smoothing:antialiased}
@@ -210,6 +214,8 @@ tfoot td{font-weight:600;border-bottom:0}.neg{color:var(--success)}
 .promo-row{display:flex;gap:8px}
 .promo-row input,input.code{flex:1;min-width:0;height:44px;padding:0 12px;border:1px solid var(--input);border-radius:calc(var(--radius) - 6px);background:var(--card);color:inherit;font:inherit;text-transform:uppercase;letter-spacing:.04em}
 input.code::placeholder,.promo-row input::placeholder{text-transform:none;letter-spacing:0;color:var(--muted-foreground)}
-.promo-row input:focus-visible,input.code:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.promo-row input:focus-visible,input.code:focus-visible,.btn:focus-visible,a:focus-visible,.wrap:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .promo-row .btn{margin-top:0}
-a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none}`
+a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none}
+@media print{:root{color-scheme:light;` + lightColors + `}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}`

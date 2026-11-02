@@ -22,11 +22,12 @@ func d(y int, m time.Month, day int) time.Time { return time.Date(y, m, day, 10,
 
 func seller() einvoice.Party {
 	return einvoice.Party{Name: "Acme Yazılım A.Ş.", TaxID: "1234567890", TaxOffice: "Kadıköy", RegistrationNo: "0123456789012345", TradeRegistryNo: "98765",
-		Street: "Bağdat Cad. 1", City: "İstanbul", PostalCode: "34700", Country: "TR", Email: "billing@acme.example"}
+		Street: "Bağdat Cad. 1", District: "Kadıköy", City: "İstanbul", PostalCode: "34700", Country: "TR", Email: "billing@acme.example",
+		EndpointScheme: "0088", EndpointID: "5790000435975"}
 }
 
 func trBuyer() einvoice.Party {
-	return einvoice.Party{Name: "Müşteri & Oğul Ltd. \"Şti\"", TaxID: "9876543210", TaxOffice: "Çankaya", Street: "Atatürk Blv. 5", City: "Ankara", Country: "TR", EInvoiceRegistered: true}
+	return einvoice.Party{Name: "Müşteri & Oğul Ltd. \"Şti\"", TaxID: "9876543210", TaxOffice: "Çankaya", Street: "Atatürk Blv. 5", District: "Çankaya", City: "Ankara", Country: "TR", EInvoiceRegistered: true}
 }
 
 func lines() []einvoice.Line {
@@ -55,11 +56,12 @@ func creditNote(t einvoice.DocumentType, buyer einvoice.Party) einvoice.Document
 }
 
 func euBuyer() einvoice.Party {
-	return einvoice.Party{Name: "Beispiel GmbH", TaxID: "DE123456789", Street: "Hauptstr. 1", City: "Berlin", PostalCode: "10115", Country: "DE", Email: "ap@beispiel.example"}
+	return einvoice.Party{Name: "Beispiel GmbH", TaxID: "DE123456789", Street: "Hauptstr. 1", City: "Berlin", Region: "Berlin", PostalCode: "10115", Country: "DE", Email: "ap@beispiel.example",
+		EndpointScheme: "0088", EndpointID: "4012345000009"}
 }
 
 func cases() map[string]einvoice.Document {
-	trCN := creditNote(einvoice.TypeEArsiv, einvoice.Party{Name: "Ayşe Yılmaz", TaxID: "11111111111", TaxOffice: "-", Country: "TR"})
+	trCN := creditNote(einvoice.TypeEArsiv, einvoice.Party{Name: "Ayşe Yılmaz", TaxID: "11111111111", TaxOffice: "-", Street: "Kızılay Sk. 2", District: "Çankaya", City: "Ankara", Country: "TR"})
 	trCN.Currency = "TRY"
 	return map[string]einvoice.Document{
 		"ubl-tr-efatura-invoice": invoice(einvoice.TypeEFatura, trBuyer()),
@@ -75,6 +77,47 @@ func peppolInvoice() einvoice.Document {
 	doc.Lines[4].Description = "VAT 19%"
 	doc.Lines[4].AmountMinor = 19504
 	return doc
+}
+
+// extraCases are documents the golden files do not hold but the official rules should see too: no tax line (exempt), a currency without minor units, a
+// credit note over the e-fatura channel.
+func extraCases() map[string]einvoice.Document {
+	exempt := func(typ einvoice.DocumentType, buyer einvoice.Party) einvoice.Document {
+		doc := invoice(typ, buyer)
+		doc.Lines = []einvoice.Line{{No: 1, Kind: einvoice.LineItem, Description: "Fee", AmountMinor: 1000}}
+		return doc
+	}
+	jpy := invoice(einvoice.TypePeppol, euBuyer())
+	jpy.Currency, jpy.Exponent = "JPY", 0
+	jpy.Lines = []einvoice.Line{{No: 1, Kind: einvoice.LineItem, Description: "Fee", AmountMinor: 1500}, {No: 2, Kind: einvoice.LineTax, Description: "VAT 10%", AmountMinor: 150}}
+	trCN := creditNote(einvoice.TypeEFatura, trBuyer())
+	trCN.Currency = "TRY"
+	return map[string]einvoice.Document{
+		"peppol-exempt": exempt(einvoice.TypePeppol, euBuyer()), "peppol-jpy": jpy,
+		"ubl-tr-exempt": exempt(einvoice.TypeEFatura, trBuyer()), "ubl-tr-efatura-credit": trCN,
+	}
+}
+
+// TestWriteSamples writes every case, golden or not, to $EINVOICE_SAMPLES_DIR for scripts/einvoice-validate.sh, which checks them against the official XSD and
+// schematron. Without the variable it does nothing.
+func TestWriteSamples(t *testing.T) {
+	dir := os.Getenv("EINVOICE_SAMPLES_DIR")
+	if dir == "" {
+		t.Skip("EINVOICE_SAMPLES_DIR is not set")
+	}
+	all := cases()
+	for name, doc := range extraCases() {
+		all[name] = doc
+	}
+	for name, doc := range all {
+		out, err := ubl.Build(doc)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name+".xml"), out, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestGolden(t *testing.T) {
@@ -397,5 +440,74 @@ func TestValidation(t *testing.T) {
 	doc.Buyer.TaxID = ""
 	if _, err := ubl.Build(doc); err != nil {
 		t.Errorf("peppol buyer without tax id: %v", err)
+	}
+}
+
+// What the official rules (scripts/einvoice-validate.sh: EN 16931, Peppol BIS 3, GIB's UBL-TR XSD and schematron) turned up, pinned so a change that brings the
+// old output back fails here without Java.
+func TestPeppolRuleFixes(t *testing.T) {
+	out, err := ubl.Build(cases()["peppol-invoice"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{
+		"urn:fdc:peppol.eu:2017:poacc:billing:3.0",                    // PEPPOL-EN16931-R004: poacc, not poid
+		"<cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0<", // R007
+		`<cbc:PaymentMeansCode name="Mutually defined">ZZZ<`,          // BR-CL-16
+		"<cbc:CompanyID>TR1234567890</cbc:CompanyID>",                 // BR-CO-09: the seller's VAT id gets its country prefix
+		"<cbc:CompanyID>DE123456789</cbc:CompanyID>",                  // ... and one that has it keeps it
+		`<cbc:EndpointID schemeID="0088">5790000435975</cbc:EndpointID>`,
+		"<cbc:CountrySubentity>Berlin</cbc:CountrySubentity>", // the UBL name; CountrySubdivisionName does not exist
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if strings.Contains(s, "<cbc:BaseAmount") || strings.Contains(s, `schemeID="EM"`) {
+		t.Error("PEPPOL-EN16931-R042 / CL008: a base amount without a percentage, or an e-mail endpoint, is back")
+	}
+	// Without a participant id no endpoint is invented.
+	doc := cases()["peppol-invoice"]
+	doc.Seller.EndpointID, doc.Buyer.EndpointScheme = "", ""
+	out, _ = ubl.Build(doc)
+	if strings.Contains(string(out), "EndpointID") {
+		t.Error("an endpoint was written without a participant id")
+	}
+}
+
+func TestTRRuleFixes(t *testing.T) {
+	out, err := ubl.Build(cases()["ubl-tr-efatura-invoice"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{
+		"<cac:Signature>", `<cbc:URI>#Signature</cbc:URI>`, // UBL-TR's XSD wants the signature block before the seller
+		"<cbc:CitySubdivisionName>Kadıköy</cbc:CitySubdivisionName>", // and the district in every address
+		"<cbc:PayableAmount currencyID=\"TRY\">1231.80</cbc:PayableAmount>",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if strings.Contains(s, "PrepaidAmount") || strings.Contains(s, "InvoicePeriod") { // the fixture has a credit line and a service period on line 1
+		t.Error("the UBL-TR XSD has neither PrepaidAmount nor a period on a line")
+	}
+	cn, _ := ubl.Build(cases()["ubl-tr-earsiv-credit"])
+	c := string(cn)
+	for _, want := range []string{"<cbc:DocumentTypeCode>IADE</cbc:DocumentTypeCode>", "<cbc:FirstName>Ayşe</cbc:FirstName>", "<cbc:FamilyName>Yılmaz</cbc:FamilyName>"} {
+		if !strings.Contains(c, want) {
+			t.Errorf("credit note missing %q", want)
+		}
+	}
+	// The surname is the last word; a single word has no family name to give.
+	for name, want := range map[string][2]string{"Ayşe Nur Yılmaz": {"Ayşe Nur", "Yılmaz"}, "Madonna": {"Madonna", "-"}} {
+		doc := cases()["ubl-tr-earsiv-credit"]
+		doc.Buyer.Name = name
+		got, _ := ubl.Build(doc)
+		if !strings.Contains(string(got), "<cbc:FirstName>"+want[0]+"</cbc:FirstName>") || !strings.Contains(string(got), "<cbc:FamilyName>"+want[1]+"</cbc:FamilyName>") {
+			t.Errorf("%q split wrongly:\n%s", name, got)
+		}
 	}
 }

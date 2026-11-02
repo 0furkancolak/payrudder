@@ -40,7 +40,7 @@ func newModules(cfg *Config, log *slog.Logger, system *tenantdb.DB, eng *sagacom
 		creditNotes:  creditnotecmd.New(creditnotecmd.Config{DB: system, Engine: eng, Log: log}),
 		fees:         feecmd.New(feecmd.Config{DB: system, Inputs: in, Invoices: invoices, Log: log}),
 		rerating:     reratecmd.New(reratecmd.Config{DB: system, Inputs: in, Invoices: invoices, Log: log}),
-		hosted:       hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: system, Inputs: in, Invoices: invoices, Engine: eng, Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Log: log}),
+		hosted:       hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: system, Inputs: in, Invoices: invoices, Engine: eng, Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Subscriptions: plansv1.NewPlansServiceClient(be.plans), Log: log}),
 		tenantEvents: tenantevents.NewRelay(system, plansv1.NewWebhookServiceClient(be.plans), log),
 	}, nil
 }
