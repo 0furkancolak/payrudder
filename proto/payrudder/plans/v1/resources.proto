@@ -127,6 +127,9 @@ message Tenant {
   google.protobuf.Timestamp terms_accept_time = 18;
   // The language of the tenant's documents and mails for a customer who has none of their own (en, tr, de, fr, es or ar). Empty is English.
   string default_language = 19;
+  // Where this tenant's data lives (a region name: lower-case letters, digits and hyphens), set when the app was created or when the tenant was moved into a cell; empty
+  // means not pinned: every gateway serves it. With PAYRUDDER_REGION set a gateway of another region answers 421 for it (docs/runbooks/scaling.md).
+  string region = 20;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.

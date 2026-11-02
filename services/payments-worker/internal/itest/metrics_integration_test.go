@@ -48,3 +48,30 @@ func counted(t *testing.T, name string, want ...attribute.KeyValue) int64 {
 	}
 	return total
 }
+
+// gauged is the value of the gauge name for the series with these attributes, and whether it has one (an observable gauge is read at collection).
+func gauged(t *testing.T, name string, want ...attribute.KeyValue) (int64, bool) {
+	t.Helper()
+	var rm metricdata.ResourceMetrics
+	if err := metricsReader.Collect(context.Background(), &rm); err != nil {
+		t.Fatal(err)
+	}
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			g, ok := m.Data.(metricdata.Gauge[int64])
+			if !ok || m.Name != name {
+				continue
+			}
+		points:
+			for _, dp := range g.DataPoints {
+				for _, kv := range want {
+					if v, ok := dp.Attributes.Value(kv.Key); !ok || v != kv.Value {
+						continue points
+					}
+				}
+				return dp.Value, true
+			}
+		}
+	}
+	return 0, false
+}

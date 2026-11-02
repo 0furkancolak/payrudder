@@ -41,12 +41,32 @@ test.describe("sign up and sign in", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("App name").fill("Docs bot");
     await pickCurrency(dialog.getByLabel("Currency"), "EUR");
+    // A deployment without regions has nothing to choose and sends no region.
+    await expect(dialog.getByTestId("app-region")).toHaveCount(0);
     await shoot(page, "04-create-app");
     await dialog.getByRole("button", { name: "Create app" }).click();
     await page.waitForURL(/\/app\/apps\//);
     expect(gw.called("POST", "/app/v1/apps")[0]?.body).toMatchObject({ name: "Docs bot", currency: "EUR" });
+    expect(gw.called("POST", "/app/v1/apps")[0]?.body).not.toHaveProperty("region");
     // Every product call carries the session token and nothing else as credential.
     expect(gw.called("GET", "/app/v1/apps").every((c) => c.headers.authorization === `Bearer ${SESSION}`)).toBe(true);
+  });
+
+  test("on a deployment with regions the app is pinned to the one chosen, the default first", async ({ page }) => {
+    const gw = productGateway(new MockGateway(), { apps: [], regions: { regions: ["eu", "tr"], default_region: "eu" } }).gw;
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.getByRole("button", { name: "Create app" }).first().click();
+    const dialog = page.getByRole("dialog");
+    const region = dialog.getByTestId("app-region");
+    await expect(region).toHaveValue("eu");
+    await expect(dialog).toContainText("Where this app's data is kept");
+    await dialog.getByLabel("App name").fill("Docs bot");
+    await pickCurrency(dialog.getByLabel("Currency"), "EUR");
+    await region.selectOption("tr");
+    await dialog.getByRole("button", { name: "Create app" }).click();
+    await page.waitForURL(/\/app\/apps\//);
+    expect(gw.called("POST", "/app/v1/apps")[0]?.body).toMatchObject({ name: "Docs bot", currency: "EUR", region: "tr" });
   });
 
   test("a wrong password says so in words; the right one signs in", async ({ page }) => {

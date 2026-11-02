@@ -18,12 +18,13 @@ import (
 // when the seller published a material version since, the texts to accept again before their next payment. A renewal is never held back by this (nobody is present to
 // accept, and the payment gate of the pay pages already asks again at the next purchase): the prompt is how a customer who is here finds out and gets it done.
 
-type portalAgreementRow struct{ Label, Number, Date, Href string }
+type portalAgreementRow struct{ Label, Number, Date, Href, PdfHref string }
 
 func (s *Server) portalRoutes() []Route {
 	return []Route{
 		{"POST", "/c/{token}/agreements", AccessPublic, "", s.portalAgree},
 		{"GET", "/c/{token}/agreements/{id}", AccessPublic, "", s.portalAgreementPage},
+		{"GET", "/c/{token}/agreements/{id}/pdf", AccessPublic, "", s.portalAgreementPDF},
 	}
 }
 
@@ -47,8 +48,12 @@ func (s *Server) portalAgreements(ctx context.Context, v *portalView, resp *bill
 			continue
 		}
 		seen[a.GetKind()] = true
-		v.Agreements = append(v.Agreements, portalAgreementRow{Label: kindLabel(lang, a.GetKind()), Number: v.F.Amount(int64(a.GetVersionNumber()), 0),
-			Date: v.Day(a.GetAcceptTime().AsTime()), Href: "/c/" + token + "/agreements/" + a.GetId() + q})
+		row := portalAgreementRow{Label: kindLabel(lang, a.GetKind()), Number: v.F.Amount(int64(a.GetVersionNumber()), 0), Date: v.Day(a.GetAcceptTime().AsTime()),
+			Href: "/c/" + token + "/agreements/" + a.GetId() + q}
+		if a.GetLocaleServed() != "ar" { // the PDF font has no Arabic: those texts have the page only
+			row.PdfHref = "/c/" + token + "/agreements/" + a.GetId() + "/pdf" + q
+		}
+		v.Agreements = append(v.Agreements, row)
 	}
 	if len(list.GetAcceptances()) == 0 {
 		return // nobody who never accepted is asked to accept "again"; a first acceptance happens where they pay
@@ -121,35 +126,43 @@ func (s *Server) portalAgree(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
-// portalAgreementPage is GET /c/{token}/agreements/{id}: the page the customer accepted, exactly as it was stored (the evidence, not a page written again), under a policy
-// that lets it run nothing. Only an acceptance of this portal's customer opens: any other id is the same not-found as a link that does not exist.
-func (s *Server) portalAgreementPage(w http.ResponseWriter, r *http.Request) {
-	lang := pickLang(r)
-	if !s.hostedAllowed(w, r) {
-		return
-	}
+// portalAgreementOf finds the customer's acceptance the request names: only an acceptance of this portal's customer opens, any other id is the same not-found as a
+// link that does not exist. It answers the request itself when there is none, and then returns false.
+func (s *Server) portalAgreementOf(w http.ResponseWriter, r *http.Request, lang string) (context.Context, bool) {
 	resp, err := s.d.Hosted.GetPortal(r.Context(), &billingv1.GetPortalRequest{PortalToken: r.PathValue("token")})
 	if goneError(err) {
 		hostedNotFound(w, lang)
-		return
+		return nil, false
 	}
 	tid, perr := uuid.Parse(resp.GetTenantId())
 	if err != nil || perr != nil || s.d.Contracts == nil {
 		hostedTrouble(w, lang)
-		return
+		return nil, false
 	}
 	octx := tenant.OutgoingFor(r.Context(), tid)
 	list, err := s.d.Contracts.ListContractAcceptances(octx, &plansv1.ListContractAcceptancesRequest{CustomerId: resp.GetCustomerId(), PageSize: 200})
 	if err != nil {
 		hostedTrouble(w, lang)
+		return nil, false
+	}
+	for _, a := range list.GetAcceptances() {
+		if a.GetId() == r.PathValue("id") {
+			return octx, true
+		}
+	}
+	hostedNotFound(w, lang)
+	return nil, false
+}
+
+// portalAgreementPage is GET /c/{token}/agreements/{id}: the page the customer accepted, exactly as it was stored (the evidence, not a page written again), under a policy
+// that lets it run nothing.
+func (s *Server) portalAgreementPage(w http.ResponseWriter, r *http.Request) {
+	lang := pickLang(r)
+	if !s.hostedAllowed(w, r) {
 		return
 	}
-	found := false
-	for _, a := range list.GetAcceptances() {
-		found = found || a.GetId() == r.PathValue("id")
-	}
-	if !found {
-		hostedNotFound(w, lang)
+	octx, ok := s.portalAgreementOf(w, r, lang)
+	if !ok {
 		return
 	}
 	snap, err := s.d.Contracts.GetContractSnapshot(octx, &plansv1.GetContractSnapshotRequest{AcceptanceId: r.PathValue("id")})
@@ -161,4 +174,31 @@ func (s *Server) portalAgreementPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(snap.GetHtml()))
+}
+
+// portalAgreementPDF is GET /c/{token}/agreements/{id}/pdf: the same page as a PDF, the customer's copy to keep, as a download. A text the PDF font cannot draw has none.
+func (s *Server) portalAgreementPDF(w http.ResponseWriter, r *http.Request) {
+	lang := pickLang(r)
+	if !s.hostedAllowed(w, r) {
+		return
+	}
+	octx, ok := s.portalAgreementOf(w, r, lang)
+	if !ok {
+		return
+	}
+	snap, err := s.d.Contracts.GetContractSnapshot(octx, &plansv1.GetContractSnapshotRequest{AcceptanceId: r.PathValue("id"), IncludePdf: true})
+	if err != nil {
+		hostedTrouble(w, lang)
+		return
+	}
+	if snap.GetPdfUnavailable() || len(snap.GetPdf()) == 0 {
+		l := hostedText(lang)
+		s.message(w, r, http.StatusNotFound, lang, l["agreements_title"], l["agreements_pdf_unavailable"], "/c/"+r.PathValue("token")+langSuffix(r))
+		return
+	}
+	hostedHeaders(w)
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="agreement-`+snap.GetSha256()[:min(12, len(snap.GetSha256()))]+`.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(snap.GetPdf())
 }

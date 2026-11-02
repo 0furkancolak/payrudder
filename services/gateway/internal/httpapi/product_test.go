@@ -62,6 +62,7 @@ type fakeIdentity struct {
 	mu              sync.Mutex
 	revoked         map[string]bool
 	lastUser        string // the user id the last account-scoped call carried
+	lastRegion      string // the region the last CreateMyApp carried
 	twoFactorResets []*plansv1.ResetUserTwoFactorRequest
 	keys            map[string]string
 	signIns         int
@@ -270,6 +271,9 @@ func (f *fakeIdentity) CreateMyApp(_ context.Context, req *plansv1.CreateMyAppRe
 	case "viewer":
 		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
 	}
+	f.mu.Lock()
+	f.lastRegion = req.GetRegion()
+	f.mu.Unlock()
 	return &plansv1.CreateMyAppResponse{App: &plansv1.App{Id: "new", AccountId: req.GetAccountId(), Name: req.GetName()}}, nil
 }
 
@@ -1161,5 +1165,50 @@ func TestSpendingATokenIsRateLimitedPerAddress(t *testing.T) {
 		if i >= tokenUsesPerMinute && (resp.StatusCode != 429 || errKeyOf(m) != "identity.auth.rate_limited") {
 			t.Fatalf("request %d: %d %v", i+1, resp.StatusCode, m)
 		}
+	}
+}
+
+// An app is pinned to a region when it is created (plan 17): the one the person chose if the deployment has it, this gateway's own when they chose none, and none at all
+// on a deployment without regions (plans-svc then applies its own default). GET /app/v1/regions says which there are.
+func TestAnAppIsCreatedInARegionOfTheDeployment(t *testing.T) {
+	create := func(p *product, body string) (int, map[string]any, string) {
+		resp, m := p.call(t, "POST", "/app/v1/apps", tokAda, "", body)
+		p.ident.mu.Lock()
+		defer p.ident.mu.Unlock()
+		return resp.StatusCode, m, p.ident.lastRegion
+	}
+	with := newProduct(t, nil, func(d *Deps) {
+		d.Region = &Region{Name: "eu", URLs: map[string]string{"tr": "https://tr.api.example.test", "eu": "https://eu.api.example.test"}, Directory: &fakeRegions{}}
+	})
+	resp, m := with.call(t, "GET", "/app/v1/regions", tokAda, "", "")
+	if got, _ := m["regions"].([]any); resp.StatusCode != 200 || len(got) != 2 || got[0] != "eu" || got[1] != "tr" || m["default_region"] != "eu" {
+		t.Fatalf("regions: %d %v, want eu and tr, default eu", resp.StatusCode, m)
+	}
+	if resp, _ := with.call(t, "GET", "/app/v1/regions", "", "", ""); resp.StatusCode != 401 {
+		t.Errorf("regions without a session: %d, want 401", resp.StatusCode)
+	}
+	for body, want := range map[string]string{
+		`{"name":"A","currency":"USD","timezone":"UTC"}`:               "eu", // none chosen: this gateway's region
+		`{"name":"B","currency":"USD","timezone":"UTC","region":"tr"}`: "tr",
+		`{"name":"C","currency":"USD","timezone":"UTC","region":"eu"}`: "eu",
+	} {
+		if code, m, got := create(with, body); code != 201 || got != want {
+			t.Errorf("%s: %d %v, plans-svc was asked for region %q, want %q", body, code, m, got, want)
+		}
+	}
+	if code, m, _ := create(with, `{"name":"D","currency":"USD","timezone":"UTC","region":"mars"}`); code != 400 || errKeyOf(m) != "gateway.region.unknown" {
+		t.Errorf("a region the deployment does not have: %d %v, want 400 gateway.region.unknown", code, m)
+	}
+
+	without := newProduct(t, nil, nil)
+	resp, m = without.call(t, "GET", "/app/v1/regions", tokAda, "", "")
+	if got, _ := m["regions"].([]any); resp.StatusCode != 200 || got == nil || len(got) != 0 || m["default_region"] != "" {
+		t.Fatalf("regions without the guard: %d %v, want empty lists", resp.StatusCode, m)
+	}
+	if code, m, got := create(without, `{"name":"A","currency":"USD","timezone":"UTC"}`); code != 201 || got != "" {
+		t.Errorf("no regions, none chosen: %d %v, region %q, want none", code, m, got)
+	}
+	if code, m, _ := create(without, `{"name":"B","currency":"USD","timezone":"UTC","region":"eu"}`); code != 400 || errKeyOf(m) != "gateway.region.unknown" {
+		t.Errorf("a region on a deployment without regions: %d %v, want 400 gateway.region.unknown", code, m)
 	}
 }

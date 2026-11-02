@@ -34,6 +34,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
+	accountscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/accounts/command"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
@@ -66,6 +67,8 @@ type Config struct {
 	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
 	RelayBatchSize int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
 	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	// DefaultRegion is the region the tenants of a new app are pinned to when the request names none (plan 17); empty, the default, pins nothing and every gateway serves them.
+	DefaultRegion string `env:"PAYRUDDER_DEFAULT_REGION"`
 	// Secrets holds the key (32 bytes, base64) that seals the webhook signing secrets and the mail integrations' keys, and the previous key while one is replaced.
 	// Without a key tenants cannot register webhook endpoints.
 	Secrets secretbox.Settings
@@ -137,6 +140,9 @@ func (c *Config) Validate() error {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
 		}
+	}
+	if err := accountscmd.CheckRegion(c.DefaultRegion); err != nil {
+		errs = append(errs, errors.New("PAYRUDDER_DEFAULT_REGION must be a region name: lower-case letters, digits and hyphens, at most 31 characters"))
 	}
 	if _, err := c.Secrets.SecretBox(); err != nil {
 		errs = append(errs, err)
@@ -367,7 +373,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 		return nil, nil, nil, nil, err
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, DefaultRegion: cfg.DefaultRegion, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})

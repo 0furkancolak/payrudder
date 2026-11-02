@@ -5,8 +5,8 @@ The country, region and district lists embedded in the gateway (services/gateway
 (https://www.geonames.org), licensed under the Creative Commons Attribution 4.0 License (https://creativecommons.org/licenses/by/4.0/). The data was
 reduced and merged as docs/geo-data.md describes.
 
-The invoice PDF of the invoice worker embeds Noto Sans (services/invoice-worker/internal/render/fonts), Copyright 2022 The Noto Project Authors
-(https://github.com/notofonts/latin-greek-cyrillic), licensed under the SIL Open Font License, Version 1.1 (services/invoice-worker/internal/render/fonts/OFL.txt).
+The invoice PDF of the invoice worker embeds Noto Sans (pkg/pdffont/fonts), Copyright 2022 The Noto Project Authors
+(https://github.com/notofonts/latin-greek-cyrillic), licensed under the SIL Open Font License, Version 1.1 (pkg/pdffont/fonts/OFL.txt).
 
 Third-party components keep their own licences. `make licenses` lists them (Go modules and npm packages); the list is checked in CI so that no dependency
 with a copyleft licence is added without a decision recorded in docs/adr/0019-license.md.

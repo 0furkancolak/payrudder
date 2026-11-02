@@ -3087,6 +3087,7 @@
     },
     "plans": {
       "app": {
+        "bad_region": "The region may only have lower-case letters, digits and dashes, and at most 31 characters.",
         "bad_slug": "The app slug may only have lower-case letters, digits and single dashes, and at most 60 characters.",
         "slug_taken": "This account already has an app with that slug."
       },
@@ -3534,6 +3535,7 @@
         "unreachable": "The payments service cannot be reached right now. Try again shortly."
       },
       "region": {
+        "unknown": "That region is not available on this deployment. Choose one from the list.",
         "wrong": "This environment is served from another region. Send the request to the gateway of its region (see the X-Payrudder-Region and X-Payrudder-Region-Url headers)."
       },
       "rate_limit": {
@@ -3935,6 +3937,8 @@
       "name": "App name",
       "currency": "Currency",
       "timezone": "Time zone",
+      "region": "Region",
+      "regionHint": "Where this app's data is kept. The console cannot change it later, and the app is reached at that region's address.",
       "immutable": "Currency and time zone cannot be changed later: billing periods are cut in that time zone.",
       "submit": "Create app",
       "badCurrency": "Choose a currency from the list.",
@@ -6066,7 +6070,17 @@
         "source": "Where it was accepted",
         "allSources": "Anywhere"
       },
-      "showMore": "Show more"
+      "showMore": "Show more",
+      "requirements": "What the customer has to accept",
+      "reqOff": "You do not require agreements: nothing is asked of this customer.",
+      "reqSatisfied": "Everything required is accepted",
+      "reqOpen": "Still to accept: {n}",
+      "reqAccepted": "Accepted {time}",
+      "reqToAccept": "To accept",
+      "reqConsents": "A consumer is also asked to ask for the service to start at once and to acknowledge losing the right of withdrawal.",
+      "reqMissing": "No text is published for: {kinds}. A payment is refused until one is.",
+      "downloadPdf": "Download PDF",
+      "pdfUnavailable": "No PDF can be made of this page: its text has characters the PDF font cannot draw. View the page instead."
     },
     "record": {
       "title": "Record a withdrawal",

@@ -152,6 +152,8 @@ export interface ProductState {
   twoFactor: TwoFactorState;
   /** The account's policy: its owners must sign in with a second factor. */
   requireTwoFactor: boolean;
+  /** The regions the deployment offers for a new app (GET /app/v1/regions); default none, like a deployment without regions. */
+  regions: { regions: string[]; default_region: string };
 }
 
 /** A stand-in for the product API with a person signed in as Ada. `state` is the test's to change while it runs. */
@@ -159,7 +161,7 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
   const s: ProductState = { apps: [app], keys: [...keys], overview: overview("live"), dashboard: null, sessionOk: true, verified: true, verifyToken: "qv_good", resetToken: "qr_good",
     role: "owner", members: team(), invitations: [], accountName: "Ada Labs", memberships, operator: false,
     methods: { password: true, otp: true, google: false }, code: "123456",
-    twoFactor: { enabled: false, required: false, recovery: recoveryCodes("old"), started: false, code: "123456", enableTime: null }, requireTwoFactor: false, ...state };
+    twoFactor: { enabled: false, required: false, recovery: recoveryCodes("old"), started: false, code: "123456", enableTime: null }, requireTwoFactor: false, regions: { regions: [], default_region: "" }, ...state };
   const tf = s.twoFactor;
   const who = () => ({ ...user, email_verified: s.verified, two_factor_enabled: tf.enabled, two_factor_setup_required: tf.required && !tf.enabled });
   const badLink = { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "identity.token.invalid", message: "bad link" } } };
@@ -264,6 +266,7 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       return { body: { user: { ...user, email: "ned@example.com", display_name: String(c.body?.display_name ?? "") }, memberships, token: SESSION, expire_time: "2026-11-04T09:00:00Z" } };
     }
     if (c.path === "/app/v1/invitations/accept") return { body: { account_id: ACCOUNT, memberships } };
+    if (c.path === "/app/v1/regions" && c.method === "GET") return { body: s.regions };
     if (c.path === "/app/v1/apps" && c.method === "GET") return { body: { apps: s.apps } };
     if (c.path === "/app/v1/apps" && c.method === "POST") {
       // The first app of an organisation is the fixture app (its dashboard is mocked); the next ones are other apps.

@@ -6,13 +6,37 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/command"
 )
+
+// lastPass is reconciliation_last_pass_timestamp_seconds, read on every scrape: when the last pass of this process finished. A pass that could not list the tenants, or was cut
+// short by the process stopping, does not count; a pass that visited nobody does (there was nothing to reconcile). ReconciliationRunStalled reads it, so a schedule that hangs
+// (a stuck database call, a provider that never answers) is seen even when no run fails. Without a pass yet, or with the schedule off, there is no series.
+var lastPass = func() *atomic.Int64 {
+	var at atomic.Int64
+	m := otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker/reconciliation")
+	g, err := m.Int64ObservableGauge("reconciliation_last_pass_timestamp_seconds", metric.WithDescription("Unix time at which the last scheduled reconciliation pass of this process finished"))
+	if err == nil {
+		_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+			if v := at.Load(); v != 0 {
+				o.ObserveInt64(g, v)
+			}
+			return nil
+		}, g)
+	}
+	if err != nil {
+		panic(err)
+	}
+	return &at
+}()
 
 // Job is the scheduled reconciliation.
 type Job struct {
@@ -66,6 +90,13 @@ func (j *Job) Pass(ctx context.Context) {
 			}
 			j.one(ctx, t, period)
 		}
+	}
+	if err == nil && ctx.Err() == nil {
+		done := time.Now()
+		if j.Now != nil {
+			done = j.Now()
+		}
+		lastPass.Store(done.Unix())
 	}
 }
 

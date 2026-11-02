@@ -46,7 +46,9 @@ type Deps struct {
 	Log         *slog.Logger
 	Evict       apikeyscmd.Evictor // drops a revoked key from the gateway cache; nil leaves it to the cache TTL
 	AllowedEnvs []string           // PAYRUDDER_ALLOWED_ENVIRONMENTS
-	Box         *secretbox.Box     // seals webhook signing secrets; nil: endpoints cannot be created
+	// DefaultRegion pins the tenants of a new app to a region when the request names none (PAYRUDDER_DEFAULT_REGION); empty pins nothing.
+	DefaultRegion string
+	Box           *secretbox.Box // seals webhook signing secrets; nil: endpoints cannot be created
 	// WebhookAllowPrivate lets endpoints be http:// and on private addresses (development and tests only).
 	WebhookAllowPrivate bool
 	// BanApproval makes a ban of a tenant need a second operator (PAYRUDDER_TENANT_BAN_APPROVAL; default off).
@@ -79,6 +81,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, resolver, d.Log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.Places))
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Mail, d.AppURL, d.Log)
+	admin.accounts.WithDefaultRegion(d.DefaultRegion)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	desk := support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL})
