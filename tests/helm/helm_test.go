@@ -42,14 +42,21 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(wd, "..", ".."))
 }
 
+// needHelm is bin/helm, or a skipped test when make tools has not built it (the unit job does not).
+func needHelm(t *testing.T) string {
+	t.Helper()
+	helm := filepath.Join(repoRoot(t), "bin", "helm")
+	if _, err := os.Stat(helm); err != nil {
+		t.Skipf("%s not built (make tools)", helm)
+	}
+	return helm
+}
+
 // render runs helm template for a chart and values files / --set arguments and returns the manifests.
 func render(t *testing.T, chart string, args ...string) []obj {
 	t.Helper()
 	root := repoRoot(t)
-	helm := filepath.Join(root, "bin", "helm")
-	if _, err := os.Stat(helm); err != nil {
-		t.Skipf("%s not built (make tools)", helm)
-	}
+	helm := needHelm(t)
 	full := append([]string{"template", "x", filepath.Join(root, "deploy", "helm", chart), "--namespace", "payrudder"}, args...)
 	cmd := exec.Command(helm, full...)
 	var out, stderr bytes.Buffer
