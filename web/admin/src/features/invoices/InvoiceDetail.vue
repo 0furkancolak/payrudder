@@ -24,6 +24,8 @@ import InvoiceHeadline from "./InvoiceHeadline.vue";
 import InvoiceLines from "./InvoiceLines.vue";
 import ManualPaymentsCard from "./ManualPaymentsCard.vue";
 import { canRecordPayment, isTransferCharge, outstandingAfter, wantsTransferState } from "./payment";
+import PaymentWaitCard from "./PaymentWaitCard.vue";
+import { waits } from "./paymentWait";
 import { useInvoiceTransfer } from "./paymentApi";
 import RecordPaymentDialog from "./RecordPaymentDialog.vue";
 import RejectTransferDialog from "./RejectTransferDialog.vue";
@@ -82,6 +84,7 @@ function askReject(outcome: "rejected" | "expired") {
       <template v-if="canRecord" #actions><Button type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button></template>
     </InvoiceHeadline>
 
+    <PaymentWaitCard v-if="waits(inv.saga_state)" :tenant-id="tenantId" :invoice-id="invoiceId" :inv="inv" />
     <TransferCard v-if="transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
     <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
     <DisputeCard :tenant-id="tenantId" :invoice-id="invoiceId" />

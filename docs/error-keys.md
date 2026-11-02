@@ -157,6 +157,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.invoice.bad_page_size`
 - `billing.invoice.bad_page_token`
 - `billing.invoice.not_found`
+- `billing.invoice.not_held`
 - `billing.invoice.pdf_failed`
 - `billing.invoice.pdf_not_ready`
 - `billing.invoice.pdf_sign_failed`

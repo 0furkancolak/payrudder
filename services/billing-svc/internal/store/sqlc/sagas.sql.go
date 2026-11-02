@@ -114,6 +114,42 @@ func (q *Queries) GetSagaIDByInvoice(ctx context.Context, arg GetSagaIDByInvoice
 	return id, err
 }
 
+const getSagaWait = `-- name: GetSagaWait :one
+SELECT s.id, s.state, s.next_attempt_at,
+       COALESCE((SELECT max(e.at) FROM saga_events e WHERE e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = s.state AND e.from_state <> s.state), s.updated_at)::timestamptz AS since,
+       COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id
+FROM invoice_sagas s JOIN invoices i ON i.tenant_id = s.tenant_id AND i.id = s.invoice_id
+WHERE s.tenant_id = $1 AND s.invoice_id = $2
+`
+
+type GetSagaWaitParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+type GetSagaWaitRow struct {
+	ID                 uuid.UUID
+	State              string
+	NextAttemptAt      *time.Time
+	Since              time.Time
+	CustomerExternalID string
+}
+
+// What the payment of an invoice waits for: the saga's state, when Payrudder looks again, when the saga entered the state (the latest entry from another state) and the customer
+// the payment gate is asked about.
+func (q *Queries) GetSagaWait(ctx context.Context, arg GetSagaWaitParams) (GetSagaWaitRow, error) {
+	row := q.db.QueryRow(ctx, getSagaWait, arg.TenantID, arg.InvoiceID)
+	var i GetSagaWaitRow
+	err := row.Scan(
+		&i.ID,
+		&i.State,
+		&i.NextAttemptAt,
+		&i.Since,
+		&i.CustomerExternalID,
+	)
+	return i, err
+}
+
 const holdSagaDunning = `-- name: HoldSagaDunning :exec
 UPDATE invoice_sagas SET next_attempt_at = $1::timestamptz WHERE tenant_id = $2 AND id = $3 AND state = 'PAYMENT_DECLINED'
 `
