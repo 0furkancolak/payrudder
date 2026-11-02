@@ -265,7 +265,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
           </div>
         </dl>
         <!-- The cards the provider holds for the customer: asked only when the customer has a payment method (it names whose cards they are). -->
-        <CustomerCards v-if="customer.payment_method" class="mt-6" :tenant-id="tenantId" :external-id="id" :readonly="readonly" />
+        <CustomerCards v-if="customer.payment_method" class="mt-6" :tenant-id="tenantId" :external-id="id" :readonly="locked" />
         <!-- Who blocked or lifted, when and why: kept for good, newest first. -->
         <section class="mt-6 flex flex-col gap-2" :aria-label="t('billing.customers.block.history')" data-testid="customer-block-history">
           <h3 class="m-0 text-sm font-semibold">{{ t("billing.customers.block.history") }}</h3>

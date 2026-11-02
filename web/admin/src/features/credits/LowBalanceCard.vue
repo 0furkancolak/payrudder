@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { CREDITS_OR_ZERO_RE } from "@/shared/lib/rules";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -11,6 +12,8 @@ import { useCreditSettings, useSetCreditSettings } from "./api";
 /** The balance below which a consume sends the credits.low webhook event (empty or 0: off). */
 const props = defineProps<{ tenantId: string }>();
 const { t } = useI18n();
+// A viewer sees the threshold and cannot change it.
+const canWrite = useCanWrite();
 const settings = useCreditSettings(() => props.tenantId);
 const setSettings = useSetCreditSettings(() => props.tenantId);
 const threshold = ref("");
@@ -23,7 +26,7 @@ watch(
 );
 const thresholdValid = computed(() => threshold.value.trim() === "" || CREDITS_OR_ZERO_RE.test(threshold.value.trim()));
 function save() {
-  if (thresholdValid.value) setSettings.mutate(threshold.value.trim() || "0");
+  if (canWrite.value && thresholdValid.value) setSettings.mutate(threshold.value.trim() || "0");
 }
 </script>
 
@@ -32,8 +35,8 @@ function save() {
     <h3 class="text-base font-semibold">{{ t("billing.credits.settings.title") }}</h3>
     <p class="text-muted-foreground text-sm">{{ t("billing.credits.settings.hint") }}</p>
     <form class="grid gap-3 sm:grid-cols-3" role="form" :aria-label="t('billing.credits.settings.formLabel')" @submit.prevent="save">
-      <Input v-model="threshold" inputmode="numeric" :aria-label="t('billing.credits.settings.threshold')" :placeholder="t('billing.credits.settings.threshold')" />
-      <Button type="submit" :disabled="setSettings.isPending.value || !thresholdValid">{{ t("billing.credits.settings.save") }}</Button>
+      <Input v-model="threshold" inputmode="numeric" :disabled="!canWrite" :aria-label="t('billing.credits.settings.threshold')" :placeholder="t('billing.credits.settings.threshold')" />
+      <Button v-if="canWrite" type="submit" :disabled="setSettings.isPending.value || !thresholdValid">{{ t("billing.credits.settings.save") }}</Button>
       <span v-if="setSettings.isSuccess.value" class="text-muted-foreground self-center text-sm" role="status">{{ t("billing.credits.settings.saved") }}</span>
     </form>
     <ErrorText :error="setSettings.error.value" />

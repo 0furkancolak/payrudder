@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
-import { ACCOUNT, APP, LIVE, productGateway, signInAsAda } from "./product";
+import { ACCOUNT, APP, billingGateway, INVOICE_2, invoice, invoiceLines, LIVE, productGateway, SANDBOX, signInAsAda } from "./product";
 
 // A viewer reads; the server refuses a viewer's write. So a page shared with the operator's console (useCanWrite, shared/lib/access.ts) offers a viewer no button
 // that would be refused: no "new" button, no ticks for a bulk action, no row action that writes. One data-driven test per page and per role: the owner is offered
@@ -14,10 +14,14 @@ interface Case {
   name: string;
   /** The page, under the tenant of the person's live environment (or an absolute path of the person's console when it starts with /app). */
   path: string;
+  /** The environment the page is under: live unless a control only the sandbox has is the point. */
+  tenant?: string;
   /** What the mocked API holds: enough for the page to show its first row. */
   mock: (gw: MockGateway) => MockGateway;
   /** Something only a loaded page shows, read by a viewer too: after it the header has had time to draw its buttons. */
   ready: (page: Page) => ReturnType<Page["locator"]>;
+  /** Opens what the controls are in (a row's sheet), once the page has loaded. */
+  after?: (page: Page) => Promise<void>;
   /** The controls an owner has and a viewer does not. */
   offered: (page: Page) => ReturnType<Page["locator"]>[];
   /** Whether the list has ticks (the header's "select all" tick) for an owner and none for a viewer. */
@@ -40,6 +44,8 @@ const sub = {
 };
 const link = { id: "link0001", kind: "adhoc", status: "active", single_use: true, amount_minor: "1250", currency: "USD", description: "Link", create_time: "2026-10-20T10:00:00Z", expire_time: "2026-11-19T10:00:00Z", paid_count: 0, use_count: 0 };
 const pack = { id: "p1", name: "Starter", credits: "1000", price_minor: "500", currency: "USD", active: true, create_time: "2026-10-21T09:00:00Z" };
+const advanceSub = { ...sub, fee_timing: "FEE_TIMING_ADVANCE", scheduled_change: { plan_code: "pro", interval: "SUBSCRIPTION_INTERVAL_MONTH", effective_time: "2026-11-30T00:00:00Z" } };
+const card = { token: "ct", alias: "work", bin: "55287900", last4: "0008", type: "CREDIT_CARD", association: "MASTER_CARD", family: "World", bank: "Halkbank", expire_month: "12", expire_year: "2030", in_use: true };
 const get = (path: string, body: unknown) => (gw: MockGateway) => gw.on((c) => (c.method === "GET" && c.path === path ? { body } : undefined));
 
 const CASES: Case[] = [
@@ -99,6 +105,74 @@ const CASES: Case[] = [
     offered: (page) => [page.getByTestId("add-expense"), page.getByTestId("scan-receipts"), page.getByTestId("inbox-review"), page.getByTestId("inbox-rules")],
     menu: { row: (page) => page.getByRole("row", { name: /Hetzner/ }), owner: ["Edit", "Void"], viewer: [], absent: ["Edit", "Void"] },
   },
+  // --- what lives inside a sheet or a card of a page (the review of 2026-11-02 found these still offering writes)
+  {
+    name: "a subscription's sheet",
+    path: "/subscriptions",
+    mock: (gw) => get("/v1/subscriptions", { subscriptions: [advanceSub] })(get("/v1/plans", { plans: [] })(gw)),
+    ready: (page) => page.getByText("cus_a").first(),
+    after: async (page) => {
+      await page.getByRole("row", { name: /cus_a/ }).click();
+      await expect(page.getByRole("region", { name: /Manage cus_a/ })).toBeVisible();
+    },
+    offered: (page) => [
+      page.getByRole("button", { name: "Pause", exact: true }),
+      page.getByTestId("sub-end-now"),
+      page.getByRole("button", { name: "Cancel at period end" }),
+      page.getByRole("button", { name: "Apply coupon" }),
+      page.getByRole("button", { name: "Preview", exact: true }),
+      page.getByRole("button", { name: "Withdraw", exact: true }),
+    ],
+  },
+  {
+    name: "credits: a customer's balance and the low-balance alert",
+    path: "/credits?customer=cus_a",
+    mock: (gw) =>
+      [
+        get("/v1/credit-packs", { packs: [] }),
+        get("/v1/customers", { customers: [customer] }),
+        get("/v1/customers/cus_a/credits", { balance: "300", next_expire_time: null, lots: [] }),
+        get("/v1/customers/cus_a/credits/ledger", { entries: [], next_page_token: "" }),
+        get("/v1/credits/settings", { low_threshold: "50" }),
+      ].reduce((g, m) => m(g), gw),
+    ready: (page) => page.getByTestId("credits-balance-value"),
+    offered: (page) => [page.getByTestId("credits-grant"), page.getByTestId("credits-alert").getByRole("button", { name: "Save" })],
+  },
+  {
+    name: "connect your app (the sandbox)",
+    path: "/connect",
+    tenant: SANDBOX,
+    mock: (gw) => [get("/v1/meters", { meters: [] }), get("/v1/customers", { customers: [] }), get("/v1/webhook-endpoints", { endpoints: [endpoint] })].reduce((g, m) => m(g), gw),
+    ready: (page) => page.getByTestId("connect-step-key"),
+    offered: (page) => [page.getByTestId("connect-key-create"), page.getByTestId("connect-sample-create"), page.getByTestId("connect-test-event-send"), page.getByTestId("connect-webhook-send")],
+  },
+  {
+    name: "a customer's sheet: the card on file",
+    path: "/customers",
+    mock: (gw) => get("/v1/customers/cus_a/cards", { provider: "iyzico", cards: [card] })(get("/v1/customers", { customers: [{ ...customer, payment_method: "ck:ct" }] })(gw)),
+    ready: (page) => page.getByTestId("customer-cus_a"),
+    after: async (page) => {
+      await page.getByTestId("customer-cus_a").click();
+      await page.getByTestId("customer-tab-details").click();
+      await expect(page.getByTestId("customer-card")).toBeVisible();
+    },
+    offered: (page) => [page.getByTestId("card-delete")],
+  },
+  {
+    name: "an open invoice's sheet in the sandbox",
+    path: "/invoices",
+    tenant: SANDBOX,
+    mock: (gw) => {
+      billingGateway(gw).on((c) => (c.method === "GET" && c.path === `/v1/invoices/${INVOICE_2}` ? { body: invoice(INVOICE_2, "INV-2026-000002", "open", "29900", "cus_globex", { lines: invoiceLines, payments: [] }) } : undefined));
+      return gw;
+    },
+    ready: (page) => page.getByTestId("invoice-INV-2026-000002"),
+    after: async (page) => {
+      await page.getByTestId("invoice-INV-2026-000002").click();
+      await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000002");
+    },
+    offered: (page) => [page.getByTestId("simulate-run")],
+  },
 ];
 
 async function open(page: Page, c: Case, role: Role) {
@@ -106,8 +180,9 @@ async function open(page: Page, c: Case, role: Role) {
   c.mock(gw);
   await gw.install(page);
   await signInAsAda(page);
-  await page.goto(`/app/t/${LIVE}${c.path}`);
+  await page.goto(`/app/t/${c.tenant ?? LIVE}${c.path}`);
   await expect(c.ready(page)).toBeVisible();
+  await c.after?.(page);
 }
 
 for (const c of CASES) {
@@ -164,4 +239,49 @@ test("API keys: a viewer sees the keys and is offered no new key, no ticks and n
   await expect(page.getByTestId("new-live-key")).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: "Select all rows on this page" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Revoke", exact: true })).toHaveCount(0);
+});
+
+test("credits: a viewer sees the low-balance threshold and cannot type in it", async ({ page }) => {
+  const { gw } = productGateway(new MockGateway(), { role: "viewer", memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "viewer" }] });
+  [get("/v1/credit-packs", { packs: [] }), get("/v1/customers", { customers: [] }), get("/v1/credits/settings", { low_threshold: "50" })].reduce((g, m) => m(g), gw);
+  await gw.install(page);
+  await signInAsAda(page);
+  await page.goto(`/app/t/${LIVE}/credits`);
+  const threshold = page.getByTestId("credits-alert").getByLabel("Alert below (credits)");
+  await expect(threshold).toHaveValue("50");
+  await expect(threshold).toBeDisabled();
+});
+
+test("a subscription's sheet: a viewer is still told that a change is waiting, and still sees the trail and the usage against the limits", async ({ page }) => {
+  const { gw } = productGateway(new MockGateway(), { role: "viewer", memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "viewer" }] });
+  [get("/v1/subscriptions", { subscriptions: [advanceSub] }), get("/v1/plans", { plans: [] })].reduce((g, m) => m(g), gw);
+  await gw.install(page);
+  await signInAsAda(page);
+  await page.goto(`/app/t/${LIVE}/subscriptions`);
+  await page.getByRole("row", { name: /cus_a/ }).click();
+  const region = page.getByRole("region", { name: /Manage cus_a/ });
+  await expect(region.getByTestId("sub-seats")).toBeVisible();
+  await expect(region.getByRole("region", { name: "Change plan, interval or seats" })).toContainText("Scheduled: pro");
+  await expect(region.getByRole("button", { name: /Pause|Resume|End now|period end|Withdraw|Preview|Apply|Remove coupon/ })).toHaveCount(0);
+});
+
+async function openPurchaseLink(page: Page, role: Role) {
+  const { gw } = productGateway(new MockGateway(), { role, memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role }] });
+  [get("/v1/credit-packs", { packs: [pack] }), get("/v1/customers", { customers: [] }), get("/v1/credits/settings", { low_threshold: "0" })].reduce((g, m) => m(g), gw);
+  await gw.install(page);
+  await signInAsAda(page);
+  await page.goto(`/app/t/${LIVE}/credits?sheet=purchase-link:p1`);
+  await expect(page.getByRole("row", { name: /Starter/ })).toBeVisible();
+}
+
+test("credits: a purchase-link sheet named in the address opens for an owner", async ({ page }) => {
+  await openPurchaseLink(page, "owner");
+  await expect(page.getByRole("dialog", { name: /Purchase link: Starter/ })).toBeVisible();
+});
+
+test("credits: a purchase-link sheet named in the address does not open for a viewer", async ({ page }) => {
+  await openPurchaseLink(page, "viewer");
+  // Give the sheet the time it would need, then look.
+  await page.waitForTimeout(800);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
