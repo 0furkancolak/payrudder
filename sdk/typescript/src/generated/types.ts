@@ -2119,6 +2119,8 @@ export interface ListMailMessagesQuery {
 export interface ListMailMessagesResponse {
   messages: Array<MailMessage>;
   next_page_token: string;
+  /** False when this deployment's gateway is not connected to the notifier (the log is then empty because nothing was asked, not because no mail was sent). */
+  connected: boolean;
 }
 
 export interface ListMailSuppressionsQuery {
@@ -2129,6 +2131,8 @@ export interface ListMailSuppressionsQuery {
 export interface ListMailSuppressionsResponse {
   suppressions: Array<MailSuppression>;
   next_page_token: string;
+  /** False when this deployment's gateway is not connected to the notifier (the list is then empty because nothing was asked, not because nothing is suppressed). */
+  connected: boolean;
 }
 
 export interface ListMetersResponse {

@@ -17,10 +17,12 @@ final class ListMailSuppressionsResponse implements Model
     /**
      * @param list<MailSuppression>|null $suppressions
      * @param string|null $nextPageToken
+     * @param bool|null $connected
      */
     public function __construct(
         public readonly ?array $suppressions = null,
         public readonly ?string $nextPageToken = null,
+        public readonly ?bool $connected = null,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ final class ListMailSuppressionsResponse implements Model
         return new static(
             suppressions: Cast::models(MailSuppression::class, $data['suppressions'] ?? null),
             nextPageToken: Cast::string($data['next_page_token'] ?? null),
+            connected: Cast::bool($data['connected'] ?? null),
         );
     }
 
@@ -42,6 +45,7 @@ final class ListMailSuppressionsResponse implements Model
         return Cast::compact([
             'suppressions' => Cast::wire($this->suppressions),
             'next_page_token' => $this->nextPageToken,
+            'connected' => $this->connected,
         ]);
     }
 }

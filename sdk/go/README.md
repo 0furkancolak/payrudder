@@ -239,6 +239,10 @@ payrudder webhooks trigger ping                     # sends a test event to your
 payrudder webhooks listen --forward-to http://localhost:3000/webhooks/payrudder --secret whsec_...
 payrudder customers list --json
 payrudder invoices list --status open
+payrudder webhooks create --url https://example.com/hook  # prints the signing secret once
+payrudder meters create --code api_calls --aggregation sum --value-property n --unit calls
+payrudder plans publish --code pro -f pro-v1.json   # the body of POST /v1/plans/{code}/versions; an unknown field is refused
+payrudder subscriptions create --customer cus_42 --plan pro
 ```
 
 The key comes from `$PAYRUDDER_API_KEY` or the login, the address from `--base-url`, `$PAYRUDDER_BASE_URL` or the login. `webhooks listen` receives deliveries

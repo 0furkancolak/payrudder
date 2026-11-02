@@ -239,7 +239,7 @@ tests:
               summary: "the last backup run failed for at least one database"
 
   - interval: 1m
-    name: A passing restore drill is quiet and a failing one pages
+    name: A passing restore drill is quiet
     input_series:
       - series: 'payrudder_restore_verify_failed{job="payrudder_restore_verify", case="ok"}'
         values: '0+0x20'
@@ -247,6 +247,22 @@ tests:
       - eval_time: 10m
         alertname: RestoreDrillFailed
         exp_alerts: []
+
+  - interval: 1m
+    name: A failing restore drill pages after five minutes (the newest dump could not be restored, or its data is inconsistent)
+    input_series:
+      - series: 'payrudder_restore_verify_failed{job="payrudder_restore_verify"}'
+        values: '1+0x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: RestoreDrillFailed
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: RestoreDrillFailed
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "the newest backup could not be restored in the restore drill"
 
 
   # --- money (plan 16 / plan 22 G6) ------------------------------------------------------------------------------------------------------------------------------
@@ -632,3 +648,160 @@ tests:
           - exp_labels: { severity: page, service: postgres }
             exp_annotations:
               summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
+
+  # The alerts that had no firing test (plan 16): the dead man's switch of the backup job, the weekly drill, Postgres and the pipeline itself.
+  # tests/alerts checks that every rule has a firing test and a place in the docs.
+  - interval: 1h
+    name: BackupNeverReported pages when no backup has ever reported for 30 hours, and not before
+    input_series:
+      - series: 'up{job="payrudder"}'
+        values: '1+0x60'
+    alert_rule_test:
+      - eval_time: 24h
+        alertname: BackupNeverReported
+        exp_alerts: []
+      - eval_time: 32h
+        alertname: BackupNeverReported
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "no backup has ever reported to the pushgateway (is the backup job running?)"
+
+  - interval: 1m
+    name: BackupNeverReported stays quiet while backups report
+    input_series:
+      - series: 'payrudder_backup_last_success_timestamp_seconds{job="payrudder_backup"}'
+        values: '0+0x2500'
+    alert_rule_test:
+      - eval_time: 40h
+        alertname: BackupNeverReported
+        exp_alerts: []
+
+  - interval: 1m
+    name: RestoreNotVerified warns when no restore drill passed for over eight days, and not before
+    input_series:
+      - series: 'payrudder_restore_verified_timestamp_seconds{job="payrudder_restore_verify"}'
+        values: '0+0x13500'
+    alert_rule_test:
+      - eval_time: 7d
+        alertname: RestoreNotVerified
+        exp_alerts: []
+      - eval_time: 9d
+        alertname: RestoreNotVerified
+        exp_alerts:
+          - exp_labels: { severity: warn, service: postgres }
+            exp_annotations:
+              summary: "no restore drill has passed for over a week"
+
+  - interval: 15s
+    name: PostgresDown pages when the exporter cannot reach the database for a minute
+    input_series:
+      - series: 'pg_up{job="postgres-exporter"}'
+        values: '1+0x8 0+0x40'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PostgresDown
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: PostgresDown
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres, job: postgres-exporter }
+            exp_annotations:
+              summary: "the postgres exporter cannot reach the database"
+
+  - interval: 1m
+    name: PostgresConnectionsHigh warns above 80 percent of max_connections for ten minutes
+    input_series:
+      - series: 'pg_stat_activity_count{datname="plans_db", state="active"}'
+        values: '50+0x40'
+      - series: 'pg_stat_activity_count{datname="billing_db", state="idle"}'
+        values: '35+0x40'
+      - series: 'pg_settings_max_connections{job="postgres-exporter"}'
+        values: '100+0x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: PostgresConnectionsHigh
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: PostgresConnectionsHigh
+        exp_alerts:
+          - exp_labels: { severity: warn, service: postgres }
+            exp_annotations:
+              summary: "more than 80% of the database connections are in use"
+
+  - interval: 1m
+    name: PostgresConnectionsHigh stays quiet at 70 percent
+    input_series:
+      - series: 'pg_stat_activity_count{datname="plans_db", state="active"}'
+        values: '70+0x40'
+      - series: 'pg_settings_max_connections{job="postgres-exporter"}'
+        values: '100+0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: PostgresConnectionsHigh
+        exp_alerts: []
+
+  - interval: 1m
+    name: AlertmanagerNotifyFailing warns when notifications keep failing for ten minutes
+    input_series:
+      - series: 'alertmanager_notifications_failed_total{integration="webhook"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: AlertmanagerNotifyFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AlertmanagerNotifyFailing
+        exp_alerts:
+          - exp_labels: { severity: warn, service: alertmanager }
+            exp_annotations:
+              summary: "Alertmanager cannot deliver alerts to a receiver (check the webhook URL)"
+
+  - interval: 1m
+    name: AlertmanagerNotifyFailing stays quiet when every notification is delivered
+    input_series:
+      - series: 'alertmanager_notifications_failed_total{integration="webhook"}'
+        values: '3+0x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AlertmanagerNotifyFailing
+        exp_alerts: []
+
+  - interval: 1m
+    name: ObjectBackupStale warns when the last successful copy of the buckets is older than 26 hours, and not before
+    input_series:
+      - series: 'payrudder_objects_last_success_timestamp_seconds{job="payrudder_object_backup"}'
+        values: '0+0x2000'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: ObjectBackupStale
+        exp_alerts: []
+      - eval_time: 30h
+        alertname: ObjectBackupStale
+        exp_alerts:
+          - exp_labels: { severity: warn, service: minio }
+            exp_annotations:
+              summary: "the object buckets have not been copied to the backup for over 26 hours"
+
+  - interval: 1m
+    name: SupportFirstAnswerOverdue fires when tickets wait past their deadline and resolves when the queue is answered
+    input_series:
+      - series: 'support_sla_breached_tickets{priority="urgent", job="payrudder", instance="plans-svc"}'
+        values: '1+0x20 0+0x20'
+      - series: 'support_sla_breached_tickets{priority="normal", job="payrudder", instance="plans-svc"}'
+        values: '1+0x20 0+0x20'
+      - series: 'support_sla_breached_tickets{priority="low", job="payrudder", instance="plans-svc"}'
+        values: '0+0x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts:
+          - exp_labels: { severity: warn, service: plans-svc }
+            exp_annotations:
+              summary: "2 support tickets have waited past their first-answer deadline"
+      - eval_time: 35m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts: []

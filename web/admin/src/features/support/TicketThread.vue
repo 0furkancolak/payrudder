@@ -6,7 +6,7 @@ import { formatDate } from "@/shared/lib/format";
 import type { SupportEvent, SupportMessage } from "./api";
 
 /**
- * The messages of a ticket, oldest first, with the changes of its status, priority and assignee between them (the history, as small lines: who changed what, from
+ * The messages of a ticket, oldest first, with the changes of its status, priority, assignee and tags between them (the history, as small lines: who changed what, from
  * and to). The operator's internal notes (only the operator's side receives them) are drawn apart.
  */
 const props = defineProps<{ messages: readonly SupportMessage[]; events?: readonly SupportEvent[] }>();
@@ -21,8 +21,10 @@ const entries = computed<Entry[]>(() =>
   ].sort((a, b) => a.at - b.at || (a.message ? -1 : 1)),
 );
 
-const field = (kind: string) => (kind === "status" ? t("support.columns.status") : kind === "priority" ? t("support.fields.priority") : t("support.columns.assignee"));
-const value = (kind: string, v: string) => (kind === "status" ? t(`support.status.${v}`) : kind === "priority" ? t(`support.priority.${v}`) : v || t("support.unassigned"));
+const field = (kind: string) =>
+  kind === "status" ? t("support.columns.status") : kind === "priority" ? t("support.fields.priority") : kind === "tags" ? t("support.tags.title") : t("support.columns.assignee");
+const value = (kind: string, v: string) =>
+  kind === "status" ? t(`support.status.${v}`) : kind === "priority" ? t(`support.priority.${v}`) : kind === "tags" ? v.split(",").join(", ") || "—" : v || t("support.unassigned");
 </script>
 
 <template>

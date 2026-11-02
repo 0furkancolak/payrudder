@@ -7,6 +7,7 @@ import { SortSelect } from "@/shared/ui/sort-select";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
 import type { SortDef } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination } from "@/shared/ui/data-table";
@@ -21,7 +22,9 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { useBulk } from "@/shared/lib/bulk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { PRIORITIES, STATUSES, useOperatorSupportActions, useOperatorTicket, useQueue, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import { PRIORITIES, STATUSES, useCannedReplies, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import CannedRepliesDialog from "./CannedRepliesDialog.vue";
+import SupportReportCard from "./SupportReportCard.vue";
 import TicketBadges from "./TicketBadges.vue";
 import TicketThread from "./TicketThread.vue";
 
@@ -31,9 +34,12 @@ import TicketThread from "./TicketThread.vue";
  * answer is public unless it is ticked as an internal note.
  */
 const { t, locale } = useI18n();
-const filter = reactive<QueueFilter>({ status: "active", priority: "", assignee: "", search: "", late: false });
+const filter = reactive<QueueFilter>({ status: "active", priority: "", assignee: "", search: "", late: false, tag: "" });
 const queue = useQueue(() => ({ ...filter }));
 const actions = useOperatorSupportActions();
+const operators = useSupportOperators();
+const canned = useCannedReplies();
+const managing = ref(false);
 // The filters that are a choice wait for Apply (FilterSelect); the two text boxes are searches and apply when left or on Enter.
 const statusOptions = computed(() => [
   { value: "active", label: t("support.status.active") },
@@ -62,13 +68,19 @@ const messages = computed(() => thread.data.value?.messages ?? []);
 const events = computed(() => thread.data.value?.events ?? []);
 const shown = computed(() => thread.data.value?.ticket ?? current.value);
 
-const assignee = ref("");
 const reply = ref("");
+const newTag = ref("");
+/** The people a ticket can be assigned to; one that left the list but still holds a ticket stays choosable for that ticket, so the select shows the truth. */
+const assignable = computed(() => {
+  const list = (operators.data.value ?? []).map((o) => ({ value: o.email, label: o.name ? `${o.name} (${o.email})` : o.email }));
+  const have = shown.value?.assignee;
+  return have && !list.some((o) => o.value === have) ? [...list, { value: have, label: have }] : list;
+});
 const internal = ref(false);
 watch(
   () => shown.value?.id,
   () => {
-    assignee.value = shown.value?.assignee ?? "";
+    newTag.value = "";
     reply.value = "";
     internal.value = false;
     actions.reply.reset();
@@ -81,19 +93,33 @@ const bulk = useBulk(table, { name: (row) => `#${row.number}` });
 const bulkStatus = ref("");
 const bulkPriority = ref("");
 const bulkAssignee = ref("");
+const operatorOptions = computed(() => (operators.data.value ?? []).map((o) => ({ value: o.email, label: o.name ? `${o.name} (${o.email})` : o.email })));
 async function applyBulk() {
   const patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string } = {};
   if (bulkStatus.value) patch.status = bulkStatus.value as SupportStatus;
   if (bulkPriority.value) patch.priority = bulkPriority.value as SupportPriority;
-  if (bulkAssignee.value.trim()) patch.assignee = bulkAssignee.value.trim();
+  if (bulkAssignee.value) patch.assignee = bulkAssignee.value;
   if (Object.keys(patch).length === 0) return;
   await bulk.run((row) => actions.update.mutateAsync({ id: row.id, ...patch }));
   bulkStatus.value = bulkPriority.value = bulkAssignee.value = "";
 }
 
-function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string }) {
+function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string; tags?: string[] }) {
   const id = shown.value?.id;
   if (id) actions.update.mutate({ id, ...patch });
+}
+/** Adds the typed tag to the ticket's own (the server lowers and checks it, and says so when it is no tag). */
+function addTag() {
+  const tag = newTag.value.trim().toLowerCase();
+  if (!tag || !shown.value) return;
+  newTag.value = "";
+  if (!shown.value.tags.includes(tag)) change({ tags: [...shown.value.tags, tag] });
+}
+const removeTag = (tag: string) => shown.value && change({ tags: shown.value.tags.filter((x) => x !== tag) });
+/** Pastes a canned reply at the end of what is written. */
+function paste(id: string) {
+  const text = canned.data.value?.find((c) => c.id === id)?.body;
+  if (text) reply.value = reply.value.trim() === "" ? text : `${reply.value.trimEnd()}\n\n${text}`;
 }
 function send() {
   const id = shown.value?.id;
@@ -105,6 +131,7 @@ function send() {
 <template>
   <PageHeader :title="t('shell.items.supportInbox')" :description="t('support.inboxIntro')" />
   <ErrorState :error="queue.error.value" :retrying="queue.isFetching.value" class="mb-4" @retry="queue.refetch()" />
+  <SupportReportCard />
 
   <Card class="p-3">
     <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
@@ -116,7 +143,10 @@ function send() {
         <option value="">{{ t("support.fields.priority") }}</option>
         <option v-for="p in PRIORITIES" :key="p" :value="p">{{ t(`support.priority.${p}`) }}</option>
       </NativeSelect>
-      <Input v-model="bulkAssignee" class="w-36" maxlength="100" :placeholder="t('support.columns.assignee')" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee" />
+      <NativeSelect v-model="bulkAssignee" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee">
+        <option value="">{{ t("support.columns.assignee") }}</option>
+        <option v-for="o in operatorOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+      </NativeSelect>
       <Button type="button" size="sm" :disabled="bulk.busy.value" data-testid="bulk-apply" @click="applyBulk">{{ t("common.applyFilter") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
@@ -125,6 +155,9 @@ function send() {
       <FilterSelect v-model="filter.priority" :label="t('support.fields.priority')" :options="priorityOptions" />
       <label class="grid gap-1 text-xs">{{ t("support.columns.assignee") }}
         <Input v-model.lazy="filter.assignee" class="w-40" data-testid="filter-assignee" />
+      </label>
+      <label class="grid gap-1 text-xs">{{ t("support.tags.filter") }}
+        <Input v-model.lazy="filter.tag" class="w-32" maxlength="30" data-testid="filter-tag" />
       </label>
       <label class="grid gap-1 text-xs">{{ t("common.search") }}
         <Input v-model.lazy="filter.search" class="w-56" :placeholder="t('support.filters.searchHint')" data-testid="filter-search" />
@@ -148,7 +181,10 @@ function send() {
         <TableRow v-for="(r, i) in table.items.value" :key="r.id" class="cursor-pointer" :data-testid="`inbox-row-${r.number}`" @click="table.open(i)">
           <TableCell><RowCheck :label="t('common.bulk.selectRow')" :checked="table.isTicked(r)" @change="(on) => table.tick(r, on)" /></TableCell>
           <TableCell class="mono text-sm">#{{ r.number }}</TableCell>
-          <TableCell class="font-medium">{{ r.subject }}</TableCell>
+          <TableCell class="font-medium">
+            {{ r.subject }}
+            <span v-if="r.tags.length > 0" class="ms-2 inline-flex flex-wrap gap-1 align-middle"><Badge v-for="tag in r.tags" :key="tag" variant="outline" :data-testid="`row-tag-${tag}`">{{ tag }}</Badge></span>
+          </TableCell>
           <TableCell class="text-sm">{{ r.account_name }}<span v-if="r.app_name" class="text-muted-foreground"> · {{ r.app_name }}</span></TableCell>
           <TableCell><TicketBadges :ticket="r" /></TableCell>
           <TableCell class="text-sm">{{ r.assignee || t("support.unassigned") }}</TableCell>
@@ -175,8 +211,22 @@ function send() {
           </NativeSelect>
         </label>
         <label class="grid gap-1 text-xs">{{ t("support.columns.assignee") }}
-          <Input v-model="assignee" maxlength="100" data-testid="ticket-assignee" @change="change({ assignee })" />
+          <NativeSelect :model-value="shown.assignee" data-testid="ticket-assignee" @change="change({ assignee: ($event.target as HTMLSelectElement).value })">
+            <option value="">{{ t("support.unassigned") }}</option>
+            <option v-for="o in assignable" :key="o.value" :value="o.value">{{ o.label }}</option>
+          </NativeSelect>
         </label>
+      </div>
+      <div class="flex flex-wrap items-center gap-2" data-testid="ticket-tags">
+        <span class="text-muted-foreground text-xs">{{ t("support.tags.title") }}</span>
+        <Badge v-for="tag in shown.tags" :key="tag" variant="secondary" class="gap-1.5" :data-testid="`tag-${tag}`">
+          {{ tag }}
+          <button type="button" class="hover:text-destructive -me-1 rounded-full px-1" :aria-label="t('support.tags.remove', { tag })" :data-testid="`tag-remove-${tag}`" @click="removeTag(tag)">×</button>
+        </Badge>
+        <form class="flex items-center gap-1" @submit.prevent="addTag">
+          <Input v-model="newTag" class="h-8 w-28" maxlength="30" :placeholder="t('support.tags.add')" :aria-label="t('support.tags.add')" data-testid="tag-input" />
+        </form>
+        <span class="text-muted-foreground text-xs">{{ t("support.tags.hint") }}</span>
       </div>
       <p class="text-xs" :class="shown.sla_breached ? 'text-destructive' : 'text-muted-foreground'" data-testid="ticket-sla">
         {{ shown.first_response_time ? t("support.answeredAt", { time: formatDate(shown.first_response_time, locale, "dateTime") }) : t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
@@ -186,6 +236,13 @@ function send() {
       <form class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="5" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="internal ? t('support.fields.note') : t('support.fields.reply')" data-testid="inbox-reply" />
         <ErrorText :error="actions.reply.error.value ?? actions.update.error.value" />
+        <div class="flex flex-wrap items-center gap-2">
+          <NativeSelect :model-value="''" :aria-label="t('support.canned.insert')" data-testid="inbox-canned" @change="(e: Event) => { paste((e.target as HTMLSelectElement).value); (e.target as HTMLSelectElement).value = ''; }">
+            <option value="">{{ t("support.canned.insert") }}</option>
+            <option v-for="c in canned.data.value ?? []" :key="c.id" :value="c.id">{{ c.title }}</option>
+          </NativeSelect>
+          <Button type="button" variant="ghost" size="sm" data-testid="canned-manage" @click="managing = true">{{ t("support.canned.manage") }}</Button>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <label class="flex items-center gap-2 text-sm">
             <Checkbox :model-value="internal" data-testid="inbox-internal" @update:model-value="(v: boolean | 'indeterminate') => (internal = v === true)" />{{ t("support.internalNote") }}
@@ -195,4 +252,5 @@ function send() {
       </form>
     </div>
   </DetailSheet>
+  <CannedRepliesDialog v-model:open="managing" />
 </template>

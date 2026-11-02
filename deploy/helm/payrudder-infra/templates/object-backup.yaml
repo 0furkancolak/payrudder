@@ -1,0 +1,72 @@
+{{- if .Values.backup.objects.enabled }}
+# Copies the object buckets (invoice PDFs, assets) to a second place with mc (deploy/backup/object-backup.sh): a delete in the source does not reach the copy. The target
+# is another endpoint or another account in production; with none given it is a prefix in the same MinIO, which only protects against emptying a bucket. The run is
+# reported to backup.objects.pushgatewayHostPort for ObjectBackupStale. Restoring: docs/runbooks/stateful-components.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: object-backup
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "object-backup") | nindent 4 }}
+data:
+  object-backup.sh: |
+    {{- .Files.Get "files/object-backup.sh" | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: object-backup
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "object-backup") | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.objects.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+          containers:
+            - name: object-backup
+              image: {{ .Values.backup.objects.image }}
+              command: ["bash", "/scripts/object-backup.sh", "mirror"]
+              env:
+                - { name: OBJ_SOURCE_URL, value: {{ .Values.backup.objects.sourceUrl | default "http://minio:9000" | quote }} }
+                - name: OBJ_SOURCE_USER
+                  valueFrom: { secretKeyRef: { name: {{ .Values.backup.objects.sourceSecretName | default "minio" }}, key: {{ if .Values.backup.objects.sourceSecretName }}OBJ_SOURCE_USER{{ else }}MINIO_ROOT_USER{{ end }} } }
+                - name: OBJ_SOURCE_PASSWORD
+                  valueFrom: { secretKeyRef: { name: {{ .Values.backup.objects.sourceSecretName | default "minio" }}, key: {{ if .Values.backup.objects.sourceSecretName }}OBJ_SOURCE_PASSWORD{{ else }}MINIO_ROOT_PASSWORD{{ end }} } }
+                - { name: OBJ_BUCKETS, value: {{ .Values.backup.objects.buckets | quote }} }
+                - { name: OBJ_TARGET_BUCKET, value: {{ .Values.backup.objects.targetBucket | quote }} }
+                - { name: OBJ_TARGET_PREFIX, value: {{ .Values.backup.objects.targetPrefix | quote }} }
+                - { name: MC_CONFIG_DIR, value: /tmp/mc }
+                {{- with .Values.backup.objects.targetUrl }}
+                - { name: OBJ_TARGET_URL, value: {{ . | quote }} }
+                {{- end }}
+                {{- with .Values.backup.objects.targetSecretName }}
+                - name: OBJ_TARGET_USER
+                  valueFrom: { secretKeyRef: { name: {{ . }}, key: OBJ_TARGET_USER } }
+                - name: OBJ_TARGET_PASSWORD
+                  valueFrom: { secretKeyRef: { name: {{ . }}, key: OBJ_TARGET_PASSWORD } }
+                {{- end }}
+                {{- with .Values.backup.objects.pushgatewayHostPort }}
+                - { name: PUSHGATEWAY_HOST_PORT, value: {{ . | quote }} }
+                {{- end }}
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts }
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 20m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - name: scripts
+              configMap: { name: object-backup, defaultMode: 0555 }
+            - name: tmp
+              emptyDir: {}
+{{- end }}
