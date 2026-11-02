@@ -5,6 +5,7 @@ package workerx_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
@@ -190,5 +192,32 @@ func TestWorker(t *testing.T) {
 		if r := drain(t, ch, 1, 30*time.Second); len(r) != 1 || calls.Load() != 2 {
 			t.Fatalf("replies = %v after %d calls, want one reply after the 5 s retry", r, calls.Load())
 		}
+	})
+
+	// A provider that said how long to wait (Retry-After) is not asked again sooner: the command goes to the delay queue that holds it that long, not the 5 s tier.
+	t.Run("RetryAfterOfATransientErrorPicksALongerDelayQueue", func(t *testing.T) {
+		var calls atomic.Int32
+		cancel := run(rabbitx.QueueEInvoiceIssue, workerx.HandlerFunc(func(context.Context, *commandsv1.CommandEnvelope) (*commandsv1.ReplyEnvelope, error) {
+			calls.Add(1)
+			return nil, fmt.Errorf("charge: %w", &payments.TransientError{Err: errors.New("429"), RetryAfter: 3 * time.Minute})
+		}), nil)
+		defer cancel()
+		send(rabbitx.QueueEInvoiceIssue, notifyCommand(uuid.New(), "x"))
+		deadline := time.Now().Add(20 * time.Second)
+		for time.Now().Before(deadline) {
+			q, err := ch.QueueDeclarePassive(rabbitx.QueueEInvoiceIssue+".retry.5m", true, false, false, false, amqp.Table{"x-message-ttl": int64(5 * 60 * 1000),
+				"x-dead-letter-exchange": rabbitx.ExchangeCommands, "x-dead-letter-routing-key": rabbitx.QueueEInvoiceIssue})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if q.Messages == 1 {
+				if calls.Load() != 1 {
+					t.Fatalf("the handler ran %d times, want 1", calls.Load())
+				}
+				return
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		t.Fatal("the command never reached einvoice.issue.retry.5m")
 	})
 }

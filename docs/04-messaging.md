@@ -164,8 +164,9 @@ flowchart LR
 | `payment.refund` | `billing.commands` (`payment.refund`) | payments-worker | same |
 | `payment.status` | `billing.commands` (`payment.status`) | payments-worker | same |
 | `notification.send` | `billing.commands` (`notification.send`) | notifier | same |
-| `{queue}.retry.5s` / `.30s` / `.2m` (×5 queues) | `billing.commands.retry` (`{queue}.retry.{tier}`) | none | `x-message-ttl` = 5000 / 30000 / 120000, `x-dead-letter-exchange=billing.commands`, `x-dead-letter-routing-key={queue}` |
-| `{queue}.dlq` (×5) | `billing.commands.dlx` (`{queue}`) | operator (`payrudderctl dlq`) | quorum, no TTL |
+| `{queue}.retry.5s` / `.30s` / `.2m` (×6 queues) | `billing.commands.retry` (`{queue}.retry.{tier}`) | none | `x-message-ttl` = 5000 / 30000 / 120000, `x-dead-letter-exchange=billing.commands`, `x-dead-letter-routing-key={queue}` |
+| `{queue}.retry.5m` / `.10m` (×6 queues) | `billing.commands.retry` (`{queue}.retry.{tier}`) | none | `x-message-ttl` = 300000 / 600000, same dead-letter arguments. The hold tiers: chosen only when a provider asked for a longer wait (below), never by attempt |
+| `{queue}.dlq` (×6) | `billing.commands.dlx` (`{queue}`) | operator (`payrudderctl dlq`) | quorum, no TTL |
 | `billing-svc.replies` | `billing.replies` (`reply`) | billing-svc | quorum, `x-dead-letter-exchange=billing.replies.dlx`, `x-delivery-limit=5` |
 | `billing-svc.replies.dlq` | `billing.replies.dlx` | operator | quorum |
 
@@ -181,6 +182,7 @@ and also exported as `deploy/rabbitmq/definitions.json` for inspection.
    `{queue}.retry.{5s|30s|2m}` (tier by attempt) and `x-attempt+1`, wait for the publisher confirm, then **ack** the original.
    Explicit re-publish instead of `nack` lets us choose the delay tier, and per-queue TTL avoids the
    head-of-line blocking that per-message TTL causes.
+   **A provider's `Retry-After`** (`payments.TransientError.RetryAfter`, today Paddle's 429 and the circuit breaker's cool-down) is honoured: the handler's error answers `RetryDelay()`, `workerx` hands it to the consumer (`rabbitx.AskRetryAfter`), and the retry goes to the shortest queue, among the five tiers, that holds `max(tier of the attempt, Retry-After)`, at most `rabbitx.RetryCeiling` (`PAYMENTS_RETRY_CEILING` in payments-worker, **10 minutes, default not agreed**, which is also the longest queue, so a larger value changes nothing). A wait in between rounds up to the next queue (3 minutes waits 5), and the attempt counter is unchanged, so a rate-limited command still dies after `MaxAttempts` retries, now spread over a longer time. Stripe documents no `Retry-After` (`docs/stripe-compatibility-matrix.md`, finding 6), so only Paddle's and the breaker's reach it.
 3. **Permanent** → reply a failure (`PdfFailed`, `PaymentDeclined`) and ack. That's business-level failure, not dead-lettering.
 4. **Exhausted or poison** (undecodable, unknown `type`) → `nack(requeue=false)` → DLX → `{queue}.dlq`.
    No reply. billing-svc's step-deadline sweeper notices and moves the saga to `*_FAILED`.
