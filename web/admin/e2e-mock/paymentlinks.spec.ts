@@ -48,7 +48,8 @@ test.describe("payment links", () => {
     await form.getByLabel("Promotion code (optional)").fill("WELCOME");
     await form.getByRole("button", { name: "Create link" }).click();
     await expect(page.getByTestId("payment-link-url")).toHaveValue("https://api.example.com/i/tok");
-    await expect(page.getByRole("status")).toContainText("shown once");
+    // The bulk bar keeps its own (empty) live region on the page, so the status that is asked about is named by what it says.
+    await expect(page.getByRole("status").filter({ hasText: "shown once" })).toBeVisible();
     const body = gw.called("POST", "/v1/payment-links")[0]?.body;
     expect(body).toMatchObject({ kind: "adhoc", amount_minor: "4990", currency: "USD", description: "Workshop", single_use: true, promotion_code: "WELCOME" });
     expect(String(body?.idempotency_key).length).toBeGreaterThan(10);

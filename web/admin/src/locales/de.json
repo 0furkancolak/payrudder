@@ -446,7 +446,12 @@
       "reason": "Grund",
       "bytes": "Bytes"
     },
-    "noMessages": "Keine Nachrichten in dieser Warteschlange."
+    "noMessages": "Keine Nachrichten in dieser Warteschlange.",
+    "bulk": {
+      "redrive": "Redrive für Auswahl",
+      "title": "Die ausgewählten Warteschlangen per Redrive zurückführen?",
+      "confirm": "Warteschlangen: {queues}. Nachrichten, die in ihre Arbeitswarteschlangen zurückgehen (Wiederholungszähler zurückgesetzt): {count}."
+    }
   },
   "playground": {
     "title": "Spielwiese",
@@ -961,6 +966,13 @@
         "replacedBy": "Durch einen Planwechsel ersetzt: {plan} hat übernommen.",
         "changedFrom": "Durch einen Planwechsel von {plan} entstanden.",
         "open": "Öffnen"
+      },
+      "bulk": {
+        "cancel": "Auswahl zum Periodenende kündigen",
+        "keep": "Auswahl behalten",
+        "resume": "Auswahl fortsetzen",
+        "cancelTitle": "{n} Abonnement zum Periodenende kündigen? | {n} Abonnements zum Periodenende kündigen?",
+        "confirmCancel": "Jedes endet mit seiner laufenden Periode und wird nicht verlängert. Kunden behalten bis dahin den Zugriff; „Auswahl behalten“ nimmt die Kündigung zurück."
       }
     },
     "payments": {
@@ -1140,7 +1152,12 @@
         "empty": "Noch keine Gutscheine.",
         "badPercent": "Kein Prozentsatz: 0,01 bis 100 mit höchstens zwei Dezimalstellen.",
         "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung.",
-        "repeatingFor": "Erste {n} Gebühren"
+        "repeatingFor": "Erste {n} Gebühren",
+        "bulk": {
+          "deactivate": "Auswahl deaktivieren",
+          "title": "{n} Gutschein deaktivieren? | {n} Gutscheine deaktivieren?",
+          "confirm": "Sie nehmen keine neuen Einlösungen mehr an, und ein deaktivierter Gutschein lässt sich nicht wieder einschalten. Abonnements, die bereits einen haben, behalten ihn."
+        }
       },
       "tax": {
         "title": "Steuer",
@@ -1407,7 +1424,12 @@
       "createdTitle": "Zahlungslink erstellt",
       "createdHint": "Kopieren Sie den Link jetzt und senden Sie ihn an den Zahler.",
       "another": "Weiteren Link erstellen",
-      "customerNone": "Kein Kunde"
+      "customerNone": "Kein Kunde",
+      "bulk": {
+        "revoke": "Auswahl widerrufen",
+        "revokeTitle": "{n} Zahlungslink widerrufen? | {n} Zahlungslinks widerrufen?",
+        "confirmRevoke": "Widerrufene Links funktionieren sofort nicht mehr und lassen sich nicht wiederherstellen. Daraus entstandene unbezahlte Rechnungen werden storniert."
+      }
     },
     "mail": {
       "title": "E-Mail",
@@ -2300,7 +2322,14 @@
       "reinstate": "Wieder freigeben",
       "edit": "Bearbeiten",
       "linkAndCode": "Link und Code",
-      "referralsOf": "Empfehlungen"
+      "referralsOf": "Empfehlungen",
+      "bulk": {
+        "approve": "Auswahl freigeben",
+        "suspend": "Auswahl sperren",
+        "reinstate": "Auswahl wieder freigeben",
+        "suspendTitle": "{n} Partner sperren? | {n} Partner sperren?",
+        "confirmSuspend": "Ein gesperrter Partner erhält keine neuen Zuordnungen oder Provisionen; bereits Freigegebenes bleibt. Wieder freigeben holt ihn zurück."
+      }
     },
     "add": {
       "title": "Partner hinzufügen",

@@ -5,11 +5,14 @@ import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
+import { useBulk } from "@/shared/lib/bulk";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { amount, countHigh, countLow, nameAsc, nameDesc } from "@/shared/lib/sortDefs";
@@ -23,7 +26,7 @@ const redrive = useRedrive();
 const queues = computed(() => list.data.value?.queues ?? []);
 const messages = computed(() => list.data.value?.messages ?? []);
 const queuesTable = useTableState(queues, {
-  sheet: { kind: "dl-queue", id: (q) => q.queue }, searchFields: (q) => [q.queue],
+  sheet: { kind: "dl-queue", id: (q) => q.queue }, url: true, searchFields: (q) => [q.queue],
   sorts: () => [countHigh(t, (q) => amount(q.messages)), countLow(t, (q) => amount(q.messages)), nameAsc(t, (q) => q.queue), nameDesc(t, (q) => q.queue)],
 });
 const messagesTable = useTableState(messages, {
@@ -35,6 +38,15 @@ watch(queuesTable.detail, () => {
   messagesTable.clear();
 });
 const note = ref<{ queue: string; count: number } | null>(null);
+const depth = (q: { messages?: string | number }) => Number(q.messages ?? 0);
+
+// Redriving several queues at once: the ticked ones that hold something, after one question that says how many messages move.
+const bulk = useBulk(queuesTable, { name: (q) => `${q.queue}.dlq` });
+const bulkRedrive = () =>
+  bulk.run((q) => redrive.mutateAsync(q.queue ?? ""), {
+    rows: (all) => all.filter((q) => depth(q) > 0),
+    confirm: (rows) => ({ title: t("deadLetters.bulk.title"), body: t("deadLetters.bulk.confirm", { queues: rows.length, count: rows.reduce((n, q) => n + depth(q), 0) }), confirmLabel: t("deadLetters.redrive") }),
+  });
 
 async function run(name: string, count: number) {
   if (!(await askConfirm({ body: t("deadLetters.confirm", { count, queue: name }) }))) return;
@@ -54,9 +66,14 @@ async function run(name: string, count: number) {
     <DataToolbar v-model:search="queuesTable.search.value" :active="queuesTable.active.value" @clear="queuesTable.clear()">
       <SortSelect v-if="queuesTable.sorts.value.length > 0" v-model="queuesTable.sort.value" :options="queuesTable.sorts.value" />
     </DataToolbar>
+    <BulkBar v-bind="bulk.bar.value" @clear="queuesTable.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-redrive" @click="bulkRedrive">{{ t("deadLetters.bulk.redrive") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="queuesTable.allOnPage.value" :indeterminate="queuesTable.someOnPage.value && !queuesTable.allOnPage.value" @change="queuesTable.togglePage()" /></TableHead>
           <TableHead>{{ t("deadLetters.columns.queue") }}</TableHead>
           <TableHead class="text-end">{{ t("deadLetters.columns.messages") }}</TableHead>
           <TableHead class="w-px"><span class="sr-only">{{ t("deadLetters.redrive") }}</span></TableHead>
@@ -64,12 +81,13 @@ async function run(name: string, count: number) {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(q, i) in queuesTable.items.value" :key="q.queue" class="cursor-pointer" :data-testid="`dlq-${q.queue}`" @click="queuesTable.open(i)">
+          <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${q.queue}.dlq`" :checked="queuesTable.isTicked(q)" @change="(on) => queuesTable.tick(q, on)" /></TableCell>
           <TableCell class="mono text-sm font-medium">{{ q.queue }}.dlq</TableCell>
           <TableCell class="text-end" data-testid="dlq-count">
-            <Badge :variant="Number(q.messages ?? 0) > 0 ? 'destructive' : 'secondary'">{{ Number(q.messages ?? 0) }}</Badge>
+            <Badge :variant="depth(q) > 0 ? 'destructive' : 'secondary'">{{ depth(q) }}</Badge>
           </TableCell>
           <TableCell>
-            <RowActions :actions="[{ key: 'redrive', label: t('deadLetters.redrive'), disabled: Number(q.messages ?? 0) === 0, onSelect: () => run(q.queue ?? '', Number(q.messages ?? 0)) }]" />
+            <RowActions :actions="[{ key: 'redrive', label: t('deadLetters.redrive'), disabled: depth(q) === 0, onSelect: () => run(q.queue ?? '', depth(q)) }]" />
           </TableCell>
         </TableRow>
       </TableBody>

@@ -42,7 +42,7 @@ const split = ref<string[]>(["period"]);
 const revenue = useRevenueReport(tenantId, from, to, split);
 type RevenueRow = NonNullable<NonNullable<typeof revenue.data.value>["rows"]>[number];
 const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ?? [], {
-  searchFields: (r) => [r.period, r.provider, r.country, r.currency],
+  url: "revenue-", searchFields: (r) => [r.period, r.provider, r.country, r.currency],
   // The period is a column only while the report is split by it.
   sorts: () => [...(split.value.includes("period") ? [newest<RevenueRow>(t, (r) => r.period), oldest<RevenueRow>(t, (r) => r.period)] : []), amountHigh(t, (r) => amount(r.billed_minor)), amountLow(t, (r) => amount(r.billed_minor))],
   filters: { currency: (r, v) => r.currency === v },
@@ -73,7 +73,7 @@ const subSplit = ref<string[]>([]);
 const subs = useSubscriptionReport(tenantId, month, subSplit);
 type SubRow = NonNullable<NonNullable<typeof subs.data.value>["rows"]>[number];
 const subTable = useTableState<SubRow>(() => subs.data.value?.rows ?? [], {
-  searchFields: (r) => [r.provider, r.country, r.currency],
+  url: "subs-", searchFields: (r) => [r.provider, r.country, r.currency],
   sorts: () => [amountHigh(t, (r) => amount(r.mrr_minor)), amountLow(t, (r) => amount(r.mrr_minor)), countHigh(t, (r) => amount(r.active))],
   filters: { currency: (r, v) => r.currency === v },
 });
@@ -89,7 +89,7 @@ function clearSubs() {
 const dunning = useDunningReport(tenantId);
 type DunningRow = NonNullable<NonNullable<typeof dunning.data.value>["invoices"]>[number];
 const dunningTable = useTableState<DunningRow>(() => dunning.data.value?.invoices ?? [], {
-  searchFields: (d) => [d.number, d.invoice_id, d.customer_external_id, d.provider, d.period],
+  url: "dunning-", searchFields: (d) => [d.number, d.invoice_id, d.customer_external_id, d.provider, d.period],
   sorts: () => [amountHigh(t, (d) => amount(d.total_minor)), amountLow(t, (d) => amount(d.total_minor))],
   filters: { state: (d, v) => d.state === v, currency: (d, v) => d.currency === v },
 });

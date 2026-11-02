@@ -446,7 +446,12 @@
       "reason": "Motivo",
       "bytes": "Bytes"
     },
-    "noMessages": "No hay mensajes en esta cola."
+    "noMessages": "No hay mensajes en esta cola.",
+    "bulk": {
+      "redrive": "Reenviar los seleccionados",
+      "title": "¿Reenviar las colas seleccionadas?",
+      "confirm": "Colas: {queues}. Mensajes que vuelven a sus colas de trabajo, con los contadores de reintentos reiniciados: {count}."
+    }
   },
   "playground": {
     "title": "Área de pruebas",
@@ -961,6 +966,13 @@
         "replacedBy": "Sustituida por un cambio de plan: ahora es {plan}.",
         "changedFrom": "Iniciada por un cambio de plan desde {plan}.",
         "open": "Abrir"
+      },
+      "bulk": {
+        "cancel": "Cancelar los seleccionados al final del periodo",
+        "keep": "Mantener los seleccionados",
+        "resume": "Reanudar los seleccionados",
+        "cancelTitle": "¿Cancelar {n} suscripción al final del periodo? | ¿Cancelar {n} suscripciones al final del periodo?",
+        "confirmCancel": "Cada una termina cuando acaba su periodo actual y no se renueva. Los clientes conservan el acceso hasta entonces, y «Mantener los seleccionados» deshace la cancelación."
       }
     },
     "payments": {
@@ -1140,7 +1152,12 @@
         "empty": "Aún no hay cupones.",
         "badPercent": "No es un porcentaje: de 0,01 a 100 con como mucho dos decimales.",
         "badAmount": "No es un importe en {currency}: solo dígitos, con como mucho los decimales de la moneda.",
-        "repeatingFor": "Primeras {n} cuotas"
+        "repeatingFor": "Primeras {n} cuotas",
+        "bulk": {
+          "deactivate": "Desactivar los seleccionados",
+          "title": "¿Desactivar {n} cupón? | ¿Desactivar {n} cupones?",
+          "confirm": "No aceptan nuevos canjes y un cupón desactivado no se puede volver a activar. Las suscripciones que ya tienen uno lo conservan."
+        }
       },
       "tax": {
         "title": "Impuestos",
@@ -1407,7 +1424,12 @@
       "createdTitle": "Enlace de pago creado",
       "createdHint": "Copie el enlace ahora y envíelo al pagador.",
       "another": "Crear otro enlace",
-      "customerNone": "Sin cliente"
+      "customerNone": "Sin cliente",
+      "bulk": {
+        "revoke": "Revocar los seleccionados",
+        "revokeTitle": "¿Revocar {n} enlace de pago? | ¿Revocar {n} enlaces de pago?",
+        "confirmRevoke": "Los enlaces revocados dejan de funcionar de inmediato y no se pueden recuperar. Las facturas sin pagar creadas con ellos se anulan."
+      }
     },
     "mail": {
       "title": "Correo electrónico",
@@ -2300,7 +2322,14 @@
       "reinstate": "Reactivar",
       "edit": "Editar",
       "linkAndCode": "Enlace y código",
-      "referralsOf": "Referidos"
+      "referralsOf": "Referidos",
+      "bulk": {
+        "approve": "Aprobar los seleccionados",
+        "suspend": "Suspender los seleccionados",
+        "reinstate": "Reactivar los seleccionados",
+        "suspendTitle": "¿Suspender {n} socio? | ¿Suspender {n} socios?",
+        "confirmSuspend": "Un socio suspendido no recibe nuevas atribuciones ni comisiones; lo aprobado se mantiene. Reactivarlo lo devuelve."
+      }
     },
     "add": {
       "title": "Añadir un afiliado",

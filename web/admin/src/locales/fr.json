@@ -446,7 +446,12 @@
       "reason": "Motif",
       "bytes": "Octets"
     },
-    "noMessages": "Aucun message dans cette file."
+    "noMessages": "Aucun message dans cette file.",
+    "bulk": {
+      "redrive": "Rejouer la sélection",
+      "title": "Rejouer les files sélectionnées ?",
+      "confirm": "Files : {queues}. Messages renvoyés vers leurs files de travail, compteurs de tentatives remis à zéro : {count}."
+    }
   },
   "playground": {
     "title": "Bac à sable",
@@ -961,6 +966,13 @@
         "replacedBy": "Remplacé par un changement de formule : {plan} a pris le relais.",
         "changedFrom": "Créé par un changement depuis {plan}.",
         "open": "Ouvrir"
+      },
+      "bulk": {
+        "cancel": "Annuler la sélection à la fin de la période",
+        "keep": "Conserver la sélection",
+        "resume": "Reprendre la sélection",
+        "cancelTitle": "Annuler {n} abonnement à la fin de la période ? | Annuler {n} abonnements à la fin de la période ?",
+        "confirmCancel": "Chacun prend fin avec sa période en cours et n'est pas renouvelé. Les clients gardent l'accès jusque-là, et « Conserver la sélection » annule la résiliation."
       }
     },
     "payments": {
@@ -1140,7 +1152,12 @@
         "empty": "Aucun coupon pour l'instant.",
         "badPercent": "Pas un pourcentage : de 0,01 à 100 avec au plus deux décimales.",
         "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
-        "repeatingFor": "{n} premiers tarifs"
+        "repeatingFor": "{n} premiers tarifs",
+        "bulk": {
+          "deactivate": "Désactiver la sélection",
+          "title": "Désactiver {n} coupon ? | Désactiver {n} coupons ?",
+          "confirm": "Ils n'acceptent plus de nouvelles utilisations, et un coupon désactivé ne peut pas être réactivé. Les abonnements qui en ont déjà un le gardent."
+        }
       },
       "tax": {
         "title": "Taxes",
@@ -1407,7 +1424,12 @@
       "createdTitle": "Lien de paiement créé",
       "createdHint": "Copiez le lien maintenant et envoyez-le au payeur.",
       "another": "Créer un autre lien",
-      "customerNone": "Aucun client"
+      "customerNone": "Aucun client",
+      "bulk": {
+        "revoke": "Révoquer la sélection",
+        "revokeTitle": "Révoquer {n} lien de paiement ? | Révoquer {n} liens de paiement ?",
+        "confirmRevoke": "Les liens révoqués cessent de fonctionner immédiatement et ne peuvent pas être rétablis. Les factures impayées qui en sont issues sont annulées."
+      }
     },
     "mail": {
       "title": "E-mail",
@@ -2300,7 +2322,14 @@
       "reinstate": "Rétablir",
       "edit": "Modifier",
       "linkAndCode": "Lien et code",
-      "referralsOf": "Recommandations"
+      "referralsOf": "Recommandations",
+      "bulk": {
+        "approve": "Approuver la sélection",
+        "suspend": "Suspendre la sélection",
+        "reinstate": "Rétablir la sélection",
+        "suspendTitle": "Suspendre {n} partenaire ? | Suspendre {n} partenaires ?",
+        "confirmSuspend": "Un partenaire suspendu ne reçoit ni nouvelles attributions ni commissions ; ce qui a été approuvé reste. Le rétablir le remet en service."
+      }
     },
     "add": {
       "title": "Ajouter un affilié",
