@@ -17,14 +17,9 @@
     }
   },
   "nav": {
-    "tenants": "Tenants",
-    "playground": "Playground",
-    "deadLetters": "Dead letters",
     "signOut": "Sign out"
   },
   "common": {
-    "loading": "Loading…",
-    "unknown": "?",
     "cancel": "Cancel",
     "copied": "Copied",
     "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand.",
@@ -36,7 +31,6 @@
     "noMatches": "Nothing matches these filters.",
     "moreActions": "More actions",
     "view": "View",
-    "openFullPage": "Open full page",
     "all": "All",
     "confirm": {
       "title": "Are you sure?",
@@ -254,7 +248,6 @@
     "allCurrencies": "All currencies",
     "suspend": "Suspend",
     "reinstate": "Reinstate",
-    "suspended": "Suspended",
     "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once.",
     "pricePause": {
       "title": "Price changes",
@@ -272,7 +265,6 @@
   },
   "tenant": {
     "fallbackTitle": "Tenant",
-    "grace": "grace {value}",
     "invoices": "Invoices",
     "noInvoices": "No invoices.",
     "draft": "(draft)",
@@ -360,19 +352,6 @@
     }
   },
   "invoice": {
-    "summary": "{kind} · period {period} · {customer} · {total} · {status} · saga {saga}",
-    "openPdf": "Open PDF",
-    "noPdfLink": "no link",
-    "lines": "Lines",
-    "lineColumns": {
-      "no": "#",
-      "kind": "Kind",
-      "description": "Description",
-      "meter": "Meter",
-      "quantity": "Quantity",
-      "amount": "Amount",
-      "period": "Service period"
-    },
     "saga": "Saga timeline",
     "sagaColumns": {
       "seq": "Seq",
@@ -507,9 +486,7 @@
       "formLabel": "new account",
       "name": "Account name",
       "currency": "Currency",
-      "currencyPlaceholder": "Currency (cannot change later)",
       "timezone": "Time zone",
-      "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
       "grace": "Grace period (hours)",
       "gracePlaceholder": "Grace period, hours (0 to 168)",
       "create": "Create account",
@@ -577,23 +554,7 @@
   },
   "billing": {
     "tabs": {
-      "label": "Tenant sections",
-      "overview": "Overview",
-      "customers": "Customers",
-      "packages": "Packages",
-      "subscriptions": "Subscriptions",
-      "payments": "Payments",
-      "providers": "Providers",
-      "reports": "Reports",
-      "pricing": "Coupons & tax",
-      "webhooks": "Webhooks",
-      "einvoice": "E-invoice",
-      "paymentLinks": "Payment links",
-      "mail": "Mail",
-      "apps": "Apps",
-      "address": "Seller address",
-      "credits": "Credits",
-      "accounting": "Accounting"
+      "subscriptions": "Subscriptions"
     },
     "common": {
       "remove": "Remove"
@@ -705,7 +666,6 @@
         "badge": "Blocked",
         "action": "Block",
         "lift": "Lift the block",
-        "confirm": "Block {name}? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
         "confirmMany": "Block {n} customers? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
         "title": "Block {name}",
         "description": "No new subscription, plan change or purchase can be started for them. What they have now runs on.",
@@ -1052,20 +1012,14 @@
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
-      "reconcileHint": "Compares the invoices billing calls paid in a period with the successful charges the providers reported.",
       "period": "Period (YYYY-MM)",
       "run": "Reconcile",
-      "reconcileResult": "reconciliation result",
-      "summary": "{paid} paid invoice(s) and {charges} successful charge(s) in the ledger.",
-      "agree": "The invoices and the ledger agree.",
       "kind": "Kind",
       "invoice": "Invoice",
       "provider": "Provider",
       "billed": "Billed",
       "ledgerAmount": "Ledger",
-      "detail": "Detail",
       "truncated": "Only the first discrepancies are listed; the counts above are complete.",
-      "ledger": "Payment ledger",
       "when": "When",
       "status": "Status",
       "amount": "Amount",
@@ -1203,15 +1157,11 @@
     },
     "pricing": {
       "coupons": {
-        "title": "Coupons",
         "hint": "A coupon takes a percentage or an amount off the fixed fee Payrudder invoices in advance: once, for a number of periods, or for as long as the subscription lasts. A subscription run by a provider uses a discount at the provider instead.",
         "formLabel": "new coupon",
         "code": "Code",
         "name": "Name",
         "kind": "Kind",
-        "percent": "Percentage",
-        "amount": "Amount",
-        "value": "Value (10 or 12.5 / 4.99)",
         "currency": "Currency",
         "duration": "Duration",
         "once": "First fee only",
@@ -1225,8 +1175,6 @@
         "inactive": "Inactive",
         "redeemed": "Redeemed",
         "empty": "No coupons yet.",
-        "badPercent": "Not a percentage: 0.01 to 100 with at most two decimals.",
-        "badAmount": "Not an amount in {currency}: digits only, with at most as many decimals as the currency has.",
         "repeatingFor": "First {n} fees",
         "bulk": {
           "deactivate": "Deactivate selected",
@@ -1272,10 +1220,8 @@
           "amount": "Amount off",
           "bonus": "Bonus credits"
         },
-        "valueBonus": "Extra credits, % (10 or 12.5)",
         "bonusValue": "{pct} more credits",
         "bonusNote": "Bonus credits are added to the same lot as the pack's credits and expire with them. Credit purchases only.",
-        "badBonus": "Not a percentage of extra credits: 0.01 to 1000 with at most two decimals.",
         "appliesTo": "Works on",
         "targets": {
           "subscription": "Subscription fee",
@@ -1283,11 +1229,7 @@
           "payment": "Payment link or invoice",
           "legacy": "Before the ledger"
         },
-        "noTarget": "Pick where the coupon works.",
-        "withoutDefaultCode": "No promotion under the coupon's own name",
         "codeCount": "Codes",
-        "manageCodes": "Codes",
-        "hideCodes": "Close",
         "codes": {
           "title": "Promotion codes of {coupon}",
           "hint": "Name the codes, or generate random ones. Every code gets the limit, expiry and rules below.",
@@ -1304,8 +1246,6 @@
           "minAmount": "Minimum amount (optional)",
           "minCurrency": "Currency of the minimum",
           "allowedCurrencies": "Only in these currencies (USD, EUR)",
-          "allowedPlans": "Only on these plans (plan codes)",
-          "allowedPacks": "Only on these credit packs (ids)",
           "firstPurchase": "First purchase only",
           "onePerCustomer": "Once per customer",
           "restore": "Give the use back when the purchase is voided or refunded",
@@ -1317,7 +1257,6 @@
           "download": "Download CSV",
           "search": "Search codes",
           "stateAll": "Any state",
-          "total": "{n} codes",
           "used": "Used",
           "expiresCol": "Expires",
           "rules": "Rules",
@@ -1342,11 +1281,8 @@
           "confirmBody": "It takes no new redemptions. The coupon and its other codes keep working."
         },
         "redemptions": {
-          "title": "Redemptions",
-          "hint": "Every use of a coupon. A void or a full refund reverses the use; the count goes back only for codes that say so.",
           "coupon": "Coupon",
           "allCoupons": "All coupons",
-          "total": "{n} redemptions",
           "customer": "Customer",
           "usedOn": "Used on",
           "discount": "Discount",
@@ -1401,7 +1337,6 @@
       }
     },
     "webhooks": {
-      "title": "Webhooks",
       "hint": "Payrudder sends a signed JSON POST to these HTTPS endpoints when something happens in the account: an invoice is paid, a credit note is issued, a subscription changes. Verify the Payrudder-Signature header with the endpoint's secret; failed deliveries are retried for about a day and a half.",
       "formLabel": "new webhook endpoint",
       "url": "Endpoint URL",
@@ -1444,9 +1379,6 @@
         "live": "This URL uses http: events with customer and invoice data would travel unencrypted. Use an https URL."
       },
       "bulk": {
-        "pause": "Pause selected",
-        "resume": "Resume selected",
-        "delete": "Delete selected",
         "deleteTitle": "Delete the selected endpoints?",
         "confirmDelete": "The selected endpoints are removed and stop receiving events. Their secrets cannot be recovered."
       }
@@ -1477,7 +1409,6 @@
       "url": "Payment link",
       "copy": "Copy",
       "replayed": "This request was already handled: the link exists, but its address is shown only once.",
-      "list": "Links",
       "anyKind": "Any kind",
       "anyStatus": "Any status",
       "status": "Status",
@@ -1494,9 +1425,6 @@
       "revoke": "Revoke",
       "confirmRevoke": "Revoke this link? Unpaid invoices made from it are voided.",
       "empty": "No payment links yet.",
-      "previous": "Previous",
-      "next": "Next",
-      "links": "Links",
       "paymentLink": "Payment link",
       "errors": {
         "invoice": "Enter the invoice id.",
@@ -1682,7 +1610,6 @@
         "title": "Purchase link",
         "hint": "A link the customer opens to buy this pack. When the payment is confirmed the credits are added once. The price is always the pack's.",
         "formLabel": "Create purchase link",
-        "pack": "Pack",
         "customer": "Customer",
         "pickCustomer": "Choose a customer",
         "quantity": "Quantity",
@@ -1710,7 +1637,6 @@
       }
     },
     "accounting": {
-      "title": "Income and expenses",
       "intro": "What the tenant earned from paid invoices and what it spent, in each currency on its own.",
       "export": "Export CSV",
       "addExpense": "Add expense",
@@ -2339,10 +2265,7 @@
       "close": "Close",
       "save": "Save",
       "yes": "Yes",
-      "no": "No",
-      "prev": "Previous",
-      "next": "Next",
-      "total": "{count} in total"
+      "no": "No"
     },
     "status": {
       "program": {
@@ -2515,7 +2438,6 @@
       }
     },
     "commissions": {
-      "title": "Commissions",
       "intro": "One commission per paid invoice of a customer a partner brought, on the net, pre-tax amount. It waits out the hold, is then approved, and is paid by a payout.",
       "allPartners": "All partners",
       "allStatuses": "All statuses",
@@ -2560,7 +2482,6 @@
       "nothing": "Nothing more to take back: this reversal was already done."
     },
     "payouts": {
-      "title": "Payouts",
       "intro": "A payout is the approved commissions of one partner in one currency. Payrudder moves no money: pay by hand or bank transfer, then mark the payout paid.",
       "create": "Create payouts",
       "result": "Payouts created",
@@ -2597,7 +2518,6 @@
       "done": "Payout marked as paid."
     },
     "journal": {
-      "title": "Journal",
       "intro": "What paid payouts posted to your books: the commission expense against the payable, and the payable against cash.",
       "download": "Download CSV",
       "balanced": "Balanced",
@@ -2862,14 +2782,11 @@
     "slug": "Slug",
     "slugPlaceholder": "Slug (optional, e.g. web-shop)",
     "currency": "Currency",
-    "currencyPlaceholder": "Currency (cannot change later)",
     "timezone": "Time zone",
-    "timezonePlaceholder": "IANA time zone, e.g. Europe/Istanbul",
     "grace": "Grace period (hours)",
     "gracePlaceholder": "Grace period, hours (0 to 168)",
     "create": "Create app",
     "badSlug": "The slug may only have lower-case letters, digits and single dashes, at most 60 characters.",
-    "title": "Apps of this account",
     "immutable": "Renaming and deleting an app is not available in the API yet; an app's currency, time zone and grace period cannot be changed.",
     "environments": "Environments",
     "created": "Created",
@@ -3857,7 +3774,6 @@
       "orgCreate": "Create organisation"
     },
     "nav": {
-      "home": "Home",
       "settings": "Settings",
       "security": "Security"
     },
@@ -3877,25 +3793,8 @@
       "unknown": "No data"
     },
     "unavailable": "Not available right now.",
-    "degraded": "Some parts did not answer ({sections}). The rest is up to date.",
-    "sections": {
-      "payments": "payments",
-      "invoices": "invoices",
-      "customers": "customers",
-      "subscriptions": "subscriptions",
-      "webhooks": "webhooks"
-    },
     "kpi": {
-      "revenue": "Revenue",
-      "revenueDays": "Revenue, last {days} days",
-      "payments": "Payments",
-      "failedCount": "Failed: {n}",
-      "openInvoices": "Open invoices",
-      "outstanding": "{amount} outstanding",
-      "paidInvoices": "Paid invoices: {n}",
-      "customers": "Customers",
-      "mrr": "{amount} per month",
-      "noMrr": "No recurring revenue yet"
+      "revenue": "Revenue"
     },
     "card": {
       "revenue": "Revenue, last {days} days",
@@ -3993,22 +3892,7 @@
       "sandboxNote": "Sandbox: test data and a pretend payment provider. Nothing here is real money.",
       "banner": "Sandbox: test data and a pretend payment provider. Nothing here is real money."
     },
-    "donut": {
-      "title": "Payments by status",
-      "label": "{n} payments by status",
-      "center": "payments"
-    },
-    "currency": {
-      "title": "Revenue by currency",
-      "empty": "No invoices yet.",
-      "billed": "Billed {amount}",
-      "collected": "Collected {amount}",
-      "outstanding": "Outstanding {amount}",
-      "collectedOf": "Collected {collected} of {billed}"
-    },
     "payments": {
-      "title": "Recent payments",
-      "empty": "No payments in the last 30 days.",
       "truncated": "Latest 1000 ledger entries",
       "when": "When",
       "status": "Status",
@@ -4016,11 +3900,6 @@
       "amount": "Amount",
       "allStatuses": "All statuses",
       "allKinds": "All kinds"
-    },
-    "invoices": {
-      "title": "Recent invoices",
-      "empty": "No invoices yet.",
-      "draft": "Draft"
     },
     "invoiceStatus": {
       "draft": "Draft",
@@ -4143,17 +4022,6 @@
       }
     },
     "links": {
-      "title": "Go deeper",
-      "intro": "The working pages of the {env} environment.",
-      "customers": "Customers",
-      "paymentLinks": "Payment links",
-      "credits": "Credits",
-      "webhooks": "Webhooks",
-      "invoices": "Invoices",
-      "payments": "Payments",
-      "packages": "Packages",
-      "pricing": "Tax and retries",
-      "reports": "Reports",
       "readOnly": "Your role is viewer: you can read everything here, but changes are not allowed."
     },
     "settings": {
@@ -4216,7 +4084,6 @@
       "roleOf": "Role of {name}",
       "leave": "Leave",
       "remove": "Remove",
-      "removeNamed": "Remove {name}",
       "inviteTitle": "Invite someone",
       "role": "Role",
       "invite": "Send invitation",
@@ -4226,9 +4093,7 @@
       "expiredOn": "Expired on {date}",
       "expired": "Expired",
       "resend": "Send again",
-      "resendNamed": "Send the invitation to {email} again",
       "cancel": "Cancel",
-      "cancelNamed": "Cancel the invitation to {email}",
       "leaveTitle": "Leave this account?",
       "leaveBody": "You lose access to its apps and data at once. An owner can invite you again.",
       "removeTitle": "Remove this member?",
@@ -4269,7 +4134,6 @@
     "billing": {
       "invoices": {
         "title": "Invoices",
-        "intro": "What this environment billed. Open one to see its lines and download the PDF.",
         "status": "Status",
         "all": "All statuses",
         "number": "Number",
@@ -4278,8 +4142,7 @@
         "created": "Created",
         "total": "Total",
         "empty": "No invoices yet. They appear when a billing period closes.",
-        "draft": "Draft",
-        "loadMore": "Load more"
+        "draft": "Draft"
       },
       "invoice": {
         "issued": "Issued",
@@ -4294,14 +4157,12 @@
       },
       "payments": {
         "title": "Payments",
-        "intro": "Charges and refunds, newest first. Each payment shows the outcome it settled on.",
         "empty": "No payments yet.",
         "kind": "Type",
         "kinds": {
           "charge": "Charge",
           "refund": "Refund"
         },
-        "invoice": "Invoice",
         "viewInvoice": "View invoice"
       }
     },
@@ -4393,8 +4254,6 @@
         "connected": "Connected providers",
         "connectedNow": "{provider} is connected.",
         "connectTitle": "Connect a provider",
-        "provider": "Provider",
-        "choose": "Choose a provider",
         "secretsOnce": "Secret keys are not shown again after you save. Use live keys, not test keys.",
         "optional": "optional",
         "checkAndConnect": "Check and connect",
@@ -4538,13 +4397,7 @@
     "providers": {
       "connect": "Connect",
       "manage": "Manage",
-      "simulator": "Built-in simulator",
       "sandboxNote": "The sandbox runs on a built-in simulator and never charges a real card. To try a provider's own checkout, connect iyzico or Paddle in test mode; payment methods named pm_sandbox_ stay on the simulator.",
-      "state": {
-        "none": "Not connected",
-        "working": "Connected and working",
-        "problem": "Problem"
-      },
       "defaultAccount": "Connected and used for live payments.",
       "connectedLine": "Connected.",
       "notConnectedLine": "Not connected in live mode.",
@@ -4554,15 +4407,8 @@
       "doneAll": "{provider} connected on {count} app(s).",
       "donePartial": "{provider}: {ok} app(s) connected, {failed} failed.",
       "appsTitle": "Apps",
-      "appsIntro": "Click a status to connect, replace or remove a provider for that app alone.",
       "app": "App",
       "noLive": "No live environment",
-      "about": {
-        "iyzico": "Turkish cards and local methods",
-        "paddle": "Cards worldwide, with subscriptions run by the provider",
-        "banktransfer": "Pay by transfer to your own bank account",
-        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
-      },
       "scope": {
         "title": "Where to connect",
         "app": "This app only",
@@ -4638,9 +4484,6 @@
       },
       "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator.",
       "account": {
-        "title": "Payment accounts",
-        "intro": "Connect more than one account at a provider (a Paddle account per region, an iyzico account per company), choose the default, and say which account takes the customers of which country.",
-        "add": "Add a {provider} account",
         "empty": "No payment account is connected yet. Connect one above.",
         "default": "Default",
         "makeDefault": "Make default",
@@ -5055,14 +4898,11 @@
       "audit": "Audit log",
       "auditLog": "Audit log"
     },
-    "noApps": "No apps yet",
     "newApp": "New app"
   },
   "privacy": {
     "hide": "Hide amounts",
-    "show": "Show amounts",
-    "hidden": "Hidden",
-    "banner": "Privacy mode is on: amounts are hidden."
+    "show": "Show amounts"
   },
   "picker": {
     "currency": "Currency",
@@ -5244,8 +5084,7 @@
     "next": "Next",
     "page": "Page {page} of {pages}",
     "pageOnly": "Page {page}",
-    "goTo": "Go to page",
-    "go": "Go"
+    "goTo": "Go to page"
   },
   "dateRange": {
     "any": "Any time",
@@ -5273,8 +5112,6 @@
     "subscriptions": "Subscriptions",
     "creditNotes": "Credit notes",
     "none": "None yet",
-    "notFound": "Not in the list",
-    "open": "Open",
     "openCustomerPage": "Open on the customers page to change something",
     "paymentNotLoaded": "This payment is not among the latest payments the console loads."
   },
@@ -5446,6 +5283,36 @@
       },
       "audit": {
         "intro": "Every change to keys, members, prices, webhooks, customers, refunds and provider accounts is recorded here. Entries cannot be changed or removed."
+      },
+      "support": {
+        "intro": "Ask Payrudder for help. Everyone in your organisation sees these tickets, and the answers come back here.",
+        "create": "Open a ticket: say what you did, what you expected and what happened. We answer within the time that belongs to the priority you pick."
+      },
+      "supportInbox": {
+        "intro": "Every ticket of every organisation, newest activity first. Answer in public, or leave an internal note the customer never sees.",
+        "list": "Open a ticket to read the thread and set its status, priority, assignee and tags. Tick several to change them together."
+      },
+      "plan": {
+        "intro": "Your organisation's plan: what it includes, how much of it you use and how to change it.",
+        "usageTitle": "Usage against the limits",
+        "usage": "How much of each limit the organisation has used. At a limit, creating more is refused until you move to a larger plan."
+      },
+      "organisations": {
+        "intro": "Every organisation on this deployment, with its plan. Find one by name or e-mail and move it to another plan.",
+        "list": "Manage opens an organisation's plan and its security settings."
+      },
+      "apps": {
+        "intro": "The apps of this tenant's account, each with its sandbox and its live environment. Create API keys here, per environment.",
+        "create": "Create an app: a name, a currency and a time zone. Its sandbox and live tenants are made with it."
+      },
+      "address": {
+        "intro": "The address printed as the seller on every invoice. Start with the country: the other fields follow what that country asks for.",
+        "previewTitle": "Preview",
+        "preview": "The seller block exactly as the invoice prints it."
+      },
+      "einvoice": {
+        "intro": "Connect the integrator that signs and sends your e-invoices, and set how the documents are made.",
+        "list": "The accounts connected for this tenant, one per environment. A live account sends real documents; the sandbox one only simulates."
       }
     }
   },
@@ -5761,7 +5628,6 @@
     }
   },
   "connect": {
-    "nav": "Connect your app",
     "title": "Connect your app",
     "intro": "From an app to its first usage event: the code to paste, and a checklist that turns green as it works.",
     "checklist": "Where you are",

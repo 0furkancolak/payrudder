@@ -51,7 +51,7 @@ The Review addendum's three pieces are built; the architecture decisions are **d
 ### Defaults chosen (not agreed)
 
 1. A **region** is a data-residency boundary and a latency target.
-2. Each tenant has **one home region**: `tenants.region`. It is set today only when a tenant is moved into a cell (the cell's region); a tenant with no region is **not pinned** and every gateway serves it. (Alternative: no region means "the primary region", refused elsewhere.)
+2. Each tenant has **one home region**: `tenants.region`. It is set when an app is created (both its tenants get the region of the gateway that took the request, or the one the person chose, or `PAYRUDDER_DEFAULT_REGION` for a request that names none; see the update of 2026-11-02 below) and when a tenant is moved into a cell (the cell's region); a tenant with no region (an app made before, or by a gateway and a plans-svc that name none) is **not pinned** and every gateway serves it. (Alternative: no region means "the primary region", refused elsewhere.)
 3. Sign-in, users, accounts, API keys and the directory are **global**, in a primary region (plans-svc and its pooled database).
 4. Usage ingest and hosted pages are served by the tenant's region gateway; a gateway refuses a tenant of another region with `421 gateway.region.wrong` and a hint header, and **never redirects**.
 5. **Cross-region replication of Kafka, RabbitMQ, Redis, ClickHouse and MinIO is out of scope.** The topology a multi-region deployment would use and its limits (plans-svc runs in one place; people are global; no tool moves non-Postgres data) are in [the scaling runbook](../runbooks/scaling.md#what-a-region-is-default-not-agreed).

@@ -17,14 +17,9 @@
     }
   },
   "nav": {
-    "tenants": "Mandanten",
-    "playground": "Spielwiese",
-    "deadLetters": "Dead Letters",
     "signOut": "Abmelden"
   },
   "common": {
-    "loading": "Wird geladen…",
-    "unknown": "?",
     "cancel": "Abbrechen",
     "copied": "Kopiert",
     "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Text und kopieren Sie ihn von Hand.",
@@ -36,7 +31,6 @@
     "noMatches": "Keine Einträge passen zu diesen Filtern.",
     "moreActions": "Weitere Aktionen",
     "view": "Ansehen",
-    "openFullPage": "Als ganze Seite öffnen",
     "all": "Alle",
     "confirm": {
       "title": "Sind Sie sicher?",
@@ -254,7 +248,6 @@
     "allCurrencies": "Alle Währungen",
     "suspend": "Aussetzen",
     "reinstate": "Wieder freigeben",
-    "suspended": "Ausgesetzt",
     "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr.",
     "pricePause": {
       "title": "Preisänderungen",
@@ -272,7 +265,6 @@
   },
   "tenant": {
     "fallbackTitle": "Mandant",
-    "grace": "Karenzzeit {value}",
     "invoices": "Rechnungen",
     "noInvoices": "Keine Rechnungen.",
     "draft": "(Entwurf)",
@@ -360,19 +352,6 @@
     }
   },
   "invoice": {
-    "summary": "{kind} · Zeitraum {period} · {customer} · {total} · {status} · Saga {saga}",
-    "openPdf": "PDF öffnen",
-    "noPdfLink": "kein Link",
-    "lines": "Positionen",
-    "lineColumns": {
-      "no": "Nr.",
-      "kind": "Art",
-      "description": "Beschreibung",
-      "meter": "Zähler",
-      "quantity": "Menge",
-      "amount": "Betrag",
-      "period": "Leistungszeitraum"
-    },
     "saga": "Saga-Verlauf",
     "sagaColumns": {
       "seq": "Nr.",
@@ -507,9 +486,7 @@
       "formLabel": "neues Konto",
       "name": "Kontoname",
       "currency": "Währung",
-      "currencyPlaceholder": "Währung (später nicht änderbar)",
       "timezone": "Zeitzone",
-      "timezonePlaceholder": "IANA-Zeitzone, z. B. Europe/Berlin",
       "grace": "Karenzzeit (Stunden)",
       "gracePlaceholder": "Karenzzeit in Stunden (0 bis 168)",
       "create": "Konto anlegen",
@@ -577,23 +554,7 @@
   },
   "billing": {
     "tabs": {
-      "label": "Mandanten-Bereiche",
-      "overview": "Übersicht",
-      "customers": "Kunden",
-      "packages": "Pakete",
-      "subscriptions": "Abonnements",
-      "payments": "Zahlungen",
-      "providers": "Anbieter",
-      "reports": "Berichte",
-      "pricing": "Gutscheine & Steuer",
-      "webhooks": "Webhooks",
-      "einvoice": "E-Rechnung",
-      "paymentLinks": "Zahlungslinks",
-      "mail": "E-Mail",
-      "apps": "Apps",
-      "address": "Verkäuferadresse",
-      "credits": "Guthaben",
-      "accounting": "Buchhaltung"
+      "subscriptions": "Abonnements"
     },
     "common": {
       "remove": "Entfernen"
@@ -705,7 +666,6 @@
         "badge": "Gesperrt",
         "action": "Sperren",
         "lift": "Sperre aufheben",
-        "confirm": "{name} sperren? Für diesen Kunden kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was er jetzt hat, läuft weiter.",
         "confirmMany": "{n} Kunden sperren? Für sie kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was sie jetzt haben, läuft weiter.",
         "title": "{name} sperren",
         "description": "Für diesen Kunden kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was er jetzt hat, läuft weiter.",
@@ -1052,20 +1012,14 @@
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
-      "reconcileHint": "Vergleicht die Rechnungen, die die Abrechnung in einer Periode als bezahlt führt, mit den erfolgreichen Abbuchungen der Anbieter.",
       "period": "Periode (JJJJ-MM)",
       "run": "Abgleichen",
-      "reconcileResult": "Abgleichsergebnis",
-      "summary": "{paid} bezahlte Rechnung(en) und {charges} erfolgreiche Abbuchung(en) im Hauptbuch.",
-      "agree": "Rechnungen und Hauptbuch stimmen überein.",
       "kind": "Art",
       "invoice": "Rechnung",
       "provider": "Anbieter",
       "billed": "Berechnet",
       "ledgerAmount": "Hauptbuch",
-      "detail": "Detail",
       "truncated": "Es sind nur die ersten Abweichungen aufgeführt; die Zahlen oben sind vollständig.",
-      "ledger": "Zahlungs-Hauptbuch",
       "when": "Wann",
       "status": "Status",
       "amount": "Betrag",
@@ -1203,15 +1157,11 @@
     },
     "pricing": {
       "coupons": {
-        "title": "Gutscheine",
         "hint": "Ein Gutschein nimmt einen Prozentsatz oder Betrag von der Festgebühr ab, die Payrudder im Voraus berechnet: einmal, für eine Anzahl Zeiträume oder solange das Abonnement läuft. Ein vom Anbieter betriebenes Abonnement nutzt stattdessen einen Rabatt beim Anbieter.",
         "formLabel": "neuer Gutschein",
         "code": "Code",
         "name": "Name",
         "kind": "Art",
-        "percent": "Prozent",
-        "amount": "Betrag",
-        "value": "Wert (10 oder 12,5 / 4,99)",
         "currency": "Währung",
         "duration": "Dauer",
         "once": "Nur die erste Gebühr",
@@ -1225,8 +1175,6 @@
         "inactive": "Inaktiv",
         "redeemed": "Eingelöst",
         "empty": "Noch keine Gutscheine.",
-        "badPercent": "Kein Prozentsatz: 0,01 bis 100 mit höchstens zwei Dezimalstellen.",
-        "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung.",
         "repeatingFor": "Erste {n} Gebühren",
         "bulk": {
           "deactivate": "Auswahl deaktivieren",
@@ -1272,10 +1220,8 @@
           "amount": "Betrag Rabatt",
           "bonus": "Bonus-Credits"
         },
-        "valueBonus": "Zusätzliche Credits, % (10 oder 12,5)",
         "bonusValue": "{pct} mehr Credits",
         "bonusNote": "Bonus-Credits kommen in dasselbe Los wie die Credits des Pakets und verfallen mit ihnen. Nur für Credit-Käufe.",
-        "badBonus": "Kein Prozentsatz zusätzlicher Credits: 0,01 bis 1000 mit höchstens zwei Dezimalstellen.",
         "appliesTo": "Gilt für",
         "targets": {
           "subscription": "Abonnementgebühr",
@@ -1283,11 +1229,7 @@
           "payment": "Zahlungslink oder Rechnung",
           "legacy": "Vor dem Einlösungsbuch"
         },
-        "noTarget": "Wählen Sie, wofür der Gutschein gilt.",
-        "withoutDefaultCode": "Keine Aktion unter dem Namen des Gutscheins anlegen",
         "codeCount": "Codes",
-        "manageCodes": "Codes",
-        "hideCodes": "Schließen",
         "codes": {
           "title": "Aktionscodes von {coupon}",
           "hint": "Benennen Sie die Codes oder erzeugen Sie zufällige. Jeder Code erhält das Limit, das Ablaufdatum und die Regeln unten.",
@@ -1304,8 +1246,6 @@
           "minAmount": "Mindestbetrag (optional)",
           "minCurrency": "Währung des Mindestbetrags",
           "allowedCurrencies": "Nur in diesen Währungen (USD, EUR)",
-          "allowedPlans": "Nur für diese Pläne (Plancodes)",
-          "allowedPacks": "Nur für diese Credit-Pakete (IDs)",
           "firstPurchase": "Nur beim ersten Kauf",
           "onePerCustomer": "Einmal pro Kunde",
           "restore": "Einlösung zurückgeben, wenn der Kauf storniert oder erstattet wird",
@@ -1317,7 +1257,6 @@
           "download": "CSV herunterladen",
           "search": "Codes suchen",
           "stateAll": "Jeder Status",
-          "total": "{n} Codes",
           "used": "Eingelöst",
           "expiresCol": "Läuft ab",
           "rules": "Regeln",
@@ -1342,11 +1281,8 @@
           "confirmBody": "Er nimmt keine neuen Einlösungen mehr an. Der Gutschein und seine anderen Codes funktionieren weiter."
         },
         "redemptions": {
-          "title": "Einlösungen",
-          "hint": "Jede Verwendung eines Gutscheins. Eine Stornierung oder volle Erstattung macht sie rückgängig; der Zähler geht nur bei Codes zurück, die das vorsehen.",
           "coupon": "Gutschein",
           "allCoupons": "Alle Gutscheine",
-          "total": "{n} Einlösungen",
           "customer": "Kunde",
           "usedOn": "Eingelöst bei",
           "discount": "Rabatt",
@@ -1401,7 +1337,6 @@
       }
     },
     "webhooks": {
-      "title": "Webhooks",
       "hint": "Payrudder sendet an diese HTTPS-Endpunkte einen signierten JSON-POST, wenn im Konto etwas passiert: eine Rechnung wird bezahlt, eine Gutschrift ausgestellt, ein Abonnement ändert sich. Prüfen Sie den Header Payrudder-Signature mit dem Secret des Endpunkts; fehlgeschlagene Zustellungen werden etwa eineinhalb Tage lang wiederholt.",
       "formLabel": "neuer Webhook-Endpunkt",
       "url": "Endpunkt-URL",
@@ -1444,9 +1379,6 @@
         "live": "Diese URL verwendet http: Ereignisse mit Kunden- und Rechnungsdaten würden unverschlüsselt übertragen. Verwenden Sie eine https-URL."
       },
       "bulk": {
-        "pause": "Ausgewählte pausieren",
-        "resume": "Ausgewählte fortsetzen",
-        "delete": "Ausgewählte löschen",
         "deleteTitle": "Die ausgewählten Endpunkte löschen?",
         "confirmDelete": "Die ausgewählten Endpunkte werden entfernt und erhalten keine Ereignisse mehr. Ihre Geheimnisse lassen sich nicht wiederherstellen."
       }
@@ -1477,7 +1409,6 @@
       "url": "Zahlungslink",
       "copy": "Kopieren",
       "replayed": "Diese Anfrage wurde bereits bearbeitet: Der Link existiert, seine Adresse wird aber nur einmal angezeigt.",
-      "list": "Links",
       "anyKind": "Jede Art",
       "anyStatus": "Jeder Status",
       "status": "Status",
@@ -1494,9 +1425,6 @@
       "revoke": "Widerrufen",
       "confirmRevoke": "Diesen Link widerrufen? Daraus entstandene unbezahlte Rechnungen werden storniert.",
       "empty": "Noch keine Zahlungslinks.",
-      "previous": "Zurück",
-      "next": "Weiter",
-      "links": "Links",
       "paymentLink": "Zahlungslink",
       "errors": {
         "invoice": "Rechnungs-ID eingeben.",
@@ -1682,7 +1610,6 @@
         "title": "Kauflink",
         "hint": "Ein Link, über den der Kunde dieses Paket kauft. Sobald die Zahlung bestätigt ist, werden die Credits einmalig gutgeschrieben. Der Preis ist immer der des Pakets.",
         "formLabel": "Kauflink erstellen",
-        "pack": "Paket",
         "customer": "Kunde",
         "pickCustomer": "Kunden wählen",
         "quantity": "Menge",
@@ -1710,7 +1637,6 @@
       }
     },
     "accounting": {
-      "title": "Einnahmen und Ausgaben",
       "intro": "Was der Mandant mit bezahlten Rechnungen eingenommen und was er ausgegeben hat, jede Währung für sich.",
       "export": "CSV exportieren",
       "addExpense": "Ausgabe hinzufügen",
@@ -2339,10 +2265,7 @@
       "close": "Schließen",
       "save": "Speichern",
       "yes": "Ja",
-      "no": "Nein",
-      "prev": "Zurück",
-      "next": "Weiter",
-      "total": "{count} insgesamt"
+      "no": "Nein"
     },
     "status": {
       "program": {
@@ -2515,7 +2438,6 @@
       }
     },
     "commissions": {
-      "title": "Provisionen",
       "intro": "Eine Provision je bezahlter Rechnung eines vom Partner geworbenen Kunden, auf den Nettobetrag ohne Steuer. Sie wartet die Wartefrist ab, wird dann freigegeben und mit einer Auszahlung bezahlt.",
       "allPartners": "Alle Partner",
       "allStatuses": "Alle Status",
@@ -2560,7 +2482,6 @@
       "nothing": "Nichts mehr zurückzunehmen: dieses Storno wurde bereits ausgeführt."
     },
     "payouts": {
-      "title": "Auszahlungen",
       "intro": "Eine Auszahlung sind die freigegebenen Provisionen eines Partners in einer Währung. Payrudder bewegt kein Geld: Zahlen Sie von Hand oder per Banküberweisung und markieren Sie die Auszahlung dann als bezahlt.",
       "create": "Auszahlungen erstellen",
       "result": "Erstellte Auszahlungen",
@@ -2597,7 +2518,6 @@
       "done": "Auszahlung als bezahlt markiert."
     },
     "journal": {
-      "title": "Journal",
       "intro": "Was bezahlte Auszahlungen in Ihre Bücher gebucht haben: den Provisionsaufwand gegen die Verbindlichkeit und die Verbindlichkeit gegen die Kasse.",
       "download": "CSV herunterladen",
       "balanced": "Ausgeglichen",
@@ -2862,14 +2782,11 @@
     "slug": "Kürzel",
     "slugPlaceholder": "Kürzel (optional, z. B. web-shop)",
     "currency": "Währung",
-    "currencyPlaceholder": "Währung (später nicht änderbar)",
     "timezone": "Zeitzone",
-    "timezonePlaceholder": "IANA-Zeitzone, z. B. Europe/Istanbul",
     "grace": "Karenzzeit (Stunden)",
     "gracePlaceholder": "Karenzzeit, Stunden (0 bis 168)",
     "create": "App erstellen",
     "badSlug": "Das Kürzel darf nur Kleinbuchstaben, Ziffern und einzelne Bindestriche enthalten, höchstens 60 Zeichen.",
-    "title": "Apps dieses Kontos",
     "immutable": "Umbenennen und Löschen einer App gibt es in der API noch nicht; Währung, Zeitzone und Karenzzeit einer App lassen sich nicht ändern.",
     "environments": "Umgebungen",
     "created": "Erstellt",
@@ -3857,7 +3774,6 @@
       "orgCreate": "Organisation erstellen"
     },
     "nav": {
-      "home": "Start",
       "settings": "Einstellungen",
       "security": "Sicherheit"
     },
@@ -3877,25 +3793,8 @@
       "unknown": "Keine Daten"
     },
     "unavailable": "Im Moment nicht verfügbar.",
-    "degraded": "Einige Teile haben nicht geantwortet ({sections}). Der Rest ist aktuell.",
-    "sections": {
-      "payments": "Zahlungen",
-      "invoices": "Rechnungen",
-      "customers": "Kunden",
-      "subscriptions": "Abonnements",
-      "webhooks": "Webhooks"
-    },
     "kpi": {
-      "revenue": "Umsatz",
-      "revenueDays": "Umsatz, letzte {days} Tage",
-      "payments": "Zahlungen",
-      "failedCount": "Fehlgeschlagen: {n}",
-      "openInvoices": "Offene Rechnungen",
-      "outstanding": "{amount} offen",
-      "paidInvoices": "Bezahlte Rechnungen: {n}",
-      "customers": "Kunden",
-      "mrr": "{amount} pro Monat",
-      "noMrr": "Noch keine wiederkehrenden Einnahmen"
+      "revenue": "Umsatz"
     },
     "card": {
       "revenue": "Umsatz, letzte {days} Tage",
@@ -3993,22 +3892,7 @@
       "sandboxNote": "Sandbox: Testdaten und ein Schein-Zahlungsanbieter. Hier ist nichts echtes Geld.",
       "banner": "Sandbox: Testdaten und ein vorgetäuschter Zahlungsanbieter. Hier ist nichts echtes Geld."
     },
-    "donut": {
-      "title": "Zahlungen nach Status",
-      "label": "{n} Zahlungen nach Status",
-      "center": "Zahlungen"
-    },
-    "currency": {
-      "title": "Umsatz nach Währung",
-      "empty": "Noch keine Rechnungen.",
-      "billed": "Abgerechnet {amount}",
-      "collected": "Eingezogen {amount}",
-      "outstanding": "Offen {amount}",
-      "collectedOf": "{collected} von {billed} eingezogen"
-    },
     "payments": {
-      "title": "Letzte Zahlungen",
-      "empty": "Keine Zahlungen in den letzten 30 Tagen.",
       "truncated": "Letzte 1000 Buchungen",
       "when": "Wann",
       "status": "Status",
@@ -4016,11 +3900,6 @@
       "amount": "Betrag",
       "allStatuses": "Alle Status",
       "allKinds": "Alle Arten"
-    },
-    "invoices": {
-      "title": "Letzte Rechnungen",
-      "empty": "Noch keine Rechnungen.",
-      "draft": "Entwurf"
     },
     "invoiceStatus": {
       "draft": "Entwurf",
@@ -4143,17 +4022,6 @@
       }
     },
     "links": {
-      "title": "Tiefer einsteigen",
-      "intro": "Die Arbeitsseiten der Umgebung {env}.",
-      "customers": "Kunden",
-      "paymentLinks": "Zahlungslinks",
-      "credits": "Guthaben",
-      "webhooks": "Webhooks",
-      "invoices": "Rechnungen",
-      "payments": "Zahlungen",
-      "packages": "Pakete",
-      "pricing": "Steuer und Wiederholungen",
-      "reports": "Berichte",
       "readOnly": "Ihre Rolle ist Betrachter: Sie können hier alles lesen, aber nichts ändern."
     },
     "settings": {
@@ -4216,7 +4084,6 @@
       "roleOf": "Rolle von {name}",
       "leave": "Verlassen",
       "remove": "Entfernen",
-      "removeNamed": "{name} entfernen",
       "inviteTitle": "Jemanden einladen",
       "role": "Rolle",
       "invite": "Einladung senden",
@@ -4226,9 +4093,7 @@
       "expiredOn": "Abgelaufen am {date}",
       "expired": "Abgelaufen",
       "resend": "Erneut senden",
-      "resendNamed": "Einladung an {email} erneut senden",
       "cancel": "Zurückziehen",
-      "cancelNamed": "Einladung an {email} zurückziehen",
       "leaveTitle": "Dieses Konto verlassen?",
       "leaveBody": "Sie verlieren sofort den Zugriff auf Apps und Daten. Ein Inhaber kann Sie erneut einladen.",
       "removeTitle": "Dieses Mitglied entfernen?",
@@ -4269,7 +4134,6 @@
     "billing": {
       "invoices": {
         "title": "Rechnungen",
-        "intro": "Was diese Umgebung abgerechnet hat. Öffnen Sie eine Rechnung für die Positionen und das PDF.",
         "status": "Status",
         "all": "Alle Status",
         "number": "Nummer",
@@ -4278,8 +4142,7 @@
         "created": "Erstellt",
         "total": "Summe",
         "empty": "Noch keine Rechnungen. Sie erscheinen, wenn ein Abrechnungszeitraum schließt.",
-        "draft": "Entwurf",
-        "loadMore": "Mehr laden"
+        "draft": "Entwurf"
       },
       "invoice": {
         "issued": "Ausgestellt",
@@ -4294,14 +4157,12 @@
       },
       "payments": {
         "title": "Zahlungen",
-        "intro": "Abbuchungen und Erstattungen, neueste zuerst. Jede Zahlung zeigt das Ergebnis, auf dem sie endete.",
         "empty": "Noch keine Zahlungen.",
         "kind": "Art",
         "kinds": {
           "charge": "Abbuchung",
           "refund": "Erstattung"
         },
-        "invoice": "Rechnung",
         "viewInvoice": "Rechnung ansehen"
       }
     },
@@ -4393,8 +4254,6 @@
         "connected": "Verbundene Anbieter",
         "connectedNow": "{provider} ist verbunden.",
         "connectTitle": "Anbieter verbinden",
-        "provider": "Anbieter",
-        "choose": "Anbieter wählen",
         "secretsOnce": "Geheime Schlüssel werden nach dem Speichern nicht mehr angezeigt. Verwenden Sie Live-Schlüssel, keine Testschlüssel.",
         "optional": "optional",
         "checkAndConnect": "Prüfen und verbinden",
@@ -4538,13 +4397,7 @@
     "providers": {
       "connect": "Verbinden",
       "manage": "Verwalten",
-      "simulator": "Eingebauter Simulator",
       "sandboxNote": "Die Sandbox läuft auf einem eingebauten Simulator und belastet nie eine echte Karte. Um den eigenen Checkout eines Anbieters auszuprobieren, verbinden Sie iyzico oder Paddle im Testmodus; Zahlungsmethoden namens pm_sandbox_ bleiben beim Simulator.",
-      "state": {
-        "none": "Nicht verbunden",
-        "working": "Verbunden und funktionsfähig",
-        "problem": "Problem"
-      },
       "defaultAccount": "Verbunden und für Live-Zahlungen genutzt.",
       "connectedLine": "Verbunden.",
       "notConnectedLine": "Im Live-Modus nicht verbunden.",
@@ -4554,15 +4407,8 @@
       "doneAll": "{provider} bei {count} App(s) verbunden.",
       "donePartial": "{provider}: {ok} App(s) verbunden, {failed} fehlgeschlagen.",
       "appsTitle": "Apps",
-      "appsIntro": "Klicken Sie auf einen Status, um einen Anbieter nur für diese App zu verbinden, zu ersetzen oder zu entfernen.",
       "app": "App",
       "noLive": "Keine Live-Umgebung",
-      "about": {
-        "iyzico": "Türkische Karten und lokale Methoden",
-        "paddle": "Karten weltweit, Abonnements führt der Anbieter",
-        "banktransfer": "Zahlung per Überweisung auf Ihr eigenes Bankkonto",
-        "stripe": "Karten weltweit, von Payrudder über Ihr Stripe-Konto abgerechnet"
-      },
       "scope": {
         "title": "Wo verbinden",
         "app": "Nur diese App",
@@ -4638,9 +4484,6 @@
       },
       "confirmDisconnectSandbox": "Das Sandbox-Konto bei {provider} entfernen? Die Sandbox läuft dann wieder auf dem eingebauten Simulator.",
       "account": {
-        "title": "Zahlungskonten",
-        "intro": "Verbinden Sie mehrere Konten bei einem Anbieter (ein Paddle-Konto je Region, ein iyzico-Konto je Firma), wählen Sie das Standardkonto und legen Sie fest, welches Konto die Kunden welchen Landes abrechnet.",
-        "add": "{provider}-Konto hinzufügen",
         "empty": "Noch kein Zahlungskonto verbunden. Verbinden Sie oben eines.",
         "default": "Standard",
         "makeDefault": "Zum Standard machen",
@@ -5055,14 +4898,11 @@
       "audit": "Audit-Protokoll",
       "auditLog": "Audit-Protokoll"
     },
-    "noApps": "Noch keine Apps",
     "newApp": "Neue App"
   },
   "privacy": {
     "hide": "Beträge ausblenden",
-    "show": "Beträge anzeigen",
-    "hidden": "Verborgen",
-    "banner": "Privatmodus ist an: Beträge sind ausgeblendet."
+    "show": "Beträge anzeigen"
   },
   "picker": {
     "currency": "Währung",
@@ -5244,8 +5084,7 @@
     "next": "Weiter",
     "page": "Seite {page} von {pages}",
     "pageOnly": "Seite {page}",
-    "goTo": "Zu Seite",
-    "go": "Los"
+    "goTo": "Zu Seite"
   },
   "dateRange": {
     "any": "Jederzeit",
@@ -5273,8 +5112,6 @@
     "subscriptions": "Abonnements",
     "creditNotes": "Gutschriften",
     "none": "Noch keine",
-    "notFound": "Nicht in der Liste",
-    "open": "Öffnen",
     "openCustomerPage": "Auf der Kundenseite öffnen, um etwas zu ändern",
     "paymentNotLoaded": "Diese Zahlung gehört nicht zu den neuesten Zahlungen, die die Konsole lädt."
   },
@@ -5446,6 +5283,36 @@
       },
       "audit": {
         "intro": "Jede Änderung an Schlüsseln, Mitgliedern, Preisen, Webhooks, Kunden, Erstattungen und Anbieterkonten wird hier aufgezeichnet. Einträge lassen sich weder ändern noch entfernen."
+      },
+      "support": {
+        "intro": "Bitten Sie Payrudder um Hilfe. Alle in Ihrer Organisation sehen diese Tickets, und die Antworten kommen hierher zurück.",
+        "create": "Eröffnen Sie ein Ticket: Schreiben Sie, was Sie getan haben, was Sie erwartet haben und was passiert ist. Wir antworten innerhalb der Zeit, die zur gewählten Priorität gehört."
+      },
+      "supportInbox": {
+        "intro": "Jedes Ticket jeder Organisation, die neueste Aktivität zuerst. Antworten Sie öffentlich oder hinterlassen Sie eine interne Notiz, die der Kunde nie sieht.",
+        "list": "Öffnen Sie ein Ticket, um den Verlauf zu lesen und Status, Priorität, Zuständigen und Tags zu setzen. Haken Sie mehrere an, um sie gemeinsam zu ändern."
+      },
+      "plan": {
+        "intro": "Der Tarif Ihrer Organisation: was er enthält, wie viel davon Sie nutzen und wie Sie ihn ändern.",
+        "usageTitle": "Nutzung gegenüber den Limits",
+        "usage": "Wie viel von jedem Limit die Organisation genutzt hat. Am Limit wird Neues abgelehnt, bis Sie auf einen größeren Tarif wechseln."
+      },
+      "organisations": {
+        "intro": "Jede Organisation dieser Installation mit ihrem Tarif. Finden Sie eine über Namen oder E-Mail und stellen Sie sie auf einen anderen Tarif um.",
+        "list": "Verwalten öffnet den Tarif und die Sicherheitseinstellungen einer Organisation."
+      },
+      "apps": {
+        "intro": "Die Apps des Kontos dieses Mandanten, jede mit ihrer Sandbox und ihrer Live-Umgebung. Erstellen Sie hier API-Schlüssel, je Umgebung.",
+        "create": "Erstellen Sie eine App: einen Namen, eine Währung und eine Zeitzone. Ihre Sandbox- und Live-Mandanten entstehen mit ihr."
+      },
+      "address": {
+        "intro": "Die Adresse, die auf jeder Rechnung als Verkäufer steht. Beginnen Sie mit dem Land: Die übrigen Felder richten sich danach, was dieses Land verlangt.",
+        "previewTitle": "Vorschau",
+        "preview": "Der Verkäuferblock genau so, wie die Rechnung ihn druckt."
+      },
+      "einvoice": {
+        "intro": "Verbinden Sie den Dienstleister, der Ihre E-Rechnungen signiert und sendet, und legen Sie fest, wie die Belege entstehen.",
+        "list": "Die für diesen Mandanten verbundenen Konten, eines je Umgebung. Ein Live-Konto sendet echte Belege; das Sandbox-Konto simuliert nur."
       }
     }
   },
@@ -5761,7 +5628,6 @@
     }
   },
   "connect": {
-    "nav": "App verbinden",
     "title": "App verbinden",
     "intro": "Von einer App zum ersten Nutzungsereignis: der Code zum Einfügen und eine Checkliste, die grün wird, sobald es läuft.",
     "checklist": "Wo Sie stehen",

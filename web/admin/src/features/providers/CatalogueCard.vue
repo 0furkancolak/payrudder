@@ -48,8 +48,8 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
         <option v-for="p in PROVIDERS.filter((x) => x.runsSubscriptions)" :key="p.name" :value="p.name">{{ p.name }}</option>
       </NativeSelect>
       <NativeSelect v-model="environment" :aria-label="t('billing.providers.environment')">
-        <option value="live">live</option>
-        <option value="sandbox">sandbox</option>
+        <option value="live">{{ t("enums.environment.live") }}</option>
+        <option value="sandbox">{{ t("enums.environment.sandbox") }}</option>
       </NativeSelect>
       <NativeSelect v-model="plan" :aria-label="t('billing.providers.catalogue.package')" required>
         <option value="" disabled>{{ t("billing.providers.catalogue.package") }}</option>
