@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -48,17 +50,25 @@ func bearerToken(r *http.Request) string {
 	return token
 }
 
-// session resolves the bearer token of r. Anything but a live session token is 401; an unreachable plans-svc is 503, never "signed out".
+// session resolves the bearer token of r. Anything but a live session token is 401; an unreachable plans-svc is 503, never "signed out". A token plans-svc did not know is
+// remembered for a few seconds (badSessions) and counts against the caller's address: random tokens would otherwise cost a plans-svc call each.
 func (s *Server) session(r *http.Request) (session, error) {
 	token := bearerToken(r)
 	if !strings.HasPrefix(token, sessionPrefix) {
-		return session{}, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in to continue")
+		return session{}, errSessionInvalid()
+	}
+	if s.badSessions.Has(token) {
+		// The same token again is not a new guess: it is counted in the metric, not against the address.
+		s.countAuthFailure(r, "session")
+		return session{}, errSessionInvalid()
 	}
 	resp, err := s.d.Identity.GetSession(r.Context(), &plansv1.GetSessionRequest{Token: token})
 	switch status.Code(err) {
 	case codes.OK:
 	case codes.Unauthenticated, codes.InvalidArgument, codes.NotFound:
-		return session{}, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in to continue")
+		s.badSessions.Add(token)
+		s.authFailed(r, "session")
+		return session{}, errSessionInvalid()
 	case codes.Unavailable, codes.DeadlineExceeded:
 		return session{}, errkey.New(codes.Unavailable, "identity.session.unavailable", "sign-in is temporarily unavailable")
 	default:
@@ -70,6 +80,10 @@ func (s *Server) session(r *http.Request) (session, error) {
 		u.TwoFactorSetupRequired = true
 	}
 	return session{Token: token, UserID: resp.GetUser().GetId(), User: u, Memberships: resp.GetMemberships(), Expire: resp.GetExpireTime().AsTime()}, nil
+}
+
+func errSessionInvalid() error {
+	return errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in to continue")
 }
 
 // sessionActAs lets a session act as one tenant on the tenant API. The tenant must belong to an app of an account the person is a member of
@@ -162,12 +176,46 @@ const (
 )
 
 func (s *Server) authAllowed(w http.ResponseWriter, r *http.Request, l *hostedLimiter, perMinute int) bool {
-	if l.allowN(s.clientAddr(r), s.now(), perMinute) {
+	if l.allowN(s.limitAddr(r), s.now(), perMinute) {
 		return true
 	}
+	writeAuthRateLimited(w, r)
+	return false
+}
+
+func writeAuthRateLimited(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Retry-After", retryAfterMinute)
 	writeError(w, r, errkey.New(codes.ResourceExhausted, "identity.auth.rate_limited", "too many attempts from this address: try again in a minute"))
-	return false
+}
+
+// limitAddr is the key the per-address limits count a request under: the client address, an IPv6 one by its /64 (limitKey).
+func (s *Server) limitAddr(r *http.Request) string { return limitKey(s.clientAddr(r)) }
+
+// authFailuresPerMinute is how many credentials an address may present and have refused in a minute before it is refused outright.
+const authFailuresPerMinute = 30
+
+// authFailed counts a credential that was presented and refused against the caller's address, and in gateway_auth_failures under reason. An API key refused inside
+// internal/auth is already in that counter: pass "" for it.
+func (s *Server) authFailed(r *http.Request, reason string) {
+	s.limits.authFailures.allowN(s.limitAddr(r), s.now(), authFailuresPerMinute)
+	s.countAuthFailure(r, reason)
+}
+
+func (s *Server) countAuthFailure(r *http.Request, reason string) {
+	if reason != "" && s.d.AuthFailures != nil {
+		s.d.AuthFailures.Add(r.Context(), 1, metric.WithAttributes(attribute.String("reason", reason)))
+	}
+}
+
+// authThrottled answers 429 to a request that presents a credential from an address that has had authFailuresPerMinute credentials refused in the last minute, before
+// any key or session is looked up. The machine operator token is checked in memory and is never refused here; a request with no credential is not an authentication.
+func (s *Server) authThrottled(w http.ResponseWriter, r *http.Request) bool {
+	if bearerToken(r) == "" || s.operatorOK(r) || !s.limits.authFailures.over(s.limitAddr(r), s.now(), authFailuresPerMinute) {
+		return false
+	}
+	s.countAuthFailure(r, "throttled")
+	writeAuthRateLimited(w, r)
+	return true
 }
 
 // noStore marks an answer that holds a secret (a session token, an API key) as not to be kept by any cache.
