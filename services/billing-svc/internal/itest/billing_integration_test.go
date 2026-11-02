@@ -38,6 +38,8 @@ func TestBilling(t *testing.T) {
 		{"HappyPathCompletesWithStubWorker", testHappyPath},
 		{"WatermarkBlocksUntilOutboxDrainsAndAggregatorCatchesUp", testWatermark},
 		{"LateUsageIsBilledIncrementallyOnTheNextInvoice", testLateUsage},
+		{"UpcomingInvoiceIsTheInvoiceTheRunWouldDraft", testUpcomingInvoiceIsTheInvoiceTheRunWouldDraft},
+		{"UpcomingInvoiceWritesNothingAndRefusesAStranger", testUpcomingInvoiceWritesNothingAndRefusesAStranger},
 		{"CommandsSurviveAKillAfterCommit", testKillAfterCommit},
 		{"DuplicateRepliesTransitionOnce", testDuplicateReplies},
 		{"SilentWorkerIsRetriedThenFailsAndOperatorRetryResumes", testSilentWorker},

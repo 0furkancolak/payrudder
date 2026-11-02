@@ -312,6 +312,18 @@ func (f fakeAll) StreamPeriodUsage(_ context.Context, in *aggregatorv1.StreamPer
 	return st, nil
 }
 
+func (f fakeAll) GetCustomerUsage(_ context.Context, in *aggregatorv1.GetCustomerUsageRequest, _ ...grpc.CallOption) (*aggregatorv1.GetCustomerUsageResponse, error) {
+	f.w.mu.Lock()
+	defer f.w.mu.Unlock()
+	resp := &aggregatorv1.GetCustomerUsageResponse{}
+	for _, u := range f.w.usage[in.GetPeriodId()] {
+		if u.GetCustomerId() == in.GetCustomerId() {
+			resp.Usage = append(resp.Usage, u)
+		}
+	}
+	return resp, nil
+}
+
 func (f fakeAll) StreamLateUsage(_ context.Context, in *aggregatorv1.StreamLateUsageRequest, _ ...grpc.CallOption) (grpc.ServerStreamingClient[aggregatorv1.StreamLateUsageResponse], error) {
 	f.w.mu.Lock()
 	defer f.w.mu.Unlock()

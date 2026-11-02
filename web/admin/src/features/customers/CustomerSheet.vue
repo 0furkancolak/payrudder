@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { addressLine, useCustomerBlockEvents } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CustomerPaymentPage from "./CustomerPaymentPage.vue";
+import UpcomingInvoiceCard from "./UpcomingInvoiceCard.vue";
 import { countryName, flagOf, headline, isBlocked, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
 
 /**
@@ -166,7 +167,8 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         >
       </TabsList>
 
-      <TabsContent value="overview" class="outline-none">
+      <TabsContent value="overview" class="flex flex-col gap-6 outline-none">
+        <UpcomingInvoiceCard :tenant-id="tenantId" :external-id="id" />
         <CustomerRelated :key="id" :tenant-id="tenantId" :external-id="id" :limit="3" @more="tab = $event" />
       </TabsContent>
       <TabsContent value="payments" class="outline-none">

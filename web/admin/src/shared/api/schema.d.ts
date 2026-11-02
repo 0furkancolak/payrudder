@@ -556,6 +556,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/upcoming-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the customer's next invoice would be if it were drafted now
+         * @description An estimate of the regular invoice of the period that is still open (or, while a closed period's grace period runs, of that period): the usage and late usage so far, rated by
+         *     the plan version in force, the fixed fee, tax at the tenant's rate for the customer's country and the credit balance the invoice would use. It is computed by the same code
+         *     that drafts the real invoice, from the same inputs, and nothing is stored. It moves with every event until the period closes, and a change of plan, a coupon or a tax rate
+         *     made later can move it too: `estimate` is always `true`, and the response has no id and no number. A fixed fee invoiced in advance is its own invoice and is not in it.
+         *     A customer with nothing to bill in the period gets `has_invoice: false` and no lines.
+         */
+        get: operations["getUpcomingInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/entitlements": {
         parameters: {
             query?: never;
@@ -6588,6 +6612,47 @@ export interface components {
             service_from: string | null;
             /** Format: date-time */
             service_to: string | null;
+        };
+        UpcomingInvoice: {
+            /** @description Always true. The preview is never the invoice */
+            estimate: boolean;
+            customer_external_id: string;
+            /**
+             * @description The period whose invoice this is, in the tenant's time zone
+             * @example 2026-11
+             */
+            period_id: string;
+            /** Format: date-time */
+            period_start: string;
+            /** Format: date-time */
+            period_end: string;
+            currency: string;
+            /** @description The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit */
+            lines: components["schemas"]["InvoiceLine"][];
+            /**
+             * Format: int64
+             * @description Before tax and after the credit, as on an invoice
+             */
+            subtotal_minor: string;
+            /** Format: int64 */
+            tax_minor: string;
+            /**
+             * Format: int64
+             * @description The credit balance the invoice would use, a positive number
+             */
+            credit_minor: string;
+            /**
+             * Format: int64
+             * @description What would be charged; never negative
+             */
+            total_minor: string;
+            /**
+             * Format: date-time
+             * @description The clock of the estimate
+             */
+            as_of: string;
+            /** @description False when the customer has no subscription in the period and no late usage to bill */
+            has_invoice: boolean;
         };
         Invoice: {
             id: string;
@@ -13441,6 +13506,30 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    getUpcomingInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingInvoice"];
+                };
+            };
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
         };

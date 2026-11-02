@@ -683,6 +683,13 @@
           "unblocked": "Kaldırıldı"
         },
         "by": "{actor} tarafından"
+      },
+      "upcoming": {
+        "title": "Gelecek fatura",
+        "estimate": "Tahmin",
+        "period": "Dönem {period}",
+        "none": "Henüz faturalanacak bir şey yok: bu müşterinin bu dönemde aboneliği ve faturalanacak gecikmiş kullanımı yok.",
+        "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir."
       }
     },
     "packages": {
@@ -2827,6 +2834,9 @@
       },
       "customer": {
         "blocked": "Bu müşteri engellenmiş, yeni satın alma başlatılamaz."
+      },
+      "upcoming": {
+        "customer_not_found": "Böyle bir müşteri yok."
       }
     },
     "coupon": {

@@ -683,6 +683,13 @@
           "unblocked": "Lifted"
         },
         "by": "by {actor}"
+      },
+      "upcoming": {
+        "title": "Upcoming invoice",
+        "estimate": "Estimate",
+        "period": "Period {period}",
+        "none": "Nothing to invoice yet: this customer has no subscription in the current period and no late usage to bill.",
+        "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it."
       }
     },
     "packages": {
@@ -2827,6 +2834,9 @@
       },
       "customer": {
         "blocked": "This customer is blocked, so no new purchase can be started."
+      },
+      "upcoming": {
+        "customer_not_found": "There is no such customer."
       }
     },
     "coupon": {

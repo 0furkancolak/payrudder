@@ -186,3 +186,13 @@ export function useSetCustomerTax(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
   });
 }
+
+/** The invoice a customer's open period would get if it were drafted now: an estimate that moves with every event until the period closes. */
+export function useUpcomingInvoice(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "upcoming-invoice", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/upcoming-invoice", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== ""),
+    staleTime: 15_000,
+  });
+}

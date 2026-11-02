@@ -53,12 +53,38 @@ func (in *Inputs) PeriodUsage(tctx context.Context, periodID string, generation 
 		if gen == 0 {
 			gen = u.GetGeneration()
 		}
-		q, err := Decimal(u.GetQuantity())
+		ru, err := usageOf(u, meters)
 		if err != nil {
-			return nil, 0, Permanent(err)
+			return nil, 0, err
 		}
-		usage[u.GetCustomerId()] = append(usage[u.GetCustomerId()], rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: meters[u.GetMeterCode()].Unit})
+		usage[u.GetCustomerId()] = append(usage[u.GetCustomerId()], ru)
 	}
+}
+
+// CustomerUsage is PeriodUsage for one customer, read with GetCustomerUsage: what the preview of an upcoming invoice rates. generation 0 asks for the tenant's active one.
+func (in *Inputs) CustomerUsage(tctx context.Context, customerID, periodID string, generation int32, meters map[string]MeterInfo) ([]rating.Usage, error) {
+	resp, err := in.Aggregator.GetCustomerUsage(tctx, &aggregatorv1.GetCustomerUsageRequest{CustomerId: customerID, PeriodId: periodID, Generation: generation})
+	if err != nil {
+		return nil, fmt.Errorf("customer usage: %w", err)
+	}
+	out := make([]rating.Usage, 0, len(resp.GetUsage()))
+	for _, u := range resp.GetUsage() {
+		ru, err := usageOf(u, meters)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ru)
+	}
+	return out, nil
+}
+
+// usageOf is an aggregate as rating reads it.
+func usageOf(u *aggregatorv1.UsageAggregate, meters map[string]MeterInfo) (rating.Usage, error) {
+	q, err := Decimal(u.GetQuantity())
+	if err != nil {
+		return rating.Usage{}, Permanent(err)
+	}
+	return rating.Usage{MeterCode: u.GetMeterCode(), Quantity: q, UnitLabel: meters[u.GetMeterCode()].Unit}, nil
 }
 
 // TaxTable is a tenant's tax rates by customer country.

@@ -23,6 +23,7 @@ import (
 
 // Aggregator is the part of the aggregator billing uses.
 type Aggregator interface {
+	GetCustomerUsage(ctx context.Context, in *aggregatorv1.GetCustomerUsageRequest, opts ...grpc.CallOption) (*aggregatorv1.GetCustomerUsageResponse, error)
 	StreamPeriodUsage(ctx context.Context, in *aggregatorv1.StreamPeriodUsageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[aggregatorv1.StreamPeriodUsageResponse], error)
 	StreamLateUsage(ctx context.Context, in *aggregatorv1.StreamLateUsageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[aggregatorv1.StreamLateUsageResponse], error)
 	GetUsageBatch(ctx context.Context, in *aggregatorv1.GetUsageBatchRequest, opts ...grpc.CallOption) (*aggregatorv1.GetUsageBatchResponse, error)

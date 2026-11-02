@@ -683,6 +683,13 @@
           "unblocked": "Levé"
         },
         "by": "par {actor}"
+      },
+      "upcoming": {
+        "title": "Prochaine facture",
+        "estimate": "Estimation",
+        "period": "Période {period}",
+        "none": "Rien à facturer pour l'instant : ce client n'a pas d'abonnement sur la période en cours ni d'utilisation tardive à facturer.",
+        "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier."
       }
     },
     "packages": {
@@ -2827,6 +2834,9 @@
       },
       "customer": {
         "blocked": "Ce client est bloqué : aucun nouvel achat ne peut être lancé."
+      },
+      "upcoming": {
+        "customer_not_found": "Ce client n'existe pas."
       }
     },
     "coupon": {

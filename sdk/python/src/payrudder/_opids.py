@@ -39,6 +39,7 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "createMeter": ("meters", "create_meter", "POST /v1/meters"),
     "getMeter": ("meters", "get_meter", "GET /v1/meters/{code}"),
     "getCustomerUsage": ("customers", "get_customer_usage", "GET /v1/customers/{external_id}/usage"),
+    "getUpcomingInvoice": ("customers", "get_upcoming_invoice", "GET /v1/customers/{external_id}/upcoming-invoice"),
     "listEntitlements": ("customers", "list_entitlements", "GET /v1/customers/{external_id}/entitlements"),
     "getEntitlement": ("customers", "get_entitlement", "GET /v1/customers/{external_id}/entitlements/{meter}"),
     "listEntitlementOverrides": ("customers", "list_entitlement_overrides", "GET /v1/customers/{external_id}/entitlement-overrides"),

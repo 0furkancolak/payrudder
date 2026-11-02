@@ -36,6 +36,12 @@ func (s *Server) getInvoice(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetInvoice(), err)
 }
 
+// getUpcomingInvoice is GET /v1/customers/{external_id}/upcoming-invoice: the invoice the customer's open period would get if it were drafted now, as an estimate.
+func (s *Server) getUpcomingInvoice(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetUpcomingInvoice(r.Context(), &billingv1.GetUpcomingInvoiceRequest{CustomerExternalId: r.PathValue("external_id")})
+	respond(w, r, http.StatusOK, resp.GetUpcoming(), err)
+}
+
 // getInvoicePDF is GET /v1/invoices/{id}/pdf: a presigned download link, valid for 5 minutes.
 func (s *Server) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.GetInvoicePdfUrl(r.Context(), &billingv1.GetInvoicePdfUrlRequest{InvoiceId: r.PathValue("id")})

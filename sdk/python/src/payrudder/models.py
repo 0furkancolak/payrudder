@@ -458,6 +458,34 @@ class GetCustomerUsageResponse(TypedDict):
     usage: list[GetCustomerUsageUsage]
 
 
+class InvoiceLine(TypedDict):
+    line_no: int
+    kind: Literal["BASE_FEE", "USAGE", "LATE_USAGE", "CREDIT", "CORRECTION", "DISCOUNT", "TAX"]
+    meter_code: str
+    origin_period_id: str
+    quantity: str
+    amount_minor: int
+    description: str
+    service_from: str | None
+    service_to: str | None
+
+
+class UpcomingInvoice(TypedDict):
+    estimate: bool
+    customer_external_id: str
+    period_id: str
+    period_start: str
+    period_end: str
+    currency: str
+    lines: list[InvoiceLine]
+    subtotal_minor: int
+    tax_minor: int
+    credit_minor: int
+    total_minor: int
+    as_of: str
+    has_invoice: bool
+
+
 class EntitlementStatus(TypedDict):
     customer_external_id: str
     meter_code: str
@@ -1689,18 +1717,6 @@ class PreviewRoutingResponse(TypedDict):
     rule_index: int
     owner: Literal["payrudder", "provider"]
     can_charge: bool
-
-
-class InvoiceLine(TypedDict):
-    line_no: int
-    kind: Literal["BASE_FEE", "USAGE", "LATE_USAGE", "CREDIT", "CORRECTION", "DISCOUNT", "TAX"]
-    meter_code: str
-    origin_period_id: str
-    quantity: str
-    amount_minor: int
-    description: str
-    service_from: str | None
-    service_to: str | None
 
 
 class InvoicePayment(TypedDict):

@@ -12,6 +12,7 @@ import (
 	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	runmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/query"
+	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 )
 
 // Handler implements the billing-run methods of billingv1.SandboxServiceServer and billingv1.BillingAdminServiceServer.
@@ -65,6 +66,35 @@ func (h *Handler) GetBillingRun(ctx context.Context, req *billingv1.GetBillingRu
 		return nil, err
 	}
 	return &billingv1.GetBillingRunResponse{Run: runProto(run)}, nil
+}
+
+// GetUpcomingInvoice implements billingv1.BillingServiceServer.
+func (h *Handler) GetUpcomingInvoice(ctx context.Context, req *billingv1.GetUpcomingInvoiceRequest) (*billingv1.GetUpcomingInvoiceResponse, error) {
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
+	u, err := h.runs.Upcoming(ctx, ti.ID, req.GetCustomerExternalId())
+	if err != nil {
+		return nil, err
+	}
+	out := &billingv1.UpcomingInvoice{
+		Estimate: true, CustomerExternalId: req.GetCustomerExternalId(), PeriodId: u.PeriodID, PeriodStart: timestamppb.New(u.Start), PeriodEnd: timestamppb.New(u.End),
+		Currency: u.Currency, SubtotalMinor: u.Subtotal, TaxMinor: u.Tax, CreditMinor: u.Credit, TotalMinor: u.Total, AsOf: timestamppb.New(u.AsOf), HasInvoice: u.Has,
+	}
+	for i, l := range u.Lines {
+		line := &billingv1.InvoiceLine{LineNo: int32(i + 1), Kind: string(l.Kind), MeterCode: l.MeterCode, OriginPeriodId: l.OriginPeriod, AmountMinor: l.AmountMinor, Description: l.Description} //nolint:gosec // a few lines
+		if l.Quantity != nil {
+			if line.Quantity, err = invoicecmd.QuantityText(l.Quantity, u.Scales[i]); err != nil {
+				return nil, err
+			}
+		}
+		if !l.ServiceFrom.IsZero() {
+			line.ServiceFrom, line.ServiceTo = timestamppb.New(l.ServiceFrom), timestamppb.New(l.ServiceTo)
+		}
+		out.Lines = append(out.Lines, line)
+	}
+	return &billingv1.GetUpcomingInvoiceResponse{Upcoming: out}, nil
 }
 
 func runProto(r *runmodel.Run) *billingv1.BillingRun {

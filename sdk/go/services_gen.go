@@ -1553,6 +1553,25 @@ func (s *CustomersService) UnblockCustomer(ctx context.Context, externalID strin
 	return &out, nil
 }
 
+// GetUpcomingInvoice: What the customer's next invoice would be if it were drafted now (GET
+// /v1/customers/{external_id}/upcoming-invoice).
+//
+// An estimate of the regular invoice of the period that is still open (or, while a closed period's grace period
+// runs, of that period): the usage and late usage so far, rated by the plan version in force, the fixed fee,
+// tax at the tenant's rate for the customer's country and the credit balance the invoice would use. It is
+// computed by the same code that drafts the real invoice, from the same inputs, and nothing is stored. It moves
+// with every event until the period closes, and a change of plan, a coupon or a tax rate made later can move it
+// too: `estimate` is always `true`, and the response has no id and no number. A fixed fee invoiced in advance
+// is its own invoice and is not in it. A customer with nothing to bill in the period gets `has_invoice: false`
+// and no lines.
+func (s *CustomersService) GetUpcomingInvoice(ctx context.Context, externalID string, opts ...RequestOption) (*UpcomingInvoice, error) {
+	var out UpcomingInvoice
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/upcoming-invoice", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GetCustomerUsage: On-time usage of a customer in a period, per meter (GET /v1/customers/{external_id}/usage).
 //
 // Quantities are exact decimals with the meter's scale. Usage that arrived after the period's cutoff is not

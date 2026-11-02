@@ -33,6 +33,20 @@ function customerGateway() {
     if (c.path === "/v1/subscriptions") return { body: { subscriptions } };
     if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "pro", name: "Pro", latest_version: 2 }] } };
     if (c.path === "/v1/plans/pro/versions/latest") return { body: { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", prices: [], publish_time: "2026-10-05T10:00:00Z" } };
+    const upcoming = /^\/v1\/customers\/(cus_\d)\/upcoming-invoice$/.exec(c.path);
+    if (upcoming && upcoming[1] === "cus_1") {
+      return {
+        body: {
+          estimate: true, customer_external_id: "cus_1", period_id: "2026-10", period_start: "2026-10-01T00:00:00Z", period_end: "2026-11-01T00:00:00Z", currency: "TRY", has_invoice: true,
+          as_of: "2026-10-20T12:00:00Z", subtotal_minor: "9900", tax_minor: "1980", credit_minor: "0", total_minor: "11880",
+          lines: [
+            { line_no: 1, kind: "BASE_FEE", description: "Base fee (monthly) — pro — 2026-10-01 to 2026-11-01", amount_minor: "9900", quantity: "", meter_code: "", origin_period_id: "" },
+            { line_no: 2, kind: "TAX", description: "KDV 20%", amount_minor: "1980", quantity: "", meter_code: "", origin_period_id: "" },
+          ],
+        },
+      };
+    }
+    if (upcoming) return { body: { estimate: true, customer_external_id: upcoming[1], period_id: "2026-10", currency: "EUR", has_invoice: false, lines: [], total_minor: "0", as_of: "2026-10-20T12:00:00Z" } };
     const credits = /^\/v1\/customers\/(cus_\d)\/credits$/.exec(c.path);
     if (credits) return { body: { balance: credits[1] === "cus_1" ? "1200" : "0", lots: [] } };
     if (/^\/v1\/customers\/cus_\d\/credits\/ledger$/.test(c.path)) return { body: { entries: [], next_page_token: "" } };
@@ -242,6 +256,14 @@ test.describe("customer sheet", () => {
     await expect(sheet.getByTestId("customer-credits")).toHaveText("1,200");
     await expect(sheet.getByTestId("customer-active-subscriptions")).toHaveText("1");
 
+    // The estimate of the next invoice comes first, marked as one, with its lines as the invoice will have them.
+    const upcoming = sheet.getByTestId("upcoming-invoice");
+    await expect(upcoming).toContainText("Upcoming invoice");
+    await expect(upcoming).toContainText("Estimate");
+    await expect(upcoming.getByTestId("upcoming-line")).toHaveCount(2);
+    await expect(upcoming).toContainText("KDV 20%");
+    await expect(upcoming.getByTestId("upcoming-total")).toContainText("118.80");
+
     // The overview lists the newest records of each kind; every row links to its own sheet.
     await expect(sheet.getByRole("region", { name: "Subscriptions" })).toContainText("pro v2");
     await expect(sheet.getByRole("region", { name: "Invoices" })).toContainText("INV-2");
@@ -264,6 +286,8 @@ test.describe("customer sheet", () => {
     // The arrows step to the next customer, whose sheet has nothing yet.
     await page.getByTestId("detail-next").click();
     await expect(page.getByTestId("detail-sheet").getByRole("heading", { name: "Grace Hopper" })).toBeVisible();
+    await sheet.getByTestId("customer-tab-overview").click();
+    await expect(sheet.getByTestId("upcoming-none")).toBeVisible();
     await sheet.getByTestId("customer-tab-payments").click();
     await expect(sheet).toContainText("No payments yet.");
   });

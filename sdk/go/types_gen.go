@@ -2637,6 +2637,31 @@ type TaxRatesRates struct {
 	RateBps int `json:"rate_bps"`
 }
 
+// UpcomingInvoice is an object of the API; see components.schemas.UpcomingInvoice in api/openapi/v1.yaml.
+type UpcomingInvoice struct {
+	// Always true. The preview is never the invoice
+	Estimate           bool   `json:"estimate"`
+	CustomerExternalID string `json:"customer_external_id"`
+	// The period whose invoice this is, in the tenant's time zone
+	PeriodID    string    `json:"period_id"`
+	PeriodStart time.Time `json:"period_start"`
+	PeriodEnd   time.Time `json:"period_end"`
+	Currency    string    `json:"currency"`
+	// The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit
+	Lines []InvoiceLine `json:"lines"`
+	// Before tax and after the credit, as on an invoice
+	SubtotalMinor Int64 `json:"subtotal_minor"`
+	TaxMinor      Int64 `json:"tax_minor"`
+	// The credit balance the invoice would use, a positive number
+	CreditMinor Int64 `json:"credit_minor"`
+	// What would be charged; never negative
+	TotalMinor Int64 `json:"total_minor"`
+	// The clock of the estimate
+	AsOf time.Time `json:"as_of"`
+	// False when the customer has no subscription in the period and no late usage to bill
+	HasInvoice bool `json:"has_invoice"`
+}
+
 // UpdateAffiliateRequest is the request body of UpdateAffiliate.
 type UpdateAffiliateRequest struct {
 	Name string `json:"name,omitempty"`

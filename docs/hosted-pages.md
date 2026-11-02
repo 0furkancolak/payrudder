@@ -52,7 +52,7 @@ The portal shows a **read-only subscription summary**, invoices, payments and cr
 | Next date | only what plans-svc says exactly: the end of a trial, the day a waiting plan change takes effect (with the new plan's name), the end of a subscription that cancels with its period. **A plain active subscription has no "next payment" date**: its next fee date (`fee_due_at`) and billing anchor are not in the plans-svc `Subscription` message, and computing it in billing would repeat plans-svc's period arithmetic. `next_renewal_time` in the RPC is where it goes once plans-svc exposes it (an additive field on a public message: the owner's call) |
 | Provider-owned subscription | shown with "Billed and renewed by the payment provider"; its dates are the provider's (`ProviderSubscription.NextBilledAt` in payments-worker is not read) |
 | Card on file (brand, last4, expiry) | missing end to end; only an "update payment method" URL exists for provider-owned subscriptions (`PaymentMethodLink`, operator route) |
-| Upcoming invoice (amount with usage and tax) | missing |
+| Upcoming invoice (amount with usage and tax) | **not on the portal**; the estimate exists as `GET /v1/customers/{external_id}/upcoming-invoice` and in the console's customer sheet ([billing-svc](03-services/billing-svc.md#as-built-the-upcoming-invoice-plan-22-g14)). Whether a customer sees an estimate of their usage is the owner's call (default, not agreed: no, until a tenant can switch it on) |
 | Invoice and payment history, credit balance | present |
 
 **No action is offered**: no cancel, resume, change plan or change card. Those are the owner's decision (product and legal), and the summary says "To change your plan or cancel, contact the seller." (default, not agreed). A test fails if the section contains a form or a button.
@@ -65,7 +65,7 @@ A provider script (Paddle.js, Stripe.js) would add `script-src`, `frame-src` and
 
 ## What is open (plan 04)
 
-1. A next payment date for a plain active subscription (above), and the upcoming invoice with usage and tax. Customer actions (cancel at period end, resume, change plan, update the card through the provider's own page) are the owner's decision.
+1. A next payment date for a plain active subscription (above), and the upcoming invoice with usage and tax (the estimate itself is built, see the table; only its place on the portal is open). Customer actions (cancel at period end, resume, change plan, update the card through the provider's own page) are the owner's decision.
 2. Card on file: needs the providers to tell us (brand, last4, expiry); nothing stores it today.
 3. A requires-action state when an inline checkout is chosen (plans 06 to 08); the CSP builder is ready for it.
 4. A language switcher (`?lang=` works; nothing on the page offers it).

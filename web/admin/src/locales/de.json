@@ -683,6 +683,13 @@
           "unblocked": "Aufgehoben"
         },
         "by": "von {actor}"
+      },
+      "upcoming": {
+        "title": "Kommende Rechnung",
+        "estimate": "Schätzung",
+        "period": "Zeitraum {period}",
+        "none": "Noch nichts zu berechnen: Dieser Kunde hat in diesem Zeitraum kein Abonnement und keine nachträgliche Nutzung zu berechnen.",
+        "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern."
       }
     },
     "packages": {
@@ -2827,6 +2834,9 @@
       },
       "customer": {
         "blocked": "Dieser Kunde ist gesperrt, ein neuer Kauf kann nicht gestartet werden."
+      },
+      "upcoming": {
+        "customer_not_found": "Diesen Kunden gibt es nicht."
       }
     },
     "coupon": {

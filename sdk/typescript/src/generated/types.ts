@@ -2827,6 +2827,30 @@ export interface TaxRatesInput {
   }>;
 }
 
+export interface UpcomingInvoice {
+  /** Always true. The preview is never the invoice */
+  estimate: boolean;
+  customer_external_id: string;
+  /** The period whose invoice this is, in the tenant's time zone */
+  period_id: string;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  /** The lines as the invoice would have them, in order: fixed fee, usage, late usage, tax, and the credit */
+  lines: Array<InvoiceLine>;
+  /** Before tax and after the credit, as on an invoice */
+  subtotal_minor: Int64;
+  tax_minor: Int64;
+  /** The credit balance the invoice would use, a positive number */
+  credit_minor: Int64;
+  /** What would be charged; never negative */
+  total_minor: Int64;
+  /** The clock of the estimate */
+  as_of: string;
+  /** False when the customer has no subscription in the period and no late usage to bill */
+  has_invoice: boolean;
+}
+
 export interface UpdateAffiliateRequest {
   name?: string;
   payout_method?: "manual" | "bank_transfer";
