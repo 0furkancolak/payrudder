@@ -116,6 +116,11 @@ func (e *Engine) persistTransition(ctx context.Context, tx pgx.Tx, s *saga, next
 	if n != 1 {
 		return fmt.Errorf("saga %s changed concurrently", s.ID)
 	}
+	// The sweep's look at a held invoice that the gate still refuses changes only the time of the next look. It is not logged: the log is append-only, and a held invoice
+	// would add a row an hour for as long as it is held. (The seller's Retry, which is a person's act, is logged.)
+	if cause == "dunning" && s.State == model.PaymentHeld && next == model.PaymentHeld {
+		return nil
+	}
 	return appendEvent(ctx, q, s, string(s.State), string(next), cause, commandID, now)
 }
 
