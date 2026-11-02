@@ -6942,7 +6942,7 @@ export interface components {
         SupportReport: {
             /** @description Tickets waiting for the operator (open) */
             waiting: number;
-            /** @description Of those */
+            /** @description Of those, the ones with no first answer past their deadline */
             breached: number;
             /** @description Every ticket by status */
             by_status: components["schemas"]["SupportCount"][];
@@ -6951,9 +6951,9 @@ export interface components {
             window_days: number;
             /** @description Tickets opened in the window */
             opened: number;
-            /** @description Of those */
+            /** @description Of those, the ones with a first answer */
             answered: number;
-            /** @description Of those */
+            /** @description Of those, the ones answered by their deadline */
             answered_on_time: number;
             /**
              * Format: int64

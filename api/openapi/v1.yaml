@@ -6238,13 +6238,13 @@ components:
       required: [waiting, breached, by_status, by_priority, window_days, opened, answered, answered_on_time, median_first_answer_seconds, average_first_answer_seconds]
       properties:
         waiting: { type: integer, description: Tickets waiting for the operator (open) }
-        breached: { type: integer, description: Of those, the ones with no first answer past their deadline }
+        breached: { type: integer, description: "Of those, the ones with no first answer past their deadline" }
         by_status: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: Every ticket by status }
         by_priority: { type: array, items: { $ref: "#/components/schemas/SupportCount" }, description: The tickets still waiting (open or pending) by priority }
         window_days: { type: integer }
         opened: { type: integer, description: Tickets opened in the window }
-        answered: { type: integer, description: Of those, the ones with a first answer }
-        answered_on_time: { type: integer, description: Of those, the ones answered by their deadline }
+        answered: { type: integer, description: "Of those, the ones with a first answer" }
+        answered_on_time: { type: integer, description: "Of those, the ones answered by their deadline" }
         median_first_answer_seconds: { type: integer, format: int64, description: "Wall-clock seconds from opening to the first public answer; 0 when none was answered" }
         average_first_answer_seconds: { type: integer, format: int64 }
     SupportOperator:
