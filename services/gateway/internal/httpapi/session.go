@@ -74,7 +74,12 @@ func (s *Server) session(r *http.Request) (session, error) {
 	default:
 		return session{}, err
 	}
-	return session{Token: token, UserID: resp.GetUser().GetId(), User: resp.GetUser(), Memberships: resp.GetMemberships(), Expire: resp.GetExpireTime().AsTime()}, nil
+	u := resp.GetUser()
+	if s.d.OperatorRequireTwoFactor && !u.GetTwoFactorEnabled() && s.isOperator(u) {
+		// The deployment asks two-factor sign-in of its operators: they are treated as an owner who must set it up, here and on the console's side (/auth/me says so).
+		u.TwoFactorSetupRequired = true
+	}
+	return session{Token: token, UserID: resp.GetUser().GetId(), User: u, Memberships: resp.GetMemberships(), Expire: resp.GetExpireTime().AsTime()}, nil
 }
 
 func errSessionInvalid() error {

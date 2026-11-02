@@ -347,3 +347,105 @@ func TestContextCancelStopsAWatcher(t *testing.T) {
 		t.Fatal("the watcher ignored the cancelled context")
 	}
 }
+
+// The temporary file of a login is a fresh name made with O_EXCL: a link that somebody planted where the old code wrote (config.json.tmp) is neither followed nor
+// replaced, so it cannot make the key land in, or overwrite, another file.
+func TestLoginDoesNotFollowALinkPlantedAtTheTemporaryName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("links need privileges on Windows")
+	}
+	e := newEnv(t)
+	delete(e.vars, "PAYRUDDER_API_KEY")
+	if err := os.MkdirAll(e.dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	victim := filepath.Join(t.TempDir(), "victim")
+	if err := os.WriteFile(victim, []byte("precious"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config.json.tmp", "config.json"} {
+		if err := os.Symlink(victim, filepath.Join(e.dir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	e.gw.json("GET /v1/meters", 200, map[string]any{"meters": []any{}})
+	e.expect(0, testKey+"\n", "login", "--api-key-stdin")
+	if b, _ := os.ReadFile(victim); string(b) != "precious" {
+		t.Fatalf("the file a link pointed at now holds %q", b)
+	}
+	st, err := os.Lstat(filepath.Join(e.dir, "config.json"))
+	if err != nil || st.Mode()&os.ModeSymlink != 0 || st.Mode().Perm() != 0o600 {
+		t.Fatalf("config.json after the login: %v, %v", st, err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(e.dir, "config.json")); !strings.Contains(string(b), testKey) {
+		t.Errorf("the key was not stored: %s", b)
+	}
+	if st, err := os.Lstat(filepath.Join(e.dir, "config.json.tmp")); err != nil || st.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("the planted link was touched: %v %v", st, err)
+	}
+	if left, _ := filepath.Glob(filepath.Join(e.dir, ".config-*")); len(left) != 0 {
+		t.Errorf("temporary files left behind: %v", left)
+	}
+}
+
+// A live key goes over https, or over http to this machine; a sandbox key may go over http. Checked at login (stored nothing, asked nothing) and on every command that
+// builds a client, from the environment or from the stored login.
+func TestALiveKeyIsNotSentOverPlainHTTPToAnotherHost(t *testing.T) {
+	live := "qk_live_zz99yy88_" + strings.Repeat("a", 40)
+	for base, ok := range map[string]bool{
+		"https://api.example.com": true, "https://api.example.com:8443/base": true, "HTTPS://API.EXAMPLE.COM": true,
+		"http://localhost:42800": true, "http://LOCALHOST": true, "http://localhost.": true, "http://app.localhost:3000": true, "http://127.0.0.1:8000": true, "http://127.9.9.9": true,
+		"http://[::1]:8000": true, "http://[::ffff:127.0.0.1]:8000": true, "http://user@localhost:1": true,
+		"http://api.example.com": false, "HTTP://API.EXAMPLE.COM": false, "http://api.example.com:8000": false, "http://10.0.0.5:8000": false, "http://192.168.1.2": false,
+		"http://127.0.0.1.example.com": false, "http://localhost.example.com": false, "http://notlocalhost": false, "http://0.0.0.0:8000": false, "http://[2606:4700::1111]": false,
+		"http://localhost@evil.example/": false,
+	} {
+		e := newEnv(t)
+		delete(e.vars, "PAYRUDDER_BASE_URL")
+		// at login
+		if got := e.run(live+"\n", "login", "--api-key-stdin", "--no-verify", "--base-url", base); (got == 0) != ok {
+			t.Errorf("login with a live key and %s: exit %d (stderr %q), want ok=%v", base, got, e.errOut, ok)
+		}
+		if _, err := os.Stat(filepath.Join(e.dir, "config.json")); (err == nil) != ok {
+			t.Errorf("login with a live key and %s: stored=%v, want %v", base, err == nil, ok)
+		}
+		if !ok {
+			contains(t, "stderr", e.errOut.String(), "refusing to send a live API key over plain http", "https://")
+			lacks(t, "stderr", e.errOut.String(), live)
+		}
+		// from the environment
+		e.vars["PAYRUDDER_API_KEY"], e.vars["PAYRUDDER_BASE_URL"] = live, base
+		if ok {
+			continue // the address does not answer; only the refusals are looked at here
+		}
+		e.expect(1, "", "customers", "list")
+		contains(t, "stderr", e.errOut.String(), "refusing to send a live API key over plain http")
+	}
+
+	// A stored login: the refusal comes at the command, not only at login (the file may have been written by hand or by an older version).
+	e := newEnv(t)
+	delete(e.vars, "PAYRUDDER_API_KEY")
+	delete(e.vars, "PAYRUDDER_BASE_URL")
+	if err := os.MkdirAll(e.dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(e.dir, "config.json"), []byte(`{"api_key":"`+live+`","base_url":"http://api.example.com"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	e.expect(1, "", "customers", "list")
+	contains(t, "stderr", e.errOut.String(), "refusing to send a live API key over plain http to api.example.com")
+	if e.gw.count() != 0 {
+		t.Error("something was sent")
+	}
+
+	// A sandbox key may go over http, and a live key to the local gateway really is sent.
+	e = newEnv(t)
+	e.gw.json("GET /v1/customers", 200, map[string]any{"customers": []any{}, "next_page_token": ""})
+	e.vars["PAYRUDDER_BASE_URL"] = "http://api.example.com:1"
+	e.expect(0, testKey+"\n", "login", "--api-key-stdin", "--no-verify")
+	e.vars["PAYRUDDER_API_KEY"], e.vars["PAYRUDDER_BASE_URL"] = live, e.gw.URL // httptest listens on 127.0.0.1
+	e.expect(0, "", "customers", "list")
+	if got := e.gw.requests("GET", "/v1/customers"); len(got) != 1 || got[0].auth != "Bearer "+live {
+		t.Errorf("a live key to the loopback gateway: %+v", got)
+	}
+}

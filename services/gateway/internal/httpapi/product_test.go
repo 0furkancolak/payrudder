@@ -37,10 +37,12 @@ const (
 	tokBob    = "qs_bob"
 	tokViewer = "qs_viewer" // a viewer of Ada's account
 	// Phase 42: sessions of people the operator list may name (see signin_methods_test.go).
-	tokOperator           = "qs_operator"            // boss@example.com, verified: an operator
-	tokOperatorUnverified = "qs_operator_unverified" // the same address, never verified: not an operator
-	tokNeedsSetup         = "qs_needs_setup"         // Ada, an owner of an account that requires two-factor sign-in, who has not set it up
-	tokSpoof              = "qs_spoof"               // an address that only starts like a listed one
+	tokOperator           = "qs_operator"             // boss@example.com, verified: an operator
+	tokOperatorUnverified = "qs_operator_unverified"  // the same address, never verified: not an operator
+	tokNeedsSetup         = "qs_needs_setup"          // Ada, an owner of an account that requires two-factor sign-in, who has not set it up
+	tokOperatorNeedsSetup = "qs_operator_needs_setup" // an operator who owns such an account and has not set it up
+	tokOperatorTwoFactor  = "qs_operator_2fa"         // an operator with two-factor sign-in on
+	tokSpoof              = "qs_spoof"                // an address that only starts like a listed one
 	opUser                = "44444444-4444-4444-8444-444444444444"
 	opUser2               = "55555555-5555-4555-8555-555555555555"
 	spoofUser             = "66666666-6666-4666-8666-666666666666"
@@ -112,7 +114,8 @@ type fakeUser struct {
 }
 
 var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com", true}, tokBob: {bobUser, "bob@example.com", true}, tokViewer: {viewerUser, "view@example.com", true},
-	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}, tokNeedsSetup: {adaUser, "ada@example.com", true}}
+	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}, tokNeedsSetup: {adaUser, "ada@example.com", true},
+	tokOperatorNeedsSetup: {opUser, "boss@example.com", true}, tokOperatorTwoFactor: {opUser, "boss@example.com", true}}
 
 func (f *fakeIdentity) memberships(user string) []*plansv1.Membership {
 	base := f.baseMemberships(user)
@@ -235,7 +238,7 @@ func (f *fakeIdentity) GetSession(_ context.Context, req *plansv1.GetSessionRequ
 	if !ok || f.revoked[req.GetToken()] {
 		return nil, errkey.New(codes.Unauthenticated, "identity.session.invalid", "sign in again")
 	}
-	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email, EmailVerified: u.verified, TwoFactorSetupRequired: req.GetToken() == tokNeedsSetup},
+	return &plansv1.GetSessionResponse{User: &plansv1.User{Id: u.id, Email: u.email, EmailVerified: u.verified, TwoFactorSetupRequired: req.GetToken() == tokNeedsSetup || req.GetToken() == tokOperatorNeedsSetup, TwoFactorEnabled: req.GetToken() == tokOperatorTwoFactor},
 		Memberships: f.memberships(u.id), ExpireTime: timestamppb.New(time.Now().Add(time.Hour))}, nil
 }
 

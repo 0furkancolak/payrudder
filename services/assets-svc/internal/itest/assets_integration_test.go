@@ -664,6 +664,41 @@ func proxiedUploads(t *testing.T, cells bool) {
 		}
 	})
 
+	t.Run("SupportAttachmentsAreStoredButNotListedAmongTheTenantsFiles", func(t *testing.T) {
+		shot := append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{9}, 10<<10)...)
+		fs, cancel := stream(ctx, "screenshot.png", "image/png", assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, shot, 0)
+		defer cancel()
+		if err := w.svc.UploadAsset(fs); err != nil {
+			t.Fatal(err)
+		}
+		a := fs.reply
+		if a.GetStatus() != assetsv1.AssetStatus_ASSET_STATUS_READY || a.GetPurpose() != assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT {
+			t.Fatalf("asset = %v", a)
+		}
+		all, err := w.svc.ListAssets(ctx, &assetsv1.ListAssetsRequest{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, x := range all.GetAssets() {
+			if x.GetId() == a.GetId() {
+				t.Fatal("a support attachment is listed among all the tenant's files")
+			}
+		}
+		named, err := w.svc.ListAssets(ctx, &assetsv1.ListAssetsRequest{Purpose: assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT})
+		if err != nil || len(named.GetAssets()) != 1 || named.GetAssets()[0].GetId() != a.GetId() {
+			t.Fatalf("named list = %v, %v", named, err)
+		}
+		if _, err := w.svc.GetDownloadUrl(ctx, &assetsv1.GetDownloadUrlRequest{AssetId: a.GetId()}); err != nil {
+			t.Fatalf("download url: %v", err)
+		}
+		// Only the four types of the purpose: a zip is refused before anything is stored.
+		zip, cancelZ := stream(ctx, "logs.zip", "application/zip", assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, zipData(1<<10, 3), 0)
+		defer cancelZ()
+		if err := w.svc.UploadAsset(zip); err == nil && zip.reply.GetStatus() == assetsv1.AssetStatus_ASSET_STATUS_READY {
+			t.Fatal("a zip was taken as a support attachment")
+		}
+	})
+
 	t.Run("SpoofedContentTypeIsRejectedBeforeAnythingIsStored", func(t *testing.T) {
 		pdf := append([]byte("%PDF-1.7\n"), bytes.Repeat([]byte("y"), 4000)...)
 		fs, cancel := stream(ctx, "fake.png", "image/png", assetsv1.Purpose_PURPOSE_INVOICE_LOGO, pdf, 0)

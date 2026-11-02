@@ -177,10 +177,12 @@ func State(invoiceStatus, sagaState string) (state string, payable bool) {
 		return "failed", false
 	}
 	switch sagamodel.State(sagaState) {
-	case sagamodel.AwaitingPayment:
-		return "open", true
+	case sagamodel.AwaitingPayment, sagamodel.PaymentActionRequired:
+		return "open", true // the customer was asked to come and pay (3-D Secure): the page is where they do
 	case sagamodel.PaymentDeclined:
 		return "failed", true
+	case sagamodel.PaymentHeld:
+		return "open", false // waiting for the seller or the operator: the page says it cannot be paid for now, not that it is being processed
 	}
 	return "processing", false
 }
