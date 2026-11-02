@@ -4190,7 +4190,9 @@
         "problems": {
           "required": "Obligatoire.",
           "taxIdFormat": "De 5 à 20 lettres et chiffres."
-        }
+        },
+        "defaultLanguage": "Langue des factures et des e-mails",
+        "defaultLanguageHint": "Utilisée pour un client qui n'a pas de langue propre, sur le PDF de la facture et dans les e-mails. La langue définie sur le client l'emporte toujours."
       },
       "provider": {
         "title": "Prestataire de paiement",

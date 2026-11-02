@@ -111,6 +111,31 @@ func testOwnerGoLiveSteps(t *testing.T) {
 		}
 	})
 
+	t.Run("the default language of the documents is one of the six, kept when left out", func(t *testing.T) {
+		legal := &plansv1.LegalInfo{LegalName: "Shop GmbH", TaxId: "DE123456789"}
+		withLanguage := func(language string) (*plansv1.UpdateMyBillingProfileResponse, error) {
+			return e.ident.UpdateMyBillingProfile(ctx, &plansv1.UpdateMyBillingProfileRequest{UserId: owner.id, AppId: app.GetId(), Address: de, Legal: legal, DefaultLanguage: language})
+		}
+		_, err := withLanguage("klingon")
+		wantCode(t, "an unknown language", err, codes.InvalidArgument, "")
+		out, err := withLanguage("de")
+		if err != nil || out.GetTenant().GetDefaultLanguage() != "de" {
+			t.Fatalf("saved with de: %v, %v", out.GetTenant().GetDefaultLanguage(), err)
+		}
+		out, err = withLanguage("") // saving the profile without saying leaves the language as it was
+		if err != nil || out.GetTenant().GetDefaultLanguage() != "de" {
+			t.Errorf("saved without a language: %q, %v; want de kept", out.GetTenant().GetDefaultLanguage(), err)
+		}
+		// The operator's settings take it too.
+		upd, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), DefaultLanguage: "tr"})
+		if err != nil || upd.GetTenant().GetDefaultLanguage() != "tr" {
+			t.Errorf("operator settings: %v, %v", upd.GetTenant().GetDefaultLanguage(), err)
+		}
+		if _, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), DefaultLanguage: "xx"}); err == nil {
+			t.Error("the operator stored a language outside the six")
+		}
+	})
+
 	t.Run("the terms are accepted by the owner alone, once", func(t *testing.T) {
 		_, err := e.ident.AcceptMyTerms(ctx, &plansv1.AcceptMyTermsRequest{UserId: admin.GetUser().GetId(), AppId: app.GetId()})
 		wantCode(t, "admin", err, codes.PermissionDenied, "identity.go_live.owner_only")

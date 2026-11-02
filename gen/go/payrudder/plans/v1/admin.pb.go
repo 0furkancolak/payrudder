@@ -582,9 +582,11 @@ type UpdateTenantSettingsRequest struct {
 	// Replaces the seller's company data; unset leaves it unchanged.
 	Legal *LegalInfo `protobuf:"bytes,9,opt,name=legal,proto3" json:"legal,omitempty"`
 	// "off", "finalized" or "paid"; empty leaves it unchanged.
-	EInvoiceOn    string `protobuf:"bytes,10,opt,name=e_invoice_on,json=eInvoiceOn,proto3" json:"e_invoice_on,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	EInvoiceOn string `protobuf:"bytes,10,opt,name=e_invoice_on,json=eInvoiceOn,proto3" json:"e_invoice_on,omitempty"`
+	// The language of the tenant's documents and mails for a customer who has none: en, tr, de, fr, es or ar; empty leaves it unchanged.
+	DefaultLanguage string `protobuf:"bytes,11,opt,name=default_language,json=defaultLanguage,proto3" json:"default_language,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateTenantSettingsRequest) Reset() {
@@ -683,6 +685,13 @@ func (x *UpdateTenantSettingsRequest) GetLegal() *LegalInfo {
 func (x *UpdateTenantSettingsRequest) GetEInvoiceOn() string {
 	if x != nil {
 		return x.EInvoiceOn
+	}
+	return ""
+}
+
+func (x *UpdateTenantSettingsRequest) GetDefaultLanguage() string {
+	if x != nil {
+		return x.DefaultLanguage
 	}
 	return ""
 }
@@ -1564,7 +1573,7 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"page_token\x18\x02 \x01(\tR\tpageToken\"s\n" +
 	"\x13ListTenantsResponse\x124\n" +
 	"\atenants\x18\x01 \x03(\v2\x1a.payrudder.plans.v1.TenantR\atenants\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\x99\x04\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc4\x04\n" +
 	"\x1bUpdateTenantSettingsRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12<\n" +
 	"\fgrace_period\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\vgracePeriod\x122\n" +
@@ -1577,7 +1586,8 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\x05legal\x18\t \x01(\v2\x1d.payrudder.plans.v1.LegalInfoR\x05legal\x12 \n" +
 	"\fe_invoice_on\x18\n" +
 	" \x01(\tR\n" +
-	"eInvoiceOn\"R\n" +
+	"eInvoiceOn\x12)\n" +
+	"\x10default_language\x18\v \x01(\tR\x0fdefaultLanguage\"R\n" +
 	"\x1cUpdateTenantSettingsResponse\x122\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"\xa0\x01\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +

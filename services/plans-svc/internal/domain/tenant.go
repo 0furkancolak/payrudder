@@ -197,6 +197,14 @@ var (
 	CustomerTypes   = []string{"individual", "business"}
 )
 
+// ValidateDefaultLanguage checks the tenant's default language: one of the six, or empty (not given: the setting is left as it is).
+func ValidateDefaultLanguage(v string) error {
+	if v != "" && !slices.Contains(CustomerLocales, v) {
+		return Invalid("default_language", "one of "+strings.Join(CustomerLocales, ", "))
+	}
+	return nil
+}
+
 // customerProfile checks the language, the kind and the phone number of a customer, which Create and SetContact take the same way.
 func customerProfile(v *Violations, locale, kind, number string) {
 	if locale != "" && !slices.Contains(CustomerLocales, locale) {

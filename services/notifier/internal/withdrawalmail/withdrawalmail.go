@@ -4,6 +4,7 @@
 package withdrawalmail
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
@@ -94,8 +96,9 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err != nil {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
-	d := MailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone())
-	d["locale"] = cust.GetCustomer().GetLocale()
+	locale := cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage())
+	d := MailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), locale)
+	d["locale"] = locale
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{Key: ev.GetEventId(), Kind: "withdrawal", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(), Data: d,
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
@@ -105,11 +108,16 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 }
 
 // MailData is what the template reads: the statement as it was recorded, and the moment it was submitted in the tenant's time zone (UTC when it has none, or one this host
-// does not know) with the zone named, so the customer can read it as a date and time of day.
-func MailData(ev *eventsv1.ContractWithdrawalReceived, customerName, tenantName, zone string) map[string]string {
+// does not know) with the zone named, so the customer can read it as a date and time of day, the day in the language of the mail (pkg/localefmt).
+func MailData(ev *eventsv1.ContractWithdrawalReceived, customerName, tenantName, zone, locale string) map[string]string {
 	loc := time.UTC
 	if l, err := time.LoadLocation(zone); err == nil && zone != "" {
 		loc = l
 	}
-	return map[string]string{"customer_name": customerName, "tenant_name": tenantName, "statement": ev.GetStatement(), "received_at": ev.GetReceivedAt().AsTime().In(loc).Format("2 Jan 2006, 15:04 MST")}
+	return map[string]string{"customer_name": customerName, "tenant_name": tenantName, "statement": ev.GetStatement(), "received_at": dateTime(localefmt.For(locale), ev.GetReceivedAt().AsTime().In(loc))}
+}
+
+// dateTime writes a moment as the language writes its day, then the time of day and the zone's abbreviation: "2 November 2026, 10:30 +03".
+func dateTime(f *localefmt.Format, t time.Time) string {
+	return f.Date(t) + ", " + t.Format("15:04 MST")
 }

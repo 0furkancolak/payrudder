@@ -124,7 +124,7 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 		drawWatermark(pdf, l.t(kSandbox))
 	}
 	drawLogo(pdf, o.Logo)
-	drawHeader(pdf, l, inv, issued)
+	drawHeader(pdf, l, inv, issued.In(zoneOf(inv.GetTimeZone())))
 	drawParty(pdf, l.t(kFrom), inv.GetTenantName(), inv.GetSellerAddressLines(), taxLines(l, inv.GetSellerTaxId(), inv.GetSellerTaxOffice()))
 	pdf.Ln(2)
 	drawParty(pdf, l.t(kBillTo), inv.GetCustomerName(), inv.GetCustomerAddressLines(), taxLines(l, inv.GetCustomerTaxId(), inv.GetCustomerTaxOffice()))
@@ -146,6 +146,14 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return out.Bytes(), nil
+}
+
+// zoneOf loads the seller's IANA time zone that the invoice froze; none, or one that does not load, is UTC, which is how every invoice was dated.
+func zoneOf(name string) *time.Location {
+	if loc, err := time.LoadLocation(name); err == nil {
+		return loc
+	}
+	return time.UTC
 }
 
 // eDocumentIssuedSeparately: a Turkish seller whose tenant e-invoices has its legal e-Fatura or e-Arşiv document made by the integrator after this PDF, with a number

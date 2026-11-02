@@ -4,6 +4,7 @@
 package renewalmail
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -20,7 +21,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
-	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
@@ -96,8 +97,9 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err != nil {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
-	d := MailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone())
-	d["locale"] = cust.GetCustomer().GetLocale()
+	locale := cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage())
+	d := MailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), locale)
+	d["locale"] = locale
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{Key: ev.GetEventId(), Kind: "renewal", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(), Data: d,
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
@@ -107,14 +109,16 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 }
 
 // MailData is what the template reads. The date is written in the tenant's time zone (UTC when it has none, or one this host does not know), the calendar its customers
-// live by; the price is the fee of the next period in the subscription's currency, the way the seller's other notices write one.
-func MailData(ev *eventsv1.RenewalNotice, customerName, tenantName, zone string) map[string]string {
+// live by; the price is the fee of the next period in the subscription's currency, the way the seller's other notices write one. Both are written in the language of the
+// mail (pkg/localefmt).
+func MailData(ev *eventsv1.RenewalNotice, customerName, tenantName, zone, locale string) map[string]string {
 	loc := time.UTC
 	if l, err := time.LoadLocation(zone); err == nil && zone != "" {
 		loc = l
 	}
+	f := localefmt.For(locale)
 	return map[string]string{
 		"customer_name": customerName, "tenant_name": tenantName, "plan_code": ev.GetPlanCode(), "interval": ev.GetInterval(), "cancel_text": ev.GetCancelText(),
-		"renewal_date": ev.GetRenewsAt().AsTime().In(loc).Format("2 Jan 2006"), "price": money.FormatMinorGrouped(ev.GetPriceMinor(), int(ev.GetCurrencyExponent())) + " " + ev.GetCurrency(),
+		"renewal_date": f.Date(ev.GetRenewsAt().AsTime().In(loc)), "price": f.Money(ev.GetPriceMinor(), int(ev.GetCurrencyExponent()), ev.GetCurrency()),
 	}
 }

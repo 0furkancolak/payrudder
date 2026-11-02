@@ -89,6 +89,7 @@ func (s *Server) portalPageWith(w http.ResponseWriter, r *http.Request, code int
 	lang = customerLang(r, resp.GetCustomerLocale())
 	q := langSuffix(r)
 	v := &portalView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName()}
+	v.Zone = zoneOf(resp.GetTimeZone())
 	v.SideSeller, v.SideNote = v.Seller, v.Customer
 	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if resp.GetLogoAvailable() {
@@ -130,7 +131,7 @@ func (s *Server) portalSubscriptions(ctx context.Context, token string, b pageBa
 // portalSubRows words the subscriptions of the summary in the page's language.
 func portalSubRows(subs []*billingv1.PortalSubscription, b pageBase) []portalSubRow {
 	var out []portalSubRow
-	date := func(t *timestamppb.Timestamp) string { return b.F.Date(t.AsTime().UTC()) }
+	date := func(t *timestamppb.Timestamp) string { return b.Day(t.AsTime()) }
 	for _, p := range subs {
 		row := portalSubRow{Plan: cmp.Or(p.GetPlanName(), p.GetPlanCode()), State: p.GetState(), StateLabel: b.L["sub_state_"+p.GetState()]}
 		if p.GetPriceKnown() {
@@ -174,7 +175,7 @@ func portalInvoices(resp *billingv1.GetPortalResponse, b pageBase, token, q stri
 		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: b.L["st_"+state], Total: b.F.Amount(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
 			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
 		if t := inv.GetIssueTime(); t != nil {
-			row.Date = b.F.Date(t.AsTime().UTC())
+			row.Date = b.Day(t.AsTime())
 		}
 		rows = append(rows, row)
 		shown[inv.GetId()] = knownInvoice{inv.GetNumber(), exp}
@@ -195,7 +196,7 @@ func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, b pageBase)
 		if !ok {
 			continue
 		}
-		p := portalPaymentRow{Date: b.F.Date(row.OccurredAt.UTC()), Kind: b.L["kind_"+row.Kind], Number: k.number, Status: b.L[portalPaymentStatusKey[row.Status]],
+		p := portalPaymentRow{Date: b.Day(row.OccurredAt), Kind: b.L["kind_"+row.Kind], Number: k.number, Status: b.L[portalPaymentStatusKey[row.Status]],
 			Provider: row.Provider, Currency: row.Currency, Amount: b.F.Amount(row.amount(), k.exponent), Negative: row.Kind == "refund"}
 		if p.Negative {
 			p.Amount = b.F.Minus + p.Amount
@@ -211,7 +212,7 @@ func portalCredits(v *portalView, resp *billingv1.GetPortalResponse, token, q st
 	for _, l := range resp.GetCreditLots() {
 		row := portalLotRow{Granted: v.F.Amount(l.GetGranted(), 0), Remaining: v.F.Amount(l.GetRemaining(), 0)}
 		if t := l.GetExpireTime(); t != nil {
-			row.Expires = v.F.Date(t.AsTime().UTC())
+			row.Expires = v.Day(t.AsTime())
 		}
 		v.Lots = append(v.Lots, row)
 	}

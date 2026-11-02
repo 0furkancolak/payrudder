@@ -714,6 +714,8 @@ message GetHostedInvoiceResponse {
   // The customer's language (en, tr, de, fr, es, ar) and kind (individual, business) as frozen with the invoice; empty when the customer has none.
   string customer_locale = 17;
   string customer_type = 18;
+  // The seller's IANA time zone as frozen with the invoice: the calendar the page's days are written in. Empty for an invoice made before it was frozen: UTC.
+  string time_zone = 19;
 }
 
 // BankTransferInstructions are the tenant's bank details and the reference the customer puts on the transfer.
@@ -946,6 +948,8 @@ message GetPortalResponse {
   bool can_buy_credits = 12;
   // The customer's language, as frozen with their latest invoice.
   string customer_locale = 13;
+  // The seller's IANA time zone (frozen with the latest invoice, else the tenant's own): the calendar the page's days are written in. Empty: UTC.
+  string time_zone = 14;
 }
 message GetPortalSubscriptionsRequest { string portal_token = 1; }
 message GetPortalSubscriptionsResponse {

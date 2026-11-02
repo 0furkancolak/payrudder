@@ -125,6 +125,8 @@ message Tenant {
   google.protobuf.Timestamp activate_time = 17;
   // When the owner accepted the terms of service; empty until then.
   google.protobuf.Timestamp terms_accept_time = 18;
+  // The language of the tenant's documents and mails for a customer who has none of their own (en, tr, de, fr, es or ar). Empty is English.
+  string default_language = 19;
 }
 
 // ApiKey metadata. The plaintext key is returned once, by CreateApiKey.

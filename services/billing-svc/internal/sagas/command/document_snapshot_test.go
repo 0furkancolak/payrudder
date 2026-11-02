@@ -18,3 +18,22 @@ func TestInvoiceSnapshotCarriesTheDocumentFacts(t *testing.T) {
 		t.Fatalf("snapshot = %v", got)
 	}
 }
+
+// The amount and the period of an invoice mail are written the way the customer's language writes them (pkg/localefmt, the same table as the invoice PDF and the hosted
+// pages); a customer with no language of their own gets the tenant's default one, and with neither, English.
+func TestMailDataIsWrittenInTheCustomersLanguage(t *testing.T) {
+	for _, tc := range []struct {
+		name, customer, tenant, amount, period, locale string
+	}{
+		{"english", "", "", "1,234.56", "October 2026", ""},
+		{"turkish customer", "tr", "", "1.234,56", "Ekim 2026", "tr"},
+		{"german customer, french tenant", "de", "fr", "1.234,56", "Oktober 2026", "de"},
+		{"no language, the tenant's", "", "fr", "1\u202f234,56", "octobre 2026", "fr"}, // a narrow no-break space groups the thousands in French
+	} {
+		s := &saga{Number: "INV-1", Currency: "EUR", PeriodID: "2026-10", TotalMinor: 123456, Snap: model.Snapshot{CurrencyExponent: 2, CustomerLocale: tc.customer, DefaultLocale: tc.tenant}}
+		d := mailData(s)
+		if d["amount"] != tc.amount || d["period"] != tc.period || d["locale"] != tc.locale {
+			t.Errorf("%s: amount %q period %q locale %q; want %q, %q, %q", tc.name, d["amount"], d["period"], d["locale"], tc.amount, tc.period, tc.locale)
+		}
+	}
+}

@@ -63,7 +63,7 @@ func (c *Commands) UpdateSettings(ctx context.Context, req *plansv1.UpdateTenant
 	}
 	params := sqlc.UpdateTenantSettingsParams{ID: id}
 	for _, set := range []func(*plansv1.UpdateTenantSettingsRequest, *sqlc.UpdateTenantSettingsParams) error{
-		setGrace, setTier, setLogo, setSeller, setEInvoice, setBankTransfer,
+		setGrace, setTier, setLogo, setSeller, setEInvoice, setDefaultLanguage, setBankTransfer,
 	} {
 		if err := set(req, &params); err != nil {
 			return nil, err
@@ -153,6 +153,15 @@ func setSeller(req *plansv1.UpdateTenantSettingsRequest, p *sqlc.UpdateTenantSet
 		}
 		p.Legal = convert.LegalJSON(req.GetLegal())
 	}
+	return nil
+}
+
+func setDefaultLanguage(req *plansv1.UpdateTenantSettingsRequest, p *sqlc.UpdateTenantSettingsParams) error {
+	v := req.GetDefaultLanguage()
+	if err := domain.ValidateDefaultLanguage(v); err != nil || v == "" {
+		return err
+	}
+	p.DefaultLanguage = &v
 	return nil
 }
 

@@ -7,7 +7,9 @@ import { ADDRESS_MAX, countryProfile } from "@/shared/lib/address";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { LocationFields } from "@/shared/ui/location-fields";
+import { API_LOCALES, type ApiLocale } from "@/shared/lib/locale";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useApp, useSaveBillingProfile } from "./api";
 import { emptyProfile, fromTenant, normalizeTaxId, profileBody, taxIdRequired, validateProfile, type ProfileField, type ProfileForm } from "./billingProfile";
@@ -45,8 +47,9 @@ watch(
 const problems = computed(() => validateProfile(form.value));
 const profile = computed(() => countryProfile(form.value.country.trim().toUpperCase()));
 const needsTaxId = computed(() => taxIdRequired(form.value.country));
-const MAX: Record<ProfileField, number> = { legalName: 200, taxId: 20, taxOffice: 200, country: 2, line1: ADDRESS_MAX.line1, line2: ADDRESS_MAX.line2, city: ADDRESS_MAX.city, region: ADDRESS_MAX.region, postalCode: ADDRESS_MAX.postal_code };
-const problemText = (f: ProfileField): string => {
+const LANGUAGE_NAMES: Record<ApiLocale, string> = { en: "English", tr: "Türkçe", de: "Deutsch", fr: "Français", es: "Español", ar: "العربية" };
+const MAX: Record<Exclude<ProfileField, "defaultLanguage">, number> = { legalName: 200, taxId: 20, taxOffice: 200, country: 2, line1: ADDRESS_MAX.line1, line2: ADDRESS_MAX.line2, city: ADDRESS_MAX.city, region: ADDRESS_MAX.region, postalCode: ADDRESS_MAX.postal_code };
+const problemText = (f: Exclude<ProfileField, "defaultLanguage">): string => {
   const p = tried.value ? problems.value[f] : undefined;
   if (!p) return "";
   if (p === "required" || p === "taxIdFormat") return t(`product.goLive.profile.problems.${p}`);
@@ -117,6 +120,13 @@ const taxIdPreview = computed(() => normalizeTaxId(form.value.taxId));
           <label class="text-sm" for="bp-postal">{{ t(`address.labels.${profile.postalCode}`) }}</label>
           <Input id="bp-postal" v-model="form.postalCode" autocomplete="postal-code" :placeholder="profile.example" :aria-invalid="!!(tried && problems.postalCode)" />
           <p v-if="problemText('postalCode')" class="text-destructive text-xs" role="alert">{{ problemText("postalCode") }}</p>
+        </div>
+        <div class="grid gap-1 sm:max-w-[50%]">
+          <label class="text-sm" for="bp-language">{{ t("product.goLive.profile.defaultLanguage") }}</label>
+          <NativeSelect id="bp-language" v-model="form.defaultLanguage" data-testid="profile-language">
+            <option v-for="l in API_LOCALES" :key="l" :value="l">{{ LANGUAGE_NAMES[l] }}</option>
+          </NativeSelect>
+          <p class="text-muted-foreground text-xs">{{ t("product.goLive.profile.defaultLanguageHint") }}</p>
         </div>
       </fieldset>
       <div class="flex flex-wrap items-center gap-3">

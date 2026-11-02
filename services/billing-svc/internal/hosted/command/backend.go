@@ -85,6 +85,7 @@ type Seller struct {
 	Name        string
 	LogoKey     string
 	Environment string
+	TimeZone    string
 }
 
 // Seller looks the tenant up: its name, the object key of its logo and its environment.
@@ -93,7 +94,7 @@ func (b *Backend) Seller(ctx context.Context, tenantID uuid.UUID) (Seller, error
 	if err != nil {
 		return Seller{}, err
 	}
-	return Seller{Name: t.GetName(), LogoKey: inputs.LogoKey(tenantID, t), Environment: inputs.Environment(t)}, nil
+	return Seller{Name: t.GetName(), LogoKey: inputs.LogoKey(tenantID, t), Environment: inputs.Environment(t), TimeZone: t.GetTimezone()}, nil
 }
 
 // TenantCurrency is the tenant's default currency, which an ad-hoc link without one is in.
