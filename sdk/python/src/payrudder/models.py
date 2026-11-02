@@ -1765,7 +1765,7 @@ class RoutingRulesInput(TypedDict, total=False):
 
 
 class MailSettingsCategoriesItem(TypedDict):
-    category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"]
+    category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system", "customer_notices"]
     enabled: bool
 
 
@@ -1774,7 +1774,7 @@ class MailSettings(TypedDict):
 
 
 class MailSettingsInputCategoriesItem(TypedDict, total=False):
-    category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"]
+    category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system", "customer_notices"]
     enabled: bool
 
 

@@ -1600,14 +1600,16 @@
         "payment_receipts": "Reçus de paiement",
         "payment_failed": "Paiement échoué",
         "usage_alerts": "Alertes d'usage",
-        "system": "Système"
+        "system": "Système",
+        "customer_notices": "Avis aux clients"
       },
       "descriptions": {
         "invoice_issued": "Prévient le client qu'une nouvelle facture a été finalisée.",
         "payment_receipts": "Le reçu après un paiement réussi.",
         "payment_failed": "Un paiement échoué, une nouvelle tentative et l'avis que Payrudder a renoncé à encaisser.",
         "usage_alerts": "Un client a dépassé une limite d'usage de son offre.",
-        "system": "Tous les autres messages envoyés par Payrudder."
+        "system": "Tous les autres messages envoyés par Payrudder.",
+        "customer_notices": "Prévient un client que vous l'avez bloqué ou que vous avez levé le blocage (jamais pourquoi). Désactivé tant que vous ne l'activez pas."
       },
       "providerNote": "Un prestataire de paiement qui envoie ses propres reçus (Paddle) continue de les envoyer ; cet interrupteur ne commande que les e-mails de Payrudder.",
       "loadMore": "Afficher plus",

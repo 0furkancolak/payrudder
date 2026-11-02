@@ -4,13 +4,15 @@ import "testing"
 
 func TestForTemplate(t *testing.T) {
 	for template, want := range map[string]string{
-		"invoice_issued.v1": InvoiceIssued,
-		"invoice_paid.v1":   PaymentReceipts,
-		"invoice_paid.v2":   PaymentReceipts,
-		"payment_failed.v1": PaymentFailed,
-		"limit_exceeded.v1": UsageAlerts,
-		"welcome.v1":        System,
-		"":                  System,
+		"invoice_issued.v1":     InvoiceIssued,
+		"invoice_paid.v1":       PaymentReceipts,
+		"invoice_paid.v2":       PaymentReceipts,
+		"payment_failed.v1":     PaymentFailed,
+		"limit_exceeded.v1":     UsageAlerts,
+		"customer_blocked.v1":   CustomerNotices,
+		"customer_unblocked.v1": CustomerNotices,
+		"welcome.v1":            System,
+		"":                      System,
 	} {
 		if got := ForTemplate(template); got != want {
 			t.Errorf("ForTemplate(%q) = %q, want %q", template, got, want)
@@ -31,5 +33,11 @@ func TestEveryTemplateCategoryIsListed(t *testing.T) {
 	got[0] = "changed"
 	if All()[0] == "changed" {
 		t.Error("All must return a copy")
+	}
+}
+
+func TestDefaultOffCategoriesAreCategories(t *testing.T) {
+	if got := DefaultOff(); len(got) != 1 || got[0] != CustomerNotices || !Valid(got[0]) {
+		t.Errorf("DefaultOff = %v", got)
 	}
 }

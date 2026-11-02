@@ -208,7 +208,7 @@ function extras(gw: MockGateway, initial: { account?: { provider: string; mode: 
     get mail(): MailMock | null {
       return this.mails.find((a) => a.is_default) ?? null;
     },
-    categories: { invoice_issued: true, payment_receipts: true, payment_failed: true, usage_alerts: true, system: true } as Record<string, boolean>,
+    categories: { invoice_issued: true, payment_receipts: true, payment_failed: true, usage_alerts: true, system: true, customer_notices: false } as Record<string, boolean>,
     /** The default account, or null. */
     get account(): EInvoiceMock | null {
       return accounts.find((a) => a.is_default) ?? null;

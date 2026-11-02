@@ -2347,14 +2347,14 @@ export interface MailMessage {
 
 export interface MailSettings {
   categories: Array<{
-    category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+    category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system" | "customer_notices";
     enabled: boolean;
   }>;
 }
 
 export interface MailSettingsInput {
   categories?: Array<{
-    category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+    category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system" | "customer_notices";
     enabled?: boolean;
   }>;
 }

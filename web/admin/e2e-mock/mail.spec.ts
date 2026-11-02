@@ -4,8 +4,8 @@ import { confirmDialog } from "./ui";
 
 test.describe("mail", () => {
   test("a category is switched off with a partial update and shown off", async ({ page }) => {
-    const off = new Set<string>();
-    const all = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"];
+    const off = new Set<string>(["customer_notices"]); // off until switched on
+    const all = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system", "customer_notices"];
     const state = () => ({ categories: all.map((category) => ({ category, enabled: !off.has(category) })) });
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path !== "/v1/mail-settings") return undefined;
@@ -25,6 +25,29 @@ test.describe("mail", () => {
     expect(gw.called("PUT", "/v1/mail-settings")[0]?.body).toEqual({ categories: [{ category: "payment_receipts", enabled: false }] });
     await expect(page.getByTestId("mail-payment_receipts")).not.toBeChecked();
     await expect(page.getByTestId("mail-usage_alerts")).toBeChecked();
+  });
+
+  test("the notice to a blocked customer is off until it is switched on", async ({ page }) => {
+    const off = new Set<string>(["customer_notices"]);
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path !== "/v1/mail-settings") return undefined;
+      if (c.method === "PUT") {
+        for (const s of (c.body?.categories ?? []) as { category: string; enabled: boolean }[]) {
+          if (s.enabled) off.delete(s.category);
+          else off.add(s.category);
+        }
+      }
+      const all = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system", "customer_notices"];
+      return { body: { categories: all.map((category) => ({ category, enabled: !off.has(category) })) } };
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/mail");
+    await expect(page.getByTestId("mail-customer_notices")).not.toBeChecked();
+    await expect(page.getByText("Customer notices")).toBeVisible();
+    await page.getByTestId("mail-customer_notices").click();
+    await expect.poll(() => gw.called("PUT", "/v1/mail-settings").length).toBe(1);
+    expect(gw.called("PUT", "/v1/mail-settings")[0]?.body).toEqual({ categories: [{ category: "customer_notices", enabled: true }] });
+    await expect(page.getByTestId("mail-customer_notices")).toBeChecked();
   });
 
   test("the suppression list shows why each address is held back and mails one again after asking", async ({ page }) => {

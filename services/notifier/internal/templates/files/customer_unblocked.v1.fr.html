@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n’est pas un vrai avis.</strong></p>{{end}}
+<h2>Votre compte n’est plus restreint</h2>
+<p>Bonjour {{index .D "customer_name"}}, {{index .D "tenant_name"}} a levé la restriction de votre compte. Vous pouvez de nouveau acheter et changer de formule, et votre accès au service est rétabli.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>
