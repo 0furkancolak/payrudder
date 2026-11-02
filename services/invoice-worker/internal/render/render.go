@@ -89,6 +89,9 @@ func paymentInstructions(pdf *fpdf.Fpdf, l *layout, in *commandsv1.PaymentInstru
 	pdf.MultiCell(0, rowBody, l.t(kTransferNote), "", "L", false)
 }
 
+// SandboxMarker is the /Subject of every sandbox invoice, in plain ASCII.
+const SandboxMarker = "payrudder-sandbox"
+
 // PDF renders the invoice.
 func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	if inv.GetInvoiceId() == "" || inv.GetNumber() == "" || inv.GetCurrency() == "" || inv.GetCurrencyExponent() < 0 || inv.GetCurrencyExponent() > 3 {
@@ -116,6 +119,8 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	pdf.AddPage()
 
 	if o.Sandbox {
+		// The drawn mark is glyph ids of the embedded font, so nothing can find it by its text in the bytes; /Subject is a plain ASCII string (SandboxMarker) that a script can.
+		pdf.SetSubject(SandboxMarker, false)
 		drawWatermark(pdf, l.t(kSandbox))
 	}
 	drawLogo(pdf, o.Logo)

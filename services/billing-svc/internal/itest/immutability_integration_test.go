@@ -61,12 +61,13 @@ func testFinancialRowsAreImmutable(t *testing.T) {
 	}
 	// A draft is still being made: totals, snapshot, and then number, status and finalized_at when it is opened.
 	draft := seedOne(t, live, uuid.New(), "cus_d", "draft", "USD", "", 700, "live")
-	for name, stmt := range map[string]string{
-		"totals":  `UPDATE invoices SET subtotal_minor = 600, total_minor = 650 WHERE tenant_id = $1 AND id = $2`,
-		"opening": `UPDATE invoices SET number = 'INV-2026-000502', status = 'open', finalized_at = now() WHERE tenant_id = $1 AND id = $2`,
+	// In this order: once it is opened it is no longer a draft (a map would run them in a random one).
+	for _, step := range []struct{ name, stmt string }{
+		{"totals", `UPDATE invoices SET subtotal_minor = 600, total_minor = 650 WHERE tenant_id = $1 AND id = $2`},
+		{"opening", `UPDATE invoices SET number = 'INV-2026-000502', status = 'open', finalized_at = now() WHERE tenant_id = $1 AND id = $2`},
 	} {
-		if _, err := shared.sql.Exec(ctx, stmt, live, draft); err != nil {
-			t.Errorf("draft, %s: %v", name, err)
+		if _, err := shared.sql.Exec(ctx, step.stmt, live, draft); err != nil {
+			t.Errorf("draft, %s: %v", step.name, err)
 		}
 	}
 	if _, err := shared.sql.Exec(ctx, `UPDATE invoices SET total_minor = 1 WHERE tenant_id = $1 AND id = $2`, live, draft); !triggerRefusal(err, "invoice_frozen") {
