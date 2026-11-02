@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -50,6 +51,20 @@ func (r *recPlans) GetCustomer(_ context.Context, _ uuid.UUID, ext string) (*pla
 
 func (r *recPlans) TenantCurrency(context.Context, uuid.UUID) (string, error) {
 	return r.currency, nil
+}
+
+// SetCustomerPaymentMethod records what was set, by the customer's external id.
+func (r *recPlans) SetCustomerPaymentMethod(_ context.Context, _ uuid.UUID, externalID, method string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.fail {
+		return errors.New("plans-svc is down")
+	}
+	if r.methods == nil {
+		r.methods = map[string]string{}
+	}
+	r.methods[externalID] = method
+	return nil
 }
 
 // apiPaddle answers the API calls the worker makes for the provider API, by "METHOD path", and records them.

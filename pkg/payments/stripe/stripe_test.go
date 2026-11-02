@@ -464,7 +464,7 @@ func TestEventsThatAreDeliberatelyIgnored(t *testing.T) {
 			t.Errorf("%s: %+v %v", typ, n, err)
 		}
 	}
-	// A completed session with nothing to pay (a setup, a zero total) settles nothing.
+	// A completed session with nothing to pay (a zero total) settles nothing. A setup is another matter: see TestASavedCardIsLearnedFromTheSetupSession.
 	body := `{"id":"evt_y","type":"checkout.session.completed","data":{"object":{"payment_status":"no_payment_required","metadata":{"payrudder_key":"k"}}}}`
 	if n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now)); err != nil || n.Kind != payments.KindIgnored {
 		t.Errorf("no_payment_required: %+v %v", n, err)
@@ -563,5 +563,133 @@ func TestWithoutASigningSecretNothingIsBelieved(t *testing.T) {
 	h.Set("Stripe-Signature", SignatureHeader("", time.Now(), body)) // signed with the empty key
 	if _, err := c.ConfirmNotification(context.Background(), body, h); !errors.Is(err, payments.ErrUnverified) {
 		t.Fatalf("a body signed with an empty key: %v, want ErrUnverified", err)
+	}
+}
+
+// stripeAPI answers each path with what the test sets and records the requests: the setup flow talks to three endpoints.
+type stripeAPI struct {
+	srv   *httptest.Server
+	reqs  []string
+	forms []url.Values
+	keys  []string
+	bodys map[string]string
+}
+
+func newStripeAPI(t *testing.T, bodys map[string]string) *stripeAPI {
+	t.Helper()
+	f := &stripeAPI{bodys: bodys}
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		form, _ := url.ParseQuery(string(raw))
+		f.reqs, f.forms, f.keys = append(f.reqs, r.Method+" "+r.URL.Path), append(f.forms, form), append(f.keys, r.Header.Get("Idempotency-Key"))
+		body, ok := f.bodys[r.Method+" "+r.URL.Path]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = io.WriteString(w, body)
+	}))
+	t.Cleanup(f.srv.Close)
+	return f
+}
+
+func (f *stripeAPI) client(t *testing.T) *Client {
+	t.Helper()
+	c, err := New(Settings{APIKey: key, WebhookSecret: secret, BaseURL: f.srv.URL}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+// A customer who has no Stripe Customer yet gets one (once: its key is the Payrudder customer's), and the page is a Checkout Session in setup mode on that Customer, in
+// the tenant's currency, tagged with who it is for. A customer Payrudder already knows at Stripe makes no second one.
+func TestSetupCheckoutMakesTheCustomerOnceAndASessionInSetupMode(t *testing.T) {
+	api := newStripeAPI(t, map[string]string{"POST /v1/customers": `{"id":"cus_1"}`, "POST /v1/checkout/sessions": `{"id":"cs_1","url":"https://checkout.stripe.com/c/pay/cs_1"}`})
+	c := api.client(t)
+	req := payments.SetupRequest{PayrudderCustomerID: "0192-cust", ExternalID: "user-42", Email: "ada@example.com", Name: "Ada", Currency: "EUR", ReturnURL: "https://pay.example.com/back", IdempotencyKey: "setup-1"}
+	co, err := c.CreateSetupCheckout(context.Background(), req)
+	if err != nil || co.URL != "https://checkout.stripe.com/c/pay/cs_1" || co.Ref != "cs_1" || co.CustomerRef != "cus_1" {
+		t.Fatalf("setup: %+v %v", co, err)
+	}
+	if strings.Join(api.reqs, ",") != "POST /v1/customers,POST /v1/checkout/sessions" || api.keys[0] != "payrudder-customer-0192-cust" || api.keys[1] != "setup-1" {
+		t.Errorf("requests %v keys %v", api.reqs, api.keys)
+	}
+	if api.forms[0].Get("email") != "ada@example.com" || api.forms[0].Get("name") != "Ada" || api.forms[0].Get("metadata[payrudder_external_id]") != "user-42" {
+		t.Errorf("customer form: %v", api.forms[0])
+	}
+	for k, v := range map[string]string{"mode": "setup", "customer": "cus_1", "currency": "eur", "success_url": "https://pay.example.com/back", "metadata[payrudder_customer_id]": "0192-cust", "metadata[payrudder_external_id]": "user-42"} {
+		if api.forms[1].Get(k) != v {
+			t.Errorf("session %s = %q, want %q", k, api.forms[1].Get(k), v)
+		}
+	}
+	if api.forms[1].Get("line_items[0][quantity]") != "" || api.forms[1].Get("customer_creation") != "" {
+		t.Errorf("a setup session takes no line item and needs no customer_creation: %v", api.forms[1])
+	}
+	req.CustomerRef = "cus_known"
+	if co, err := c.CreateSetupCheckout(context.Background(), req); err != nil || co.CustomerRef != "cus_known" || len(api.reqs) != 3 || api.forms[2].Get("customer") != "cus_known" {
+		t.Errorf("a known customer: %+v %v %v", co, err, api.reqs)
+	}
+	for _, bad := range []payments.SetupRequest{{}, {PayrudderCustomerID: "c", ExternalID: "e", Currency: "EUR", ReturnURL: "https://x"}, {PayrudderCustomerID: "c", ExternalID: "e", Currency: "EURO", ReturnURL: "https://x", IdempotencyKey: "k"}} {
+		if _, err := c.CreateSetupCheckout(context.Background(), bad); err == nil {
+			t.Errorf("%+v accepted", bad)
+		}
+	}
+}
+
+// The card is learned from the notification, never from the customer's browser: the completed setup session names the SetupIntent, which gives the payment method; what
+// Charge takes is "customer:method". A SetupIntent that did not succeed, a session Payrudder did not make and a method on no customer are ignored.
+func TestASavedCardIsLearnedFromTheSetupSession(t *testing.T) {
+	now := time.Now()
+	setup := func(meta string) string {
+		return `{"id":"evt_s","type":"checkout.session.completed","created":1790000000,"data":{"object":{"id":"cs_1","mode":"setup","customer":"cus_1","setup_intent":"seti_1","payment_status":"no_payment_required","metadata":` + meta + `}}}`
+	}
+	ours := `{"payrudder_customer_id":"0192-cust","payrudder_external_id":"user-42"}`
+	for _, c := range []struct {
+		name, body, intent string
+		saved              bool
+	}{
+		{"saved", setup(ours), `{"status":"succeeded","payment_method":"pm_9","customer":"cus_1"}`, true},
+		{"the intent names the customer", strings.Replace(setup(ours), `"customer":"cus_1",`, "", 1), `{"status":"succeeded","payment_method":"pm_9","customer":"cus_7"}`, true},
+		{"not succeeded", setup(ours), `{"status":"requires_payment_method","payment_method":"pm_9","customer":"cus_1"}`, false},
+		{"no method", setup(ours), `{"status":"succeeded","customer":"cus_1"}`, false},
+		{"not Payrudder's session", setup(`{}`), `{"status":"succeeded","payment_method":"pm_9","customer":"cus_1"}`, false},
+		{"on no customer", strings.Replace(setup(ours), `"customer":"cus_1",`, "", 1), `{"status":"succeeded","payment_method":"pm_9"}`, false},
+	} {
+		api := newStripeAPI(t, map[string]string{"GET /v1/setup_intents/seti_1": c.intent})
+		cl := api.client(t)
+		cl.now = func() time.Time { return now }
+		n, err := cl.ConfirmNotification(context.Background(), []byte(c.body), signed(cl, c.body, now))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if !c.saved {
+			if n.Kind != payments.KindIgnored {
+				t.Errorf("%s: %+v, want ignored", c.name, n)
+			}
+			continue
+		}
+		wantCus := map[bool]string{true: "cus_7", false: "cus_1"}[strings.Contains(c.name, "names")]
+		if n.Kind != payments.KindPaymentMethod || n.PaymentMethod == nil || n.PaymentMethod.Token != wantCus+":pm_9" || n.PaymentMethod.CustomerRef != wantCus ||
+			n.PaymentMethod.ExternalID != "user-42" || n.PaymentMethod.PayrudderCustomerID != "0192-cust" || n.ProviderRef != "pm_9" || n.Ref.EventID != "evt_s" {
+			t.Errorf("%s: %+v %+v", c.name, n, n.PaymentMethod)
+		}
+		if len(api.reqs) != 1 || api.reqs[0] != "GET /v1/setup_intents/seti_1" {
+			t.Errorf("%s: requests %v", c.name, api.reqs)
+		}
+	}
+	// A body that does not verify reaches no API at all.
+	api := newStripeAPI(t, map[string]string{})
+	cl := api.client(t)
+	forged := http.Header{}
+	forged.Set("Stripe-Signature", SignatureHeader("whsec_other", now, []byte(setup(ours))))
+	if _, err := cl.ConfirmNotification(context.Background(), []byte(setup(ours)), forged); !errors.Is(err, payments.ErrUnverified) || len(api.reqs) != 0 {
+		t.Errorf("forged: %v, requests %v", err, api.reqs)
+	}
+	// A card saved by a charge is the one the next charge takes: "cus_...:pm_..." is what Charge reads.
+	chargeAPI := newFake(t, 200, `{"id":"pi_1","status":"succeeded","amount":500,"currency":"eur"}`)
+	if _, err := chargeAPI.client(t).Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 500, Currency: "EUR", PaymentMethod: "cus_1:pm_9"}); err != nil ||
+		chargeAPI.form.Get("customer") != "cus_1" || chargeAPI.form.Get("payment_method") != "pm_9" {
+		t.Errorf("charge with the saved token: %v %v", err, chargeAPI.form)
 	}
 }

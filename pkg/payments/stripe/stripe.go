@@ -5,6 +5,8 @@
 //   - Charge: a PaymentIntent confirmed off session for a saved payment method ("pm_...") of the customer, with Stripe's own Idempotency-Key header;
 //   - Status: finds the PaymentIntent that carries Payrudder's key in its metadata, through Stripe's search;
 //   - Refund: a refund of the PaymentIntent (the charge id), partial or whole;
+//   - CreateSetupCheckout: a hosted Checkout Session in setup mode, where the customer saves a card on a Stripe Customer for the off-session charges above; the
+//     notification that it was saved (checkout.session.completed, then the SetupIntent) gives the "cus_...:pm_..." Charge takes;
 //   - CreateInvoiceCheckout: a hosted Checkout Session for one invoice, tagged with the key of the charge;
 //   - ConfirmNotification: verifies the Stripe-Signature of a webhook (HMAC-SHA256 over "t.body" with the endpoint's signing secret) and turns the event into
 //     payments.Notification.
@@ -487,6 +489,81 @@ func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutI
 	return payments.Checkout{URL: out.URL, Ref: out.ID}, nil
 }
 
+// CreateSetupCheckout makes a hosted Checkout Session in setup mode: the customer enters a card, nothing is charged, and Stripe "automatically attaches the resulting
+// payment method to that Customer" (docs.stripe.com/payments/save-and-reuse.md, read 2026-11-02, the Customers v1 variant). The Customer is made first
+// (POST /v1/customers) unless r.CustomerRef is known, because the session takes an existing one; currency is required in setup mode "when allowed_payment_method_types
+// is not set", which this never sets. The Customer's key is the Payrudder customer's, so a second click inside 24 hours makes no second Customer. The session carries
+// payrudder_customer_id and payrudder_external_id in its metadata, which ConfirmNotification reads back from checkout.session.completed. The seller's terms for saving
+// and later charging a card (the agreement the guide's "Compliance" section asks for, with the customer's consent) are not collected here: they belong to the page the
+// customer comes from. UNVERIFIED: that Checkout's own text suffices as that consent, and everything against a real account.
+func (c *Client) CreateSetupCheckout(ctx context.Context, r payments.SetupRequest) (payments.SetupCheckout, error) {
+	if r.IdempotencyKey == "" || r.ReturnURL == "" || len(r.Currency) != 3 || r.PayrudderCustomerID == "" || r.ExternalID == "" {
+		return payments.SetupCheckout{}, errors.New("stripe: a setup checkout needs a key, a return address, a currency and the customer")
+	}
+	ref := r.CustomerRef
+	if ref == "" {
+		form := url.Values{"metadata[payrudder_customer_id]": {r.PayrudderCustomerID}, "metadata[payrudder_external_id]": {r.ExternalID}}
+		if r.Email != "" {
+			form.Set("email", r.Email)
+		}
+		if r.Name != "" {
+			form.Set("name", r.Name)
+		}
+		var cus struct {
+			ID string `json:"id"`
+		}
+		if err := c.do(ctx, http.MethodPost, "/v1/customers", form, "payrudder-customer-"+r.PayrudderCustomerID, &cus); err != nil {
+			return payments.SetupCheckout{}, err
+		}
+		if cus.ID == "" {
+			return payments.SetupCheckout{}, errors.New("stripe: a customer without an id")
+		}
+		ref = cus.ID
+	}
+	form := url.Values{
+		"mode": {"setup"}, "customer": {ref}, "currency": {strings.ToLower(r.Currency)}, "success_url": {r.ReturnURL}, "cancel_url": {r.ReturnURL},
+		"metadata[payrudder_customer_id]": {r.PayrudderCustomerID}, "metadata[payrudder_external_id]": {r.ExternalID},
+	}
+	var out struct {
+		ID  string `json:"id"`
+		URL string `json:"url"`
+	}
+	if err := c.do(ctx, http.MethodPost, "/v1/checkout/sessions", form, r.IdempotencyKey, &out); err != nil {
+		return payments.SetupCheckout{}, err
+	}
+	if out.URL == "" {
+		return payments.SetupCheckout{}, errors.New("stripe: the checkout session has no url")
+	}
+	return payments.SetupCheckout{URL: out.URL, Ref: out.ID, CustomerRef: ref}, nil
+}
+
+// savedMethod turns a completed setup-mode Checkout Session into the notification that a method was saved. The session names the SetupIntent, which is retrieved for
+// its payment_method ("Retrieve the SetupIntent to get the payment_method ID", docs.stripe.com/payments/save-and-reuse.md, read 2026-11-02): a SetupIntent that did
+// not succeed, a session Payrudder did not make (no ids in its metadata) and a method on no customer are ignored, because nothing could be charged with them.
+func (c *Client) savedMethod(ctx context.Context, n payments.Notification, customer, setupIntent string, meta map[string]string) (payments.Notification, error) {
+	if setupIntent == "" || meta["payrudder_customer_id"] == "" || meta["payrudder_external_id"] == "" {
+		return n, nil
+	}
+	var si struct {
+		Status        string `json:"status"`
+		PaymentMethod string `json:"payment_method"`
+		Customer      string `json:"customer"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/v1/setup_intents/"+url.PathEscape(setupIntent), nil, "", &si); err != nil {
+		return n, err
+	}
+	if si.Customer != "" {
+		customer = si.Customer
+	}
+	if si.Status != "succeeded" || si.PaymentMethod == "" || customer == "" {
+		return n, nil
+	}
+	n.Kind, n.ProviderRef = payments.KindPaymentMethod, si.PaymentMethod
+	n.PaymentMethod = &payments.SavedPaymentMethod{CustomerRef: customer, Token: customer + ":" + si.PaymentMethod,
+		PayrudderCustomerID: meta["payrudder_customer_id"], ExternalID: meta["payrudder_external_id"]}
+	return n, nil
+}
+
 // WebhookEvents are the event types the adapter turns into notifications (ConfirmNotification); the endpoint RegisterWebhook creates is enabled for exactly these.
 var WebhookEvents = []string{
 	"payment_intent.succeeded", "payment_intent.payment_failed",
@@ -596,7 +673,7 @@ func ParseNotification(body []byte, _ http.Header) (payments.NotificationRef, er
 }
 
 // ConfirmNotification implements payments.Notifier. Stripe signs its webhooks, so the signature is the confirmation; nothing is believed that does not verify.
-func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http.Header) (payments.Notification, error) {
+func (c *Client) ConfirmNotification(ctx context.Context, body []byte, header http.Header) (payments.Notification, error) {
 	if err := c.verify(body, header); err != nil {
 		return payments.Notification{}, err
 	}
@@ -626,6 +703,9 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		}
 	case "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed":
 		var s struct {
+			Mode          string            `json:"mode"`
+			Customer      string            `json:"customer"`
+			SetupIntent   string            `json:"setup_intent"`
 			PaymentIntent string            `json:"payment_intent"`
 			PaymentStatus string            `json:"payment_status"`
 			AmountTotal   int64             `json:"amount_total"`
@@ -634,6 +714,13 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		}
 		if err := json.Unmarshal(e.Data.Object, &s); err != nil {
 			return n, fmt.Errorf("stripe: checkout session: %w", err)
+		}
+		if s.Mode == "setup" {
+			// A card saved: no payment, so payment_status is no_payment_required and nothing below applies.
+			if e.Type != "checkout.session.completed" {
+				return n, nil
+			}
+			return c.savedMethod(ctx, n, s.Customer, s.SetupIntent, s.Metadata)
 		}
 		switch {
 		case e.Type == "checkout.session.async_payment_failed":
@@ -683,4 +770,5 @@ var (
 	_ payments.KeyModer                = (*Client)(nil)
 	_ payments.LiveModer               = (*Client)(nil)
 	_ payments.WebhookRegistrar        = (*Client)(nil)
+	_ payments.SetupProvider           = (*Client)(nil)
 )

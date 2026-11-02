@@ -105,6 +105,7 @@ type recPlans struct {
 	versions  map[string]*plansv1.PlanVersion // by plan code (GetPlanVersion by code) or id
 	customers map[string]*plansv1.Customer    // by external id
 	currency  string                          // the tenant's currency
+	methods   map[string]string               // external id -> the payment method set on the customer
 }
 
 func (r *recPlans) SyncProviderSubscription(_ context.Context, _ uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error {

@@ -107,6 +107,8 @@ type PlansAPI interface {
 	PreviewRouting(ctx context.Context, tenant uuid.UUID, country, currency string) (string, error)
 	// SetBankTransfer replaces the bank details printed on the tenant's invoices; nil clears them.
 	SetBankTransfer(ctx context.Context, tenant uuid.UUID, d *plansv1.BankTransferDetails) error
+	// SetCustomerPaymentMethod sets the payment method the customer's invoices are charged with: what a customer saved at a provider.
+	SetCustomerPaymentMethod(ctx context.Context, tenant uuid.UUID, externalID, method string) error
 }
 
 // RouteRegistrar adds routes to the server's mux, each behind the operator check.
@@ -384,6 +386,11 @@ func (d *delivery) apply(conf payments.Notification) bool {
 			d.retry(d.tenant, err)
 			return false
 		}
+	case payments.KindPaymentMethod:
+		if err := d.s.recordPaymentMethod(d.r.Context(), d.tenant, d.name, d.env, conf); err != nil {
+			d.retry(d.tenant, err)
+			return false
+		}
 	default:
 		if err := d.recordCharge(conf); err != nil {
 			d.retry(d.tenant, err)
@@ -470,6 +477,29 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 		entry.Currency = "XXX" // the provider did not say; the ledger requires a code
 	}
 	return entry, nil
+}
+
+// recordPaymentMethod keeps what a customer saved at the provider: the provider's customer is remembered (the object `cus:{customer id}`, as when the page was made) and
+// the method becomes the one the customer's invoices are charged with, as if the tenant had set it. A failure is returned so that the provider sends the notification
+// again; with no plans-svc there is nowhere to set it, which is logged and not retried.
+func (s *Server) recordPaymentMethod(ctx context.Context, tenant uuid.UUID, provider, env string, n payments.Notification) error {
+	pm := n.PaymentMethod
+	if pm == nil || pm.ExternalID == "" || pm.Token == "" {
+		return errors.New("payment method notification without a customer or a method")
+	}
+	if pm.PayrudderCustomerID != "" && pm.CustomerRef != "" {
+		if err := s.Objects.Put(ctx, tenant, provider, env, "customer", "cus:"+pm.PayrudderCustomerID, pm.CustomerRef); err != nil {
+			return err
+		}
+	}
+	if s.Plans == nil {
+		s.Log.WarnContext(ctx, "payment method saved but plans-svc is not configured", "provider", provider, "tenant", tenant)
+		return nil
+	}
+	if err := s.Plans.SetCustomerPaymentMethod(ctx, tenant, pm.ExternalID, pm.Token); err != nil {
+		return fmt.Errorf("set the payment method with plans-svc: %w", err)
+	}
+	return nil
 }
 
 // subscriptionEvent is what a provider says about a subscription it runs, and whose account it is.
