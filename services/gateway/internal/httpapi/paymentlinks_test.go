@@ -32,6 +32,7 @@ const (
 	tokAdhocSlow   = "tok-adhoc-slow-0123456789abcdefghijklmnopq"
 	tokAdhocStuck  = "tok-adhoc-stuck-0123456789abcdefghijklmnopq"
 	tokSlowInvoice = "tok-slow-invoice-0123456789abcdefghijklmno"
+	tokSettling    = "tok-settling-0123456789abcdefghijklmnopqrs"
 	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
 	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
 	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
@@ -88,6 +89,18 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 		return r, true
 	case req.GetToken() == tokProcessing:
 		return openInvoice("live", "processing", true), true
+	case req.GetToken() == tokSettling:
+		// Processing for its first two looks, paid from the third.
+		billingMu.Lock()
+		settleLooks++
+		n := settleLooks
+		billingMu.Unlock()
+		if n < 3 {
+			return openInvoice("live", "processing", true), true
+		}
+		r := openInvoice("live", "paid", false)
+		r.Invoice.Status = "paid"
+		return r, true
 	case req.GetToken() == tokSlowInvoice:
 		// Processing for its first two looks, open from the third.
 		billingMu.Lock()
@@ -164,6 +177,9 @@ var lastStart *billingv1.StartLinkPaymentRequest
 
 // slowLooks counts the looks at the invoice tokSlowInvoice (guarded by billingMu).
 var slowLooks int
+
+// settleLooks counts the looks at the invoice tokSettling (guarded by billingMu).
+var settleLooks int
 
 func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkPaymentRequest) (*billingv1.StartLinkPaymentResponse, error) {
 	billingMu.Lock()
@@ -509,7 +525,7 @@ func TestPayWithMockInSandbox(t *testing.T) {
 		t.Error("an open invoice has nothing to check again")
 	}
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokOpenSandbox+"/pay", url.Values{"method": {"mock"}}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?wait=1" {
 		t.Fatalf("pay = %d %q", r.StatusCode, r.Header.Get("Location"))
 	}
 	billingMu.Lock()
@@ -617,7 +633,7 @@ func TestPaymentStateDecidesTheCheckAgainLink(t *testing.T) {
 	f := &fakeWorker{}
 	ts := withWorker(t, f, false)
 	_, page := get(t, ts, "/i/"+tokProcessing)
-	if !strings.Contains(page, `id="check-again" href="/i/`+tokProcessing+`"`) || strings.Contains(page, "http-equiv") || !strings.Contains(page, "Payment processing") || strings.Contains(page, "<button") {
+	if !strings.Contains(page, `id="check-again" href="/i/`+tokProcessing+`?wait=1"`) || strings.Contains(page, "http-equiv") || !strings.Contains(page, "Payment processing") || strings.Contains(page, "<button") {
 		t.Errorf("processing page:\n%s", page)
 	}
 	// Open at billing, a pending row in the ledger: processing. A declined latest row: failed, and it can be paid again.
@@ -812,7 +828,7 @@ func TestPortalPages(t *testing.T) {
 
 	// Pay in portal scope.
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/invoices/inv-open/pay", url.Values{"method": {"mock"}}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/c/"+portalTok+"/invoices/inv-open" {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/c/"+portalTok+"/invoices/inv-open?wait=1" {
 		t.Errorf("portal pay = %d %q", r.StatusCode, r.Header.Get("Location"))
 	}
 	billingMu.Lock()
@@ -915,6 +931,38 @@ func TestStartWaitsForTheInvoiceToOpen(t *testing.T) {
 	r, _ = send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokAdhocStuck+"/start", url.Values{}, nil)
 	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokProcessing {
 		t.Errorf("stuck start = %d %q", r.StatusCode, r.Header.Get("Location"))
+	}
+	if d := time.Since(t1); d < startWait-200*time.Millisecond || d > startWait+time.Second {
+		t.Errorf("a stuck invoice waited %v, want about %v", d, startWait)
+	}
+}
+
+// A page asked with wait=1 (the address after paying, and the "Check again" link) is held while the invoice is "processing" and shows the settled state; one asked
+// without it answers at once.
+func TestProcessingPageWaitsOnTheServerWhenAsked(t *testing.T) {
+	oldWait, oldPoll := startWait, startPoll
+	startWait, startPoll = 2*time.Second, 10*time.Millisecond
+	defer func() { startWait, startPoll = oldWait, oldPoll }()
+	ts, _ := newTestServer(t)
+
+	billingMu.Lock()
+	settleLooks = 0
+	billingMu.Unlock()
+	if _, page := get(t, ts, "/i/"+tokSettling); !strings.Contains(page, "Payment processing") {
+		t.Errorf("without wait=1 the first look must be answered as it is:\n%s", page)
+	}
+	t0 := time.Now()
+	if _, page := get(t, ts, "/i/"+tokSettling+"?wait=1"); strings.Contains(page, "check-again") || !strings.Contains(page, "Paid") {
+		t.Errorf("with wait=1 the page must show the settled state:\n%s", page)
+	}
+	if time.Since(t0) > time.Second {
+		t.Errorf("waited %v for an invoice that settled on the third look", time.Since(t0))
+	}
+
+	// One that never settles is answered after the wait, still as processing, and its link asks to wait again.
+	t1 := time.Now()
+	if _, page := get(t, ts, "/i/"+tokProcessing+"?lang=de&wait=1"); !strings.Contains(page, "check-again") {
+		t.Errorf("a stuck invoice must still offer Check again:\n%s", page)
 	}
 	if d := time.Since(t1); d < startWait-200*time.Millisecond || d > startWait+time.Second {
 		t.Errorf("a stuck invoice waited %v, want about %v", d, startWait)
