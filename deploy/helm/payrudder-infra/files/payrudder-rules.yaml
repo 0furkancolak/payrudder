@@ -335,4 +335,11 @@ groups:
         labels: { severity: warn, service: alertmanager }
         annotations:
           summary: "Alertmanager cannot deliver alerts to a receiver (check the webhook URL)"
-
+      # support_sla_breached_tickets{priority}: open support tickets with no first answer past their deadline (plans-svc, read from the database at every scrape, a 0 for a
+      # priority with none). The deadline counts business hours (plan 12), so a ticket opened on Friday evening is not late on Saturday.
+      - alert: SupportFirstAnswerOverdue
+        expr: sum(support_sla_breached_tickets) > 0
+        for: 10m
+        labels: { severity: warn, service: plans-svc }
+        annotations:
+          summary: "{{ $value }} support tickets have waited past their first-answer deadline"

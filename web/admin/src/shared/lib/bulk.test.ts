@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ref } from "vue";
-import { bulkQuestion, restOfPages, runBulk, selectAllResults } from "./bulk";
+import { BULK_PROGRESS_FROM, bulkQuestion, restOfPages, runBulk, selectAllResults } from "./bulk";
 
 describe("runBulk", () => {
   it("acts on every row in order and reports the ones that failed without stopping", async () => {
@@ -12,6 +12,25 @@ describe("runBulk", () => {
     expect(seen).toEqual([1, 2, 3, 4]);
     expect(r.ok).toEqual([1, 3]);
     expect(r.failed.map((f) => f.row)).toEqual([2, 4]);
+  });
+});
+
+describe("runBulk progress", () => {
+  it("reports how many are done and how many failed after each row", async () => {
+    const steps: [number, number][] = [];
+    const act = async (n: number) => {
+      if (n === 2) throw new Error("no");
+    };
+    await runBulk([1, 2, 3], act, (done, failed) => steps.push([done, failed]));
+    expect(steps).toEqual([
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ]);
+  });
+
+  it("shows the progress of a run only when it is long enough to be watched", () => {
+    expect(BULK_PROGRESS_FROM).toBe(20);
   });
 });
 
