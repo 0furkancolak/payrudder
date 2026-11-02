@@ -90,7 +90,7 @@ The follow-ups (migrations public 00011, tenant 00009): `contract_settings` gain
 
 | Topic | When | Key |
 |---|---|---|
-| `plans.entitlements.v1` (compacted) | Subscription created/cancelled, or plan version with entitlements published | `{tenant_id}/{customer_id}/{meter_code}` |
+| `plans.entitlements.v1` (compacted) | Subscription created/cancelled, or plan version with entitlements published; a customer blocked with `suspend_service` (the customer's suspension, an `EntitlementState` with an empty meter) and its lift (tombstone) | `{tenant_id}/{customer_id}/{meter_code}`, and `{tenant_id}/{customer_id}/` for the suspension |
 | `subscription.trial-will-end.v1` | The trial-ending reminder records a notice (below) | `{tenant_id}/{customer_id}` |
 | `subscription.renewal-notice.v1` | The renewal notice records a notice (contracts, above) | `{tenant_id}/{customer_id}` |
 | `contract.withdrawal-received.v1` | A customer withdrew on a hosted page (contracts, above) | `{tenant_id}/{customer_id}` |
