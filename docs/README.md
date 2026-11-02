@@ -33,6 +33,28 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |
 | [payment-provider-contract.md](payment-provider-contract.md) | What a payment provider adapter must do, the conformance suite it passes, and the compatibility matrices of [Paddle](paddle-compatibility-matrix.md), [iyzico](iyzico-compatibility-matrix.md) and [Stripe](stripe-compatibility-matrix.md) |
 | [einvoice-integrator-contract.md](einvoice-integrator-contract.md) | What an e-invoice integrator adapter must do, the conformance suite and the fake integrators it runs against, and how the generated UBL is checked against the EN 16931, Peppol BIS 3 and UBL-TR rules |
+| [18-sdks.md](18-sdks.md) | The client libraries for the tenant API and for checking webhook signatures (TypeScript, Go, Python, PHP): what each does and how it is tested |
+| [error-keys.md](error-keys.md) | Every `error.key` the API can send, generated from the code (`go test ./pkg/errkey`); a client translates keys, not messages |
+| [reconciliation.md](reconciliation.md) | The review queue of differences between invoices, payments and a provider's own reports, and why "paid" is not "settled" (settlement report, fee rules) |
+| [provider-health.md](provider-health.md) | Payment account health, the circuit breaker, and failover that cannot charge twice |
+| [hosted-pages.md](hosted-pages.md) | The pages a customer sees without signing in (portal, invoice, payment link, receipt): where each state comes from and what is still missing |
+| [email-template-contract.md](email-template-contract.md) | What Payrudder sends as mail, as a contract with a provider that may render it (Nafru Email): the message, the variables, what is not built |
+| [geo-data.md](geo-data.md) | Countries, regions and districts of the address forms (GeoNames): licence and attribution |
+| [benchmarks.md](benchmarks.md) | Measured numbers, each with the machine and commit it came from |
+| [capacity.md](capacity.md) | What the platform has been measured to do, where the first limit was seen, and how to find the cause of one |
+
+## Runbooks
+
+| Runbook | What it covers |
+|---|---|
+| [backup-restore.md](runbooks/backup-restore.md) | Backup, restore to a chosen minute, the objectives (RPO, RTO) and where alerts go |
+| [stateful-components.md](runbooks/stateful-components.md) | One row per thing that holds state: what is backed up, how it comes back, how much can be lost |
+| [failover-game-day.md](runbooks/failover-game-day.md) | What to do when a stateful part is gone, and how to prove on a scratch environment that it works |
+| [secrets-key-rotation.md](runbooks/secrets-key-rotation.md) | Replacing `PAYRUDDER_SECRETS_KEY` without stopping the platform |
+| [cells.md](runbooks/cells.md) | Cells mode (schema per tenant): vocabulary, placing and moving a tenant ([ADR 0018](adr/0018-tenant-isolation-modes.md)) |
+| [scaling.md](runbooks/scaling.md) | Regions, connection pooling and autoscaling: all off by default |
+| [mail-suppression.md](runbooks/mail-suppression.md) | The per-tenant list of addresses that are not mailed (bounces, complaints) |
+| [console-first-deploy.md](runbooks/console-first-deploy.md) | The first deploy of the console on Cloudflare Workers ([ADR 0021](adr/0021-console-on-cloudflare-workers.md)) |
 
 ## Service specifications
 
@@ -70,6 +92,16 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0016](adr/0016-provider-capabilities-and-routing.md) | Payment providers declare capabilities; routing is a stored rule set |
 | [0017](adr/0017-advance-fixed-fees-and-change-modes.md) | Fixed fees are billed in advance; plan changes are explicit, previewed and credited |
 | [0018](adr/0018-tenant-isolation-modes.md) | Two isolation modes: pooled (RLS) and cells (schema per tenant); built in stages, the job conversion is not finished ([runbook](runbooks/cells.md)) |
+
+## Records
+
+| Record | What it is |
+|---|---|
+| [plans/](plans/README.md) | The 22 work plans, in order, each with its gaps, research and acceptance |
+| [roadmap-owner-list.md](roadmap-owner-list.md) | What was shipped from the owner's two lists of 2026-10-28; superseded by the plans, kept as history |
+| [ui-test-report.md](ui-test-report.md) | A real-browser pass over the product (2026-10-21) and the real-stack specs it left |
+| [code-quality/README.md](code-quality/README.md) | The code-quality report of 2026-10-21 (in Turkish) and its per-area files; the work it led to is [phase 49](phases/phase-49-code-quality-remediation.md) |
+| [phases/phase-43-ci-repair.md](phases/phase-43-ci-repair.md) | Repairing main's CI and the nightly runs |
 
 ## Delivery plan
 

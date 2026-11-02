@@ -26,7 +26,7 @@ Each endpoint shows its URL, its description, whether it is **Active** or **Paus
 - **Rotate secret**: **The old secret stops working at once: your receiver must be given the new one, or it will reject every delivery.** The new secret is shown once.
 - **Delete**: **Delete this endpoint and its delivery history?**
 
-Several endpoints can be ticked to **Pause selected**, **Resume selected** or **Delete selected**; deleting asks first, and **Their secrets cannot be recovered.**
+Several endpoints can be ticked to **Pause**, **Resume** or **Delete** them together; deleting asks first, and **Their secrets cannot be recovered.**
 
 ## Deliveries
 

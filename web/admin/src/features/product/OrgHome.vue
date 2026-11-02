@@ -48,7 +48,9 @@ function go(q: DashQuery, e: Environment) {
 const withFigures = computed(() => list.value.filter((a) => env.value !== null && tenantOf(a, env.value) !== "" && (env.value === "sandbox" || liveState(a) === "active")));
 /** On the live view: apps whose live environment is not active show their checklist, not zeros. */
 const notLive = (a: App) => env.value === "live" && liveState(a) !== "active";
-const canCreate = computed(() => account.data.value?.role !== "viewer");
+const role = computed(() => account.data.value?.role);
+/** Not until the account has said what the person is: a viewer must not see a moment of buttons the server would refuse. */
+const canCreate = computed(() => role.value !== undefined && role.value !== "viewer");
 /** A person who left (or was removed from) every account has nothing to show; the page says so instead of listing errors. */
 // A membership with the role affiliate is a seller's account the person is a partner of: it is not an account of theirs.
 const noAccount = computed(() => me.data.value?.user !== undefined && ownMemberships(me.data.value.memberships).length === 0);
@@ -59,7 +61,7 @@ const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 watch(() => me.data.value?.user?.id ?? "", loadProgress, { immediate: true });
 // progressReady: not while the server is still saying how far the person got (in another browser they may be done).
 const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value && progressReady.value);
-const showWizard = computed(() => !noAccount.value && !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? list.value.length : undefined, canCreate: account.data.value?.role !== "viewer" }));
+const showWizard = computed(() => !noAccount.value && !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? list.value.length : undefined, canCreate: canCreate.value }));
 const showChecklist = computed(() => !!progress.value && !progress.value.hidden && !showWizard.value && !noAccount.value && known.value);
 watch(
   // Not while this page is only a doorway into an app: the tour starts on that app's home (HomeFirstRun) and must not be cut short by the redirect.
@@ -147,7 +149,7 @@ watch(
         <h2 class="text-xl font-semibold tracking-tight">{{ t("product.home.emptyTitle") }}</h2>
         <p class="text-muted-foreground mx-auto mt-1 max-w-md text-sm">{{ t("product.home.emptyBody") }}</p>
       </div>
-      <p v-if="!canCreate" class="text-muted-foreground text-sm">{{ t("product.home.viewerEmpty") }}</p>
+      <p v-if="role === 'viewer'" class="text-muted-foreground text-sm">{{ t("product.home.viewerEmpty") }}</p>
     </div>
 
     <CreateAppDialog v-model:open="creating" />

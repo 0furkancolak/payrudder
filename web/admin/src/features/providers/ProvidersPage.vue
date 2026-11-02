@@ -207,8 +207,8 @@ function scheduledText(c: ProviderSub["scheduled_change"]): string {
                 <option v-for="p in PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
               </NativeSelect>
               <NativeSelect v-model="environment" :aria-label="t('billing.providers.environment')">
-                <option value="live">live</option>
-                <option value="sandbox">sandbox</option>
+                <option value="live">{{ t("enums.environment.live") }}</option>
+                <option value="sandbox">{{ t("enums.environment.sandbox") }}</option>
               </NativeSelect>
             </div>
             <label class="flex items-center gap-2 text-sm"><Checkbox v-model="makeDefault" :aria-label="t('billing.providers.makeDefault')" />{{ t("billing.providers.makeDefault") }}</label>
