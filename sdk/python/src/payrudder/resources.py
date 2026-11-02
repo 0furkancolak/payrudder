@@ -95,6 +95,20 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
+    def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
+        """The cards the payment provider holds for the customer.
+
+        ``GET /v1/customers/{external_id}/cards``
+        """
+        return cast("m.CustomerCards", self._client._request("GET", f"/v1/customers/{_p(external_id)}/cards", options=options))
+
+    def delete_customer_card(self, external_id: str, token: str, *, options: RequestOptions | None = None) -> m.DeletedCustomerCard:
+        """Delete one of the customer's stored cards at the provider.
+
+        ``DELETE /v1/customers/{external_id}/cards/{token}``
+        """
+        return cast("m.DeletedCustomerCard", self._client._request("DELETE", f"/v1/customers/{_p(external_id)}/cards/{_p(token)}", options=options))
+
     def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.
 
@@ -1932,6 +1946,20 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/payment-method``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
+
+    async def list_customer_cards(self, external_id: str, *, options: RequestOptions | None = None) -> m.CustomerCards:
+        """The cards the payment provider holds for the customer.
+
+        ``GET /v1/customers/{external_id}/cards``
+        """
+        return cast("m.CustomerCards", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/cards", options=options))
+
+    async def delete_customer_card(self, external_id: str, token: str, *, options: RequestOptions | None = None) -> m.DeletedCustomerCard:
+        """Delete one of the customer's stored cards at the provider.
+
+        ``DELETE /v1/customers/{external_id}/cards/{token}``
+        """
+        return cast("m.DeletedCustomerCard", await self._client._request("DELETE", f"/v1/customers/{_p(external_id)}/cards/{_p(token)}", options=options))
 
     async def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.

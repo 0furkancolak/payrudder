@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Rechnung.</strong></p>{{end}}
+<h2>Bitte bestätigen Sie Ihre Zahlung für Rechnung {{index .D "invoice_number"}}</h2>
+<p>Hallo {{index .D "customer_name"}}, Ihre Bank verlangt, dass Sie die Zahlung von <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> für Rechnung <strong>{{index .D "invoice_number"}}</strong> (Zeitraum {{index .D "period"}}) bestätigen. Es wurde noch nichts abgebucht.</p>
+{{if index .D "pay_url"}}<p><a href="{{index .D "pay_url"}}">Zahlung bestätigen</a></p>
+<p>Falls der Link sich nicht öffnet, kopieren Sie diese Adresse in Ihren Browser: {{index .D "pay_url"}}</p>{{else}}<p>Öffnen Sie die Zahlungsseite dieser Rechnung über den Link, den wir Ihnen zuvor geschickt haben, oder bitten Sie {{index .D "tenant_name"}} um einen neuen.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

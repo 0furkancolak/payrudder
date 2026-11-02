@@ -16,6 +16,10 @@ var guardContexts = []Ctx{
 	{TotalMinor: 100, Link: true, DunningAttempt: 0, MaxDunning: 3},
 	{TotalMinor: 100, Link: true, DunningAttempt: 3, MaxDunning: 3},
 	{TotalMinor: 0, Link: true, Paid: true, DunningAttempt: 0, MaxDunning: 0},
+	// The payment gate says no (Ctx.Held), for every kind of invoice.
+	{TotalMinor: 100, MaxDunning: 3, Held: true},
+	{TotalMinor: 0, MaxDunning: 3, Held: true},
+	{TotalMinor: 100, Link: true, MaxDunning: 3, Held: true},
 	// A "not found" answer at each side of both limits, and with the horizon turned off.
 	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour},
 	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour, ChargeAge: 10 * time.Minute},
@@ -136,6 +140,75 @@ func TestPendingPaymentTransitions(t *testing.T) {
 	}
 	if PaymentPending.Awaiting() {
 		t.Error("no command is outstanding while a transfer is awaited: there is no step deadline")
+	}
+}
+
+// A charge the provider will not take without the customer (3-D Secure) is not a decline: the customer is mailed once, the status is polled, the customer's own payment on
+// the invoice page settles it, and what the status says afterwards decides (a decline only after the window of the pending payments, then dunning as usual).
+func TestPaymentThatNeedsTheCustomerTransitions(t *testing.T) {
+	c := Ctx{TotalMinor: 500, MaxDunning: 3}
+	check := func(s State, ev Event, ctx Ctx, to State, eff Effect) {
+		t.Helper()
+		r, ok := Next(s, ev, ctx)
+		if !ok || r.To != to || r.Effect != eff {
+			t.Errorf("Next(%s, %s) = %+v %v, want %s/%q", s, ev, r, ok, to, eff)
+		}
+	}
+	check(PaymentRequested, EvPaymentActionRequired, c, PaymentActionRequired, EffAwaitAction)      // the mail, once
+	check(PaymentUnknown, EvPaymentActionRequired, c, PaymentActionRequired, EffAwaitAction)        // the original reply arrives late
+	check(PaymentUnknown, EvStatusActionRequired, c, PaymentActionRequired, EffAwaitAction)         // the status of a charge whose answer was lost
+	check(PaymentActionRequired, EvStatusActionRequired, c, PaymentActionRequired, EffSchedulePoll) // later polls: no second mail
+	check(PaymentActionRequired, EvPollDue, c, PaymentActionRequired, EffQueryStatus)
+	check(PaymentActionRequired, EvRetry, c, PaymentActionRequired, EffQueryStatus)
+	check(PaymentActionRequired, EvExhausted, c, PaymentActionRequired, EffSchedulePoll)
+	check(PaymentActionRequired, EvStatusSucceeded, c, Paid, EffNone)
+	check(PaymentActionRequired, EvProviderSettled, c, Paid, EffNone) // the customer paid on the invoice page
+	check(PaymentActionRequired, EvSettled, c, Paid, EffNone)         // or the seller recorded a transfer
+	check(PaymentActionRequired, EvVoid, c, Voided, EffNone)
+	check(PaymentActionRequired, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 1, MaxDunning: 3}, PaymentDeclined, EffScheduleDunning)
+	check(PaymentActionRequired, EvStatusDeclined, Ctx{TotalMinor: 500, DunningAttempt: 3, MaxDunning: 3}, Uncollectible, EffNone)
+	check(PaymentActionRequired, EvStatusDeclinedFinal, c, Uncollectible, EffNone)
+	if PaymentActionRequired.Awaiting() || PaymentActionRequired.Terminal() {
+		t.Error("no command is outstanding while the customer is asked to act: there is no step deadline, and the invoice is not over")
+	}
+	// A reply of the charge cannot be a decline or a success again once the saga waits for the customer: those would be a second charge's.
+	for _, ev := range []Event{EvPaymentOK, EvPaymentDeclined, EvPaymentErrored} {
+		if _, ok := Next(PaymentActionRequired, ev, c); ok {
+			t.Errorf("(%s, %s) must be invalid", PaymentActionRequired, ev)
+		}
+	}
+}
+
+// The first charge of an invoice finalized while the payment gate says no is held, not sent and not declined: the invoice stays open, nothing counts as a dunning attempt, the
+// sweep or the seller's Retry asks the gate again, and what it lets through is charged as the first charge (EffCharge, not EffChargeDunning).
+func TestFirstChargeHeldByThePaymentGate(t *testing.T) {
+	open := Ctx{TotalMinor: 500, MaxDunning: 3}
+	held := Ctx{TotalMinor: 500, MaxDunning: 3, Held: true}
+	check := func(s State, ev Event, ctx Ctx, to State, eff Effect) {
+		t.Helper()
+		r, ok := Next(s, ev, ctx)
+		if !ok || r.To != to || r.Effect != eff {
+			t.Errorf("Next(%s, %s) with %+v = %+v %v, want %s/%q", s, ev, ctx, r, ok, to, eff)
+		}
+	}
+	check(PdfRendered, EvContinue, open, PaymentRequested, EffCharge)
+	check(PdfRendered, EvContinue, held, PaymentHeld, EffHold)
+	// Nothing to charge, or the customer pays: the gate is not the saga's to apply.
+	check(PdfRendered, EvContinue, Ctx{Held: true}, NotifyRequested, EffNotify)
+	check(PdfRendered, EvContinue, Ctx{TotalMinor: 500, Link: true, Held: true, MaxDunning: 3}, AwaitingPayment, EffNone)
+	for _, ev := range []Event{EvDunningDue, EvRetry} {
+		check(PaymentHeld, ev, open, PaymentRequested, EffCharge)
+		check(PaymentHeld, ev, held, PaymentHeld, EffHold)
+	}
+	check(PaymentHeld, EvSettled, held, Paid, EffNone) // a transfer the seller recorded
+	check(PaymentHeld, EvVoid, held, Voided, EffNone)  // or the seller gives up on the invoice
+	if PaymentHeld.Awaiting() || PaymentHeld.Terminal() {
+		t.Error("no command is outstanding while the first charge is held, and the invoice is not over")
+	}
+	for _, ev := range []Event{EvPaymentOK, EvPaymentDeclined, EvPaymentErrored, EvStatusSucceeded, EvProviderSettled, EvPayRequested} {
+		if _, ok := Next(PaymentHeld, ev, open); ok {
+			t.Errorf("(%s, %s) must be invalid: nothing was sent to a provider", PaymentHeld, ev)
+		}
 	}
 }
 

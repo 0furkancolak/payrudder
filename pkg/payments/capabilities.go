@@ -224,6 +224,21 @@ func (e *PendingError) Error() string {
 	return "payment accepted by the provider; the outcome arrives by notification (" + e.Ref + ")"
 }
 
+// ActionRequiredError is returned by a charge that cannot go on without the customer being there (Stripe's 3-D Secure on an off-session payment). It is not a decline
+// and nothing was charged: the saga asks the customer to come back and waits. Ref is the provider's reference of the payment that waits, which Status asks about.
+type ActionRequiredError struct{ Ref string }
+
+func (e *ActionRequiredError) Error() string {
+	return "payment needs the customer to act at the provider (" + e.Ref + ")"
+}
+
+// RefStatuser is an adapter that can ask about a charge by the provider's own reference (Stripe's PaymentIntent id) instead of searching for it by the idempotency key.
+// payments-worker keeps the reference of the first response of a charge and asks it first; a search stays for a charge that has none. key is the charge's idempotency
+// key, which the adapter checks the payment against.
+type RefStatuser interface {
+	StatusByRef(ctx context.Context, ref, key string) (StatusResult, error)
+}
+
 // CheckoutRequest asks a provider that hosts the checkout for a page where the customer pays and, for a provider that runs
 // subscriptions, subscribes.
 type CheckoutRequest struct {
