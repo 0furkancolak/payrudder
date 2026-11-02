@@ -29,6 +29,16 @@ service BillingService {
   rpc CreateInvoiceLink(CreateInvoiceLinkRequest) returns (CreateInvoiceLinkResponse);
   // RevokeInvoiceLinks makes every link to an invoice stop working.
   rpc RevokeInvoiceLinks(RevokeInvoiceLinksRequest) returns (RevokeInvoiceLinksResponse);
+  // GetInvoicePaymentWait says what an invoice's payment is waiting for when the wait is Payrudder's or the customer's to end: the first charge held by the payment gate
+  // (PAYMENT_HELD: why, since when, when it is looked at again) or a payment that needs the customer to confirm it with their bank (PAYMENT_ACTION_REQUIRED: since when
+  // the customer was mailed, when the next look is). Any other state answers the state alone.
+  rpc GetInvoicePaymentWait(GetInvoicePaymentWaitRequest) returns (GetInvoicePaymentWaitResponse);
+  // ReleaseHeldInvoice asks the payment gate again for an invoice whose first charge is held and charges it when the gate lets it through; where the gate still says no it stays
+  // held (and the answer says so). It never overrides the gate. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any other state.
+  rpc ReleaseHeldInvoice(ReleaseHeldInvoiceRequest) returns (ReleaseHeldInvoiceResponse);
+  // VoidHeldInvoice voids an invoice whose first charge is held: nothing was charged, so nothing is refunded. FAILED_PRECONDITION billing.invoice.not_held for an invoice in any
+  // other state (the operator's VoidInvoice handles a paid one, with its refund).
+  rpc VoidHeldInvoice(VoidHeldInvoiceRequest) returns (VoidHeldInvoiceResponse);
   // CreatePaymentLink makes a payment link (phase 34): for an open invoice, or ad hoc for a fixed amount. The token is returned once. Idempotent per idempotency_key.
   rpc CreatePaymentLink(CreatePaymentLinkRequest) returns (CreatePaymentLinkResponse);
   rpc GetPaymentLink(GetPaymentLinkRequest) returns (GetPaymentLinkResponse);
@@ -717,6 +727,33 @@ message CreateInvoiceLinkResponse {
 
 message RevokeInvoiceLinksRequest { string invoice_id = 1; }
 message RevokeInvoiceLinksResponse { int32 revoked = 1; }
+
+message GetInvoicePaymentWaitRequest { string invoice_id = 1; }
+
+// PaymentWait is what the invoice's payment waits for. Only state is always set.
+message PaymentWait {
+  // The saga's state (PAYMENT_HELD, PAYMENT_ACTION_REQUIRED, or any other: then nothing below is set).
+  string state = 1;
+  // When the saga entered the state. For PAYMENT_ACTION_REQUIRED this is the moment the mail asking the customer to confirm the payment was asked for (not proof that it was
+  // delivered: the mail log has that).
+  google.protobuf.Timestamp since_time = 2;
+  // When Payrudder looks again: the next pass of the dunning sweep for a held charge, the next status query for a payment that waits for the customer.
+  google.protobuf.Timestamp next_check_time = 3;
+  // PAYMENT_HELD only. Why, asked of the payment gate now: "customer_blocked" (the customer is blocked for fraud or a chargeback), "tenant_on_hold" (the operator has suspended,
+  // frozen or banned the environment), "none" (the gate lets it through now, so the next pass charges it), "" when the gate could not be asked.
+  string hold_reason = 4;
+  // PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it (the window of pending payments, from the first try of the charge). Billing
+  // leaves it empty: the gateway fills it in from payments-worker, which owns the window, and leaves it empty when payments-worker cannot be asked.
+  google.protobuf.Timestamp window_ends_time = 5;
+}
+
+message GetInvoicePaymentWaitResponse { PaymentWait wait = 1; }
+
+message ReleaseHeldInvoiceRequest { string invoice_id = 1; }
+message ReleaseHeldInvoiceResponse { InvoiceSaga saga = 1; }
+
+message VoidHeldInvoiceRequest { string invoice_id = 1; }
+message VoidHeldInvoiceResponse { InvoiceSaga saga = 1; }
 
 // A visitor holds either a link token (token) or a customer portal token (portal_token) together with the invoice of the portal they want (invoice_id).
 message GetHostedInvoiceRequest {

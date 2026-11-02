@@ -2026,6 +2026,27 @@ class ListCustomerPaymentsResponse(TypedDict):
     payments: list[CustomerPayment]
 
 
+class _PaymentWaitRequired(TypedDict):
+    state: str
+
+
+class PaymentWait(_PaymentWaitRequired, total=False):
+    since_time: str
+    next_check_time: str
+    hold_reason: Literal["customer_blocked", "tenant_on_hold", "none"]
+    window_ends_time: str
+
+
+class InvoiceSaga(TypedDict):
+    id: str
+    invoice_id: str
+    state: str
+    attempt: int
+    dunning_attempt: int
+    last_error: str
+    version: int
+
+
 class AuditEvent(TypedDict):
     id: str
     tenant_id: str

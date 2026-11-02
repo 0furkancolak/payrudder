@@ -1,4 +1,4 @@
--- Plan 13: blocklists. The twin of ../00028_blocklists.sql for what has a tenant_id (the operator's platform_blocklist stays in the pooled database). So that a person the seller has had to turn away cannot come back under another customer id. Two lists, the same entries:
+-- Plan 13: blocklists. The twin of ../00032_blocklists.sql for what has a tenant_id (the operator's platform_blocklist stays in the pooled database). So that a person the seller has had to turn away cannot come back under another customer id. Two lists, the same entries:
 --  * customer_blocklist: the app's own (tenant-scoped). A new customer, or a customer's new e-mail address or tax id, that matches an entry is refused.
 --  * platform_blocklist: the operator's, across every app (a global table like tenant_status_events: no tenant_id, and no grant for plans_app; plans-svc reads it on the
 --    system pool, so an app in a cell, which cannot see the pooled database from its own transaction, is held to it too).

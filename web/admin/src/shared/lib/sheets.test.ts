@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { ahead, back, closeName, enter, forward, idOf, leave, names, openName, openTabs, raise, setKind, syncScrollLock } from "./sheets";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ahead, back, closeName, enter, forward, idOf, leave, names, openName, openTabs, raise, rememberOpener, restoreOpener, setKind, syncScrollLock } from "./sheets";
 
 beforeEach(() => {
   names.value = [];
@@ -95,5 +95,60 @@ describe("the scroll lock of the stack", () => {
     const { env, scrollAt } = page(90);
     syncScrollLock(false, env);
     expect(scrollAt.y).toBe(90);
+  });
+});
+
+describe("the control a sheet gives the focus back to", () => {
+  const button = (connected = true) => ({ isConnected: connected, focus: vi.fn() }) as unknown as HTMLElement;
+  const closing = () => ({ preventDefault: vi.fn() }) as unknown as Event;
+
+  it("is the one a row's menu offered when the sheet opened, and gets the focus when the last sheet closes", () => {
+    const trigger = button();
+    rememberOpener(trigger);
+    enter({ uid: 1, title: "A", close: () => undefined });
+    leave(1);
+    const e = closing();
+    restoreOpener(e);
+    expect(trigger.focus).toHaveBeenCalledTimes(1);
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+    // Once: a later sheet that nobody offered a control for does not go back to it.
+    enter({ uid: 2, title: "B", close: () => undefined });
+    leave(2);
+    restoreOpener(closing());
+    expect(trigger.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits while a sheet is still open behind, and is not used when the control has left the page", () => {
+    const trigger = button();
+    rememberOpener(trigger);
+    enter({ uid: 1, title: "A", close: () => undefined });
+    enter({ uid: 2, title: "B", close: () => undefined });
+    leave(2);
+    restoreOpener(closing());
+    expect(trigger.focus).not.toHaveBeenCalled();
+    leave(1);
+    const gone = closing();
+    const lost = button(false);
+    rememberOpener(lost);
+    enter({ uid: 3, title: "C", close: () => undefined });
+    leave(3);
+    restoreOpener(gone);
+    expect(lost.focus).not.toHaveBeenCalled();
+    expect(gone.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("is dropped when the action did not open a sheet soon after: a sheet opened much later is not about it", () => {
+    vi.useFakeTimers();
+    try {
+      const trigger = button();
+      rememberOpener(trigger);
+      vi.advanceTimersByTime(5000);
+      enter({ uid: 1, title: "A", close: () => undefined });
+      leave(1);
+      restoreOpener(closing());
+      expect(trigger.focus).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -452,6 +452,43 @@
       "coupon": "Coupon {code}",
       "usage": "Usage — {meter} — {rest}",
       "late": "Late usage — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "First charge on hold",
+      "heldPill": "On hold",
+      "heldHint": "This invoice was ready to be charged, but Payrudder did not send the charge to the payment provider.",
+      "reason": {
+        "customer_blocked": "The customer is blocked for fraud or a chargeback. The invoice stays open and is charged as soon as the block is lifted.",
+        "tenant_on_hold": "Payrudder has put this environment on hold (suspended, frozen or banned), and nothing is charged while it lasts. The invoice is charged when the environment is back; write to support from the help page.",
+        "none": "Nothing holds this invoice now. It is charged at the next check, or you can release it now.",
+        "unknown": "Payrudder could not check right now why it is on hold. Try again in a moment."
+      },
+      "since": "On hold since",
+      "next": "Next check",
+      "release": "Release the charge",
+      "void": "Void invoice",
+      "viewerNote": "Only an owner or an administrator can release or void it.",
+      "confirmRelease": {
+        "title": "Release the charge of {number}?",
+        "body": "Payrudder asks again whether {amount} may be charged to {customer}. If the customer is still blocked, the invoice stays on hold and nothing is charged.",
+        "accept": "Release"
+      },
+      "confirmVoid": {
+        "title": "Void {number}?",
+        "body": "{amount} will not be charged. The invoice becomes void and can no longer be paid. This cannot be undone.",
+        "accept": "Void invoice"
+      },
+      "released": "Released: the charge of {amount} was sent to the payment provider.",
+      "stillHeld": "Still on hold: the customer is still blocked or the environment is on hold. Nothing was charged.",
+      "voided": "The invoice is void.",
+      "actionTitle": "Waiting for the customer to confirm the payment",
+      "actionPill": "Customer must confirm",
+      "actionHint": "The customer's bank asks them to confirm this payment (3-D Secure), so it cannot be charged without them.",
+      "mailedHint": "Payrudder asked for a mail with a link to the invoice page to be sent to the customer. The E-mail page says whether it arrived.",
+      "mailed": "Customer mailed",
+      "nextAsk": "Next check with the provider",
+      "windowEnds": "Counts as declined on",
+      "windowHint": "If the customer has not confirmed by then, the payment counts as declined and the retries begin."
     }
   },
   "deadLetters": {
@@ -2875,7 +2912,8 @@
         "bad_page_size": "The page size must be between 1 and 500.",
         "bad_page_token": "The page token is not valid. Start the list again.",
         "pdf_sign_failed": "The PDF download link could not be created. Try again shortly.",
-        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data."
+        "pdf_failed": "The invoice PDF could not be rendered. Check the invoice data.",
+        "not_held": "This invoice's first charge is not held, so there is nothing to release or void here."
       },
       "invoice_link": {
         "bad_expiry": "The link must expire in 1 to 365 days.",

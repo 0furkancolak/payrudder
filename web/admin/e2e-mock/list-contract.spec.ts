@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, signInAsOperator, TENANT } from "./gateway";
-import { APP, liveGateway, LIVE, productGateway, signInAsAda } from "./product";
+import { APP, billingGateway, disputesGateway, liveGateway, LIVE, productGateway, signInAsAda } from "./product";
 import { contractsGateway, withdrawal } from "./contracts";
 import { METERS, usageReads } from "./usage";
 
@@ -241,6 +241,17 @@ const CASES: ListCase[] = [
     sort: { value: "amount_desc", order: ["97.00", "5.00", "2.00"] },
     filter: { chip: "Status", option: "Failed", keep: ["2.00"] },
     url: "",
+  },
+  {
+    name: "disputes (person)",
+    person: true,
+    path: `/app/t/${LIVE}/payments?tab=disputes`,
+    mock: (gw) => disputesGateway(billingGateway(gw)),
+    // Newest first: du_1 (20 October), du_2 (10 October), du_3 (5 October); the amounts are 49.00, 299.00 and 15.00.
+    rows: ["du_1", "du_2", "du_3"],
+    sort: { value: "amount_desc", order: ["du_2", "du_1", "du_3"] },
+    filter: { chip: "Outcome", option: "Lost", keep: ["du_2"] },
+    url: "disputes-",
   },
   {
     name: "members",

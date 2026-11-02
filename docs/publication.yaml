@@ -46,6 +46,8 @@ files:
   stripe-compatibility-matrix.md: { audience: internal, status: preview }
   payment-provider-contract.md: { audience: internal, status: preview }
   provider-health.md: { audience: internal, status: preview }
+  document-rules-by-country.md: { audience: internal, status: draft }  # plan 05: sources not all read; needs an accountant or lawyer before anything is published
+  einvoice-integrator-checklist.md: { audience: internal, status: draft }  # plan 09: the questions to put to an integrator
   reconciliation.md: { audience: internal, status: preview }
   einvoice-integrator-contract.md: { audience: internal, status: preview }
   roadmap-owner-list.md: { audience: internal, status: historical }

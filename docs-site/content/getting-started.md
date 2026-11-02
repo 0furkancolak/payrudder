@@ -42,7 +42,7 @@ Every error has a stable `error.key` (see [Errors](errors.html)): translate the 
 
 ## SDKs and starting points
 
-TypeScript, Python, Go and PHP: [SDKs](sdks.html). They are generated from the same OpenAPI file as the [API reference](api/index.html). The `examples/` directory of the repository has a small app for Express, FastAPI, Go `net/http`, Next.js and Laravel, each counting usage and verifying webhooks. To let an AI assistant read your account, see the [MCP server](mcp.html).
+TypeScript, Python, Go and PHP: [SDKs](sdks.html). They are generated from the same OpenAPI file as the [API reference](api/index.html). The `examples/` directory of the repository has a small app for Express, FastAPI, Django, Go `net/http`, Next.js, Laravel and Rails, each counting usage and verifying webhooks (Rails has no SDK to install: it carries a small client and the signature check itself). To let an AI assistant read your account, see the [MCP server](mcp.html).
 
 ## Going further
 

@@ -452,6 +452,43 @@
       "coupon": "Kupon {code}",
       "usage": "Kullanım — {meter} — {rest}",
       "late": "Geç gelen kullanım — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "İlk tahsilat beklemede",
+      "heldPill": "Beklemede",
+      "heldHint": "Bu fatura tahsil edilmeye hazırdı, ancak Payrudder tahsilatı ödeme sağlayıcısına göndermedi.",
+      "reason": {
+        "customer_blocked": "Müşteri dolandırıcılık veya itiraz (chargeback) nedeniyle engellenmiş. Fatura açık kalır ve engel kaldırılır kaldırılmaz tahsil edilir.",
+        "tenant_on_hold": "Payrudder bu ortamı beklemeye aldı (askıya alındı, dondurulmuş veya yasaklanmış); bu sürece hiçbir tahsilat yapılmaz. Ortam geri geldiğinde fatura tahsil edilir; yardım sayfasından destek ekibine yazın.",
+        "none": "Şu anda bu faturayı hiçbir şey tutmuyor. Bir sonraki kontrolde tahsil edilir; isterseniz şimdi serbest bırakabilirsiniz.",
+        "unknown": "Payrudder şu anda neden beklemede olduğunu kontrol edemedi. Biraz sonra tekrar deneyin."
+      },
+      "since": "Beklemede olduğu tarih",
+      "next": "Sonraki kontrol",
+      "release": "Tahsilatı serbest bırak",
+      "void": "Faturayı iptal et",
+      "viewerNote": "Yalnızca sahip veya yönetici serbest bırakabilir ya da iptal edebilir.",
+      "confirmRelease": {
+        "title": "{number} tahsilatı serbest bırakılsın mı?",
+        "body": "Payrudder, {amount} tutarının {customer} müşterisinden tahsil edilip edilemeyeceğini yeniden sorar. Müşteri hâlâ engelliyse fatura beklemede kalır ve hiçbir şey tahsil edilmez.",
+        "accept": "Serbest bırak"
+      },
+      "confirmVoid": {
+        "title": "{number} iptal edilsin mi?",
+        "body": "{amount} tahsil edilmeyecek. Fatura iptal olur ve artık ödenemez. Bu işlem geri alınamaz.",
+        "accept": "Faturayı iptal et"
+      },
+      "released": "Serbest bırakıldı: {amount} tutarındaki tahsilat ödeme sağlayıcısına gönderildi.",
+      "stillHeld": "Hâlâ beklemede: müşteri hâlâ engelli ya da ortam beklemede. Hiçbir şey tahsil edilmedi.",
+      "voided": "Fatura iptal edildi.",
+      "actionTitle": "Müşterinin ödemeyi onaylaması bekleniyor",
+      "actionPill": "Müşteri onaylamalı",
+      "actionHint": "Müşterinin bankası bu ödemeyi onaylamasını istiyor (3-D Secure); bu yüzden müşteri olmadan tahsil edilemez.",
+      "mailedHint": "Payrudder, müşteriye fatura sayfasına giden bir bağlantı içeren bir e-posta gönderilmesini istedi. E-postanın ulaşıp ulaşmadığını E-posta sayfası gösterir.",
+      "mailed": "Müşteriye e-posta",
+      "nextAsk": "Sağlayıcıya sonraki sorgu",
+      "windowEnds": "Reddedilmiş sayılacağı tarih",
+      "windowHint": "Müşteri o zamana kadar onaylamazsa ödeme reddedilmiş sayılır ve yeniden denemeler başlar."
     }
   },
   "deadLetters": {
@@ -2875,7 +2912,8 @@
         "bad_page_size": "Sayfa boyutu 1 ile 500 arasında olmalı.",
         "bad_page_token": "Sayfa belirteci geçerli değil. Listeyi baştan başlatın.",
         "pdf_sign_failed": "PDF indirme bağlantısı oluşturulamadı. Biraz sonra yeniden deneyin.",
-        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin."
+        "pdf_failed": "Fatura PDF'i oluşturulamadı. Fatura verilerini kontrol edin.",
+        "not_held": "Bu faturanın ilk tahsilatı beklemede değil; burada serbest bırakılacak ya da iptal edilecek bir şey yok."
       },
       "invoice_link": {
         "bad_expiry": "Bağlantı 1 ile 365 gün içinde sona ermeli.",
