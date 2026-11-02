@@ -7,7 +7,7 @@ type Payment = Pick<S["Payment"], "invoice_id" | "kind" | "status" | "amount_min
 type Subscription = Pick<S["Subscription"], "customer_external_id" | "state" | "plan_code">;
 
 /** The tabs of a customer's sheet. */
-export type CustomerTab = "overview" | "payments" | "invoices" | "subscriptions" | "credits" | "details";
+export type CustomerTab = "overview" | "payments" | "invoices" | "subscriptions" | "credits" | "agreements" | "details";
 
 /** Amounts by currency, in minor units. A customer may pay in more than one currency; amounts of different currencies are never added together. */
 export type Amounts = Map<string, bigint>;

@@ -602,7 +602,8 @@
         "invoices": "Invoices",
         "subscriptions": "Subscriptions",
         "credits": "Credits",
-        "details": "Details"
+        "details": "Details",
+        "agreements": "Agreements"
       },
       "sheet": {
         "copyId": "Copy customer id {id}",
@@ -3983,11 +3984,19 @@
           "refused": "The provider does not accept these keys any more. Connect it again with new keys.",
           "unreachable": "The provider could not be reached just now. It is checked again shortly."
         }
+      },
+      "agreements": {
+        "title": "Agreements for your customers",
+        "advisory": "advice, not required",
+        "optional": "Optional: needed if you sell to consumers. You require none now.",
+        "ready": "Every agreement you require is published.",
+        "template": "A required agreement still carries the starter text. Have a lawyer review it.",
+        "missing": "A required agreement has no published text, so customers cannot pay. Publish it."
       }
     },
     "promote": {
       "title": "Copy sandbox configuration to live",
-      "intro": "Meters, plans and prices, tax rates, coupons, mail settings and webhook endpoints. Never customers, usage, invoices or payments. It only adds: anything that already exists in live and differs is left alone.",
+      "intro": "Meters, plans and prices, tax rates, coupons, mail settings, webhook endpoints and the texts of your agreements. Never customers, usage, invoices, payments or acceptances. It only adds: anything that already exists in live and differs is left alone.",
       "preview": "Preview the changes",
       "adminOnly": "Only owners and administrators can do this.",
       "previewed": "Preview, nothing written",
@@ -4004,7 +4013,8 @@
         "taxes": "Tax rates",
         "coupons": "Coupons",
         "mail": "E-mail",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "contracts": "Contracts"
       },
       "action": {
         "create": "Add",
@@ -4406,7 +4416,8 @@
       "platformPlans": "Platform plans",
       "support": "Help",
       "supportInbox": "Support inbox",
-      "connect": "Connect your app"
+      "connect": "Connect your app",
+      "contracts": "Contracts"
     },
     "noApps": "No apps yet",
     "newApp": "New app"
@@ -4789,6 +4800,13 @@
         "code": "Pick your language and paste the code. It already has your meter and the address of the API.",
         "checklistTitle": "Your checklist",
         "codeTitle": "The code"
+      },
+      "contracts": {
+        "intro": "The agreements your customers accept before they pay: the distance sales contract, the pre-information, your terms and your privacy notice. Payrudder keeps the text and the evidence.",
+        "agreements": "Publish a version here. A published version is never edited: you publish the next one, and the history shows what changed.",
+        "agreementsTitle": "Agreements",
+        "settings": "Choose which agreements customers must accept, and how long their address and browser are kept.",
+        "settingsTitle": "Settings"
       }
     }
   },
@@ -5117,6 +5135,211 @@
       "queued": "Waiting for your server to answer.",
       "delivered": "Your server accepted it ({answer}).",
       "failed": "Your server did not accept it: {answer}. Fix your handler, then send another; Payrudder also retries on its own."
+    }
+  },
+  "contracts": {
+    "disclaimer": "Payrudder supplies templates and the evidence of who accepted what, not legal advice. These texts are your agreement with your customers: have a lawyer review them for the countries you sell in before you rely on them.",
+    "tabsLabel": "Sections",
+    "tabs": {
+      "agreements": "Agreements",
+      "settings": "Settings",
+      "withdrawals": "Withdrawals"
+    },
+    "kinds": {
+      "distance_sales": "Distance sales contract",
+      "pre_info": "Pre-information form",
+      "tos": "Terms of service",
+      "privacy": "Privacy notice"
+    },
+    "audiences": {
+      "consumer": "Consumer",
+      "business": "Business"
+    },
+    "agreements": {
+      "intro": "What your customers are shown when they pay. Each agreement is a series of versions: a published version is never edited, you publish the next one. Business customers see the business text once you publish one, and the consumer text until then.",
+      "columns": {
+        "agreement": "Agreement",
+        "version": "Current version",
+        "languages": "Languages",
+        "published": "Published"
+      },
+      "required": "Required",
+      "none": "Not published",
+      "fallback": "shows the consumer text",
+      "material": "Material",
+      "minor": "Minor",
+      "templateBadge": "Starter text",
+      "templateTitle": "Starter text: have a lawyer review it",
+      "templateBody": "At least one text your customers see still carries the starter notice. Payrudder supplies templates, not legal advice. Have a lawyer review the text and adapt it to your business, then publish a version without the notice.",
+      "by": "by {author}",
+      "publishFirst": "Publish first version",
+      "newVersion": "New version",
+      "history": "History",
+      "empty": "Nothing is published yet. Choose an agreement and publish its first version; you can start from the starter text in Turkish or English."
+    },
+    "editor": {
+      "title": "{kind} ({audience})",
+      "descriptionFirst": "The first version of this agreement. Write the text in each language you sell in; at least one is needed.",
+      "descriptionNext": "Publishing adds version {n}. The text starts as version {current}, which stays as it is.",
+      "formLabel": "Agreement text",
+      "languages": "Languages",
+      "hasText": "has a text",
+      "textLabel": "Text in {language}",
+      "format": "Formatting: # heading, - bullet, 1. numbered item, **bold**, a blank line between paragraphs. HTML is shown as plain text.",
+      "placeholder": "Write the agreement here.",
+      "starter": "Use starter text",
+      "starterNote": "The starter text begins with a notice that it is a template. Have a lawyer review it, fill in the parts marked [seller: ...], then delete the notice.",
+      "starterOnly": "There is a starter text in Turkish and English only. Write the other languages yourself or have a lawyer translate them.",
+      "starterReplaceTitle": "Replace the {language} text?",
+      "starterReplace": "What you wrote in {language} is replaced by the starter text.",
+      "starterReplaceAction": "Replace",
+      "variables": "Variables",
+      "variablesHint": "Click one to put it where the cursor is. These twelve are the only ones that exist; they are filled in from the seller, the customer and the order when the page is shown.",
+      "insert": "Insert {name}",
+      "preview": "Preview in {language}",
+      "previewHint": "As a customer sees it, with sample values highlighted.",
+      "previewing": "Checking the text…",
+      "previewEmpty": "Nothing to preview yet.",
+      "unknown": "{language}: {names} is not a variable. Use only the variables above, or remove it.",
+      "noticeStill": "The {language} text still has the starter notice. Delete it once you have reviewed the text.",
+      "material": "Material change",
+      "materialHint": "On: customers who accepted an earlier version are asked to accept again. Off: they are not.",
+      "materialFirst": "The first version is always material: every customer is asked once.",
+      "note": "Note (optional)",
+      "noteHint": "Why this version exists. It is kept in the history; customers do not see it.",
+      "needText": "Write a text in at least one language to publish.",
+      "publish": "Publish version {n}"
+    },
+    "confirm": {
+      "title": "Publish version {n} of {kind}?",
+      "description": "This is what happens next.",
+      "live": "It is shown at once to customers of this audience ({audience}). A published version cannot be edited; to change it you publish another version.",
+      "first": "This is the first version: every customer is asked to accept it once.",
+      "material": "It is a material change: a customer who accepted an earlier version is asked to accept this one at their next purchase on a payment page.",
+      "minor": "It is a minor change: customers who already accepted are not asked again.",
+      "required": "{kind} is required now, so customers can only pay once they have accepted it.",
+      "notRequired": "{kind} is not required now, so nobody is asked for it until you require it under Settings.",
+      "template": "A text still carries the starter notice. You are responsible for what you publish.",
+      "action": "Publish version {n}"
+    },
+    "history": {
+      "title": "History: {kind} ({audience})",
+      "description": "Every version, newest first. A version is never edited.",
+      "versions": "Versions",
+      "version": "Version {n}",
+      "current": "Current",
+      "compare": "Compare two versions",
+      "from": "From",
+      "to": "To",
+      "language": "Language",
+      "changes": "Lines added: {added}, lines removed: {removed}",
+      "identical": "These two texts are the same in this language.",
+      "added": "Added:",
+      "removed": "Removed:",
+      "onlyOne": "This is the only version so far, so there is nothing to compare."
+    },
+    "settings": {
+      "requiredTitle": "Required agreements",
+      "requiredHint": "A customer must accept each required agreement before paying on a Payrudder payment page or before a subscription is created for them through the API. Renewals and automatic charges are never held back.",
+      "kindHints": {
+        "distance_sales": "The contract itself, for consumers who buy at a distance.",
+        "pre_info": "What the law asks you to tell a consumer before they order.",
+        "tos": "Your terms of service.",
+        "privacy": "How you handle their personal data."
+      },
+      "unpublished": "Publish a version first, then you can require it.",
+      "immediateTitle": "Start the service at once",
+      "immediateHint": "For a digital service a consumer can use right away. A consumer is then asked for two separate things, never merged with accepting the contract:",
+      "boxStart": "A request that the service starts now, during the withdrawal period.",
+      "boxWaiver": "An acknowledgement that the right of withdrawal is lost once the service has been fully provided.",
+      "retentionTitle": "Keep the address and browser for",
+      "retentionHint": "Applies only to the IP address and browser (user agent) of an acceptance, which are personal data; after this time they are erased. The rest of the record stays. {min} to {max} months, {default} by default.",
+      "months": "months",
+      "retentionBad": "Enter a whole number of months from {min} to {max}.",
+      "save": "Save settings",
+      "saved": "Saved."
+    },
+    "withdrawals": {
+      "intro": "Customers who withdraw from a contract. You decide each request; Payrudder keeps the statement, your decision, who made it and when, and sends the contract.withdrawal_requested webhook.",
+      "refundNote": "Refunding is not automatic yet. Refund the customer yourself (or issue a credit note), then mark the request refunded here.",
+      "search": "Search withdrawals",
+      "columns": {
+        "customer": "Customer",
+        "statement": "Statement",
+        "received": "Received",
+        "status": "Status",
+        "decision": "Decision"
+      },
+      "statuses": {
+        "received": "Received",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "refunded": "Refunded"
+      },
+      "actions": {
+        "accepted": "Accept",
+        "rejected": "Reject",
+        "refunded": "Mark refunded"
+      },
+      "sources": {
+        "api": "API",
+        "console": "Recorded in the console",
+        "hosted": "Payment page"
+      },
+      "empty": "No withdrawal requests.",
+      "note": "Note (optional)",
+      "noteHint": "Kept with the decision, for your records.",
+      "decide": {
+        "accepted": {
+          "title": "Accept this withdrawal?",
+          "body": "This records that you accept the customer's withdrawal. It cannot be undone; afterwards you can only mark it refunded."
+        },
+        "rejected": {
+          "title": "Reject this withdrawal?",
+          "body": "This records that you do not accept it. A decision is made once and cannot be changed."
+        },
+        "refunded": {
+          "title": "Mark as refunded?",
+          "body": "Do this after you have refunded the customer. Payrudder does not move any money."
+        }
+      }
+    },
+    "customer": {
+      "log": "Agreements accepted",
+      "none": "This customer has not accepted any agreement yet. When you require agreements, each acceptance is recorded here.",
+      "sourceHosted": "Payrudder payment page",
+      "sourceApi": "Reported by your API",
+      "viewPage": "View page",
+      "box": "Box: “{text}”",
+      "servedAs": "{served} (asked for {asked})",
+      "consentStart": "Asked for the service to start now",
+      "consentWaiver": "Acknowledged losing the right of withdrawal",
+      "evidence": "Evidence",
+      "time": "Time",
+      "words": "Words next to the boxes",
+      "ip": "IP address",
+      "userAgent": "Browser",
+      "observed": "Observed by Payrudder",
+      "reported": "Reported by you",
+      "erased": "Erased after the retention period",
+      "notReported": "Not reported",
+      "snapshotTitle": "The page the customer accepted",
+      "snapshotHint": "Exactly as it was stored when they accepted. It is shown in an isolated frame.",
+      "sha256": "SHA-256 of the page",
+      "withdrawals": "Withdrawals",
+      "record": "Record a withdrawal",
+      "noWithdrawals": "No withdrawal requests from this customer.",
+      "decideThere": "Decide withdrawals under Contracts"
+    },
+    "record": {
+      "title": "Record a withdrawal",
+      "description": "Write down what {customer} told you: a mail, a call, a message. You decide it afterwards under Contracts.",
+      "formLabel": "Record a withdrawal",
+      "statement": "What the customer said",
+      "statementHint": "In their words, up to 2000 characters.",
+      "received": "When it reached you (optional)",
+      "receivedHint": "Leave empty for now.",
+      "submit": "Record withdrawal"
     }
   }
 }

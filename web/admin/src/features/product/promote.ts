@@ -31,7 +31,7 @@ export function actionOf(a: string | undefined): Op {
   }
 }
 
-const FAMILIES = ["meters", "plans", "taxes", "coupons", "mail", "webhooks"];
+const FAMILIES = ["meters", "plans", "taxes", "coupons", "mail", "webhooks", "contracts"];
 
 /**
  * What the promote card shows: the counts, and the rows worth a line (what would be created, what conflicts, what was skipped or failed; the objects that

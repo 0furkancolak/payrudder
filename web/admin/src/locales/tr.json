@@ -602,7 +602,8 @@
         "invoices": "Faturalar",
         "subscriptions": "Abonelikler",
         "credits": "Krediler",
-        "details": "Ayrıntılar"
+        "details": "Ayrıntılar",
+        "agreements": "Sözleşmeler"
       },
       "sheet": {
         "copyId": "{id} müşteri kimliğini kopyala",
@@ -3983,11 +3984,19 @@
           "refused": "Sağlayıcı bu anahtarları artık kabul etmiyor. Yeni anahtarlarla yeniden bağlayın.",
           "unreachable": "Sağlayıcıya şu an ulaşılamadı. Kısa süre sonra yeniden denetlenecek."
         }
+      },
+      "agreements": {
+        "title": "Müşterileriniz için sözleşmeler",
+        "advisory": "öneri, zorunlu değil",
+        "optional": "İsteğe bağlı: tüketicilere satış yapıyorsanız gerekir. Şu an hiçbirini zorunlu kılmıyorsunuz.",
+        "ready": "Zorunlu kıldığınız her sözleşme yayımlandı.",
+        "template": "Zorunlu bir sözleşme hâlâ başlangıç metnini taşıyor. Bir avukata inceletin.",
+        "missing": "Zorunlu bir sözleşmenin yayımlanmış metni yok, bu yüzden müşteriler ödeme yapamaz. Yayımlayın."
       }
     },
     "promote": {
       "title": "Sandbox yapılandırmasını canlıya kopyala",
-      "intro": "Sayaçlar, planlar ve fiyatlar, vergi oranları, kuponlar, e-posta ayarları ve webhook uç noktaları. Müşteri, kullanım, fatura ya da ödeme asla. Yalnızca ekler: canlıda zaten var olan ve farklı olan hiçbir şeye dokunulmaz.",
+      "intro": "Sayaçlar, planlar ve fiyatlar, vergi oranları, kuponlar, e-posta ayarları, webhook uç noktaları ve sözleşme metinleriniz. Müşteri, kullanım, fatura, ödeme ya da kabul kaydı asla. Yalnızca ekler: canlıda zaten var olan ve farklı olan hiçbir şeye dokunulmaz.",
       "preview": "Değişiklikleri önizle",
       "adminOnly": "Bunu yalnızca sahipler ve yöneticiler yapabilir.",
       "previewed": "Önizleme, hiçbir şey yazılmadı",
@@ -4004,7 +4013,8 @@
         "taxes": "Vergi oranları",
         "coupons": "Kuponlar",
         "mail": "E-posta",
-        "webhooks": "Webhook'lar"
+        "webhooks": "Webhook'lar",
+        "contracts": "Sözleşmeler"
       },
       "action": {
         "create": "Ekle",
@@ -4406,7 +4416,8 @@
       "platformPlans": "Platform planları",
       "support": "Yardım",
       "supportInbox": "Destek kutusu",
-      "connect": "Uygulamanı bağla"
+      "connect": "Uygulamanı bağla",
+      "contracts": "Sözleşmeler"
     },
     "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
@@ -4789,6 +4800,13 @@
         "code": "Dilini seç ve kodu yapıştır. Sayacın ve API adresi zaten içinde.",
         "checklistTitle": "Kontrol listen",
         "codeTitle": "Kod"
+      },
+      "contracts": {
+        "intro": "Müşterilerinizin ödemeden önce kabul ettiği sözleşmeler: mesafeli satış sözleşmesi, ön bilgilendirme, koşullarınız ve gizlilik bildiriminiz. Payrudder metni ve kanıtı saklar.",
+        "agreements": "Buradan bir sürüm yayımlayın. Yayımlanmış sürüm asla değiştirilmez: bir sonrakini yayımlarsınız, geçmiş neyin değiştiğini gösterir.",
+        "agreementsTitle": "Sözleşmeler",
+        "settings": "Müşterilerin hangi sözleşmeleri kabul etmesi gerektiğini ve adreslerinin ile tarayıcılarının ne kadar saklanacağını seçin.",
+        "settingsTitle": "Ayarlar"
       }
     }
   },
@@ -5117,6 +5135,211 @@
       "queued": "Sunucunun yanıtı bekleniyor.",
       "delivered": "Sunucun kabul etti ({answer}).",
       "failed": "Sunucun kabul etmedi: {answer}. İşleyicini düzelt, sonra bir tane daha gönder; Payrudder da kendisi yeniden dener."
+    }
+  },
+  "contracts": {
+    "disclaimer": "Payrudder şablonlar ve kimin neyi kabul ettiğinin kanıtını sunar; hukuki tavsiye vermez. Bu metinler müşterilerinizle aranızdaki sözleşmedir: güvenmeden önce, satış yaptığınız ülkeler için bir avukata inceletin.",
+    "tabsLabel": "Bölümler",
+    "tabs": {
+      "agreements": "Sözleşmeler",
+      "settings": "Ayarlar",
+      "withdrawals": "Cayma talepleri"
+    },
+    "kinds": {
+      "distance_sales": "Mesafeli satış sözleşmesi",
+      "pre_info": "Ön bilgilendirme formu",
+      "tos": "Kullanım koşulları",
+      "privacy": "Gizlilik bildirimi"
+    },
+    "audiences": {
+      "consumer": "Tüketici",
+      "business": "Kurumsal"
+    },
+    "agreements": {
+      "intro": "Müşterileriniz ödeme yaparken bunları görür. Her sözleşme bir sürümler dizisidir: yayımlanmış bir sürüm asla değiştirilmez, bir sonrakini yayımlarsınız. Kurumsal müşteriler, siz yayımlayana kadar tüketici metnini, yayımladıktan sonra kurumsal metni görür.",
+      "columns": {
+        "agreement": "Sözleşme",
+        "version": "Güncel sürüm",
+        "languages": "Diller",
+        "published": "Yayımlanma"
+      },
+      "required": "Zorunlu",
+      "none": "Yayımlanmadı",
+      "fallback": "tüketici metnini gösterir",
+      "material": "Esaslı",
+      "minor": "Küçük",
+      "templateBadge": "Başlangıç metni",
+      "templateTitle": "Başlangıç metni: bir avukata inceletin",
+      "templateBody": "Müşterilerinizin gördüğü en az bir metin hâlâ başlangıç uyarısını taşıyor. Payrudder şablon sunar, hukuki tavsiye vermez. Metni bir avukata inceletip işinize uyarlayın, ardından uyarısız bir sürüm yayımlayın.",
+      "by": "{author} tarafından",
+      "publishFirst": "İlk sürümü yayımla",
+      "newVersion": "Yeni sürüm",
+      "history": "Geçmiş",
+      "empty": "Henüz hiçbir şey yayımlanmadı. Bir sözleşme seçip ilk sürümünü yayımlayın; Türkçe veya İngilizce başlangıç metniyle başlayabilirsiniz."
+    },
+    "editor": {
+      "title": "{kind} ({audience})",
+      "descriptionFirst": "Bu sözleşmenin ilk sürümü. Satış yaptığınız her dilde metni yazın; en az bir dil gerekir.",
+      "descriptionNext": "Yayımlamak {n}. sürümü ekler. Metin, olduğu gibi kalan {current}. sürümden başlar.",
+      "formLabel": "Sözleşme metni",
+      "languages": "Diller",
+      "hasText": "metni var",
+      "textLabel": "{language} metni",
+      "format": "Biçim: # başlık, - madde işareti, 1. numaralı madde, **kalın**, paragraflar arasında boş satır. HTML düz metin olarak gösterilir.",
+      "placeholder": "Sözleşmeyi buraya yazın.",
+      "starter": "Başlangıç metnini kullan",
+      "starterNote": "Başlangıç metni, bir şablon olduğunu belirten bir uyarıyla başlar. Bir avukata inceletin, [seller: ...] ile işaretli yerleri doldurun, sonra uyarıyı silin.",
+      "starterOnly": "Başlangıç metni yalnızca Türkçe ve İngilizce için var. Diğer dilleri kendiniz yazın ya da bir avukata çevirtin.",
+      "starterReplaceTitle": "{language} metni değiştirilsin mi?",
+      "starterReplace": "{language} dilinde yazdığınız metnin yerine başlangıç metni gelir.",
+      "starterReplaceAction": "Değiştir",
+      "variables": "Değişkenler",
+      "variablesHint": "İmlecin olduğu yere eklemek için birine tıklayın. Yalnızca bu on iki değişken vardır; sayfa gösterilirken satıcıdan, müşteriden ve siparişten doldurulurlar.",
+      "insert": "{name} ekle",
+      "preview": "{language} önizlemesi",
+      "previewHint": "Müşterinin gördüğü gibi; örnek değerler vurgulanır.",
+      "previewing": "Metin denetleniyor…",
+      "previewEmpty": "Henüz önizlenecek bir şey yok.",
+      "unknown": "{language}: {names} bir değişken değil. Yalnızca yukarıdaki değişkenleri kullanın ya da kaldırın.",
+      "noticeStill": "{language} metni hâlâ başlangıç uyarısını taşıyor. Metni inceledikten sonra uyarıyı silin.",
+      "material": "Esaslı değişiklik",
+      "materialHint": "Açık: önceki sürümü kabul eden müşterilerden yeniden kabul istenir. Kapalı: istenmez.",
+      "materialFirst": "İlk sürüm her zaman esaslıdır: her müşteriden bir kez onay istenir.",
+      "note": "Not (isteğe bağlı)",
+      "noteHint": "Bu sürümün neden var olduğu. Geçmişte tutulur; müşteriler görmez.",
+      "needText": "Yayımlamak için en az bir dilde metin yazın.",
+      "publish": "{n}. sürümü yayımla"
+    },
+    "confirm": {
+      "title": "{kind} için {n}. sürüm yayımlansın mı?",
+      "description": "Sonrasında olacaklar şunlar.",
+      "live": "Bu hedef kitledeki ({audience}) müşterilere hemen gösterilir. Yayımlanmış bir sürüm değiştirilemez; değiştirmek için başka bir sürüm yayımlarsınız.",
+      "first": "Bu ilk sürümdür: her müşteriden bir kez kabul etmesi istenir.",
+      "material": "Esaslı bir değişikliktir: önceki bir sürümü kabul eden müşteriden, ödeme sayfasındaki bir sonraki alışverişinde bunu kabul etmesi istenir.",
+      "minor": "Küçük bir değişikliktir: daha önce kabul eden müşterilerden yeniden istenmez.",
+      "required": "{kind} şu an zorunlu; müşteriler onu kabul etmeden ödeme yapamaz.",
+      "notRequired": "{kind} şu an zorunlu değil; Ayarlar'dan zorunlu kılana kadar kimseden istenmez.",
+      "template": "Bir metin hâlâ başlangıç uyarısını taşıyor. Yayımladığınızdan siz sorumlusunuz.",
+      "action": "{n}. sürümü yayımla"
+    },
+    "history": {
+      "title": "Geçmiş: {kind} ({audience})",
+      "description": "Her sürüm, en yenisi önce. Bir sürüm asla değiştirilmez.",
+      "versions": "Sürümler",
+      "version": "Sürüm {n}",
+      "current": "Güncel",
+      "compare": "İki sürümü karşılaştır",
+      "from": "Şuradan",
+      "to": "Şuraya",
+      "language": "Dil",
+      "changes": "Eklenen satır: {added}, çıkarılan satır: {removed}",
+      "identical": "Bu iki metin bu dilde aynı.",
+      "added": "Eklendi:",
+      "removed": "Çıkarıldı:",
+      "onlyOne": "Şimdilik tek sürüm bu, karşılaştıracak bir şey yok."
+    },
+    "settings": {
+      "requiredTitle": "Zorunlu sözleşmeler",
+      "requiredHint": "Müşteri, bir Payrudder ödeme sayfasında ödeme yapmadan ya da API ile kendisi için abonelik oluşturulmadan önce zorunlu her sözleşmeyi kabul etmelidir. Yenilemeler ve otomatik tahsilatlar hiçbir zaman engellenmez.",
+      "kindHints": {
+        "distance_sales": "Uzaktan satın alan tüketiciler için sözleşmenin kendisi.",
+        "pre_info": "Kanunun, sipariş öncesinde tüketiciye bildirmenizi istediği bilgiler.",
+        "tos": "Kullanım koşullarınız.",
+        "privacy": "Kişisel verileri nasıl işlediğiniz."
+      },
+      "unpublished": "Önce bir sürüm yayımlayın, ardından zorunlu kılabilirsiniz.",
+      "immediateTitle": "Hizmeti hemen başlat",
+      "immediateHint": "Tüketicinin hemen kullanabileceği bir dijital hizmet için. Tüketiciden iki ayrı şey istenir; bunlar sözleşmeyi kabul etmekle asla birleştirilmez:",
+      "boxStart": "Hizmetin cayma süresi içinde şimdi başlamasına ilişkin bir talep.",
+      "boxWaiver": "Hizmet tamamen ifa edildiğinde cayma hakkının kaybedileceğine ilişkin bir onay.",
+      "retentionTitle": "Adresi ve tarayıcıyı şu süre sakla",
+      "retentionHint": "Yalnızca bir kabulün IP adresi ve tarayıcısı (user agent) için geçerlidir; bunlar kişisel veridir ve bu süreden sonra silinir. Kaydın geri kalanı durur. {min} ile {max} ay arası, varsayılan {default}.",
+      "months": "ay",
+      "retentionBad": "{min} ile {max} arasında tam sayı olarak ay girin.",
+      "save": "Ayarları kaydet",
+      "saved": "Kaydedildi."
+    },
+    "withdrawals": {
+      "intro": "Sözleşmeden cayan müşteriler. Her talebe siz karar verirsiniz; Payrudder beyanı, kararınızı, kimin ve ne zaman verdiğini saklar ve contract.withdrawal_requested webhook'unu gönderir.",
+      "refundNote": "İade henüz otomatik değil. Müşteriye iadeyi kendiniz yapın (ya da alacak dekontu kesin), ardından talebi burada iade edildi olarak işaretleyin.",
+      "search": "Cayma taleplerinde ara",
+      "columns": {
+        "customer": "Müşteri",
+        "statement": "Beyan",
+        "received": "Alındı",
+        "status": "Durum",
+        "decision": "Karar"
+      },
+      "statuses": {
+        "received": "Alındı",
+        "accepted": "Kabul edildi",
+        "rejected": "Reddedildi",
+        "refunded": "İade edildi"
+      },
+      "actions": {
+        "accepted": "Kabul et",
+        "rejected": "Reddet",
+        "refunded": "İade edildi işaretle"
+      },
+      "sources": {
+        "api": "API",
+        "console": "Konsolda kaydedildi",
+        "hosted": "Ödeme sayfası"
+      },
+      "empty": "Cayma talebi yok.",
+      "note": "Not (isteğe bağlı)",
+      "noteHint": "Karara eklenir ve kayıtlarınız için saklanır.",
+      "decide": {
+        "accepted": {
+          "title": "Bu cayma kabul edilsin mi?",
+          "body": "Bu, müşterinin cayma talebini kabul ettiğinizi kaydeder. Geri alınamaz; sonrasında yalnızca iade edildi olarak işaretleyebilirsiniz."
+        },
+        "rejected": {
+          "title": "Bu cayma reddedilsin mi?",
+          "body": "Bu, talebi kabul etmediğinizi kaydeder. Karar bir kez verilir ve değiştirilemez."
+        },
+        "refunded": {
+          "title": "İade edildi olarak işaretlensin mi?",
+          "body": "Müşteriye iadeyi yaptıktan sonra bunu yapın. Payrudder hiçbir para hareketi yapmaz."
+        }
+      }
+    },
+    "customer": {
+      "log": "Kabul edilen sözleşmeler",
+      "none": "Bu müşteri henüz hiçbir sözleşmeyi kabul etmedi. Sözleşmeleri zorunlu kıldığınızda her kabul burada kaydedilir.",
+      "sourceHosted": "Payrudder ödeme sayfası",
+      "sourceApi": "API'nizden bildirildi",
+      "viewPage": "Sayfayı gör",
+      "box": "Kutu: “{text}”",
+      "servedAs": "{served} (istenen: {asked})",
+      "consentStart": "Hizmetin şimdi başlamasını istedi",
+      "consentWaiver": "Cayma hakkını kaybedeceğini kabul etti",
+      "evidence": "Kanıt",
+      "time": "Zaman",
+      "words": "Kutuların yanındaki ifadeler",
+      "ip": "IP adresi",
+      "userAgent": "Tarayıcı",
+      "observed": "Payrudder gözlemledi",
+      "reported": "Siz bildirdiniz",
+      "erased": "Saklama süresinden sonra silindi",
+      "notReported": "Bildirilmedi",
+      "snapshotTitle": "Müşterinin kabul ettiği sayfa",
+      "snapshotHint": "Kabul edildiği anda saklandığı haliyle. Yalıtılmış bir çerçevede gösterilir.",
+      "sha256": "Sayfanın SHA-256 değeri",
+      "withdrawals": "Cayma talepleri",
+      "record": "Cayma kaydet",
+      "noWithdrawals": "Bu müşteriden cayma talebi yok.",
+      "decideThere": "Cayma taleplerine Sözleşmeler sayfasından karar verin"
+    },
+    "record": {
+      "title": "Cayma kaydet",
+      "description": "{customer} müşterisinin size söylediğini yazın: bir e-posta, bir arama, bir mesaj. Sonrasında Sözleşmeler sayfasından karar verirsiniz.",
+      "formLabel": "Cayma kaydet",
+      "statement": "Müşterinin söylediği",
+      "statementHint": "Kendi sözleriyle, en fazla 2000 karakter.",
+      "received": "Size ulaştığı an (isteğe bağlı)",
+      "receivedHint": "Şimdi için boş bırakın.",
+      "submit": "Caymayı kaydet"
     }
   }
 }
