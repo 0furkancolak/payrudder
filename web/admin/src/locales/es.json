@@ -348,7 +348,61 @@
       "suspended": "{app} está suspendida: sus claves de API se han detenido, las páginas y enlaces de pago no aceptan pagos, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
       "frozen": "{app} está congelada: puede leer todo, pero no se puede cambiar nada. Las llamadas de API que escriben se rechazan, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
       "banned": "{app} está vetada: sus claves de API se han detenido y no se cobra, envía ni transmite nada. Solo un operador puede levantar un veto.",
-      "write": "Escribir a soporte"
+      "write": "Escribir a soporte",
+      "retention": "Tus datos se conservan hasta el {date}.",
+      "scheduledSuspended": "{app} se suspenderá el {date}: sus claves de API dejarán de funcionar y no se cobrará nada. Si crees que es un error, escribe al soporte.",
+      "scheduledFrozen": "{app} se congelará el {date}: podrás seguir leyéndolo todo, pero no se podrá cambiar nada y no se cobrará nada. Si crees que es un error, escribe al soporte.",
+      "appeal": {
+        "button": "Apelar",
+        "hint": "Cuéntale al operador por qué debería levantarse la restricción. Solo los propietarios pueden apelar. El operador responde por correo.",
+        "statement": "Qué pasó",
+        "submit": "Enviar apelación",
+        "cancel": "Cancelar",
+        "sent": "Apelaste el {date}. El operador aún no ha respondido.",
+        "accepted": "Tu apelación fue aceptada el {date}.",
+        "rejected": "Tu apelación no fue aceptada el {date}.",
+        "answer": "El operador escribió: {answer}"
+      }
+    },
+    "lifecycle": {
+      "title": "Conservación y calendario",
+      "retentionUntil": "Los datos se conservan hasta el {date}.",
+      "retentionDue": "El período de conservación terminó el {date}. No se borra nada automáticamente: lo que pasa con los datos lo decide una persona.",
+      "retentionNone": "No vetado: no hay plazo de conservación.",
+      "scheduled": "{status} el {date} (programado por {by})",
+      "none": "No hay nada programado.",
+      "hint": "Una app live activa pasa a este estado a esa hora, por el sistema. No se puede programar un veto.",
+      "status": "Estado",
+      "time": "Cuándo",
+      "category": "Categoría",
+      "reason": "Motivo",
+      "submit": "Programar",
+      "cancel": "Cancelar la programación",
+      "confirmCancel": "¿Cancelar el estado programado?"
+    },
+    "appeals": {
+      "title": "Apelaciones",
+      "empty": "Sin apelaciones.",
+      "columns": {
+        "status": "Estado",
+        "held": "Contra",
+        "by": "Propietario",
+        "sent": "Enviada",
+        "statement": "Lo que escribió el propietario"
+      },
+      "status": {
+        "open": "Abierta",
+        "accepted": "Aceptada",
+        "rejected": "Rechazada"
+      },
+      "decide": "Resolver",
+      "sheetTitle": "Apelación de {app}",
+      "answer": "Tu respuesta a los propietarios",
+      "answerHint": "Los propietarios lo reciben por correo. Obligatorio para rechazar.",
+      "accept": "Aceptar y reactivar",
+      "reject": "Rechazar",
+      "confirmAccept": "¿Aceptar esta apelación? {app} vuelve al servicio.",
+      "openTitle": "Apelaciones abiertas"
     }
   },
   "invoice": {
@@ -3220,6 +3274,11 @@
         "version_stale": "Se publicó una versión más reciente de este texto. Muestre la actual y vuelva a pedir la aceptación.",
         "withdrawal_decided": "Esta solicitud de desistimiento no puede pasar a ese estado.",
         "withdrawal_not_found": "No existe esa solicitud de desistimiento."
+      },
+      "appeal": {
+        "not_held": "Solo se puede apelar una app que el operador haya suspendido, congelado o vetado.",
+        "exists": "Ya hay una apelación abierta. El operador la responderá.",
+        "not_open": "Esta apelación ya fue resuelta."
       }
     },
     "common": {

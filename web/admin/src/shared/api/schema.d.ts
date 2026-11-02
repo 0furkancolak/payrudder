@@ -4281,6 +4281,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the operator has done to the app's live environment, as its owners may know it
+         * @description The status of the live environment (a suspension, a freeze or a ban stops the app, see the notice on every page), a suspension or a freeze the operator scheduled for it, the day a banned app's data is kept until, and the latest appeal. Any member of the account may read it. It never carries the operator's category or note.
+         */
+        get: operations["appHold"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/appeal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Appeal against a suspension, a freeze or a ban of the app
+         * @description An owner states why the operator should lift the hold (up to 2000 characters). Only an owner, only while the live environment is held (409 plans.appeal.not_held), and one appeal is open at a time (409 plans.appeal.exists). The operator decides it and the owners are mailed the answer.
+         */
+        post: operations["appAppeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/promote": {
         parameters: {
             query?: never;
@@ -6559,6 +6599,90 @@ export interface paths {
         get: operations["listTenantStatusEvents"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{id}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A live tenant's retention deadline and scheduled status
+         * @description The deadline a banned tenant's data is kept until (a job marks it due and deletes nothing), and the suspension or freeze scheduled for the tenant.
+         */
+        get: operations["getTenantLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{id}/scheduled-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Schedule a suspension or a freeze of an active live tenant
+         * @description Applied by a sweeper at the time, as the operator `system`, to a tenant that is active by then (any other is left as it is). A ban is never scheduled. One schedule per tenant: a new one replaces the old. The owners are mailed when it is applied, as for any change of status. Recorded in the audit log.
+         */
+        put: operations["scheduleTenantStatus"];
+        post?: never;
+        /**
+         * Cancel the scheduled status of a tenant
+         * @description A tenant with nothing scheduled is not an error.
+         */
+        delete: operations["cancelScheduledTenantStatus"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The owners' appeals against a hold, newest first
+         * @description The latest 200, of every tenant or of one (`tenant_id`), of every status or of one (`status`).
+         */
+        get: operations["listTenantAppeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/appeals/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or reject an open appeal
+         * @description Accepting reinstates the tenant (active) and mails the owners the answer (not the mail of the reinstatement); rejecting needs an answer. The owners are mailed either way and the decision is audited. 409 plans.appeal.not_open for an appeal decided already.
+         */
+        post: operations["decideTenantAppeal"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10219,6 +10343,97 @@ export interface components {
             reason?: string;
             /** @enum {string} */
             category?: "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other";
+        };
+        TenantAppeal: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenant_id: string;
+            /** @enum {string} */
+            status: "open" | "accepted" | "rejected";
+            /**
+             * @description The status the app was in when the owner appealed
+             * @enum {string}
+             */
+            held_status: "suspended" | "frozen" | "banned";
+            /** @description What the owner wrote */
+            statement: string;
+            /** @description The owner's verified address */
+            submitted_by: string;
+            /** @description The operator's answer to the owner; empty while open */
+            answer: string;
+            decided_by: string;
+            /** Format: date-time */
+            create_time: string;
+            /** Format: date-time */
+            decide_time?: string | null;
+        };
+        AppAppealRequest: {
+            statement: string;
+        };
+        AppHold: {
+            /** @enum {string} */
+            status: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED" | "TENANT_STATUS_FROZEN" | "TENANT_STATUS_BANNED";
+            /**
+             * @description Set when the operator scheduled one
+             * @enum {string}
+             */
+            scheduled_status?: "suspended" | "frozen";
+            /** Format: date-time */
+            scheduled_time?: string | null;
+            /**
+             * Format: date-time
+             * @description Set only while the app is banned
+             */
+            retention_until?: string | null;
+            /** @description The latest appeal, open or decided */
+            appeal?: components["schemas"]["TenantAppeal"] | null;
+            /** @description An owner of an app that is held and has no open appeal */
+            can_appeal: boolean;
+        };
+        TenantLifecycle: {
+            /**
+             * Format: date-time
+             * @description A banned tenant's data is kept until then; nothing deletes it
+             */
+            retention_until?: string | null;
+            /**
+             * Format: date-time
+             * @description When the retention job marked the deadline due
+             */
+            retention_due_time?: string | null;
+            /** @enum {string} */
+            scheduled_status?: "suspended" | "frozen";
+            /** Format: date-time */
+            scheduled_time?: string | null;
+            scheduled_category?: string;
+            scheduled_reason?: string;
+            scheduled_by?: string;
+        };
+        ScheduleTenantStatusRequest: {
+            /** @enum {string} */
+            status: "suspended" | "frozen";
+            /**
+             * Format: date-time
+             * @description In the future, within a year
+             */
+            schedule_time: string;
+            /** @enum {string} */
+            category?: "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other";
+            reason?: string;
+        };
+        DecideTenantAppealRequest: {
+            /** @enum {string} */
+            decision: "accepted" | "rejected";
+            /** @description Required to reject */
+            answer?: string;
+        };
+        ListTenantAppealsResponse: {
+            appeals: components["schemas"]["TenantAppeal"][];
+            /** @description The app's name by tenant id */
+            app_names: {
+                [key: string]: string;
+            };
         };
         TenantStatusEvent: {
             /** Format: uuid */
@@ -21219,6 +21434,59 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppHold"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    appAppeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppAppealRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantAppeal"];
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     appPromote: {
         parameters: {
             query?: never;
@@ -25154,6 +25422,131 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    getTenantLifecycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantLifecycle"];
+                };
+            };
+        };
+    };
+    scheduleTenantStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleTenantStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantLifecycle"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    cancelScheduledTenantStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantLifecycle"];
+                };
+            };
+        };
+    };
+    listTenantAppeals: {
+        parameters: {
+            query?: {
+                tenant_id?: string;
+                status?: "open" | "accepted" | "rejected";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListTenantAppealsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    decideTenantAppeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideTenantAppealRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantAppeal"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     getPriceChangePause: {

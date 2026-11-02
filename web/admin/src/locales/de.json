@@ -348,7 +348,61 @@
       "suspended": "{app} ist gesperrt: Die API-Schlüssel sind gestoppt, Zahlungsseiten und Zahlungslinks nehmen keine Zahlungen an, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
       "frozen": "{app} ist eingefroren: Sie können weiterhin alles lesen, aber nichts ändern. Schreibende API-Aufrufe werden abgelehnt, es wird nichts abgebucht und die Kunden erhalten keine E-Mails. Ihre Daten bleiben erhalten.",
       "banned": "{app} ist gebannt: Die API-Schlüssel sind gestoppt, und es wird nichts abgebucht, gemailt oder ausgeliefert. Nur ein Operator kann einen Bann aufheben.",
-      "write": "Den Support kontaktieren"
+      "write": "Den Support kontaktieren",
+      "retention": "Ihre Daten werden bis {date} aufbewahrt.",
+      "scheduledSuspended": "{app} wird am {date} ausgesetzt: Die API-Schlüssel stoppen und nichts wird berechnet. Wenn Sie das für einen Fehler halten, schreiben Sie dem Support.",
+      "scheduledFrozen": "{app} wird am {date} eingefroren: Sie können weiter alles lesen, aber nichts ändern, und nichts wird berechnet. Wenn Sie das für einen Fehler halten, schreiben Sie dem Support.",
+      "appeal": {
+        "button": "Einspruch einlegen",
+        "hint": "Sagen Sie dem Betreiber, warum die Sperre aufgehoben werden sollte. Nur Inhaber können Einspruch einlegen. Der Betreiber antwortet per E-Mail.",
+        "statement": "Was ist passiert",
+        "submit": "Einspruch senden",
+        "cancel": "Abbrechen",
+        "sent": "Sie haben am {date} Einspruch eingelegt. Der Betreiber hat noch nicht geantwortet.",
+        "accepted": "Ihr Einspruch wurde am {date} angenommen.",
+        "rejected": "Ihr Einspruch wurde am {date} nicht angenommen.",
+        "answer": "Der Betreiber schrieb: {answer}"
+      }
+    },
+    "lifecycle": {
+      "title": "Aufbewahrung und Zeitplan",
+      "retentionUntil": "Daten werden bis {date} aufbewahrt.",
+      "retentionDue": "Die Aufbewahrungsfrist endete am {date}. Nichts wird automatisch gelöscht: Was mit den Daten geschieht, entscheidet ein Mensch.",
+      "retentionNone": "Nicht gesperrt: Es gibt keine Aufbewahrungsfrist.",
+      "scheduled": "{status} am {date} (geplant von {by})",
+      "none": "Nichts ist geplant.",
+      "hint": "Eine aktive Live-App wird zu dieser Zeit vom System in diesen Status versetzt. Eine Sperre kann nicht geplant werden.",
+      "status": "Status",
+      "time": "Wann",
+      "category": "Kategorie",
+      "reason": "Grund",
+      "submit": "Planen",
+      "cancel": "Plan abbrechen",
+      "confirmCancel": "Geplanten Status abbrechen?"
+    },
+    "appeals": {
+      "title": "Einsprüche",
+      "empty": "Keine Einsprüche.",
+      "columns": {
+        "status": "Status",
+        "held": "Gegen",
+        "by": "Inhaber",
+        "sent": "Gesendet",
+        "statement": "Was der Inhaber schrieb"
+      },
+      "status": {
+        "open": "Offen",
+        "accepted": "Angenommen",
+        "rejected": "Abgelehnt"
+      },
+      "decide": "Entscheiden",
+      "sheetTitle": "Einspruch von {app}",
+      "answer": "Ihre Antwort an die Inhaber",
+      "answerHint": "Die Inhaber erhalten dies per E-Mail. Zum Ablehnen erforderlich.",
+      "accept": "Annehmen und wieder freigeben",
+      "reject": "Ablehnen",
+      "confirmAccept": "Diesen Einspruch annehmen? {app} geht wieder in Betrieb.",
+      "openTitle": "Offene Einsprüche"
     }
   },
   "invoice": {
@@ -3220,6 +3274,11 @@
         "version_stale": "Eine neuere Version dieses Textes wurde veröffentlicht. Zeigen Sie die aktuelle an und fragen Sie erneut.",
         "withdrawal_decided": "Dieser Widerruf kann nicht in diesen Status wechseln.",
         "withdrawal_not_found": "Diesen Widerruf gibt es nicht."
+      },
+      "appeal": {
+        "not_held": "Nur gegen eine App, die der Betreiber ausgesetzt, eingefroren oder gesperrt hat, kann Einspruch eingelegt werden.",
+        "exists": "Es ist bereits ein Einspruch offen. Der Betreiber wird ihn beantworten.",
+        "not_open": "Über diesen Einspruch wurde bereits entschieden."
       }
     },
     "common": {

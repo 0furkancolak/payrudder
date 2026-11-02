@@ -21,6 +21,7 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { useBulk } from "@/shared/lib/bulk";
 import { useRestOfTenants, useSetTenantStatus, useTenants } from "./api";
 import PricePauseCard from "./PricePauseCard.vue";
+import TenantAppealsCard from "./TenantAppealsCard.vue";
 
 const { t, te } = useI18n();
 const tenants = useTenants();
@@ -60,6 +61,7 @@ const change = (status: "active" | "suspended", only?: typeof list.value) =>
 <template>
   <PageHeader :title="t('tenants.title')" />
   <PricePauseCard />
+  <TenantAppealsCard all class="mb-6" />
   <Skeleton v-if="tenants.isPending.value" class="mb-3 h-6 w-40" aria-busy="true" />
   <ErrorState :error="tenants.error.value" :retrying="tenants.isFetching.value" class="mb-3" @retry="tenants.refetch()" />
   <Card class="p-3">

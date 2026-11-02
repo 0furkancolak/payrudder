@@ -46,6 +46,9 @@ const (
 	KindTenantFrozen     Kind = "tenant_frozen"
 	KindTenantBanned     Kind = "tenant_banned"
 	KindTenantReinstated Kind = "tenant_reinstated"
+	// KindTenantAppealAccepted and KindTenantAppealRejected tell the owners how the operator decided an appeal against a hold (plan 14), with the operator's answer.
+	KindTenantAppealAccepted Kind = "tenant_appeal_accepted"
+	KindTenantAppealRejected Kind = "tenant_appeal_rejected"
 	// KindTwoFactorOn and KindTwoFactorOff tell the person that two-factor sign-in was turned on or off for their account, KindRecoveryUsed that a recovery code
 	// signed somebody in, and KindTwoFactorReset that support turned it off at their request (plan 22 G9). They carry no link: what to do if it was not the
 	// person is in the text.
@@ -72,6 +75,8 @@ type Mail struct {
 	// Ticket is the ticket's number as people write it ("#1042"), Subject its subject, Status and Priority its state (named in the mail's language). The link of a
 	// ticket mail opens the ticket in the console. Account is the organisation that opened it.
 	Ticket, Subject, Status, Priority string
+	// Answer is the operator's answer to an appeal; a line that names {answer} is left out when there is none.
+	Answer string
 }
 
 // Locales are the languages mail is written in, as in the console.
@@ -145,11 +150,15 @@ func Render(m Mail) (subject, text, htmlBody string) {
 	c := texts[loc][m.Kind]
 	// One pass, so a name that looks like a placeholder (a ticket subject "{status}") is not filled in again.
 	fillWith := strings.NewReplacer("{account}", oneLine(m.Account), "{app}", oneLine(m.App), "{inviter}", oneLine(m.Inviter), "{code}", oneLine(m.Code), "{role}", roleWord(loc, m.Role),
-		"{ticket}", oneLine(m.Ticket), "{subject}", oneLine(m.Subject), "{status}", ticketWord(loc, m.Status), "{priority}", ticketWord(loc, m.Priority))
+		"{ticket}", oneLine(m.Ticket), "{subject}", oneLine(m.Subject), "{status}", ticketWord(loc, m.Status), "{priority}", ticketWord(loc, m.Priority), "{answer}", oneLine(m.Answer))
 	fill := fillWith.Replace
 	lines := make([]string, len(c.Lines))
-	for i, l := range c.Lines {
-		lines[i] = fill(l)
+	lines = lines[:0]
+	for _, l := range c.Lines {
+		if m.Answer == "" && strings.Contains(l, "{answer}") {
+			continue
+		}
+		lines = append(lines, fill(l))
 	}
 	subject = fill(c.Subject)
 	c.Ignore = fill(c.Ignore)

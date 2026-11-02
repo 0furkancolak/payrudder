@@ -25,7 +25,7 @@ func placeholders(c copyText) string {
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
 	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketCustomerReply, KindTicketReply, KindTicketStatus,
-		KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated}
+		KindTenantSuspended, KindTenantFrozen, KindTenantBanned, KindTenantReinstated, KindTenantAppealAccepted, KindTenantAppealRejected}
 	for _, l := range Locales {
 		for _, k := range kinds {
 			got, ok := texts[l][k]
@@ -153,5 +153,21 @@ func TestSMTPSendsInTheBackground(t *testing.T) {
 	defer r.mu.Unlock()
 	if len(r.sent) != 1 || r.sent[0].To != "ada@example.com" || r.sent[0].From != "Payrudder <no-reply@example.com>" || !strings.Contains(r.sent[0].Text, "https://x.example/r") {
 		t.Fatalf("sent: %+v", r.sent)
+	}
+}
+
+// An appeal's mail carries the operator's answer, on one line and escaped in the HTML, in every language; with no answer the line that would hold it is left out.
+func TestAppealMailsCarryTheAnswer(t *testing.T) {
+	for _, l := range Locales {
+		for _, k := range []Kind{KindTenantAppealAccepted, KindTenantAppealRejected} {
+			_, text, body := Render(Mail{Kind: k, Locale: l, To: "owner@example.com", App: "Shop", Account: "Ada Labs", Answer: "Not <b>yet</b>\r\nBcc: x@example.com"})
+			if !strings.Contains(text, "Not <b>yet</b>  Bcc: x@example.com") || strings.Contains(body, "<b>yet</b>") || !strings.Contains(body, "&lt;b&gt;yet&lt;/b&gt;") || placeholder.MatchString(text) {
+				t.Errorf("%s/%s: text %q", l, k, text)
+			}
+			_, none, _ := Render(Mail{Kind: k, Locale: l, To: "owner@example.com", App: "Shop", Account: "Ada Labs"})
+			if placeholder.MatchString(none) || len(none) >= len(text) {
+				t.Errorf("%s/%s: without an answer %q", l, k, none)
+			}
+		}
 	}
 }

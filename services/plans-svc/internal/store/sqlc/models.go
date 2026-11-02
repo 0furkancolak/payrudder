@@ -797,6 +797,31 @@ type Tenant struct {
 	DefaultLanguage    string
 }
 
+type TenantAppeal struct {
+	ID           uuid.UUID
+	LiveTenantID uuid.UUID
+	Status       string
+	HeldStatus   string
+	Statement    string
+	SubmittedBy  string
+	Answer       string
+	DecidedBy    string
+	CreatedAt    time.Time
+	DecidedAt    *time.Time
+}
+
+type TenantLifecycle struct {
+	LiveTenantID      uuid.UUID
+	RetentionUntil    *time.Time
+	RetentionDueAt    *time.Time
+	ScheduledStatus   *string
+	ScheduledAt       *time.Time
+	ScheduledCategory string
+	ScheduledReason   string
+	ScheduledBy       string
+	UpdatedAt         time.Time
+}
+
 type TenantMailIntegration struct {
 	TenantID     uuid.UUID
 	Provider     string

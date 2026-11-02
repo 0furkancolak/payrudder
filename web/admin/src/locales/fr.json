@@ -348,7 +348,61 @@
       "suspended": "{app} est suspendue : ses clés d'API sont arrêtées, les pages et liens de paiement n'acceptent aucun paiement, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
       "frozen": "{app} est gelée : vous pouvez tout lire, mais rien ne peut être modifié. Les appels d'API en écriture sont refusés, aucun débit n'est effectué et ses clients ne reçoivent aucun e-mail. Vos données sont conservées.",
       "banned": "{app} est bannie : ses clés d'API sont arrêtées et rien n'est débité, envoyé par e-mail ni transmis. Seul un opérateur peut lever un bannissement.",
-      "write": "Écrire au support"
+      "write": "Écrire au support",
+      "retention": "Vos données sont conservées jusqu'au {date}.",
+      "scheduledSuspended": "{app} sera suspendue le {date} : ses clés d'API s'arrêteront et rien ne sera facturé. Si vous pensez à une erreur, écrivez au support.",
+      "scheduledFrozen": "{app} sera gelée le {date} : vous pourrez toujours tout lire, mais rien ne pourra être modifié et rien ne sera facturé. Si vous pensez à une erreur, écrivez au support.",
+      "appeal": {
+        "button": "Faire appel",
+        "hint": "Dites à l'opérateur pourquoi la restriction devrait être levée. Seuls les propriétaires peuvent faire appel. L'opérateur répond par e-mail.",
+        "statement": "Ce qui s'est passé",
+        "submit": "Envoyer le recours",
+        "cancel": "Annuler",
+        "sent": "Vous avez fait appel le {date}. L'opérateur n'a pas encore répondu.",
+        "accepted": "Votre recours a été accepté le {date}.",
+        "rejected": "Votre recours n'a pas été accepté le {date}.",
+        "answer": "L'opérateur a écrit : {answer}"
+      }
+    },
+    "lifecycle": {
+      "title": "Conservation et calendrier",
+      "retentionUntil": "Les données sont conservées jusqu'au {date}.",
+      "retentionDue": "La période de conservation s'est terminée le {date}. Rien n'est supprimé automatiquement : le sort des données est décidé par une personne.",
+      "retentionNone": "Non banni : il n'y a pas d'échéance de conservation.",
+      "scheduled": "{status} le {date} (planifié par {by})",
+      "none": "Rien n'est planifié.",
+      "hint": "Une app live active est mise dans ce statut à cette heure, par le système. Un bannissement ne peut pas être planifié.",
+      "status": "Statut",
+      "time": "Quand",
+      "category": "Catégorie",
+      "reason": "Motif",
+      "submit": "Planifier",
+      "cancel": "Annuler la planification",
+      "confirmCancel": "Annuler le statut planifié ?"
+    },
+    "appeals": {
+      "title": "Recours",
+      "empty": "Aucun recours.",
+      "columns": {
+        "status": "Statut",
+        "held": "Contre",
+        "by": "Propriétaire",
+        "sent": "Envoyé",
+        "statement": "Ce que le propriétaire a écrit"
+      },
+      "status": {
+        "open": "Ouvert",
+        "accepted": "Accepté",
+        "rejected": "Rejeté"
+      },
+      "decide": "Trancher",
+      "sheetTitle": "Recours de {app}",
+      "answer": "Votre réponse aux propriétaires",
+      "answerHint": "Les propriétaires le reçoivent par e-mail. Obligatoire pour rejeter.",
+      "accept": "Accepter et rétablir",
+      "reject": "Rejeter",
+      "confirmAccept": "Accepter ce recours ? {app} est remise en service.",
+      "openTitle": "Recours ouverts"
     }
   },
   "invoice": {
@@ -3220,6 +3274,11 @@
         "version_stale": "Une version plus récente de ce texte a été publiée. Affichez la version actuelle et demandez à nouveau.",
         "withdrawal_decided": "Cette demande de rétractation ne peut pas passer à ce statut.",
         "withdrawal_not_found": "Cette demande de rétractation n'existe pas."
+      },
+      "appeal": {
+        "not_held": "On ne peut faire appel que pour une app que l'opérateur a suspendue, gelée ou bannie.",
+        "exists": "Un recours est déjà ouvert. L'opérateur y répondra.",
+        "not_open": "Ce recours a déjà été tranché."
       }
     },
     "common": {

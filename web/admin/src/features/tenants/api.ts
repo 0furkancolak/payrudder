@@ -11,6 +11,9 @@ export const tenantKeys = {
   list: ["tenants"] as const,
   detail: (id: string) => ["tenants", id] as const,
   statusEvents: (id: string) => ["tenants", id, "status-events"] as const,
+  lifecycle: (id: string) => ["tenants", id, "lifecycle"] as const,
+  appeals: ["tenants", "appeals"] as const,
+  hold: (appId: string) => ["apps", appId, "hold"] as const,
 };
 
 /** The operator's list of tenants. `enabled` lets a caller that may be a person (who has no admin API) switch it off. */
@@ -108,5 +111,77 @@ export function useSetPriceChangePause() {
   return useMutation({
     mutationFn: (v: { paused: boolean; reason?: string }) => unwrap(api.PUT("/admin/v1/price-change-pause", { body: { paused: v.paused, reason: v.reason ?? "" } })),
     onSuccess: (data) => queries.setQueryData(pauseKey, data),
+  });
+}
+
+// --- retention, schedule and appeals (plan 14)
+
+export type TenantAppeal = components["schemas"]["TenantAppeal"];
+export type TenantLifecycle = components["schemas"]["TenantLifecycle"];
+export type AppHold = components["schemas"]["AppHold"];
+
+/** A live tenant's retention deadline and the status scheduled for it (the operator's). */
+export function useTenantLifecycle(id: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => tenantKeys.lifecycle(toValue(id))),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{id}/lifecycle", { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => toValue(id) !== "" && toValue(enabled)),
+  });
+}
+
+export function useScheduleTenantStatus() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; status: "suspended" | "frozen"; time: string; category?: StatusCategory; reason?: string }) =>
+      unwrap(api.PUT("/admin/v1/tenants/{id}/scheduled-status", { params: { path: { id: v.id } }, body: { status: v.status, schedule_time: v.time, ...(v.category ? { category: v.category } : {}), reason: v.reason ?? "" } })),
+    onSuccess: (_d, v) => queries.invalidateQueries({ queryKey: tenantKeys.lifecycle(v.id) }),
+  });
+}
+
+export function useCancelScheduledTenantStatus() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE("/admin/v1/tenants/{id}/scheduled-status", { params: { path: { id } } })),
+    onSuccess: (_d, id) => queries.invalidateQueries({ queryKey: tenantKeys.lifecycle(id) }),
+  });
+}
+
+/** The owners' appeals, newest first (the latest 200): of one tenant, or of every tenant, of one status or of all. */
+export function useTenantAppeals(filter: MaybeRefOrGetter<{ tenantId?: string; status?: "open" | "accepted" | "rejected" }> = {}, enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => [...tenantKeys.appeals, toValue(filter)] as const),
+    queryFn: () => unwrap(api.GET("/admin/v1/appeals", { params: { query: { tenant_id: toValue(filter).tenantId || undefined, status: toValue(filter).status } } })),
+    enabled: computed(() => toValue(enabled)),
+  });
+}
+
+/** Accepts (the tenant is reinstated) or rejects (an answer is required) an open appeal. */
+export function useDecideTenantAppeal() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; decision: "accepted" | "rejected"; answer: string }) =>
+      unwrap(api.POST("/admin/v1/appeals/{id}/decision", { params: { path: { id: v.id } }, body: { decision: v.decision, answer: v.answer } })),
+    onSettled: () => {
+      void queries.invalidateQueries({ queryKey: tenantKeys.appeals });
+      void queries.invalidateQueries({ queryKey: tenantKeys.list });
+      void queries.invalidateQueries({ queryKey: ["tenants"] });
+    },
+  });
+}
+
+/** What the operator has done to an app's live environment as its owners may know it, and the latest appeal (the person's). */
+export function useAppHold(appId: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => tenantKeys.hold(toValue(appId))),
+    queryFn: () => unwrap(api.GET("/app/v1/apps/{id}/hold", { params: { path: { id: toValue(appId) } } })),
+    enabled: computed(() => toValue(appId) !== "" && toValue(enabled)),
+  });
+}
+
+export function useSubmitAppeal(appId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (statement: string) => unwrap(api.POST("/app/v1/apps/{id}/appeal", { params: { path: { id: toValue(appId) } }, body: { statement } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: tenantKeys.hold(toValue(appId)) }),
   });
 }

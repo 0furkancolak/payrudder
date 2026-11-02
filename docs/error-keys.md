@@ -466,6 +466,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.app.bad_region`
 - `plans.app.bad_slug`
 - `plans.app.slug_taken`
+- `plans.appeal.exists`
+- `plans.appeal.not_held`
+- `plans.appeal.not_open`
 - `plans.change.bad_proration`
 - `plans.change.billed_in_arrears`
 - `plans.change.fee_not_invoiced`
