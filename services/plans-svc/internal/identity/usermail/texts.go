@@ -53,17 +53,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "If you did not ask for this code, ignore this message: nobody can sign in without it.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} replied",
+			Lines:   []string{"{account} replied on ticket {ticket}: {subject}", "Open the ticket in the operator console to answer it."},
+			Button:  "Open the ticket",
+			Ignore:  "You get this because your address is listed as a Payrudder operator.",
+		},
 		KindTicketNew: {
 			Subject: "New support ticket {ticket}: {subject}",
 			Lines:   []string{"{account} opened ticket {ticket} ({priority} priority): {subject}", "Open the ticket in the operator console to answer it."},
 			Button:  "Open the ticket",
 			Ignore:  "You get this because your address is listed as a Payrudder operator.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "{account} answered ticket {ticket}: {subject}",
-			Lines:   []string{"{account} wrote on ticket {ticket}: {subject}", "Open the ticket in the operator console to read it and answer."},
-			Button:  "Open the ticket",
-			Ignore:  "You get this because your address is listed as a Payrudder operator (or the ticket is assigned to you).",
 		},
 		KindTicketReply: {
 			Subject: "Payrudder support answered ticket {ticket}",
@@ -157,17 +157,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Bu kodu siz istemediyseniz iletiyi yok sayın: kod olmadan kimse giriş yapamaz.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "{ticket} numaralı talep: {account} yanıt yazdı",
+			Lines:   []string{"{account}, {ticket} numaralı talebe yanıt yazdı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
+			Button:  "Talebi aç",
+			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
+		},
 		KindTicketNew: {
 			Subject: "Yeni destek talebi {ticket}: {subject}",
 			Lines:   []string{"{account}, {priority} öncelikli {ticket} numaralı talebi açtı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
 			Button:  "Talebi aç",
 			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "{account}, {ticket} numaralı talebe yazdı: {subject}",
-			Lines:   []string{"{account}, {ticket} numaralı talebe yeni bir ileti yazdı: {subject}", "Okumak ve yanıtlamak için talebi operatör konsolunda açın."},
-			Button:  "Talebi aç",
-			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği (ya da talep size atandığı) için bu iletiyi alıyorsunuz.",
 		},
 		KindTicketReply: {
 			Subject: "Payrudder destek ekibi {ticket} numaralı talebinizi yanıtladı",
@@ -261,17 +261,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Wenn Sie diesen Code nicht angefordert haben, ignorieren Sie diese Nachricht: Ohne ihn kann sich niemand anmelden.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} hat geantwortet",
+			Lines:   []string{"{account} hat auf das Ticket {ticket} geantwortet: {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
+			Button:  "Ticket öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
+		},
 		KindTicketNew: {
 			Subject: "Neues Support-Ticket {ticket}: {subject}",
 			Lines:   []string{"{account} hat das Ticket {ticket} eröffnet (Priorität {priority}): {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
 			Button:  "Ticket öffnen",
 			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "{account} hat auf Ticket {ticket} geantwortet: {subject}",
-			Lines:   []string{"{account} hat zum Ticket {ticket} geschrieben: {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um es zu lesen und zu antworten."},
-			Button:  "Ticket öffnen",
-			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator geführt wird (oder das Ticket Ihnen zugewiesen ist).",
 		},
 		KindTicketReply: {
 			Subject: "Der Payrudder-Support hat auf Ticket {ticket} geantwortet",
@@ -365,17 +365,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Si vous n'avez pas demandé ce code, ignorez ce message : personne ne peut se connecter sans lui.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket} : {account} a répondu",
+			Lines:   []string{"{account} a répondu sur le ticket {ticket} : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
+			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
+		},
 		KindTicketNew: {
 			Subject: "Nouveau ticket de support {ticket} : {subject}",
 			Lines:   []string{"{account} a ouvert le ticket {ticket} (priorité {priority}) : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
 			Button:  "Ouvrir le ticket",
 			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "{account} a répondu au ticket {ticket} : {subject}",
-			Lines:   []string{"{account} a écrit sur le ticket {ticket} : {subject}", "Ouvrez le ticket dans la console des opérateurs pour le lire et répondre."},
-			Button:  "Ouvrir le ticket",
-			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder (ou que le ticket vous est assigné).",
 		},
 		KindTicketReply: {
 			Subject: "Le support Payrudder a répondu au ticket {ticket}",
@@ -469,17 +469,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Si no solicitó este código, ignore este mensaje: nadie puede iniciar sesión sin él.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "Ticket {ticket}: {account} respondió",
+			Lines:   []string{"{account} respondió en el ticket {ticket}: {subject}", "Abre el ticket en la consola de operadores para responder."},
+			Button:  "Abrir el ticket",
+			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
+		},
 		KindTicketNew: {
 			Subject: "Nuevo ticket de soporte {ticket}: {subject}",
 			Lines:   []string{"{account} abrió el ticket {ticket} (prioridad {priority}): {subject}", "Abre el ticket en la consola de operadores para responder."},
 			Button:  "Abrir el ticket",
 			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "{account} respondió al ticket {ticket}: {subject}",
-			Lines:   []string{"{account} escribió en el ticket {ticket}: {subject}", "Abre el ticket en la consola de operadores para leerlo y responder."},
-			Button:  "Abrir el ticket",
-			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder (o el ticket te está asignado).",
 		},
 		KindTicketReply: {
 			Subject: "El soporte de Payrudder respondió al ticket {ticket}",
@@ -573,17 +573,17 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "إذا لم تطلب هذا الرمز فتجاهل هذه الرسالة: لا يستطيع أحد تسجيل الدخول بدونه.",
 		},
+		KindTicketCustomerReply: {
+			Subject: "التذكرة {ticket}: ردّت {account}",
+			Lines:   []string{"ردّت {account} على التذكرة {ticket}: {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
+			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
+		},
 		KindTicketNew: {
 			Subject: "تذكرة دعم جديدة {ticket}: {subject}",
 			Lines:   []string{"فتحت {account} التذكرة {ticket} (أولوية {priority}): {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
 			Button:  "فتح التذكرة",
 			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
-		},
-		KindTicketCustomerReply: {
-			Subject: "ردّت {account} على التذكرة {ticket}: {subject}",
-			Lines:   []string{"كتبت {account} في التذكرة {ticket}: {subject}", "افتح التذكرة في لوحة المشغّلين لقراءتها والرد عليها."},
-			Button:  "فتح التذكرة",
-			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder (أو لأن التذكرة مسندة إليك).",
 		},
 		KindTicketReply: {
 			Subject: "ردّ دعم Payrudder على التذكرة {ticket}",

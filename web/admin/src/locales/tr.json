@@ -728,7 +728,8 @@
         "none": "Henüz faturalanacak bir şey yok: bu müşterinin bu dönemde aboneliği ve faturalanacak gecikmiş kullanımı yok.",
         "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir.",
         "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklenirdi: kalemlerin toplamı sıfırın altında."
-      }
+      },
+      "taxNotSaved": "Müşteri oluşturuldu ama vergi bilgisi kaydedilmedi. Bu paneli kapatın, müşteriyi açın ve Düzenle, Vergi bilgisi ile yeniden deneyin."
     },
     "packages": {
       "new": "Yeni paket",
@@ -1515,6 +1516,7 @@
       },
       "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir.",
       "loadMore": "Daha fazla göster",
+      "notConnected": "Bu kurulumda posta kaydı ve engellenen adresler listesi bağlı değil; bu yüzden burada bir şey gösterilemiyor.",
       "suppressions": {
         "title": "Posta göndermediğimiz adresler",
         "hint": "Postası kalıcı olarak geri dönen, şikâyet alan veya operatörün buraya koyduğu bir adres burada görünür. Yeniden posta göndermeyi seçene kadar, ne olursa olsun, bu adrese posta gönderilmez.",
@@ -2755,7 +2757,23 @@
         "tr_is_vkn": "Bu bir VKN, yani işletmenin numarası; ama müşteri bir birey (TCKN'si olur). Yine de kaydedebilirsiniz.",
         "eu_vat": "AB'deki bir işletmenin KDV numarası ülke koduyla başlar (örneğin DE136695976). Bu öyle görünmüyor; yine de kaydedebilirsiniz."
       },
-      "warned": "Bu numara bu müşteri için doğru görünmüyor. Nedenini görmek için vergi bilgisini açın."
+      "warned": "Bu numara bu müşteri için doğru görünmüyor. Nedenini görmek için vergi bilgisini açın.",
+      "labels": {
+        "tckn": "TCKN (11 haneli kimlik numarası)",
+        "vkn": "VKN (10 haneli vergi numarası)",
+        "tr": "Vergi numarası (VKN veya TCKN)",
+        "vat": "KDV numarası",
+        "ein": "Vergi kimliği (EIN)",
+        "taxid": "Vergi kimliği"
+      },
+      "about": {
+        "tr_individual": "Türkiye'deki bir birey 11 haneli TCKN ile tanımlanır. İsteğe bağlı: yoksa e-Arşiv faturasında tüketici yer tutucusu kullanılır.",
+        "tr_business": "Türkiye'deki bir işletme 10 haneli VKN ile tanımlanır; VKN zorunludur: VKN'si olmayan bir işletmeye e-fatura kesilmez. Vergi dairesi isteğe bağlıdır.",
+        "tr_unknown": "Yukarıdan müşterinin birey (TCKN) mi işletme (VKN) mi olduğunu seçin: e-faturalar ikisine farklı davranır.",
+        "eu_business": "AB'deki bir işletme, ülke koduyla başlayan KDV kimlik numarasını verir. İsteğe bağlı; yalnızca biçimi ve kontrol basamakları denetlenir, VIES sorgulanmaz.",
+        "gb_business": "Birleşik Krallık'taki bir işletme, KDV mükellefiyse KDV numarasını verir. İsteğe bağlı; denetlenmez.",
+        "us_business": "ABD'deki bir işletme EIN numarasını verebilir. İsteğe bağlı; denetlenmez."
+      }
     },
     "errorKeys": {
       "einvoice": {
@@ -3756,8 +3774,8 @@
       "tickets": {
         "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
       },
-      "assignee": {
-        "not_operator": "Bir talep yalnızca operatörlerden birine atanabilir."
+      "canned_reply": {
+        "not_found": "Bu hazır yanıt artık yok."
       },
       "attachment": {
         "account_full": "Kuruluşunuz 50 MB'lık destek dosyası sınırına ulaştı.",
@@ -4984,11 +5002,7 @@
       "auditLog": "Denetim günlüğü"
     },
     "noApps": "Henüz uygulama yok",
-    "newApp": "Yeni uygulama",
-    "badge": {
-      "support": "{count} talepte yenilik var",
-      "inbox": "{count} yanıt bekliyor, {late} gecikmiş"
-    }
+    "newApp": "Yeni uygulama"
   },
   "privacy": {
     "hide": "Tutarları gizle",
@@ -5644,6 +5658,42 @@
     "sortDue": "Yanıt süresi en yakın önce",
     "unread": "Yeni",
     "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde.",
+    "tags": {
+      "title": "Etiketler",
+      "filter": "Etiket",
+      "add": "Etiket ekle",
+      "remove": "{tag} etiketini kaldır",
+      "hint": "Etiketleri yalnızca ekip görür. En fazla 5, küçük harf, rakam ve tire."
+    },
+    "canned": {
+      "title": "Hazır yanıtlar",
+      "hint": "Tüm ekibin bir yanıta yapıştırabileceği metinler. Yapılan değişiklik herkes için geçerlidir.",
+      "manage": "Hazır yanıtlar…",
+      "insert": "Hazır yanıt ekle",
+      "empty": "Henüz yok.",
+      "fieldTitle": "Başlık",
+      "fieldBody": "Metin",
+      "add": "Ekle",
+      "save": "Kaydet",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "confirmDelete": "“{title}” hazır yanıtı silinsin mi?"
+    },
+    "report": {
+      "title": "Kuyruk",
+      "waiting": "Bizi bekleyen",
+      "late": "Gecikmiş",
+      "median": "İlk yanıt, {days} günün ortancası",
+      "average": "ortalama {time}",
+      "onTime": "Zamanında yanıtlanan",
+      "answeredOf": "{opened} açılandan {answered} yanıtlandı",
+      "byStatus": "Tüm talepler, duruma göre",
+      "byPriority": "Hâlâ bekleyenler, önceliğe göre"
+    },
+    "badge": {
+      "unread": "Yenilik olan talepler: {n}",
+      "waiting": "Bizi bekleyen: {n}"
+    },
     "attach": {
       "add": "Dosya ekle",
       "hint": "png, jpeg, pdf veya metin; her biri en fazla 5 MB, talep başına 10 dosya.",

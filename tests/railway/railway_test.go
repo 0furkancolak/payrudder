@@ -352,3 +352,71 @@ func TestBootstrapDryRun(t *testing.T) {
 		}
 	}
 }
+
+// The console's mail page talks to the notifier's signed listener through the gateway (plan 11). Both ends are set by the bootstrap script and documented: the
+// notifier listens on :9111 with a generated secret, the gateway calls it by its private name and refers to the same secret, and the listener's port is the one
+// in the address (the gateway refuses to start with one of its two variables).
+func TestMailEventsAreWired(t *testing.T) {
+	repo := root(t)
+	readme := read(t, repo, "deploy", "railway", "README.md")
+	dry := dryRun(t, repo, "small")
+	for _, want := range []string{"NOTIFIER_EVENTS_ADDR=:9111"} {
+		if !strings.Contains(dry["notifier"], " "+want) {
+			t.Errorf("bootstrap.sh does not set %s on the notifier:\n%s", want, dry["notifier"])
+		}
+	}
+	for _, want := range []string{"PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111", "'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}"} {
+		if !strings.Contains(dry["gateway"], want) {
+			t.Errorf("bootstrap.sh does not set %s on the gateway:\n%s", want, dry["gateway"])
+		}
+	}
+	if out := dryRunOutput(t, repo, "small"); !strings.Contains(out, "[only if NOTIFIER_MAIL_EVENTS_SECRET is unset on notifier]") {
+		t.Errorf("bootstrap.sh does not generate the notifier's secret:\n%s", out)
+	}
+	for _, v := range []string{"NOTIFIER_EVENTS_ADDR", "NOTIFIER_MAIL_EVENTS_SECRET"} {
+		if !strings.Contains(section(readme, "notifier"), "| `"+v+"` |") {
+			t.Errorf("README.md's notifier table lacks %s", v)
+		}
+	}
+	for _, v := range []string{"PAYRUDDER_NOTIFIER_EVENTS_URL", "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"} {
+		if !strings.Contains(section(readme, "gateway"), "| `"+v+"` |") {
+			t.Errorf("README.md's gateway table lacks %s", v)
+		}
+	}
+}
+
+// ERROR_TRACKING_URL puts the DSN on every Go service (but not the mock provider, which has no tracker) and nowhere without it.
+func TestErrorTrackingURLIsSetOnEveryGoServiceWhenGiven(t *testing.T) {
+	repo := root(t)
+	const dsn = "https://publickey@errors.example.com/7"
+	run := func(env ...string) map[string]string {
+		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run")
+		cmd.Env = append(os.Environ(), env...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("dry run: %v\n%s", err, out)
+		}
+		per := map[string]string{}
+		for _, line := range strings.Split(string(out), "\n") {
+			if _, rest, ok := strings.Cut(line, "railway variable set --service "); ok {
+				svc, _, _ := strings.Cut(rest, " ")
+				per[svc] += " " + rest + "\n"
+			}
+		}
+		return per
+	}
+	without := run("ERROR_TRACKING_URL=")
+	with := run("ERROR_TRACKING_URL=" + dsn)
+	for _, name := range composeApps(t, repo) {
+		if name == "admin-ui" {
+			continue
+		}
+		if strings.Contains(without[name], "PAYRUDDER_ERROR_TRACKING_URL") {
+			t.Errorf("%s gets an error tracking URL that nobody gave", name)
+		}
+		has := strings.Contains(with[name], " PAYRUDDER_ERROR_TRACKING_URL="+dsn)
+		if want := name != "mockpsp"; has != want {
+			t.Errorf("%s: PAYRUDDER_ERROR_TRACKING_URL set = %v, want %v", name, has, want)
+		}
+	}
+}

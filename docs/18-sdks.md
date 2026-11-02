@@ -28,7 +28,7 @@ The console's **Connect your app** page shows these lines with the code to send 
 
 ## Command line
 
-The Go module also builds `payrudder`, a command line on the Go SDK (`sdk/go/cmd/payrudder`, standard library only): `login`, `events send`, `events tail`, `webhooks listen`, `webhooks trigger ping`, `webhooks redeliver`, `customers list`, `customers create`, `plans create`, `invoices list`. It is described on the [Command line](../docs-site/content/cli.md) page and has the same pre-release status as the SDKs.
+The Go module also builds `payrudder`, a command line on the Go SDK (`sdk/go/cmd/payrudder`, standard library only): `login`, `events send`, `events tail`, `webhooks listen`, `webhooks trigger ping`, `webhooks redeliver`, `customers list`, `customers create`, `plans create`, `plans publish -f`, `meters create`, `subscriptions create`, `webhooks create`, `invoices list`. It is described on the [Command line](../docs-site/content/cli.md) page and has the same pre-release status as the SDKs.
 
 ## Versions and releases
 

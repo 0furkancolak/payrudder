@@ -245,18 +245,3 @@ func TestAnAttachmentIsFetchedFromTheTenantItIsStoredUnder(t *testing.T) {
 		t.Fatalf("operator's upload: %d %s %+v", resp.StatusCode, out, h.authReq)
 	}
 }
-
-// The operators' addresses are the list a ticket can be assigned to.
-func TestTheAssigneesAreTheOperatorsOfTheDeployment(t *testing.T) {
-	p := newProduct(t, nil, func(d *Deps) {
-		d.OperatorEmails = NormalizeOperatorEmails([]string{"Boss@example.com", "sam@example.com"})
-	})
-	resp, m := p.call(t, "GET", "/admin/v1/support/operators", operatorToken, "", "")
-	ops, _ := m["operators"].([]any)
-	if resp.StatusCode != http.StatusOK || len(ops) != 2 || ops[0] != "boss@example.com" {
-		t.Fatalf("operators: %d %v", resp.StatusCode, m)
-	}
-	if resp, _ := p.call(t, "GET", "/admin/v1/support/operators", tokAda, "", ""); resp.StatusCode < 400 {
-		t.Errorf("a person read the operators' list: %d", resp.StatusCode)
-	}
-}

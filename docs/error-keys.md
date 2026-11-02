@@ -552,7 +552,6 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.webhook.too_many_endpoints`
 - `support.account.not_member`
 - `support.app.not_found`
-- `support.assignee.not_operator`
 - `support.attachment.account_full`
 - `support.attachment.bad_type`
 - `support.attachment.no_app`
@@ -561,6 +560,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `support.attachment.storage_full`
 - `support.attachment.too_large`
 - `support.attachment.too_many`
+- `support.canned_reply.not_found`
 - `support.ticket.closed`
 - `support.ticket.not_found`
 - `support.tickets.too_many`

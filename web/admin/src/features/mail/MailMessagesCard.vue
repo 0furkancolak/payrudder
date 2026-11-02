@@ -20,6 +20,7 @@ const fmt = useFormat();
 const tenantId = useRouteTenantId();
 const list = useMailMessages(tenantId);
 const rows = computed(() => list.data.value?.pages.flatMap((p) => p.messages) ?? []);
+const connected = computed(() => list.data.value?.pages[0]?.connected !== false);
 const TONES: Record<MailMessage["state"], Tone> = { sending: "info", sent: "neutral", delivered: "success", delayed: "warning", bounced: "danger", soft_bounced: "warning", complained: "danger" };
 </script>
 
@@ -29,7 +30,8 @@ const TONES: Record<MailMessage["state"], Tone> = { sending: "info", sent: "neut
     <p class="text-muted-foreground px-3 pt-1 pb-3 text-sm">{{ t("billing.mail.messages.hint") }}</p>
     <Skeleton v-if="list.isPending.value" class="mx-3 h-8 w-64" aria-busy="true" />
     <ErrorText :error="list.error.value" class="px-3" />
-    <p v-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-messages-empty">{{ t("billing.mail.messages.empty") }}</p>
+    <p v-if="list.isSuccess.value && !connected" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-messages-not-connected">{{ t("billing.mail.notConnected") }}</p>
+    <p v-else-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-messages-empty">{{ t("billing.mail.messages.empty") }}</p>
     <Table v-if="rows.length > 0">
       <TableHeader>
         <TableRow class="hover:bg-transparent">

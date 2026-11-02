@@ -81,7 +81,11 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Mail, d.AppURL, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
-	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL}))
+	desk := support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL})
+	if err := desk.RegisterMetrics(); err != nil {
+		d.Log.Error("support metrics are not registered", "error", err)
+	}
+	plansv1.RegisterSupportServiceServer(srv, desk)
 	plansv1.RegisterContractServiceServer(srv, contracts.New(store.New(d.AppDB)))
 	auditgrpc.Register(srv, auditlog.Source{Places: d.Places})
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)

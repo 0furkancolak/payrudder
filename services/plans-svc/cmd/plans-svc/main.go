@@ -14,7 +14,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
 
@@ -246,10 +245,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd,
 		support: support.New(systemPool, log, support.Config{Mail: mail, Operators: cfg.OperatorEmails, AppURL: cfg.AppURL})}
-	// The size of the help desk's queue is read on every scrape: the alert SupportAnswerOverdue watches the late part.
-	if err := w.support.RegisterGauges(otel.Meter("github.com/0furkancolak/payrudder/services/plans-svc/support")); err != nil {
-		return err
-	}
 	return w.run(ctx)
 }
 

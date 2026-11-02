@@ -20,7 +20,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { useTableState } from "@/shared/lib/useTableState";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
-import { attachFiles, CATEGORIES, PRIORITIES, supportKeys, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority } from "./api";
+import { attachFiles, CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority, supportKeys } from "./api";
 import AttachFailures from "./AttachFailures.vue";
 import AttachPicker from "./AttachPicker.vue";
 import TicketBadges from "./TicketBadges.vue";
@@ -54,7 +54,7 @@ watch(
   () => {
     if (!current.value?.unread) return;
     void tickets.refetch();
-    void client.invalidateQueries({ queryKey: supportKeys.summary("mine") });
+    void client.invalidateQueries({ queryKey: supportKeys.unread });
   },
 );
 

@@ -28,8 +28,12 @@ const (
 	SupportService_GetSupportTicket_FullMethodName           = "/payrudder.plans.v1.SupportService/GetSupportTicket"
 	SupportService_ReplySupportTicket_FullMethodName         = "/payrudder.plans.v1.SupportService/ReplySupportTicket"
 	SupportService_UpdateSupportTicket_FullMethodName        = "/payrudder.plans.v1.SupportService/UpdateSupportTicket"
-	SupportService_GetMySupportSummary_FullMethodName        = "/payrudder.plans.v1.SupportService/GetMySupportSummary"
-	SupportService_GetSupportSummary_FullMethodName          = "/payrudder.plans.v1.SupportService/GetSupportSummary"
+	SupportService_CountMySupportUnread_FullMethodName       = "/payrudder.plans.v1.SupportService/CountMySupportUnread"
+	SupportService_GetSupportReport_FullMethodName           = "/payrudder.plans.v1.SupportService/GetSupportReport"
+	SupportService_ListSupportOperators_FullMethodName       = "/payrudder.plans.v1.SupportService/ListSupportOperators"
+	SupportService_ListSupportCannedReplies_FullMethodName   = "/payrudder.plans.v1.SupportService/ListSupportCannedReplies"
+	SupportService_SaveSupportCannedReply_FullMethodName     = "/payrudder.plans.v1.SupportService/SaveSupportCannedReply"
+	SupportService_DeleteSupportCannedReply_FullMethodName   = "/payrudder.plans.v1.SupportService/DeleteSupportCannedReply"
 	SupportService_AuthorizeSupportAttachment_FullMethodName = "/payrudder.plans.v1.SupportService/AuthorizeSupportAttachment"
 	SupportService_AddSupportAttachment_FullMethodName       = "/payrudder.plans.v1.SupportService/AddSupportAttachment"
 	SupportService_GetSupportAttachment_FullMethodName       = "/payrudder.plans.v1.SupportService/GetSupportAttachment"
@@ -43,7 +47,9 @@ const (
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
 // sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
-// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once. When the person
+// answers the operator, the operators are mailed once (not again until the operator has answered). The operator's side also has tags on tickets, an assignee chosen
+// from the operators, canned replies (snippets the operators share), and a report of the queue and of the first-answer times.
 //
 // A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
 // the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
@@ -66,10 +72,17 @@ type SupportServiceClient interface {
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(ctx context.Context, in *ReplySupportTicketRequest, opts ...grpc.CallOption) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(ctx context.Context, in *UpdateSupportTicketRequest, opts ...grpc.CallOption) (*UpdateSupportTicketResponse, error)
-	// GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
-	GetMySupportSummary(ctx context.Context, in *GetMySupportSummaryRequest, opts ...grpc.CallOption) (*GetMySupportSummaryResponse, error)
-	// GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
-	GetSupportSummary(ctx context.Context, in *GetSupportSummaryRequest, opts ...grpc.CallOption) (*GetSupportSummaryResponse, error)
+	// CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
+	CountMySupportUnread(ctx context.Context, in *CountMySupportUnreadRequest, opts ...grpc.CallOption) (*CountMySupportUnreadResponse, error)
+	// GetSupportReport counts the queue (what waits for the operator, what is late, tickets by status and priority) and reports the first-answer times of the last 30 days.
+	GetSupportReport(ctx context.Context, in *GetSupportReportRequest, opts ...grpc.CallOption) (*GetSupportReportResponse, error)
+	// ListSupportOperators lists the addresses a ticket can be assigned to (PAYRUDDER_OPERATOR_EMAILS), with the name of the ones that have a user.
+	ListSupportOperators(ctx context.Context, in *ListSupportOperatorsRequest, opts ...grpc.CallOption) (*ListSupportOperatorsResponse, error)
+	// The canned replies: titled texts the operators share and paste into an answer.
+	ListSupportCannedReplies(ctx context.Context, in *ListSupportCannedRepliesRequest, opts ...grpc.CallOption) (*ListSupportCannedRepliesResponse, error)
+	// SaveSupportCannedReply makes a canned reply, or changes the one named by id.
+	SaveSupportCannedReply(ctx context.Context, in *SaveSupportCannedReplyRequest, opts ...grpc.CallOption) (*SaveSupportCannedReplyResponse, error)
+	DeleteSupportCannedReply(ctx context.Context, in *DeleteSupportCannedReplyRequest, opts ...grpc.CallOption) (*DeleteSupportCannedReplyResponse, error)
 	// AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
 	// the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
 	AuthorizeSupportAttachment(ctx context.Context, in *AuthorizeSupportAttachmentRequest, opts ...grpc.CallOption) (*AuthorizeSupportAttachmentResponse, error)
@@ -177,20 +190,60 @@ func (c *supportServiceClient) UpdateSupportTicket(ctx context.Context, in *Upda
 	return out, nil
 }
 
-func (c *supportServiceClient) GetMySupportSummary(ctx context.Context, in *GetMySupportSummaryRequest, opts ...grpc.CallOption) (*GetMySupportSummaryResponse, error) {
+func (c *supportServiceClient) CountMySupportUnread(ctx context.Context, in *CountMySupportUnreadRequest, opts ...grpc.CallOption) (*CountMySupportUnreadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetMySupportSummaryResponse)
-	err := c.cc.Invoke(ctx, SupportService_GetMySupportSummary_FullMethodName, in, out, cOpts...)
+	out := new(CountMySupportUnreadResponse)
+	err := c.cc.Invoke(ctx, SupportService_CountMySupportUnread_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *supportServiceClient) GetSupportSummary(ctx context.Context, in *GetSupportSummaryRequest, opts ...grpc.CallOption) (*GetSupportSummaryResponse, error) {
+func (c *supportServiceClient) GetSupportReport(ctx context.Context, in *GetSupportReportRequest, opts ...grpc.CallOption) (*GetSupportReportResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetSupportSummaryResponse)
-	err := c.cc.Invoke(ctx, SupportService_GetSupportSummary_FullMethodName, in, out, cOpts...)
+	out := new(GetSupportReportResponse)
+	err := c.cc.Invoke(ctx, SupportService_GetSupportReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) ListSupportOperators(ctx context.Context, in *ListSupportOperatorsRequest, opts ...grpc.CallOption) (*ListSupportOperatorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSupportOperatorsResponse)
+	err := c.cc.Invoke(ctx, SupportService_ListSupportOperators_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) ListSupportCannedReplies(ctx context.Context, in *ListSupportCannedRepliesRequest, opts ...grpc.CallOption) (*ListSupportCannedRepliesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSupportCannedRepliesResponse)
+	err := c.cc.Invoke(ctx, SupportService_ListSupportCannedReplies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) SaveSupportCannedReply(ctx context.Context, in *SaveSupportCannedReplyRequest, opts ...grpc.CallOption) (*SaveSupportCannedReplyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveSupportCannedReplyResponse)
+	err := c.cc.Invoke(ctx, SupportService_SaveSupportCannedReply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *supportServiceClient) DeleteSupportCannedReply(ctx context.Context, in *DeleteSupportCannedReplyRequest, opts ...grpc.CallOption) (*DeleteSupportCannedReplyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteSupportCannedReplyResponse)
+	err := c.cc.Invoke(ctx, SupportService_DeleteSupportCannedReply_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +288,9 @@ func (c *supportServiceClient) GetSupportAttachment(ctx context.Context, in *Get
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
 // sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
-// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once. When the person
+// answers the operator, the operators are mailed once (not again until the operator has answered). The operator's side also has tags on tickets, an assignee chosen
+// from the operators, canned replies (snippets the operators share), and a report of the queue and of the first-answer times.
 //
 // A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
 // the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
@@ -258,10 +313,17 @@ type SupportServiceServer interface {
 	// ReplySupportTicket adds the operator's answer (the person sees it) or an internal note (they do not).
 	ReplySupportTicket(context.Context, *ReplySupportTicketRequest) (*ReplySupportTicketResponse, error)
 	UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error)
-	// GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
-	GetMySupportSummary(context.Context, *GetMySupportSummaryRequest) (*GetMySupportSummaryResponse, error)
-	// GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
-	GetSupportSummary(context.Context, *GetSupportSummaryRequest) (*GetSupportSummaryResponse, error)
+	// CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
+	CountMySupportUnread(context.Context, *CountMySupportUnreadRequest) (*CountMySupportUnreadResponse, error)
+	// GetSupportReport counts the queue (what waits for the operator, what is late, tickets by status and priority) and reports the first-answer times of the last 30 days.
+	GetSupportReport(context.Context, *GetSupportReportRequest) (*GetSupportReportResponse, error)
+	// ListSupportOperators lists the addresses a ticket can be assigned to (PAYRUDDER_OPERATOR_EMAILS), with the name of the ones that have a user.
+	ListSupportOperators(context.Context, *ListSupportOperatorsRequest) (*ListSupportOperatorsResponse, error)
+	// The canned replies: titled texts the operators share and paste into an answer.
+	ListSupportCannedReplies(context.Context, *ListSupportCannedRepliesRequest) (*ListSupportCannedRepliesResponse, error)
+	// SaveSupportCannedReply makes a canned reply, or changes the one named by id.
+	SaveSupportCannedReply(context.Context, *SaveSupportCannedReplyRequest) (*SaveSupportCannedReplyResponse, error)
+	DeleteSupportCannedReply(context.Context, *DeleteSupportCannedReplyRequest) (*DeleteSupportCannedReplyResponse, error)
 	// AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
 	// the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
 	AuthorizeSupportAttachment(context.Context, *AuthorizeSupportAttachmentRequest) (*AuthorizeSupportAttachmentResponse, error)
@@ -306,11 +368,23 @@ func (UnimplementedSupportServiceServer) ReplySupportTicket(context.Context, *Re
 func (UnimplementedSupportServiceServer) UpdateSupportTicket(context.Context, *UpdateSupportTicketRequest) (*UpdateSupportTicketResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateSupportTicket not implemented")
 }
-func (UnimplementedSupportServiceServer) GetMySupportSummary(context.Context, *GetMySupportSummaryRequest) (*GetMySupportSummaryResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetMySupportSummary not implemented")
+func (UnimplementedSupportServiceServer) CountMySupportUnread(context.Context, *CountMySupportUnreadRequest) (*CountMySupportUnreadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountMySupportUnread not implemented")
 }
-func (UnimplementedSupportServiceServer) GetSupportSummary(context.Context, *GetSupportSummaryRequest) (*GetSupportSummaryResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetSupportSummary not implemented")
+func (UnimplementedSupportServiceServer) GetSupportReport(context.Context, *GetSupportReportRequest) (*GetSupportReportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSupportReport not implemented")
+}
+func (UnimplementedSupportServiceServer) ListSupportOperators(context.Context, *ListSupportOperatorsRequest) (*ListSupportOperatorsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSupportOperators not implemented")
+}
+func (UnimplementedSupportServiceServer) ListSupportCannedReplies(context.Context, *ListSupportCannedRepliesRequest) (*ListSupportCannedRepliesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSupportCannedReplies not implemented")
+}
+func (UnimplementedSupportServiceServer) SaveSupportCannedReply(context.Context, *SaveSupportCannedReplyRequest) (*SaveSupportCannedReplyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveSupportCannedReply not implemented")
+}
+func (UnimplementedSupportServiceServer) DeleteSupportCannedReply(context.Context, *DeleteSupportCannedReplyRequest) (*DeleteSupportCannedReplyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteSupportCannedReply not implemented")
 }
 func (UnimplementedSupportServiceServer) AuthorizeSupportAttachment(context.Context, *AuthorizeSupportAttachmentRequest) (*AuthorizeSupportAttachmentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeSupportAttachment not implemented")
@@ -504,38 +578,110 @@ func _SupportService_UpdateSupportTicket_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SupportService_GetMySupportSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMySupportSummaryRequest)
+func _SupportService_CountMySupportUnread_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountMySupportUnreadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SupportServiceServer).GetMySupportSummary(ctx, in)
+		return srv.(SupportServiceServer).CountMySupportUnread(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SupportService_GetMySupportSummary_FullMethodName,
+		FullMethod: SupportService_CountMySupportUnread_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SupportServiceServer).GetMySupportSummary(ctx, req.(*GetMySupportSummaryRequest))
+		return srv.(SupportServiceServer).CountMySupportUnread(ctx, req.(*CountMySupportUnreadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SupportService_GetSupportSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetSupportSummaryRequest)
+func _SupportService_GetSupportReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSupportReportRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SupportServiceServer).GetSupportSummary(ctx, in)
+		return srv.(SupportServiceServer).GetSupportReport(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SupportService_GetSupportSummary_FullMethodName,
+		FullMethod: SupportService_GetSupportReport_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SupportServiceServer).GetSupportSummary(ctx, req.(*GetSupportSummaryRequest))
+		return srv.(SupportServiceServer).GetSupportReport(ctx, req.(*GetSupportReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_ListSupportOperators_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSupportOperatorsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).ListSupportOperators(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_ListSupportOperators_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).ListSupportOperators(ctx, req.(*ListSupportOperatorsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_ListSupportCannedReplies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSupportCannedRepliesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).ListSupportCannedReplies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_ListSupportCannedReplies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).ListSupportCannedReplies(ctx, req.(*ListSupportCannedRepliesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_SaveSupportCannedReply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveSupportCannedReplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).SaveSupportCannedReply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_SaveSupportCannedReply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).SaveSupportCannedReply(ctx, req.(*SaveSupportCannedReplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SupportService_DeleteSupportCannedReply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSupportCannedReplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SupportServiceServer).DeleteSupportCannedReply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SupportService_DeleteSupportCannedReply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SupportServiceServer).DeleteSupportCannedReply(ctx, req.(*DeleteSupportCannedReplyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -638,12 +784,28 @@ var SupportService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SupportService_UpdateSupportTicket_Handler,
 		},
 		{
-			MethodName: "GetMySupportSummary",
-			Handler:    _SupportService_GetMySupportSummary_Handler,
+			MethodName: "CountMySupportUnread",
+			Handler:    _SupportService_CountMySupportUnread_Handler,
 		},
 		{
-			MethodName: "GetSupportSummary",
-			Handler:    _SupportService_GetSupportSummary_Handler,
+			MethodName: "GetSupportReport",
+			Handler:    _SupportService_GetSupportReport_Handler,
+		},
+		{
+			MethodName: "ListSupportOperators",
+			Handler:    _SupportService_ListSupportOperators_Handler,
+		},
+		{
+			MethodName: "ListSupportCannedReplies",
+			Handler:    _SupportService_ListSupportCannedReplies_Handler,
+		},
+		{
+			MethodName: "SaveSupportCannedReply",
+			Handler:    _SupportService_SaveSupportCannedReply_Handler,
+		},
+		{
+			MethodName: "DeleteSupportCannedReply",
+			Handler:    _SupportService_DeleteSupportCannedReply_Handler,
 		},
 		{
 			MethodName: "AuthorizeSupportAttachment",

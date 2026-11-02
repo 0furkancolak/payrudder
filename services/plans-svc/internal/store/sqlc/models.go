@@ -707,6 +707,15 @@ type SupportAttachment struct {
 	CreatedAt   time.Time
 }
 
+type SupportCannedReply struct {
+	ID        uuid.UUID
+	Title     string
+	Body      string
+	UpdatedBy string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type SupportEvent struct {
 	ID        uuid.UUID
 	TicketID  uuid.UUID
@@ -749,6 +758,7 @@ type SupportTicket struct {
 	UpdatedAt        time.Time
 	SlaZone          string
 	OpenerSeenAt     *time.Time
+	Tags             []string
 }
 
 type TaxRate struct {

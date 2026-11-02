@@ -1,0 +1,24 @@
+{
+  "name": "payrudder-example-nextjs",
+  "private": true,
+  "description": "Next.js app (App Router) that sends usage to Payrudder and verifies its webhooks (a template, not a package).",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@payrudder/sdk": "file:../../sdk/typescript",
+    "next": "16.4.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

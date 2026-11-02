@@ -8,7 +8,9 @@ import "google/protobuf/timestamp.proto";
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
 // sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
 // ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
-// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once. When the person
+// answers the operator, the operators are mailed once (not again until the operator has answered). The operator's side also has tags on tickets, an assignee chosen
+// from the operators, canned replies (snippets the operators share), and a report of the queue and of the first-answer times.
 //
 // A message may carry attachments (png, jpeg, pdf or plain text, at most 5 MiB each, 10 per ticket, 50 MiB per account in all). The bytes live in assets-svc under
 // the first tenant of the ticket's account (purpose support_attachment); this service keeps the record, checks the limits and says where the file is. The gateway
@@ -33,10 +35,17 @@ service SupportService {
   rpc ReplySupportTicket(ReplySupportTicketRequest) returns (ReplySupportTicketResponse);
   rpc UpdateSupportTicket(UpdateSupportTicketRequest) returns (UpdateSupportTicketResponse);
 
-  // GetMySupportSummary counts the tickets the person opened that have an answer or a status change they have not read: the sidebar's badge.
-  rpc GetMySupportSummary(GetMySupportSummaryRequest) returns (GetMySupportSummaryResponse);
-  // GetSupportSummary counts what waits for the operators: tickets waiting for an answer, and of those the ones whose first answer is overdue.
-  rpc GetSupportSummary(GetSupportSummaryRequest) returns (GetSupportSummaryResponse);
+  // CountMySupportUnread is the number of tickets the person opened that have an answer or a status change they have not read: the badge on the help page's link.
+  rpc CountMySupportUnread(CountMySupportUnreadRequest) returns (CountMySupportUnreadResponse);
+  // GetSupportReport counts the queue (what waits for the operator, what is late, tickets by status and priority) and reports the first-answer times of the last 30 days.
+  rpc GetSupportReport(GetSupportReportRequest) returns (GetSupportReportResponse);
+  // ListSupportOperators lists the addresses a ticket can be assigned to (PAYRUDDER_OPERATOR_EMAILS), with the name of the ones that have a user.
+  rpc ListSupportOperators(ListSupportOperatorsRequest) returns (ListSupportOperatorsResponse);
+  // The canned replies: titled texts the operators share and paste into an answer.
+  rpc ListSupportCannedReplies(ListSupportCannedRepliesRequest) returns (ListSupportCannedRepliesResponse);
+  // SaveSupportCannedReply makes a canned reply, or changes the one named by id.
+  rpc SaveSupportCannedReply(SaveSupportCannedReplyRequest) returns (SaveSupportCannedReplyResponse);
+  rpc DeleteSupportCannedReply(DeleteSupportCannedReplyRequest) returns (DeleteSupportCannedReplyResponse);
 
   // AuthorizeSupportAttachment checks that a file may be added to a message and says where to store it. With user_id it is the person's call (they must belong to
   // the ticket's account and have written the message); without, the operator context is required (the message must be the operator's own). It changes nothing.
@@ -81,12 +90,14 @@ message SupportTicket {
   // True for the person who opened the ticket when there is an answer or a status change by the operator they have not read yet. Always false for the operator
   // and for the other members of the account.
   bool unread = 23;
+  // The operator's own labels ("refund", "vat"), at most five, lower case. Never shown to the person who opened the ticket: the "My" calls leave it empty.
+  repeated string tags = 24;
 }
 
 // SupportEvent is one change of a ticket's status, priority or assignee, in the order they happened. The history is never edited.
 message SupportEvent {
   string id = 1;
-  // status, priority or assignee.
+  // status, priority, assignee or tags (a list joined by commas).
   string kind = 2;
   // Who changed it: customer, operator or system (the job that closes tickets nobody answered).
   string actor_kind = 3;
@@ -193,6 +204,8 @@ message ListSupportTicketsRequest {
   string search = 4;
   // Only tickets whose first answer is overdue.
   bool sla_breached = 5;
+  // Only tickets that carry this tag.
+  string tag = 6;
 }
 message ListSupportTicketsResponse {
   // Newest activity first, at most 200.
@@ -226,28 +239,84 @@ message UpdateSupportTicketRequest {
   // Each is applied only when set.
   optional string status = 2;
   optional string priority = 3;
+  // An address from ListSupportOperators, or empty to take the ticket off its assignee. A ticket keeps an assignee that is no longer on the list until it is changed.
   optional string assignee = 4;
   // Who is changing it, as shown in the ticket's history.
   string author_name = 5;
+  // With set_tags the ticket's tags become exactly these (at most five, each lower case letters, digits and hyphens, at most 30 characters); without it they stay.
+  bool set_tags = 6;
+  repeated string tags = 7;
 }
 message UpdateSupportTicketResponse {
   SupportTicket ticket = 1;
 }
 
-message GetMySupportSummaryRequest {
+message CountMySupportUnreadRequest {
   string user_id = 1;
 }
-message GetMySupportSummaryResponse {
+message CountMySupportUnreadResponse {
   int32 unread = 1;
 }
 
-message GetSupportSummaryRequest {}
-message GetSupportSummaryResponse {
-  // Tickets with status open (waiting for the operator).
+message GetSupportReportRequest {}
+message GetSupportReportResponse {
+  // Tickets waiting for the operator (open), and how many of them are past their first-answer deadline.
   int32 waiting = 1;
-  // Of those: tickets whose first answer is overdue and still not given. (The ticket's own sla_breached also stays true for an answer that was late.)
-  int32 sla_breached = 2;
+  int32 breached = 2;
+  // Every ticket by status, and the tickets still waiting (open or pending) by priority.
+  repeated SupportCount by_status = 3;
+  repeated SupportCount by_priority = 4;
+  // The tickets opened in the last window_days days: how many, how many have a first answer, how many of those came in time, and how long the first answer took (seconds,
+  // wall clock). Zero when none was answered.
+  int32 window_days = 5;
+  int32 opened = 6;
+  int32 answered = 7;
+  int32 answered_on_time = 8;
+  int64 median_first_answer_seconds = 9;
+  int64 average_first_answer_seconds = 10;
 }
+message SupportCount {
+  string value = 1;
+  int32 count = 2;
+}
+
+message SupportOperator {
+  string email = 1;
+  // The name of the user with that address; empty when nobody has signed up with it.
+  string name = 2;
+}
+message ListSupportOperatorsRequest {}
+message ListSupportOperatorsResponse {
+  repeated SupportOperator operators = 1;
+}
+
+message SupportCannedReply {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  string updated_by = 4;
+  google.protobuf.Timestamp update_time = 5;
+}
+message ListSupportCannedRepliesRequest {}
+message ListSupportCannedRepliesResponse {
+  // By title.
+  repeated SupportCannedReply replies = 1;
+}
+message SaveSupportCannedReplyRequest {
+  // Empty makes a new one.
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  // Who saves it, as kept with it. The gateway sets it.
+  string author_name = 4;
+}
+message SaveSupportCannedReplyResponse {
+  SupportCannedReply reply = 1;
+}
+message DeleteSupportCannedReplyRequest {
+  string id = 1;
+}
+message DeleteSupportCannedReplyResponse {}
 
 message AuthorizeSupportAttachmentRequest {
   string user_id = 1;

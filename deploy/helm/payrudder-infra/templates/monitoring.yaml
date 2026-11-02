@@ -1,0 +1,48 @@
+{{- /* The alert rules and the Alertmanager route of deploy/prometheus and deploy/alertmanager, for a cluster that already runs Prometheus and Alertmanager (this chart does not
+install them: kube-prometheus-stack or a managed service does). Off by default. docs/runbooks/backup-restore.md#alerts. */ -}}
+{{- if .Values.monitoring.rules.enabled }}
+{{- if .Values.monitoring.rules.prometheusRule }}
+# For the Prometheus Operator (its CRD must exist; the labels are the ones your Prometheus selects rules by, e.g. release: kube-prometheus-stack).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: payrudder-alerts
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "payrudder-alerts") | nindent 4 }}
+    {{- with .Values.monitoring.rules.ruleLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- .Files.Get "files/payrudder-rules.yaml" | fromYaml | toYaml | nindent 2 }}
+{{- end }}
+{{- if .Values.monitoring.rules.configMap }}
+---
+# For a Prometheus that loads rule files: mount this as /etc/prometheus/rules/ and list it under rule_files.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payrudder-alert-rules
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "payrudder-alerts") | nindent 4 }}
+data:
+  payrudder.yaml: |
+    {{- .Files.Get "files/payrudder-rules.yaml" | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- if .Values.monitoring.alertmanager.enabled }}
+---
+# What an Operator-managed Alertmanager reads (`alertmanagerConfigSecret` / `configSecret`, key alertmanager.yaml): page to on-call, warn to the team, the Watchdog heartbeat to
+# its own receiver, a page silencing the warnings of its service. The receivers read their URLs from files, so the URLs are never in a manifest: create the Secret named in
+# monitoring.alertmanager.urlsSecretName with the keys webhook_url and watchdog_url and mount it in the Alertmanager (`secrets:` of its spec).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.monitoring.alertmanager.secretName }}
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "payrudder-alertmanager") | nindent 4 }}
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    {{- $dir := printf "/etc/alertmanager/secrets/%s" .Values.monitoring.alertmanager.urlsSecretName }}
+    {{- .Files.Get "files/alertmanager.webhook.yml" | replace "/etc/alertmanager/webhook_url" (printf "%s/webhook_url" $dir) | replace "/etc/alertmanager/watchdog_url" (printf "%s/watchdog_url" $dir) | nindent 4 }}
+{{- end }}

@@ -212,28 +212,3 @@ func (s *Service) GetSupportAttachment(ctx context.Context, req *plansv1.GetSupp
 	return &plansv1.GetSupportAttachmentResponse{Target: &plansv1.SupportAttachmentTarget{TenantId: a.TenantID.String(), Environment: a.Environment, Timezone: a.Timezone, Tier: a.Tier,
 		AssetId: a.AssetID.String(), Filename: a.Filename}}, nil
 }
-
-// --- the counts of the sidebar
-
-func (s *Service) GetMySupportSummary(ctx context.Context, req *plansv1.GetMySupportSummaryRequest) (*plansv1.GetMySupportSummaryResponse, error) {
-	user, err := uuid.Parse(req.GetUserId())
-	if err != nil {
-		return nil, notFound()
-	}
-	n, err := sqlc.New(s.pool).SupportUnreadCount(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	return &plansv1.GetMySupportSummaryResponse{Unread: n}, nil
-}
-
-func (s *Service) GetSupportSummary(ctx context.Context, _ *plansv1.GetSupportSummaryRequest) (*plansv1.GetSupportSummaryResponse, error) {
-	if err := tenant.RequireOperator(ctx); err != nil {
-		return nil, err
-	}
-	c, err := sqlc.New(s.pool).SupportOperatorCounts(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &plansv1.GetSupportSummaryResponse{Waiting: c.Waiting, SlaBreached: c.SlaBreached}, nil
-}

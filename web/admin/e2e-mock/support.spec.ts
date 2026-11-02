@@ -23,7 +23,7 @@ interface Msg {
 }
 interface Ev {
   id: string;
-  kind: "status" | "priority" | "assignee";
+  kind: "status" | "priority" | "assignee" | "tags";
   actor_kind: "customer" | "operator" | "system";
   actor_name: string;
   from_value: string;
@@ -54,6 +54,7 @@ interface Ticket {
   solve_time: string | null;
   message_count: number;
   unread: boolean;
+  tags: string[];
   messages: Msg[];
   events: Ev[];
 }
@@ -63,29 +64,27 @@ function ticket(over: Partial<Ticket> = {}): Ticket {
   return {
     id: "c0000000-0000-4000-8000-000000000001", number: 1042, account_id: ACCOUNT, account_name: "Ada Labs", app_id: APP, app_name: "Shop", opened_by: "u1", opened_by_name: "Ada",
     subject: "Paddle webhooks are late", category: "integration", priority: "high", status: "open", assignee: "", create_time: NOW, update_time: NOW, last_message_time: NOW,
-    last_author: "customer", first_response_due: "2026-10-28T13:00:00Z", first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, events: [],
+    last_author: "customer", first_response_due: "2026-10-28T13:00:00Z", first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, tags: [], events: [],
     messages: [{ id: "m1", author_kind: "customer", author_name: "Ada", body: "Since this morning.", internal: false, create_time: NOW }],
     ...over,
   };
 }
 
 /**
- * One set of tickets behind both sides. `internal` messages are in the operator's view only, and "unread" is the opener's: the operator never has it. A file
- * sent to a message is recorded on it (its name is read from the multipart body); one whose name starts with "refused" is refused like a full ticket.
+ * One set of tickets behind both sides. `internal` messages are in the operator's view only, and "unread" is the opener's: the operator never has it. A file sent to
+ * a message is recorded on it (its name is read from the multipart body); one whose name starts with "refused" is refused like a full ticket.
  */
-function helpDesk(gw: MockGateway, tickets: Ticket[], operators: string[] = []) {
+function helpDesk(gw: MockGateway, tickets: Ticket[]) {
   const view = (t: Ticket, operator: boolean) => {
     const messages = t.messages.filter((m) => operator || !m.internal);
     const rest: Omit<Ticket, "messages" | "events"> & { messages?: Msg[]; events?: Ev[] } = { ...t };
     delete rest.messages;
     delete rest.events;
-    return { ticket: { ...rest, unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events: t.events };
+    return { ticket: { ...rest, tags: operator ? t.tags : [], unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events: t.events };
   };
   const find = (path: string) => tickets.find((t) => path.includes(t.id));
+  gw.on((c) => (c.method === "GET" && c.path === "/admin/v1/support/operators" ? { body: { operators: [{ email: "sam@example.com", name: "Sam" }, { email: "kim@example.com", name: "" }] } } : undefined));
   gw.on((c) => {
-    if (c.path === "/app/v1/support/summary") return { body: { unread: tickets.filter((t) => t.unread).length } };
-    if (c.path === "/admin/v1/support/summary") return { body: { waiting: tickets.filter((t) => t.status === "open").length, sla_breached: tickets.filter((t) => t.sla_breached && t.status === "open").length } };
-    if (c.path === "/admin/v1/support/operators") return { body: { operators } };
     const upload = /^\/(app|admin)\/v1\/support\/tickets\/([^/]+)\/messages\/([^/]+)\/attachments$/.exec(c.path);
     if (upload && c.method === "POST") {
       const name = /filename="([^"]+)"/.exec(c.text ?? "")?.[1] ?? "file";
@@ -123,7 +122,8 @@ function helpDesk(gw: MockGateway, tickets: Ticket[], operators: string[] = []) 
     }
     if (c.path === "/admin/v1/support/tickets" && c.method === "GET") {
       const status = c.query.get("status");
-      const list = tickets.filter((t) => (!status ? true : status === "active" ? ["open", "pending"].includes(t.status) : t.status === status) && (c.query.get("sla_breached") !== "true" || t.sla_breached));
+      const tag = c.query.get("tag");
+      const list = tickets.filter((t) => (!status ? true : status === "active" ? ["open", "pending"].includes(t.status) : t.status === status) && (c.query.get("sla_breached") !== "true" || t.sla_breached) && (!tag || t.tags.includes(tag)));
       return { body: { tickets: list.map((t) => view(t, true).ticket) } };
     }
     if (c.path.startsWith("/admin/v1/support/tickets/") && c.method === "GET") return { body: view(find(c.path)!, true) };
@@ -142,6 +142,9 @@ function helpDesk(gw: MockGateway, tickets: Ticket[], operators: string[] = []) 
     if (c.path.startsWith("/admin/v1/support/tickets/") && c.method === "PATCH") {
       const t = find(c.path)!;
       const patch = Object.fromEntries(Object.entries(c.body ?? {}).filter(([, v]) => v !== undefined));
+      if (Array.isArray(patch.tags) && patch.tags.join(",") !== t.tags.join(",")) {
+        t.events.push({ id: `e${t.events.length + 1}`, kind: "tags", actor_kind: "operator", actor_name: "user1@example.com", from_value: t.tags.join(","), to_value: patch.tags.join(","), create_time: NOW });
+      }
       for (const kind of ["status", "priority", "assignee"] as const) {
         const to = patch[kind];
         if (typeof to === "string" && to !== t[kind]) t.events.push({ id: `e${t.events.length + 1}`, kind, actor_kind: "operator", actor_name: "user1@example.com", from_value: t[kind], to_value: to, create_time: NOW });
@@ -294,20 +297,6 @@ test.describe("support: the organisation's side", () => {
     await expect(detail.getByTestId("support-attachment")).toContainText("fine.png");
   });
 
-  test("the sidebar counts the tickets with news and the count goes when they are read", async ({ page }) => {
-    const gw = productGateway(new MockGateway()).gw;
-    helpDesk(gw, [ticket({ status: "pending", unread: true, last_author: "operator" }), ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1043, subject: "Another", unread: true }), ticket({ id: "c0000000-0000-4000-8000-000000000003", number: 1044, subject: "Seen" })]);
-    await gw.install(page);
-    await signInAsAda(page);
-    await page.goto("/app/support");
-    const badge = page.getByTestId("nav-badge-support").first();
-    await expect(badge).toHaveText(/^2/);
-    await expect(badge).toHaveAttribute("title", "2 with news");
-    await page.getByTestId("support-row-1042").click();
-    await expect(page.getByTestId("support-ticket")).toBeVisible();
-    await expect(badge).toHaveText(/^1/);
-  });
-
   test("the new ticket sheet says that the answer times count business hours", async ({ page }) => {
     const gw = productGateway(new MockGateway()).gw;
     helpDesk(gw, []);
@@ -346,14 +335,13 @@ test.describe("support: the operator's inbox", () => {
     await page.getByTestId("inbox-row-1042").click();
     const detail = page.getByTestId("inbox-ticket");
     await detail.getByTestId("ticket-priority").selectOption("urgent");
-    await detail.getByTestId("ticket-assignee").fill("Sam");
-    await detail.getByTestId("ticket-assignee").press("Tab");
-    await expect.poll(() => tickets[0]?.assignee).toBe("Sam");
+    await detail.getByTestId("ticket-assignee").selectOption("sam@example.com");
+    await expect.poll(() => tickets[0]?.assignee).toBe("sam@example.com");
     expect(tickets[0]?.priority).toBe("urgent");
     // The changes land in the thread's history as the operator makes them.
     await expect(detail.getByTestId("support-event-priority")).toContainText("user1@example.com");
     await expect(detail.getByTestId("support-event-priority")).toContainText("Priority: High → Urgent");
-    await expect(detail.getByTestId("support-event-assignee")).toContainText("Assignee: Unassigned → Sam");
+    await expect(detail.getByTestId("support-event-assignee")).toContainText("Assignee: Unassigned → sam@example.com");
 
     await detail.getByTestId("inbox-reply").fill("Looks like the Paddle outage.");
     await detail.getByTestId("inbox-internal").click();
@@ -371,22 +359,11 @@ test.describe("support: the operator's inbox", () => {
     expect(reply.map((r) => r.body?.internal)).toEqual([true, false]);
   });
 
-  test("the inbox count in the sidebar is the tickets waiting, and turns red with late ones", async ({ page }) => {
-    const gw = new MockGateway();
-    helpDesk(gw, [ticket({ sla_breached: true }), ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1043, subject: "Second" }), ticket({ id: "c0000000-0000-4000-8000-000000000003", number: 1044, subject: "Answered", status: "pending" })]);
-    await gw.install(page);
-    await signInAsOperator(page);
-    await page.goto("/support");
-    const badge = page.getByTestId("nav-badge-supportInbox").first();
-    await expect(badge).toHaveText(/^2/);
-    await expect(badge).toHaveAttribute("title", "2 waiting for an answer, 1 late");
-  });
-
-  test("a ticket is assigned to one of the operators, from a list; files go with the answer and a note's file is the operator's", async ({ page }) => {
+  test("the operator answers with a file, a file of the person opens through the operator's own link, and a note's file stays with the operator", async ({ page }) => {
     const gw = new MockGateway();
     const tickets = helpDesk(gw, [ticket({ messages: [
       { id: "m1", author_kind: "customer", author_name: "Ada", body: "Since this morning.", internal: false, create_time: NOW, attachments: [{ id: "f9", filename: "ada.png", content_type: "image/png", size_bytes: 3000, create_time: NOW }] },
-    ] })], ["user1@example.com", "sam@example.com"]);
+    ] })]);
     await page.addInitScript(() => {
       (window as unknown as { opened: string[] }).opened = [];
       window.open = ((url: string) => ((window as unknown as { opened: string[] }).opened.push(String(url)), null)) as typeof window.open;
@@ -396,12 +373,6 @@ test.describe("support: the operator's inbox", () => {
     await page.goto("/support");
     await page.getByTestId("inbox-row-1042").click();
     const detail = page.getByTestId("inbox-ticket");
-    const assignee = detail.getByTestId("ticket-assignee");
-    await expect(assignee.locator("option")).toHaveText(["Unassigned", "user1@example.com", "sam@example.com"]);
-    await assignee.selectOption("sam@example.com");
-    await expect.poll(() => tickets[0]?.assignee).toBe("sam@example.com");
-    await expect(detail.getByTestId("support-event-assignee")).toContainText("Unassigned → sam@example.com");
-
     await detail.getByTestId("support-attachment").first().click();
     await expect.poll(() => page.evaluate(() => (window as unknown as { opened: string[] }).opened)).toEqual(["https://files.example.test/admin/v1/support/tickets/c0000000-0000-4000-8000-000000000001/attachments/f9"]);
 
@@ -410,6 +381,13 @@ test.describe("support: the operator's inbox", () => {
     await detail.getByTestId("inbox-send").click();
     await expect(detail.getByTestId("support-message-operator")).toContainText("build.pdf");
     expect(gw.called("POST", /\/admin\/v1\/support\/tickets\/.*\/messages\/m2\/attachments/)).toHaveLength(1);
+
+    await detail.getByTestId("inbox-reply").fill("A log, for the team only.");
+    await detail.getByTestId("inbox-internal").click();
+    await detail.getByTestId("attach-input").setInputFiles({ name: "trace.txt", mimeType: "text/plain", buffer: Buffer.from("log") });
+    await detail.getByTestId("inbox-send").click();
+    await expect(detail.getByTestId("support-message-operator-internal")).toContainText("trace.txt");
+    expect(tickets[0]?.messages.at(-1)?.internal).toBe(true);
   });
 
   test("the late filter finds tickets whose first answer is overdue", async ({ page }) => {
@@ -446,12 +424,12 @@ test.describe("support: the operator's inbox", () => {
     await page.getByTestId("inbox-row-1044").getByTestId("row-check").click();
     await expect(page.getByTestId("bulk-count")).toHaveText("3 selected");
     await page.getByTestId("bulk-priority").selectOption("urgent");
-    await page.getByTestId("bulk-assignee").fill("Sam");
+    await page.getByTestId("bulk-assignee").selectOption("sam@example.com");
     await page.getByTestId("bulk-apply").click();
     await expect(page.getByTestId("bulk-note")).toContainText("2 done, 1 not changed");
     await expect(page.getByTestId("bulk-note")).toContainText("#1043");
     expect([a.priority, c.priority, b.priority]).toEqual(["urgent", "urgent", "high"]);
-    expect(a.assignee).toBe("Sam");
+    expect(a.assignee).toBe("sam@example.com");
     // Only the one that failed stays ticked.
     await expect(page.getByTestId("bulk-count")).toHaveText("1 selected");
     await page.getByTestId("bulk-clear").click();
@@ -459,3 +437,118 @@ test.describe("support: the operator's inbox", () => {
   });
 });
 
+test.describe("support: tags, canned replies, the report and the badges", () => {
+  test("tags are the operator's: added, removed, filtered, in the history, and never in the person's view", async ({ page }) => {
+    const gw = new MockGateway();
+    const tickets = helpDesk(gw, [ticket(), ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1043, subject: "Second", tags: ["vat"] })]);
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await expect(page.getByTestId("inbox-row-1043").getByTestId("row-tag-vat")).toBeVisible();
+    await page.getByTestId("inbox-row-1042").click();
+    const detail = page.getByTestId("inbox-ticket");
+    await detail.getByTestId("tag-input").fill("Refund");
+    await detail.getByTestId("tag-input").press("Enter");
+    await expect(detail.getByTestId("tag-refund")).toBeVisible();
+    expect(tickets[0]?.tags).toEqual(["refund"]);
+    expect(gw.called("PATCH", /\/admin\/v1\/support\/tickets\//).at(-1)?.body).toEqual({ tags: ["refund"] });
+    await expect(detail.getByTestId("support-event-tags")).toContainText("Tags: — → refund");
+    await detail.getByTestId("tag-input").fill("vat");
+    await detail.getByTestId("tag-input").press("Enter");
+    await expect(detail.getByTestId("support-event-tags").last()).toContainText("Tags: refund → refund, vat");
+    await detail.getByTestId("tag-remove-refund").click();
+    await expect.poll(() => tickets[0]?.tags.join(",")).toBe("vat");
+    // The queue can be narrowed to a tag (the box applies when it is left).
+    await page.keyboard.press("Escape");
+    await page.getByTestId("filter-tag").fill("vat");
+    await page.getByTestId("filter-tag").press("Enter");
+    await expect(page.getByTestId("inbox-row-1043")).toBeVisible();
+    expect(gw.called("GET", "/admin/v1/support/tickets").at(-1)?.query.get("tag")).toBe("vat");
+  });
+
+  test("a canned reply is pasted into the answer, and the team's list is made, changed and deleted in a dialog", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [ticket()]);
+    let replies = [{ id: "r1", title: "Asking for logs", body: "Could you send the delivery ids?", updated_by: "Sam", update_time: NOW }];
+    gw.on((c) => {
+      if (c.path === "/admin/v1/support/canned-replies" && c.method === "GET") return { body: { replies } };
+      if (c.path === "/admin/v1/support/canned-replies" && c.method === "POST") {
+        replies = [...replies, { id: "r2", title: String(c.body?.title), body: String(c.body?.body), updated_by: "user1@example.com", update_time: NOW }];
+        return { status: 201, body: { reply: replies.at(-1) } };
+      }
+      if (c.path === "/admin/v1/support/canned-replies/r1" && c.method === "PUT") {
+        replies = replies.map((r) => (r.id === "r1" ? { ...r, title: String(c.body?.title), body: String(c.body?.body) } : r));
+        return { body: { reply: replies[0] } };
+      }
+      if (c.path === "/admin/v1/support/canned-replies/r2" && c.method === "DELETE") {
+        replies = replies.filter((r) => r.id !== "r2");
+        return { status: 204, body: {} };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await page.getByTestId("inbox-row-1042").click();
+    const detail = page.getByTestId("inbox-ticket");
+    await detail.getByTestId("inbox-reply").fill("Thanks for writing.");
+    await detail.getByTestId("inbox-canned").selectOption("r1");
+    await expect(detail.getByTestId("inbox-reply")).toHaveValue("Thanks for writing.\n\nCould you send the delivery ids?");
+    await expect(detail.getByTestId("inbox-canned")).toHaveValue("");
+
+    await detail.getByTestId("canned-manage").click();
+    const dialog = page.getByTestId("canned-dialog");
+    await expect(dialog.getByTestId("canned-r1")).toContainText("Asking for logs");
+    await dialog.getByTestId("canned-title").fill("Closing");
+    await dialog.getByTestId("canned-body").fill("Marking this solved.");
+    await dialog.getByTestId("canned-save").click();
+    await expect(dialog.getByTestId("canned-r2")).toContainText("Closing");
+    expect(gw.called("POST", "/admin/v1/support/canned-replies")[0]?.body).toEqual({ title: "Closing", body: "Marking this solved." });
+    await dialog.getByTestId("canned-edit-r1").click();
+    await expect(dialog.getByTestId("canned-title")).toHaveValue("Asking for logs");
+    await dialog.getByTestId("canned-title").fill("Asking for webhook logs");
+    await dialog.getByTestId("canned-save").click();
+    await expect(dialog.getByTestId("canned-r1")).toContainText("Asking for webhook logs");
+    await dialog.getByTestId("canned-delete-r2").click();
+    await expect(dialog.getByTestId("canned-r2")).toContainText("Delete the canned reply “Closing”?");
+    await dialog.getByTestId("canned-delete-yes-r2").click();
+    await expect(dialog.getByTestId("canned-r2")).toHaveCount(0);
+  });
+
+  test("the report shows the queue and the first answers, and the sidebar counts what waits", async ({ page }) => {
+    const gw = new MockGateway();
+    helpDesk(gw, [ticket()]);
+    gw.on((c) =>
+      c.method === "GET" && c.path === "/admin/v1/support/report"
+        ? { body: { waiting: 4, breached: 1, by_status: [{ value: "open", count: 4 }, { value: "pending", count: 2 }, { value: "solved", count: 9 }], by_priority: [{ value: "high", count: 1 }, { value: "normal", count: 5 }],
+            window_days: 30, opened: 20, answered: 18, answered_on_time: 15, median_first_answer_seconds: 5400, average_first_answer_seconds: 14_400 } }
+        : undefined,
+    );
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    const report = page.getByTestId("support-report");
+    await expect(report.getByTestId("report-waiting")).toHaveText("4");
+    await expect(report.getByTestId("report-late")).toHaveText("1");
+    await expect(report.getByTestId("report-median")).toHaveText("2h");
+    await expect(report.getByTestId("report-average")).toContainText("4h");
+    await expect(report.getByTestId("report-on-time")).toHaveText("83%");
+    await expect(report.getByTestId("report-by-status")).toContainText("Waiting for us 4");
+    await expect(report.getByTestId("report-by-priority")).toContainText("Normal 5");
+    await expect(page.getByTestId("nav-badge-supportInbox")).toHaveText("4");
+  });
+
+  test("the help page's link counts the tickets with news, and nothing when there are none", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, [ticket({ unread: true })]);
+    let unread = 2;
+    gw.on((c) => (c.method === "GET" && c.path === "/app/v1/support/unread" ? { body: { unread } } : undefined));
+    await gw.install(page);
+    await signInAsAda(page);
+    await expect(page.getByTestId("nav-badge-support")).toHaveText("2");
+    unread = 0;
+    await page.goto("/app/support");
+    await expect(page.getByTestId("support-row-1042")).toBeVisible();
+    await expect(page.getByTestId("nav-badge-support")).toHaveCount(0);
+  });
+});

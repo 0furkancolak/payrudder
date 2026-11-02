@@ -214,15 +214,6 @@ groups:
         annotations:
           summary: "{{ $value }} paid invoices are past the settlement lag and missing from the provider's report (a late payout, or the report was not imported)"
 
-      # support_tickets_sla_breached is read on every scrape (plans-svc): help desk tickets waiting for an operator whose first answer is overdue and still not given (the
-      # inbox's "late" filter). The quarter of an hour is a default (not agreed).
-      - alert: SupportAnswerOverdue
-        expr: sum(support_tickets_sla_breached) > 0
-        for: 15m
-        labels: { severity: warn, service: plans-svc }
-        annotations:
-          summary: "{{ $value }} support tickets are past their first-answer deadline (the \"late\" filter of the support inbox)"
-
       # DLQNotEmpty says a queue holds something; this says it is filling.
       - alert: DLQGrowing
         expr: delta(dlq_messages[15m]) >= 10
@@ -290,6 +281,13 @@ groups:
         labels: { severity: page, service: postgres }
         annotations:
           summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
+      # The object buckets (invoice PDFs, assets), copied by deploy/backup/object-backup.sh. A stack that does not run it has no such metric and raises nothing.
+      - alert: ObjectBackupStale
+        expr: time() - max(payrudder_objects_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: warn, service: minio }
+        annotations:
+          summary: "the object buckets have not been copied to the backup for over 26 hours"
       - alert: PostgresDown
         expr: pg_up == 0
         for: 1m
@@ -308,4 +306,11 @@ groups:
         labels: { severity: warn, service: alertmanager }
         annotations:
           summary: "Alertmanager cannot deliver alerts to a receiver (check the webhook URL)"
-
+      # support_sla_breached_tickets{priority}: open support tickets with no first answer past their deadline (plans-svc, read from the database at every scrape, a 0 for a
+      # priority with none). The deadline counts business hours (plan 12), so a ticket opened on Friday evening is not late on Saturday.
+      - alert: SupportFirstAnswerOverdue
+        expr: sum(support_sla_breached_tickets) > 0
+        for: 10m
+        labels: { severity: warn, service: plans-svc }
+        annotations:
+          summary: "{{ $value }} support tickets have waited past their first-answer deadline"

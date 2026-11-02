@@ -2200,8 +2200,8 @@ export interface paths {
         /**
          * The addresses the tenant's mail is not sent to
          * @description An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
-         *     In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
-         *     deployment whose gateway is not connected to the notifier.
+         *     In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). On a deployment whose gateway is not connected to
+         *     the notifier the answer is 200 with an empty list and `connected` false (lifting an address, which is an action, answers 503 `gateway.mail.unavailable` there).
          */
         get: operations["listMailSuppressions"];
         put?: never;
@@ -2243,6 +2243,7 @@ export interface paths {
          * The tenant's recent mail, newest first
          * @description The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
          *     `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+         *     On a deployment whose gateway is not connected to the notifier the answer is 200 with an empty list and `connected` false.
          */
         get: operations["listMailMessages"];
         put?: never;
@@ -5080,23 +5081,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/app/v1/support/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** How many of the person's tickets have news they have not read (the sidebar's badge) */
-        get: operations["appSupportSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/app/v1/support/tickets/{id}/messages/{message_id}/attachments": {
         parameters: {
             query?: never;
@@ -5182,7 +5166,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
+        /** Change a ticket's status, priority, assignee or tags (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
         patch: operations["updateSupportTicket"];
         trace?: never;
     };
@@ -5203,15 +5187,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/v1/support/summary": {
+    "/app/v1/support/unread": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** What waits for the operators - tickets waiting for an answer and the ones whose first answer is overdue (the sidebar's badge) */
-        get: operations["getSupportSummary"];
+        /** How many of the person's tickets have an answer or a status change they have not read (the badge on the help page's link) */
+        get: operations["appSupportUnread"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The queue and the first-answer times of the last 30 days (operator)
+         * @description What waits for the operator and how much of it is past its first-answer deadline, every ticket by status, the waiting ones by priority, and for the tickets opened in the window how many were answered, how many in time, and how long the first answer took (median and average, wall-clock seconds).
+         */
+        get: operations["getSupportReport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5227,11 +5231,50 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The addresses a ticket can be assigned to (PAYRUDDER_OPERATOR_EMAILS). When the list is not empty, an assignee must be one of them */
+        /**
+         * The addresses a ticket can be assigned to (operator)
+         * @description The platform's operator addresses (`PAYRUDDER_OPERATOR_EMAILS`), with the name of the user who has one.
+         */
         get: operations["listSupportOperators"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/canned-replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The operators' canned replies, by title (operator) */
+        get: operations["listSupportCannedReplies"];
+        put?: never;
+        /** Make a canned reply (operator) */
+        post: operations["createSupportCannedReply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/canned-replies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change a canned reply (operator) */
+        put: operations["updateSupportCannedReply"];
+        post?: never;
+        /** Delete a canned reply (operator) */
+        delete: operations["deleteSupportCannedReply"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6756,6 +6799,8 @@ export interface components {
         ListMailSuppressionsResponse: {
             suppressions: components["schemas"]["MailSuppression"][];
             next_page_token: string;
+            /** @description False when this deployment's gateway is not connected to the notifier (the list is then empty because nothing was asked, not because nothing is suppressed). */
+            connected: boolean;
         };
         MailMessage: {
             /** @description The notifier's key for the mail (one mail has one key, however often it was asked for). */
@@ -6774,6 +6819,8 @@ export interface components {
         ListMailMessagesResponse: {
             messages: components["schemas"]["MailMessage"][];
             next_page_token: string;
+            /** @description False when this deployment's gateway is not connected to the notifier (the log is then empty because nothing was asked, not because no mail was sent). */
+            connected: boolean;
         };
         PriceChangeMailPreviewRequest: {
             /** @description The customer's language: en, tr, de, fr, es or ar; empty is the tenant's default language. */
@@ -6890,13 +6937,18 @@ export interface components {
             message_count: number;
             /** @description True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account */
             unread: boolean;
+            /** @description The operator's own labels, at most five. Always empty in what the person's calls return */
+            tags: string[];
         };
-        /** @description One change of a ticket's status, priority or assignee. The history is append-only. */
+        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. */
         SupportEvent: {
             /** Format: uuid */
             id: string;
-            /** @enum {string} */
-            kind: "status" | "priority" | "assignee";
+            /**
+             * @description A change of tags has the list joined by commas in from_value and to_value
+             * @enum {string}
+             */
+            kind: "status" | "priority" | "assignee" | "tags";
             /**
              * @description system is the job that closes a ticket that waited for the person for 7 days
              * @enum {string}
@@ -6932,19 +6984,6 @@ export interface components {
             size_bytes: number;
             /** Format: date-time */
             create_time: string;
-        };
-        SupportMySummary: {
-            /** @description Tickets the person opened with an answer or a status change they have not read */
-            unread: number;
-        };
-        SupportSummary: {
-            /** @description Tickets waiting for an operator (status open) */
-            waiting: number;
-            /** @description Of those */
-            sla_breached: number;
-        };
-        SupportOperators: {
-            operators: string[];
         };
         SupportTicketList: {
             tickets: components["schemas"]["SupportTicket"][];
@@ -6984,12 +7023,73 @@ export interface components {
             /** @enum {string} */
             status: "solved" | "open";
         };
+        SupportUnread: {
+            unread: number;
+        };
+        SupportCount: {
+            value: string;
+            count: number;
+        };
+        SupportReport: {
+            /** @description Tickets waiting for the operator (open) */
+            waiting: number;
+            /** @description Of those, the ones with no first answer past their deadline */
+            breached: number;
+            /** @description Every ticket by status */
+            by_status: components["schemas"]["SupportCount"][];
+            /** @description The tickets still waiting (open or pending) by priority */
+            by_priority: components["schemas"]["SupportCount"][];
+            window_days: number;
+            /** @description Tickets opened in the window */
+            opened: number;
+            /** @description Of those, the ones with a first answer */
+            answered: number;
+            /** @description Of those, the ones answered by their deadline */
+            answered_on_time: number;
+            /**
+             * Format: int64
+             * @description Wall-clock seconds from opening to the first public answer; 0 when none was answered
+             */
+            median_first_answer_seconds: number;
+            /** Format: int64 */
+            average_first_answer_seconds: number;
+        };
+        SupportOperator: {
+            email: string;
+            /** @description The name of the user with that address; empty when nobody has signed up with it */
+            name: string;
+        };
+        SupportOperatorList: {
+            operators: components["schemas"]["SupportOperator"][];
+        };
+        SupportCannedReply: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            body: string;
+            updated_by: string;
+            /** Format: date-time */
+            update_time: string;
+        };
+        SupportCannedReplyList: {
+            replies: components["schemas"]["SupportCannedReply"][];
+        };
+        SupportCannedReplyResult: {
+            reply: components["schemas"]["SupportCannedReply"];
+        };
+        SupportCannedReplyInput: {
+            title: string;
+            body: string;
+        };
         SupportUpdateRequest: {
             /** @enum {string} */
             status?: "open" | "pending" | "solved" | "closed";
             /** @enum {string} */
             priority?: "low" | "normal" | "high" | "urgent";
+            /** @description One of the operators (GET /admin/v1/support/operators), or empty to take the ticket off its assignee; a ticket keeps an assignee that is no longer on the list until it is changed */
             assignee?: string;
+            /** @description With this key the ticket's tags become exactly this list (an empty list clears them); without it they stay. Upper case is lowered and a repeat counts once */
+            tags?: string[];
         };
         SupportOperatorReplyRequest: {
             body: string;
@@ -22066,27 +22166,6 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
-    appSupportSummary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SupportMySummary"];
-                };
-            };
-            401: components["responses"]["Error"];
-        };
-    };
     appAttachToSupportMessage: {
         parameters: {
             query?: never;
@@ -22186,6 +22265,8 @@ export interface operations {
                 search?: string;
                 /** @description Only tickets whose first answer is overdue */
                 sla_breached?: boolean;
+                /** @description Only tickets that carry this tag */
+                tag?: string;
             };
             header?: never;
             path?: never;
@@ -22284,7 +22365,7 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
-    getSupportSummary: {
+    appSupportUnread: {
         parameters: {
             query?: never;
             header?: never;
@@ -22299,7 +22380,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SupportSummary"];
+                    "application/json": components["schemas"]["SupportUnread"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    getSupportReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportReport"];
                 };
             };
         };
@@ -22319,9 +22421,103 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SupportOperators"];
+                    "application/json": components["schemas"]["SupportOperatorList"];
                 };
             };
+        };
+    };
+    listSupportCannedReplies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportCannedReplyList"];
+                };
+            };
+        };
+    };
+    createSupportCannedReply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportCannedReplyInput"];
+            };
+        };
+        responses: {
+            /** @description Made */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportCannedReplyResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    updateSupportCannedReply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportCannedReplyInput"];
+            };
+        };
+        responses: {
+            /** @description Changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportCannedReplyResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteSupportCannedReply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
         };
     };
     attachToSupportMessage: {

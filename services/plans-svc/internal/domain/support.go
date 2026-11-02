@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -131,10 +132,12 @@ func ValidateSupportFilter(status, priority string) error {
 // SupportTicketState is what a ticket's life depends on.
 type SupportTicketState struct {
 	Status, Priority, Assignee string
-	FirstResponseDue           time.Time
-	FirstRespondedAt           *time.Time
-	SolvedAt                   *time.Time
-	CreatedAt                  time.Time
+	// Tags are the operator's labels on the ticket.
+	Tags             []string
+	FirstResponseDue time.Time
+	FirstRespondedAt *time.Time
+	SolvedAt         *time.Time
+	CreatedAt        time.Time
 	// Zone is the time zone the first-answer deadline counts business hours in.
 	Zone string
 }
@@ -202,12 +205,52 @@ func SupportSetPriority(s SupportTicketState, to string) (SupportTicketState, er
 	return s, nil
 }
 
-// ValidateSupportAssignee bounds the assignee's name.
-func ValidateSupportAssignee(a string) error {
-	if utf8.RuneCountInString(a) > 100 {
-		var v Violations
-		v.Add("assignee", "at most 100 characters")
-		return v.Err()
+// ValidateSupportAssignee checks an assignee: nobody (empty), the ticket's current one (it keeps one that has left the list until it is changed), or one of the
+// operators' addresses (the list is plans-svc's PAYRUDDER_OPERATOR_EMAILS, lower case).
+func ValidateSupportAssignee(a, current string, operators []string) error {
+	a = strings.TrimSpace(a)
+	if a == "" || a == current || inList(operators, strings.ToLower(a)) {
+		return nil
 	}
-	return nil
+	var v Violations
+	v.Add("assignee", "one of the operators")
+	return v.Err()
+}
+
+// SupportMaxTags is the most tags a ticket carries; a tag is lower case letters, digits and hyphens, at most 30 characters (plan 12, a default, not agreed).
+const SupportMaxTags = 5
+
+var supportTag = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,29}$`)
+
+// NormalizeSupportTags trims, lower-cases and de-duplicates the tags in the order given, and refuses a list that is too long or holds a word that is not a tag.
+func NormalizeSupportTags(in []string) ([]string, error) {
+	out := make([]string, 0, len(in))
+	var v Violations
+	for _, t := range in {
+		t = strings.ToLower(strings.TrimSpace(t))
+		switch {
+		case t == "" || inList(out, t):
+		case !supportTag.MatchString(t):
+			v.Add("tags", "lower case letters, digits and hyphens, at most 30 characters")
+		default:
+			out = append(out, t)
+		}
+	}
+	if len(out) > SupportMaxTags {
+		v.Add("tags", "at most 5 tags")
+	}
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ValidateSupportCannedReply bounds a canned reply's title and text.
+func ValidateSupportCannedReply(title, body string) error {
+	var v Violations
+	if n := utf8.RuneCountInString(strings.TrimSpace(title)); n < 1 || n > 100 {
+		v.Add("title", "1 to 100 characters")
+	}
+	validateSupportBody(&v, body)
+	return v.Err()
 }

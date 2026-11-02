@@ -185,7 +185,7 @@ test("the concept pages are built, in the sidebar, and say what the repository d
 test("the pages for concepts do not point at a path the API does not have", async () => {
   const known = new Set(Object.keys(doc.paths));
   const toPattern = (p) => new RegExp(`^${p.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments", "migrate-from-stripe", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security"]) {
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments", "migrate-from-stripe", "migrate-from-paddle", "migrate-from-iyzico", "provider-stripe", "provider-paddle", "provider-iyzico", "tax-and-einvoices", "security", "console-customers", "console-invoices", "console-pricing", "console-webhooks", "console-go-live", "versioning"]) {
     const md = await readFile(join(here, "content", `${page}.md`), "utf8");
     const seen = [];
     for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) seen.push(m[1].replace(/\/$/, ""));
@@ -414,4 +414,107 @@ test("the tax page's API facts are the OpenAPI file's: the tax-rate route, the c
   assert.ok(doc.paths["/v1/tax-rates"].put && doc.paths["/v1/customers/{external_id}/tax"].put && doc.paths["/v1/e-invoices/{id}/files/{kind}"].get);
   const warnings = doc.components.schemas.Customer.properties.tax_id_warning.description;
   for (const w of ["tr_individual", "tr_business", "tr_any", "tr_is_tckn", "tr_is_vkn", "eu_vat"]) assert.ok(warnings.includes(w), `${w} is not a tax_id_warning`);
+});
+
+// ---- the console guide, the migration tutorials, the versioning page (plan 19)
+
+const CONSOLE_PAGES = ["console-customers", "console-invoices", "console-pricing", "console-webhooks", "console-go-live"];
+const en = JSON.parse(await readFile(resolve(here, "../web/admin/src/locales/en.json"), "utf8"));
+/** Every string of the English console, with `{placeholder}`s and a trailing ` ({placeholder})` taken out as well, so a guide can quote the part a reader sees. */
+function consoleWords() {
+  const all = new Set();
+  const walk = (n) => {
+    if (typeof n === "string") {
+      all.add(n);
+      all.add(n.replace(/ ?\(\{[a-zA-Z]+\}\)/g, "").replace(/ ?\{[a-zA-Z]+\}/g, "").trim());
+    } else if (n && typeof n === "object") Object.values(n).forEach(walk);
+  };
+  walk(en);
+  return all;
+}
+
+test("the console guide is built, in its own sidebar section, draft, and every name it puts in bold is a string of the English console", async () => {
+  const words = consoleWords();
+  const long = [...words].filter((w) => w.length >= 20);
+  for (const page of CONSOLE_PAGES) {
+    const h = await readFile(join(out, `${page}.html`), "utf8");
+    assert.match(h, /data-status="draft"/, page);
+    assert.match(h, new RegExp(`href="${page}\\.html"`), `${page} is not in the sidebar`);
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    const bold = [...md.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]);
+    assert.ok(bold.length >= 10, `${page}: only ${bold.length} names in bold: is the check reading it?`);
+    // A name is a whole console string (or the part of it before a placeholder); a longer quotation may be part of one. Bold is for the console's words only.
+    const unknown = bold.filter((b) => {
+      const t = b.replace(/[.:]$/, "");
+      return !words.has(b) && !words.has(t) && !(t.length >= 20 && long.some((w) => w.includes(t)));
+    });
+    assert.deepEqual(unknown, [], `${page}.md quotes the console with words it does not have (renamed in web/admin/src/locales/en.json?): ${unknown.join(" | ")}`);
+  }
+  assert.match(await readFile(join(out, "console-customers.html"), "utf8"), /href="console-invoices\.html"/, "the guides link to each other");
+  assert.match(await readFile(join(out, "getting-started.html"), "utf8"), /href="console-go-live\.html"/);
+});
+
+test("the console guide only names sidebar items and sections that the console has", async () => {
+  const sidebar = new Set([...Object.values(en.shell.items), ...Object.values(en.shell.sections)]);
+  for (const name of ["Customers", "Customers and billing", "Invoices", "Payments", "Payment links", "Meters", "Packages", "Tax and retries", "Coupons", "Webhooks", "Go live", "Developers", "Usage and products", "Connect your app", "Sandbox tools"]) {
+    assert.ok(sidebar.has(name), `"${name}" is not a sidebar item or section of the console any more`);
+  }
+});
+
+test("the two migration tutorials are built, draft, say there is no importer, name the matrix they come from and mark what is UNVERIFIED", async () => {
+  for (const [page, provider] of [["migrate-from-paddle", "Paddle"], ["migrate-from-iyzico", "iyzico"]]) {
+    const h = await readFile(join(out, `${page}.html`), "utf8");
+    assert.match(h, /data-status="draft"/, page);
+    assert.match(h, new RegExp(`href="${page}\\.html"`), `${page} is not in the sidebar`);
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    assert.match(md, /\*\*There is no importer\*\*/, page);
+    assert.match(md, new RegExp(`no ${provider} account of any kind was used`), page);
+    assert.match(md, /compatibility matrix/, page);
+    assert.ok((md.match(/UNVERIFIED/g) ?? []).length >= 3, `${page} marks fewer than three points UNVERIFIED`);
+    assert.match(md, /## What does not carry over/, page);
+    assert.match(h, /href="provider-/, `${page} should link to the provider guide`);
+  }
+  // What the tutorials say about the API: a subscription cannot be attached to one the provider already runs, and the fields exist that they tell the reader to fill in.
+  const create = doc.components.schemas.CreateSubscriptionRequest.properties;
+  assert.ok(create.provider && !Object.keys(create).some((k) => /provider_(ref|subscription)|external_subscription/.test(k)), "the tutorials say a provider's subscription cannot be attached: the API now has a field for it");
+  assert.ok(doc.paths["/v1/customers/{external_id}/payment-method"].put && doc.paths["/v1/credit-notes"].get && !doc.paths["/v1/credit-notes"].post && doc.paths["/v1/sandbox/close-period"].post);
+  // The matrices are what the provider pages and the tutorials were read from: a tutorial that quotes a fact the matrix dropped must be re-read.
+  const paddle = await readFile(resolve(here, "../docs/paddle-compatibility-matrix.md"), "utf8");
+  const iyzico = await readFile(resolve(here, "../docs/iyzico-compatibility-matrix.md"), "utf8");
+  for (const fact of ["payrudder_subscription_id", "/adjustments", "/discounts", "customer_already_exists", "meter.created"]) assert.ok(paddle.includes(fact), `the Paddle matrix no longer mentions ${fact}: re-read migrate-from-paddle.md`);
+  for (const fact of ["cardUserKey:cardToken", "not returned to you", "enabled_installments", "10-15 s", "X-IYZ-SIGNATURE-V3"]) assert.ok(iyzico.includes(fact), `the iyzico matrix no longer mentions ${fact}: re-read migrate-from-iyzico.md`);
+});
+
+test("every verb and path the new pages name together is an operation of the OpenAPI file", async () => {
+  // `POST /v1/plans/{code}/versions` in backticks: the route must have that verb (the path alone is checked above).
+  let checked = 0;
+  for (const page of [...CONSOLE_PAGES, "migrate-from-paddle", "migrate-from-iyzico", "versioning"]) {
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    for (const m of md.matchAll(/`(GET|POST|PUT|PATCH|DELETE) (\/v1\/[A-Za-z0-9_\-/{}.]+)`/g)) {
+      const route = Object.entries(doc.paths).find(([k]) => new RegExp(`^${k.replace(/\{[^}]+\}/g, "[^/]+")}$`).test(m[2]));
+      assert.ok(route?.[1][m[1].toLowerCase()], `${page}.md: ${m[1]} ${m[2]} is not an operation of the OpenAPI file`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked >= 10, `only ${checked} verb and path pairs were read`);
+});
+
+test("the versioning page says what the repository does: one path version, nothing deprecated, pinned provider versions, nothing released", async () => {
+  const h = await readFile(join(out, "versioning.html"), "utf8");
+  assert.match(h, /data-status="draft"/);
+  assert.match(h, /href="versioning\.html"/, "versioning is not in the sidebar");
+  assert.equal(doc.info.version, "v1");
+  assert.ok(Object.keys(doc.paths).filter((p) => p.startsWith("/v1/")).every((p) => p.startsWith("/v1/")));
+  assert.ok(!(await readFile(resolve(here, "../api/openapi/v1.yaml"), "utf8")).includes("deprecated: true"), "an operation is deprecated now: versioning.md says none is");
+  const stripe = await readFile(resolve(here, "../pkg/payments/stripe/stripe.go"), "utf8");
+  const pin = stripe.match(/const APIVersion = "([^"]+)"/)?.[1];
+  assert.ok(pin && h.includes(pin), `the page does not name the Stripe version the adapter pins (${pin})`);
+  assert.match(await readFile(resolve(here, "../pkg/payments/paddle/paddle.go"), "utf8"), /Set\("Paddle-Version", "1"\)/);
+  // Nothing is released: every SDK says 0.0.0 (scripts/sdk-release.mjs keeps them equal and refuses to publish it).
+  assert.match(await readFile(resolve(here, "../sdk/go/client.go"), "utf8"), /const Version = "0\.0\.0"/);
+  assert.match(await readFile(resolve(here, "../sdk/typescript/src/version.ts"), "utf8"), /VERSION = "0\.0\.0"/);
+  const plans = await readFile(resolve(here, "../docs/03-services/plans-svc.md"), "utf8");
+  assert.match(plans, /default 30, at least 14, at most 365/, "the price-change notice limits changed: update versioning.md");
+  assert.ok(doc.paths["/v1/plans/{code}/versions/{version}"] && doc.paths["/v1/plans/{code}/price-changes"].post);
+  assert.match(await readFile(resolve(here, "../buf.yaml"), "utf8"), /WIRE_JSON/);
 });

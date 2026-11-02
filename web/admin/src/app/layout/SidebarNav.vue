@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
-import { useNavBadges } from "@/features/support/badges";
+import { useMyUnread, useSupportReport } from "@/features/support/api";
+import { isOperator } from "@/shared/lib/session";
 import { cn } from "@/shared/lib/utils";
 import type { NavItem, NavSection } from "./nav";
 
@@ -12,9 +13,15 @@ import type { NavItem, NavSection } from "./nav";
 const props = defineProps<{ sections: NavSection[]; current: NavItem | undefined; collapsed?: boolean; label: string }>();
 const emit = defineEmits<{ navigate: [] }>();
 const { t } = useI18n();
-const badges = useNavBadges(() => props.sections);
-/** The count beside an item, if it has one and it is not zero. */
-const badge = (it: NavItem) => (badges.value[it.key]?.count ?? 0) > 0 ? badges.value[it.key] : undefined;
+
+/**
+ * The count beside a link: the tickets the person has news on (the help page's link), or the tickets waiting for the operator (the inbox's). Each is asked only where
+ * its link is in the list, and again every minute and after any change in the help desk; a count that cannot be had shows nothing.
+ */
+const has = (key: string) => props.sections.some((s) => s.items.some((it) => it.key === key));
+const unread = useMyUnread(() => has("support"));
+const waiting = useSupportReport(() => has("supportInbox") && isOperator.value);
+const badge = (key: string): number => (key === "support" ? (unread.data.value ?? 0) : key === "supportInbox" ? (waiting.data.value?.waiting ?? 0) : 0);
 
 const isCurrent = (it: NavItem) => props.current?.key === it.key && props.current?.to === it.to;
 
@@ -47,14 +54,12 @@ function row(it: NavItem): string {
             <component :is="it.icon" class="size-[1.15rem] shrink-0" aria-hidden="true" />
             <span :class="collapsed ? 'sr-only' : 'truncate'">{{ t(`shell.items.${it.label}`) }}</span>
             <span
-              v-if="badge(it)"
-              :class="cn('bg-rail-primary text-rail rounded-full text-[0.7rem] leading-none font-semibold', collapsed ? 'absolute end-1.5 top-1.5 size-2' : 'ms-auto px-1.5 py-1', (badge(it)?.late ?? 0) > 0 && 'bg-destructive text-white')"
-              :title="it.key === 'supportInbox' ? t('shell.badge.inbox', { count: badge(it)?.count ?? 0, late: badge(it)?.late ?? 0 }) : t('shell.badge.support', { count: badge(it)?.count ?? 0 })"
+              v-if="badge(it.key) > 0"
+              :class="collapsed ? 'bg-rail-primary absolute end-1.5 top-1.5 size-2 rounded-full' : 'bg-rail-primary text-neutral-900 ms-auto min-w-5 rounded-full px-1.5 text-center text-[0.7rem] leading-5 font-semibold tabular-nums'"
               :data-testid="`nav-badge-${it.key}`"
+              :title="t(it.key === 'support' ? 'support.badge.unread' : 'support.badge.waiting', { n: badge(it.key) })"
+              ><span :class="collapsed ? 'sr-only' : ''">{{ badge(it.key) }}</span></span
             >
-              <template v-if="!collapsed">{{ badge(it)?.count }}</template>
-              <span class="sr-only">{{ it.key === "supportInbox" ? t("shell.badge.inbox", { count: badge(it)?.count ?? 0, late: badge(it)?.late ?? 0 }) : t("shell.badge.support", { count: badge(it)?.count ?? 0 }) }}</span>
-            </span>
           </Link>
         </li>
       </ul>

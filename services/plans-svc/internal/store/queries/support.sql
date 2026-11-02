@@ -7,7 +7,7 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = sqlc.narg('viewer')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
+       (COALESCE(t.opened_by = sqlc.narg('viewer')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -21,7 +21,7 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
        (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
-       (COALESCE(t.opened_by = sqlc.narg('user_id')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
+       (COALESCE(t.opened_by = sqlc.narg('user_id')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread, t.tags
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -30,6 +30,7 @@ WHERE (sqlc.narg('user_id')::uuid IS NULL OR t.account_id IN (SELECT m.account_i
   AND (@status::text = '' OR t.status = @status::text OR (@status::text = 'active' AND t.status IN ('open', 'pending')))
   AND (@priority::text = '' OR t.priority = @priority::text)
   AND (@assignee::text = '' OR t.assignee = @assignee::text)
+  AND (@tag::text = '' OR @tag::text = ANY(t.tags))
   AND (@search::text = '' OR t.subject ILIKE '%' || @search::text || '%' OR t.number::text = ltrim(@search::text, '#'))
   AND (NOT @sla_breached::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
@@ -37,7 +38,7 @@ LIMIT 200;
 
 -- Locks the ticket for a change.
 -- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone
+SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone, tags, last_author
 FROM support_tickets WHERE id = @id FOR UPDATE;
 
 -- The user's role in the account, if any; an affiliate of a program is not a member for the help desk.
@@ -59,7 +60,7 @@ VALUES (@id, @ticket_id, @author_kind, sqlc.narg('author_user_id')::uuid, @autho
 -- Every mutable column at once: the module reads the locked row, decides the new state in Go and writes it back.
 -- name: SaveSupportTicket :exec
 UPDATE support_tickets
-SET status = @status, priority = @priority, assignee = @assignee, last_author = @last_author, first_response_due = @first_response_due,
+SET status = @status, priority = @priority, assignee = @assignee, tags = @tags::text[], last_author = @last_author, first_response_due = @first_response_due,
     first_responded_at = sqlc.narg('first_responded_at')::timestamptz, solved_at = sqlc.narg('solved_at')::timestamptz,
     last_message_at = CASE WHEN @touch::boolean THEN now() ELSE last_message_at END, updated_at = now()
 WHERE id = @id;
@@ -127,6 +128,53 @@ WHERE id IN (
 )
 RETURNING id;
 
+-- The addresses an operator is known by, with the name of the user who has one (the others have none).
+-- name: SupportOperatorNames :many
+SELECT lower(email)::text AS email, COALESCE(NULLIF(display_name, ''), '')::text AS name FROM users WHERE lower(email) = ANY(@emails::text[]);
+
+-- Tickets the person opened that have news they have not read: the badge on the help page's link.
+-- name: SupportUnreadCount :one
+SELECT count(*)::int FROM support_tickets
+WHERE opened_by = @user_id AND opener_seen_at IS NULL
+  AND account_id IN (SELECT m.account_id FROM account_members m WHERE m.user_id = @user_id AND m.role <> 'affiliate');
+
+-- The queue: what waits for the operator (open), and how much of it has no first answer past its deadline.
+-- name: SupportQueueCounts :one
+SELECT (count(*) FILTER (WHERE status = 'open'))::int AS waiting,
+       (count(*) FILTER (WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now()))::int AS breached
+FROM support_tickets;
+
+-- name: SupportCountsByStatus :many
+SELECT status::text AS value, count(*)::int AS count FROM support_tickets GROUP BY status ORDER BY status;
+
+-- name: SupportActiveCountsByPriority :many
+SELECT priority::text AS value, count(*)::int AS count FROM support_tickets WHERE status IN ('open', 'pending') GROUP BY priority ORDER BY priority;
+
+-- The first answers of the tickets opened in the last @days days: wall-clock seconds from opening to the operator's first public answer.
+-- name: SupportFirstAnswerStats :one
+SELECT count(*)::int AS opened, count(first_responded_at)::int AS answered,
+       (count(*) FILTER (WHERE first_responded_at IS NOT NULL AND first_responded_at <= first_response_due))::int AS answered_on_time,
+       COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM first_responded_at - created_at)), 0)::bigint AS median_seconds,
+       COALESCE(avg(extract(epoch FROM first_responded_at - created_at)), 0)::bigint AS average_seconds
+FROM support_tickets WHERE created_at >= now() - make_interval(days => @days::int);
+
+-- The tickets that wait for an answer past their deadline, by priority: the gauge an alert watches.
+-- name: SupportBreachedByPriority :many
+SELECT priority::text AS priority, count(*)::int AS count FROM support_tickets
+WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now() GROUP BY priority;
+
+-- name: ListSupportCannedReplies :many
+SELECT id, title, body, updated_by, updated_at FROM support_canned_replies ORDER BY lower(title), id;
+
+-- name: InsertSupportCannedReply :one
+INSERT INTO support_canned_replies (id, title, body, updated_by) VALUES (@id, @title, @body, @updated_by) RETURNING id, title, body, updated_by, updated_at;
+
+-- name: UpdateSupportCannedReply :one
+UPDATE support_canned_replies SET title = @title, body = @body, updated_by = @updated_by, updated_at = now() WHERE id = @id RETURNING id, title, body, updated_by, updated_at;
+
+-- name: DeleteSupportCannedReply :execrows
+DELETE FROM support_canned_replies WHERE id = @id;
+
 -- --- attachments (plan 12). The bytes are in assets-svc; these rows are the record.
 
 -- The message as the attachment calls need it: whose it is, whether it is a note, and the ticket and account it belongs to.
@@ -171,12 +219,3 @@ JOIN support_messages m ON m.id = a.message_id
 JOIN support_tickets t ON t.id = a.ticket_id
 JOIN tenants tn ON tn.id = a.tenant_id
 WHERE a.id = @id AND a.ticket_id = @ticket_id;
-
--- The sidebar's counts. A person: the tickets they opened with news they have not read. The operators: tickets waiting for an answer, and the late ones.
--- name: SupportUnreadCount :one
-SELECT count(*)::int FROM support_tickets WHERE opened_by = @user_id AND opener_seen_at IS NULL;
-
--- name: SupportOperatorCounts :one
-SELECT (count(*) FILTER (WHERE status = 'open'))::int AS waiting,
-       (count(*) FILTER (WHERE status = 'open' AND first_responded_at IS NULL AND first_response_due < now()))::int AS sla_breached
-FROM support_tickets;

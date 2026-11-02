@@ -34,10 +34,10 @@ const (
 	KindCode Kind = "code"
 	// KindTicketNew tells an operator that an account opened a support ticket.
 	KindTicketNew Kind = "ticket_new"
+	// KindTicketCustomerReply tells the operators that the person answered the operator on a ticket (plan 12): one mail when the ticket was waiting for them.
+	KindTicketCustomerReply Kind = "ticket_customer_reply"
 	// KindTicketReply tells the person who opened a ticket that the operator answered it.
 	KindTicketReply Kind = "ticket_reply"
-	// KindTicketCustomerReply tells an operator (the ticket's assignee, else all of them) that the person answered a ticket that was waiting for them or solved.
-	KindTicketCustomerReply Kind = "ticket_customer_reply"
 	// KindTicketStatus tells the person who opened a ticket that its status changed (the operator solved or closed it, or it closed by itself).
 	KindTicketStatus Kind = "ticket_status"
 	// KindTenantSuspended, KindTenantFrozen and KindTenantBanned tell the owners of an account that the operator took a live app out of service, and

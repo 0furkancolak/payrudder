@@ -82,3 +82,20 @@ Defaults (default, not agreed):
 Not done: a job that runs the snippets against the compose stack; PHP run for real; other frameworks (Next.js, Laravel, Rails); the rejected-event viewer; integration health over time; a local tunnel helper beyond the CLI's; publishing the SDKs.
 
 Not verified: the `snippets-run` and `examples` workflows ran green on GitHub in the pull request (the three templates and the four snippet languages, on Python 3.12 and Node 24), but nothing has run against a real gateway; the FastAPI template was also run locally on Python 3.15; no template was run against a real gateway or with a real key; the fake accepts what the OpenAPI file says, so a rule the file does not state (the 35-day limit, a unique `external_id`) is not tested; the hints in Turkish, German, French, Spanish and Arabic were written by the same author as the English ones and read by no native speaker; the Worker was not deployed (its `/env.js` is tested as a function and the page was run against a replaced `/env.js` in the mock e2e); the ten-minute claim still needs a person.
+
+## Progress (2026-11-02), branch `docs/guides-migration-templates-3`
+
+Done: **two more framework templates under `examples/`**, wired like the first three (`examples.yml` has a job each, ending in `examples/smoke.mjs` against the contract-checking fake):
+- `nextjs/`: Next.js 16 (App Router, TypeScript, Node 22.18+), route handlers `POST /usage` and `POST /webhooks/payrudder` (the raw bytes through `request.arrayBuffer()`), `GET /healthz`. The client is made on first use because `next build` loads every route without the settings. Two lines of `next.config.ts` exist only because the SDK is installed from this checkout (a link outside the folder: `turbopack.root` and `serverExternalPackages`). The job runs `tsc`, `next build` and the smoke test.
+- `laravel/`: Laravel 13 (PHP 8.3+) trimmed to an API (`bootstrap/app.php`, `routes/api.php` without a prefix so no CSRF or session stands in front of a webhook, two invokable controllers, `config/payrudder.php`), the PHP SDK as a Composer path repository. Settings are read in the config file and handed to the client, because Laravel does not put `.env` values into the process environment, which is where the SDK looks. Every error is answered as JSON. The job runs `composer update`, `php -l` and the smoke test with PHP's built-in server.
+- Tested here: `docs-site/examples.test.mjs` fails when a folder of `examples/` is not in the README's table or has no job of that name, when the webhook routes stop reading the body raw, when a Payrudder setting gets a `NEXT_PUBLIC_` name, or when a version is not pinned. Tried: removing a table row fails it.
+
+Defaults (not agreed): exact versions of the top-level dependencies, no `composer.lock` (the SDK is a path repository that a copy of the folder will not have; FastAPI pins its top level the same way); `php -S` rather than `artisan serve` in the smoke test; the templates install the SDK from the checkout, so none names a registry.
+
+Verified locally: `npm ci`, `tsc`, `next build` and the smoke test for Next.js (Node 24); `composer update` (Docker `composer:2`), `php -l` and the smoke test for Laravel on PHP 8.5, and the app answering `/healthz`, a refused signature and a refused body on PHP 8.4 (Docker). **Not run:** either workflow on GitHub; either template against a real gateway or a real key; Laravel on PHP 8.3 (the lowest it allows); Next.js on Node 22.
+
+Not done: Rails and other frameworks, a job against the compose stack, publishing the SDKs.
+
+## Progress (2026-11-02), branch `feat/cli-dx-3` (CLI)
+
+The command line also creates what a product is built from: `payrudder webhooks create`, `meters create`, `subscriptions create` and `plans publish -f version.json`, so the quick start can be done from a terminal with no console. Details, defaults (the publish file is checked before sending, the three calls without an idempotency key or a unique key are not retried) and what was not verified are in [22](22-platform-audit-and-roadmap.md) G16. Still not in the CLI: coupons, changing or deleting, listing meters and plans.

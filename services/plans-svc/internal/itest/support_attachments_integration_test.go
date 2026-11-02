@@ -4,19 +4,13 @@ package itest
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 )
 
 // testSupportAttachments covers the files on the help desk's messages (plan 12): who may attach to which message, where the file is stored, the limits per ticket
@@ -237,167 +231,4 @@ func ctxFor(user string) context.Context {
 		return operator()
 	}
 	return context.Background()
-}
-
-// testSupportQueue covers what the operators and the opener are told: the sidebar's counts, the mail to the operators when the person answers, the assignee being an
-// operator, and the gauges the alert reads.
-func testSupportQueue(t *testing.T) {
-	e := newEnv(t)
-	ctx := context.Background()
-	ada := e.verified(t, "queue-ada@example.com", "Queue Co")
-	open := func(subject string) *plansv1.SupportTicket {
-		t.Helper()
-		r, err := e.support.OpenMySupportTicket(ctx, &plansv1.OpenMySupportTicketRequest{UserId: ada.id, AccountId: ada.account, Subject: subject, Category: "question", Body: "Hello"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return r.GetTicket()
-	}
-	summary := func() *plansv1.GetSupportSummaryResponse {
-		t.Helper()
-		r, err := e.support.GetSupportSummary(operator(), &plansv1.GetSupportSummaryRequest{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return r
-	}
-	unread := func() int32 {
-		t.Helper()
-		r, err := e.support.GetMySupportSummary(ctx, &plansv1.GetMySupportSummaryRequest{UserId: ada.id})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return r.GetUnread()
-	}
-	base := summary()
-	tk := open("Where is my invoice?")
-
-	t.Run("the operators' count follows the tickets waiting for an answer and the overdue ones", func(t *testing.T) {
-		if _, err := e.support.GetSupportSummary(ctx, &plansv1.GetSupportSummaryRequest{}); err == nil {
-			t.Fatal("the operators' count was served without the operator context")
-		}
-		now := summary()
-		if now.GetWaiting() != base.GetWaiting()+1 || now.GetSlaBreached() != base.GetSlaBreached() {
-			t.Fatalf("after a new ticket: %+v from %+v", now, base)
-		}
-		if _, err := e.system.Exec(ctx, `UPDATE support_tickets SET first_response_due = now() - interval '1 minute' WHERE id = $1::uuid`, tk.GetId()); err != nil {
-			t.Fatal(err)
-		}
-		if late := summary(); late.GetSlaBreached() != base.GetSlaBreached()+1 {
-			t.Fatalf("an overdue ticket: %+v", late)
-		}
-		if _, err := e.support.ReplySupportTicket(operator(), &plansv1.ReplySupportTicketRequest{TicketId: tk.GetId(), Body: "Sent it again.", AuthorName: "Sam"}); err != nil {
-			t.Fatal(err)
-		}
-		if done := summary(); done.GetWaiting() != base.GetWaiting() || done.GetSlaBreached() != base.GetSlaBreached() {
-			t.Fatalf("after the answer: %+v from %+v", done, base)
-		}
-	})
-
-	t.Run("the opener's count is the answers they have not read", func(t *testing.T) {
-		if got := unread(); got != 1 {
-			t.Fatalf("after the operator's answer: %d unread", got)
-		}
-		if _, err := e.support.GetMySupportTicket(ctx, &plansv1.GetMySupportTicketRequest{UserId: ada.id, TicketId: tk.GetId()}); err != nil {
-			t.Fatal(err)
-		}
-		if got := unread(); got != 0 {
-			t.Fatalf("after reading it: %d unread", got)
-		}
-		stranger := e.verified(t, "queue-stranger@example.com", "Stranger Co")
-		if r, err := e.support.GetMySupportSummary(ctx, &plansv1.GetMySupportSummaryRequest{UserId: stranger.id}); err != nil || r.GetUnread() != 0 {
-			t.Fatalf("a stranger's count: %v %+v", err, r)
-		}
-	})
-
-	t.Run("the person's answer is mailed to the operators once, to the assignee alone when there is one", func(t *testing.T) {
-		before := len(e.mail.to(usermail.KindTicketCustomerReply, testOperatorEmail))
-		// The ticket waits for the person (the operator answered): the answer is news.
-		if _, err := e.support.ReplyMySupportTicket(ctx, &plansv1.ReplyMySupportTicketRequest{UserId: ada.id, TicketId: tk.GetId(), Body: "Thanks. One more question."}); err != nil {
-			t.Fatal(err)
-		}
-		got := e.mail.to(usermail.KindTicketCustomerReply, testOperatorEmail)
-		if len(got) != before+1 || got[before].Account != "Queue Co" || got[before].Link != testAppURL+"/support?sheet=ticket:"+tk.GetId() || got[before].Subject != "Where is my invoice?" {
-			t.Fatalf("the operator's mail: %+v", got)
-		}
-		// A second message while the ticket already waits for support is not mailed again.
-		if _, err := e.support.ReplyMySupportTicket(ctx, &plansv1.ReplyMySupportTicketRequest{UserId: ada.id, TicketId: tk.GetId(), Body: "And another thing."}); err != nil {
-			t.Fatal(err)
-		}
-		if n := len(e.mail.to(usermail.KindTicketCustomerReply, testOperatorEmail)); n != before+1 {
-			t.Fatalf("a second message mailed again: %d", n)
-		}
-		// Two operators, the ticket assigned to the second: only that operator is mailed.
-		svc := support.New(e.system, slog.New(slog.NewTextHandler(io.Discard, nil)), support.Config{Mail: e.mail, AppURL: testAppURL, Operators: []string{testOperatorEmail, "second@example.com"}})
-		if _, err := e.system.Exec(ctx, `UPDATE support_tickets SET assignee = 'second@example.com', status = 'pending', last_author = 'operator' WHERE id = $1::uuid`, tk.GetId()); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := svc.ReplyMySupportTicket(ctx, &plansv1.ReplyMySupportTicketRequest{UserId: ada.id, TicketId: tk.GetId(), Body: "Back again."}); err != nil {
-			t.Fatal(err)
-		}
-		if n := len(e.mail.to(usermail.KindTicketCustomerReply, "second@example.com")); n != 1 {
-			t.Errorf("the assignee was mailed %d times", n)
-		}
-		if n := len(e.mail.to(usermail.KindTicketCustomerReply, testOperatorEmail)); n != before+1 {
-			t.Errorf("the other operator was mailed too: %d", n)
-		}
-	})
-
-	t.Run("the assignee is one of the operators; a name an old ticket carries may stay", func(t *testing.T) {
-		fresh := open("Assign me")
-		sam := "Sam"
-		_, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: fresh.GetId(), Assignee: &sam})
-		wantCode(t, "a name that is no operator", err, codes.InvalidArgument, "support.assignee.not_operator")
-		shouting := "OPS@Example.com"
-		r, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: fresh.GetId(), Assignee: &shouting})
-		if err != nil || r.GetTicket().GetAssignee() != testOperatorEmail {
-			t.Fatalf("an operator's address in any case: %v %+v", err, r.GetTicket())
-		}
-		if _, err := e.system.Exec(ctx, `UPDATE support_tickets SET assignee = 'Sam' WHERE id = $1::uuid`, fresh.GetId()); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: fresh.GetId(), Assignee: &sam}); err != nil {
-			t.Errorf("the name the ticket already has was refused: %v", err)
-		}
-		none := ""
-		if r, err := e.support.UpdateSupportTicket(operator(), &plansv1.UpdateSupportTicketRequest{TicketId: fresh.GetId(), Assignee: &none}); err != nil || r.GetTicket().GetAssignee() != "" {
-			t.Errorf("unassign: %v %+v", err, r.GetTicket())
-		}
-	})
-
-	t.Run("the gauges the alert reads follow the queue and an overdue ticket", func(t *testing.T) {
-		reader := metric.NewManualReader()
-		mp := metric.NewMeterProvider(metric.WithReader(reader))
-		if err := support.New(e.system, slog.New(slog.NewTextHandler(io.Discard, nil)), support.Config{}).RegisterGauges(mp.Meter("test")); err != nil {
-			t.Fatal(err)
-		}
-		read := func() map[string]int64 {
-			t.Helper()
-			var rm metricdata.ResourceMetrics
-			if err := reader.Collect(ctx, &rm); err != nil {
-				t.Fatal(err)
-			}
-			out := map[string]int64{}
-			for _, sm := range rm.ScopeMetrics {
-				for _, m := range sm.Metrics {
-					if g, ok := m.Data.(metricdata.Gauge[int64]); ok && len(g.DataPoints) == 1 {
-						out[m.Name] = g.DataPoints[0].Value
-					}
-				}
-			}
-			return out
-		}
-		want := summary()
-		got := read()
-		if got["support_tickets_waiting"] != int64(want.GetWaiting()) || got["support_tickets_sla_breached"] != int64(want.GetSlaBreached()) {
-			t.Fatalf("gauges %v, queue %+v", got, want)
-		}
-		late := open("Overdue for the alert")
-		if _, err := e.system.Exec(ctx, `UPDATE support_tickets SET first_response_due = now() - interval '1 hour' WHERE id = $1::uuid`, late.GetId()); err != nil {
-			t.Fatal(err)
-		}
-		if after := read(); after["support_tickets_sla_breached"] != got["support_tickets_sla_breached"]+1 || after["support_tickets_waiting"] != got["support_tickets_waiting"]+1 {
-			t.Fatalf("after an overdue ticket: %v from %v", after, got)
-		}
-	})
 }

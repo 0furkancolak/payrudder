@@ -88,6 +88,18 @@ export class MockGateway {
     return { body: this.pricePause };
   };
 
+  /** The help desk's counts (the sidebar's badges): nothing waits and nothing is unread unless a test says so. */
+  private supportCountsHandler: Handler = (c) => {
+    if (c.method !== "GET") return undefined;
+    if (c.path === "/app/v1/support/unread") return { body: { unread: 0 } };
+    if (c.path === "/admin/v1/support/report") {
+      return { body: { waiting: 0, breached: 0, by_status: [], by_priority: [], window_days: 30, opened: 0, answered: 0, answered_on_time: 0, median_first_answer_seconds: 0, average_first_answer_seconds: 0 } };
+    }
+    if (c.path === "/admin/v1/support/operators") return { body: { operators: [] } };
+    if (c.path === "/admin/v1/support/canned-replies") return { body: { replies: [] } };
+    return undefined;
+  };
+
   on(handler: Handler): this {
     this.handlers.unshift(handler);
     return this;
@@ -136,7 +148,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body, text: body ? undefined : (req.postData() ?? undefined) };
       this.calls.push(call);
-      for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, operatorSignIn, geoHandler] as Handler[]) {
+      for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, this.supportCountsHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
         if (r) {
           if (r.raw) await route.fulfill({ status: r.status ?? 200, contentType: r.contentType ?? "application/octet-stream", body: r.raw });

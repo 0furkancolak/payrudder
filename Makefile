@@ -62,8 +62,12 @@ test: ## Unit tests (race detector)
 
 .PHONY: test-backup-scripts
 test-backup-scripts: ## The backup, restore and verify scripts against a throwaway Postgres (Docker), and the Helm chart's copies match deploy/backup
-	@for f in backup restore verify invariants; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
+	@for f in backup restore verify invariants object-backup clickhouse-backup; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
 	sh deploy/backup/test.sh
+
+.PHONY: test-store-backups
+test-store-backups: ## The backup scripts for MinIO (mc mirror, restore, deletes kept) and ClickHouse (BACKUP and RESTORE to MinIO) against throwaway servers (Docker, about 2 minutes)
+	sh deploy/backup/stores-test.sh
 
 .PHONY: test-einvoice-rules
 test-einvoice-rules: ## The UBL that pkg/einvoice builds against the EN 16931, Peppol BIS 3 and UBL-TR XSD and schematron (needs java, xmllint; downloads pinned artefacts into ~/.cache)
@@ -151,6 +155,10 @@ helm-sync: ## Refresh the copies of shared files inside the infra chart (helm ca
 	cp deploy/compose/redpanda/topics.sh deploy/helm/payrudder-infra/files/topics.sh
 	cp deploy/rabbitmq/definitions.json deploy/helm/payrudder-infra/files/definitions.json
 	cp deploy/clickhouse/low-memory.xml deploy/helm/payrudder-infra/files/low-memory.xml
+	cp deploy/prometheus/rules/payrudder.yaml deploy/helm/payrudder-infra/files/payrudder-rules.yaml
+	cp deploy/alertmanager/alertmanager.webhook.yml deploy/helm/payrudder-infra/files/alertmanager.webhook.yml
+	cp deploy/backup/object-backup.sh deploy/helm/payrudder-infra/files/object-backup.sh
+	cp deploy/backup/clickhouse-backup.sh deploy/helm/payrudder-infra/files/clickhouse-backup.sh
 
 .PHONY: web-check
 web-check: ## The operator console: install, lint, type check, build, and the OpenAPI types are up to date
@@ -252,12 +260,12 @@ helm-uninstall: $(BIN)/helm ## Remove both releases
 	-$(BIN)/helm uninstall payrudder-infra -n $(HELM_NS) --kube-context kind-payrudder
 
 .PHONY: helm-lint
-helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file (a KEDA ScaledObject has no schema in kubeconform: tests/helm checks it)
+helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file (a KEDA ScaledObject and a PrometheusRule have no schema in kubeconform: tests/helm checks them)
 	@set -e; for c in payrudder payrudder-infra; do \
 	  for v in deploy/helm/$$c/values*.yaml; do \
 	    echo "== $$c $$v"; \
 	    $(BIN)/helm lint deploy/helm/$$c -f $$v; \
-	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject -; \
+	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject,PrometheusRule -; \
 	  done; \
 	done
 
