@@ -405,6 +405,32 @@ services:
     depends_on: { postgres: { condition: service_healthy } }
     deploy: { resources: { limits: { memory: 96m } } }
 
+  # Copies the object buckets (invoice PDFs, assets) to backups/objects/ in the same MinIO every OBJECT_BACKUP_INTERVAL_SECONDS (deploy/backup/object-backup.sh; an object
+  # deleted in the source stays in the copy). The image has bash and mc and nothing else, so it waits with read -t on a pipe it holds open itself. Start it with
+  # `docker compose --profile ops up -d object-backup` after make up-infra (minio-init made the buckets); it reports to the pushgateway of the obs profile.
+  object-backup:
+    <<: *defaults
+    profiles: [ops]
+    image: cgr.dev/chainguard/minio-client@sha256:d8a93c5d335509ff353774eefec8f82fa2a2a975e800139702232d8be3dbe6b9
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        while true; do
+          bash /scripts/object-backup.sh mirror || true
+          read -r -t "$${OBJECT_BACKUP_INTERVAL_SECONDS:-86400}" <> <(:) || true
+        done
+    environment:
+      MC_CONFIG_DIR: /tmp/mc
+      OBJ_SOURCE_URL: http://minio:9000
+      OBJ_SOURCE_USER: payrudder
+      OBJ_SOURCE_PASSWORD: payrudder_local
+      OBJECT_BACKUP_INTERVAL_SECONDS: ${OBJECT_BACKUP_INTERVAL_SECONDS:-86400}
+      PUSHGATEWAY_HOST_PORT: ${PUSHGATEWAY_HOST_PORT:-pushgateway:9091}
+    volumes:
+      - ../backup:/scripts:ro
+    depends_on: { minio: { condition: service_healthy } }
+    deploy: { resources: { limits: { memory: 96m } } }
+
   # --- chaos profile -----------------------------------------------------------------------------
   toxiproxy:
     <<: *defaults
