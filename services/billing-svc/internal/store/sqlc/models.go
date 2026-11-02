@@ -29,6 +29,9 @@ type AuditEvent struct {
 	SourceIp   string
 	RequestID  string
 	CreatedAt  time.Time
+	Seq        int64
+	PrevHash   string
+	RowHash    string
 }
 
 type BillingRun struct {
