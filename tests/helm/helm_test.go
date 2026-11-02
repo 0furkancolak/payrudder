@@ -563,7 +563,11 @@ func TestMailEventsListenerIsWiredBetweenTheGatewayAndTheNotifier(t *testing.T) 
 		m, _ := s.get("stringData").(map[string]any)
 		return m
 	}
-	docs := render(t, "payrudder")
+	// The chart ships no secret for the listener (it is off); the kind profiles set the local value.
+	if got := envOf(findContainer(t, render(t, "payrudder"), "notifier"))["NOTIFIER_EVENTS_ADDR"]; got != "" {
+		t.Errorf("the chart's defaults turn the listener on (%q): its secret would be a published one", got)
+	}
+	docs := render(t, "payrudder", "-f", values(t, "payrudder", "values-kind.yaml"))
 	notifier, gateway := secret(docs, "notifier"), secret(docs, "gateway")
 	key := notifier["NOTIFIER_MAIL_EVENTS_SECRET"]
 	if s, _ := key.(string); len(s) < 16 {
@@ -650,14 +654,14 @@ func TestOTPPepperIsTheOperatorsOutsideDevelopment(t *testing.T) {
 			t.Errorf("%s gets %q, want the local value", e, v)
 		}
 	}
-	if v := pepper(render(t, "payrudder", append(url, "--set", "global.environment=production", "--set", "auth.otpPepper="+own)...)); v != own {
+	if v := pepper(render(t, "payrudder", append([]string{"--set", "global.environment=production", "--set", "auth.otpPepper=" + own}, productionValues()...)...)); v != own {
 		t.Errorf("production with a pepper of its own gets %q", v)
 	}
-	if v := pepper(render(t, "payrudder", append(url, "-f", values(t, "payrudder", "values-small.yaml"), "--set", "auth.otpPepper="+own)...)); v != own {
+	if v := pepper(render(t, "payrudder", append([]string{"-f", values(t, "payrudder", "values-small.yaml"), "--set", "auth.otpPepper=" + own}, productionValues()...)...)); v != own {
 		t.Errorf("values-small with a pepper of its own gets %q", v)
 	}
 	// The pepper is never plain environment of a container.
-	for _, c := range containers(render(t, "payrudder", append(url, "--set", "global.environment=production", "--set", "auth.otpPepper="+own)...)) {
+	for _, c := range containers(render(t, "payrudder", append([]string{"--set", "global.environment=production", "--set", "auth.otpPepper=" + own}, productionValues()...)...)) {
 		if _, ok := envOf(c)["PAYRUDDER_OTP_PEPPER"]; ok {
 			t.Errorf("the pepper is a plain environment variable of container %s", c.str("name"))
 		}
@@ -729,7 +733,7 @@ func TestPublicURLIsRequiredOutsideDevelopment(t *testing.T) {
 		"values-small": {"-f", values(t, "payrudder", "values-small.yaml")},
 		"railway":      {"--set", "global.environment=railway"},
 	} {
-		args = append(args, "--set", "auth.otpPepper="+pepper)
+		args = append(append(args, ownSecrets()...), "--set", "auth.otpPepper="+pepper)
 		if out, err := tryRender("payrudder", args...); err == nil || !strings.Contains(out, "global.publicURL is required") {
 			t.Errorf("%s without a public URL rendered or failed for another reason: %v\n%s", name, err, out)
 		}
@@ -759,7 +763,8 @@ func TestMailWebhookSecretReachesTheGatewaySecretOnly(t *testing.T) {
 	if got := holders(render(t, "payrudder")); len(got) != 0 {
 		t.Errorf("by default %v hold a mail webhook secret", got)
 	}
-	docs := render(t, "payrudder", "--set", "mail.webhookSecret="+whsec)
+	const events = "--set=mail.eventsSecret=local-mail-events-secret-change-me-0123456789" // the listener is off by default; the webhook needs it
+	docs := render(t, "payrudder", events, "--set", "mail.webhookSecret="+whsec)
 	if got := holders(docs); len(got) != 1 || got[0] != "x-gateway-env" {
 		t.Errorf("the secret is in %v, want the gateway's Secret only", got)
 	}
@@ -775,7 +780,7 @@ func TestMailWebhookSecretReachesTheGatewaySecretOnly(t *testing.T) {
 		t.Errorf("a webhook secret without the notifier's listener rendered or failed for another reason: %v\n%s", err, out)
 	}
 	// Your own Secrets: nothing is rendered for them, so the value is not either.
-	if got := holders(render(t, "payrudder", "--set", "mail.webhookSecret="+whsec, "--set", "secrets.existingSecrets=true")); len(got) != 0 {
+	if got := holders(render(t, "payrudder", events, "--set", "mail.webhookSecret="+whsec, "--set", "secrets.existingSecrets=true")); len(got) != 0 {
 		t.Errorf("with existingSecrets %v still hold the secret", got)
 	}
 }

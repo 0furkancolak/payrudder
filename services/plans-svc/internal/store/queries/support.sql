@@ -88,6 +88,14 @@ SELECT pg_advisory_xact_lock(hashtextextended('support:' || @account_id::text, 0
 -- name: SupportOpenCount :one
 SELECT count(*)::int FROM support_tickets WHERE account_id = @account_id AND status IN ('open', 'pending');
 
+-- Tickets the account opened since a time, solved and closed ones included: the limit per hour (a solved ticket frees its place among the ones waiting, not this).
+-- name: SupportOpenedByAccountSince :one
+SELECT count(*)::int FROM support_tickets WHERE account_id = @account_id AND created_at > @since::timestamptz;
+
+-- Tickets anybody opened since a time, for the burst of mail to the operators. last_message_at is never earlier than created_at; it is in the condition for its index.
+-- name: SupportOpenedSince :one
+SELECT count(*)::int FROM support_tickets WHERE last_message_at > @since::timestamptz AND created_at > @since::timestamptz;
+
 -- What the first-answer deadline is counted by: the time zone and the app whose days off apply (the ticket's app, else the account's oldest app, else UTC and the nil
 -- uuid for none),
 -- and the plan of the ticket's app (its live tenant's; the best among the account's apps when the ticket names none; free when it has no app yet).

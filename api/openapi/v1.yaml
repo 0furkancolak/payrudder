@@ -4842,7 +4842,7 @@ paths:
       summary: Open a support ticket for an account (and optionally one of its apps)
       description: |
         The first answer is due by the priority and the plan of the ticket's app (free, standard or enterprise; a default table, not agreed), counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC, not on the app's days off). For a free app (the plan every new app starts on): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
-        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
+        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`. An account can also open at most 10 tickets an hour, solved and closed ones included (a default, not agreed; `PAYRUDDER_SUPPORT_OPENS_PER_HOUR`, 0 switches it off): one more is refused with `429 support.tickets.too_many_recent`.
         `links` may point at up to five customers, invoices or subscriptions of the account's apps (`404 support.app.not_found` for an app that is not the account's); only the pointer is kept, whether the object exists is not checked.
       security: [{ sessionToken: [] }]
       requestBody:

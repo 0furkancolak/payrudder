@@ -3894,7 +3894,8 @@
         "not_solved": "Puede valorar un ticket cuando esté resuelto."
       },
       "tickets": {
-        "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo."
+        "too_many": "Su organización ya tiene 20 tickets en espera. Espere una respuesta o marque uno como resuelto y vuelva a intentarlo.",
+        "too_many_recent": "Su organización ha abierto demasiados tickets en la última hora. Espere un momento o escriba en un ticket que ya esté abierto."
       },
       "canned_reply": {
         "not_found": "Esa respuesta predefinida ya no existe."

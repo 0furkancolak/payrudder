@@ -59,6 +59,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Open the ticket",
 			Ignore:  "You get this because your address is listed as a Payrudder operator.",
 		},
+		KindTicketBurst: {
+			Subject: "Many new support tickets",
+			Lines:   []string{"Many support tickets arrived in a short time.", "The next ones are not mailed one by one for a while: open the inbox in the operator console to see them."},
+			Button:  "Open the inbox",
+			Ignore:  "You get this because your address is listed as a Payrudder operator.",
+		},
 		KindTicketNew: {
 			Subject: "New support ticket {ticket}: {subject}",
 			Lines:   []string{"{account} opened ticket {ticket} ({priority} priority): {subject}", "Open the ticket in the operator console to answer it."},
@@ -173,6 +179,12 @@ var texts = map[string]map[Kind]copyText{
 			Subject: "{ticket} numaralı talep: {account} yanıt yazdı",
 			Lines:   []string{"{account}, {ticket} numaralı talebe yanıt yazdı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
 			Button:  "Talebi aç",
+			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
+		},
+		KindTicketBurst: {
+			Subject: "Çok sayıda yeni destek talebi",
+			Lines:   []string{"Kısa sürede çok sayıda destek talebi açıldı.", "Sonrakiler bir süre tek tek e-postayla bildirilmeyecek: görmek için operatör konsolundaki gelen kutusunu açın."},
+			Button:  "Gelen kutusunu aç",
 			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
 		},
 		KindTicketNew: {
@@ -291,6 +303,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Ticket öffnen",
 			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
 		},
+		KindTicketBurst: {
+			Subject: "Viele neue Support-Tickets",
+			Lines:   []string{"In kurzer Zeit sind viele Support-Tickets eingegangen.", "Die nächsten werden eine Weile nicht einzeln gemeldet: Öffnen Sie den Posteingang in der Operator-Konsole, um sie zu sehen."},
+			Button:  "Posteingang öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
+		},
 		KindTicketNew: {
 			Subject: "Neues Support-Ticket {ticket}: {subject}",
 			Lines:   []string{"{account} hat das Ticket {ticket} eröffnet (Priorität {priority}): {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
@@ -405,6 +423,12 @@ var texts = map[string]map[Kind]copyText{
 			Subject: "Ticket {ticket} : {account} a répondu",
 			Lines:   []string{"{account} a répondu sur le ticket {ticket} : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
 			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
+		},
+		KindTicketBurst: {
+			Subject: "Beaucoup de nouveaux tickets de support",
+			Lines:   []string{"De nombreux tickets de support sont arrivés en peu de temps.", "Les suivants ne sont plus signalés un par un pendant un moment : ouvrez la boîte de réception dans la console opérateur pour les voir."},
+			Button:  "Ouvrir la boîte de réception",
 			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
 		},
 		KindTicketNew: {
@@ -523,6 +547,12 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Abrir el ticket",
 			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
 		},
+		KindTicketBurst: {
+			Subject: "Muchos tickets de soporte nuevos",
+			Lines:   []string{"Llegaron muchos tickets de soporte en poco tiempo.", "Los siguientes no se avisan uno por uno durante un rato: abre la bandeja de entrada en la consola de operadores para verlos."},
+			Button:  "Abrir la bandeja de entrada",
+			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
+		},
 		KindTicketNew: {
 			Subject: "Nuevo ticket de soporte {ticket}: {subject}",
 			Lines:   []string{"{account} abrió el ticket {ticket} (prioridad {priority}): {subject}", "Abre el ticket en la consola de operadores para responder."},
@@ -637,6 +667,12 @@ var texts = map[string]map[Kind]copyText{
 			Subject: "التذكرة {ticket}: ردّت {account}",
 			Lines:   []string{"ردّت {account} على التذكرة {ticket}: {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
 			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
+		},
+		KindTicketBurst: {
+			Subject: "تذاكر دعم جديدة كثيرة",
+			Lines:   []string{"وصل عدد كبير من تذاكر الدعم في وقت قصير.", "لن تُرسل التذاكر التالية واحدة واحدة لفترة: افتح صندوق الوارد في لوحة المشغّلين لرؤيتها."},
+			Button:  "فتح صندوق الوارد",
 			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
 		},
 		KindTicketNew: {

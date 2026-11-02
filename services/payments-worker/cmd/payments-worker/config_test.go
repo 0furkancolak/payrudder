@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/0furkancolak/payrudder/pkg/config"
@@ -62,5 +63,43 @@ func TestSecretsSettingsComeFromTheEnvironment(t *testing.T) {
 	}
 	if _, err := load(map[string]string{"PAYRUDDER_SECRETS_KEY": key(2), "PAYRUDDER_SECRETS_KEY_PREVIOUS": key(1)}); err == nil {
 		t.Error("two keys with the same id (both 1) were accepted")
+	}
+}
+
+// The secrets key and the token the gateway sends are refused outside a development environment while they are the values this repository publishes: the key would
+// seal every tenant's provider credentials under a key anybody can read.
+func TestPublishedSecretsAreRefusedOutsideDevelopment(t *testing.T) {
+	const publicKey, publicToken = "bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=", "local-internal-token-change-me-0123456789"
+	own := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
+	load := func(env string, kv ...string) error {
+		environ := map[string]string{
+			"PAYRUDDER_SERVICE_NAME": "payments-worker", "PAYRUDDER_RABBITMQ_URL": "amqp://localhost", "PAYRUDDER_PG_SYSTEM_DSN": "postgres://localhost/payments_db", "PAYRUDDER_ENV": env,
+		}
+		for i := 0; i < len(kv); i += 2 {
+			environ[kv[i]] = kv[i+1]
+		}
+		_, err := config.LoadFrom[Config](environ, defaults)
+		return err
+	}
+	for _, env := range []string{"local", "ci", "kind"} {
+		if err := load(env, "PAYRUDDER_SECRETS_KEY", publicKey, "PAYMENTS_INTERNAL_TOKEN", publicToken); err != nil {
+			t.Errorf("%s keeps the published values: %v", env, err)
+		}
+	}
+	for _, env := range []string{"railway", "production"} {
+		if err := load(env, "PAYRUDDER_SECRETS_KEY", own, "PAYMENTS_INTERNAL_TOKEN", strings.Repeat("k3Jx9mQ2", 4)); err != nil {
+			t.Errorf("%s with its own values: %v", env, err)
+		}
+		if err := load(env); err != nil {
+			t.Errorf("%s with no key and no token (features off): %v", env, err)
+		}
+		for name, kv := range map[string][]string{
+			"PAYRUDDER_SECRETS_KEY":   {"PAYRUDDER_SECRETS_KEY", publicKey},
+			"PAYMENTS_INTERNAL_TOKEN": {"PAYMENTS_INTERNAL_TOKEN", publicToken},
+		} {
+			if err := load(env, kv...); err == nil || !strings.Contains(err.Error(), name) {
+				t.Errorf("%s with the published %s: %v", env, name, err)
+			}
+		}
 	}
 }

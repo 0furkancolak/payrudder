@@ -3894,7 +3894,8 @@
         "not_solved": "Ein Ticket lässt sich bewerten, sobald es gelöst ist."
       },
       "tickets": {
-        "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
+        "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut.",
+        "too_many_recent": "Ihre Organisation hat in der letzten Stunde zu viele Tickets eröffnet. Warten Sie eine Weile oder schreiben Sie in einem bereits offenen Ticket."
       },
       "canned_reply": {
         "not_found": "Diese Textvorlage gibt es nicht mehr."

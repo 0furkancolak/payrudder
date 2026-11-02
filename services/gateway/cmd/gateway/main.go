@@ -125,7 +125,8 @@ func (c *Config) operatorRequireTwoFactor() bool {
 }
 
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate()}
+	errs := []error{c.Base.Validate(), c.CheckSecret("PAYRUDDER_OPERATOR_TOKEN", c.OperatorToken), c.CheckSecret("PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", c.PaymentsToken),
+		c.CheckSecret("PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", c.NotifierSecret)}
 	if _, err := config.ParseSwitch("PAYRUDDER_OPERATOR_REQUIRE_2FA", c.OperatorRequire2FA); err != nil {
 		errs = append(errs, err)
 	}

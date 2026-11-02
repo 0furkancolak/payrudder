@@ -134,3 +134,37 @@ func TestMailWebhookLogsWhenOff(t *testing.T) {
 		t.Errorf("a set webhook secret logged %q", out)
 	}
 }
+
+// The operator token, the token to payments-worker and the notifier's signing secret are refused outside a development environment while they are a value this
+// repository publishes: the Helm chart and the compose stack ship them, and the token alone opens /admin/v1/*.
+func TestPublishedSecretsAreRefusedOutsideDevelopment(t *testing.T) {
+	const operator, internal, events = "local-operator-token-change-me-0123456789", "local-internal-token-change-me-0123456789", "local-mail-events-secret-change-me-0123456789"
+	own := strings.Repeat("k3Jx9mQ2", 4)
+	load := func(env string, kv ...string) error {
+		environ := map[string]string{"PAYRUDDER_SERVICE_NAME": "gateway", "PAYRUDDER_ENV": env, "PAYRUDDER_OPERATOR_TOKEN": own}
+		for i := 0; i < len(kv); i += 2 {
+			environ[kv[i]] = kv[i+1]
+		}
+		_, err := config.LoadFrom[Config](environ, defaults)
+		return err
+	}
+	for _, env := range []string{"local", "ci", "kind"} {
+		if err := load(env, "PAYRUDDER_OPERATOR_TOKEN", operator, "PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", internal, "PAYRUDDER_NOTIFIER_EVENTS_URL", "http://n:9111", "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", events); err != nil {
+			t.Errorf("%s keeps the published values: %v", env, err)
+		}
+	}
+	for _, env := range []string{"railway", "production"} {
+		if err := load(env, "PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", own, "PAYRUDDER_NOTIFIER_EVENTS_URL", "http://n:9111", "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", own); err != nil {
+			t.Errorf("%s with its own values: %v", env, err)
+		}
+		for name, kv := range map[string][]string{
+			"PAYRUDDER_OPERATOR_TOKEN":              {"PAYRUDDER_OPERATOR_TOKEN", operator},
+			"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN":     {"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN", internal},
+			"PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET": {"PAYRUDDER_NOTIFIER_EVENTS_URL", "http://n:9111", "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", events},
+		} {
+			if err := load(env, kv...); err == nil || !strings.Contains(err.Error(), name) {
+				t.Errorf("%s with the published %s: %v", env, name, err)
+			}
+		}
+	}
+}

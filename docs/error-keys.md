@@ -586,3 +586,4 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `support.ticket.not_found`
 - `support.ticket.not_solved`
 - `support.tickets.too_many`
+- `support.tickets.too_many_recent`

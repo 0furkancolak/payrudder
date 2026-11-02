@@ -94,7 +94,7 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
-	errs := []error{c.Base.Validate()}
+	errs := []error{c.Base.Validate(), c.CheckSecret("NOTIFIER_MAIL_EVENTS_SECRET", c.MailEventsSecret)}
 	errs = append(errs, c.CheckMigration())
 	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
 		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))
