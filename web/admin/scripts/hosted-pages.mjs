@@ -2,7 +2,7 @@
 // The gateway test writes every page in every language as a file:
 //
 //   HOSTED_PAGES_DIR=/tmp/pages CGO_ENABLED=0 go test ./internal/httpapi -run TestEveryPageRendersInEveryLanguage     (from services/gateway)
-//   AXE_CORE=/tmp/axe/node_modules/axe-core/axe.min.js node scripts/hosted-pages.mjs /tmp/pages --axe               (from web/admin; npm i --prefix /tmp/axe axe-core, nothing is added to package.json)
+//   node scripts/hosted-pages.mjs /tmp/pages --axe                                                                  (from web/admin; axe-core is a devDependency; the "hosted-pages" job of ci.yml runs exactly this)
 //   node scripts/hosted-pages.mjs /tmp/pages --shots /tmp/shots --only '^(en|ar)-(invoice|portal)$'
 //
 // It needs Chrome (the same `channel: 'chrome'` the mock e2e uses). Pages are opened as files, so the Content-Security-Policy header is not in play; the gateway test

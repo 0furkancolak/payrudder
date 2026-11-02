@@ -75,7 +75,10 @@
       "selectAllMore": "Alle passenden Ergebnisse auswählen",
       "confirmAllTitle": "Auf {n} Zeilen anwenden?",
       "confirmAll": "Das betrifft alle {n} ausgewählten Zeilen, auch die auf anderen Seiten.",
-      "loadFailed": "Der Rest der Liste konnte nicht geladen werden, daher sind nicht alle Ergebnisse ausgewählt."
+      "loadFailed": "Der Rest der Liste konnte nicht geladen werden, daher sind nicht alle Ergebnisse ausgewählt.",
+      "progressLabel": "Fortschritt der Sammelaktion",
+      "progress": "{n} von {total} erledigt",
+      "progressFailed": "{failed} nicht geändert"
     },
     "appliedFilters": "Angewendete Filter"
   },
@@ -728,7 +731,8 @@
         "none": "Noch nichts zu berechnen: Dieser Kunde hat in diesem Zeitraum kein Abonnement und keine nachträgliche Nutzung zu berechnen.",
         "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern.",
         "creditSurplus": "{amount} würde dem Guthaben des Kunden gutgeschrieben: die Positionen ergeben weniger als null."
-      }
+      },
+      "taxNotSaved": "Der Kunde wurde angelegt, aber seine Steuerdaten wurden nicht gespeichert. Schließen Sie dieses Fenster, öffnen Sie den Kunden und versuchen Sie es mit Bearbeiten, Steuerdaten erneut."
     },
     "packages": {
       "new": "Neues Paket",
@@ -2756,7 +2760,23 @@
         "tr_is_vkn": "Das ist eine VKN, die Nummer eines Unternehmens, der Kunde ist aber eine Privatperson (mit einer TCKN). Sie können es trotzdem speichern.",
         "eu_vat": "Ein Unternehmen in der EU hat eine USt-IdNr., die mit dem Ländercode beginnt (zum Beispiel DE136695976). Das sieht nicht danach aus; Sie können es trotzdem speichern."
       },
-      "warned": "Diese Nummer passt nicht zu diesem Kunden. Öffnen Sie die Steuerdaten, um den Grund zu sehen."
+      "warned": "Diese Nummer passt nicht zu diesem Kunden. Öffnen Sie die Steuerdaten, um den Grund zu sehen.",
+      "labels": {
+        "tckn": "TCKN (11-stellige Identitätsnummer)",
+        "vkn": "VKN (10-stellige Steuernummer)",
+        "tr": "Steuernummer (VKN oder TCKN)",
+        "vat": "USt-IdNr.",
+        "ein": "Steuer-ID (EIN)",
+        "taxid": "Steuer-ID"
+      },
+      "about": {
+        "tr_individual": "Eine Privatperson in der Türkei wird mit der 11-stelligen TCKN identifiziert. Optional: ohne sie verwendet eine e-Arşiv-Rechnung den Platzhalter für Verbraucher.",
+        "tr_business": "Ein Unternehmen in der Türkei wird mit seiner 10-stelligen VKN identifiziert; sie ist erforderlich: eine E-Rechnung an ein Unternehmen ohne VKN wird abgelehnt. Das Finanzamt ist optional.",
+        "tr_unknown": "Wählen Sie oben, ob dieser Kunde eine Privatperson (TCKN) oder ein Unternehmen (VKN) ist: E-Rechnungen behandeln beide unterschiedlich.",
+        "eu_business": "Ein Unternehmen in der EU nennt seine USt-IdNr., die mit dem Ländercode beginnt. Optional; geprüft werden nur Format und Prüfziffern, nicht VIES.",
+        "gb_business": "Ein Unternehmen im Vereinigten Königreich nennt seine USt-Nummer, wenn es umsatzsteuerlich registriert ist. Optional; nicht geprüft.",
+        "us_business": "Ein Unternehmen in den USA kann seine EIN nennen. Optional; nicht geprüft."
+      }
     },
     "errorKeys": {
       "einvoice": {
@@ -3756,6 +3776,9 @@
       },
       "tickets": {
         "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
+      },
+      "canned_reply": {
+        "not_found": "Diese Textvorlage gibt es nicht mehr."
       }
     },
     "audit": {
@@ -5627,7 +5650,43 @@
     "sortPriority": "Höchste Priorität zuerst",
     "sortDue": "Früheste Frist zuerst",
     "unread": "Neu",
-    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App."
+    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App.",
+    "tags": {
+      "title": "Tags",
+      "filter": "Tag",
+      "add": "Tag hinzufügen",
+      "remove": "Tag {tag} entfernen",
+      "hint": "Tags sieht nur das Team. Bis zu 5, Kleinbuchstaben, Ziffern und Bindestriche."
+    },
+    "canned": {
+      "title": "Textvorlagen",
+      "hint": "Texte, die das ganze Team in eine Antwort einfügen kann. Eine Änderung gilt für alle.",
+      "manage": "Textvorlagen…",
+      "insert": "Textvorlage einfügen",
+      "empty": "Es gibt noch keine.",
+      "fieldTitle": "Titel",
+      "fieldBody": "Text",
+      "add": "Hinzufügen",
+      "save": "Speichern",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "confirmDelete": "Die Textvorlage „{title}“ löschen?"
+    },
+    "report": {
+      "title": "Die Warteschlange",
+      "waiting": "Warten auf uns",
+      "late": "Überfällig",
+      "median": "Erste Antwort, Median der letzten {days} Tage",
+      "average": "Durchschnitt {time}",
+      "onTime": "Rechtzeitig beantwortet",
+      "answeredOf": "{answered} von {opened} eröffneten beantwortet",
+      "byStatus": "Alle Tickets nach Status",
+      "byPriority": "Noch offen, nach Priorität"
+    },
+    "badge": {
+      "unread": "Tickets mit Neuigkeiten: {n}",
+      "waiting": "Warten auf uns: {n}"
+    }
   },
   "connect": {
     "nav": "App verbinden",

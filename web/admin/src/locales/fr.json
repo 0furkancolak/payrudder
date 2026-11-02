@@ -75,7 +75,10 @@
       "selectAllMore": "Sélectionner tous les résultats correspondants",
       "confirmAllTitle": "Appliquer à {n} lignes ?",
       "confirmAll": "Cela s'applique aux {n} lignes sélectionnées, y compris celles des autres pages.",
-      "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés."
+      "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés.",
+      "progressLabel": "Progression de l'action groupée",
+      "progress": "{n} sur {total} faits",
+      "progressFailed": "{failed} non modifiés"
     },
     "appliedFilters": "Filtres appliqués"
   },
@@ -728,7 +731,8 @@
         "none": "Rien à facturer pour l'instant : ce client n'a pas d'abonnement sur la période en cours ni d'utilisation tardive à facturer.",
         "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
         "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
-      }
+      },
+      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer."
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -2756,7 +2760,23 @@
         "tr_is_vkn": "C'est un VKN, le numéro d'une entreprise, mais le client est un particulier (qui a un TCKN). Vous pouvez tout de même l'enregistrer.",
         "eu_vat": "Une entreprise de l'UE a un numéro de TVA qui commence par le code de son pays (par exemple DE136695976). Ce n'en est pas un ; vous pouvez tout de même l'enregistrer."
       },
-      "warned": "Ce numéro ne semble pas correct pour ce client. Ouvrez les données fiscales pour voir pourquoi."
+      "warned": "Ce numéro ne semble pas correct pour ce client. Ouvrez les données fiscales pour voir pourquoi.",
+      "labels": {
+        "tckn": "TCKN (numéro d'identité à 11 chiffres)",
+        "vkn": "VKN (numéro fiscal à 10 chiffres)",
+        "tr": "Numéro fiscal (VKN ou TCKN)",
+        "vat": "Numéro de TVA",
+        "ein": "Identifiant fiscal (EIN)",
+        "taxid": "Identifiant fiscal"
+      },
+      "about": {
+        "tr_individual": "Un particulier en Turquie est identifié par le TCKN à 11 chiffres. Facultatif : sans lui, une facture e-Arşiv utilise l'identifiant générique du consommateur.",
+        "tr_business": "Une entreprise en Turquie est identifiée par son VKN à 10 chiffres, qui est obligatoire : une facture électronique à une entreprise qui n'en a pas est refusée. Le centre des impôts est facultatif.",
+        "tr_unknown": "Choisissez ci-dessus si ce client est un particulier (TCKN) ou une entreprise (VKN) : les factures électroniques les traitent différemment.",
+        "eu_business": "Une entreprise de l'UE donne son numéro de TVA, qui commence par le code de son pays. Facultatif ; seuls son format et ses chiffres de contrôle sont vérifiés, pas VIES.",
+        "gb_business": "Une entreprise du Royaume-Uni donne son numéro de TVA si elle y est assujettie. Facultatif ; non vérifié.",
+        "us_business": "Une entreprise des États-Unis peut donner son EIN. Facultatif ; non vérifié."
+      }
     },
     "errorKeys": {
       "einvoice": {
@@ -3756,6 +3776,9 @@
       },
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
+      },
+      "canned_reply": {
+        "not_found": "Cette réponse type n'existe plus."
       }
     },
     "audit": {
@@ -5627,7 +5650,43 @@
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord",
     "unread": "Nouveau",
-    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application."
+    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application.",
+    "tags": {
+      "title": "Étiquettes",
+      "filter": "Étiquette",
+      "add": "Ajouter une étiquette",
+      "remove": "Retirer l'étiquette {tag}",
+      "hint": "Seule l'équipe voit les étiquettes. 5 au plus, minuscules, chiffres et tirets."
+    },
+    "canned": {
+      "title": "Réponses types",
+      "hint": "Des textes que toute l'équipe peut coller dans une réponse. Une modification vaut pour tous.",
+      "manage": "Réponses types…",
+      "insert": "Insérer une réponse type",
+      "empty": "Il n'y en a pas encore.",
+      "fieldTitle": "Titre",
+      "fieldBody": "Texte",
+      "add": "Ajouter",
+      "save": "Enregistrer",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer la réponse type « {title} » ?"
+    },
+    "report": {
+      "title": "La file d'attente",
+      "waiting": "En attente de nous",
+      "late": "En retard",
+      "median": "Première réponse, médiane sur {days} jours",
+      "average": "moyenne {time}",
+      "onTime": "Réponses dans les temps",
+      "answeredOf": "{answered} répondus sur {opened} ouverts",
+      "byStatus": "Tous les tickets, par statut",
+      "byPriority": "Encore en attente, par priorité"
+    },
+    "badge": {
+      "unread": "Tickets avec du nouveau : {n}",
+      "waiting": "En attente de nous : {n}"
+    }
   },
   "connect": {
     "nav": "Connecter votre app",

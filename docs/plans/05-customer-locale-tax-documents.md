@@ -106,6 +106,28 @@ Everything the second step left in "Not done" that needs no owner decision, as *
 ## UNVERIFIED and not done
 - **Legal correctness of every printed word.** The titles (`FATURA` on a document that is not itself the e-Fatura or e-Arşiv invoice), the tax labels and the e-document note have not been read by an accountant, and the country rules of step 1 of "Research first" were not collected. Nothing says a Payrudder PDF is a legal invoice in any country.
 - **Line descriptions are not translated.** `Base fee`, `Usage - meter - ...`, `Launch discount` are text billing-svc froze in English (and the plan's own names are the seller's). A translated line needs the line to be stored as a kind with parameters; a Turkish invoice still has English line names.
-- Not done: ~~the hosted invoice page and the mails do not use these number and date formats~~ (done, see the leftovers); VIES (the VAT id checksums are done, see "VAT id checksums"); invoice number series by country (the legal number is the integrator's); a country to language and format default beyond the five countries above; the customer form that adapts to type and country (it hints, it does not change shape); e2e of the form per country.
+- Not done: ~~the hosted invoice page and the mails do not use these number and date formats~~ (done, see the leftovers); VIES (the VAT id checksums are done, see "VAT id checksums"); invoice number series by country (the legal number is the integrator's); a country to language and format default beyond the five countries above; ~~the customer form that adapts to type and country (it hints, it does not change shape); e2e of the form per country~~ (done, see [the customer form](#the-customer-form-2026-11-02)).
 - **Also unverified for the leftovers:** a mail or a page read by a native speaker of tr, de, fr, es or ar (the console strings for the setting were written by the model), the PDF opened in a viewer with a non-UTC date, and the migration on a database with real tenants (tested on seeded rows only).
 - Not run: GİB or integrator acceptance (plan 09 needs an integrator test environment), real mail with a PDF attached, a PDF opened in Acrobat or a printer. Looked at: pages of the five languages and the Arabic fallback converted with `pdftoppm` and text read back with `pdftotext` (poppler), by eye.
+
+## The customer form (2026-11-02)
+
+The new-customer sheet and the tax-data sheet now follow the customer's country and type (branch `feat/console-dx-3`). `web/admin/src/shared/lib/customerTax.ts` is the one table (`taxFormRules`, with its unit tests); `CustomerTaxFields.vue` draws it; the number checks stay `shared/lib/taxid.ts`, the mirror of `pkg/taxid` (TCKN, VKN, EU VAT ids with check digits), which only *hint*.
+
+| Country, type | Tax id | Tax office | e-fatura box | Label |
+|---|---|---|---|---|
+| TR, individual | optional | not asked | yes | TCKN (11 digits) |
+| TR, business | **required** | optional | yes | VKN (10 digits) |
+| TR, type not set | optional | optional | yes | VKN or TCKN, and "choose the type above" |
+| EU country, business | optional | not asked | no | VAT number; shape and check digits hinted |
+| GB, business | optional (not checked) | not asked | no | VAT number |
+| US, business | optional (not checked) | not asked | no | Tax ID (EIN) |
+| any other country, business or type not set | optional | not asked | no | Tax ID |
+| any country but TR, individual | **not asked** | not asked | no | none |
+| no country | optional | optional | yes | the generic label (nothing is taken away) |
+
+A field that is not asked for stays on screen while it holds a value, so it can be seen and cleared. The postal code of the address is called what its country calls it (postal code, ZIP code, postcode), shows an example and says when it does not look like one there (`postalCodeLooksOff`, as the seller address already did); it is accepted all the same. The create call has no tax fields, so the sheet saves them with `PUT /v1/customers/{id}/tax` after it; if that call fails the sheet stays, says the customer exists and does not offer "Create" again. Tests: `customerTax.test.ts`, `e2e-mock/customer-form.spec.ts` (TR, DE, US, GB, the failed tax call), `tax-id-hint.spec.ts`; six locales (`einvoice.customer.labels`, `.about`, `billing.customers.taxNotSaved`).
+
+Defaults taken (not agreed): **the Turkish business VKN is required in the form** because payments-worker refuses an e-arşiv to a business without a tax id; nothing else is required, and the server does not require it (an API caller can still create the customer without it). A tax *office* is never required: whether GİB or the integrators demand it is UNVERIFIED (see the e-invoice buyer rule above). An individual outside Turkey is not asked for a tax id at all (a personal number is not something to collect). US and UK numbers are not validated (no rule is in `pkg/taxid`); adding one is a table row in both languages with shared vectors.
+
+Not verified: the strings in German, French, Spanish, Turkish and Arabic were written by the model and read by nobody; the form was exercised against the mocked gateway only.

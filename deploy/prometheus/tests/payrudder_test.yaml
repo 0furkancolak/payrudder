@@ -782,3 +782,26 @@ tests:
           - exp_labels: { severity: warn, service: minio }
             exp_annotations:
               summary: "the object buckets have not been copied to the backup for over 26 hours"
+
+  - interval: 1m
+    name: SupportFirstAnswerOverdue fires when tickets wait past their deadline and resolves when the queue is answered
+    input_series:
+      - series: 'support_sla_breached_tickets{priority="urgent", job="payrudder", instance="plans-svc"}'
+        values: '1+0x20 0+0x20'
+      - series: 'support_sla_breached_tickets{priority="normal", job="payrudder", instance="plans-svc"}'
+        values: '1+0x20 0+0x20'
+      - series: 'support_sla_breached_tickets{priority="low", job="payrudder", instance="plans-svc"}'
+        values: '0+0x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts:
+          - exp_labels: { severity: warn, service: plans-svc }
+            exp_annotations:
+              summary: "2 support tickets have waited past their first-answer deadline"
+      - eval_time: 35m
+        alertname: SupportFirstAnswerOverdue
+        exp_alerts: []
