@@ -50,6 +50,20 @@ test("the code uses the tenant's meter and the address typed, in every language,
   await expect(page.getByText("qk_test_").first()).toBeVisible();
 });
 
+test("the address starts as the deployment's own setting (/env.js), and one the person typed wins", async ({ page }) => {
+  await page.route("**/env.js", (route) =>
+    route.fulfill({ contentType: "application/javascript", body: 'window.__PAYRUDDER__={"prefill":false,"brand":"","demo":false,"api":"https://api.deploy.example"};' }),
+  );
+  const gw = gateway({ meters: METERS, customers: [], counted: false });
+  await gw.install(page);
+  await openTenantPage(page, "/connect");
+  await expect(page.getByTestId("connect-address")).toHaveValue("https://api.deploy.example");
+  await expect(page.getByTestId("connect-code-send")).toContainText("https://api.deploy.example");
+  await page.getByTestId("connect-address").fill("https://mine.example");
+  await page.reload();
+  await expect(page.getByTestId("connect-address")).toHaveValue("https://mine.example");
+});
+
 test("the checklist turns green as the meter, the customer and the first event appear", async ({ page }) => {
   const state = { meters: [] as unknown[], customers: [] as unknown[], counted: false };
   const gw = gateway(state);
@@ -276,6 +290,8 @@ test("a test event goes out as the person, for the chosen meter and customer, an
   await expect(result).toHaveAttribute("data-outcome", "rejected");
   await expect(result).toContainText("UNKNOWN_CUSTOMER");
   await expect(result).toContainText("no customer nobody");
+  // The hint says what to do, in the console's language.
+  await expect(page.getByTestId("connect-test-event-hint")).toContainText("Create the customer first");
 });
 
 test("the test event button waits for a meter and a customer id", async ({ page }) => {

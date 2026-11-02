@@ -1,0 +1,4 @@
+# Not on PyPI yet: the SDK is installed from this checkout (pip install -r requirements.txt, run from this directory).
+../../sdk/python
+fastapi==0.162.0
+uvicorn==0.54.0

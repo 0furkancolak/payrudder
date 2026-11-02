@@ -314,6 +314,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `GATEWAY_URL` | `http://gateway.railway.internal:8000` | the console proxies `/gw/*` to it, so the browser needs no CORS |
 | `PAYRUDDER_DEMO` | `false` | shows the demo banner when `true` |
 | `BRAND_NAME` | `Payrudder` | |
+| `PUBLIC_API_URL` | unset | the gateway's public address (`https://<gateway domain>`); the Connect page puts it in the code it hands out. Unset: the page asks |
 
 `PREFILL_PLAYGROUND` stays `false`: it pre-fills the operator playground's form, so it is for local stacks only. No credential is ever served to the browser.
 

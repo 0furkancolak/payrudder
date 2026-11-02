@@ -158,6 +158,17 @@ func (q *Queries) DeleteLoginChallenge(ctx context.Context, id uuid.UUID) (int64
 	return result.RowsAffected(), nil
 }
 
+const deleteLoginChallengesOfUser = `-- name: DeleteLoginChallengesOfUser :exec
+DELETE FROM login_challenges WHERE user_id = $1
+`
+
+// A correct code of a signed-in person ends the failures counted against their lock (RecordSuccessfulLogin also stamps a sign-in, which this is not).
+// The second-step challenges a person has open (the operator's reset of the second factor closes them).
+func (q *Queries) DeleteLoginChallengesOfUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteLoginChallengesOfUser, userID)
+	return err
+}
+
 const deleteMember = `-- name: DeleteMember :execrows
 DELETE FROM account_members WHERE account_id = $1 AND user_id = $2
 `
@@ -1358,7 +1369,6 @@ const resetLoginFailures = `-- name: ResetLoginFailures :exec
 UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1
 `
 
-// A correct code of a signed-in person ends the failures counted against their lock (RecordSuccessfulLogin also stamps a sign-in, which this is not).
 func (q *Queries) ResetLoginFailures(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, resetLoginFailures, id)
 	return err

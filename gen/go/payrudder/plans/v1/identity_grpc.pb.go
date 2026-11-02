@@ -37,6 +37,7 @@ const (
 	IdentityService_DisableTwoFactor_FullMethodName        = "/payrudder.plans.v1.IdentityService/DisableTwoFactor"
 	IdentityService_RegenerateRecoveryCodes_FullMethodName = "/payrudder.plans.v1.IdentityService/RegenerateRecoveryCodes"
 	IdentityService_SetAccountSecurity_FullMethodName      = "/payrudder.plans.v1.IdentityService/SetAccountSecurity"
+	IdentityService_ResetUserTwoFactor_FullMethodName      = "/payrudder.plans.v1.IdentityService/ResetUserTwoFactor"
 	IdentityService_GetMyAccount_FullMethodName            = "/payrudder.plans.v1.IdentityService/GetMyAccount"
 	IdentityService_CreateMyAccount_FullMethodName         = "/payrudder.plans.v1.IdentityService/CreateMyAccount"
 	IdentityService_RenameMyAccount_FullMethodName         = "/payrudder.plans.v1.IdentityService/RenameMyAccount"
@@ -120,6 +121,10 @@ type IdentityServiceClient interface {
 	RegenerateRecoveryCodes(ctx context.Context, in *RegenerateRecoveryCodesRequest, opts ...grpc.CallOption) (*RegenerateRecoveryCodesResponse, error)
 	// SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
 	SetAccountSecurity(ctx context.Context, in *SetAccountSecurityRequest, opts ...grpc.CallOption) (*SetAccountSecurityResponse, error)
+	// ResetUserTwoFactor is the operator's hand for a person who lost both the device and the recovery codes: it removes the secret and the recovery codes, ends every
+	// session of the person, clears the lock from failed sign-ins, mails the person and records the reset with its reason in the audit log. Operator only; the
+	// operator is the one who checked who is asking.
+	ResetUserTwoFactor(ctx context.Context, in *ResetUserTwoFactorRequest, opts ...grpc.CallOption) (*ResetUserTwoFactorResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
 	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
 	CreateMyAccount(ctx context.Context, in *CreateMyAccountRequest, opts ...grpc.CallOption) (*CreateMyAccountResponse, error)
@@ -369,6 +374,16 @@ func (c *identityServiceClient) SetAccountSecurity(ctx context.Context, in *SetA
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetAccountSecurityResponse)
 	err := c.cc.Invoke(ctx, IdentityService_SetAccountSecurity_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResetUserTwoFactor(ctx context.Context, in *ResetUserTwoFactorRequest, opts ...grpc.CallOption) (*ResetUserTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetUserTwoFactorResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResetUserTwoFactor_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -735,6 +750,10 @@ type IdentityServiceServer interface {
 	RegenerateRecoveryCodes(context.Context, *RegenerateRecoveryCodesRequest) (*RegenerateRecoveryCodesResponse, error)
 	// SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
 	SetAccountSecurity(context.Context, *SetAccountSecurityRequest) (*SetAccountSecurityResponse, error)
+	// ResetUserTwoFactor is the operator's hand for a person who lost both the device and the recovery codes: it removes the secret and the recovery codes, ends every
+	// session of the person, clears the lock from failed sign-ins, mails the person and records the reset with its reason in the audit log. Operator only; the
+	// operator is the one who checked who is asking.
+	ResetUserTwoFactor(context.Context, *ResetUserTwoFactorRequest) (*ResetUserTwoFactorResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
 	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
 	CreateMyAccount(context.Context, *CreateMyAccountRequest) (*CreateMyAccountResponse, error)
@@ -863,6 +882,9 @@ func (UnimplementedIdentityServiceServer) RegenerateRecoveryCodes(context.Contex
 }
 func (UnimplementedIdentityServiceServer) SetAccountSecurity(context.Context, *SetAccountSecurityRequest) (*SetAccountSecurityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetAccountSecurity not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResetUserTwoFactor(context.Context, *ResetUserTwoFactorRequest) (*ResetUserTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResetUserTwoFactor not implemented")
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
@@ -1298,6 +1320,24 @@ func _IdentityService_SetAccountSecurity_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityServiceServer).SetAccountSecurity(ctx, req.(*SetAccountSecurityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResetUserTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetUserTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResetUserTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResetUserTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResetUserTwoFactor(ctx, req.(*ResetUserTwoFactorRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1938,6 +1978,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetAccountSecurity",
 			Handler:    _IdentityService_SetAccountSecurity_Handler,
+		},
+		{
+			MethodName: "ResetUserTwoFactor",
+			Handler:    _IdentityService_ResetUserTwoFactor_Handler,
 		},
 		{
 			MethodName: "GetMyAccount",

@@ -3,11 +3,13 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
@@ -188,7 +190,7 @@ type RecordResult struct {
 // another amount it is ErrReceiptAmount; an amount past the total is ErrOverpayment.
 func (t Transfers) Record(ctx context.Context, n NewReceipt, total int64) (RecordResult, error) {
 	var res RecordResult
-	err := tx(ctx, t.DB, n.TenantID, func(_ pgx.Tx, q *sqlc.Queries) error {
+	err := tx(ctx, t.DB, n.TenantID, func(pt pgx.Tx, q *sqlc.Queries) error {
 		if err := q.LockInvoiceReceipts(ctx, n.InvoiceID.String()); err != nil {
 			return err
 		}
@@ -227,7 +229,10 @@ func (t Transfers) Record(ctx context.Context, n NewReceipt, total int64) (Recor
 		}
 		res = RecordResult{Received: sum.Received + n.AmountMinor, Receipt: Receipt{ID: id, AmountMinor: n.AmountMinor, Currency: n.Currency, ReceivedAt: n.ReceivedAt,
 			BankReference: n.BankReference, Note: n.Note, RecordedBy: n.RecordedBy, RecordedAt: time.Now().UTC()}}
-		return nil
+		// The confirmation of a bank transfer is the operator's word: the reference and the amount are in the entry, the note (free text) is not.
+		return audit.Record(ctx, pt, audit.Event{TenantID: n.TenantID, Action: "bank_transfer.receipt_recorded", TargetType: "invoice", TargetID: n.InvoiceID.String(),
+			Summary: fmt.Sprintf("confirmed a bank transfer of %d %s", n.AmountMinor, n.Currency),
+			Detail:  map[string]any{"receipt_id": id, "bank_reference": n.BankReference, "amount_minor": n.AmountMinor, "currency": n.Currency, "received_at": n.ReceivedAt.UTC().Format(time.RFC3339), "outstanding_after": max(total-res.Received, 0)}})
 	})
 	return res, err
 }

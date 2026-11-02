@@ -520,6 +520,17 @@ func TestAReceiptThatFailsHalfwayLeavesNothing(t *testing.T) {
 	if l, r, sum := rows(); l != 0 || r != 0 || sum != 0 {
 		t.Fatalf("after the failed receipt: %d ledger rows, %d receipts, %d received; want none of them", l, r, sum)
 	}
+	entries := func() int64 {
+		t.Helper()
+		n, err := cdb.CountAll(ctx, `SELECT count(*) FROM audit_events WHERE tenant_id = $1 AND action = 'bank_transfer.receipt_recorded'`, tenant)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return int64(n)
+	}
+	if n := entries(); n != 0 {
+		t.Fatalf("the receipt that was rolled back left %d audit entries", n)
+	}
 
 	res, err := transfers.Record(ctx, receipt, 1000)
 	if err != nil || res.Duplicate || res.Received != 1000 {
@@ -530,5 +541,13 @@ func TestAReceiptThatFailsHalfwayLeavesNothing(t *testing.T) {
 	}
 	if l, r, sum := rows(); l != 1 || r != 1 || sum != 1000 {
 		t.Fatalf("after the receipt and its repeat: %d ledger rows, %d receipts, %d received; want 1, 1, 1000", l, r, sum)
+	}
+	// The confirmation is in the audit log, once (not for the repeat), with the reference and the amount and no note.
+	var target, detail string
+	if err := cdb.At(tenant).QueryRow(ctx, `SELECT target_id, detail::text FROM audit_events WHERE tenant_id = $1 AND action = 'bank_transfer.receipt_recorded'`, tenant).Scan(&target, &detail); err != nil {
+		t.Fatalf("audit entry of the receipt: %v (entries: %d)", err, entries())
+	}
+	if target != invoice.String() || !strings.Contains(detail, `"TRX-9"`) || !strings.Contains(detail, `"amount_minor": 1000`) || !strings.Contains(detail, `"outstanding_after": 0`) {
+		t.Errorf("bank_transfer.receipt_recorded = %s %s", target, detail)
 	}
 }

@@ -59,11 +59,12 @@ const (
 
 type fakeIdentity struct {
 	plansv1.UnimplementedIdentityServiceServer
-	mu       sync.Mutex
-	revoked  map[string]bool
-	lastUser string // the user id the last account-scoped call carried
-	keys     map[string]string
-	signIns  int
+	mu              sync.Mutex
+	revoked         map[string]bool
+	lastUser        string // the user id the last account-scoped call carried
+	twoFactorResets []*plansv1.ResetUserTwoFactorRequest
+	keys            map[string]string
+	signIns         int
 
 	mem            memberCalls
 	apps           appManageCalls

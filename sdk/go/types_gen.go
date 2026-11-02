@@ -1003,7 +1003,7 @@ type CreatedPaymentLink struct {
 	IdempotencyKey string `json:"idempotency_key"`
 	// The secret part of the link; shown once, empty on a replay
 	Token string `json:"token"`
-	// Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay
+	// Absolute when the deployment has a public address set; empty on a replay
 	URL      string `json:"url"`
 	Replayed bool   `json:"replayed"`
 }
@@ -1765,8 +1765,8 @@ type Invoice struct {
 	CreateTime   *time.Time    `json:"create_time"`
 	FinalizeTime *time.Time    `json:"finalize_time"`
 	Lines        []InvoiceLine `json:"lines"`
-	// Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice
-	// reads fill it.
+	// Payments recorded by hand by the operator (they do not come through a payment provider), oldest first. Only
+	// the single-invoice reads fill it.
 	Payments      []InvoicePayment `json:"payments"`
 	PlanVersionID string           `json:"plan_version_id"`
 	PDFObjectKey  string           `json:"pdf_object_key"`

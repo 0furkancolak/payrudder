@@ -3480,6 +3480,9 @@
         "not_configured": "Este despliegue aún no puede ofrecer el inicio de sesión en dos pasos: no tiene clave de secretos.",
         "required_by_organisation": "Una organización de la que es propietario exige el inicio de sesión en dos pasos, por lo que no puede desactivarlo.",
         "setup_required": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo primero en la página de seguridad."
+      },
+      "user": {
+        "not_found": "Ninguna persona inicia sesión con esa dirección."
       }
     },
     "gateway": {
@@ -5533,7 +5536,19 @@
       "clear": "Quitar los límites propios",
       "save": "Guardar",
       "saved": "Guardado.",
-      "cleared": "Límites propios quitados."
+      "cleared": "Límites propios quitados.",
+      "twoFactor": {
+        "title": "Segundo factor perdido",
+        "hint": "Para una persona que ha perdido tanto su aplicación de autenticación como sus códigos de recuperación. Comprueba primero quién lo pide. Se desactiva su inicio de sesión en dos pasos, se cierran sus sesiones en todas partes, se le envía un correo y el restablecimiento queda en el registro de auditoría con tu motivo.",
+        "email": "Dirección de inicio de sesión de la persona",
+        "reason": "Motivo (se guarda en el registro de auditoría)",
+        "reset": "Desactivar el inicio de sesión en dos pasos",
+        "confirmTitle": "¿Desactivar el inicio de sesión en dos pasos?",
+        "confirmBody": "{email} se desconectará en todas partes y podrá iniciar sesión solo con su contraseña hasta que lo configure de nuevo. Se le envía un correo y el restablecimiento se registra con tu nombre y tu motivo.",
+        "confirm": "Desactivar",
+        "done": "El inicio de sesión en dos pasos de {email} está desactivado. Se le ha enviado un correo.",
+        "nothing": "{email} no tenía el inicio de sesión en dos pasos activado; no se cambió nada."
+      }
     }
   },
   "support": {
@@ -5712,6 +5727,24 @@
       "accepted": "El evento fue aceptado. La lista se pone en verde cuando se cuente, en unos segundos.",
       "duplicate": "Ya se contó un evento con esta clave; no se añadió nada.",
       "rejected": "El evento fue rechazado: {code}. {message}"
+    },
+    "eventErrors": {
+      "UNKNOWN_METER": "Ningún medidor tiene este código. Cree el medidor en la página Medidores, o corrija meter_code.",
+      "UNKNOWN_CUSTOMER": "Ningún cliente tiene este identificador. Cree primero el cliente, o corrija customer_external_id.",
+      "EVENT_TOO_OLD": "El evento tiene más de 35 días. Envíe el consumo poco después de que ocurra; un consumo más antiguo no se puede contar.",
+      "EVENT_IN_FUTURE": "event_time está más de 5 minutos por delante del reloj de Payrudder. Revise el reloj de su servidor y envíe el momento en que ocurrió el consumo.",
+      "INVALID_EVENT_TIME": "Envíe event_time como un instante RFC 3339, por ejemplo 2026-11-03T10:15:00Z.",
+      "INVALID_QUANTITY": "Envíe quantity como un decimal no negativo, en forma de texto como \"1\" o \"1.25\".",
+      "INVALID_QUANTITY_PRECISION": "La cantidad tiene más decimales de los que permite el medidor. Redondéela a la quantity_scale del medidor.",
+      "IDEMPOTENCY_KEY_REQUIRED": "Una clave live debe enviar una idempotency_key con cada evento. Derívela de lo ocurrido (un id de pedido) para que un reintento cuente una sola vez.",
+      "IDEMPOTENCY_KEY_INVALID": "Use de 1 a 128 caracteres: letras, dígitos y _ . : -.",
+      "IDEMPOTENCY_KEY_REUSED": "Esta clave se usó para otro evento. Use una clave nueva para un evento nuevo; reintente el mismo evento con la misma clave y el mismo contenido.",
+      "INVALID_PROPERTIES": "Envíe como máximo 32 propiedades y 4 KiB en total, con valores de texto, e incluya la propiedad que cuenta un medidor UNIQUE.",
+      "INVALID_CORRECTION": "Una corrección necesita un motivo de 1 a 500 caracteres y la clave del evento que corrige (no la suya).",
+      "CORRECTION_UNKNOWN_EVENT": "No se encontró ningún evento con esa clave. Quizá nunca se aceptó, o es más antiguo que el tiempo que se conservan las claves de idempotencia (al menos 45 días).",
+      "CORRECTION_MISMATCH": "Una corrección debe indicar el mismo cliente y el mismo medidor que el evento que corrige.",
+      "CORRECTION_UNSUPPORTED_METER": "Solo se pueden corregir los eventos de medidores SUM y COUNT sin filtro de propiedades.",
+      "CORRECTION_OF_CORRECTION": "El evento es en sí una corrección. Corrija de nuevo el evento original, con la cantidad que debe tener."
     }
   },
   "contracts": {
@@ -6028,6 +6061,20 @@
       "invoice": "Facturas",
       "provider_account": "Cuentas de proveedores",
       "tenant": "Ajustes y estado del inquilino",
+      "price_change": "Cambios de precio",
+      "coupon": "Cupones",
+      "promotion_code": "Códigos promocionales",
+      "routing_rules": "Enrutamiento de pagos",
+      "tax_rates": "Tasas de impuestos",
+      "mail_settings": "Ajustes de correo",
+      "mail_integration": "Proveedor de correo",
+      "go_live": "Salida a producción",
+      "contract": "Contratos",
+      "support": "Soporte",
+      "dunning": "Reclamación de pagos",
+      "invoice_payment": "Pagos registrados a mano",
+      "bank_transfer": "Transferencias bancarias",
+      "user": "Contraseñas e inicio de sesión",
       "two_factor": "Inicio de sesión en dos pasos",
       "sign_in": "Inicio de sesión",
       "account": "Organización"
@@ -6076,10 +6123,62 @@
         "status_changed": "Estado cambiado",
         "settings_updated": "Ajustes cambiados"
       },
+      "price_change": {
+        "scheduled": "Cambio de precio programado",
+        "withdrawn": "Cambio de precio retirado"
+      },
+      "coupon": {
+        "created": "Cupón creado",
+        "deactivated": "Cupón desactivado"
+      },
+      "promotion_code": {
+        "created": "Códigos promocionales creados",
+        "deactivated": "Código promocional desactivado"
+      },
+      "routing_rules": {
+        "changed": "Enrutamiento de pagos modificado"
+      },
+      "tax_rates": {
+        "changed": "Tasas de impuestos modificadas"
+      },
+      "mail_settings": {
+        "changed": "Ajustes de correo modificados"
+      },
+      "mail_integration": {
+        "saved": "Proveedor de correo conectado",
+        "removed": "Proveedor de correo desconectado"
+      },
+      "go_live": {
+        "billing_profile_saved": "Perfil de facturación guardado",
+        "terms_accepted": "Términos aceptados",
+        "activated": "Entorno en producción activado"
+      },
+      "contract": {
+        "version_published": "Versión de contrato publicada",
+        "settings_changed": "Ajustes de contratos modificados"
+      },
+      "support": {
+        "status_changed": "Estado de un ticket de soporte modificado"
+      },
+      "dunning": {
+        "settings_changed": "Ajustes de reclamación modificados"
+      },
+      "invoice_payment": {
+        "recorded": "Pago registrado a mano"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Transferencia bancaria confirmada"
+      },
+      "user": {
+        "password_reset": "Contraseña restablecida",
+        "sign_in_locked": "Inicio de sesión bloqueado"
+      },
       "two_factor": {
         "enabled": "Inicio de sesión en dos pasos activado",
         "disabled": "Inicio de sesión en dos pasos desactivado",
-        "recovery_codes_regenerated": "Códigos de recuperación regenerados"
+        "recovery_codes_replaced": "Códigos de recuperación regenerados",
+        "recovery_code_used": "Código de recuperación usado",
+        "reset_by_operator": "Inicio de sesión en dos pasos restablecido por el soporte"
       }
     }
   }

@@ -332,5 +332,9 @@ WHERE id = @id;
 UPDATE accounts SET require_two_factor = @required WHERE id = @id RETURNING require_two_factor;
 
 -- A correct code of a signed-in person ends the failures counted against their lock (RecordSuccessfulLogin also stamps a sign-in, which this is not).
+-- The second-step challenges a person has open (the operator's reset of the second factor closes them).
+-- name: DeleteLoginChallengesOfUser :exec
+DELETE FROM login_challenges WHERE user_id = $1;
+
 -- name: ResetLoginFailures :exec
 UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1;

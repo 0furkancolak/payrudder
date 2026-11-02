@@ -1282,7 +1282,7 @@ export interface paths {
         };
         /**
          * The tenant's invoice inbox address
-         * @description Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser. Made on first use. `address` is empty until the deployment sets an inbound domain (PAYRUDDER_INBOUND_DOMAIN).
+         * @description Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser. Made on first use. `address` is empty until the deployment has an inbound mail domain.
          */
         get: operations["getExpenseInbox"];
         put?: never;
@@ -2370,7 +2370,7 @@ export interface paths {
         put?: never;
         /**
          * Make a link to the invoice that its customer can open without signing in
-         * @description The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL).
+         * @description The link shows the finalized invoice as a page, and its PDF once it is rendered. It is unguessable (256 random bits; only a hash is kept), works until expires_in_days (default 90, at most 365) or until revoked, and the token is returned once. The page is not indexed or cached, loads nothing from elsewhere, and is available in English, Turkish, German, French, Spanish and Arabic (`?lang=` or the browser's language). The url is absolute when the deployment has a public address set.
          */
         post: operations["createInvoiceLink"];
         /** Make every link to the invoice stop working */
@@ -2993,7 +2993,7 @@ export interface paths {
         };
         /**
          * The tenant's payments (charges and refunds), newest first
-         * @description Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. The operator's `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service does not answer.
+         * @description Reads the tenant's own payment ledger from the payment service and folds it: the rows one provider reference left behind (a charge that was pending and then succeeded) are one payment with its most settled outcome. Amounts are minor-unit strings, each in its own currency; they are never summed across currencies. `truncated` says the newest 1000 ledger rows were all read, so older payments may exist. Provider references and decline details are not part of the answer. `503` when the payment service does not answer.
          */
         get: operations["listPayments"];
         put?: never;
@@ -6100,6 +6100,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/users/two-factor/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn off a person's two-factor sign-in after they lost the device and the recovery codes
+         * @description For a person who cannot sign in because they have neither their authenticator app nor a recovery code. Check who is asking by other means first; Payrudder cannot.
+         *     The secret, the recovery codes and the open second-step challenges are removed, every session of the person ends, the lock from failed sign-ins is cleared, the person
+         *     is mailed (in their language) and the reset is written to the audit log (`two_factor.reset_by_operator`) with your `reason` and name. `was_enabled` is false when
+         *     nothing was on: then nothing is changed, recorded or mailed. An owner of an account that requires two-factor sign-in must set it up again at the next sign-in.
+         */
+        post: operations["adminResetUserTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/status-events": {
         parameters: {
             query?: never;
@@ -7067,7 +7090,7 @@ export interface components {
             /** Format: date-time */
             finalize_time: string | null;
             lines: components["schemas"]["InvoiceLine"][];
-            /** @description Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
+            /** @description Payments recorded by hand by the operator (they do not come through a payment provider), oldest first. Only the single-invoice reads fill it. */
             payments: components["schemas"]["InvoicePayment"][];
             plan_version_id: string;
             pdf_object_key: string;
@@ -8953,6 +8976,18 @@ export interface components {
             organizations: components["schemas"]["OrganizationRow"][];
             next_page_token: string;
             platform: components["schemas"]["PlatformInfo"];
+        };
+        AdminResetUserTwoFactorRequest: {
+            /**
+             * Format: email
+             * @description The person's sign-in address
+             */
+            email: string;
+            /** @description Why; kept in the audit log */
+            reason: string;
+        };
+        AdminResetUserTwoFactorResponse: {
+            was_enabled: boolean;
         };
         AdminSetOrganizationPlanRequest: {
             plan_code?: string;
@@ -12168,7 +12203,7 @@ export interface components {
             idempotency_key: string;
             /** @description The secret part of the link; shown once, empty on a replay */
             token: string;
-            /** @description Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay */
+            /** @description Absolute when the deployment has a public address set; empty on a replay */
             url: string;
             replayed: boolean;
         };
@@ -23703,6 +23738,32 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    adminResetUserTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminResetUserTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminResetUserTwoFactorResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     listTenantStatusEvents: {

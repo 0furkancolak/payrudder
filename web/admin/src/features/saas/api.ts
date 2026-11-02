@@ -87,3 +87,8 @@ export function useClearOverrides() {
     onSuccess: () => queries.invalidateQueries({ queryKey: ["admin", "saas", "organizations"] }),
   });
 }
+
+/** The operator turns off a person's two-factor sign-in after they lost the device and the recovery codes; the reason goes to the audit log. */
+export function useResetTwoFactor() {
+  return useMutation({ mutationFn: (v: { email: string; reason: string }) => unwrap(api.POST("/admin/v1/users/two-factor/reset", { body: v })) });
+}
