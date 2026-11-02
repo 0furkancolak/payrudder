@@ -57,7 +57,6 @@ for (const scheme of schemes) {
       if (!axeSource) continue;
       await page.evaluate(axeSource);
       const result = await page.evaluate(() =>
-        // eslint-disable-next-line no-undef
         axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"] } }),
       );
       for (const v of result.violations) {

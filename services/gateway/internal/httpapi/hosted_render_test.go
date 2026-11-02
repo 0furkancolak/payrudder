@@ -25,7 +25,7 @@ type renderCase struct {
 
 func richBase(lang string, logo bool) pageBase {
 	b := newBase(lang)
-	b.Test, b.SideSeller, b.SideAmount, b.SideNote = true, "Acme & Sons", "1,234.56 USD", b.L["st_open"]
+	b.Test, b.SideSeller, b.SideAmount, b.SideNote = true, "Acme & Sons", b.F.Amount(123456, 2)+" USD", b.L["st_open"]
 	if logo {
 		b.Logo = "/i/token/logo"
 	}
