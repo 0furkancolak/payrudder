@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { marked } from "marked";
 import { parse } from "yaml";
+import { collect, render as renderChangelog } from "./changelog.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -21,6 +22,10 @@ const content = (f) => join(here, "content", f);
  */
 export const GUIDES = [
   { section: "Start", src: content("getting-started.md"), page: "getting-started", title: "Getting started", status: "preview" },
+  { section: "Start", src: content("changelog.md"), page: "changelog", title: "Change log", status: "preview", generate: changelogPage },
+  { section: "Tutorials", src: content("tutorial-usage-billing.md"), page: "tutorial-usage-billing", title: "Usage-based billing, end to end", status: "draft" },
+  { section: "Tutorials", src: content("tutorial-webhooks.md"), page: "tutorial-webhooks", title: "Receive webhooks on your machine", status: "draft", generate: webhookCode },
+  { section: "Tutorials", src: content("tutorial-payments.md"), page: "tutorial-payments", title: "Let a customer pay", status: "draft" },
   { section: "Concepts", src: content("authentication.md"), page: "authentication", title: "Authentication", status: "draft" },
   { section: "Concepts", src: content("usage-metering.md"), page: "usage-metering", title: "Usage metering", status: "draft" },
   { section: "Concepts", src: content("idempotency.md"), page: "idempotency", title: "Idempotency", status: "draft" },
@@ -29,8 +34,10 @@ export const GUIDES = [
   { section: "Concepts", src: docs("19-contracts.md"), page: "contracts", title: "Contracts" },
   { section: "Concepts", src: content("errors.md"), also: [docs("error-keys.md")], page: "errors", title: "Errors", generate: errorCatalogue },
   { section: "Libraries", src: docs("18-sdks.md"), page: "sdks", title: "SDKs" },
+  { section: "Libraries", src: content("cli.md"), page: "cli", title: "Command line", status: "pre-release" },
   { section: "Libraries", src: join(root, "mcp/README.md"), page: "mcp", title: "MCP server", status: "pre-release" },
 ];
+
 
 // ---- what is published, and how finished it is
 
@@ -156,15 +163,16 @@ function curlOf(doc, o, base) {
  */
 export const TABBED = { ingestEvents: ["send", "Send usage events"], createWebhookEndpoint: ["webhook", "Verify a delivery"] };
 const LANG_NAMES = { curl: "curl", typescript: "TypeScript", python: "Python", go: "Go", php: "PHP" };
-function tabsHtml(o, base) {
-  const tabbed = TABBED[o.id];
-  if (!tabbed) return "";
-  const [block, title] = tabbed;
+function tabsFor(block, title, base) {
   const code = LANGS.map((l) => [l, snippets(l, { baseUrl: base, meter: "api_calls", customer: "cus_42", keyHint: "qk_test_" })]);
-  return `<h4>${esc(title)}</h4><div class="tabs">
+  return `${title ? `<h4>${esc(title)}</h4>` : ""}<div class="tabs">
 <div role="tablist" aria-label="Language">${code.map(([l]) => `<button type="button" role="tab" aria-selected="false" data-lang="${l}">${LANG_NAMES[l]}</button>`).join("")}</div>
 ${code.map(([l, c]) => `<div role="tabpanel" data-lang="${l}"><pre><code>${esc(c.install)}</code></pre><pre><code>${esc(c[block])}</code></pre></div>`).join("\n")}
 </div>`;
+}
+function tabsHtml(o, base) {
+  const tabbed = TABBED[o.id];
+  return tabbed ? tabsFor(tabbed[0], tabbed[1], base) : "";
 }
 
 function operationHtml(doc, o, base) {
@@ -318,6 +326,16 @@ export const EVENT_CODES = {
   INVALID_PROPERTIES: "The properties are too many or too large, or a UNIQUE meter's property is missing.",
 };
 
+/** The verification code of a webhook handler in every language, for the tutorial: the same text as the Connect page of the console. */
+async function webhookCode() {
+  return tabsFor("webhook", "", "https://YOUR-API-ADDRESS");
+}
+
+/** The change log: releases (tags) and merged pull requests, read from git at build time. */
+async function changelogPage({ root }) {
+  return renderChangelog(await collect(root));
+}
+
 async function errorCatalogue({ doc, files }) {
   const keys = errorKeys(await readFile(files[0], "utf8")).filter((k) => !OPERATOR_AREAS.includes(k.split(".")[0]));
   const meaning = meaningsOf(JSON.parse(await readFile(join(root, "web/admin/src/locales/en.json"), "utf8")));
@@ -351,6 +369,15 @@ export async function build(outDir = join(here, "dist")) {
     // because the repository is not part of the site.
     let html = marked.parse(md).replace(/<a href="([^"]*)"([^>]*)>([\s\S]*?)<\/a>/g, (m, href, rest, text) => {
       if (/^(https?:|mailto:|#)/.test(href)) return m;
+      // A link to the API reference stays when the page exists.
+      const api = /^api\/([a-z0-9-]+)\.html(#.*)?$/.exec(href);
+      if (api) return api[1] === "index" || groups.includes(api[1]) ? m : text;
+      // A guide that is written for the site (docs-site/content) is linked from the repository's documents by its path, which is valid on GitHub too.
+      const own = /^(?:\.\.\/)+docs-site\/content\/([a-z-]+)\.md(#.*)?$/.exec(href);
+      if (own) {
+        const target = GUIDES.find((x) => x.src.endsWith(`/content/${own[1]}.md`));
+        return target ? `<a href="${target.page}.html${own[2] ?? ""}"${rest}>${text}</a>` : text;
+      }
       const [file, hash] = href.split("#");
       const name = file.split("/").pop() ?? "";
       const known = GUIDES.find((x) => [x.src, ...(x.also ?? [])].some((f) => f.endsWith(`/${name}`)) || x.page === name.replace(/\.html$/, "").replace(/\.md$/, "").replace(/^\d+-/, ""));

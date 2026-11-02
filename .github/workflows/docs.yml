@@ -16,6 +16,12 @@ on:
       - "mcp/README.md"
       - "web/admin/src/features/connect/snippets.ts"
       - "web/admin/src/locales/en.json"
+      # The error page and the command line page are checked against the SDKs' own error types and the program's command list.
+      - "sdk/go/errors.go"
+      - "sdk/go/cmd/payrudder/cli.go"
+      - "sdk/typescript/src/errors.ts"
+      - "sdk/python/src/payrudder/errors.py"
+      - "sdk/php/src/Exception/**"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
@@ -25,6 +31,12 @@ on:
       - "mcp/README.md"
       - "web/admin/src/features/connect/snippets.ts"
       - "web/admin/src/locales/en.json"
+      # The error page and the command line page are checked against the SDKs' own error types and the program's command list.
+      - "sdk/go/errors.go"
+      - "sdk/go/cmd/payrudder/cli.go"
+      - "sdk/typescript/src/errors.ts"
+      - "sdk/python/src/payrudder/errors.py"
+      - "sdk/php/src/Exception/**"
       - ".github/workflows/docs.yml"
 
 permissions:
@@ -41,7 +53,10 @@ jobs:
       run:
         working-directory: docs-site
     steps:
+      # The whole history: the change log page is made from the tags and merged pull requests (a shallow clone would show one commit).
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       # Node 22.18 or newer: the build imports the console's snippets.ts, which Node reads by stripping its types.
       - uses: actions/setup-node@v5
         with:

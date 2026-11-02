@@ -24,6 +24,14 @@ With `/path/to/payrudder` the folder you cloned the repository into:
 
 The console's **Connect your app** page shows these lines with the code to send a first event and to verify a webhook, built from your own meter; a test (`web/admin/src/features/connect/snippets.sdk.test.ts`) compiles that code against the SDKs of this checkout.
 
+## Command line
+
+The Go module also builds `payrudder`, a command line on the Go SDK (`sdk/go/cmd/payrudder`, standard library only): `login`, `events send`, `events tail`, `webhooks listen` and `webhooks trigger ping`, `customers list`, `invoices list`. It is described on the [Command line](../docs-site/content/cli.md) page and has the same pre-release status as the SDKs.
+
+## Versions and releases
+
+All four SDKs and the command line share **one version number** (default, not agreed) and each keeps a `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/) format; everything is under "Unreleased" until the first release). `node scripts/sdk-release.mjs check` verifies that the version is the same in every place it is written, that each SDK has its LICENSE and CHANGELOG and the metadata a registry shows, and that a `0.0.0` package cannot be published (the TypeScript package is `private` while it is `0.0.0`); `bump X.Y.Z` writes a new version everywhere. `.github/workflows/sdk-publish.yml` is the publish path for the four registries (npm, PyPI, Packagist through a split repository, and a Go tag `sdk/go/vX.Y.Z`): it can only be started by hand, is a dry run unless that is switched off, refuses `0.0.0`, and its publishing jobs wait for an approver. Nothing has been published or tagged.
+
 ## One design, four languages
 
 - **One method per operation.** Every `operationId` of [`api/openapi/v1.yaml`](../api/openapi/v1.yaml) under `/v1/*` is a method, named after the `operationId` in the language's usual case, on a resource namespace taken from the first path segment (`customers`, `invoices`, `creditNotes`, …). Arguments: path parameters, the body, the query, then per-call options (idempotency key, timeout, retries, headers).
