@@ -291,6 +291,27 @@ func TestCSVStopsFormulas(t *testing.T) {
 	}
 }
 
+// A person controls more than the summary: the address they signed up with (actor_email), the id a request names (target_id), the request id header. Every text cell of
+// a line is guarded, not only the summary, or a sign-up address that starts with = becomes a formula in the sheet the export is opened in.
+func TestCSVStopsFormulasInEveryTextCell(t *testing.T) {
+	f := `=HYPERLINK("http://x")`
+	r := Row{ID: uuid.New(), CreatedAt: time.Now(), ActorType: f, ActorID: "+" + f, ActorEmail: "@" + f, Action: "-" + f, TargetType: f, TargetID: f, Summary: f,
+		Detail: json.RawMessage(`{"a":1}`), BeforeHash: f, AfterHash: f, SourceIP: f, RequestID: f}
+	rec := CSVRecord(r)
+	for i, cell := range rec {
+		switch CSVHeader[i] {
+		case "id", "create_time", "tenant_id", "account_id", "detail":
+			continue
+		}
+		if !strings.HasPrefix(cell, "'") {
+			t.Errorf("%s = %q: a spreadsheet would run it", CSVHeader[i], cell)
+		}
+	}
+	if rec[11] != `{"a":1}` {
+		t.Errorf("detail = %q: JSON is left as it is", rec[11])
+	}
+}
+
 func TestActorTravelsThroughMetadataAndHeaders(t *testing.T) {
 	want := Actor{Type: ActorAPIKey, ID: "key-1", Email: "", IP: "203.0.113.7", RequestID: "req-9"}
 	out := outgoing(NewContext(context.Background(), want))

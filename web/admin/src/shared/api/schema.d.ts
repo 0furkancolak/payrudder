@@ -9476,7 +9476,7 @@ export interface components {
              * @description Absent when the case is not marked
              */
             handled_time?: string;
-            /** @description Who marked it; absent when it is not marked and for a viewer of the account */
+            /** @description Who marked it; absent when it is not marked, for a viewer of the account, and for an API key that holds no audit:read (the read_only and billing roles) */
             handled_by?: string;
             /**
              * Format: int64

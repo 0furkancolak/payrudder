@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -10,6 +11,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 )
 
 // A fake payments-worker that records the call it got and answers what the test says.
@@ -138,8 +142,11 @@ func TestDisputeNotesNeedTheInvoicesPermission(t *testing.T) {
 	}
 	resp, m := do(t, ts, "GET", "/v1/disputes/12/history", "custom-key", "")
 	events, _ := m["events"].([]any)
-	if resp.StatusCode != 200 || len(events) != 2 || events[0].(map[string]any)["id"] != "7" || events[1].(map[string]any)["note"] != "hello" || events[1].(map[string]any)["actor"] != "bob@example.com" {
+	if resp.StatusCode != 200 || len(events) != 2 || events[0].(map[string]any)["id"] != "7" || events[1].(map[string]any)["note"] != "hello" {
 		t.Fatalf("history: %d %v", resp.StatusCode, m)
+	}
+	if _, told := events[1].(map[string]any)["actor"]; told {
+		t.Errorf("a key without audit:read is told who wrote a note: %v", events[1])
 	}
 	if resp, _ := do(t, ts, "GET", "/v1/disputes/12/history", "audit-key", ""); resp.StatusCode != 403 {
 		t.Errorf("history without invoices:read: %d, want 403", resp.StatusCode)
@@ -148,5 +155,47 @@ func TestDisputeNotesNeedTheInvoicesPermission(t *testing.T) {
 	_ = json.Unmarshal([]byte(`{"id":6,"action":"note","note":"hello","actor":"bob@example.com","create_time":"2026-11-01T10:00:00Z"}`), &e)
 	if v := e.view(true); v.Actor != "" || v.Note != "hello" || !v.Created.Equal(time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)) {
 		t.Errorf("a viewer's view of an event = %+v; want the note without who wrote it", v)
+	}
+}
+
+// Who marked a case, and who wrote a note, is the audit log's kind of fact: it names the seller's colleagues. A viewer of the account is not told, and neither is an API key that
+// holds no audit:read (the read_only and billing roles, a custom key without it); a key that holds it, and a person who is not a viewer, are.
+func TestWhoMarkedACaseIsToldOnlyToWhoMayReadTheAuditLog(t *testing.T) {
+	d := &disputeWorker{status: 200, answer: `{"disputes":[` + workerCase + `],"events":[{"id":7,"action":"handled","actor":"ada@example.com","create_time":"2026-11-02T10:00:00Z"}]}`}
+	ts := disputeGateway(t, d)
+	for _, key := range []string{"read-key", "billing-key", "custom-key"} {
+		_, m := do(t, ts, "GET", "/v1/disputes", key, "")
+		list, _ := m["disputes"].([]any)
+		if len(list) != 1 || list[0].(map[string]any)["handled"] != true {
+			t.Fatalf("%s: the list is %v; want the case and its mark", key, m)
+		}
+		if who, told := list[0].(map[string]any)["handled_by"]; told {
+			t.Errorf("%s is told who marked the case: %v", key, who)
+		}
+	}
+	if _, m := do(t, ts, "GET", "/v1/disputes", "live-key", ""); m["disputes"].([]any)[0].(map[string]any)["handled_by"] != "ada@example.com" {
+		t.Errorf("a caller that is not a key, and not a viewer, is not told who marked the case: %v", m)
+	}
+
+	with := func(p auth.Principal) bool {
+		return showsWho(context.WithValue(context.Background(), principalKey{}, p))
+	}
+	for name, tc := range map[string]struct {
+		p    auth.Principal
+		want bool
+	}{
+		"an owner's session":      {auth.Principal{MemberRole: "owner"}, true},
+		"an administrator":        {auth.Principal{MemberRole: "admin"}, true},
+		"a viewer's session":      {auth.Principal{MemberRole: "viewer"}, false},
+		"the operator":            {auth.Principal{}, true},
+		"an admin key":            {auth.Principal{Role: apikey.RoleAdmin, Permissions: apikey.Permissions}, true},
+		"a custom key with it":    {auth.Principal{Role: apikey.RoleCustom, Permissions: []string{apikey.PermInvoicesRead, apikey.PermAuditRead}}, true},
+		"a read-only key":         {auth.Principal{Role: apikey.RoleReadOnly, Permissions: readOnly()}, false},
+		"a billing key":           {auth.Principal{Role: apikey.RoleBilling, Permissions: billing()}, false},
+		"a custom key without it": {auth.Principal{Role: apikey.RoleCustom, Permissions: []string{apikey.PermInvoicesRead}}, false},
+	} {
+		if got := with(tc.p); got != tc.want {
+			t.Errorf("%s: told = %v, want %v", name, got, tc.want)
+		}
 	}
 }
