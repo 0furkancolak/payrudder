@@ -190,3 +190,23 @@ func TestPeriodValidation(t *testing.T) {
 		}
 	}
 }
+
+// A credit note gives its tax back: 120 paid with 20 tax and 120 credited with 20 tax is nothing earned and no tax kept, not -20 net (docs/code-quality/billing-svc-status.md).
+func TestCreditNotesReverseTheirTax(t *testing.T) {
+	income := []IncomeRow{{Bucket: day("2026-10-01"), Currency: "EUR", Invoices: 1, Gross: 12000, Tax: 2000}}
+	refunds := []RefundRow{{Bucket: day("2026-10-09"), Currency: "EUR", Refunded: 12000, Tax: 2000}}
+	c := Build(day("2026-10-01"), day("2026-10-31"), GranMonth, income, refunds, nil)[0]
+	if c.Gross != 12000 || c.Tax != 0 || c.Refunds != 12000 || c.Net != 0 {
+		t.Fatalf("a taxed invoice credited in full: %+v", c)
+	}
+	// Credited in a later period than it was paid: that period's tax figure goes down and its net is the net earned back.
+	later := Build(day("2026-11-01"), day("2026-11-30"), GranMonth, nil, []RefundRow{{Bucket: day("2026-11-09"), Currency: "EUR", Refunded: 6000, Tax: 1000}}, nil)[0]
+	if later.Tax != -1000 || later.Refunds != 6000 || later.Net != -5000 {
+		t.Fatalf("a credit note of a later period: %+v", later)
+	}
+	// A refund without a tax part (a void's, or a note from before notes carried one) is as before.
+	plain := Build(day("2026-10-01"), day("2026-10-31"), GranMonth, income, []RefundRow{{Bucket: day("2026-10-09"), Currency: "EUR", Refunded: 12000}}, nil)[0]
+	if plain.Tax != 2000 || plain.Net != -2000 {
+		t.Fatalf("a refund with no tax part: %+v", plain)
+	}
+}

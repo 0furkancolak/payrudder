@@ -20,6 +20,7 @@ final class PublishPlanVersionRequest implements RequestBody
      * @param list<PriceInput>|null $prices
      * @param list<EntitlementInput>|null $entitlements
      * @param int|null $trialDays
+     * @param bool|null $prorateAfterTrial
      */
     public function __construct(
         public readonly ?int $baseFeeMinor = null,
@@ -27,6 +28,7 @@ final class PublishPlanVersionRequest implements RequestBody
         public readonly ?array $prices = null,
         public readonly ?array $entitlements = null,
         public readonly ?int $trialDays = null,
+        public readonly ?bool $prorateAfterTrial = null,
     ) {}
 
     /**
@@ -40,6 +42,7 @@ final class PublishPlanVersionRequest implements RequestBody
             'prices' => Cast::wire($this->prices),
             'entitlements' => Cast::wire($this->entitlements),
             'trial_days' => $this->trialDays,
+            'prorate_after_trial' => $this->prorateAfterTrial,
         ]);
     }
 }

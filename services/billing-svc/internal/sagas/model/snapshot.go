@@ -11,6 +11,11 @@ import (
 // Snapshot is what the saga's commands need about the customer and the tenant, frozen when the draft was created.
 type Snapshot struct {
 	CustomerExternalID string `json:"customer_external_id"`
+	// TimeZone is the tenant's IANA time zone when the draft was made: the zone whose calendar dates the invoice (its number's year, the dates printed on it). Empty on
+	// a draft made before it was frozen, which is dated by UTC as it always was.
+	TimeZone string `json:"time_zone,omitempty"`
+	// CreditSurplusMinor is what the lines of a regular invoice came to below zero: the invoice's total is 0 and this was added to the customer's credit balance instead.
+	CreditSurplusMinor int64  `json:"credit_surplus_minor,omitempty"`
 	CustomerName       string `json:"customer_name"`
 	CustomerEmail      string `json:"customer_email"`
 	// CustomerLocale is the language of the customer (en, tr, de, fr, es, ar) and CustomerType "individual" or "business", as the customer had them when the draft was made; empty for none.

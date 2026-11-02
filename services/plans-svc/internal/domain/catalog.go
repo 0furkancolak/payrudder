@@ -316,14 +316,17 @@ func ValidateEntitlement(t EntitlementTerms, scale int, field string, v *Violati
 type PlanVersionInput struct {
 	BaseFeeMinor int64
 	TrialDays    int32
-	Prices       []StoredPrice
-	Entitlements []StoredEntitlement
+	// ProrateAfterTrial: a trial that ends inside a billing period charges the first period from the trial's end (docs/code-quality/billing-svc-status.md). A request that
+	// does not say is true: the default of a new version, not agreed.
+	ProrateAfterTrial bool
+	Prices            []StoredPrice
+	Entitlements      []StoredEntitlement
 }
 
 // ValidatePlanVersion checks PublishPlanVersion. scales maps each known meter code to its quantity_scale.
 func ValidatePlanVersion(req *plansv1.PublishPlanVersionRequest, scales map[string]int) (PlanVersionInput, error) {
 	var v Violations
-	in := PlanVersionInput{BaseFeeMinor: req.GetBaseFeeMinor(), TrialDays: req.GetTrialDays()}
+	in := PlanVersionInput{BaseFeeMinor: req.GetBaseFeeMinor(), TrialDays: req.GetTrialDays(), ProrateAfterTrial: req.ProrateAfterTrial == nil || req.GetProrateAfterTrial()}
 	if in.BaseFeeMinor < 0 {
 		v.Add("base_fee_minor", "must be ≥ 0")
 	}

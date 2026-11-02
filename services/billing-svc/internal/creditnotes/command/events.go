@@ -24,7 +24,7 @@ func creditNoteEvent(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, typ, ke
 	}
 	data := map[string]any{
 		"credit_note_id": cn.ID.String(), "number": cn.Number, "invoice_id": cn.InvoiceID.String(), "invoice_number": cn.InvoiceNumber, "customer_id": cn.CustomerID.String(),
-		"customer_external_id": external, "currency": cn.Currency, "total_minor": fmt.Sprint(cn.TotalMinor), "reason": cn.Reason, "disposition": model.Disposition(cn.Refund),
+		"customer_external_id": external, "currency": cn.Currency, "total_minor": fmt.Sprint(cn.TotalMinor), "tax_minor": fmt.Sprint(cn.TaxMinor), "reason": cn.Reason, "disposition": model.Disposition(cn.Refund),
 	}
 	if cn.Refund {
 		data["refund_state"] = cn.RefundState
@@ -48,7 +48,7 @@ func (c *Commands) einvoiceCreditNote(ctx context.Context, tx pgx.Tx, tenantID u
 	if orig.Status != einvoicemodel.Pending && orig.Status != einvoicemodel.Issued {
 		return nil
 	}
-	cmd, on, err := c.cfg.Engine.CreditNoteSnapshot(ctx, tx, tenantID, cn.InvoiceID, cn.ID, cn.Number, cn.TotalMinor, cn.CreatedAt)
+	cmd, on, err := c.cfg.Engine.CreditNoteSnapshot(ctx, tx, tenantID, cn.InvoiceID, cn.ID, cn.Number, cn.TotalMinor, cn.TaxMinor, cn.CreatedAt)
 	if err != nil {
 		return err
 	}

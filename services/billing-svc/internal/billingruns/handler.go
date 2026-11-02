@@ -80,7 +80,7 @@ func (h *Handler) GetUpcomingInvoice(ctx context.Context, req *billingv1.GetUpco
 	}
 	out := &billingv1.UpcomingInvoice{
 		Estimate: true, CustomerExternalId: req.GetCustomerExternalId(), PeriodId: u.PeriodID, PeriodStart: timestamppb.New(u.Start), PeriodEnd: timestamppb.New(u.End),
-		Currency: u.Currency, SubtotalMinor: u.Subtotal, TaxMinor: u.Tax, CreditMinor: u.Credit, TotalMinor: u.Total, AsOf: timestamppb.New(u.AsOf), HasInvoice: u.Has,
+		Currency: u.Currency, SubtotalMinor: u.Subtotal, TaxMinor: u.Tax, CreditMinor: u.Credit, TotalMinor: u.Total, CreditSurplusMinor: u.Surplus, AsOf: timestamppb.New(u.AsOf), HasInvoice: u.Has,
 	}
 	for i, l := range u.Lines {
 		line := &billingv1.InvoiceLine{LineNo: int32(i + 1), Kind: string(l.Kind), MeterCode: l.MeterCode, OriginPeriodId: l.OriginPeriod, AmountMinor: l.AmountMinor, Description: l.Description} //nolint:gosec // a few lines

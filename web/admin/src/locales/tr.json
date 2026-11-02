@@ -698,7 +698,8 @@
         "estimate": "Tahmin",
         "period": "Dönem {period}",
         "none": "Henüz faturalanacak bir şey yok: bu müşterinin bu dönemde aboneliği ve faturalanacak gecikmiş kullanımı yok.",
-        "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir."
+        "note": "{when} itibarıyla bir tahmin; gerçek fatura ile aynı yöntemle hesaplanır. Dönem kapanana kadar her olayla değişir; sonradan yapılan plan değişikliği, kupon veya vergi oranı da değiştirebilir.",
+        "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklenirdi: kalemlerin toplamı sıfırın altında."
       }
     },
     "packages": {
@@ -847,7 +848,12 @@
           "not_changeable": "bu yolla taşınamaz",
           "customer_blocked": "müşteri engelli"
         }
-      }
+      },
+      "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
+      "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
+      "firstPeriod": "Denemeden sonraki ilk dönem",
+      "firstPeriodProrated": "Denemenin bitiminden itibaren",
+      "firstPeriodWhole": "Dönemin tamamı"
     },
     "subscriptions": {
       "new": "Yeni abonelik",
@@ -1299,7 +1305,8 @@
       "retryRefund": "İadeyi yeniden dene",
       "new": "Yeni alacak dekontu",
       "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider.",
-      "allWhere": "Tümü"
+      "allWhere": "Tümü",
+      "taxGiven": "İade edilen vergi"
     },
     "webhooks": {
       "title": "Webhooklar",
@@ -4091,7 +4098,8 @@
         "service": "Hizmet dönemi",
         "quantity": "Miktar",
         "amount": "Tutar",
-        "total": "Toplam"
+        "total": "Toplam",
+        "creditSurplus": "{amount}, müşterinin kredi bakiyesine eklendi: kalemlerin toplamı sıfırın altındaydı ve bir faturadan negatif toplam tahsil edilmez."
       },
       "payments": {
         "title": "Ödemeler",

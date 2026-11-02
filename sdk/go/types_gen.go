@@ -32,7 +32,8 @@ type AccountingCurrency struct {
 	Currency string `json:"currency"`
 	// Invoices paid in the period, tax included
 	GrossIncomeMinor Int64 `json:"gross_income_minor"`
-	// The tax lines of those invoices
+	// The tax lines of those invoices, less the tax that credit notes issued in the period gave back (it is
+	// negative in a period that gave back more than it collected)
 	TaxMinor Int64 `json:"tax_minor"`
 	// Credit notes against paid invoices plus invoices refunded in full
 	RefundsMinor Int64 `json:"refunds_minor"`
@@ -1060,15 +1061,19 @@ type CreditLot struct {
 type CreditNote struct {
 	ID string `json:"id"`
 	// CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox)
-	Number             string     `json:"number"`
-	InvoiceID          string     `json:"invoice_id"`
-	InvoiceNumber      string     `json:"invoice_number"`
-	CustomerID         string     `json:"customer_id"`
-	CustomerExternalID string     `json:"customer_external_id"`
-	Currency           string     `json:"currency"`
-	TotalMinor         Int64      `json:"total_minor"`
-	Reason             string     `json:"reason"`
-	CreateTime         *time.Time `json:"create_time"`
+	Number             string `json:"number"`
+	InvoiceID          string `json:"invoice_id"`
+	InvoiceNumber      string `json:"invoice_number"`
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	Currency           string `json:"currency"`
+	TotalMinor         Int64  `json:"total_minor"`
+	// The part of total_minor that is the invoice's tax given back: the note's share of the invoice's total taken
+	// from the invoice's tax, so the notes of an invoice give back its tax exactly. 0 for an untaxed invoice and
+	// for a note made before this field existed
+	TaxMinor   Int64      `json:"tax_minor"`
+	Reason     string     `json:"reason"`
+	CreateTime *time.Time `json:"create_time"`
 	// Where the amount went: the credit balance, or back to the card. One of: CREDIT_NOTE_DISPOSITION_CREDIT,
 	// CREDIT_NOTE_DISPOSITION_REFUND.
 	Disposition string `json:"disposition"`
@@ -1750,6 +1755,10 @@ type Invoice struct {
 	Payments      []InvoicePayment `json:"payments"`
 	PlanVersionID string           `json:"plan_version_id"`
 	PDFObjectKey  string           `json:"pdf_object_key"`
+	// What the lines came to below zero (late-usage corrections larger than everything else on the invoice). The
+	// total is never negative, so this was added to the customer's credit balance instead, once per invoice, and
+	// their next invoices use it. 0 for every other invoice
+	CreditSurplusMinor Int64 `json:"credit_surplus_minor"`
 }
 
 // InvoiceLine is an object of the API; see components.schemas.InvoiceLine in api/openapi/v1.yaml.
@@ -2096,6 +2105,10 @@ type PlanVersion struct {
 	PublishTime  *time.Time    `json:"publish_time"`
 	// The trial a new subscription to this version gets unless its request says otherwise; 0 is none
 	TrialDays int `json:"trial_days"`
+	// When a trial ends inside a billing period, the fixed fee of that first period is charged from the trial's end
+	// to the period's end instead of in full. False for a version published before the rule existed (it charged the
+	// whole period and keeps doing so)
+	ProrateAfterTrial bool `json:"prorate_after_trial"`
 	// Fixed fees other than the tenant currency's monthly one, per currency and interval
 	Fees []CurrencyFee `json:"fees"`
 }
@@ -2371,6 +2384,10 @@ type PublishPlanVersionRequest struct {
 	Entitlements []EntitlementInput `json:"entitlements,omitempty"`
 	// The trial a new subscription to this version gets unless its request says otherwise; 0 is none
 	TrialDays *int `json:"trial_days,omitempty"`
+	// Left out: true. When a trial ends inside a billing period, charge the first period from the trial's end to
+	// the period's end instead of the whole fee; false charges the whole fee as versions published before this rule
+	// do
+	ProrateAfterTrial *bool `json:"prorate_after_trial,omitempty"`
 }
 
 // RecordContractAcceptanceRequest is the request body of RecordContractAcceptance.
@@ -2690,6 +2707,9 @@ type UpcomingInvoice struct {
 	CreditMinor Int64 `json:"credit_minor"`
 	// What would be charged; never negative
 	TotalMinor Int64 `json:"total_minor"`
+	// What the lines come to below zero, which the real invoice would add to the customer's credit balance instead
+	// of charging a negative total; 0 normally
+	CreditSurplusMinor Int64 `json:"credit_surplus_minor"`
 	// The clock of the estimate
 	AsOf time.Time `json:"as_of"`
 	// False when the customer has no subscription in the period and no late usage to bill

@@ -34,6 +34,7 @@ func (e *Engine) invoiceSnapshot(s *saga, lines []sqlc.ListInvoiceLinesForSnapsh
 		Locale: s.Snap.CustomerLocale, DefaultLocale: s.Snap.DefaultLocale, CustomerType: s.Snap.CustomerType,
 		SellerTaxId: s.Snap.SellerTaxID, SellerTaxOffice: s.Snap.SellerTaxOffice, SellerCountry: s.Snap.SellerCountry,
 		CustomerTaxId: s.Snap.CustomerTaxID, CustomerTaxOffice: s.Snap.CustomerTaxOffice, CustomerCountry: s.Snap.CustomerCountry,
+		TimeZone: s.Snap.TimeZone, CreditSurplusMinor: s.Snap.CreditSurplusMinor,
 	}
 	if in := s.Snap.Instructions(s.Number, s.InvoiceID); in != nil {
 		snap.PaymentInstructions = &commandsv1.PaymentInstructions{BankName: in.BankName, AccountHolder: in.AccountHolder, Iban: in.IBAN, Bic: in.BIC, Reference: in.Reference}

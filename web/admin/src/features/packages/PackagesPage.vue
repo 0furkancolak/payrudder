@@ -75,6 +75,8 @@ const code = ref("");
 const name = ref("");
 const fee = ref("0");
 const trialDays = ref<string | number>("");
+const prorateAfterTrial = ref(true);
+const hasTrial = computed(() => Number(trialDays.value) > 0);
 const freeTier = ref(false);
 const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const prices = ref<PriceDraft[]>([]);
@@ -88,6 +90,7 @@ watch(creating, (v) => {
     code.value = name.value = formError.value = "";
     fee.value = "0";
     trialDays.value = "";
+    prorateAfterTrial.value = true;
     freeTier.value = false;
     extra.value = [];
     prices.value = [];
@@ -144,7 +147,7 @@ function submit() {
     formError.value = t("billing.packages.freeNeedsLimit");
     return;
   }
-  create.mutate({ code: code.value.trim(), name: name.value.trim(), baseFeeMinor: base, fees, ...usage, ...(trial > 0 ? { trialDays: trial } : {}) }, { onSuccess: () => (creating.value = false) });
+  create.mutate({ code: code.value.trim(), name: name.value.trim(), baseFeeMinor: base, fees, ...usage, ...(trial > 0 ? { trialDays: trial, prorateAfterTrial: prorateAfterTrial.value } : {}) }, { onSuccess: () => (creating.value = false) });
 }
 </script>
 
@@ -168,6 +171,7 @@ function submit() {
             <Input v-model="trialDays" type="number" :aria-label="t('billing.packages.trialDays')" :placeholder="t('billing.packages.trialDays')" data-testid="package-trial-days" />
             <p class="text-muted-foreground text-xs">{{ t("billing.packages.trialHelp") }}</p>
           </div>
+          <label v-if="hasTrial" class="flex items-start gap-2 text-sm"><Checkbox v-model="prorateAfterTrial" class="mt-0.5" data-testid="package-prorate-after-trial" :aria-label="t('billing.packages.prorateAfterTrial')" /><span>{{ t("billing.packages.prorateAfterTrial") }}<span class="text-muted-foreground block text-xs">{{ t("billing.packages.prorateAfterTrialHelp") }}</span></span></label>
           <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[7rem_1fr_auto] gap-2">
             <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
             <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
@@ -300,6 +304,10 @@ function submit() {
         <dd class="text-end text-lg font-semibold tabular-nums">{{ current.version ? formatMinor(current.version.base_fee_minor, tenantCurrency, locale) : "—" }}</dd>
         <dt class="text-muted-foreground">{{ t("billing.packages.trialColumn") }}</dt>
         <dd class="text-end">{{ (current.version?.trial_days ?? 0) > 0 ? t("billing.packages.trialDaysValue", { n: current.version?.trial_days ?? 0 }) : t("billing.packages.noTrial") }}</dd>
+        <template v-if="(current.version?.trial_days ?? 0) > 0">
+          <dt class="text-muted-foreground">{{ t("billing.packages.firstPeriod") }}</dt>
+          <dd class="text-end" data-testid="package-first-period">{{ current.version?.prorate_after_trial ? t("billing.packages.firstPeriodProrated") : t("billing.packages.firstPeriodWhole") }}</dd>
+        </template>
         <dt class="text-muted-foreground">{{ t("billing.packages.published") }}</dt>
         <dd class="text-end">{{ fmt.date(current.version?.publish_time, "day", "—") }}</dd>
         <dt class="text-muted-foreground">{{ t("billing.packages.otherFees") }}</dt>

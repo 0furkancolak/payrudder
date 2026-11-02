@@ -147,7 +147,7 @@ func Summary(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p Summa
 			return err
 		}
 		for _, r := range rf {
-			refunds = append(refunds, RefundRow{Bucket: model.FromPG(r.Bucket), Currency: r.Currency, Refunded: r.RefundedMinor})
+			refunds = append(refunds, RefundRow{Bucket: model.FromPG(r.Bucket), Currency: r.Currency, Refunded: r.RefundedMinor, Tax: r.RefundedTaxMinor})
 		}
 		ex, err := q.ExpensesInWindow(ctx, sqlc.ExpensesInWindowParams{TenantID: tenantID, AppID: appID, FromDate: model.ToPG(from), ToDate: model.ToPG(to)})
 		if err != nil {

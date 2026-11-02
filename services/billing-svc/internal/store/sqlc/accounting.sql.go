@@ -150,15 +150,16 @@ const accountingRefunds = `-- name: AccountingRefunds :many
 SELECT (CASE WHEN $1::boolean THEN date_trunc('month', r.at AT TIME ZONE 'UTC') ELSE date_trunc('day', r.at AT TIME ZONE 'UTC') END)::date AS bucket,
        r.currency::text AS currency,
        count(*)::bigint AS entries,
-       COALESCE(sum(r.amount_minor), 0)::bigint AS refunded_minor
+       COALESCE(sum(r.amount_minor), 0)::bigint AS refunded_minor,
+       COALESCE(sum(r.tax_minor), 0)::bigint AS refunded_tax_minor
 FROM (
-  SELECT c.created_at AS at, c.currency, c.total_minor AS amount_minor
+  SELECT c.created_at AS at, c.currency, c.total_minor AS amount_minor, c.tax_minor
   FROM credit_notes c
   WHERE c.tenant_id = $2 AND c.created_at >= $3::timestamptz AND c.created_at < $4::timestamptz
     AND EXISTS (SELECT 1 FROM invoice_sagas s JOIN saga_events e ON e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = 'PAID'
                 WHERE s.tenant_id = c.tenant_id AND s.invoice_id = c.invoice_id)
   UNION ALL
-  SELECT x.at, i.currency, i.total_minor - COALESCE(n.credited_minor, 0) - COALESCE(h.hand_minor, 0)
+  SELECT x.at, i.currency, i.total_minor - COALESCE(n.credited_minor, 0) - COALESCE(h.hand_minor, 0), 0::bigint
   FROM (SELECT DISTINCT ON (s.invoice_id) s.invoice_id, e.at
         FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
         WHERE e.tenant_id = $2 AND e.to_state = 'REFUNDED' AND e.at >= $3::timestamptz AND e.at < $4::timestamptz
@@ -167,7 +168,7 @@ FROM (
   LEFT JOIN LATERAL (SELECT sum(c.total_minor) AS credited_minor FROM credit_notes c WHERE c.tenant_id = i.tenant_id AND c.invoice_id = i.id) n ON true
   LEFT JOIN LATERAL (SELECT sum(b.amount_minor) AS hand_minor FROM credit_balances b WHERE b.tenant_id = i.tenant_id AND b.source_invoice_id = i.id) h ON true
   UNION ALL
-  SELECT b.created_at, b.currency, b.amount_minor
+  SELECT b.created_at, b.currency, b.amount_minor, 0::bigint
   FROM credit_balances b
   WHERE b.tenant_id = $2 AND b.source_invoice_id IS NOT NULL AND b.created_at >= $3::timestamptz AND b.created_at < $4::timestamptz
     AND EXISTS (SELECT 1 FROM invoice_sagas s JOIN saga_events e ON e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = 'PAID'
@@ -185,10 +186,11 @@ type AccountingRefundsParams struct {
 }
 
 type AccountingRefundsRow struct {
-	Bucket        pgtype.Date
-	Currency      string
-	Entries       int64
-	RefundedMinor int64
+	Bucket           pgtype.Date
+	Currency         string
+	Entries          int64
+	RefundedMinor    int64
+	RefundedTaxMinor int64
 }
 
 // Refunds: a credit note against an invoice that was paid, on the day it was issued; the card part of a paid invoice that was voided, on the day the refund happened (what the
@@ -213,6 +215,7 @@ func (q *Queries) AccountingRefunds(ctx context.Context, arg AccountingRefundsPa
 			&i.Currency,
 			&i.Entries,
 			&i.RefundedMinor,
+			&i.RefundedTaxMinor,
 		); err != nil {
 			return nil, err
 		}

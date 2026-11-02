@@ -18,7 +18,7 @@ export interface AccountingCurrency {
   currency: string;
   /** Invoices paid in the period, tax included */
   gross_income_minor: Int64;
-  /** The tax lines of those invoices */
+  /** The tax lines of those invoices, less the tax that credit notes issued in the period gave back (it is negative in a period that gave back more than it collected) */
   tax_minor: Int64;
   /** Credit notes against paid invoices plus invoices refunded in full */
   refunds_minor: Int64;
@@ -1022,6 +1022,8 @@ export interface CreditNote {
   customer_external_id: string;
   currency: string;
   total_minor: Int64;
+  /** The part of total_minor that is the invoice's tax given back: the note's share of the invoice's total taken from the invoice's tax, so the notes of an invoice give back its tax exactly. 0 for an untaxed invoice and for a note made before this field existed */
+  tax_minor: Int64;
   reason: string;
   create_time: string | null;
   /** Where the amount went: the credit balance, or back to the card */
@@ -1793,6 +1795,8 @@ export interface Invoice {
   payments: Array<InvoicePayment>;
   plan_version_id: string;
   pdf_object_key: string;
+  /** What the lines came to below zero (late-usage corrections larger than everything else on the invoice). The total is never negative, so this was added to the customer's credit balance instead, once per invoice, and their next invoices use it. 0 for every other invoice */
+  credit_surplus_minor: Int64;
 }
 
 export interface InvoiceLine {
@@ -2270,6 +2274,8 @@ export interface PlanVersion {
   publish_time: string | null;
   /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
   trial_days: number;
+  /** When a trial ends inside a billing period, the fixed fee of that first period is charged from the trial's end to the period's end instead of in full. False for a version published before the rule existed (it charged the whole period and keeps doing so) */
+  prorate_after_trial: boolean;
   /** Fixed fees other than the tenant currency's monthly one, per currency and interval */
   fees: Array<CurrencyFee>;
 }
@@ -2565,6 +2571,8 @@ export interface PublishPlanVersionRequest {
   entitlements?: Array<EntitlementInput>;
   /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
   trial_days?: number;
+  /** Left out: true. When a trial ends inside a billing period, charge the first period from the trial's end to the period's end instead of the whole fee; false charges the whole fee as versions published before this rule do */
+  prorate_after_trial?: boolean;
 }
 
 export interface PublishPlanVersionRequestParams {
@@ -2575,6 +2583,8 @@ export interface PublishPlanVersionRequestParams {
   entitlements?: Array<EntitlementInput>;
   /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
   trial_days?: number;
+  /** Left out: true. When a trial ends inside a billing period, charge the first period from the trial's end to the period's end instead of the whole fee; false charges the whole fee as versions published before this rule do */
+  prorate_after_trial?: boolean;
 }
 
 /**
@@ -2872,6 +2882,8 @@ export interface UpcomingInvoice {
   credit_minor: Int64;
   /** What would be charged; never negative */
   total_minor: Int64;
+  /** What the lines come to below zero, which the real invoice would add to the customer's credit balance instead of charging a negative total; 0 normally */
+  credit_surplus_minor: Int64;
   /** The clock of the estimate */
   as_of: string;
   /** False when the customer has no subscription in the period and no late usage to bill */

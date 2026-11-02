@@ -13,7 +13,7 @@ import { StatusPill, toneOf } from "@/shared/ui/status-pill";
  * period and the day it was issued, and the button for the PDF. The `pills` slot adds more status words beside the invoice's own (the operator's saga state).
  */
 defineProps<{
-  inv: { kind?: string; number?: string; total_minor?: string; currency?: string; status?: string; customer_external_id?: string; period_id?: string; finalize_time?: string | null; create_time?: string | null };
+  inv: { kind?: string; number?: string; total_minor?: string; credit_surplus_minor?: string; currency?: string; status?: string; customer_external_id?: string; period_id?: string; finalize_time?: string | null; create_time?: string | null };
   pdfPending: boolean;
   pdfError?: unknown;
 }>();
@@ -28,6 +28,7 @@ const fmt = useFormat();
       <p class="text-muted-foreground text-sm">{{ label(t, te, "invoiceKind", inv.kind) }}</p>
       <p class="sr-only" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</p>
       <p class="text-4xl font-semibold tracking-tight tabular-nums" data-testid="invoice-total">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</p>
+      <p v-if="Number(inv.credit_surplus_minor) > 0" class="text-muted-foreground max-w-prose text-sm" data-testid="invoice-surplus">{{ t("product.billing.invoice.creditSurplus", { amount: formatMinor(inv.credit_surplus_minor, inv.currency, locale) }) }}</p>
       <div class="mt-1 flex flex-wrap gap-2">
         <StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill>
         <slot name="pills" />

@@ -167,7 +167,11 @@ func (c *Commands) rerateCustomer(ctx context.Context, rp *reratePass, cid strin
 	if code != rp.planCode {
 		return false, nil // another plan: not what this job re-prices
 	}
-	deltas, total, err := correctionDeltas(rp.target, rp.usage[cid], rp.billed[cid], rp.meters, inputs.FeeWaived(sub, rp.start, rp.end))
+	target, err := targetFor(rp.target, sub, rp.start, rp.end)
+	if err != nil {
+		return true, err
+	}
+	deltas, total, err := correctionDeltas(target, rp.usage[cid], rp.billed[cid], rp.meters, inputs.FeeWaived(sub, rp.start, rp.end))
 	if err != nil {
 		return true, err
 	}

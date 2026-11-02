@@ -4,14 +4,16 @@
 -- name: GetInvoice :one
 SELECT i.id, i.customer_id, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, i.period_id, i.kind,
        COALESCE(i.number, '')::text AS number, i.plan_version_id, i.currency, i.subtotal_minor, i.total_minor, i.status,
-       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at
+       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at,
+       COALESCE(i.snapshot->>'credit_surplus_minor', '0')::bigint AS credit_surplus_minor
 FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 WHERE i.id = @id;
 
 -- name: ListInvoices :many
 SELECT i.id, i.customer_id, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, i.period_id, i.kind,
        COALESCE(i.number, '')::text AS number, i.plan_version_id, i.currency, i.subtotal_minor, i.total_minor, i.status,
-       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at
+       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at,
+       COALESCE(i.snapshot->>'credit_surplus_minor', '0')::bigint AS credit_surplus_minor
 FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR i.customer_id = sqlc.narg('customer_id'))
   AND (sqlc.narg('period_id')::text IS NULL OR i.period_id = sqlc.narg('period_id'))
@@ -65,7 +67,7 @@ WHERE inv.tenant_id = @tenant_id AND inv.id = (SELECT s.invoice_id FROM invoice_
 
 -- name: LockInvoiceForFinalize :one
 SELECT status, (snapshot->>'environment')::text AS environment, currency, period_id, total_minor, customer_id,
-       COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id
+       COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, COALESCE(snapshot->>'time_zone', '')::text AS time_zone
 FROM invoices WHERE tenant_id = @tenant_id AND id = @id FOR UPDATE;
 
 -- name: EnsureInvoiceNumberSeq :exec

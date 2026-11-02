@@ -698,7 +698,8 @@
         "estimate": "Estimate",
         "period": "Period {period}",
         "none": "Nothing to invoice yet: this customer has no subscription in the current period and no late usage to bill.",
-        "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it."
+        "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it.",
+        "creditSurplus": "{amount} would be added to the customer's credit balance: the lines come to less than nothing."
       }
     },
     "packages": {
@@ -847,7 +848,12 @@
           "not_changeable": "cannot be moved this way",
           "customer_blocked": "customer is blocked"
         }
-      }
+      },
+      "prorateAfterTrial": "Charge the first period from the end of the trial",
+      "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",
+      "firstPeriod": "First period after the trial",
+      "firstPeriodProrated": "From the end of the trial",
+      "firstPeriodWhole": "The whole period"
     },
     "subscriptions": {
       "new": "New subscription",
@@ -1299,7 +1305,8 @@
       "retryRefund": "Retry refund",
       "new": "New credit note",
       "hint": "Credits a paid invoice in full or in part. The credit goes to the customer's balance, or back to the card.",
-      "allWhere": "Anywhere"
+      "allWhere": "Anywhere",
+      "taxGiven": "Tax given back"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -4091,7 +4098,8 @@
         "service": "Service period",
         "quantity": "Quantity",
         "amount": "Amount",
-        "total": "Total"
+        "total": "Total",
+        "creditSurplus": "{amount} was added to the customer's credit balance: the lines came to less than nothing, and an invoice is never charged a negative total."
       },
       "payments": {
         "title": "Payments",

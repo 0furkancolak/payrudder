@@ -128,6 +128,10 @@ const current = table.row;
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="credit-note-detail">
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.amount") }}</dt>
       <dd class="text-end text-lg font-semibold tabular-nums">{{ formatMinor(current.total_minor, current.currency, locale) }}</dd>
+      <template v-if="Number(current.tax_minor) > 0">
+        <dt class="text-muted-foreground">{{ t("billing.creditNotes.taxGiven") }}</dt>
+        <dd class="text-end tabular-nums" data-testid="credit-note-tax">{{ formatMinor(current.tax_minor, current.currency, locale) }}</dd>
+      </template>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.invoice") }}</dt>
       <dd class="mono text-end"><PeekInvoice v-if="current.invoice_id" :id="current.invoice_id" :tenant-id="tenantId" class="hover:underline">{{ current.invoice_number || current.invoice_id.slice(0, 8) }}</PeekInvoice><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.customer") }}</dt>
