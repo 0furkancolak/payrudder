@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
+	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -295,9 +296,9 @@ func testSupportDesk(t *testing.T) {
 		}
 	})
 
-	t.Run("every change is in the history, in order, with who made it; both sides read it", func(t *testing.T) {
+	t.Run("every change is in the history, in order, with who made it; the person reads status and priority, the operator also the assignee", func(t *testing.T) {
 		type line struct{ kind, actorKind, actor, from, to string }
-		want := []line{
+		all := []line{
 			{"status", "operator", "Sam", "open", "pending"},
 			{"status", "customer", "Test", "pending", "open"},
 			{"status", "customer", "Test", "open", "solved"},
@@ -305,7 +306,13 @@ func testSupportDesk(t *testing.T) {
 			{"assignee", "operator", "sam@example.com", "", testOperatorEmail},
 			{"status", "operator", "sam@example.com", "solved", "closed"},
 		}
-		check := func(who string, events []*plansv1.SupportEvent) {
+		var seen []line
+		for _, l := range all {
+			if l.kind != "assignee" { // the operator's staff address is not the person's to read
+				seen = append(seen, l)
+			}
+		}
+		check := func(who string, events []*plansv1.SupportEvent, want []line) {
 			t.Helper()
 			var got []line
 			for _, ev := range events {
@@ -319,18 +326,70 @@ func testSupportDesk(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		check("the person", person.GetEvents())
-		all, err := e.support.GetSupportTicket(operator(), &plansv1.GetSupportTicketRequest{TicketId: id})
+		check("the person", person.GetEvents(), seen)
+		if person.GetTicket().GetAssignee() != "" {
+			t.Errorf("the person sees the assignee %q", person.GetTicket().GetAssignee())
+		}
+		for _, x := range mine(ada.id) {
+			if x.GetAssignee() != "" {
+				t.Errorf("the person's list shows the assignee %q on %s", x.GetAssignee(), x.GetId())
+			}
+		}
+		full, err := e.support.GetSupportTicket(operator(), &plansv1.GetSupportTicketRequest{TicketId: id})
 		if err != nil {
 			t.Fatal(err)
 		}
-		check("the operator", all.GetEvents())
+		check("the operator", full.GetEvents(), all)
+		if full.GetTicket().GetAssignee() != testOperatorEmail {
+			t.Errorf("the operator sees the assignee %q", full.GetTicket().GetAssignee())
+		}
 		// Nobody can edit it: the help desk's role has no UPDATE or DELETE on the table.
 		if _, err := e.system.Exec(ctx, `UPDATE support_events SET to_value = 'x'`); err == nil {
 			t.Error("the history can be edited")
 		}
 		if _, err := e.system.Exec(ctx, `DELETE FROM support_events`); err == nil {
 			t.Error("the history can be deleted")
+		}
+	})
+
+	// The allow-list is the person's: every kind of history line the database accepts (the check constraint says which) is written for this ticket, and the person
+	// reads exactly the kinds named here. A new kind added to the constraint is hidden from the person until it is added to this list on purpose.
+	t.Run("the person reads only the history kinds on the allow-list; any other kind the database accepts stays the operator's", func(t *testing.T) {
+		allowed := map[string]bool{"status": true, "priority": true}
+		var def string
+		if err := e.system.QueryRow(ctx, `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'support_events_kind_check'`).Scan(&def); err != nil {
+			t.Fatal(err)
+		}
+		kinds := regexp.MustCompile(`'([a-z_]+)'`).FindAllStringSubmatch(def, -1)
+		if len(kinds) < 4 {
+			t.Fatalf("kinds of the constraint: %q", def)
+		}
+		for _, k := range kinds {
+			if _, err := e.system.Exec(ctx, `INSERT INTO support_events (id, ticket_id, kind, actor_kind, actor_name, from_value, to_value) VALUES (gen_random_uuid(), $1::uuid, $2, 'operator', 'Sam', 'a', 'secret-'||$2)`, id, k[1]); err != nil {
+				t.Fatalf("insert a %q line: %v", k[1], err)
+			}
+		}
+		person, err := e.support.GetMySupportTicket(ctx, &plansv1.GetMySupportTicketRequest{UserId: ada.id, TicketId: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, ev := range person.GetEvents() {
+			if !allowed[ev.GetKind()] {
+				t.Errorf("the person reads a %q line: %+v", ev.GetKind(), ev)
+			}
+		}
+		full, err := e.support.GetSupportTicket(operator(), &plansv1.GetSupportTicketRequest{TicketId: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range kinds {
+			operatorHas := false
+			for _, ev := range full.GetEvents() {
+				operatorHas = operatorHas || (ev.GetKind() == k[1] && ev.GetToValue() == "secret-"+k[1])
+			}
+			if !operatorHas {
+				t.Errorf("the operator does not read the %q line", k[1])
+			}
 		}
 	})
 

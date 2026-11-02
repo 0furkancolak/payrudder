@@ -75,6 +75,9 @@ type Config struct {
 	// OperatorEmails lists the addresses of the platform operators (comma separated). A person who signs in with one of them and has verified it may use the
 	// operator console. Empty: nobody does; the machine token (PAYRUDDER_OPERATOR_TOKEN) is still the credential of the API.
 	OperatorEmails []string `env:"PAYRUDDER_OPERATOR_EMAILS" envSeparator:","`
+	// OperatorRequire2FA (PAYRUDDER_OPERATOR_REQUIRE_2FA, on/off) makes an operator's session need two-factor sign-in. Unset: on unless PAYRUDDER_ENV is local, ci or kind
+	// (a compose or Helm install on a real host runs as one of those: set it there).
+	OperatorRequire2FA string `env:"PAYRUDDER_OPERATOR_REQUIRE_2FA"`
 	// AppURL is the console's public address: the browser is sent back to it after "Continue with Google", and the Google redirect address defaults to
 	// <AppURL>/gw/auth/google/callback.
 	AppURL string `env:"PAYRUDDER_APP_URL"`
@@ -104,8 +107,24 @@ type Config struct {
 // regionName is the shape of a region (and a cell) name in plans-svc's directory.
 var regionName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 
+// operatorRequireTwoFactor is whether operators must have two-factor sign-in on: the setting, or by default everything but a development, test or kind install.
+func (c *Config) operatorRequireTwoFactor() bool {
+	if strings.TrimSpace(c.OperatorRequire2FA) != "" {
+		on, _ := config.ParseSwitch("PAYRUDDER_OPERATOR_REQUIRE_2FA", c.OperatorRequire2FA)
+		return on
+	}
+	switch c.Env {
+	case config.EnvLocal, config.EnvCI, config.EnvKind:
+		return false
+	}
+	return true
+}
+
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
+	if _, err := config.ParseSwitch("PAYRUDDER_OPERATOR_REQUIRE_2FA", c.OperatorRequire2FA); err != nil {
+		errs = append(errs, err)
+	}
 	if len(c.OperatorToken) < 32 {
 		errs = append(errs, errors.New("PAYRUDDER_OPERATOR_TOKEN must be at least 32 characters"))
 	}
@@ -294,7 +313,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Region:         region,
 		Saas:           saas,
 		Mail:           mail,
-		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
+		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), OperatorRequireTwoFactor: cfg.operatorRequireTwoFactor(), Google: google, AppURL: appURL,
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),

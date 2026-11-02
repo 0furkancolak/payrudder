@@ -198,10 +198,10 @@ func (c *Commands) codeSpender(ctx context.Context, db *sqlc.Queries, user sqlc.
 	if !ok {
 		return nil, false, errBadCode
 	}
-	hash := credential.HashRecovery(c.pepper, user.ID.String(), norm)
+	hashV1, hashV2 := credential.HashRecoveryV1(c.pepper, user.ID.String(), norm), credential.HashRecovery(c.pepper, user.ID.String(), norm)
 	return func(ctx context.Context, tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		n, err := q.UseRecoveryCode(ctx, sqlc.UseRecoveryCodeParams{UserID: user.ID, CodeHash: hash})
+		n, err := q.UseRecoveryCode(ctx, sqlc.UseRecoveryCodeParams{UserID: user.ID, HashV1: hashV1, HashV2: hashV2})
 		if err != nil {
 			return err
 		}
@@ -296,7 +296,7 @@ func (c *Commands) newRecoveryCodes(ctx context.Context, q *sqlc.Queries, userID
 	}
 	for _, code := range codesList {
 		norm, _ := totp.NormalizeRecovery(code)
-		if err := q.InsertRecoveryCode(ctx, sqlc.InsertRecoveryCodeParams{ID: idgen.NewUUIDv7(), UserID: userID, CodeHash: credential.HashRecovery(c.pepper, userID.String(), norm)}); err != nil {
+		if err := q.InsertRecoveryCode(ctx, sqlc.InsertRecoveryCodeParams{ID: idgen.NewUUIDv7(), UserID: userID, CodeHash: credential.HashRecovery(c.pepper, userID.String(), norm), HashVersion: credential.RecoveryHashVersion}); err != nil {
 			return nil, err
 		}
 	}

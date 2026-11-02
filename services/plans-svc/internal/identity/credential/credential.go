@@ -189,9 +189,32 @@ func HashCode(pepper, salt []byte, email, code string) []byte {
 // EqualHash compares two code hashes in constant time.
 func EqualHash(a, b []byte) bool { return subtle.ConstantTimeCompare(a, b) == 1 }
 
-// HashRecovery is what the database stores for a recovery code: HMAC-SHA256 keyed with the server's pepper over the user and the normalised code. A code has about 50
-// bits, which a plain hash of a leaked table would not protect for ever; the pepper lives in the service's environment, not in the database.
+// RecoveryHashVersion is the version of HashRecovery that new recovery codes are stored with (user_recovery_codes.hash_version).
+//
+//	1: HMAC-SHA256 keyed with the pepper itself (HashRecoveryV1), the key that also hashes the six-digit sign-in codes. Rows made before version 2 have it.
+//	2: HMAC-SHA256 keyed with a key derived from the pepper for recovery codes alone (HashRecovery), so the pepper's other uses cannot be turned on them.
+const RecoveryHashVersion = 2
+
+// recoveryKeyLabel is the context of the key that version 2 derives from the pepper; changing it would lock out every version 2 code.
+const recoveryKeyLabel = "payrudder/recovery-code-key/v2"
+
+// HashRecovery is what the database stores for a recovery code: HMAC-SHA256 over the user and the normalised code, keyed with HMAC(pepper, recoveryKeyLabel). A code has
+// about 50 bits, which a plain hash of a leaked table would not protect for ever; the pepper lives in the service's environment, not in the database.
 func HashRecovery(pepper []byte, userID, code string) []byte {
+	k := hmac.New(sha256.New, pepper)
+	k.Write([]byte(recoveryKeyLabel))
+	m := hmac.New(sha256.New, k.Sum(nil))
+	m.Write([]byte("recovery"))
+	m.Write([]byte{0})
+	m.Write([]byte(userID))
+	m.Write([]byte{0})
+	m.Write([]byte(code))
+	return m.Sum(nil)
+}
+
+// HashRecoveryV1 is the hash that recovery codes had before version 2: still checked for the rows that carry hash_version 1, never written again. It can go once no such
+// row is left (docs/audit-log-and-two-factor.md says how to count them).
+func HashRecoveryV1(pepper []byte, userID, code string) []byte {
 	m := hmac.New(sha256.New, pepper)
 	m.Write([]byte("recovery"))
 	m.Write([]byte{0})

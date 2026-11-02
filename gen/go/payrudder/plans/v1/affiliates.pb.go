@@ -43,7 +43,8 @@ type AffiliateProgram struct {
 	// Code of the coupon a referred customer gets on their next checkout; empty for none.
 	ReferredCouponCode string `protobuf:"bytes,10,opt,name=referred_coupon_code,json=referredCouponCode,proto3" json:"referred_coupon_code,omitempty"`
 	DailyClickCap      int32  `protobuf:"varint,11,opt,name=daily_click_cap,json=dailyClickCap,proto3" json:"daily_click_cap,omitempty"`
-	// Where /r/<code> sends the visitor afterwards; empty shows a plain page.
+	// Where /r/<code> sends the visitor afterwards; empty shows a plain page. A public http(s) address (a host name, no IP address, no localhost, no user name or
+	// password); the visitor is redirected straight there only for a tenant that is live, active and vouched for by a verified owner (see TrackAffiliateClickResponse).
 	LandingUrl string `protobuf:"bytes,12,opt,name=landing_url,json=landingUrl,proto3" json:"landing_url,omitempty"`
 	// A partner who applies is active at once instead of waiting for approval.
 	AutoApprove   bool                   `protobuf:"varint,13,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
@@ -1474,9 +1475,13 @@ type TrackAffiliateClickResponse struct {
 	AttributionWindowDays int32  `protobuf:"varint,3,opt,name=attribution_window_days,json=attributionWindowDays,proto3" json:"attribution_window_days,omitempty"`
 	LandingUrl            string `protobuf:"bytes,4,opt,name=landing_url,json=landingUrl,proto3" json:"landing_url,omitempty"`
 	// The click was counted; false once the affiliate's daily cap is reached (the cookie is still set, the visitor is not turned away).
-	Counted       bool `protobuf:"varint,5,opt,name=counted,proto3" json:"counted,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Counted bool `protobuf:"varint,5,opt,name=counted,proto3" json:"counted,omitempty"`
+	// The program's tenant is one the gateway may redirect straight to its landing page from our own domain: the live environment, active, with an owner of its
+	// account whose e-mail address is verified. Otherwise (a sandbox, a live app not yet activated, nobody verified) the gateway shows a page with the destination
+	// host and a link instead of redirecting, so that a throwaway tenant cannot use the link as an open redirect.
+	LandingTrusted bool `protobuf:"varint,6,opt,name=landing_trusted,json=landingTrusted,proto3" json:"landing_trusted,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TrackAffiliateClickResponse) Reset() {
@@ -1540,6 +1545,13 @@ func (x *TrackAffiliateClickResponse) GetLandingUrl() string {
 func (x *TrackAffiliateClickResponse) GetCounted() bool {
 	if x != nil {
 		return x.Counted
+	}
+	return false
+}
+
+func (x *TrackAffiliateClickResponse) GetLandingTrusted() bool {
+	if x != nil {
+		return x.LandingTrusted
 	}
 	return false
 }
@@ -3518,14 +3530,15 @@ const file_payrudder_plans_v1_affiliates_proto_rawDesc = "" +
 	"\x1aTrackAffiliateClickRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1d\n" +
 	"\n" +
-	"skip_count\x18\x02 \x01(\bR\tskipCount\"\xba\x01\n" +
+	"skip_count\x18\x02 \x01(\bR\tskipCount\"\xe3\x01\n" +
 	"\x1bTrackAffiliateClickResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x126\n" +
 	"\x17attribution_window_days\x18\x03 \x01(\x05R\x15attributionWindowDays\x12\x1f\n" +
 	"\vlanding_url\x18\x04 \x01(\tR\n" +
 	"landingUrl\x12\x18\n" +
-	"\acounted\x18\x05 \x01(\bR\acounted\"\xf9\x05\n" +
+	"\acounted\x18\x05 \x01(\bR\acounted\x12'\n" +
+	"\x0flanding_trusted\x18\x06 \x01(\bR\x0elandingTrusted\"\xf9\x05\n" +
 	"\x13AffiliateCommission\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\faffiliate_id\x18\x02 \x01(\tR\vaffiliateId\x12%\n" +

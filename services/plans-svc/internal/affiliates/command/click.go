@@ -207,9 +207,16 @@ func (p *Public) TrackClick(ctx context.Context, req *plansv1.TrackAffiliateClic
 	if row.AffiliateStatus != model.AffiliateActive || row.ProgramStatus != model.ProgramActive {
 		return &plansv1.TrackAffiliateClickResponse{}, nil
 	}
+	out := &plansv1.TrackAffiliateClickResponse{Valid: true, Code: row.Code, AttributionWindowDays: row.AttributionWindowDays, LandingUrl: convert.Str(row.LandingUrl)}
+	if out.LandingUrl != "" {
+		// Not a link the program's owner alone vouches for: a sandbox or an unverified owner could point it at anything, so the gateway stops the visitor on a page.
+		if out.LandingTrusted, err = p.db.SystemLandingTrusted(ctx, row.TenantID); err != nil {
+			return nil, convert.Err(err, "affiliate")
+		}
+	}
 	if req.GetSkipCount() {
 		// The visitor carries the code in their cookie already: a reload is not a second click.
-		return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: row.Code, AttributionWindowDays: row.AttributionWindowDays, LandingUrl: convert.Str(row.LandingUrl)}, nil
+		return out, nil
 	}
 	day := p.now().UTC()
 	count := sqlc.SystemCountClickParams{TenantID: row.TenantID, AffiliateID: row.ID,
@@ -229,5 +236,6 @@ func (p *Public) TrackClick(ctx context.Context, req *plansv1.TrackAffiliateClic
 	if n == 0 {
 		p.log.InfoContext(ctx, "affiliate click not counted: daily cap reached", "affiliate_id", row.ID, "tenant_id", row.TenantID)
 	}
-	return &plansv1.TrackAffiliateClickResponse{Valid: true, Code: row.Code, AttributionWindowDays: row.AttributionWindowDays, LandingUrl: convert.Str(row.LandingUrl), Counted: n == 1}, nil
+	out.Counted = n == 1
+	return out, nil
 }

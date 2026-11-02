@@ -627,3 +627,62 @@ func TestMailEventsListenerIsWiredBetweenTheGatewayAndTheNotifier(t *testing.T) 
 		}
 	}
 }
+
+// plans-svc refuses to start outside a development environment without a pepper of its own (security review): the chart ships none, hands the public local value to a
+// development environment (local, ci, kind) only, and refuses to render a production profile without one.
+func TestOTPPepperIsTheOperatorsOutsideDevelopment(t *testing.T) {
+	const public, own = "local-otp-pepper-change-me-0123456789", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	pepper := func(docs []obj) string {
+		s := find(docs, "Secret", "x-plans-svc-env")
+		if s == nil {
+			t.Fatal("no Secret for plans-svc")
+		}
+		m, _ := s.get("stringData").(map[string]any)
+		v, _ := m["PAYRUDDER_OTP_PEPPER"].(string)
+		return v
+	}
+	if v := pepper(render(t, "payrudder")); v != public {
+		t.Errorf("the default (kind) environment gets %q, want the local value", v)
+	}
+	for _, e := range []string{"local", "ci", "kind"} {
+		if v := pepper(render(t, "payrudder", "--set", "global.environment="+e)); v != public {
+			t.Errorf("%s gets %q, want the local value", e, v)
+		}
+	}
+	if v := pepper(render(t, "payrudder", "--set", "global.environment=production", "--set", "auth.otpPepper="+own)); v != own {
+		t.Errorf("production with a pepper of its own gets %q", v)
+	}
+	if v := pepper(render(t, "payrudder", "-f", values(t, "payrudder", "values-small.yaml"), "--set", "auth.otpPepper="+own)); v != own {
+		t.Errorf("values-small with a pepper of its own gets %q", v)
+	}
+	// The pepper is never plain environment of a container.
+	for _, c := range containers(render(t, "payrudder", "--set", "global.environment=production", "--set", "auth.otpPepper="+own)) {
+		if _, ok := envOf(c)["PAYRUDDER_OTP_PEPPER"]; ok {
+			t.Errorf("the pepper is a plain environment variable of container %s", c.str("name"))
+		}
+	}
+	// A production environment without one does not render (existing Secrets are the operator's own: nothing is rendered for them).
+	for name, args := range map[string][]string{
+		"production":   {"--set", "global.environment=production"},
+		"values-small": {"-f", values(t, "payrudder", "values-small.yaml")},
+		"railway":      {"--set", "global.environment=railway"},
+	} {
+		if out, err := tryRender("payrudder", args...); err == nil || !strings.Contains(out, "auth.otpPepper is required") {
+			t.Errorf("%s without a pepper rendered or failed for another reason: %v\n%s", name, err, out)
+		}
+	}
+	if out, err := tryRender("payrudder", "--set", "global.environment=production", "--set", "secrets.existingSecrets=true"); err != nil {
+		t.Errorf("production with existingSecrets must render (the Secrets hold the pepper): %v\n%s", err, out)
+	}
+}
+
+// tryRender is render that hands the failure back.
+func tryRender(chart string, args ...string) (string, error) {
+	wd, _ := os.Getwd()
+	root := filepath.Clean(filepath.Join(wd, "..", ".."))
+	cmd := exec.Command(filepath.Join(root, "bin", "helm"), append([]string{"template", "x", filepath.Join(root, "deploy", "helm", chart), "--namespace", "payrudder"}, args...)...)
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	err := cmd.Run()
+	return out.String(), err
+}

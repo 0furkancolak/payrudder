@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, unwrap } from "@/shared/api/client";
+import { api, ApiError, toApiError, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
+import { currentToken } from "@/shared/lib/session";
 
 export type SupportTicket = components["schemas"]["SupportTicket"];
 export type SupportMessage = components["schemas"]["SupportMessage"];
 export type SupportEvent = components["schemas"]["SupportEvent"];
+export type SupportAttachment = components["schemas"]["SupportAttachment"];
 export type SupportReport = components["schemas"]["SupportReport"];
 export type SupportOperator = components["schemas"]["SupportOperator"];
 export type CannedReply = components["schemas"]["SupportCannedReply"];
@@ -16,6 +18,11 @@ export type SupportStatus = SupportTicket["status"];
 export const CATEGORIES: readonly SupportCategory[] = ["billing", "integration", "bug", "question", "other"];
 export const PRIORITIES: readonly SupportPriority[] = ["low", "normal", "high", "urgent"];
 export const STATUSES: readonly SupportStatus[] = ["open", "pending", "solved", "closed"];
+
+/** What a message may carry (the help desk checks the same: png, jpeg, pdf or text, 5 MB each, 10 to a ticket). */
+export const ATTACH_TYPES: readonly string[] = ["image/png", "image/jpeg", "application/pdf", "text/plain"];
+export const MAX_ATTACH_BYTES = 5 * 1024 * 1024;
+export const MAX_ATTACH_FILES = 10;
 
 export const supportKeys = {
   all: ["support"] as const,
@@ -163,4 +170,54 @@ export function useSupportOperators() {
 
 export function useCannedReplies() {
   return useQuery({ queryKey: supportKeys.canned, queryFn: async () => (await unwrap(api.GET("/admin/v1/support/canned-replies"))).replies });
+}
+
+// --- files on a message
+
+export type Side = "person" | "operator";
+
+/** A refusal the page can see before anything is sent: the same keys the help desk answers with. */
+export function refuseFile(file: File, already: number): ApiError | undefined {
+  if (already >= MAX_ATTACH_FILES) return new ApiError("too many files", "RESOURCE_EXHAUSTED", "support.attachment.too_many");
+  if (!ATTACH_TYPES.includes(file.type)) return new ApiError("type not allowed", "INVALID_ARGUMENT", "support.attachment.bad_type");
+  if (file.size > MAX_ATTACH_BYTES) return new ApiError("file too large", "INVALID_ARGUMENT", "support.attachment.too_large");
+  return undefined;
+}
+
+/**
+ * Attaches the files to a message, one request each in the order given, and says which could not be: a file that fails does not stop the ones after it. Nothing
+ * is thrown; a page shows the failures next to the message it has already sent.
+ */
+export async function attachFiles(side: Side, ticketId: string, messageId: string, files: readonly File[]): Promise<{ name: string; error: ApiError }[]> {
+  const root = side === "operator" ? "/gw/admin/v1" : "/gw/app/v1";
+  const failed: { name: string; error: ApiError }[] = [];
+  let placed = 0;
+  for (const file of files) {
+    const refused = refuseFile(file, placed);
+    if (refused) {
+      failed.push({ name: file.name, error: refused });
+      continue;
+    }
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const token = currentToken();
+      const res = await fetch(`${root}/support/tickets/${ticketId}/messages/${messageId}/attachments`, { method: "POST", body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw toApiError(await res.json().catch(() => undefined));
+      placed++;
+    } catch (e) {
+      failed.push({ name: file.name, error: toApiError(e) });
+    }
+  }
+  return failed;
+}
+
+/** A short-lived link to the file; the page opens it, the browser downloads it. */
+export async function attachmentLink(side: Side, ticketId: string, attachmentId: string): Promise<string> {
+  const path = { id: ticketId, attachment_id: attachmentId };
+  const r =
+    side === "operator"
+      ? await unwrap(api.GET("/admin/v1/support/tickets/{id}/attachments/{attachment_id}", { params: { path } }))
+      : await unwrap(api.GET("/app/v1/support/tickets/{id}/attachments/{attachment_id}", { params: { path } }));
+  return r.url;
 }

@@ -528,3 +528,95 @@ func TestEveryDocumentedBankGroupHasAWordOfItsOwn(t *testing.T) {
 		t.Errorf("DeclineWords has %d words, the table of hosted pages has 18", got)
 	}
 }
+
+func TestAStoredCardsInstalmentsAreTheAccountsEnabledCountsAtTheCardsBIN(t *testing.T) {
+	f, c := newFake(t, func(s *Settings) { s.EnabledInstallments = []int{1, 3, 6} })
+	var _ payments.InstallmentOffer = c
+	f.reply = func(path string, _ map[string]any) (int, string) {
+		if path == "/cardstorage/cards" {
+			return 200, `{"status":"success","cardDetails":[{"cardToken":"other","binNumber":"11111111"},{"cardToken":"ct","binNumber":"55287900","lastFourDigits":"0008"}]}`
+		}
+		return 200, `{"status":"success","installmentDetails":[{"binNumber":"55287900","force3ds":1,"installmentPrices":[{"installmentPrice":100.0,"totalPrice":100.0,"installmentNumber":1},
+		{"installmentPrice":51.0,"totalPrice":102.0,"installmentNumber":2},{"installmentPrice":35.5,"totalPrice":106.5,"installmentNumber":3},{"installmentPrice":18.0,"totalPrice":108.0,"installmentNumber":6},{"installmentPrice":9.5,"totalPrice":114.0,"installmentNumber":12}]}]}`
+	}
+	got, err := c.StoredCardInstallments(context.Background(), "ck:ct", 10000, "TRY")
+	if err != nil || len(got) != 2 || got[0].Count != 3 || got[0].TotalMinor != 10650 || got[1].Count != 6 || got[1].InstallmentMinor != 1800 {
+		t.Fatalf("= %+v, %v: only 3 and 6 are enabled and more than one payment", got, err)
+	}
+	if f.paths[0] != "/cardstorage/cards" || f.paths[1] != "/payment/iyzipos/installment" || f.last["binNumber"] != "55287900" || f.last["price"] != "100.00" {
+		t.Errorf("the card's BIN is asked for: %v %v", f.paths, f.last)
+	}
+	// A card that is not in the list, one whose BIN is not 8 digits, and an account that enables none offer nothing and ask nothing.
+	n := len(f.paths)
+	if got, err := c.StoredCardInstallments(context.Background(), "ck:missing", 10000, "TRY"); err != nil || got != nil || len(f.paths) != n+1 {
+		t.Errorf("a card that is not stored: %v %v %v", got, err, f.paths)
+	}
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","cardDetails":[{"cardToken":"ct","binNumber":"552879"}]}`
+	}
+	if got, err := c.StoredCardInstallments(context.Background(), "ck:ct", 10000, "TRY"); err != nil || got != nil {
+		t.Errorf("a 6-digit BIN cannot be asked: %v %v", got, err)
+	}
+	f2, c2 := newFake(t, func(s *Settings) { s.EnabledInstallments = []int{1} })
+	if got, err := c2.StoredCardInstallments(context.Background(), "ck:ct", 10000, "TRY"); err != nil || got != nil || len(f2.paths) != 0 {
+		t.Errorf("an account with no instalments is not asked anything: %v %v %v", got, err, f2.paths)
+	}
+	// iyzico failing is an error, so the page can say nothing and the payer pays once.
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"failure","errorCode":"3005","errorMessage":"cardUserKey is not found"}`
+	}
+	if _, err := c.StoredCardInstallments(context.Background(), "ck:ct", 10000, "TRY"); err == nil {
+		t.Error("a failure of the card list was swallowed")
+	}
+	if k, ok := c.CardUserKey("ck:ct"); !ok || k != "ck" {
+		t.Errorf("CardUserKey = %q %v", k, ok)
+	}
+	if _, ok := c.CardUserKey("4111111111111111"); ok {
+		t.Error("a card number is no payment method")
+	}
+}
+
+func TestAThreeDSPaymentInInstalmentsNamesTheQuotedTotalInBothCalls(t *testing.T) {
+	page := `<form action="https://bank.example/3ds"></form>`
+	f, c := newFake(t, nil)
+	f.reply = func(path string, _ map[string]any) (int, string) {
+		if path == "/payment/3dsecure/initialize" {
+			return 200, `{"status":"success","paymentId":"88","threeDSHtmlContent":"` + base64.StdEncoding.EncodeToString([]byte(page)) + `"}`
+		}
+		return 200, `{"status":"success","paymentId":"88","basketId":"inv-1","price":100.00,"paidPrice":106.50,"currency":"TRY","fraudStatus":1}`
+	}
+	req := payments.ThreeDSRequest{IdempotencyKey: "link:inv-1:1", InvoiceID: "inv-1", Number: "N-1", AmountMinor: 10000, Currency: "TRY", PaymentMethod: "ck:ct", CallbackURL: "https://q.example/r", Buyer: ada,
+		Installments: 3, PaidMinor: 10650}
+	if _, err := c.StartThreeDS(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if f.last["price"] != "100.00" || f.last["paidPrice"] != "106.50" || f.last["installment"] != float64(3) {
+		t.Errorf("initialise: %v", f.last)
+	}
+	// One payment keeps what it was.
+	req.Installments, req.PaidMinor = 0, 0
+	if _, err := c.StartThreeDS(context.Background(), req); err != nil || f.last["paidPrice"] != "100.00" || f.last["installment"] != float64(1) {
+		t.Errorf("a single payment: %v %v", err, f.last)
+	}
+	// A count iyzico does not list, or a total below the price, is refused before iyzico is asked.
+	n := len(f.paths)
+	for _, bad := range []payments.ThreeDSRequest{{Installments: 5, PaidMinor: 10650}, {Installments: 3, PaidMinor: 9000}, {Installments: 3}} {
+		r := req
+		r.Installments, r.PaidMinor = bad.Installments, bad.PaidMinor
+		if _, err := c.StartThreeDS(context.Background(), r); err == nil {
+			t.Errorf("%+v was started", bad)
+		}
+	}
+	if len(f.paths) != n {
+		t.Errorf("iyzico was asked for a payment that cannot be: %v", f.paths[n:])
+	}
+	// The auth call names the same paidPrice; the ledger keeps the invoice's price (the answer's price is checked against the attempt's).
+	st, err := c.ConfirmReturn(context.Background(), payments.ReturnRequest{IdempotencyKey: "link:inv-1:1", InvoiceID: "inv-1", AmountMinor: 10000, Currency: "TRY", ProviderRef: "88", PaidMinor: 10650,
+		Form: url.Values{"paymentId": {"88"}, "mdStatus": {"1"}, "status": {"success"}}})
+	if err != nil || st.State != payments.StateSucceeded {
+		t.Fatalf("return: %+v %v", st, err)
+	}
+	if f.paths[len(f.paths)-1] != "/payment/v2/3dsecure/auth" || f.last["paidPrice"] != "106.50" {
+		t.Errorf("auth: %v %v", f.paths[len(f.paths)-1], f.last)
+	}
+}

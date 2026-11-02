@@ -153,7 +153,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "rechazado, reintentando",
       "PAYMENT_UNKNOWN": "resultado desconocido",
-      "UNCOLLECTIBLE": "abandonado"
+      "UNCOLLECTIBLE": "abandonado",
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "sagaState": {
       "PAYMENT_PENDING": "esperando la transferencia",
@@ -174,7 +176,9 @@
       "REFUND_FAILED": "reembolso fallido",
       "REFUNDED": "reembolsada",
       "VOIDED": "anulada",
-      "AWAITING_PAYMENT": "pendiente de pago"
+      "AWAITING_PAYMENT": "pendiente de pago",
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "paymentMethod": {
       "bank_transfer": "Transferencia bancaria",
@@ -732,7 +736,20 @@
         "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla.",
         "creditSurplus": "Se añadirían {amount} al saldo a favor del cliente: las líneas suman menos de cero."
       },
-      "taxNotSaved": "El cliente se creó, pero sus datos fiscales no se guardaron. Cierra este panel, abre el cliente y usa Editar, Datos fiscales para intentarlo de nuevo."
+      "taxNotSaved": "El cliente se creó, pero sus datos fiscales no se guardaron. Cierra este panel, abre el cliente y usa Editar, Datos fiscales para intentarlo de nuevo.",
+      "cards": {
+        "title": "Tarjetas guardadas",
+        "card": "Tarjeta",
+        "none": "El proveedor de pagos no tiene ninguna tarjeta de este cliente.",
+        "inUse": "Se cobra a esta tarjeta",
+        "delete": "Eliminar tarjeta",
+        "deleteAria": "Eliminar la tarjeta que termina en {last4}",
+        "deleteTitle": "¿Eliminar la tarjeta que termina en {last4}?",
+        "deleteBody": "La tarjeta se elimina en el proveedor de pagos y ya no se puede cobrar. No se puede deshacer: el cliente tendría que introducirla de nuevo donde se guardan las tarjetas.",
+        "deleteInUse": "Es la tarjeta con la que se cobran las facturas del cliente. Tras eliminarla, el próximo cobro falla hasta que se defina un nuevo método de pago para el cliente. Se elimina en el proveedor de pagos y no se puede deshacer.",
+        "deletedInUse": "La tarjeta se eliminó. Era la que se usa para cobrar las facturas del cliente: define un nuevo método de pago para el cliente.",
+        "hint": "Payrudder no guarda números de tarjeta: una tarjeta se guarda donde el pagador la escribe, y el método de pago del cliente la nombra. Aquí ves las tarjetas y puedes eliminar una."
+      }
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -3295,7 +3312,8 @@
         "not_live": "Solo las facturas en producción se pagan a través de un proveedor.",
         "payment_in_progress": "Se está iniciando un pago para esta factura. Inténtalo de nuevo en un momento.",
         "return_url_required": "Se requiere una dirección de retorno para un pago de checkout.",
-        "unknown_method": "Este método de pago no se conoce."
+        "unknown_method": "Este método de pago no se conoce.",
+        "installment_unavailable": "Ese número de cuotas no se ofrece para esta tarjeta e importe. Paga de una vez o elige una de las opciones de la página."
       },
       "ledger": {
         "bad_limit": "El límite debe estar entre 1 y 1000.",
@@ -3363,6 +3381,9 @@
       "failover": {
         "bad_target": "Una conmutación por error necesita dos cuentas distintas que existan en el entorno; una transferencia bancaria no puede participar.",
         "not_found": "No hay ninguna conmutación por error definida para esa cuenta."
+      },
+      "card": {
+        "not_found": "El cliente no tiene esa tarjeta guardada."
       }
     },
     "einvoice": {
@@ -3781,6 +3802,16 @@
       },
       "canned_reply": {
         "not_found": "Esa respuesta predefinida ya no existe."
+      },
+      "attachment": {
+        "account_full": "Tu organización alcanzó el límite de 50 MB de archivos de soporte.",
+        "bad_type": "Solo se pueden adjuntar archivos png, jpeg, pdf y de texto sin formato.",
+        "no_app": "Los archivos se guardan con una app: crea una primero y luego adjunta el archivo.",
+        "not_found": "Ese archivo no existe.",
+        "rejected": "No se puede adjuntar el archivo.",
+        "storage_full": "El almacenamiento de los archivos de soporte está lleno. Libera espacio en los archivos de tu app o escríbenos sin el archivo.",
+        "too_large": "Un archivo puede pesar como máximo 5 MB.",
+        "too_many": "Un ticket puede tener como máximo 10 archivos."
       }
     },
     "audit": {
@@ -4372,7 +4403,8 @@
           "buyer_country": "País del comprador",
           "buyer_zip_code": "Código postal del comprador",
           "buyer_ip": "Dirección IP pública de su empresa",
-          "buyer_gsm_number": "Teléfono del comprador"
+          "buyer_gsm_number": "Teléfono del comprador",
+          "enabled_installments": "Cuotas que el pagador puede elegir"
         },
         "problems": {
           "required": "Obligatorio.",
@@ -4560,7 +4592,8 @@
           "api_key": "En el panel de comercio de iyzico: Ajustes, Ajustes de la empresa, Claves API. Usa el par live.",
           "secret_key": "Aparece junto a la clave API en el mismo sitio. Allí se muestra una sola vez; cópiala ahora.",
           "buyer_identity_number": "El número fiscal (TCKN o VKN) de la persona o empresa que figura como comprador. Tu perfil de facturación lo rellena.",
-          "buyer_ip": "La dirección IP pública fija desde la que tu negocio envía solicitudes; iyzico vincula las claves a ella."
+          "buyer_ip": "La dirección IP pública fija desde la que tu negocio envía solicitudes; iyzico vincula las claves a ella.",
+          "enabled_installments": "Números entre 1, 2, 3, 6, 9 y 12, separados por comas, por ejemplo 1, 3, 6. Se ofrecen en el formulario de pago de iyzico y, para una tarjeta guardada, en la página de la factura; el interés es el definido en tu panel de iyzico, así que el pagador puede pagar más que la factura y la factura se da igualmente por pagada en su totalidad. Déjalo vacío para pagos únicos. Vuelve a escribirlo cuando cambies las claves."
         },
         "paddle": {
           "api_key": "En Paddle, en Developer tools, Authentication, crea una clave API live.",
@@ -5690,6 +5723,14 @@
     "badge": {
       "unread": "Tickets con novedades: {n}",
       "waiting": "Esperando a que respondamos: {n}"
+    },
+    "attach": {
+      "add": "Adjuntar archivos",
+      "hint": "png, jpeg, pdf o texto; hasta 5 MB cada uno, 10 por ticket.",
+      "remove": "Quitar {name}",
+      "failed": "Estos archivos no se adjuntaron:",
+      "openedButFailed": "Tu ticket se abrió, pero algunos archivos no se adjuntaron. Puedes adjuntarlos a una respuesta.",
+      "download": "Descargar {name}"
     }
   },
   "connect": {

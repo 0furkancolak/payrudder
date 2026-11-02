@@ -35,7 +35,9 @@ type fakeContracts struct {
 	recordedAs []string // the tenant each record was made for
 	published  *plansv1.PublishContractVersionRequest
 	withdrawal *plansv1.CreateContractWithdrawalRequest
-	decided    *plansv1.SetContractWithdrawalStatusRequest
+	// withdrawErr is what CreateContractWithdrawal answers instead of recording (a second withdrawal for the invoice, plans-svc down).
+	withdrawErr error
+	decided     *plansv1.SetContractWithdrawalStatusRequest
 	// the follow-ups (withdrawal refund, the withdrawal function, the portal)
 	settings      *plansv1.ContractSettings
 	accepted      []*plansv1.ContractAcceptance
@@ -131,6 +133,10 @@ func (f *fakeContracts) SetContractSettings(_ context.Context, req *plansv1.SetC
 
 func (f *fakeContracts) CreateContractWithdrawal(_ context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.CreateContractWithdrawalResponse, error) {
 	f.mu.Lock()
+	if f.withdrawErr != nil {
+		f.mu.Unlock()
+		return nil, f.withdrawErr
+	}
 	f.withdrawal = req
 	f.mu.Unlock()
 	return &plansv1.CreateContractWithdrawalResponse{Withdrawal: &plansv1.ContractWithdrawal{Id: "wd-1", CustomerExternalId: req.GetCustomerExternalId(), Source: req.GetSource(), Status: "received", ReceiveTime: timestamppb.Now()}}, nil

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -149,7 +150,19 @@ type hostedLine struct {
 	Negative                    bool
 }
 
-type methodView struct{ ID, Label string }
+type methodView struct {
+	ID, Label string
+	// Installments are the ways to split a stored-card payment the provider quotes now, the single payment first (a radio group in the pay form: no script). Empty:
+	// the method has no choice.
+	Installments         []installmentView
+	InstLegend, InstHint string
+}
+
+// installmentView is one radio of the instalment choice: the count the form posts and the words that say what it costs.
+type installmentView struct {
+	Count int
+	Label string
+}
 
 // pageBase is what every page needs.
 type pageBase struct {
@@ -374,7 +387,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Payable = resp.GetPayable()
 	}
 	if v.Payable {
-		v.Methods = s.methodViews(ctx, v.L, resp)
+		v.Methods = s.methodViews(ctx, v.L, resp, v.F)
 		v.NoMethod = len(v.Methods) == 0
 		// The seller's agreements are asked for next to the pay button. When they cannot be shown, nothing can be paid: a payment never starts without them.
 		var unavailable bool
@@ -386,12 +399,12 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 }
 
 // methodViews lists the ways to pay: in a sandbox or demo the mock, else what payments-worker offers for the invoice.
-func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *billingv1.GetHostedInvoiceResponse) []methodView {
+func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *billingv1.GetHostedInvoiceResponse, f *localefmt.Format) []methodView {
 	if resp.GetEnvironment() == env.Sandbox.String() || s.d.Demo {
 		return []methodView{{ID: "mock", Label: l["pay_mock"]}}
 	}
 	p := resp.GetPayment()
-	methods, err := s.liveMethods(ctx, p.GetTenantId(), p.GetCurrency(), p.GetCountry(), p.GetProvider(), p.GetCustomerExternalId())
+	methods, err := s.liveMethods(ctx, p.GetTenantId(), p.GetCurrency(), p.GetCountry(), p.GetProvider(), p.GetCustomerExternalId(), p.GetAmountMinor())
 	if err != nil {
 		s.d.Log.WarnContext(ctx, "payment methods unavailable", "error", err)
 		return nil
@@ -405,7 +418,18 @@ func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *bil
 		case "stored_card":
 			label = l["pay_stored_card"]
 		}
-		out = append(out, methodView{ID: m.ID, Label: label})
+		mv := methodView{ID: m.ID, Label: label}
+		if m.Kind == "stored_card" && len(m.Installments) > 0 {
+			// The single payment, then what the provider quoted for each split: each payment and the total (a bank may charge for splitting, so the total can be more).
+			exp := exponentOf(p.GetCurrency())
+			mv.Installments = []installmentView{{Count: 1, Label: strings.NewReplacer("{total}", f.Amount(p.GetAmountMinor(), exp)).Replace(l["pay_installment_one"])}}
+			for _, o := range m.Installments {
+				mv.Installments = append(mv.Installments, installmentView{Count: o.Count, Label: strings.NewReplacer("{count}", strconv.Itoa(o.Count), "{each}", f.Amount(o.EachMinor, exp),
+					"{total}", f.Amount(o.TotalMinor, exp)).Replace(l["pay_installment_n"])})
+			}
+			mv.InstLegend, mv.InstHint = l["pay_installments"], l["pay_installments_hint"]
+		}
+		out = append(out, mv)
 	}
 	return out
 }
@@ -790,6 +814,13 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	if !s.requireContracts(w, r, sc, lang) {
 		return
 	}
+	// The instalments the payer chose for the saved card; the count is asked of the provider again before anything starts, and any other method ignores it.
+	installments := 0
+	if method == "stored_card" {
+		if n, err := strconv.Atoi(r.PostForm.Get("installments")); err == nil && n > 1 && n <= 12 {
+			installments = n
+		}
+	}
 	refCode, refAt := referral(r)
 	resp, err := s.d.Hosted.RequestHostedPayment(r.Context(), &billingv1.RequestHostedPaymentRequest{Token: sc.token, PortalToken: sc.portal, InvoiceId: sc.invoice, Method: method,
 		ReferralCode: refCode, ReferralTouchTime: refAt})
@@ -818,7 +849,7 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	// The provider posts the result of a payment on its own page (the checkout form, the bank's 3-D Secure page) to this route, through the payer's browser; the route
 	// asks the provider what the payment is and sends the payer back to the invoice page, {key} being the attempt payments-worker opens.
 	callback := s.d.PublicURL + sc.page() + "/return/{key}" + langSuffix(r)
-	out, code, err := s.startProviderPayment(r.Context(), p, method, s.d.PublicURL+back, callback, s.clientAddr(r))
+	out, code, err := s.startProviderPayment(r.Context(), p, method, s.d.PublicURL+back, callback, s.clientAddr(r), installments)
 	switch {
 	case err != nil || code >= 500:
 		if err != nil {
@@ -863,12 +894,12 @@ const maxMethodLen = 64
 
 // startProviderPayment asks payments-worker to start paying the invoice billing prepared (p) by the method, returning to returnURL. It returns the worker's
 // answer and its HTTP status; the error is a worker that could not be reached.
-func (s *Server) startProviderPayment(ctx context.Context, p *billingv1.HostedPaymentContext, method, returnURL, callbackURL, payerIP string) (paymentStart, int, error) {
+func (s *Server) startProviderPayment(ctx context.Context, p *billingv1.HostedPaymentContext, method, returnURL, callbackURL, payerIP string, installments int) (paymentStart, int, error) {
 	var out paymentStart
 	code, err := s.paymentsDo(ctx, http.MethodPost, "/admin/tenants/"+url.PathEscape(p.GetTenantId())+"/invoice-payments", nil, map[string]any{
 		"invoice_id": p.GetInvoiceId(), "saga_id": p.GetSagaId(), "number": p.GetNumber(), "amount_minor": p.GetAmountMinor(), "currency": p.GetCurrency(), "method": method,
 		"provider": p.GetProvider(), "country": p.GetCountry(), "customer_email": p.GetCustomerEmail(), "customer_name": p.GetCustomerName(), "description": p.GetDescription(),
-		"customer_external_id": p.GetCustomerExternalId(), "payer_ip": payerIP, "return_url": returnURL, "callback_url": callbackURL, "environment": p.GetEnvironment(),
+		"customer_external_id": p.GetCustomerExternalId(), "payer_ip": payerIP, "return_url": returnURL, "callback_url": callbackURL, "environment": p.GetEnvironment(), "installments": installments,
 	}, &out)
 	return out, code, err
 }
