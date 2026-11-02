@@ -116,6 +116,7 @@ import type {
   IngestEventsRequest,
   IngestEventsResponse,
   Invoice,
+  InvoiceSaga,
   LinkAffiliatePromotionCodeRequest,
   ListAffiliateCommissionsQuery,
   ListAffiliateCommissionsResponse,
@@ -185,6 +186,7 @@ import type {
   Meter,
   PaymentLink,
   PaymentMethodSetup,
+  PaymentWait,
   Plan,
   PlanVersion,
   PresignPartsQuery,
@@ -1607,6 +1609,39 @@ export class InvoicesResource {
    */
   getInvoicePdf(id: string, options?: RequestOptions): Promise<SignedUrl> {
     return this.t.request<SignedUrl>({ method: "GET", path: `/v1/invoices/${seg(id)}/pdf`, response: "json" }, options);
+  }
+
+  /**
+   * What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it)
+   *
+   * Only `state` is always set. `PAYMENT_HELD`: the first charge was not sent because the payment gate said no (see `hold_reason`); `since_time` is when it began to be held and `next_check_time` when Payrudder looks again (it charges the invoice then if nothing holds it any more). `PAYMENT_ACTION_REQUIRED`: the card needs the customer to confirm the payment with their bank (3-D Secure); the customer was mailed a link to the invoice page at `since_time` (the mail log says whether it arrived), Payrudder asks the provider again at `next_check_time`, and if the customer has not confirmed by `window_ends_time` the payment counts as declined and dunning applies. Any other state answers the state alone.
+   *
+   * `GET /v1/invoices/{id}/payment-wait`
+   */
+  getInvoicePaymentWait(id: string, options?: RequestOptions): Promise<PaymentWait> {
+    return this.t.request<PaymentWait>({ method: "GET", path: `/v1/invoices/${seg(id)}/payment-wait`, response: "json" }, options);
+  }
+
+  /**
+   * Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more
+   *
+   * Payrudder asks the payment gate again, as it does every hour. When the gate lets the invoice through the charge is sent now (answer `PAYMENT_REQUESTED`); when the customer is still blocked for fraud or a chargeback, or the environment is on hold, the invoice stays held (answer `PAYMENT_HELD`, see `hold_reason` of the payment-wait read): to charge a blocked customer, lift the block first. `409 billing.invoice.not_held` when the invoice's first charge is not held. Recorded in the audit log.
+   *
+   * `POST /v1/invoices/{id}/release`
+   */
+  releaseHeldInvoice(id: string, options?: RequestOptions): Promise<InvoiceSaga> {
+    return this.t.request<InvoiceSaga>({ method: "POST", path: `/v1/invoices/${seg(id)}/release`, response: "json" }, options);
+  }
+
+  /**
+   * Void an invoice whose first charge is held
+   *
+   * Nothing was charged, so nothing is refunded; the invoice becomes `void` (answer `VOIDED`) and the `invoice.voided` webhook event is sent. Only an invoice whose first charge is held can be voided here: `409 billing.invoice.not_held` for any other, a paid one included. Recorded in the audit log.
+   *
+   * `POST /v1/invoices/{id}/void`
+   */
+  voidHeldInvoice(id: string, options?: RequestOptions): Promise<InvoiceSaga> {
+    return this.t.request<InvoiceSaga>({ method: "POST", path: `/v1/invoices/${seg(id)}/void`, response: "json" }, options);
   }
 }
 

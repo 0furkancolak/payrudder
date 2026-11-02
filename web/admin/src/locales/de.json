@@ -452,6 +452,43 @@
       "coupon": "Gutschein {code}",
       "usage": "Nutzung — {meter} — {rest}",
       "late": "Verspätete Nutzung — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Erste Abbuchung angehalten",
+      "heldPill": "Angehalten",
+      "heldHint": "Diese Rechnung war zur Abbuchung bereit, aber Payrudder hat die Abbuchung nicht an den Zahlungsanbieter geschickt.",
+      "reason": {
+        "customer_blocked": "Der Kunde ist wegen Betrugs oder einer Rückbuchung gesperrt. Die Rechnung bleibt offen und wird abgebucht, sobald die Sperre aufgehoben ist.",
+        "tenant_on_hold": "Payrudder hat diese Umgebung angehalten (gesperrt, eingefroren oder verbannt); solange das gilt, wird nichts abgebucht. Die Rechnung wird abgebucht, wenn die Umgebung wieder freigegeben ist; schreiben Sie dem Support über die Hilfeseite.",
+        "none": "Nichts hält diese Rechnung jetzt noch an. Sie wird bei der nächsten Prüfung abgebucht, oder Sie geben sie jetzt frei.",
+        "unknown": "Payrudder konnte gerade nicht prüfen, warum sie angehalten ist. Versuchen Sie es gleich noch einmal."
+      },
+      "since": "Angehalten seit",
+      "next": "Nächste Prüfung",
+      "release": "Abbuchung freigeben",
+      "void": "Rechnung stornieren",
+      "viewerNote": "Nur ein Inhaber oder Administrator kann sie freigeben oder stornieren.",
+      "confirmRelease": {
+        "title": "Abbuchung von {number} freigeben?",
+        "body": "Payrudder prüft erneut, ob {amount} bei {customer} abgebucht werden darf. Ist der Kunde weiterhin gesperrt, bleibt die Rechnung angehalten und es wird nichts abgebucht.",
+        "accept": "Freigeben"
+      },
+      "confirmVoid": {
+        "title": "{number} stornieren?",
+        "body": "{amount} werden nicht abgebucht. Die Rechnung wird storniert und kann nicht mehr bezahlt werden. Das lässt sich nicht rückgängig machen.",
+        "accept": "Rechnung stornieren"
+      },
+      "released": "Freigegeben: Die Abbuchung von {amount} wurde an den Zahlungsanbieter geschickt.",
+      "stillHeld": "Weiterhin angehalten: Der Kunde ist noch gesperrt oder die Umgebung ist angehalten. Es wurde nichts abgebucht.",
+      "voided": "Die Rechnung ist storniert.",
+      "actionTitle": "Warten auf die Bestätigung der Zahlung durch den Kunden",
+      "actionPill": "Kunde muss bestätigen",
+      "actionHint": "Die Bank des Kunden verlangt eine Bestätigung dieser Zahlung (3-D Secure); ohne den Kunden kann sie nicht abgebucht werden.",
+      "mailedHint": "Payrudder hat veranlasst, dass dem Kunden eine E-Mail mit einem Link zur Rechnungsseite geschickt wird. Die Seite „E-Mail“ zeigt, ob sie angekommen ist.",
+      "mailed": "Kunde per E-Mail gebeten",
+      "nextAsk": "Nächste Abfrage beim Anbieter",
+      "windowEnds": "Gilt als abgelehnt am",
+      "windowHint": "Hat der Kunde bis dahin nicht bestätigt, gilt die Zahlung als abgelehnt und die Wiederholungen beginnen."
     }
   },
   "deadLetters": {
@@ -2895,7 +2932,8 @@
         "bad_page_size": "Die Seitengröße muss zwischen 1 und 500 liegen.",
         "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
         "pdf_sign_failed": "Der PDF-Download-Link konnte nicht erstellt werden. Versuchen Sie es gleich erneut.",
-        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten."
+        "pdf_failed": "Das Rechnungs-PDF konnte nicht erstellt werden. Prüfen Sie die Rechnungsdaten.",
+        "not_held": "Die erste Abbuchung dieser Rechnung ist nicht angehalten; hier gibt es nichts freizugeben oder zu stornieren."
       },
       "invoice_link": {
         "bad_expiry": "Der Link muss in 1 bis 365 Tagen ablaufen.",

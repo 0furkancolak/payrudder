@@ -6,7 +6,7 @@ import { findTenant } from "@/shared/lib/environment";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { SCENARIOS } from "./golive";
 import { useApps } from "./api";
-import { InvoiceHeadline, InvoiceLines, ManualPaymentsCard } from "@/features/invoices";
+import { InvoiceHeadline, InvoiceLines, ManualPaymentsCard, PaymentWaitCard, waits } from "@/features/invoices";
 import { InvoiceRelated } from "@/features/related";
 import { DisputeCard } from "@/features/disputes";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -43,6 +43,8 @@ const canSimulate = computed(() => canWrite.value && sandbox.value && (inv.value
 
     <template v-if="inv">
       <InvoiceHeadline :inv="inv" :pdf-pending="pdf.isPending.value" :pdf-error="pdf.error.value" @open-pdf="pdf.mutate()" />
+
+      <PaymentWaitCard v-if="waits(inv.saga_state)" :tenant-id="tenantId" :invoice-id="invoiceId" :inv="inv" />
 
       <section v-if="canSimulate" class="bg-muted/50 flex flex-col gap-3 rounded-2xl p-4" :aria-label="t('product.sandbox.simulateTitle')" data-testid="simulate">
         <div>

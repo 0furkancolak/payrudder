@@ -185,6 +185,9 @@ func (s *Server) billingReadAndSandboxRoutes() []Route {
 		{"GET", "/v1/credit-notes", AccessTenant, ratelimit.ClassRead, s.listCreditNotes},
 		{"GET", "/v1/credit-notes/{id}", AccessTenant, ratelimit.ClassRead, s.getCreditNote},
 		{"GET", "/v1/invoices/{id}/pdf", AccessTenant, ratelimit.ClassRead, s.getInvoicePDF},
+		{"GET", "/v1/invoices/{id}/payment-wait", AccessTenant, ratelimit.ClassRead, s.getInvoicePaymentWait},
+		{"POST", "/v1/invoices/{id}/release", AccessTenant, ratelimit.ClassWrite, s.releaseHeldInvoice},
+		{"POST", "/v1/invoices/{id}/void", AccessTenant, ratelimit.ClassWrite, s.voidHeldInvoice},
 		// The payment ledger as the tenant reads it (charges and refunds, folded); the operator's /admin/v1/tenants/{id}/ledger stays operator-only.
 		{"GET", "/v1/payments", AccessTenant, ratelimit.ClassRead, s.listPayments},
 		{"GET", "/v1/disputes", AccessTenant, ratelimit.ClassRead, s.listDisputes},

@@ -452,6 +452,43 @@
       "coupon": "Coupon {code}",
       "usage": "Consommation — {meter} — {rest}",
       "late": "Consommation tardive — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Premier prélèvement retenu",
+      "heldPill": "Retenu",
+      "heldHint": "Cette facture était prête à être prélevée, mais Payrudder n'a pas envoyé le prélèvement au prestataire de paiement.",
+      "reason": {
+        "customer_blocked": "Le client est bloqué pour fraude ou rétrofacturation. La facture reste ouverte et sera prélevée dès que le blocage sera levé.",
+        "tenant_on_hold": "Payrudder a mis cet environnement en attente (suspendu, gelé ou banni) ; rien n'est prélevé tant que cela dure. La facture sera prélevée quand l'environnement sera rétabli ; écrivez au support depuis la page d'aide.",
+        "none": "Plus rien ne retient cette facture. Elle sera prélevée à la prochaine vérification, ou vous pouvez la libérer maintenant.",
+        "unknown": "Payrudder n'a pas pu vérifier pour le moment pourquoi elle est retenue. Réessayez dans un instant."
+      },
+      "since": "Retenu depuis",
+      "next": "Prochaine vérification",
+      "release": "Libérer le prélèvement",
+      "void": "Annuler la facture",
+      "viewerNote": "Seul un propriétaire ou un administrateur peut la libérer ou l'annuler.",
+      "confirmRelease": {
+        "title": "Libérer le prélèvement de {number} ?",
+        "body": "Payrudder vérifie à nouveau si {amount} peuvent être prélevés chez {customer}. Si le client est toujours bloqué, la facture reste retenue et rien n'est prélevé.",
+        "accept": "Libérer"
+      },
+      "confirmVoid": {
+        "title": "Annuler {number} ?",
+        "body": "{amount} ne seront pas prélevés. La facture devient nulle et ne peut plus être payée. Cette action est irréversible.",
+        "accept": "Annuler la facture"
+      },
+      "released": "Libéré : le prélèvement de {amount} a été envoyé au prestataire de paiement.",
+      "stillHeld": "Toujours retenu : le client est encore bloqué ou l'environnement est en attente. Rien n'a été prélevé.",
+      "voided": "La facture est annulée.",
+      "actionTitle": "En attente de la confirmation du paiement par le client",
+      "actionPill": "Le client doit confirmer",
+      "actionHint": "La banque du client lui demande de confirmer ce paiement (3-D Secure) : il ne peut pas être prélevé sans lui.",
+      "mailedHint": "Payrudder a demandé l'envoi au client d'un e-mail avec un lien vers la page de la facture. La page E-mail indique s'il est arrivé.",
+      "mailed": "Client prévenu par e-mail",
+      "nextAsk": "Prochaine interrogation du prestataire",
+      "windowEnds": "Considéré comme refusé le",
+      "windowHint": "Si le client n'a pas confirmé d'ici là, le paiement est considéré comme refusé et les nouvelles tentatives commencent."
     }
   },
   "deadLetters": {
@@ -2895,7 +2932,8 @@
         "bad_page_size": "La taille de page doit être comprise entre 1 et 500.",
         "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
         "pdf_sign_failed": "Le lien de téléchargement du PDF n'a pas pu être créé. Réessayez dans un instant.",
-        "pdf_failed": "Le PDF de la facture n'a pas pu être généré. Vérifiez les données de la facture."
+        "pdf_failed": "Le PDF de la facture n'a pas pu être généré. Vérifiez les données de la facture.",
+        "not_held": "Le premier prélèvement de cette facture n'est pas retenu : il n'y a rien à libérer ou à annuler ici."
       },
       "invoice_link": {
         "bad_expiry": "Le lien doit expirer dans 1 à 365 jours.",
