@@ -64,7 +64,7 @@ const lastResult = computed(() => run.data.value);
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const table = useTableState<Row>(rows, {
   selectId: (d) => String(d.id),
-  searchFields: (d) => [d.number, d.invoice_id, d.provider, d.provider_ref, d.detail, d.owner, d.note],
+  url: "issues-", searchFields: (d) => [d.number, d.invoice_id, d.provider, d.provider_ref, d.detail, d.owner, d.note],
   sorts: () => [newest(t, (d) => time(d.first_seen_at)), oldest(t, (d) => time(d.first_seen_at)), amountHigh(t, (d) => amount(d.billed_minor ?? d.ledger_minor)), amountLow(t, (d) => amount(d.billed_minor ?? d.ledger_minor))],
   filters: { kind: (d, v) => d.kind === v, status: (d, v) => d.status === v },
 });
@@ -141,7 +141,7 @@ const detailRows = computed(() => {
 </script>
 
 <template>
-  <Card class="mb-6">
+  <Card class="mb-6" data-testid="review-queue">
     <div>
       <h2 class="text-lg font-semibold">{{ t("billing.reconcile.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.reconcile.hint") }}</p>

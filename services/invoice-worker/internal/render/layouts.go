@@ -14,6 +14,7 @@ var english = layout{code: "en", Format: localefmt.For("en"),
 		kTaxID:        "Tax ID", kTaxOffice: "Tax office", kVATID: "VAT ID", kVKN: "VKN (tax number)", kTCKN: "TCKN (national ID)",
 		kEDocumentNote: "The legal e-document (e-Fatura or e-Arşiv invoice) for this invoice is issued separately by the seller's e-invoice provider and carries its own number.",
 		kSandbox:       "SANDBOX - not a real invoice",
+		kCarried:       "Carried to your credit balance",
 	}}
 
 var turkish = layout{code: "tr", Format: localefmt.For("tr"),
@@ -25,6 +26,7 @@ var turkish = layout{code: "tr", Format: localefmt.For("tr"),
 		kTaxID:        "Vergi kimlik no", kTaxOffice: "Vergi dairesi", kVATID: "KDV kimlik no (VAT ID)", kVKN: "VKN", kTCKN: "TCKN",
 		kEDocumentNote: "Bu faturanın yasal e-belgesi (e-Fatura veya e-Arşiv Fatura) satıcının e-fatura sağlayıcısı tarafından ayrıca düzenlenir ve kendi numarasını taşır.",
 		kSandbox:       "SANDBOX - gerçek fatura değildir",
+		kCarried:       "Kredi bakiyenize aktarılan",
 	}}
 
 var german = layout{code: "de", Format: localefmt.For("de"),
@@ -36,6 +38,7 @@ var german = layout{code: "de", Format: localefmt.For("de"),
 		kTaxID:        "Steuernummer", kTaxOffice: "Finanzamt", kVATID: "USt-IdNr.", kVKN: "VKN (türkische Steuernummer)", kTCKN: "TCKN (türkische Identitätsnummer)",
 		kEDocumentNote: "Das rechtlich maßgebliche E-Dokument (e-Fatura oder e-Arşiv-Rechnung) zu dieser Rechnung stellt der E-Rechnungs-Anbieter des Verkäufers gesondert aus; es trägt eine eigene Nummer.",
 		kSandbox:       "SANDBOX - keine echte Rechnung",
+		kCarried:       "Auf Ihr Guthaben übertragen",
 	}}
 
 var french = layout{code: "fr", Format: localefmt.For("fr"),
@@ -47,6 +50,7 @@ var french = layout{code: "fr", Format: localefmt.For("fr"),
 		kTaxID:        "N° fiscal", kTaxOffice: "Centre des impôts", kVATID: "N° de TVA", kVKN: "VKN (numéro fiscal turc)", kTCKN: "TCKN (numéro d'identité turc)",
 		kEDocumentNote: "Le document électronique légal (e-Fatura ou facture e-Arşiv) de cette facture est émis séparément par le prestataire de facturation électronique du vendeur et porte son propre numéro.",
 		kSandbox:       "SANDBOX - ce n'est pas une vraie facture",
+		kCarried:       "Reporté sur votre solde créditeur",
 	}}
 
 var spanish = layout{code: "es", Format: localefmt.For("es"),
@@ -58,4 +62,5 @@ var spanish = layout{code: "es", Format: localefmt.For("es"),
 		kTaxID:        "NIF / ID fiscal", kTaxOffice: "Oficina tributaria", kVATID: "N.º de IVA", kVKN: "VKN (número fiscal turco)", kTCKN: "TCKN (número de identidad turco)",
 		kEDocumentNote: "El documento electrónico legal (e-Fatura o factura e-Arşiv) de esta factura lo emite por separado el proveedor de facturación electrónica del vendedor y lleva su propio número.",
 		kSandbox:       "SANDBOX - no es una factura real",
+		kCarried:       "Abonado a su saldo a favor",
 	}}

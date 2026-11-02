@@ -48,6 +48,18 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if got, err := e.plans.GetPlanVersion(ctx, &plansv1.GetPlanVersionRequest{PlanCode: "starter"}); err != nil || got.GetPlanVersion().GetTrialDays() != 7 {
 			t.Fatalf("read back = %v, %v", got, err)
 		}
+		// A new version charges the first paid period from the end of the trial unless it says it should not, and keeps the rule it was published under.
+		if !pv.GetPlanVersion().GetProrateAfterTrial() {
+			t.Fatalf("a version published without saying prorates by default: %v", pv)
+		}
+		keep := false
+		whole, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "starter", BaseFeeMinor: 5000, TrialDays: 7, Fees: yearlyFees("starter", 5000), ProrateAfterTrial: &keep})
+		if err != nil || whole.GetPlanVersion().GetProrateAfterTrial() {
+			t.Fatalf("a version published with prorate_after_trial false = %v, %v", whole, err)
+		}
+		if got, err := e.plans.GetPlanVersion(ctx, &plansv1.GetPlanVersionRequest{PlanCode: "starter", Version: pv.GetPlanVersion().GetVersion()}); err != nil || !got.GetPlanVersion().GetProrateAfterTrial() {
+			t.Fatalf("the earlier version read back = %v, %v", got, err)
+		}
 		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "starter", BaseFeeMinor: 5000, TrialDays: 400}); code(t, err) != codes.InvalidArgument {
 			t.Fatalf("trial_days 400 on a version: %v", err)
 		}

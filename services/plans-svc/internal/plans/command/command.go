@@ -79,7 +79,7 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 		if err != nil {
 			return err
 		}
-		pv, err := q.InsertPlanVersion(ctx, sqlc.InsertPlanVersionParams{ID: idgen.NewUUIDv7(), PlanID: plan.ID, BaseFeeMinor: in.BaseFeeMinor, TrialDays: in.TrialDays})
+		pv, err := q.InsertPlanVersion(ctx, sqlc.InsertPlanVersionParams{ID: idgen.NewUUIDv7(), PlanID: plan.ID, BaseFeeMinor: in.BaseFeeMinor, TrialDays: in.TrialDays, ProrateAfterTrial: in.ProrateAfterTrial})
 		if err != nil {
 			return err
 		}
@@ -108,11 +108,11 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 				return err
 			}
 		}
-		if out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.TrialDays, pv.PublishedAt, scales); err != nil {
+		if out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.TrialDays, pv.ProrateAfterTrial, pv.PublishedAt, scales); err != nil {
 			return err
 		}
 		return c.audit(ctx, tx, "plan.version_published", pv.ID.String(), fmt.Sprintf("published version %d of the plan %s", pv.Version, plan.Code),
-			map[string]any{"plan": plan.Code, "version": pv.Version, "base_fee_minor": pv.BaseFeeMinor, "trial_days": pv.TrialDays, "fees": len(fees), "prices": len(in.Prices)})
+			map[string]any{"plan": plan.Code, "version": pv.Version, "base_fee_minor": pv.BaseFeeMinor, "trial_days": pv.TrialDays, "prorate_after_trial": pv.ProrateAfterTrial, "fees": len(fees), "prices": len(in.Prices)})
 	}
 	// Two concurrent publishes of the same plan collide on UNIQUE (tenant, plan, version); retry once.
 	err := c.db.TxWith(ctx, publish)

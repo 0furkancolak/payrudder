@@ -139,7 +139,7 @@ var refundStates = map[string]billingv1.RefundState{
 func creditNoteProto(c *model.CreditNote, customerExternalID string) *billingv1.CreditNote {
 	out := &billingv1.CreditNote{
 		Id: c.ID.String(), Number: c.Number, InvoiceId: c.InvoiceID.String(), InvoiceNumber: c.InvoiceNumber, CustomerId: c.CustomerID.String(),
-		CustomerExternalId: customerExternalID, Currency: c.Currency, TotalMinor: c.TotalMinor, Reason: c.Reason, CreateTime: timestamppb.New(c.CreatedAt),
+		CustomerExternalId: customerExternalID, Currency: c.Currency, TotalMinor: c.TotalMinor, TaxMinor: c.TaxMinor, Reason: c.Reason, CreateTime: timestamppb.New(c.CreatedAt),
 		Disposition: billingv1.CreditNoteDisposition_CREDIT_NOTE_DISPOSITION_CREDIT, RefundError: c.RefundError,
 	}
 	if c.Refund {
@@ -150,7 +150,7 @@ func creditNoteProto(c *model.CreditNote, customerExternalID string) *billingv1.
 
 func creditNoteRowProto(r sqlc.GetCreditNoteRow) *billingv1.CreditNote {
 	return creditNoteProto(&model.CreditNote{
-		ID: r.ID, CustomerID: r.CustomerID, InvoiceID: r.InvoiceID, Number: r.Number, InvoiceNumber: r.InvoiceNumber, Currency: r.Currency, TotalMinor: r.TotalMinor,
+		ID: r.ID, CustomerID: r.CustomerID, InvoiceID: r.InvoiceID, Number: r.Number, InvoiceNumber: r.InvoiceNumber, Currency: r.Currency, TotalMinor: r.TotalMinor, TaxMinor: r.TaxMinor,
 		Reason: r.Reason, CreatedAt: r.CreatedAt, Refund: r.Refund, RefundState: r.RefundState, RefundError: r.RefundError,
 	}, r.CustomerExternalID)
 }

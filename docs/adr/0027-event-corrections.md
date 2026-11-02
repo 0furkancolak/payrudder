@@ -62,10 +62,9 @@ key rules as an event and its own request shape, so that `POST /v1/events` and i
 
 ## Known limits (default, not agreed)
 
-- **A downward correction larger than the next invoice is clamped.** The next invoice's total is clamped at zero when its lines add up to less
-  (`buildDraft`, the finding of plan 22); the negative `LATE_USAGE` line keeps its amount, but the surplus is not carried to a later invoice or to a credit balance. It happens
-  when a correction exceeds a whole period's charges (a cancelled customer, a very large mistake). A carry-over into `credit_balances` needs a new credit source (a migration, its
-  tenant twin and the accounting that reads sources) and is a follow-up; until then the tenant can issue a credit note or grant credit by hand.
+- **A downward correction larger than the next invoice** charges nothing, and the surplus is carried to the customer's credit balance ([ADR 0028](0028-money-rules-credit-note-tax-surplus-trial-year.md)
+  section 2; it was clamped and lost before): the invoice's total is zero, its negative `LATE_USAGE` line keeps its amount, and what the lines come to below zero (tax included)
+  is one credit, applied to the customer's next invoices.
 - **Events older than the migration cannot be corrected**: their keys were stored without the customer, meter and time a correction needs. This lasts for the 76 days of the key
   window after the release.
 - **The estimate of the upcoming invoice** ([billing-svc](../03-services/billing-svc.md#as-built-the-upcoming-invoice-plan-22-g14)) includes a pending correction like any late usage.

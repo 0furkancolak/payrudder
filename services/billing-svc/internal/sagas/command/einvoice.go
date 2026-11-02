@@ -42,8 +42,8 @@ func (e *Engine) EInvoiceOnFinalize(ctx context.Context, tx pgx.Tx, tenantID, sa
 }
 
 // CreditNoteSnapshot is what a credit note's e-invoice carries: the invoice's snapshot with the credit note's number and id, the invoice's lines scaled to
-// the credited amount (without the credit balance the invoice applied), and the original's number and date. eInvoiceOn is the setting frozen on the invoice.
-func (e *Engine) CreditNoteSnapshot(ctx context.Context, tx pgx.Tx, tenantID, invoiceID, creditNoteID uuid.UUID, number string, credited int64, at time.Time) (snap *commandsv1.IssueEInvoice, eInvoiceOn string, err error) {
+// the credited amount (without the credit balance the invoice applied) of which tax is the tax given back, and the original's number and date. eInvoiceOn is the setting frozen on the invoice.
+func (e *Engine) CreditNoteSnapshot(ctx context.Context, tx pgx.Tx, tenantID, invoiceID, creditNoteID uuid.UUID, number string, credited, tax int64, at time.Time) (snap *commandsv1.IssueEInvoice, eInvoiceOn string, err error) {
 	sagaID, err := sqlc.New(tx).GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: invoiceID})
 	if err != nil {
 		return nil, "", err
@@ -59,7 +59,7 @@ func (e *Engine) CreditNoteSnapshot(ctx context.Context, tx pgx.Tx, tenantID, in
 	inv := e.invoiceSnapshot(s, lines)
 	cn := proto.Clone(inv).(*commandsv1.InvoiceSnapshot)
 	cn.InvoiceId, cn.Number, cn.Version, cn.IssuedAt = creditNoteID.String(), number, 1, timestamppb.New(at)
-	cn.Lines = ProrateLines(inv.GetLines(), credited)
+	cn.Lines = ProrateLines(inv.GetLines(), credited, tax)
 	var sub int64
 	for _, l := range cn.Lines {
 		if l.GetKind() != "TAX" {
@@ -73,9 +73,27 @@ func (e *Engine) CreditNoteSnapshot(ctx context.Context, tx pgx.Tx, tenantID, in
 	}, s.Snap.EInvoiceOn, nil
 }
 
-// ProrateLines scales the invoice lines (all but the credit balance) so that they add up to target, by largest remainder: every line keeps its sign and the
-// sum is exact. Line numbers are renumbered from 1. A zero base returns nothing.
-func ProrateLines(lines []*commandsv1.InvoiceLineSnapshot, target int64) []*commandsv1.InvoiceLineSnapshot {
+// ProrateLines scales the invoice lines (all but the credit balance) so that they add up to target, with exactly tax of it on the TAX lines and the rest on the others
+// (a credit note gives back the tax it records, not whatever a proportional split of every line would round to). Within each group the split is by largest remainder:
+// every line keeps its sign and the sum is exact. Line numbers are renumbered from 1. A group with a zero base returns nothing.
+func ProrateLines(lines []*commandsv1.InvoiceLineSnapshot, target, tax int64) []*commandsv1.InvoiceLineSnapshot {
+	var taxLines, others []*commandsv1.InvoiceLineSnapshot
+	for _, l := range lines {
+		if l.GetKind() == "TAX" {
+			taxLines = append(taxLines, l)
+		} else {
+			others = append(others, l)
+		}
+	}
+	out := append(prorate(others, target-tax), prorate(taxLines, tax)...)
+	for i, l := range out {
+		l.LineNo = int32(i + 1) //nolint:gosec // small
+	}
+	return out
+}
+
+// prorate scales lines (all but the credit balance) so that they add up to target, by largest remainder.
+func prorate(lines []*commandsv1.InvoiceLineSnapshot, target int64) []*commandsv1.InvoiceLineSnapshot {
 	var keep []*commandsv1.InvoiceLineSnapshot
 	var base int64
 	for _, l := range lines {

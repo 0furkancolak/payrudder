@@ -2309,9 +2309,11 @@ type PublishPlanVersionRequest struct {
 	// meters in `prices`.
 	CurrencyPrices []*CurrencyPrices `protobuf:"bytes,6,rep,name=currency_prices,json=currencyPrices,proto3" json:"currency_prices,omitempty"`
 	// 0..365. The trial a new subscription to this version gets unless its request says otherwise. 0 = none.
-	TrialDays     int32 `protobuf:"varint,7,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TrialDays int32 `protobuf:"varint,7,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	// Unset = true: a trial that ends inside a billing period charges the first paid period from the trial's end to the period's end, not the whole fee.
+	ProrateAfterTrial *bool `protobuf:"varint,8,opt,name=prorate_after_trial,json=prorateAfterTrial,proto3,oneof" json:"prorate_after_trial,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PublishPlanVersionRequest) Reset() {
@@ -2391,6 +2393,13 @@ func (x *PublishPlanVersionRequest) GetTrialDays() int32 {
 		return x.TrialDays
 	}
 	return 0
+}
+
+func (x *PublishPlanVersionRequest) GetProrateAfterTrial() bool {
+	if x != nil && x.ProrateAfterTrial != nil {
+		return *x.ProrateAfterTrial
+	}
+	return false
 }
 
 type PublishPlanVersionResponse struct {
@@ -8941,7 +8950,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x04plan\x18\x01 \x01(\v2\x18.payrudder.plans.v1.PlanR\x04plan\"\x12\n" +
 	"\x10ListPlansRequest\"C\n" +
 	"\x11ListPlansResponse\x12.\n" +
-	"\x05plans\x18\x01 \x03(\v2\x18.payrudder.plans.v1.PlanR\x05plans\"\xf7\x02\n" +
+	"\x05plans\x18\x01 \x03(\v2\x18.payrudder.plans.v1.PlanR\x05plans\"\xc4\x03\n" +
 	"\x19PublishPlanVersionRequest\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12$\n" +
 	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\x121\n" +
@@ -8950,7 +8959,9 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x04fees\x18\x05 \x03(\v2\x1f.payrudder.plans.v1.CurrencyFeeR\x04fees\x12K\n" +
 	"\x0fcurrency_prices\x18\x06 \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\x12\x1d\n" +
 	"\n" +
-	"trial_days\x18\a \x01(\x05R\ttrialDays\"`\n" +
+	"trial_days\x18\a \x01(\x05R\ttrialDays\x123\n" +
+	"\x13prorate_after_trial\x18\b \x01(\bH\x00R\x11prorateAfterTrial\x88\x01\x01B\x16\n" +
+	"\x14_prorate_after_trial\"`\n" +
 	"\x1aPublishPlanVersionResponse\x12B\n" +
 	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"v\n" +
 	"\x15GetPlanVersionRequest\x12&\n" +
@@ -9967,6 +9978,7 @@ func file_payrudder_plans_v1_plans_proto_init() {
 	}
 	file_payrudder_plans_v1_resources_proto_init()
 	file_payrudder_plans_v1_plans_proto_msgTypes[12].OneofWrappers = []any{}
+	file_payrudder_plans_v1_plans_proto_msgTypes[39].OneofWrappers = []any{}
 	file_payrudder_plans_v1_plans_proto_msgTypes[43].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

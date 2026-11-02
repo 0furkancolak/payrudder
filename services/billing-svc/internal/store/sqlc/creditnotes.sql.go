@@ -70,7 +70,7 @@ func (q *Queries) EnsureCreditNoteSeq(ctx context.Context, arg EnsureCreditNoteS
 
 const getCreditNote = `-- name: GetCreditNote :one
 
-SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, '')::text AS invoice_number, c.currency, c.total_minor, c.reason, c.created_at,
+SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, '')::text AS invoice_number, c.currency, c.total_minor, c.tax_minor, c.reason, c.created_at,
        COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, (c.disposition = 'refund')::bool AS refund, c.refund_state,
        COALESCE(c.refund_error, '')::text AS refund_error
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
@@ -85,6 +85,7 @@ type GetCreditNoteRow struct {
 	InvoiceNumber      string
 	Currency           string
 	TotalMinor         int64
+	TaxMinor           int64
 	Reason             string
 	CreatedAt          time.Time
 	CustomerExternalID string
@@ -105,6 +106,7 @@ func (q *Queries) GetCreditNote(ctx context.Context, id uuid.UUID) (GetCreditNot
 		&i.InvoiceNumber,
 		&i.Currency,
 		&i.TotalMinor,
+		&i.TaxMinor,
 		&i.Reason,
 		&i.CreatedAt,
 		&i.CustomerExternalID,
@@ -238,6 +240,34 @@ func (q *Queries) InsertCreditBalanceForRerating(ctx context.Context, arg Insert
 	return err
 }
 
+const insertCreditBalanceForSurplus = `-- name: InsertCreditBalanceForSurplus :exec
+INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_surplus_invoice_id, currency)
+VALUES ($1, $2, $3, $4, $5::uuid, $6::text)
+ON CONFLICT (tenant_id, source_surplus_invoice_id) WHERE source_surplus_invoice_id IS NOT NULL DO NOTHING
+`
+
+type InsertCreditBalanceForSurplusParams struct {
+	TenantID               uuid.UUID
+	CustomerID             uuid.UUID
+	ID                     uuid.UUID
+	AmountMinor            int64
+	SourceSurplusInvoiceID uuid.UUID
+	Currency               string
+}
+
+// The surplus of an invoice whose lines came to less than nothing: its total is 0 and the rest becomes this credit (one per invoice).
+func (q *Queries) InsertCreditBalanceForSurplus(ctx context.Context, arg InsertCreditBalanceForSurplusParams) error {
+	_, err := q.db.Exec(ctx, insertCreditBalanceForSurplus,
+		arg.TenantID,
+		arg.CustomerID,
+		arg.ID,
+		arg.AmountMinor,
+		arg.SourceSurplusInvoiceID,
+		arg.Currency,
+	)
+	return err
+}
+
 const insertCreditBalanceForVoidedInvoice = `-- name: InsertCreditBalanceForVoidedInvoice :exec
 INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_invoice_id, currency)
 VALUES ($1, $2, $3, $4, $5::uuid, $6::text)
@@ -266,8 +296,8 @@ func (q *Queries) InsertCreditBalanceForVoidedInvoice(ctx context.Context, arg I
 }
 
 const insertCreditNote = `-- name: InsertCreditNote :exec
-INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, reason, created_at, disposition)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, tax_minor, reason, created_at, disposition)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type InsertCreditNoteParams struct {
@@ -278,6 +308,7 @@ type InsertCreditNoteParams struct {
 	Number      string
 	Currency    string
 	TotalMinor  int64
+	TaxMinor    int64
 	Reason      string
 	CreatedAt   time.Time
 	Disposition string
@@ -292,6 +323,7 @@ func (q *Queries) InsertCreditNote(ctx context.Context, arg InsertCreditNotePara
 		arg.Number,
 		arg.Currency,
 		arg.TotalMinor,
+		arg.TaxMinor,
 		arg.Reason,
 		arg.CreatedAt,
 		arg.Disposition,
@@ -300,7 +332,7 @@ func (q *Queries) InsertCreditNote(ctx context.Context, arg InsertCreditNotePara
 }
 
 const listCreditNotes = `-- name: ListCreditNotes :many
-SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, '')::text AS invoice_number, c.currency, c.total_minor, c.reason, c.created_at,
+SELECT c.id, c.customer_id, c.invoice_id, c.number, COALESCE(i.number, '')::text AS invoice_number, c.currency, c.total_minor, c.tax_minor, c.reason, c.created_at,
        COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, (c.disposition = 'refund')::bool AS refund, c.refund_state,
        COALESCE(c.refund_error, '')::text AS refund_error
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
@@ -327,6 +359,7 @@ type ListCreditNotesRow struct {
 	InvoiceNumber      string
 	Currency           string
 	TotalMinor         int64
+	TaxMinor           int64
 	Reason             string
 	CreatedAt          time.Time
 	CustomerExternalID string
@@ -358,6 +391,7 @@ func (q *Queries) ListCreditNotes(ctx context.Context, arg ListCreditNotesParams
 			&i.InvoiceNumber,
 			&i.Currency,
 			&i.TotalMinor,
+			&i.TaxMinor,
 			&i.Reason,
 			&i.CreatedAt,
 			&i.CustomerExternalID,
@@ -376,7 +410,7 @@ func (q *Queries) ListCreditNotes(ctx context.Context, arg ListCreditNotesParams
 }
 
 const listRefundsAwaitingReply = `-- name: ListRefundsAwaitingReply :many
-SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.refund_attempt, c.refund_run_from, c.refund_generation, COALESCE(c.refund_ref, '')::text AS refund_ref,
+SELECT c.tenant_id, c.id, c.invoice_id, c.currency, c.total_minor, c.tax_minor, c.refund_attempt, c.refund_run_from, c.refund_generation, COALESCE(c.refund_ref, '')::text AS refund_ref,
        COALESCE(i.snapshot->>'environment', 'live')::text AS environment
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
 WHERE c.refund_state = 'requested' AND c.refund_requested_at <= $1::timestamptz
@@ -389,6 +423,7 @@ type ListRefundsAwaitingReplyRow struct {
 	InvoiceID        uuid.UUID
 	Currency         string
 	TotalMinor       int64
+	TaxMinor         int64
 	RefundAttempt    int32
 	RefundRunFrom    int32
 	RefundGeneration int32
@@ -411,6 +446,7 @@ func (q *Queries) ListRefundsAwaitingReply(ctx context.Context, requestedBefore 
 			&i.InvoiceID,
 			&i.Currency,
 			&i.TotalMinor,
+			&i.TaxMinor,
 			&i.RefundAttempt,
 			&i.RefundRunFrom,
 			&i.RefundGeneration,
@@ -506,7 +542,7 @@ func (q *Queries) ListUnappliedCreditsRead(ctx context.Context, arg ListUnapplie
 }
 
 const lockCreditNoteByRefundCommand = `-- name: LockCreditNoteByRefundCommand :one
-SELECT id, customer_id, invoice_id, number, currency, total_minor, COALESCE(reason, '')::text AS reason, created_at FROM credit_notes
+SELECT id, customer_id, invoice_id, number, currency, total_minor, tax_minor, COALESCE(reason, '')::text AS reason, created_at FROM credit_notes
 WHERE tenant_id = $1 AND refund_command_id = $2::uuid AND refund_state = 'requested'
 FOR UPDATE
 `
@@ -523,6 +559,7 @@ type LockCreditNoteByRefundCommandRow struct {
 	Number     string
 	Currency   string
 	TotalMinor int64
+	TaxMinor   int64
 	Reason     string
 	CreatedAt  time.Time
 }
@@ -537,6 +574,7 @@ func (q *Queries) LockCreditNoteByRefundCommand(ctx context.Context, arg LockCre
 		&i.Number,
 		&i.Currency,
 		&i.TotalMinor,
+		&i.TaxMinor,
 		&i.Reason,
 		&i.CreatedAt,
 	)
@@ -581,7 +619,7 @@ func (q *Queries) LockCreditNoteSeq(ctx context.Context, arg LockCreditNoteSeqPa
 }
 
 const lockInvoiceForCreditNote = `-- name: LockInvoiceForCreditNote :one
-SELECT status, currency, COALESCE(snapshot->>'environment', 'live')::text AS environment, number, total_minor, customer_id
+SELECT status, currency, COALESCE(snapshot->>'environment', 'live')::text AS environment, number, total_minor, customer_id, COALESCE(snapshot->>'time_zone', '')::text AS time_zone
 FROM invoices WHERE tenant_id = $1 AND id = $2 FOR UPDATE
 `
 
@@ -597,6 +635,7 @@ type LockInvoiceForCreditNoteRow struct {
 	Number      *string
 	TotalMinor  int64
 	CustomerID  uuid.UUID
+	TimeZone    string
 }
 
 func (q *Queries) LockInvoiceForCreditNote(ctx context.Context, arg LockInvoiceForCreditNoteParams) (LockInvoiceForCreditNoteRow, error) {
@@ -609,12 +648,13 @@ func (q *Queries) LockInvoiceForCreditNote(ctx context.Context, arg LockInvoiceF
 		&i.Number,
 		&i.TotalMinor,
 		&i.CustomerID,
+		&i.TimeZone,
 	)
 	return i, err
 }
 
 const lockRefundForRetry = `-- name: LockRefundForRetry :one
-SELECT c.invoice_id, c.customer_id, c.number, c.currency, c.total_minor, c.reason, c.created_at, c.refund_state, c.refund_attempt, c.refund_generation,
+SELECT c.invoice_id, c.customer_id, c.number, c.currency, c.total_minor, c.tax_minor, c.reason, c.created_at, c.refund_state, c.refund_attempt, c.refund_generation,
        COALESCE(c.refund_error, '')::text AS refund_error, COALESCE(i.snapshot->>'environment', 'live')::text AS environment
 FROM credit_notes c JOIN invoices i ON i.tenant_id = c.tenant_id AND i.id = c.invoice_id
 WHERE c.tenant_id = $1 AND c.id = $2 AND c.disposition = 'refund'
@@ -632,6 +672,7 @@ type LockRefundForRetryRow struct {
 	Number           string
 	Currency         string
 	TotalMinor       int64
+	TaxMinor         int64
 	Reason           string
 	CreatedAt        time.Time
 	RefundState      string
@@ -650,6 +691,7 @@ func (q *Queries) LockRefundForRetry(ctx context.Context, arg LockRefundForRetry
 		&i.Number,
 		&i.Currency,
 		&i.TotalMinor,
+		&i.TaxMinor,
 		&i.Reason,
 		&i.CreatedAt,
 		&i.RefundState,
@@ -753,6 +795,23 @@ func (q *Queries) RefundCommandExists(ctx context.Context, arg RefundCommandExis
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const sumCreditNoteTax = `-- name: SumCreditNoteTax :one
+SELECT COALESCE(sum(tax_minor), 0)::bigint AS given_back FROM credit_notes WHERE tenant_id = $1 AND invoice_id = $2
+`
+
+type SumCreditNoteTaxParams struct {
+	TenantID  uuid.UUID
+	InvoiceID uuid.UUID
+}
+
+// The tax the invoice's earlier credit notes gave back (the invoice's own tax is SumInvoiceTax).
+func (q *Queries) SumCreditNoteTax(ctx context.Context, arg SumCreditNoteTaxParams) (int64, error) {
+	row := q.db.QueryRow(ctx, sumCreditNoteTax, arg.TenantID, arg.InvoiceID)
+	var given_back int64
+	err := row.Scan(&given_back)
+	return given_back, err
 }
 
 const sumCreditNotes = `-- name: SumCreditNotes :one

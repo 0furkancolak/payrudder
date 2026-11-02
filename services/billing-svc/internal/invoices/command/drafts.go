@@ -31,7 +31,9 @@ type RegularDraft struct {
 	Lines             []rating.Line
 	LineScales        []int
 	Total             int64
-	Snapshot          sagamodel.Snapshot
+	// CreditSurplus is what the lines came to below zero (Total is then 0): it is added to the customer's credit balance with the invoice.
+	CreditSurplus int64
+	Snapshot      sagamodel.Snapshot
 }
 
 // InsertRegular inserts the regular drafts of a billing run in one transaction and returns how many were new: a customer that already has its invoice for the
@@ -72,6 +74,13 @@ func insertRegular(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, per
 	}
 	if err != nil {
 		return false, err
+	}
+	if d.CreditSurplus > 0 {
+		// One credit per invoice (the unique index): the draft above is new, so this is its first and only.
+		if err := q.InsertCreditBalanceForSurplus(ctx, sqlc.InsertCreditBalanceForSurplusParams{TenantID: tenantID, CustomerID: d.CustomerID, ID: uuid.New(), AmountMinor: d.CreditSurplus,
+			SourceSurplusInvoiceID: id, Currency: d.Currency}); err != nil {
+			return false, err
+		}
 	}
 	// Credits from re-rating are applied to the first regular invoice that can use them.
 	lines, scales, err := ApplyCredits(ctx, q, tenantID, d.CustomerID, id, d.Currency, subtotal, d.Total, d.Lines, d.LineScales, RegularCreditDescription)

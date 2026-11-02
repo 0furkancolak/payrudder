@@ -446,7 +446,12 @@
       "reason": "Motif",
       "bytes": "Octets"
     },
-    "noMessages": "Aucun message dans cette file."
+    "noMessages": "Aucun message dans cette file.",
+    "bulk": {
+      "redrive": "Rejouer la sélection",
+      "title": "Rejouer les files sélectionnées ?",
+      "confirm": "Files : {queues}. Messages renvoyés vers leurs files de travail, compteurs de tentatives remis à zéro : {count}."
+    }
   },
   "playground": {
     "title": "Bac à sable",
@@ -693,7 +698,8 @@
         "estimate": "Estimation",
         "period": "Période {period}",
         "none": "Rien à facturer pour l'instant : ce client n'a pas d'abonnement sur la période en cours ni d'utilisation tardive à facturer.",
-        "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier."
+        "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
+        "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
       }
     },
     "packages": {
@@ -842,7 +848,12 @@
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
         }
-      }
+      },
+      "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
+      "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
+      "firstPeriod": "Première période après l'essai",
+      "firstPeriodProrated": "À partir de la fin de l'essai",
+      "firstPeriodWhole": "Toute la période"
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -961,6 +972,13 @@
         "replacedBy": "Remplacé par un changement de formule : {plan} a pris le relais.",
         "changedFrom": "Créé par un changement depuis {plan}.",
         "open": "Ouvrir"
+      },
+      "bulk": {
+        "cancel": "Annuler la sélection à la fin de la période",
+        "keep": "Conserver la sélection",
+        "resume": "Reprendre la sélection",
+        "cancelTitle": "Annuler {n} abonnement à la fin de la période ? | Annuler {n} abonnements à la fin de la période ?",
+        "confirmCancel": "Chacun prend fin avec sa période en cours et n'est pas renouvelé. Les clients gardent l'accès jusque-là, et « Conserver la sélection » annule la résiliation."
       }
     },
     "payments": {
@@ -1140,7 +1158,12 @@
         "empty": "Aucun coupon pour l'instant.",
         "badPercent": "Pas un pourcentage : de 0,01 à 100 avec au plus deux décimales.",
         "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
-        "repeatingFor": "{n} premiers tarifs"
+        "repeatingFor": "{n} premiers tarifs",
+        "bulk": {
+          "deactivate": "Désactiver la sélection",
+          "title": "Désactiver {n} coupon ? | Désactiver {n} coupons ?",
+          "confirm": "Ils n'acceptent plus de nouvelles utilisations, et un coupon désactivé ne peut pas être réactivé. Les abonnements qui en ont déjà un le gardent."
+        }
       },
       "tax": {
         "title": "Taxes",
@@ -1283,6 +1306,7 @@
       "new": "Nouvel avoir",
       "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte.",
       "allWhere": "Partout",
+      "taxGiven": "Taxe restituée",
       "resolve": {
         "action": "Régler le remboursement",
         "title": "Régler le remboursement de {number}",
@@ -1425,7 +1449,12 @@
       "createdTitle": "Lien de paiement créé",
       "createdHint": "Copiez le lien maintenant et envoyez-le au payeur.",
       "another": "Créer un autre lien",
-      "customerNone": "Aucun client"
+      "customerNone": "Aucun client",
+      "bulk": {
+        "revoke": "Révoquer la sélection",
+        "revokeTitle": "Révoquer {n} lien de paiement ? | Révoquer {n} liens de paiement ?",
+        "confirmRevoke": "Les liens révoqués cessent de fonctionner immédiatement et ne peuvent pas être rétablis. Les factures impayées qui en sont issues sont annulées."
+      }
     },
     "mail": {
       "title": "E-mail",
@@ -2318,7 +2347,14 @@
       "reinstate": "Rétablir",
       "edit": "Modifier",
       "linkAndCode": "Lien et code",
-      "referralsOf": "Recommandations"
+      "referralsOf": "Recommandations",
+      "bulk": {
+        "approve": "Approuver la sélection",
+        "suspend": "Suspendre la sélection",
+        "reinstate": "Rétablir la sélection",
+        "suspendTitle": "Suspendre {n} partenaire ? | Suspendre {n} partenaires ?",
+        "confirmSuspend": "Un partenaire suspendu ne reçoit ni nouvelles attributions ni commissions ; ce qui a été approuvé reste. Le rétablir le remet en service."
+      }
     },
     "add": {
       "title": "Ajouter un affilié",
@@ -4083,7 +4119,8 @@
         "service": "Période de service",
         "quantity": "Quantité",
         "amount": "Montant",
-        "total": "Total"
+        "total": "Total",
+        "creditSurplus": "{amount} a été ajouté au solde créditeur du client : les lignes totalisaient moins que zéro, et une facture n'a jamais un total négatif."
       },
       "payments": {
         "title": "Paiements",

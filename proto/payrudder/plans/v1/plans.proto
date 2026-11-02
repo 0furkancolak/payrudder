@@ -373,6 +373,8 @@ message PublishPlanVersionRequest {
   repeated CurrencyPrices currency_prices = 6;
   // 0..365. The trial a new subscription to this version gets unless its request says otherwise. 0 = none.
   int32 trial_days = 7;
+  // Unset = true: a trial that ends inside a billing period charges the first paid period from the trial's end to the period's end, not the whole fee.
+  optional bool prorate_after_trial = 8;
 }
 
 message PublishPlanVersionResponse {

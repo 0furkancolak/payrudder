@@ -533,7 +533,7 @@ CREATE TABLE invoice_lines (
 CREATE TABLE invoice_number_seq (
   tenant_id uuid NOT NULL, year int NOT NULL, next_value bigint NOT NULL,
   PRIMARY KEY (tenant_id, year)
-);  -- SELECT ... FOR UPDATE at finalize → gap-free per tenant/year
+);  -- SELECT ... FOR UPDATE at finalize → gap-free per tenant/year; the year is the year in the tenant's time zone (snapshot.time_zone, UTC when absent; ADR 0028). credit_note_seq is the same
 
 CREATE TABLE invoice_sagas (
   tenant_id        uuid NOT NULL,
@@ -568,8 +568,12 @@ CREATE TABLE credit_balances (
   applied_invoice_id uuid,                              -- NULL = unapplied
   PRIMARY KEY (tenant_id, id)
   -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and
-  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice)
+  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice), and source_surplus_invoice_id, the invoice whose lines
+  -- came to less than nothing: its total is 0 and the surplus is this credit (unique per invoice; migration 00007, ADR 0028)
 );
+
+-- As built, credit_notes.tax_minor (migration 00006) is the part of total_minor that is the invoice's tax given back (0 for a note made before it);
+-- plans-svc plan_versions.prorate_after_trial (migration 00015) is false for every version that existed then and true for a new version unless it says otherwise.
 
 CREATE TABLE rerating_jobs (
   tenant_id uuid NOT NULL, id uuid NOT NULL, period_id text NOT NULL, plan_version_id uuid NOT NULL,

@@ -51,6 +51,7 @@ const upcoming = useUpcomingInvoice(() => props.tenantId, () => props.externalId
             </TableRow>
           </TableBody>
         </Table>
+        <p v-if="Number(upcoming.data.value.credit_surplus_minor) > 0" class="m-0 text-sm" data-testid="upcoming-surplus">{{ t("billing.customers.upcoming.creditSurplus", { amount: formatMinor(upcoming.data.value.credit_surplus_minor, upcoming.data.value.currency, locale) }) }}</p>
         <p class="text-muted-foreground m-0 text-xs">{{ t("billing.customers.upcoming.note", { when: fmt.date(upcoming.data.value.as_of, "dateTime") }) }}</p>
       </template>
     </template>

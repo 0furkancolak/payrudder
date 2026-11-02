@@ -637,8 +637,13 @@ type InvoiceSnapshot struct {
 	CustomerTaxId     string `protobuf:"bytes,27,opt,name=customer_tax_id,json=customerTaxId,proto3" json:"customer_tax_id,omitempty"`
 	CustomerTaxOffice string `protobuf:"bytes,28,opt,name=customer_tax_office,json=customerTaxOffice,proto3" json:"customer_tax_office,omitempty"`
 	CustomerCountry   string `protobuf:"bytes,29,opt,name=customer_country,json=customerCountry,proto3" json:"customer_country,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The tenant's IANA time zone when the draft was made: the calendar the dates printed on the document follow (issue date, service periods). Empty on a snapshot
+	// made before it was frozen: UTC, as those documents have always been dated.
+	TimeZone string `protobuf:"bytes,30,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// The surplus of a negative total that was carried to the customer's credit balance instead (the total printed is 0). 0 for any other invoice.
+	CreditSurplusMinor int64 `protobuf:"varint,31,opt,name=credit_surplus_minor,json=creditSurplusMinor,proto3" json:"credit_surplus_minor,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *InvoiceSnapshot) Reset() {
@@ -872,6 +877,20 @@ func (x *InvoiceSnapshot) GetCustomerCountry() string {
 		return x.CustomerCountry
 	}
 	return ""
+}
+
+func (x *InvoiceSnapshot) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetCreditSurplusMinor() int64 {
+	if x != nil {
+		return x.CreditSurplusMinor
+	}
+	return 0
 }
 
 // PartySnapshot is a seller or buyer with the legal data an e-invoice needs.
@@ -2189,7 +2208,8 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\tR\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_label\x18\x05 \x01(\tR\tunitLabel\x12!\n" +
-	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\xe1\t\n" +
+	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\xb0\n" +
+	"\n" +
 	"\x0fInvoiceSnapshot\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x18\n" +
@@ -2224,7 +2244,9 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x0eseller_country\x18\x1a \x01(\tR\rsellerCountry\x12&\n" +
 	"\x0fcustomer_tax_id\x18\x1b \x01(\tR\rcustomerTaxId\x12.\n" +
 	"\x13customer_tax_office\x18\x1c \x01(\tR\x11customerTaxOffice\x12)\n" +
-	"\x10customer_country\x18\x1d \x01(\tR\x0fcustomerCountry\"\x89\x03\n" +
+	"\x10customer_country\x18\x1d \x01(\tR\x0fcustomerCountry\x12\x1b\n" +
+	"\ttime_zone\x18\x1e \x01(\tR\btimeZone\x120\n" +
+	"\x14credit_surplus_minor\x18\x1f \x01(\x03R\x12creditSurplusMinor\"\x89\x03\n" +
 	"\rPartySnapshot\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x15\n" +
 	"\x06tax_id\x18\x02 \x01(\tR\x05taxId\x12\x1d\n" +

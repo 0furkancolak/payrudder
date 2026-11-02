@@ -2492,9 +2492,12 @@ type PlanVersion struct {
 	// Usage prices in the currencies of fees, when the plan version has metered prices.
 	CurrencyPrices []*CurrencyPrices `protobuf:"bytes,10,rep,name=currency_prices,json=currencyPrices,proto3" json:"currency_prices,omitempty"`
 	// The trial in days a new subscription to this version gets unless its request says otherwise. 0 = none.
-	TrialDays     int32 `protobuf:"varint,11,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TrialDays int32 `protobuf:"varint,11,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	// When a trial ends inside a billing period, the fixed fee of that first period is charged from the trial's end to the period's end instead of in full. A version
+	// published before this field existed is false (it charged the whole period and keeps doing so); a new version is true unless its request says otherwise.
+	ProrateAfterTrial bool `protobuf:"varint,12,opt,name=prorate_after_trial,json=prorateAfterTrial,proto3" json:"prorate_after_trial,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PlanVersion) Reset() {
@@ -2602,6 +2605,13 @@ func (x *PlanVersion) GetTrialDays() int32 {
 		return x.TrialDays
 	}
 	return 0
+}
+
+func (x *PlanVersion) GetProrateAfterTrial() bool {
+	if x != nil {
+		return x.ProrateAfterTrial
+	}
+	return false
 }
 
 // CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).
@@ -3720,7 +3730,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
 	"\vupdate_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"updateTime\"\xeb\x03\n" +
+	"updateTime\"\x9b\x04\n" +
 	"\vPlanVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x1b\n" +
@@ -3734,7 +3744,8 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x0fcurrency_prices\x18\n" +
 	" \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\x12\x1d\n" +
 	"\n" +
-	"trial_days\x18\v \x01(\x05R\ttrialDays\"_\n" +
+	"trial_days\x18\v \x01(\x05R\ttrialDays\x12.\n" +
+	"\x13prorate_after_trial\x18\f \x01(\bR\x11prorateAfterTrial\"_\n" +
 	"\x0eCurrencyPrices\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x121\n" +
 	"\x06prices\x18\x02 \x03(\v2\x19.payrudder.plans.v1.PriceR\x06prices\"\x95\x01\n" +

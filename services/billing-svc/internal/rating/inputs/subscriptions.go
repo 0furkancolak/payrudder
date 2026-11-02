@@ -107,8 +107,8 @@ func lastWithChain(subs []Subscription) Subscription {
 
 // FeeSegments splits the period between the plan versions of the subscription's chain. The first plan is in force from the
 // start of the period even if it began inside it (a subscription pays its whole first month), each later plan from the
-// instant it replaced the one before. A segment is waived while a trial runs past the period, or when the subscription was
-// paused before the period began.
+// instant it replaced the one before; a trial that ends inside the period moves the start of its plan's segment to the end of the trial when that version prorates
+// after a trial (FeeFrom). A segment is waived while a trial runs past the period, or when the subscription was paused before the period began.
 func (in *Inputs) FeeSegments(ctx context.Context, plans map[string]rating.PlanVersion, tenantID uuid.UUID, sub Subscription,
 	start, end time.Time, tenantCurrency string) ([]rating.FeeSegment, error) {
 	var segs []rating.FeeSegment
@@ -121,6 +121,9 @@ func (in *Inputs) FeeSegments(ctx context.Context, plans map[string]rating.PlanV
 		if i > 0 && member.Start.After(start) {
 			from = member.Start
 		}
+		if f := FeeFrom(member, pv, start, end); f.After(from) {
+			from = f
+		}
 		to := end
 		if i+1 < len(sub.Chain) && sub.Chain[i+1].Start.Before(end) {
 			to = sub.Chain[i+1].Start
@@ -131,6 +134,16 @@ func (in *Inputs) FeeSegments(ctx context.Context, plans map[string]rating.PlanV
 		segs = append(segs, rating.FeeSegment{PlanCode: pv.PlanCode, FeeMinor: pv.BaseFeeMinor, From: from, To: to, Waived: FeeWaived(member, start, end)})
 	}
 	return segs, nil
+}
+
+// FeeFrom is the instant the fixed fee of the period [start, end) is charged from: the start, or the end of the member's trial when it ends inside the period and
+// the plan version prorates after a trial (a trial that ends exactly at the end gives a fee of nothing). A trial that ended before the period, one that runs past it (the
+// fee is waived, FeeWaived) and a version that does not prorate leave the start where it is: the whole period is charged, as before the rule existed.
+func FeeFrom(member Subscription, pv rating.PlanVersion, start, end time.Time) time.Time {
+	if pv.ProrateAfterTrial && member.TrialEnd != nil && member.TrialEnd.After(start) && !member.TrialEnd.After(end) {
+		return *member.TrialEnd
+	}
+	return start
 }
 
 // FeeWaived reports whether the fixed fee of the period is not on the month's invoice: a trial runs past the period, the subscription was paused before it

@@ -501,6 +501,7 @@ class UpcomingInvoice(TypedDict):
     tax_minor: int
     credit_minor: int
     total_minor: int
+    credit_surplus_minor: int
     as_of: str
     has_invoice: bool
 
@@ -628,6 +629,7 @@ class PublishPlanVersionRequest(TypedDict, total=False):
     prices: list[PriceInput]
     entitlements: list[EntitlementInput]
     trial_days: int
+    prorate_after_trial: bool
 
 
 class PricePerUnit(TypedDict):
@@ -684,6 +686,7 @@ class PlanVersion(TypedDict):
     entitlements: list[Entitlement]
     publish_time: str | None
     trial_days: int
+    prorate_after_trial: bool
     fees: list[CurrencyFee]
 
 
@@ -1770,6 +1773,7 @@ class Invoice(TypedDict):
     payments: list[InvoicePayment]
     plan_version_id: str
     pdf_object_key: str
+    credit_surplus_minor: int
 
 
 class ListInvoicesResponse(TypedDict):
@@ -1786,6 +1790,7 @@ class CreditNote(TypedDict):
     customer_external_id: str
     currency: str
     total_minor: int
+    tax_minor: int
     reason: str
     create_time: str | None
     disposition: Literal["CREDIT_NOTE_DISPOSITION_CREDIT", "CREDIT_NOTE_DISPOSITION_REFUND"]

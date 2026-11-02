@@ -1,6 +1,6 @@
 # Replacing the secrets key
 
-`PAYRUDDER_SECRETS_KEY` seals what the platform must be able to read back: tenants' provider and e-invoice credentials (payments-worker), webhook signing secrets and mail-integration keys (plans-svc). Until 2026-11 it was one key forever; a leak meant stopping the world. Now a sealed box carries the **id of its key** in its first byte (the byte was always `1` before, so every existing box is a box of key 1 and opens as before), and a service can hold two keys: one **seals**, both **open**. Code: `pkg/secretbox` (`NewRing`, `Stale`, `Reseal`, `Settings`).
+`PAYRUDDER_SECRETS_KEY` seals what the platform must be able to read back: tenants' provider and e-invoice credentials (payments-worker), webhook signing secrets and mail-integration keys (plans-svc). Until 2026-11 it was one key forever; a leak meant stopping the world. Now a sealed box carries the **id of its key** in its first byte (the byte was always `1` before, so every existing box is a box of key 1 and opens as before), and a service can hold two keys: one **seals**, both **open**. Code: `pkg/secretbox` (`NewRing`, `Stale`, `Reseal`, `Settings`) and the job that re-seals what is stored, `pkg/secretbox/reseal`, run as `payrudderctl secrets reseal`.
 
 ## Settings
 
@@ -11,7 +11,7 @@
 | `PAYRUDDER_SECRETS_KEY_PREVIOUS` | a second key that only opens |
 | `PAYRUDDER_SECRETS_KEY_PREVIOUS_ID` | its id; empty is 1 |
 
-The charts, compose files and the Railway guide wire only `PAYRUDDER_SECRETS_KEY` (as `payments.secretsKey`); the other three are not in any of them yet, so set them as extra environment of payments-worker and plans-svc (Helm: the `env` map of each service in the values). The ids must differ. A service refuses to start on a key that is not base64 of 32 bytes, an id outside 1 to 255, equal ids, or a previous key without a key.
+They are wired where `PAYRUDDER_SECRETS_KEY` is: in the compose file (as `PAYRUDDER_SECRETS_KEY_ID`, `_PREVIOUS` and `_PREVIOUS_ID`, empty by default), in the Helm chart (`payments.secretsKeyId`, `payments.secretsKeyPrevious`, `payments.secretsKeyPreviousId`, empty by default, rendered into the Secrets of payments-worker and plans-svc beside `payments.secretsKey`) and in the Railway guide (set on payments-worker, referenced from plans-svc; not exercised on Railway). The ids must differ. A service refuses to start on a key that is not base64 of 32 bytes, an id outside 1 to 255, equal ids, or a previous key without a key.
 
 ## Steps
 
@@ -19,23 +19,40 @@ Every replica of payments-worker and plans-svc gets the same values at each step
 
 1. **Add.** Generate the new key (`openssl rand -base64 32`). Keep the old key sealing and give the new one as the second key: `SECRETS_KEY=<old>`, `SECRETS_KEY_PREVIOUS=<new>`, `SECRETS_KEY_PREVIOUS_ID=2`. (The name says "previous" because that is its job in step 2; here it only opens.) Roll it out to the end.
 2. **Switch.** `SECRETS_KEY=<new>`, `SECRETS_KEY_ID=2`, `SECRETS_KEY_PREVIOUS=<old>` (id 1). New boxes carry id 2; old ones still open. Roll out.
-3. **Re-seal.** Redo every stored box with the active key (below). The check that it is finished: no box has a first byte other than 2.
+3. **Re-seal.** Run `payrudderctl secrets reseal` once for each service (below). The check that it is finished is its own last line: every box is sealed with the active key. Run it with `--dry-run` first if you want to see that every box opens.
 4. **Drop.** Remove `SECRETS_KEY_PREVIOUS` and its id. Back up the new key outside the platform (losing it makes every sealed credential unreadable; see [backup-restore.md](backup-restore.md)).
+
+## The re-seal job
+
+```
+payrudderctl secrets reseal --service plans    [--dry-run] [--batch 200]
+payrudderctl secrets reseal --service payments [--dry-run] [--batch 200]
+```
+
+Run it where the service runs (a job, a bastion), **with that service's environment**: `PAYRUDDER_PG_SYSTEM_DSN` (the system role of its database), `PAYRUDDER_CELLS` in cells mode (it visits the cell databases the service is given, with the system role of each), and the four `PAYRUDDER_SECRETS_KEY*` variables of step 2, so that the key that seals is the new one and the old one opens. `payments` covers `provider_accounts` and `einvoice_accounts`; `plans` covers the webhook endpoints' secrets, the mail keys and `user_totp` (table below). The system role of plans-svc may update only those box columns, since migration 00015.
+
+- **What it does.** For each column it reads, in key order and `--batch` at a time, the boxes whose first byte is not the active key's id, opens each with the associated data of the table below and seals it again with the active key. In cells mode it does the same in the schema of every tenant of every cell, in a transaction per tenant. It prints, per column, the boxes, how many are on the active key now, how many it sealed again (with `--dry-run`: would), how many were replaced by their service while it ran, and how many did not open.
+- **Safe to repeat and to stop.** Only boxes of another key are picked, so a run that was stopped (Ctrl-C, a crashed pod) is continued by running it again, and a finished one finds nothing. The update names the box it read: a credential an owner saved again in between keeps the owner's box (counted as *changed meanwhile*; the next run seals it if it is still on the old key). The same goes for a tenant moved between the pooled database and a cell while it ran: the next run finds the copy.
+- **A box that does not open** (its key is not among the ones given, or the data differs) is counted, logged with its row's key and left as it is; the job then exits with an error and the **previous key must stay** until the box is dealt with (the tenant connects the account again, or the row is removed).
+- **Not done while** a replica still seals with the old key: it would write new boxes of key 1 after the job finished. The job says so when boxes remain that are not on the active key (exit status 1); roll step 2 out to every replica, then run it again.
+- **Without `--dry-run`** it writes; with it, nothing changes in the database.
 
 ## Where boxes are, and what each is bound to
 
-A re-seal must give `Reseal` the same associated data the writer used, or the box does not open.
+The job opens a box with the associated data its writer used, so the data is written twice: where the service seals (the right-hand column) and in `pkg/secretbox/reseal/places.go`. The integration tests of payments-worker and plans-svc (`TestResealMovesEveryBoxToTheActiveKey`, `TestSecretsReseal`) store a box through the real writer of each place and have the job open it, so a service that changes its data breaks them. **A new place that calls `Seal` needs a line in `places.go` and a case in those tests.**
 
-| Service | Table.column | Bound to |
-|---|---|---|
-| payments-worker | `provider_accounts.settings_enc` | `tenant|provider|environment` (`store/accounts.go`) |
-| payments-worker | `einvoice_accounts.settings_enc` | `tenant|einvoice|environment` for an integrator's primary account, `tenant|einvoice|environment|key` for a labelled one (`store/einvoice.go`) |
-| plans-svc | `webhook_endpoints.secret_enc`, `prev_secret_enc` | `webhooks/model.SecretAAD(endpoint)` |
-| plans-svc | `tenant_mail_integrations.api_key_enc` | `mailintegration/query.AAD(tenant)` |
-| plans-svc | `user_totp.secret_enc` (two-factor sign-in, plan 22 G9) | `totp|<user id>` (`identity/command/twofactor.go`) |
-
-The loop for each: select the rows whose column is `Stale` (first byte `<> active id`, `get_byte(col, 0) <> 2`), `Reseal(col, aad)`, and update with the old bytes in the `WHERE` so that a row an owner replaced in the meantime is left alone. In cells mode (ADR 0018) the tables are in the tenants' schemas: visit each place.
+| Service | Table.column | Bound to | In |
+|---|---|---|---|
+| payments-worker | `provider_accounts.settings_enc` | `tenant\|provider\|environment` (`store/accounts.go`; `provider` is the account key, `stripe~eu` for a labelled one) | pooled database, tenant schemas |
+| payments-worker | `einvoice_accounts.settings_enc` | `tenant\|einvoice\|environment` for an integrator's primary account, `tenant\|einvoice\|environment\|key` for a labelled one (`store/einvoice.go`) | pooled database, tenant schemas |
+| plans-svc | `webhook_endpoints.secret_enc`, `prev_secret_enc` | `webhook:<endpoint id>` (`webhooks/model.SecretAAD`) | pooled database, tenant schemas |
+| plans-svc | `tenant_mail_integrations.api_key_enc` | `mail-integration:<tenant id>` (`mailintegration/query.AAD`) | pooled database, tenant schemas |
+| plans-svc | `user_totp.secret_enc` (two-factor sign-in, plan 22 G9) | `totp\|<user id>` (`identity/command/twofactor.go`) | pooled database only |
 
 ## What is built, and what is not
 
-Built and tested: the key ids, a ring of keys, `Stale`, `Reseal`, the four variables and their checks (`pkg/secretbox`). **Not built: the job that runs the loop above** over these places. Until it exists, step 3 is not done and step 4 must wait; the platform runs correctly with two keys for as long as that takes (a credential an owner saves again is re-sealed with the active key by the ordinary write). Writing the job is about twenty lines per table; it has not been run against a real rotation.
+Built and tested: the key ids, a ring of keys, `Stale`, `Reseal`, the four variables and their checks (`pkg/secretbox`); the job (`pkg/secretbox/reseal`, `payrudderctl secrets reseal`) with integration tests for both services in the pooled database and in a cell (two keys, a dry run, a second run, a box that does not open, a row saved again while the job ran, the grants of the plans-svc system role) and unit tests of the command's settings; the variables in the compose file, the Helm chart (rendered and tested) and the Railway guide.
+
+Defaults, not agreed: one run per service with that service's environment (not one run over both databases); the system role, not the migrator, runs it (hence the narrow `UPDATE` grants of plans-svc, migration 00015 and its tenant twin); the job is a command to run by hand at step 3, not a scheduled or automatic one; a box that does not open stops the rotation (exit status 1) rather than being skipped silently; the job writes nothing to the audit log (`audit_events`), since it changes how a value is stored and not what it says.
+
+**Not verified:** a real rotation on a deployment (the job ran against Postgres in containers and read-only against the local development database); cells on more than one cluster or behind a pooler (the cell test uses one cell on the test Postgres); a Helm install or a Railway deployment with the new variables (Helm was only rendered, Railway not touched); a large table (no timing was taken; each batch is one query over the rows not yet on the active key).

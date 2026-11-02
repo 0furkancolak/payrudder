@@ -100,6 +100,9 @@ func (b *Box) Open(box, aad []byte) ([]byte, error) {
 	return pt, nil
 }
 
+// ActiveID is the id of the key that seals: the first byte of every box Seal makes.
+func (b *Box) ActiveID() byte { return b.active }
+
 // Stale reports whether the box was sealed with a key other than the active one: the boxes a re-seal still has to redo.
 func (b *Box) Stale(box []byte) bool { return len(box) > 0 && box[0] != b.active }
 

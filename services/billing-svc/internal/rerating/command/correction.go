@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/cockroachdb/apd/v3"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
@@ -44,6 +46,19 @@ func (c *Commands) billedComponents(ctx context.Context, tenantID uuid.UUID, per
 		snaps[r.CustomerID] = r.Snapshot
 	}
 	return billed, snaps, nil
+}
+
+// targetFor is the target priced for one subscription's period: its fixed fee only from the end of a trial that ends inside the period, when the target prorates after a
+// trial (inputs.FeeFrom). A period is re-rated under the terms of the version it is re-rated to, the trial rule included.
+func targetFor(target rating.PlanVersion, sub inputs.Subscription, start, end time.Time) (rating.PlanVersion, error) {
+	if from := inputs.FeeFrom(sub, target, start, end); from.After(start) {
+		fee, err := subscription.Portion(target.BaseFeeMinor, from, end, start, end)
+		if err != nil {
+			return target, inputs.Permanent(err)
+		}
+		target.BaseFeeMinor = fee
+	}
+	return target, nil
 }
 
 // correctionDeltas prices usage under target and returns, per component (a meter, "" for the base fee), the lines that bring what was billed to the new price

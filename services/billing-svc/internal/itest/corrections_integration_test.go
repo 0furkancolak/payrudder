@@ -13,7 +13,7 @@ import (
 // A correction of an event of a closed period reaches billing as late usage of that period with a negative quantity (ADR 0027). It is priced the way late usage always is,
 // incrementally on top of what the period and the earlier late batches cost, so a cancelled event takes its own price back (tiers included); it is billed on the invoice of the
 // period it was ingested in, once (the next period's invoice does not repeat it, it prices on top of it); and the finalized invoice of the origin never changes. A correction
-// that takes back more than the next invoice charges is clamped at zero, the limit the ADR names.
+// that takes back more than the next invoice charges costs nothing and the surplus becomes a credit balance (ANegativeTotalBecomesACreditBalance).
 func testCorrectionsAreNegativeLateUsageBilledOnce(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	e.startWorkers(nil)
@@ -46,13 +46,16 @@ func testCorrectionsAreNegativeLateUsageBilledOnce(t *testing.T) {
 	if e.invoiceTotal("2026-10", "cus_a") != 1116 || countLines(t, e, "2026-10", "cus_a") != octoberLines {
 		t.Fatal("the invoice of the corrected period changed")
 	}
-	// The clamp: the line keeps its -2500 and the total is zero.
+	// The invoice charges nothing: the line keeps its -2500 and the total is zero, and the 1500 that is left below zero is a credit balance.
 	if got := e.invoiceTotal("2026-11", "cus_b"); got != 0 {
 		t.Fatalf("november cus_b total = %d, want 0 (1000 - 2500 clamped)", got)
 	}
 	if err := shared.sql.QueryRow(context.Background(), `SELECT l.amount_minor FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE i.tenant_id = $1 AND i.period_id = '2026-11' AND l.kind = 'LATE_USAGE' AND i.snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&amount); err != nil || amount != -2500 {
 		t.Fatalf("cus_b late line = %d, %v; want -2500", amount, err)
+	}
+	if err := shared.sql.QueryRow(context.Background(), `SELECT COALESCE(sum(amount_minor), 0) FROM credit_balances WHERE tenant_id = $1 AND source_surplus_invoice_id IS NOT NULL`, e.tid).Scan(&amount); err != nil || amount != 1500 {
+		t.Fatalf("surplus credit = %d, %v; want 1500", amount, err)
 	}
 
 	// Billed once: December has only what arrived in December (10 calls counted again), priced on top of October's 150 and the -30 already invoiced:

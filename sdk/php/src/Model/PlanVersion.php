@@ -24,6 +24,7 @@ final class PlanVersion implements Model
      * @param list<Entitlement>|null $entitlements
      * @param string|null $publishTime
      * @param int|null $trialDays
+     * @param bool|null $prorateAfterTrial
      * @param list<CurrencyFee>|null $fees
      */
     public function __construct(
@@ -36,6 +37,7 @@ final class PlanVersion implements Model
         public readonly ?array $entitlements = null,
         public readonly ?string $publishTime = null,
         public readonly ?int $trialDays = null,
+        public readonly ?bool $prorateAfterTrial = null,
         public readonly ?array $fees = null,
     ) {}
 
@@ -54,6 +56,7 @@ final class PlanVersion implements Model
             entitlements: Cast::models(Entitlement::class, $data['entitlements'] ?? null),
             publishTime: Cast::string($data['publish_time'] ?? null),
             trialDays: Cast::int($data['trial_days'] ?? null),
+            prorateAfterTrial: Cast::bool($data['prorate_after_trial'] ?? null),
             fees: Cast::models(CurrencyFee::class, $data['fees'] ?? null),
         );
     }
@@ -73,6 +76,7 @@ final class PlanVersion implements Model
             'entitlements' => Cast::wire($this->entitlements),
             'publish_time' => $this->publishTime,
             'trial_days' => $this->trialDays,
+            'prorate_after_trial' => $this->prorateAfterTrial,
             'fees' => Cast::wire($this->fees),
         ]);
     }

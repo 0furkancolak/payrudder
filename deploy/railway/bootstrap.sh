@@ -153,6 +153,7 @@ fi
 note "Secrets shared by services"
 secret gateway PAYRUDDER_OPERATOR_TOKEN hex32
 secret payments-worker PAYRUDDER_SECRETS_KEY b64
+# Replacing this key: PAYRUDDER_SECRETS_KEY_ID / _PREVIOUS / _PREVIOUS_ID on payments-worker, and the same as references on plans-svc (README, docs/runbooks/secrets-key-rotation.md).
 secret plans-svc PAYRUDDER_OTP_PEPPER hex32
 secret payments-worker PAYMENTS_INTERNAL_TOKEN hex32
 

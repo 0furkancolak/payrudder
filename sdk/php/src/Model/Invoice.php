@@ -34,6 +34,7 @@ final class Invoice implements Model
      * @param list<InvoicePayment>|null $payments
      * @param string|null $planVersionId
      * @param string|null $pdfObjectKey
+     * @param int|null $creditSurplusMinor
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -53,6 +54,7 @@ final class Invoice implements Model
         public readonly ?array $payments = null,
         public readonly ?string $planVersionId = null,
         public readonly ?string $pdfObjectKey = null,
+        public readonly ?int $creditSurplusMinor = null,
     ) {}
 
     /**
@@ -78,6 +80,7 @@ final class Invoice implements Model
             payments: Cast::models(InvoicePayment::class, $data['payments'] ?? null),
             planVersionId: Cast::string($data['plan_version_id'] ?? null),
             pdfObjectKey: Cast::string($data['pdf_object_key'] ?? null),
+            creditSurplusMinor: Cast::int($data['credit_surplus_minor'] ?? null),
         );
     }
 
@@ -104,6 +107,7 @@ final class Invoice implements Model
             'payments' => Cast::wire($this->payments),
             'plan_version_id' => $this->planVersionId,
             'pdf_object_key' => $this->pdfObjectKey,
+            'credit_surplus_minor' => Cast::int64($this->creditSurplusMinor),
         ]);
     }
 }

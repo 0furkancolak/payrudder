@@ -28,7 +28,7 @@ export async function runBulk<T>(rows: readonly T[], act: (row: T) => Promise<un
 /** What `useBulk` needs of a list (useTableState has all of it). */
 export interface BulkTable<T> {
   selectedRows: Readonly<Ref<readonly T[]>>;
-  size: Ref<number>;
+  size: Readonly<Ref<number>>;
   total: Readonly<Ref<number>>;
   allOnPage: Readonly<Ref<boolean>>;
   canSelectAll: Readonly<Ref<boolean>>;

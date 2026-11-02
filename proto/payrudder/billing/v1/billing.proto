@@ -230,6 +230,9 @@ message Invoice {
   repeated InvoiceLine lines = 16;
   // Payments recorded by hand (RecordInvoicePayment), oldest first. Only GetInvoice fills it.
   repeated InvoicePayment payments = 17;
+  // What the lines came to below zero: late-usage corrections larger than everything else on the invoice. The total is never negative, so the surplus is added to the
+  // customer's credit balance instead (one credit per invoice, applied to their next invoices). 0 for every other invoice.
+  int64 credit_surplus_minor = 18;
 }
 
 message GetUpcomingInvoiceRequest {
@@ -259,12 +262,14 @@ message UpcomingInvoice {
   int64 tax_minor = 9;
   // The credit balance the invoice would use (a positive number; the CREDIT line is its negative).
   int64 credit_minor = 10;
-  // What would be charged. Never negative: a net credit from late corrections is clamped to zero, as the real invoice does.
+  // What would be charged. Never negative: a net credit from late corrections is not charged but carried to the credit balance (credit_surplus_minor), as the real invoice does.
   int64 total_minor = 11;
   // The clock of the estimate.
   google.protobuf.Timestamp as_of = 12;
   // False when the customer has no subscription in the period (lines is empty then): there is no upcoming invoice.
   bool has_invoice = 13;
+  // What the lines come to below zero, which the real invoice would add to the customer's credit balance (see Invoice.credit_surplus_minor). 0 normally.
+  int64 credit_surplus_minor = 14;
 }
 
 // InvoicePayment is money received outside a payment provider and recorded by an operator.
@@ -587,6 +592,9 @@ message CreditNote {
   // For a refund to the card: requested until the provider answers, then refunded or failed.
   RefundState refund_state = 12;
   string refund_error = 13;
+  // The part of total_minor that is tax given back: the note's share of the invoice's total taken from the invoice's tax, so the notes of an invoice together give back
+  // its tax exactly. 0 for an untaxed invoice and for a note made before this field existed. The note's amount net of tax is total_minor - tax_minor.
+  int64 tax_minor = 14;
 }
 
 enum CreditNoteDisposition {

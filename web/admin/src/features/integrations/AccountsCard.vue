@@ -51,7 +51,7 @@ const entryName = (e: AccountEntry) => (e.kind === "payment" && !BRANDS[e.provid
 // --- the list: search and three filters
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const table = useTableState<AccountEntry>(entries, {
-  searchFields: (e) => [entryName(e), e.key, e.label, e.provider],
+  url: "accounts-", searchFields: (e) => [entryName(e), e.key, e.label, e.provider],
   filters: { kind: (e, v) => e.kind === v, state: (e, v) => e.state === v, health: (e, v) => e.kind === "payment" && healthOf(e) === v },
 });
 const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
