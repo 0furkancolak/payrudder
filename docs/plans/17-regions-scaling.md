@@ -99,7 +99,7 @@ The load average was 15-20 on a 10-core machine, so the times are slow. Each sui
 - The KEDA scaling itself: the thresholds are guesses; `hostFromEnv` with `envFrom` is UNVERIFIED (KEDA's page is silent).
 - Two real gateways with DNS and a real plans-svc; the console and the SDKs following the region hint (none reads it).
 - The nightly job on a runner.
-- Throughput: **no k6 scenario or bench was run.** The 20k events/s profile (plan 22 G17) is not done; [capacity.md](../capacity.md) has the procedure and what the published numbers say.
+- Throughput: the 20k events/s profile (plan 22 G17) was run once on 2026-11-02 and **failed on a contended machine whose disk took 75 to 162 ms per WAL sync**; it says where the time goes and not what the platform sustains ([capacity.md](../capacity.md#profile-of-the-ingest-limit-2026-11-02)). No other k6 scenario or bench was run.
 
 ### Still open
 
