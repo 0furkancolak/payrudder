@@ -3,6 +3,7 @@ import type { RequestOptions, Transport } from "../transport";
 import { seg } from "../transport";
 import type {
   AccountingSummary,
+  AddDisputeNoteRequest,
   AddressInput,
   Affiliate,
   AffiliateFunnel,
@@ -65,6 +66,8 @@ import type {
   CustomerContact,
   CustomerTax,
   DeletedCustomerCard,
+  Dispute,
+  DisputeEvent,
   DunningSettings,
   DunningSettingsInput,
   EInvoiceDocument,
@@ -150,6 +153,7 @@ import type {
   ListCustomerPaymentsResponse,
   ListCustomersQuery,
   ListCustomersResponse,
+  ListDisputeEventsResponse,
   ListDisputesQuery,
   ListDisputesResponse,
   ListEInvoicesQuery,
@@ -221,6 +225,7 @@ import type {
   SchedulePriceChangeResponse,
   SetContractSettingsRequest,
   SetContractWithdrawalStatusRequestParams,
+  SetDisputeHandledRequest,
   SetInvoiceLogoRequest,
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
@@ -1311,6 +1316,39 @@ export class DisputesResource {
    */
   listDisputes(query?: ListDisputesQuery, options?: RequestOptions): Promise<ListDisputesResponse> {
     return this.t.request<ListDisputesResponse>({ method: "GET", path: `/v1/disputes`, query, response: "json" }, options);
+  }
+
+  /**
+   * The notes and marks you made on a dispute, newest first
+   *
+   * What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+   *
+   * `GET /v1/disputes/{id}/history`
+   */
+  listDisputeHistory(id: string, options?: RequestOptions): Promise<ListDisputeEventsResponse> {
+    return this.t.request<ListDisputeEventsResponse>({ method: "GET", path: `/v1/disputes/${seg(id)}/history`, response: "json" }, options);
+  }
+
+  /**
+   * Write a note on a dispute
+   *
+   * A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+   *
+   * `POST /v1/disputes/{id}/notes`
+   */
+  addDisputeNote(id: string, body: AddDisputeNoteRequest, options?: RequestOptions): Promise<DisputeEvent> {
+    return this.t.request<DisputeEvent>({ method: "POST", path: `/v1/disputes/${seg(id)}/notes`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Mark a dispute as handled in Payrudder, or lift the mark
+   *
+   * Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+   *
+   * `PUT /v1/disputes/{id}/handled`
+   */
+  setDisputeHandled(id: string, body: SetDisputeHandledRequest, options?: RequestOptions): Promise<Dispute> {
+    return this.t.request<Dispute>({ method: "PUT", path: `/v1/disputes/${seg(id)}/handled`, body, bodyKind: "json", response: "json" }, options);
   }
 }
 

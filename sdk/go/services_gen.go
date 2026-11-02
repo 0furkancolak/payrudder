@@ -1705,6 +1705,55 @@ func (s *DisputesService) ListDisputes(ctx context.Context, params *ListDisputes
 	return &out, nil
 }
 
+// SetDisputeHandled: Mark a dispute as handled in Payrudder, or lift the mark (PUT /v1/disputes/{id}/handled).
+//
+// Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it).
+// It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`).
+// Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the
+// case as it stands.
+func (s *DisputesService) SetDisputeHandled(ctx context.Context, id string, req *SetDisputeHandledRequest, opts ...RequestOption) (*Dispute, error) {
+	if req == nil {
+		req = &SetDisputeHandledRequest{}
+	}
+	var body any = req
+	var out Dispute
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/disputes/" + url.PathEscape(id) + "/handled", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListDisputeHistory: The notes and marks you made on a dispute, newest first (GET /v1/disputes/{id}/history).
+//
+// What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark
+// was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of
+// the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is
+// not yours.
+func (s *DisputesService) ListDisputeHistory(ctx context.Context, id string, opts ...RequestOption) (*ListDisputeEventsResponse, error) {
+	var out ListDisputeEventsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/disputes/" + url.PathEscape(id) + "/history", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// AddDisputeNote: Write a note on a dispute (POST /v1/disputes/{id}/notes).
+//
+// A note is for you and your colleagues: what you found out, what you answered at the provider, where the
+// evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its
+// text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+func (s *DisputesService) AddDisputeNote(ctx context.Context, id string, req *AddDisputeNoteRequest, opts ...RequestOption) (*DisputeEvent, error) {
+	if req == nil {
+		req = &AddDisputeNoteRequest{}
+	}
+	var body any = req
+	var out DisputeEvent
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/disputes/" + url.PathEscape(id) + "/notes", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // DunningSettingsService is the dunning settings namespace of the API.
 type DunningSettingsService service
 

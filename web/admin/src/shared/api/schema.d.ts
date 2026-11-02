@@ -3186,6 +3186,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/disputes/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The notes and marks you made on a dispute, newest first
+         * @description What you did with the case inside Payrudder: each note, and each time it was marked as handled or the mark was lifted. `id` is the case's `id` as `GET /v1/disputes` gives it. `actor` (who) is left out for a viewer of the account, as in the audit log. At most the newest 200. `404 payments.dispute.not_found` for a case that is not yours.
+         */
+        get: operations["listDisputeHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Write a note on a dispute
+         * @description A note is for you and your colleagues: what you found out, what you answered at the provider, where the evidence is. It is kept with the case, one to 2000 characters, and recorded in the audit log without its text. Payrudder sends it nowhere: the case is answered at the provider, Payrudder submits no evidence.
+         */
+        post: operations["addDisputeNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{id}/handled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a dispute as handled in Payrudder, or lift the mark
+         * @description Your own mark: it says you have dealt with the case (answered it at the provider, accepted it, refunded it). It changes nothing at the provider, in the payment ledger, or in what was announced (`payment.disputed`). Setting what is already set is not an error and writes nothing. Recorded in the audit log. The answer is the case as it stands.
+         */
+        put: operations["setDisputeHandled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/assets/uploads": {
         parameters: {
             query?: never;
@@ -9003,6 +9063,50 @@ export interface components {
              * @description Absent while the case is open
              */
             closed_time?: string;
+            /**
+             * Format: int64
+             * @description What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own. Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the payout totals; UNVERIFIED against a live account. Absent when no notification named a fee
+             */
+            fee_minor?: string;
+            /** @description The currency of `fee_minor` */
+            fee_currency?: string;
+            /** @description Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the provider */
+            handled: boolean;
+            /**
+             * Format: date-time
+             * @description Absent when the case is not marked
+             */
+            handled_time?: string;
+            /** @description Who marked it; absent when it is not marked and for a viewer of the account */
+            handled_by?: string;
+            /**
+             * Format: int64
+             * @description How many notes you wrote (`GET /v1/disputes/{id}/history`)
+             */
+            note_count: number;
+        };
+        DisputeEvent: {
+            id: string;
+            /**
+             * @description A note, the mark that the case was handled, or that mark lifted
+             * @enum {string}
+             */
+            action: "note" | "handled" | "unhandled";
+            /** @description The text of a note; absent for a mark */
+            note?: string;
+            /** @description Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account */
+            actor?: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListDisputeEventsResponse: {
+            events: components["schemas"]["DisputeEvent"][];
+        };
+        AddDisputeNoteRequest: {
+            note: string;
+        };
+        SetDisputeHandledRequest: {
+            handled: boolean;
         };
         ListDisputesResponse: {
             disputes: components["schemas"]["Dispute"][];
@@ -19478,6 +19582,89 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    listDisputeHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDisputeEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    addDisputeNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDisputeNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeEvent"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    setDisputeHandled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisputeHandledRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
     };

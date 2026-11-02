@@ -3386,6 +3386,12 @@
       },
       "refund": {
         "charge_unclear": "La facture a plusieurs encaissements réussis et le remboursement n'en désigne aucun avec certitude. Remboursez le client chez le prestataire de paiement, puis enregistrez-le sur l'avoir."
+      },
+      "dispute": {
+        "bad_id": "Ce n'est pas l'identifiant d'un litige.",
+        "not_found": "Le litige est introuvable.",
+        "note_required": "Écrivez quelque chose dans la note.",
+        "note_too_long": "Une note fait 2000 caractères au plus."
       }
     },
     "einvoice": {
@@ -6359,6 +6365,29 @@
     "opened": "Ouvert le",
     "closed": "Clos le",
     "reference": "Dossier",
-    "case": "Dossier"
+    "case": "Dossier",
+    "fee": "Frais de litige",
+    "handled": "Traité",
+    "handledLabel": "Traitement",
+    "allHandled": "Tous",
+    "handledYes": "Traité",
+    "handledNo": "Non traité",
+    "due": {
+      "overdue": "en retard",
+      "soon": "bientôt"
+    },
+    "notes": {
+      "title": "Notes",
+      "hint": "Pour vous et vos collègues ; Payrudder ne l'envoie nulle part. Les preuves elles-mêmes se soumettent chez votre prestataire de paiement, pas ici.",
+      "mark": "Marquer comme traité",
+      "lift": "Retirer la marque « traité »",
+      "empty": "Aucune note pour le moment.",
+      "placeholder": "Écrire une note sur ce dossier",
+      "add": "Ajouter la note",
+      "event": {
+        "handled": "Marqué comme traité",
+        "unhandled": "Marque « traité » retirée"
+      }
+    }
   }
 }

@@ -188,6 +188,8 @@ MODELS: dict[str, dict[str, Any]] = {
     },
     'Dispute': {
         'amount_minor': ('int',),
+        'fee_minor': ('int',),
+        'note_count': ('int',),
     },
     'EInvoiceList': {
         'total': ('int',),

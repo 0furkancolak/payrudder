@@ -3386,6 +3386,12 @@
       },
       "refund": {
         "charge_unclear": "La factura tiene varios cobros correctos y el reembolso no identifica ninguno. Reembolse al cliente en el proveedor de pago y regístrelo después en la nota de crédito."
+      },
+      "dispute": {
+        "bad_id": "Este no es el id de una disputa.",
+        "not_found": "No se encontró la disputa.",
+        "note_required": "Escriba algo en la nota.",
+        "note_too_long": "Una nota tiene como máximo 2000 caracteres."
       }
     },
     "einvoice": {
@@ -6359,6 +6365,29 @@
     "opened": "Abierta",
     "closed": "Cerrada",
     "reference": "Caso",
-    "case": "Caso"
+    "case": "Caso",
+    "fee": "Comisión por disputa",
+    "handled": "Gestionada",
+    "handledLabel": "Gestión",
+    "allHandled": "Todas",
+    "handledYes": "Gestionada",
+    "handledNo": "Sin gestionar",
+    "due": {
+      "overdue": "vencido",
+      "soon": "pronto"
+    },
+    "notes": {
+      "title": "Notas",
+      "hint": "Para usted y sus compañeros; Payrudder no la envía a ningún sitio. Las pruebas se presentan en su proveedor de pagos, no aquí.",
+      "mark": "Marcar como gestionada",
+      "lift": "Quitar la marca de gestionada",
+      "empty": "Aún no hay notas.",
+      "placeholder": "Escriba una nota sobre este caso",
+      "add": "Añadir nota",
+      "event": {
+        "handled": "Marcada como gestionada",
+        "unhandled": "Marca de gestionada quitada"
+      }
+    }
   }
 }

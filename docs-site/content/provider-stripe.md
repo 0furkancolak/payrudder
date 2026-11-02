@@ -28,7 +28,7 @@ In the console, open the app, then **Integrations**, **Payments**, **Stripe** (o
 ## Limits worth knowing
 
 - **ISK and UGX are refused.** Stripe wants them as two-decimal amounts ending in `00`, which Payrudder does not convert yet. For currencies with three decimals (BHD, JOD, KWD, OMR, TND) Stripe's page does not settle the rule: **UNVERIFIED**.
-- **Disputes are not handled.** The event a dispute starts with is ignored on purpose; Payrudder has no place to record a dispute yet.
+- **Disputes are recorded, not answered.** A dispute (Stripe's `charge.dispute.*` events) becomes a case you can read with `GET /v1/disputes` and see on the invoice's sheet: where it stands, the reason, the date your evidence is due, and what it cost. You can add notes and mark it as handled inside Payrudder. **Payrudder submits no evidence:** you answer the case at Stripe, before the date. Stripe's dispute fee is read from the balance transactions of the dispute; **UNVERIFIED** (Stripe's pages do not say where the fee shows), so a case may show no fee.
 - A search at Stripe is eventually consistent, so "not found" can mean "not found yet"; Payrudder asks again before it would charge a second time.
 
 ## What has not been verified

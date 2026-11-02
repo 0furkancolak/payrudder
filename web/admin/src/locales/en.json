@@ -3386,6 +3386,12 @@
       },
       "refund": {
         "charge_unclear": "The invoice has several successful charges and the refund does not single out one of them. Refund the customer at the payment provider, then record it on the credit note."
+      },
+      "dispute": {
+        "bad_id": "This is not the id of a dispute.",
+        "not_found": "The dispute was not found.",
+        "note_required": "Write something in the note.",
+        "note_too_long": "A note is at most 2000 characters."
       }
     },
     "einvoice": {
@@ -6359,6 +6365,29 @@
     "opened": "Opened",
     "closed": "Closed",
     "reference": "Case",
-    "case": "Case"
+    "case": "Case",
+    "fee": "Dispute fee",
+    "handled": "Handled",
+    "handledLabel": "Handled",
+    "allHandled": "All",
+    "handledYes": "Handled",
+    "handledNo": "Not handled",
+    "due": {
+      "overdue": "overdue",
+      "soon": "soon"
+    },
+    "notes": {
+      "title": "Notes",
+      "hint": "For you and your colleagues; Payrudder sends it nowhere. The evidence itself is sent at your payment provider, not here.",
+      "mark": "Mark as handled",
+      "lift": "Lift the handled mark",
+      "empty": "No notes yet.",
+      "placeholder": "Write a note about this case",
+      "add": "Add note",
+      "event": {
+        "handled": "Marked as handled",
+        "unhandled": "Handled mark lifted"
+      }
+    }
   }
 }

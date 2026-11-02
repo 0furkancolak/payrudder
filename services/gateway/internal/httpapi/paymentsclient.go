@@ -27,8 +27,14 @@ var paymentsHTTP = &http.Client{Timeout: 8 * time.Second}
 
 // paymentsDo calls payments-worker. It returns the status code and decodes a JSON body into out when out is not nil and the status is 2xx.
 func (s *Server) paymentsDo(ctx context.Context, method, path string, query url.Values, in, out any) (int, error) {
+	code, _, err := s.paymentsDoBody(ctx, method, path, query, in, out)
+	return code, err
+}
+
+// paymentsDoBody is paymentsDo that also returns the body of the answer (at most 1 MiB), so that a caller can relay the refusal of the worker that a non-2xx answer carries.
+func (s *Server) paymentsDoBody(ctx context.Context, method, path string, query url.Values, in, out any) (int, []byte, error) {
 	if s.d.PaymentsURL == nil {
-		return 0, errPaymentsDown
+		return 0, nil, errPaymentsDown
 	}
 	u := *s.d.PaymentsURL
 	u.Path, u.RawPath, u.RawQuery = path, "", query.Encode()
@@ -36,13 +42,13 @@ func (s *Server) paymentsDo(ctx context.Context, method, path string, query url.
 	if in != nil {
 		b, err := json.Marshal(in)
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		body = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Request-Id", requestID(ctx))
@@ -52,19 +58,19 @@ func (s *Server) paymentsDo(ctx context.Context, method, path string, query url.
 	}
 	resp, err := paymentsHTTP.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %w", errPaymentsDown, err)
+		return 0, nil, fmt.Errorf("%w: %w", errPaymentsDown, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return resp.StatusCode, err
+		return resp.StatusCode, raw, err
 	}
 	if resp.StatusCode/100 == 2 && out != nil {
 		if err := json.Unmarshal(raw, out); err != nil {
-			return resp.StatusCode, fmt.Errorf("payments-worker answered garbage: %w", err)
+			return resp.StatusCode, raw, fmt.Errorf("payments-worker answered garbage: %w", err)
 		}
 	}
-	return resp.StatusCode, nil
+	return resp.StatusCode, raw, nil
 }
 
 const maxLedgerLookup = 200

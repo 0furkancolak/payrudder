@@ -91,6 +91,11 @@ type AccountingSummary struct {
 	Currencies []AccountingCurrency `json:"currencies"`
 }
 
+// AddDisputeNoteRequest is the request body of AddDisputeNote.
+type AddDisputeNoteRequest struct {
+	Note string `json:"note"`
+}
+
 // Address: A postal address as printed on an invoice. Every part is optional.
 type Address struct {
 	Line1 string `json:"line1"`
@@ -1321,6 +1326,34 @@ type Dispute struct {
 	OpenedTime      time.Time `json:"opened_time"`
 	// Absent while the case is open
 	ClosedTime time.Time `json:"closed_time,omitempty"`
+	// What the provider took for the case, when a notification said (in `fee_currency`, which is the currency the
+	// provider settles in and can differ from `currency`). It is also a row of the payment ledger of its own.
+	// Stripe's is read from the balance transactions of the dispute and Paddle's from the chargeback fee of the
+	// payout totals; UNVERIFIED against a live account. Absent when no notification named a fee
+	FeeMinor Int64 `json:"fee_minor,omitempty"`
+	// The currency of `fee_minor`
+	FeeCurrency string `json:"fee_currency,omitempty"`
+	// Your own mark that you dealt with the case (`PUT /v1/disputes/{id}/handled`). It changes nothing at the
+	// provider
+	Handled bool `json:"handled"`
+	// Absent when the case is not marked
+	HandledTime time.Time `json:"handled_time,omitempty"`
+	// Who marked it; absent when it is not marked and for a viewer of the account
+	HandledBy string `json:"handled_by,omitempty"`
+	// How many notes you wrote (`GET /v1/disputes/{id}/history`)
+	NoteCount Int64 `json:"note_count"`
+}
+
+// DisputeEvent is an object of the API; see components.schemas.DisputeEvent in api/openapi/v1.yaml.
+type DisputeEvent struct {
+	ID string `json:"id"`
+	// A note, the mark that the case was handled, or that mark lifted. One of: note, handled, unhandled.
+	Action string `json:"action"`
+	// The text of a note; absent for a mark
+	Note string `json:"note,omitempty"`
+	// Who: the person's address, or the API key as `api_key:<id>`; absent for a viewer of the account
+	Actor      string    `json:"actor,omitempty"`
+	CreateTime time.Time `json:"create_time"`
 }
 
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
@@ -1999,6 +2032,11 @@ type ListCustomerPaymentsResponse struct {
 type ListCustomersResponse struct {
 	Customers     []Customer `json:"customers"`
 	NextPageToken string     `json:"next_page_token"`
+}
+
+// ListDisputeEventsResponse is the response of ListDisputeEvents.
+type ListDisputeEventsResponse struct {
+	Events []DisputeEvent `json:"events"`
 }
 
 // ListDisputesResponse is the response of ListDisputes.
@@ -2784,6 +2822,11 @@ type SetContractWithdrawalStatusRequest struct {
 	// Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is
 	// whatever is left of the invoice.
 	RefundAmountMinor *Int64 `json:"refund_amount_minor,omitempty"`
+}
+
+// SetDisputeHandledRequest is the request body of SetDisputeHandled.
+type SetDisputeHandledRequest struct {
+	Handled bool `json:"handled"`
 }
 
 // SetInvoiceLogoRequest is the request body of SetInvoiceLogo.
