@@ -82,6 +82,11 @@ payments:
   # Seals tenants' provider credentials (32 bytes, base64: `openssl rand -base64 32`) and is the secret between the gateway and payments-worker.
   # These are local defaults: set your own, or use secrets.existingSecrets. Without a secrets key, provider accounts and webhooks are off.
   secretsKey: bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=
+  # Replacing the secrets key without a stop (docs/runbooks/secrets-key-rotation.md): the id of secretsKey (1 to 255; empty is 1), the key it replaces (it only opens boxes)
+  # and that key's id (empty is 1). Leave all three empty unless a rotation is under way; they go to payments-worker and plans-svc alike.
+  secretsKeyId: ""
+  secretsKeyPrevious: ""
+  secretsKeyPreviousId: ""
   internalToken: local-internal-token-change-me-0123456789
 
 networkPolicy:

@@ -152,6 +152,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | |
 | `PAYRUDDER_KAFKA_BROKERS` | KAFKA | |
 | `PAYRUDDER_SECRETS_KEY` | `${{payments-worker.PAYRUDDER_SECRETS_KEY}}` | the same key as payments-worker's |
+| `PAYRUDDER_SECRETS_KEY_ID`, `PAYRUDDER_SECRETS_KEY_PREVIOUS`, `PAYRUDDER_SECRETS_KEY_PREVIOUS_ID` | unset | while the key is being replaced, `${{payments-worker.NAME}}` for each: both services hold the same keys |
 | `PAYRUDDER_ALLOWED_ENVIRONMENTS` | `sandbox,live` | |
 
 `PAYRUDDER_WEBHOOK_ALLOW_PRIVATE` stays at its default `false`: tenants' webhook endpoints may not point at the private network.
@@ -261,6 +262,7 @@ Full profile only.
 | `MOCKPSP_URL` | `http://mockpsp.railway.internal:8090` | sandbox tenants always use the mock provider |
 | `PAYRUDDER_DEMO` | `false` | `true` is [demo mode](#demo-mode) |
 | `PAYRUDDER_SECRETS_KEY` | generated | 32 bytes, base64 |
+| `PAYRUDDER_SECRETS_KEY_ID`, `PAYRUDDER_SECRETS_KEY_PREVIOUS`, `PAYRUDDER_SECRETS_KEY_PREVIOUS_ID` | unset | only while the key is being replaced: the id of the key above, the key it replaces and that key's id ([runbook](../../docs/runbooks/secrets-key-rotation.md)); not exercised on Railway |
 | `PAYMENTS_INTERNAL_TOKEN` | generated | shared with the gateway |
 
 Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account they configure (iyzico, Paddle), never the mock.

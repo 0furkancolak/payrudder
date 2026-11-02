@@ -109,8 +109,8 @@ func TestRotationOpensBothKeysAndResealMovesToTheActiveOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	sealedNew, _ := ring.Seal([]byte("api key"), []byte("tenant|stripe"))
-	if sealedNew[0] != 2 {
-		t.Fatalf("the active key seals with its id: first byte %d, want 2", sealedNew[0])
+	if sealedNew[0] != 2 || ring.ActiveID() != 2 {
+		t.Fatalf("the active key seals with its id: first byte %d, ActiveID %d, want 2", sealedNew[0], ring.ActiveID())
 	}
 	for name, box := range map[string][]byte{"sealed by the old key": sealedOld, "sealed by the new key": sealedNew} {
 		if got, err := ring.Open(box, []byte("tenant|stripe")); err != nil || string(got) != "api key" {
