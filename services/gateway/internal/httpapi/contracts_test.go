@@ -36,16 +36,14 @@ type fakeContracts struct {
 	withdrawal *plansv1.CreateContractWithdrawalRequest
 	decided    *plansv1.SetContractWithdrawalStatusRequest
 	// the follow-ups (withdrawal refund, the withdrawal function, the portal)
-	settings       *plansv1.ContractSettings
-	accepted       []*plansv1.ContractAcceptance
-	withdrawals    []*plansv1.ContractWithdrawal
-	claimErr       error
-	reclaimed      bool
-	claims         []string
-	refunds        []*plansv1.RecordContractWithdrawalRefundRequest
-	createdByFunc  []*plansv1.CreateContractWithdrawalRequest
-	decideInvoice  string
-	snapshotsAsked []string
+	settings      *plansv1.ContractSettings
+	accepted      []*plansv1.ContractAcceptance
+	withdrawals   []*plansv1.ContractWithdrawal
+	claimErr      error
+	reclaimed     bool
+	claims        []string
+	refunds       []*plansv1.RecordContractWithdrawalRefundRequest
+	decideInvoice string
 }
 
 var lastContracts *fakeContracts

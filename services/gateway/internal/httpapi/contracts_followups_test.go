@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -304,6 +305,21 @@ func TestTheWithdrawalFunctionIsLinkedFromTheInvoiceAndThePortalAndWorksInTwoSte
 	c.withdrawals = []*plansv1.ContractWithdrawal{{Id: "wd-1", InvoiceId: "inv-open", Status: "received"}}
 	if resp, again := post("/i/"+tokPaidCustomer+"/withdraw/confirm", fields); resp.StatusCode != http.StatusOK || c.withdrawal != nil || !strings.Contains(again, "received already") {
 		t.Errorf("a second confirmation: %d %+v\n%s", resp.StatusCode, c.withdrawal, again)
+	}
+}
+
+// plans-svc keeps 2000 bytes of a statement: a customer who writes a long text in Arabic (two bytes a character) has it kept as far as it goes, never refused.
+func TestALongStatementInAWideScriptIsCutAtACharacterAndNotRefused(t *testing.T) {
+	for _, lang := range hostedLangs {
+		l := hostedText(lang)
+		got := statementOf(l, strings.Repeat("ع", 200), "Invoice INV-1", "ada@example.com", strings.Repeat("ç", 1000)+strings.Repeat("ع", 600))
+		if len(got) > maxStatement || !utf8.ValidString(got) || !strings.Contains(got, l["withdraw_words"]+": ç") {
+			t.Errorf("%s: %d bytes, valid=%v", lang, len(got), utf8.ValidString(got))
+		}
+	}
+	short := statementOf(hostedText("en"), "Ada", "Invoice 1", "", "")
+	if short != "Your name: Ada\nContract you withdraw from: Invoice 1" {
+		t.Errorf("a statement without words or address: %q", short)
 	}
 }
 

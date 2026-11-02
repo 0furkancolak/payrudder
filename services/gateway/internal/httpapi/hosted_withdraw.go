@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -308,16 +309,31 @@ func (s *Server) withdrawReview(portal bool) http.HandlerFunc {
 	}
 }
 
-// statementOf is what is recorded as the customer's statement and mailed back as the acknowledgement: what they confirmed, in the words of the page they confirmed it on.
+// maxStatement is what plans-svc keeps of a statement, in bytes (a character of Arabic or Turkish takes two).
+const maxStatement = 2000
+
+// statementOf is what is recorded as the customer's statement and mailed back as the acknowledgement: what they confirmed, in the words of the page they confirmed it on. Their
+// own words are cut to what is left of the limit (at a character, never inside one) after the rest, so that a long statement in a language of wide characters is kept as far
+// as it goes and never refused.
 func statementOf(l map[string]string, name, contract, email, words string) string {
 	lines := []string{l["withdraw_name"] + ": " + name, l["withdraw_contract"] + ": " + contract}
 	if email != "" {
 		lines = append(lines, l["withdraw_email_label"]+": "+email)
 	}
-	if words != "" {
-		lines = append(lines, l["withdraw_words"]+": "+words)
+	head := strings.Join(lines, "\n")
+	if words == "" {
+		return head
 	}
-	return strings.Join(lines, "\n")
+	label := "\n" + l["withdraw_words"] + ": "
+	room := maxStatement - len(head) - len(label)
+	if room <= 0 {
+		return head
+	}
+	for len(words) > room {
+		_, size := utf8.DecodeLastRuneInString(words)
+		words = words[:len(words)-size]
+	}
+	return head + label + words
 }
 
 func (s *Server) withdrawConfirm(portal bool) http.HandlerFunc {
