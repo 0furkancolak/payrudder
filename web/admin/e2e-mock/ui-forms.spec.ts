@@ -35,7 +35,15 @@ test.describe("forms", () => {
     await expect(dialog.locator("#new-customer-id-error")).toHaveCount(0);
     await expect(dialog.locator("#new-customer-email-error")).toHaveText("Enter a valid e-mail address.");
     await dialog.getByLabel("E-mail").fill("ada@example.com");
+    // A mobile number without its country code is named at its field and keeps the form from being sent; a good one is sent as E.164.
+    await dialog.getByLabel("Mobile number").fill("0532 123 45 67");
+    await expect(dialog.locator("#new-customer-phone-error")).toHaveText("Use the international form: + and the country code, then the number.");
     await dialog.getByRole("button", { name: "Create customer" }).click();
+    expect(gw.called("POST", "/v1/customers")).toHaveLength(0);
+    await dialog.getByLabel("Mobile number").fill("+90 532 123 45 67");
+    await dialog.getByRole("button", { name: "Create customer" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/customers").length).toBe(1);
+    expect(gw.called("POST", "/v1/customers")[0]?.body).toMatchObject({ external_id: "cus_1", phone: "+905321234567" });
     // The server refuses the id: the message is under the id field, and goes away when the id is edited.
     await expect(dialog.locator("#new-customer-id-error")).toHaveText("It already exists.");
     await dialog.getByLabel("Customer id").fill("cus_2");

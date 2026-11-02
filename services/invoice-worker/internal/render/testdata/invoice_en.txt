@@ -1,0 +1,46 @@
+INVOICE
+Number: INV-2026-000042
+Period: October 2026
+Issued: 2 November 2026
+From
+Acme Yazılım A.Ş.
+Atatürk Cd. 1
+34000 İstanbul
+TR
+VKN (tax number): 1234567890
+Tax office: Kadıköy
+Bill to
+Müller GmbH
+Hauptstr. 5
+10115 Berlin
+DE
+VAT ID: DE136695976
+buchhaltung@mueller.example
+Description
+Quantity
+Amount
+Base fee
+1,234,567.89 EUR
+Usage — gb_hours
+1,234.500 GB-h
+617.25 EUR
+Launch discount
+-50.00 EUR
+Subtotal
+1,235,135.14 EUR
+Total
+1,235,135.14 EUR
+Pay by bank transfer
+Bank
+Example Bank
+Account holder
+Acme Yazılım A.Ş.
+IBAN
+TR33 0006 1005 1978 6457 8413 26
+BIC / SWIFT
+TCZBTR2A
+Payment reference
+INV-2026-000042
+Please write the payment reference on your transfer so that we can match it to this invoice.
+The legal e-document (e-Fatura or e-Arşiv invoice) for this invoice is issued separately by the seller's e-invoice
+provider and carries its own number.

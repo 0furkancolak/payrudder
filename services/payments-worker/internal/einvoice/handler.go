@@ -182,8 +182,8 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 	if !prov.Capabilities().Supports(d.Type) {
 		return failed(KeyAccountInvalid, fmt.Sprintf("%s cannot send %s documents", name, d.Type), false), nil
 	}
-	if d.Type == pkg.TypeEArsiv && d.Buyer.TaxID == "" {
-		d.Buyer.TaxID = consumerTaxID
+	if msg := IdentifyBuyer(&d); msg != "" {
+		return failed(KeyBuyerData, msg, false), nil
 	}
 	body, err := ubl.Build(d)
 	if err != nil {

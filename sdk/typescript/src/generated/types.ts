@@ -689,6 +689,8 @@ export interface CreateCustomerRequest {
   locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
   /** A person or a taxpayer */
   customer_type?: "individual" | "business";
+  /** The customer's mobile number in international form, e.g. +90 532 123 45 67 or 0090 532 123 45 67; stored as E.164 (+905321234567). A number without the + or 00 prefix is refused: it cannot be read without a country. */
+  phone?: string;
   /** The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
   referral_code?: string;
   /** When the visitor followed that link; default now */
@@ -1093,6 +1095,12 @@ export interface Customer {
   block_category: string;
   /** When the block ends by itself; absent: until it is lifted. */
   blocked_until?: string | null;
+  /** The customer's mobile number as E.164 (+905321234567); empty when none. */
+  phone: string;
+  /** When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised. */
+  tax_id_validated_at?: string | null;
+  /** One of tr_individual, tr_business, tr_any, tr_is_tckn, tr_is_vkn, eu_vat, or empty. A hint, never a refusal: the id does not look like the kind of number this customer should have (tr_individual: not a TCKN; tr_business: not a VKN; tr_any: neither; tr_is_tckn: a business was given a TCKN; tr_is_vkn: an individual was given a VKN; eu_vat: a business in the EU has no VAT id of its country's shape). Worked out from the stored id, country and customer_type, so it follows a change of any of them. Empty: nothing to say. */
+  tax_id_warning: string;
 }
 
 /** Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open. */
@@ -1113,10 +1121,12 @@ export interface CustomerBlockEvent {
 export interface CustomerContact {
   name: string;
   email: string;
-  /** The language of the customer's mails, receipts and payment pages; omit to clear it */
+  /** The language of the customer's mails, receipts and payment pages; omit to keep it */
   locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-  /** A person or a taxpayer; omit to clear it */
+  /** A person or a taxpayer; omit to keep it */
   customer_type?: "individual" | "business";
+  /** The customer's mobile number in international form (+90 532 123 45 67 or 0090 532 123 45 67), stored as E.164. Omit to keep the stored number; send an empty string to clear it. */
+  phone?: string;
 }
 
 export interface CustomerPayment {

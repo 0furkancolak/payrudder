@@ -1128,8 +1128,9 @@ func (s *CustomersService) ListCustomerBlockEvents(ctx context.Context, external
 // SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
 //
 // Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language.
-// Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so
-// omit them to clear them. The external id cannot change.
+// Name and e-mail are required, with the limits of customer creation. Language, kind and phone are optional;
+// omit one to keep what the customer has (only the phone can be cleared, with an empty string). The external id
+// cannot change.
 func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID string, req *CustomerContact, opts ...RequestOption) (*Customer, error) {
 	if req == nil {
 		req = &CustomerContact{}
@@ -1439,7 +1440,10 @@ func (s *CustomersService) AttributeCustomer(ctx context.Context, externalID str
 // SetCustomerTax: Replace the customer's tax data used on e-invoices (PUT /v1/customers/{external_id}/tax).
 //
 // Tax id (VKN/TCKN in Turkey, VAT id in the EU), tax office (Turkey) and whether the customer is registered for
-// e-fatura. Empty values clear them. Error key plans.customer.tax_invalid.
+// e-fatura. Empty values clear them. An id that does not look right for the customer's country and kind is
+// stored all the same: the customer comes back with tax_id_warning set, and tax_id_validated_at is set only for
+// an id that passes the local checksum or shape check. Error key plans.customer.tax_invalid (only for an id
+// that is not 5 to 20 letters and digits, or a tax office that is not one line).
 func (s *CustomersService) SetCustomerTax(ctx context.Context, externalID string, req *CustomerTax, opts ...RequestOption) (*Customer, error) {
 	if req == nil {
 		req = &CustomerTax{}

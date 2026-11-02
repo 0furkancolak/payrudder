@@ -5,8 +5,8 @@
 SELECT id, environment, status, tier, currency, timezone FROM current_tenant();
 
 -- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address, locale, customer_type)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address, locale, customer_type, phone)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: GetCustomerByExternalID :one
@@ -34,11 +34,12 @@ UPDATE customers SET address = @address::jsonb, country = COALESCE(sqlc.narg(cou
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
--- An empty language or kind keeps what the customer has: a client that sends only the name and e-mail does not wipe them.
+-- An empty language or kind keeps what the customer has: a client that sends only the name and e-mail does not wipe them. The same for an unset phone; an empty one clears it.
 -- name: SetCustomerContact :one
 UPDATE customers SET name = @name, email = @email,
   locale = CASE WHEN @locale::text = '' THEN locale ELSE @locale::text END,
-  customer_type = CASE WHEN @customer_type::text = '' THEN customer_type ELSE @customer_type::text END
+  customer_type = CASE WHEN @customer_type::text = '' THEN customer_type ELSE @customer_type::text END,
+  phone = COALESCE(sqlc.narg(phone)::text, phone)
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
@@ -65,7 +66,7 @@ SELECT * FROM customer_block_events WHERE tenant_id = app_tenant_id() AND custom
 ORDER BY created_at DESC, id DESC LIMIT @page_size;
 
 -- name: SetCustomerTax :one
-UPDATE customers SET tax_id = @tax_id, tax_office = @tax_office, e_invoice_registered = @e_invoice_registered
+UPDATE customers SET tax_id = @tax_id, tax_office = @tax_office, e_invoice_registered = @e_invoice_registered, tax_id_validated_at = sqlc.narg(tax_id_validated_at)
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 

@@ -65,21 +65,21 @@ echo "$out" | grep -q 'billing_db ok .*invariants hold' || fail "verify output: 
 [ -z "$(docker exec "$name" psql -XAt -U postgres -d postgres -c "SELECT datname FROM pg_database WHERE datname LIKE 'verify\_%'")" ] || fail "verify left a scratch database"
 
 step "invariants.sh finds torn invoice totals, credit lots and receipts"
-sql billing_db "UPDATE invoices SET total_minor = total_minor + 1 WHERE number = 'INV-2026-000003'" >/dev/null
+sql billing_db "SET session_replication_role = replica; UPDATE invoices SET total_minor = total_minor + 1 WHERE number = 'INV-2026-000003'" >/dev/null
 out="$(run sh /scripts/invariants.sh billing_db)" && fail "invoice total off by one passed: $out"
 echo "$out" | grep -q 'invoice totals differ from the sum of their lines: 1 violating' || fail "invoice message: $out"
-sql billing_db "UPDATE invoices SET total_minor = total_minor - 1 WHERE number = 'INV-2026-000003'; UPDATE credit_lots SET remaining = 71 WHERE id = md5('lot1')::uuid" >/dev/null
+sql billing_db "SET session_replication_role = replica; UPDATE invoices SET total_minor = total_minor - 1 WHERE number = 'INV-2026-000003'; UPDATE credit_lots SET remaining = 71 WHERE id = md5('lot1')::uuid" >/dev/null
 out="$(run sh /scripts/invariants.sh billing_db)" && fail "credit lot off by one passed: $out"
 echo "$out" | grep -q 'credit lot balances differ from their ledger: 1 violating' || fail "credit lot message: $out"
-sql billing_db "UPDATE credit_lots SET remaining = 70 WHERE id = md5('lot1')::uuid; DELETE FROM invoice_lines WHERE invoice_id = md5('inv4')::uuid AND kind = 'TAX'" >/dev/null
+sql billing_db "SET session_replication_role = replica; UPDATE credit_lots SET remaining = 70 WHERE id = md5('lot1')::uuid; DELETE FROM invoice_lines WHERE invoice_id = md5('inv4')::uuid AND kind = 'TAX'" >/dev/null
 out="$(run sh /scripts/invariants.sh billing_db)" && fail "a lost line passed: $out"
-sql payments_db "UPDATE manual_receipts SET amount_minor = amount_minor + 1 WHERE bank_reference = 'bt_5'" >/dev/null
+sql payments_db "SET session_replication_role = replica; UPDATE manual_receipts SET amount_minor = amount_minor + 1 WHERE bank_reference = 'bt_5'" >/dev/null
 out="$(run sh /scripts/invariants.sh payments_db)" && fail "a receipt off by one passed: $out"
 echo "$out" | grep -q 'manual receipts differ from their ledger rows: 1 violating' || fail "receipt message: $out"
-sql payments_db "UPDATE manual_receipts SET amount_minor = amount_minor - 1 WHERE bank_reference = 'bt_5'" >/dev/null
+sql payments_db "SET session_replication_role = replica; UPDATE manual_receipts SET amount_minor = amount_minor - 1 WHERE bank_reference = 'bt_5'" >/dev/null
 
 step "verify.sh fails, and says so to the pushgateway, when the newest dump holds torn data"
-sql billing_db "UPDATE invoices SET total_minor = total_minor + 1 WHERE number = 'INV-2026-000003'" >/dev/null
+sql billing_db "SET session_replication_role = replica; UPDATE invoices SET total_minor = total_minor + 1 WHERE number = 'INV-2026-000003'" >/dev/null
 sleep 1
 must env BACKUP_KEEP=2 sh /scripts/backup.sh
 must sh -c 'rm -f /tmp/pushed'

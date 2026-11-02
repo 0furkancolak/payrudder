@@ -622,9 +622,23 @@ type InvoiceSnapshot struct {
 	Seller *PartySnapshot `protobuf:"bytes,18,opt,name=seller,proto3" json:"seller,omitempty"`
 	Buyer  *PartySnapshot `protobuf:"bytes,19,opt,name=buyer,proto3" json:"buyer,omitempty"`
 	// The tenant's e_invoice_on when the draft was made: "off", "finalized" or "paid".
-	EInvoiceOn    string `protobuf:"bytes,20,opt,name=e_invoice_on,json=eInvoiceOn,proto3" json:"e_invoice_on,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	EInvoiceOn string `protobuf:"bytes,20,opt,name=e_invoice_on,json=eInvoiceOn,proto3" json:"e_invoice_on,omitempty"`
+	// The language to print in (docs/plans/05): the customer's locale (en, tr, de, fr, es, ar) frozen with the draft, and the language of the seller's country, used when
+	// the customer has none. Both empty = English. Arabic is requested but printed in the English layout (the PDF library cannot shape Arabic); the requested locale is
+	// recorded in the PDF's metadata.
+	Locale        string `protobuf:"bytes,21,opt,name=locale,proto3" json:"locale,omitempty"`
+	DefaultLocale string `protobuf:"bytes,22,opt,name=default_locale,json=defaultLocale,proto3" json:"default_locale,omitempty"`
+	// "individual" or "business" as the customer was when the draft was made; empty = unknown. Unlike seller and buyer it is set whether or not the tenant e-invoices.
+	CustomerType string `protobuf:"bytes,23,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	// The tax identity the document prints, and the countries (ISO 3166-1 alpha-2) that decide its wording. Set whether or not the tenant e-invoices.
+	SellerTaxId       string `protobuf:"bytes,24,opt,name=seller_tax_id,json=sellerTaxId,proto3" json:"seller_tax_id,omitempty"`
+	SellerTaxOffice   string `protobuf:"bytes,25,opt,name=seller_tax_office,json=sellerTaxOffice,proto3" json:"seller_tax_office,omitempty"`
+	SellerCountry     string `protobuf:"bytes,26,opt,name=seller_country,json=sellerCountry,proto3" json:"seller_country,omitempty"`
+	CustomerTaxId     string `protobuf:"bytes,27,opt,name=customer_tax_id,json=customerTaxId,proto3" json:"customer_tax_id,omitempty"`
+	CustomerTaxOffice string `protobuf:"bytes,28,opt,name=customer_tax_office,json=customerTaxOffice,proto3" json:"customer_tax_office,omitempty"`
+	CustomerCountry   string `protobuf:"bytes,29,opt,name=customer_country,json=customerCountry,proto3" json:"customer_country,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *InvoiceSnapshot) Reset() {
@@ -793,6 +807,69 @@ func (x *InvoiceSnapshot) GetBuyer() *PartySnapshot {
 func (x *InvoiceSnapshot) GetEInvoiceOn() string {
 	if x != nil {
 		return x.EInvoiceOn
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetDefaultLocale() string {
+	if x != nil {
+		return x.DefaultLocale
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetCustomerType() string {
+	if x != nil {
+		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetSellerTaxId() string {
+	if x != nil {
+		return x.SellerTaxId
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetSellerTaxOffice() string {
+	if x != nil {
+		return x.SellerTaxOffice
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetSellerCountry() string {
+	if x != nil {
+		return x.SellerCountry
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetCustomerTaxId() string {
+	if x != nil {
+		return x.CustomerTaxId
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetCustomerTaxOffice() string {
+	if x != nil {
+		return x.CustomerTaxOffice
+	}
+	return ""
+}
+
+func (x *InvoiceSnapshot) GetCustomerCountry() string {
+	if x != nil {
+		return x.CustomerCountry
 	}
 	return ""
 }
@@ -2073,7 +2150,7 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\tR\bquantity\x12\x1d\n" +
 	"\n" +
 	"unit_label\x18\x05 \x01(\tR\tunitLabel\x12!\n" +
-	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\x83\a\n" +
+	"\famount_minor\x18\x06 \x01(\x03R\vamountMinor\"\xe1\t\n" +
 	"\x0fInvoiceSnapshot\x12\x1d\n" +
 	"\n" +
 	"invoice_id\x18\x01 \x01(\tR\tinvoiceId\x12\x18\n" +
@@ -2099,7 +2176,16 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x06seller\x18\x12 \x01(\v2$.payrudder.commands.v1.PartySnapshotR\x06seller\x12:\n" +
 	"\x05buyer\x18\x13 \x01(\v2$.payrudder.commands.v1.PartySnapshotR\x05buyer\x12 \n" +
 	"\fe_invoice_on\x18\x14 \x01(\tR\n" +
-	"eInvoiceOn\"\x89\x03\n" +
+	"eInvoiceOn\x12\x16\n" +
+	"\x06locale\x18\x15 \x01(\tR\x06locale\x12%\n" +
+	"\x0edefault_locale\x18\x16 \x01(\tR\rdefaultLocale\x12#\n" +
+	"\rcustomer_type\x18\x17 \x01(\tR\fcustomerType\x12\"\n" +
+	"\rseller_tax_id\x18\x18 \x01(\tR\vsellerTaxId\x12*\n" +
+	"\x11seller_tax_office\x18\x19 \x01(\tR\x0fsellerTaxOffice\x12%\n" +
+	"\x0eseller_country\x18\x1a \x01(\tR\rsellerCountry\x12&\n" +
+	"\x0fcustomer_tax_id\x18\x1b \x01(\tR\rcustomerTaxId\x12.\n" +
+	"\x13customer_tax_office\x18\x1c \x01(\tR\x11customerTaxOffice\x12)\n" +
+	"\x10customer_country\x18\x1d \x01(\tR\x0fcustomerCountry\"\x89\x03\n" +
 	"\rPartySnapshot\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x15\n" +
 	"\x06tax_id\x18\x02 \x01(\tR\x05taxId\x12\x1d\n" +

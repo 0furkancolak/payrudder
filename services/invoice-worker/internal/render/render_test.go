@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,8 +37,8 @@ func TestPDFIsDeterministic(t *testing.T) {
 	if !bytes.Equal(a, b) {
 		t.Fatal("rendering the same snapshot twice gave different bytes")
 	}
-	if !bytes.HasPrefix(a, []byte("%PDF-")) || !bytes.Contains(a, []byte("10.16 USD")) || !bytes.Contains(a, []byte("INV-2026-000001")) {
-		t.Fatalf("the PDF lacks the expected content (%d bytes)", len(a))
+	if text := pdfText(t, a); !bytes.HasPrefix(a, []byte("%PDF-")) || !strings.Contains(text, "10.16 USD") || !strings.Contains(text, "INV-2026-000001") {
+		t.Fatalf("the PDF lacks the expected content (%d bytes): %s", len(a), text)
 	}
 	// Another snapshot differs.
 	s := snapshot()
@@ -50,7 +51,7 @@ func TestPDFIsDeterministic(t *testing.T) {
 
 func TestBankDetailsAndReferenceArePrinted(t *testing.T) {
 	plain, _ := PDF(snapshot(), Options{})
-	if bytes.Contains(plain, []byte("bank transfer")) {
+	if strings.Contains(pdfText(t, plain), "bank transfer") {
 		t.Fatal("an invoice that is not paid by transfer has no bank block")
 	}
 	s := snapshot()
@@ -59,8 +60,9 @@ func TestBankDetailsAndReferenceArePrinted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	text := pdfText(t, pdf)
 	for _, want := range []string{"Pay by bank transfer", "Example Bank", "Acme Ltd", "TR33 0006 1005 1978 6457 8413 26", "TCZBTR2A", "Payment reference", "INV-2026-000001"} {
-		if !bytes.Contains(pdf, []byte(want)) {
+		if !strings.Contains(text, want) {
 			t.Errorf("the PDF lacks %q", want)
 		}
 	}
@@ -72,7 +74,7 @@ func TestSandboxWatermark(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Contains(live, []byte("SANDBOX")) || !bytes.Contains(sb, []byte("SANDBOX")) {
+	if strings.Contains(pdfText(t, live), "SANDBOX") || !strings.Contains(pdfText(t, sb), "SANDBOX") {
 		t.Fatal("the SANDBOX watermark must appear on sandbox invoices only")
 	}
 }
@@ -81,7 +83,7 @@ func TestZeroExponentCurrency(t *testing.T) {
 	s := snapshot()
 	s.Currency, s.CurrencyExponent, s.TotalMinor, s.SubtotalMinor = "JPY", 0, 1016, 1016
 	pdf, err := PDF(s, Options{})
-	if err != nil || !bytes.Contains(pdf, []byte("1016 JPY")) {
+	if err != nil || !strings.Contains(pdfText(t, pdf), "1,016 JPY") {
 		t.Fatalf("JPY: %v", err)
 	}
 }
@@ -94,11 +96,16 @@ func TestInvalidSnapshot(t *testing.T) {
 	}
 }
 
+// The Turkish letters the old Helvetica could not draw are drawn; a script the font has no glyphs for (CJK, Arabic) is printed as '?' and never fails the invoice.
 func TestNonLatinTextDoesNotFail(t *testing.T) {
 	s := snapshot()
-	s.CustomerName = "Şükrü Çağlar 日本"
-	if _, err := PDF(s, Options{}); err != nil {
+	s.CustomerName = "Şükrü Çağlar 日本 مرحبا"
+	out, err := PDF(s, Options{})
+	if err != nil {
 		t.Fatalf("non-latin names must not fail the invoice: %v", err)
+	}
+	if text := pdfText(t, out); !strings.Contains(text, "Şükrü Çağlar ?? ?????") {
+		t.Fatalf("the name is %q", text)
 	}
 }
 
@@ -111,8 +118,8 @@ func TestAddressesArePrinted(t *testing.T) {
 		t.Fatal(err)
 	}
 	without, _ := PDF(snapshot(), Options{})
-	if bytes.Equal(withAddr, without) || len(withAddr) <= len(without) {
-		t.Fatal("the addresses changed nothing in the PDF")
+	if text := pdfText(t, withAddr); !strings.Contains(text, "10115 Berlin") || !strings.Contains(text, "1 Market St") || strings.Contains(pdfText(t, without), "Market") {
+		t.Fatalf("the addresses are not printed: %s", text)
 	}
 }
 
@@ -122,7 +129,7 @@ func TestSandboxWatermarkFitsThePage(t *testing.T) {
 		t.Run(size, func(t *testing.T) {
 			pdf := fpdf.New("P", "mm", pageSize(size), "")
 			pdf.AddPage()
-			fs, w, cx, cy := watermarkPlacement(pdf)
+			fs, w, cx, cy := watermarkPlacement(pdf, english.t(kSandbox))
 			pageW, pageH := pdf.GetPageSize()
 			h := fs * 25.4 / 72 * 0.75
 			a := watermarkAngle * math.Pi / 180
@@ -137,7 +144,7 @@ func TestSandboxWatermarkFitsThePage(t *testing.T) {
 				t.Fatalf("watermark font %.1f pt is too small to read", fs)
 			}
 			out, err := PDF(snapshot(), Options{Sandbox: true, PageSize: size})
-			if err != nil || !bytes.Contains(out, []byte("SANDBOX")) {
+			if err != nil || !strings.Contains(pdfText(t, out), "SANDBOX") {
 				t.Fatalf("render on %s: %v", size, err)
 			}
 			if size == "Letter" && !bytes.Contains(out, []byte("612")) {

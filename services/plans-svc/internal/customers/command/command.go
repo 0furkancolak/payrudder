@@ -14,6 +14,8 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/phone"
+	"github.com/0furkancolak/payrudder/pkg/taxid"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -77,9 +79,10 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateCustomerReques
 		if c := req.GetAddress().GetCountry(); c != "" {
 			country = &c
 		}
+		number, _ := phone.Normalize(req.GetPhone()) // checked by ValidateCustomer
 		out, err = q.CreateCustomer(ctx, sqlc.CreateCustomerParams{
 			ID: idgen.NewUUIDv7(), ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), PaymentMethod: pm,
-			Country: country, BillingCurrency: billing, Address: convert.AddressJSON(req.GetAddress()), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(),
+			Country: country, BillingCurrency: billing, Address: convert.AddressJSON(req.GetAddress()), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(), Phone: number,
 		})
 		if err != nil {
 			return err
@@ -124,18 +127,23 @@ func (c *Commands) SetAddress(ctx context.Context, req *plansv1.SetCustomerAddre
 	return convert.Customer(out), nil
 }
 
-// SetContact replaces the customer's name and e-mail address.
+// SetContact replaces the customer's name, e-mail address, language, kind and phone. An empty language or kind, and an unset phone, keep what the customer has.
 func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerContactRequest) (*plansv1.Customer, error) {
 	if req.GetExternalId() == "" {
 		return nil, domain.Invalid("external_id", "required")
 	}
-	if err := domain.ValidateCustomerContact(req.GetName(), req.GetEmail(), req.GetLocale(), req.GetCustomerType()); err != nil {
+	if err := domain.ValidateCustomerContact(req.GetName(), req.GetEmail(), req.GetLocale(), req.GetCustomerType(), req.GetPhone()); err != nil {
 		return nil, err
+	}
+	var number *string
+	if req.Phone != nil {
+		n, _ := phone.Normalize(req.GetPhone()) // checked above
+		number = &n
 	}
 	var out sqlc.Customer
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
-		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType()})
+		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(), Phone: number})
 		return err
 	})
 	if err != nil {
@@ -250,7 +258,8 @@ func (c *Commands) emit(ctx context.Context, q *sqlc.Queries, typ string, data m
 	return err
 }
 
-// SetTax replaces the customer's tax id, tax office and e-fatura registration flag.
+// SetTax replaces the customer's tax id, tax office and e-fatura registration flag. An id that passes the local check of pkg/taxid is stamped as validated now; one
+// that does not is stored all the same (default, not agreed: a wrong id is a warning on the customer, never a refusal).
 func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.Customer, error) {
 	if req.GetExternalId() == "" {
 		return nil, domain.Invalid("external_id", "required")
@@ -258,11 +267,16 @@ func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxReques
 	if err := domain.ValidateCustomerTax(req); err != nil {
 		return nil, err
 	}
+	var validated *time.Time
+	if taxid.Recognised(req.GetTaxId()) {
+		now := c.now()
+		validated = &now
+	}
 	var out sqlc.Customer
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
 		out, err = q.SetCustomerTax(ctx, sqlc.SetCustomerTaxParams{ExternalID: req.GetExternalId(), TaxID: req.GetTaxId(), TaxOffice: req.GetTaxOffice(),
-			EInvoiceRegistered: req.GetEInvoiceRegistered()})
+			EInvoiceRegistered: req.GetEInvoiceRegistered(), TaxIDValidatedAt: validated})
 		return err
 	})
 	if err != nil {

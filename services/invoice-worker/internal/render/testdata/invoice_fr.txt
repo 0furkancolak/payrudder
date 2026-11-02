@@ -1,0 +1,46 @@
+FACTURE
+Numéro: INV-2026-000042
+Période: octobre 2026
+Date d'émission: 2 novembre 2026
+Émetteur
+Acme Yazılım A.Ş.
+Atatürk Cd. 1
+34000 İstanbul
+TR
+VKN (numéro fiscal turc): 1234567890
+Centre des impôts: Kadıköy
+Facturé à
+Müller GmbH
+Hauptstr. 5
+10115 Berlin
+DE
+N° de TVA: DE136695976
+buchhaltung@mueller.example
+Description
+Quantité
+Montant
+Base fee
+1 234 567,89 EUR
+Usage — gb_hours
+1 234,500 GB-h
+617,25 EUR
+Launch discount
+-50,00 EUR
+Sous-total
+1 235 135,14 EUR
+Total
+1 235 135,14 EUR
+Paiement par virement bancaire
+Banque
+Example Bank
+Titulaire du compte
+Acme Yazılım A.Ş.
+IBAN
+TR33 0006 1005 1978 6457 8413 26
+BIC / SWIFT
+TCZBTR2A
+Référence de paiement
+INV-2026-000042
+Veuillez indiquer la référence de paiement sur votre virement afin que nous puissions le rattacher à cette facture.
+Le document électronique légal (e-Fatura ou facture e-Arşiv) de cette facture est émis séparément par le
+prestataire de facturation électronique du vendeur et porte son propre numéro.
