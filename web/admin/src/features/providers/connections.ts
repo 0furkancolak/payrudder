@@ -105,7 +105,7 @@ export const PROVIDER_LINKS: Record<LiveProviderName, string | null> = {
 
 /** The i18n key of the help text under a field of a provider's form (`product.providers.help.<provider>.<field>`); fields without help return null. */
 const HELPED: Record<"iyzico" | "paddle" | "stripe", readonly string[]> = {
-  iyzico: ["api_key", "secret_key", "buyer.identity_number", "buyer.ip"],
+  iyzico: ["api_key", "secret_key", "buyer.identity_number", "buyer.ip", "enabled_installments"],
   paddle: ["api_key", "webhook_secret", "usage_product_id"],
   stripe: ["api_key", "webhook_secret"],
 };

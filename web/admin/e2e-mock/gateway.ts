@@ -20,6 +20,8 @@ export interface Call {
   query: URLSearchParams;
   headers: Record<string, string>;
   body: Record<string, unknown> | null;
+  /** The request body as text, for a body that is not JSON (a multipart upload: the file names are in it). */
+  text?: string;
 }
 
 /** An answer: a JSON body, or `raw` bytes with their own content type (a file). */
@@ -144,7 +146,7 @@ export class MockGateway {
       } catch {
         body = null;
       }
-      const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
+      const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body, text: body ? undefined : (req.postData() ?? undefined) };
       this.calls.push(call);
       for (const h of [...this.handlers, this.onboardingHandler, this.pricePauseHandler, this.supportCountsHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
@@ -172,6 +174,8 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
     if (c.method === "GET" && c.path === "/v1/expense-inbox") return { body: { token: "abcdefghijklmnopqrstuvwxyz234567", address: "invoices+abcdefghijklmnopqrstuvwxyz234567@in.example.test" } };
     if (c.method === "GET" && c.path === "/v1/expense-inbox/items") return { body: { items: [] } };
     if (c.method === "GET" && c.path === "/v1/expense-rules") return { body: { rules: [] } };
+    // An invoice's sheet reads the disputes of the invoice; there are none unless a test says otherwise.
+    if (c.method === "GET" && c.path === "/v1/disputes") return { body: { disputes: [] } };
     return undefined;
   });
 }

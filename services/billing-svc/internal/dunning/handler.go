@@ -34,7 +34,7 @@ func (h *Handler) GetDunningSettings(ctx context.Context, _ *billingv1.GetDunnin
 	if err != nil {
 		return nil, err
 	}
-	out := &billingv1.DunningSettings{RetryHours: s.RetryHours, DefaultsInUse: s.DefaultsInUse}
+	out := &billingv1.DunningSettings{RetryHours: s.RetryHours, DefaultsInUse: s.DefaultsInUse, BlockOnChargeback: s.BlockOnChargeback}
 	if s.UpdatedAt != nil {
 		out.UpdateTime = timestamppb.New(*s.UpdatedAt)
 	}
@@ -47,9 +47,9 @@ func (h *Handler) SetDunningSettings(ctx context.Context, req *billingv1.SetDunn
 	if err != nil {
 		return nil, err
 	}
-	hours, at, err := command.Set(ctx, h.app, ti.ID, req.GetRetryHours())
+	saved, err := command.Set(ctx, h.app, ti.ID, req.GetRetryHours(), req.BlockOnChargeback)
 	if err != nil {
 		return nil, err
 	}
-	return &billingv1.SetDunningSettingsResponse{Settings: &billingv1.DunningSettings{RetryHours: hours, UpdateTime: timestamppb.New(at)}}, nil
+	return &billingv1.SetDunningSettingsResponse{Settings: &billingv1.DunningSettings{RetryHours: saved.RetryHours, BlockOnChargeback: saved.BlockOnChargeback, UpdateTime: timestamppb.New(saved.At)}}, nil
 }

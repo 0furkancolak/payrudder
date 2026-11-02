@@ -138,9 +138,10 @@ type CreditSetting struct {
 }
 
 type DunningSetting struct {
-	TenantID   uuid.UUID
-	RetryHours []int32
-	UpdatedAt  time.Time
+	TenantID          uuid.UUID
+	RetryHours        []int32
+	UpdatedAt         time.Time
+	BlockOnChargeback bool
 }
 
 type EinvoiceDocument struct {

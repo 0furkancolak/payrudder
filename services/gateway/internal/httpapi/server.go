@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -43,6 +44,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/negcache"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -116,6 +118,9 @@ type Deps struct {
 	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
 	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string
+	// OperatorRequireTwoFactor (PAYRUDDER_OPERATOR_REQUIRE_2FA) makes an operator's session need two-factor sign-in: an operator without it is treated like an owner whose account
+	// requires it and has not set it up (identity.two_factor.setup_required on every route but /auth/*). The machine token is no person and is not asked.
+	OperatorRequireTwoFactor bool
 	// Google is the "Continue with Google" client; nil or unconfigured hides the button and answers 404 on its routes.
 	Google *oidc.Client
 	// AppURL is the console's public address (https://app.example.com), where the browser is sent after a provider login. The OAuth redirect address
@@ -123,6 +128,9 @@ type Deps struct {
 	AppURL string
 	// Region pins this gateway to one region (PAYRUDDER_REGION); nil serves every tenant.
 	Region *Region
+	// AuthFailures is the counter gateway_auth_failures (internal/auth registers it for API keys); the gateway adds the session tokens it refuses and the requests it
+	// turns away for their address's earlier failures. Nil: not counted.
+	AuthFailures metric.Int64Counter
 }
 
 // Server is the HTTP handler.
@@ -136,11 +144,13 @@ type Server struct {
 	now func() time.Time
 	// saasEdge remembers the SaaS answers the ingest edge needs.
 	saasEdge *saasEdge
+	// badSessions remembers session tokens plans-svc did not know, for a short while (internal/negcache).
+	badSessions *negcache.Cache
 }
 
 // New builds the router.
 func New(d Deps) *Server {
-	s := &Server{d: d, now: time.Now, saasEdge: newSaasEdge()}
+	s := &Server{d: d, now: time.Now, saasEdge: newSaasEdge(), badSessions: negcache.New(negcache.DefaultTTL, negcache.DefaultMax)}
 	mux := http.NewServeMux()
 	for _, rt := range s.routes() {
 		// otelhttp per route: the span is named after the route pattern ("POST /v1/customers"), which a global
@@ -152,7 +162,7 @@ func New(d Deps) *Server {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errkey.New(codes.NotFound, "gateway.route.not_found", "no such route"))
 	})
-	s.handler = requestIDMiddleware(s.recoverMiddleware(mux))
+	s.handler = requestIDMiddleware(s.recoverMiddleware(moveInboundSecret(mux)))
 	return s
 }
 
@@ -203,10 +213,14 @@ func (s *Server) wrap(rt Route) http.Handler {
 // authorize checks the caller of a route the way its Access says and returns the context the handler runs in, carrying who they are. It writes the refusal
 // itself and reports false.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
-	switch rt.Access {
-	case AccessPublic:
+	if rt.Access == AccessPublic {
 		// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
 		return r.Context(), true
+	}
+	if s.authThrottled(w, r) {
+		return nil, false
+	}
+	switch rt.Access {
 	case AccessSession:
 		return s.authorizeSession(w, r, rt, span)
 	case AccessOperator:
@@ -262,7 +276,7 @@ func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Rout
 		return nil, false
 	}
 	if need, ok := permitted(p, rt.Method, rt.Path); !ok {
-		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs"))
+		writeError(w, r, permissionDenied(need))
 		return nil, false
 	}
 	// A tenant the operator has frozen (or suspended or banned, for a person or operator acting as it in the console) reads and nothing more.
@@ -349,6 +363,9 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	case errors.Is(err, auth.ErrSuspended):
 		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
+		if !errors.Is(err, auth.ErrRepeated) {
+			s.authFailed(r, "")
+		}
 		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
 	p.Actor = audit.Actor{Type: audit.ActorAPIKey, ID: p.Tenant.APIKeyID}
@@ -367,6 +384,17 @@ func permitted(p auth.Principal, method, path string) (need string, ok bool) {
 		return "an admin key", p.Role == apikey.RoleAdmin
 	}
 	return need, apikey.Allows(p.Permissions, need)
+}
+
+func permissionDenied(need string) error {
+	return errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs")
+}
+
+// keyHolds says whether the caller of a tenant route holds perm, for a handler whose need depends on the body or a setting. Like permitted, only an API key is
+// limited: a person or an operator acting as the tenant carries no role.
+func keyHolds(ctx context.Context, perm string) bool {
+	p := principalFrom(ctx)
+	return p.Role == "" || apikey.Allows(p.Permissions, perm)
 }
 
 // actAs resolves the tenant an operator acts as.
@@ -423,6 +451,9 @@ func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err e
 		return true, "", nil
 	}
 	if !strings.HasPrefix(bearerToken(r), sessionPrefix) {
+		if bearerToken(r) != "" {
+			s.authFailed(r, "operator_token")
+		}
 		return false, "", nil
 	}
 	sess, err := s.session(r)
@@ -434,6 +465,11 @@ func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err e
 	case !s.isOperator(sess.User):
 		// A valid session that is not an operator's: signed in, but not allowed (403), so the page does not mistake it for an expired session.
 		return false, "", errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
+	}
+	// The same rule as for every route of a session: an operator who owes two-factor sign-in (an account they own requires it, or the deployment asks it of operators) has
+	// not earned the platform yet.
+	if err := requireSecondFactorSetup(sess.User, r.URL.Path); err != nil {
+		return false, "", err
 	}
 	return true, normalizeEmail(sess.User.GetEmail()), nil
 }

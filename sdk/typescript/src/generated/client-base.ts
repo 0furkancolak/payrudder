@@ -17,6 +17,7 @@ import {
   CreditPacksResource,
   CreditsResource,
   CustomersResource,
+  DisputesResource,
   DunningSettingsResource,
   EInvoicesResource,
   ExpenseInboxResource,
@@ -287,6 +288,7 @@ export abstract class PayrudderResources {
   readonly creditPacks: CreditPacksResource;
   readonly credits: CreditsResource;
   readonly customers: CustomersResource;
+  readonly disputes: DisputesResource;
   readonly dunningSettings: DunningSettingsResource;
   readonly eInvoices: EInvoicesResource;
   readonly events: EventsResource;
@@ -331,6 +333,7 @@ export abstract class PayrudderResources {
     this.creditPacks = new CreditPacksResource(t);
     this.credits = new CreditsResource(t);
     this.customers = new CustomersResource(t);
+    this.disputes = new DisputesResource(t);
     this.dunningSettings = new DunningSettingsResource(t);
     this.eInvoices = new EInvoicesResource(t);
     this.events = new EventsResource(t);

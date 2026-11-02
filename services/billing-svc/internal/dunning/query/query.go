@@ -20,6 +20,8 @@ type Settings struct {
 	RetryHours    []int32
 	UpdatedAt     *time.Time
 	DefaultsInUse bool
+	// BlockOnChargeback: a formal dispute of a customer's payment blocks the customer (the seller's choice; off while nothing is set).
+	BlockOnChargeback bool
 }
 
 // Defaults gives the delays the service uses for a tenant that set none (sagas/command's engine, with the configuration it runs on).
@@ -41,7 +43,7 @@ func Get(ctx context.Context, app pgxx.Beginner, defaults Defaults, ti tenant.In
 		if err != nil {
 			return err
 		}
-		out.RetryHours, out.UpdatedAt = row.RetryHours, &row.UpdatedAt
+		out.RetryHours, out.UpdatedAt, out.BlockOnChargeback = row.RetryHours, &row.UpdatedAt, row.BlockOnChargeback
 		return nil
 	})
 	if err != nil {

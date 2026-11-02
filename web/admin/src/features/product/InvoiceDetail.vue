@@ -7,6 +7,7 @@ import { SCENARIOS } from "./golive";
 import { useApps } from "./api";
 import { InvoiceHeadline, InvoiceLines, ManualPaymentsCard } from "@/features/invoices";
 import { InvoiceRelated } from "@/features/related";
+import { DisputeCard } from "@/features/disputes";
 import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Button } from "@/shared/ui/button";
@@ -61,6 +62,8 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
       <InvoiceLines :inv="inv" />
 
       <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+
+      <DisputeCard :tenant-id="tenantId" :invoice-id="invoiceId" />
 
       <InvoiceRelated :tenant-id="tenantId" :invoice-id="invoiceId" :customer="inv.customer_external_id" />
     </template>

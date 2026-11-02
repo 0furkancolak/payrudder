@@ -11,5 +11,7 @@ enum GetDunningReportInvoiceState: string
     case PaymentDeclined = 'PAYMENT_DECLINED';
     case PaymentUnknown = 'PAYMENT_UNKNOWN';
     case PaymentPending = 'PAYMENT_PENDING';
+    case PaymentActionRequired = 'PAYMENT_ACTION_REQUIRED';
+    case PaymentHeld = 'PAYMENT_HELD';
     case Uncollectible = 'UNCOLLECTIBLE';
 }

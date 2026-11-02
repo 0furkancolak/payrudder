@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -180,6 +181,104 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	if _, err := admin.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: inv("cus_a")}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("nudging a completed saga: %v, want FailedPrecondition", err)
 	}
+}
+
+// A payment the customer has to confirm (3-D Secure) is not a decline: the saga rests in PAYMENT_ACTION_REQUIRED with no step deadline, mails the customer a link to the
+// invoice page once, polls the status without a second mail, the invoice page is payable meanwhile, and the answer of the status ends the wait.
+func testSagaWaitsForTheCustomerToConfirmAPayment(t *testing.T) {
+	e := newEnv(t, envOpts{payLink: func(_ context.Context, _, invoice uuid.UUID) (string, error) {
+		return "https://pay.example/i/" + invoice.String(), nil
+	}})
+	var confirmed atomic.Bool
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+		switch stubworker.Kind(c) {
+		case "charge":
+			return stubworker.Action{Reply: stubworker.ActionRequired}
+		case "status":
+			if confirmed.Load() {
+				return stubworker.Action{Reply: stubworker.Succeed}
+			}
+			return stubworker.Action{Reply: stubworker.StatusActionRequired}
+		}
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	e.addUsage("2026-10", "cus_a", "gb_hours", "1.250", 3)
+	if run := e.driveRun("2026-10"); run.Status != "INVOICING" {
+		t.Fatalf("run is %s (%s)", run.Status, run.LastError)
+	}
+	testkit.Eventually(t, 30*time.Second, "both invoices to wait for their customer", func() bool {
+		s := e.sagaStates("2026-10")
+		return s["cus_a"] == "PAYMENT_ACTION_REQUIRED" && s["cus_b"] == "PAYMENT_ACTION_REQUIRED"
+	})
+	mailsOf := func() (n int, bad []string) {
+		for _, c := range e.mine(stub) {
+			if m := c.GetSendNotification(); m != nil {
+				n++
+				d := m.GetData()
+				if m.GetTemplate() != "payment_action_required.v1" || d["pay_url"] != "https://pay.example/i/"+d["invoice_id"] || d["invoice_number"] == "" || m.GetTo() == "" {
+					bad = append(bad, m.String())
+				}
+			}
+		}
+		return n, bad
+	}
+	testkit.Eventually(t, 30*time.Second, "both mails to be sent", func() bool { n, _ := mailsOf(); return n >= 2 })
+	if n, bad := mailsOf(); n != 2 || len(bad) > 0 {
+		t.Fatalf("mails = %d, want 2 payment_action_required mails with the link of their invoice; wrong ones: %v", n, bad)
+	}
+	var deadlines int
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_sagas WHERE tenant_id = $1 AND state = 'PAYMENT_ACTION_REQUIRED' AND step_deadline IS NOT NULL`, e.tid).Scan(&deadlines); err != nil || deadlines != 0 {
+		t.Fatalf("sagas waiting for the customer with a step deadline = %d, %v; want none (nothing is outstanding)", deadlines, err)
+	}
+	// Nothing was declined, so no dunning is scheduled.
+	var scheduled int
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_sagas WHERE tenant_id = $1 AND state = 'PAYMENT_ACTION_REQUIRED' AND next_attempt_at IS NOT NULL`, e.tid).Scan(&scheduled); err != nil || scheduled != 2 {
+		t.Fatalf("sagas with a poll scheduled = %d, %v; want 2", scheduled, err)
+	}
+
+	// The invoice page is where the customer pays: open and payable, not "processing".
+	var invoice string
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invoice); err != nil {
+		t.Fatal(err)
+	}
+	hosted := e.api()
+	link, err := hosted.CreateInvoiceLink(tenant.NewContext(context.Background(), tenant.Info{ID: e.tid}), &billingv1.CreateInvoiceLinkRequest{InvoiceId: invoice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page, err := hosted.GetHostedInvoice(context.Background(), &billingv1.GetHostedInvoiceRequest{Token: link.GetToken()}); err != nil || page.GetPaymentState() != "open" || !page.GetPayable() {
+		t.Fatalf("the page of an invoice waiting for its customer = %v, %v; want open and payable", page, err)
+	}
+
+	// A poll asks again; the customer has not confirmed: the saga stays, and there is no second mail.
+	e.clk.Advance(7 * time.Hour)
+	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Polled < 2 {
+		t.Fatalf("poll pass: %+v, %v; want at least our 2 polls", res, err)
+	}
+	testkit.Eventually(t, 20*time.Second, "the polls to be answered", func() bool { return e.count(stub, "status") == 2 })
+	time.Sleep(500 * time.Millisecond)
+	if s := e.sagaStates("2026-10"); s["cus_a"] != "PAYMENT_ACTION_REQUIRED" || s["cus_b"] != "PAYMENT_ACTION_REQUIRED" {
+		t.Fatalf("after a poll the sagas are %v, want still waiting", s)
+	}
+	if n, _ := mailsOf(); n != 2 {
+		t.Fatalf("mails after a poll = %d, want still 2", n)
+	}
+
+	// The customer confirmed; the next poll finds it paid. The other invoice is voided from the waiting state.
+	confirmed.Store(true)
+	admin := e.api()
+	if _, err := admin.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoice}); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 30*time.Second, "cus_a to be paid and completed", func() bool { return e.sagaStates("2026-10")["cus_a"] == "COMPLETED" })
+	var other string
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: other}); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 20*time.Second, "cus_b to be voided", func() bool { return e.sagaStates("2026-10")["cus_b"] == "VOIDED" })
 }
 
 // A transfer that never arrives is declined by the status answer; the ordinary dunning path then decides: a new payment window with a new mail, then uncollectible.

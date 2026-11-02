@@ -37,6 +37,10 @@ SELECT pdf_object_key FROM invoices WHERE id = @id;
 -- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = @tenant_id AND id = @id;
 
+-- name: GetInvoiceBrief :one
+SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, status, total_minor, currency
+FROM invoices WHERE tenant_id = @tenant_id AND id = @id;
+
 -- name: GetInvoiceIDByFeeKey :one
 SELECT id FROM invoices WHERE tenant_id = @tenant_id AND fee_key = @fee_key::text;
 

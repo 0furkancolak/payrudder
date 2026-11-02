@@ -731,11 +731,11 @@ test.describe("pricing", () => {
     await openTenantPage(page, "/pricing");
     await expect(page.getByLabel("Hours before retry 2")).toHaveValue("72");
     await page.getByLabel("Hours before retry 3").fill("0");
-    await page.getByRole("button", { name: "Save retries" }).click();
+    await page.getByRole("button", { name: "Save settings" }).click();
     await expect(page.getByRole("alert")).toContainText("whole number from 1 to 720");
     expect(gw.called("PUT", "/v1/dunning-settings")).toHaveLength(0);
     await page.getByLabel("Hours before retry 3").fill("120");
-    await page.getByRole("button", { name: "Save retries" }).click();
+    await page.getByRole("button", { name: "Save settings" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/dunning-settings").length).toBe(1);
     expect(gw.called("PUT", "/v1/dunning-settings")[0]?.body).toEqual({ retry_hours: [24, 72, 120] });
   });

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -32,6 +33,8 @@ type hostedIyzico struct {
 	mu     sync.Mutex
 	bodies map[string][]map[string]any // by path
 	paid   map[string]bool             // payment ids (and tokens) iyzico has taken money for
+	// noInstalments makes the card list fail, so the instalment options cannot be read.
+	noInstalments bool
 }
 
 func (f *hostedIyzico) sent(path string) []map[string]any {
@@ -64,6 +67,24 @@ func (f *hostedIyzico) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"status":"success","paymentId":"pay-3ds","threeDSHtmlContent":"`+page+`"}`)
 	case "/payment/v2/3dsecure/auth":
 		_, _ = io.WriteString(w, `{"status":"success","paymentId":"pay-3ds","basketId":"`+invoice+`","price":123.45,"currency":"TRY","fraudStatus":1,"mdStatus":1}`)
+	case "/cardstorage/cards":
+		if f.noInstalments {
+			_, _ = io.WriteString(w, `{"status":"failure","errorCode":"3005","errorMessage":"cardUserKey is not found"}`)
+			return
+		}
+		if in["cardUserKey"] == "other" {
+			_, _ = io.WriteString(w, `{"status":"success","cardUserKey":"other","cardDetails":[{"cardToken":"ct9","binNumber":"41595400","lastFourDigits":"1111","cardBankName":"Another Bank"}]}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"status":"success","cardUserKey":"ck","cardDetails":[{"cardToken":"ct","cardAlias":"work","binNumber":"55287900","lastFourDigits":"0008","cardType":"CREDIT_CARD",`+
+			`"cardAssociation":"MASTER_CARD","cardFamily":"World","cardBankName":"Halkbank","expireMonth":"12","expireYear":"2030"},{"cardToken":"ct2","binNumber":"41595400","lastFourDigits":"4242"}]}`)
+	case "/cardstorage/card":
+		_, _ = io.WriteString(w, `{"status":"success"}`)
+	case "/payment/iyzipos/installment":
+		// The bank's quote for 123.45: 12 instalments are not among the account's enabled counts, 2 is not either.
+		_, _ = io.WriteString(w, `{"status":"success","installmentDetails":[{"binNumber":"55287900","force3ds":1,"installmentPrices":[{"installmentPrice":123.45,"totalPrice":123.45,"installmentNumber":1},
+			{"installmentPrice":63.0,"totalPrice":126.0,"installmentNumber":2},{"installmentPrice":42.33,"totalPrice":126.99,"installmentNumber":3},{"installmentPrice":21.8,"totalPrice":130.8,"installmentNumber":6},
+			{"installmentPrice":11.5,"totalPrice":138.0,"installmentNumber":12}]}]}`)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -92,6 +113,8 @@ func TestIyzicoHostedPaymentsThroughTheWorker(t *testing.T) {
 		"ext-1": {Id: "cus-1", ExternalId: "ext-1", Name: "Ada Lovelace", Email: "ada@example.com", Phone: "+905321234567", TaxId: "11111111110", PaymentMethod: "ck:ct",
 			Address: &plansv1.Address{Line1: "Nisantasi 1", City: "Istanbul", PostalCode: "34000", Country: "TR"}},
 		"ext-2": {Id: "cus-2", ExternalId: "ext-2", Name: "Grace Hopper", Email: "grace@example.com", PaymentMethod: "ck:ct"}, // no phone, no tax id, no address
+		"ext-3": {Id: "cus-3", ExternalId: "ext-3", Name: "Linus", Email: "linus@example.com", PaymentMethod: "other:ct9"},
+		"ext-4": {Id: "cus-4", ExternalId: "ext-4", Name: "No Card", Email: "nocard@example.com"},
 	}}
 	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
 		Ledger: ledger, Subscriptions: store.Subscriptions{DB: pool}, Log: log, Token: "internal", Plans: plans, Billing: billing}).Handler())
@@ -261,6 +284,143 @@ func TestIyzicoHostedPaymentsThroughTheWorker(t *testing.T) {
 		}
 		if code, _ := ret("inv-1:charge:1", `{"token":["x"]}`); code != 404 {
 			t.Errorf("a charge of the saga = %d", code)
+		}
+	})
+
+	t.Run("a stored card is offered in the instalments the account enables and the bank quotes, and the quote is what is charged", func(t *testing.T) {
+		split := uuid.New()
+		if err := accounts.Put(ctx, split, "iyzico", "live", []byte(`{"api_key":"api","secret_key":"sec","base_url":"`+psp.URL+`","enabled_installments":[1,3,6]}`), true); err != nil {
+			t.Fatal(err)
+		}
+		b := "/admin/tenants/" + split.String()
+		stored := func(q string) map[string]any {
+			t.Helper()
+			code, out := call("GET", b+"/invoice-methods?environment=live&currency=TRY&country=TR&customer=ext-1"+q, "")
+			if code != 200 {
+				t.Fatalf("methods = %d %v", code, out)
+			}
+			for _, m := range out["methods"].([]any) {
+				if m.(map[string]any)["kind"] == "stored_card" {
+					return m.(map[string]any)
+				}
+			}
+			t.Fatalf("no stored card in %v", out)
+			return nil
+		}
+		opts, _ := stored("&amount_minor=12345")["installments"].([]any)
+		if len(opts) != 2 {
+			t.Fatalf("instalments = %v, want 3 and 6 (enabled, and more than one payment)", opts)
+		}
+		if o := opts[0].(map[string]any); o["count"] != float64(3) || o["each_minor"] != float64(4233) || o["total_minor"] != float64(12699) {
+			t.Errorf("3 instalments = %v: 3 of 42.33 are 126.99", o)
+		}
+		if _, has := stored("")["installments"]; has {
+			t.Error("instalments were quoted without an amount")
+		}
+		iyz.mu.Lock()
+		iyz.noInstalments = true
+		iyz.mu.Unlock()
+		if _, has := stored("&amount_minor=12345")["installments"]; has {
+			t.Error("instalments were offered while iyzico cannot be asked: the payer pays once")
+		}
+		iyz.mu.Lock()
+		iyz.noInstalments = false
+		iyz.mu.Unlock()
+
+		with := func(invoice uuid.UUID, n int) string {
+			return strings.Replace(pay(invoice, "ext-1", "stored_card"), `"environment":"live"`, `"environment":"live","installments":`+strconv.Itoa(n), 1)
+		}
+		// A count the bank does not quote (or the account does not enable) starts nothing, and iyzico is not asked to start a payment.
+		inits := len(iyz.sent("/payment/3dsecure/initialize"))
+		for _, n := range []int{2, 12, 4} {
+			if code, out := call("POST", b+"/invoice-payments", with(uuid.New(), n)); code != 409 || out["error"].(map[string]any)["key"] != "payments.invoice.installment_unavailable" {
+				t.Errorf("%d instalments = %d %v", n, code, out)
+			}
+		}
+		if len(iyz.sent("/payment/3dsecure/initialize")) != inits {
+			t.Fatal("a payment was started for an instalment count that is not offered")
+		}
+
+		invoice := uuid.New()
+		if code, out := call("POST", b+"/invoice-payments", with(invoice, 3)); code != 201 || out["kind"] != "html" {
+			t.Fatalf("start = %d %v", code, out)
+		}
+		init := iyz.sent("/payment/3dsecure/initialize")
+		last := init[len(init)-1]
+		if last["installment"] != float64(3) || last["price"] != "123.45" || last["paidPrice"] != "126.99" {
+			t.Errorf("initialise = %v: 3 instalments, the price of the invoice, the bank's total as the paid price", last)
+		}
+		key := "link:" + invoice.String() + ":1"
+		before := billing.count()
+		if code, res := ret(key, `{"status":["success"],"paymentId":["pay-3ds"],"mdStatus":["1"],"conversationId":["`+key+`"]}`); code != 200 || res["state"] != "paid" || billing.count() != before+1 {
+			t.Fatalf("return = %d %v", code, res)
+		}
+		auth := iyz.sent("/payment/v2/3dsecure/auth")
+		if got := auth[len(auth)-1]; got["paidPrice"] != "126.99" {
+			t.Errorf("auth = %v: it names what the initialise call did", got)
+		}
+		rows, _ := ledger.LookupInvoices(ctx, split, []uuid.UUID{invoice})
+		for _, r := range rows {
+			if r.AmountMinor != 12345 {
+				t.Errorf("ledger = %+v: the invoice is paid in full at its own price, the bank's charge for the instalments is not the seller's", rows)
+			}
+		}
+		if len(rows) == 0 || rows[0].Status != "succeeded" {
+			t.Errorf("ledger = %+v, want the payment succeeded", rows)
+		}
+		// One payment stays one payment.
+		single := uuid.New()
+		call("POST", b+"/invoice-payments", pay(single, "ext-1", "stored_card"))
+		init = iyz.sent("/payment/3dsecure/initialize")
+		if last := init[len(init)-1]; last["installment"] != float64(1) || last["paidPrice"] != "123.45" {
+			t.Errorf("a single payment = %v", last)
+		}
+	})
+
+	t.Run("the cards iyzico holds for a customer are listed and deleted, only the customer's own", func(t *testing.T) {
+		cards := base + "/customers/ext-1/cards"
+		code, out := call("GET", cards, "")
+		list, _ := out["cards"].([]any)
+		if code != 200 || out["provider"] != "iyzico" || len(list) != 2 {
+			t.Fatalf("list = %d %v", code, out)
+		}
+		first := list[0].(map[string]any)
+		if first["token"] != "ct" || first["last4"] != "0008" || first["bin"] != "55287900" || first["bank"] != "Halkbank" || first["expire_year"] != "2030" || first["in_use"] != true || list[1].(map[string]any)["in_use"] != false {
+			t.Errorf("cards = %v: the one the payment method names is in use", list)
+		}
+		if raw, _ := json.Marshal(out); strings.Contains(string(raw), "cardUserKey") || strings.Contains(string(raw), `"ck"`) {
+			t.Errorf("the provider's user key is in the answer: %s", raw)
+		}
+		listed := iyz.sent("/cardstorage/cards")
+		if got := listed[len(listed)-1]["cardUserKey"]; got != "ck" {
+			t.Errorf("the user key asked for is %v: it comes from the customer's payment method", got)
+		}
+		// A customer with no stored card has an empty list; one that does not exist is a 404; a customer of another user key has only their own.
+		if code, out := call("GET", base+"/customers/ext-4/cards", ""); code != 200 || len(out["cards"].([]any)) != 0 || out["provider"] != "" {
+			t.Errorf("no payment method = %d %v", code, out)
+		}
+		if code, _ := call("GET", base+"/customers/nobody/cards", ""); code != 404 {
+			t.Errorf("unknown customer = %d", code)
+		}
+		// Delete: a card of another customer is a 404 and iyzico is asked to delete nothing.
+		deletes := len(iyz.sent("/cardstorage/card"))
+		if code, out := call("DELETE", cards+"/ct9", ""); code != 404 || out["error"].(map[string]any)["key"] != "payments.card.not_found" || len(iyz.sent("/cardstorage/card")) != deletes {
+			t.Errorf("another customer's card = %d %v, deletes %d", code, out, len(iyz.sent("/cardstorage/card"))-deletes)
+		}
+		if code, _ := call("DELETE", base+"/customers/ext-4/cards/ct", ""); code != 404 || len(iyz.sent("/cardstorage/card")) != deletes {
+			t.Errorf("a customer with no card: %d", code)
+		}
+		code, out = call("DELETE", cards+"/ct2", "")
+		if code != 200 || out["deleted"] != true || out["was_in_use"] != false {
+			t.Fatalf("delete = %d %v", code, out)
+		}
+		sent := iyz.sent("/cardstorage/card")
+		if len(sent) != deletes+1 || sent[len(sent)-1]["cardUserKey"] != "ck" || sent[len(sent)-1]["cardToken"] != "ct2" {
+			t.Errorf("iyzico was asked %v", sent)
+		}
+		// The card the customer's invoices are charged with says so, and the customer's payment method is left to the seller.
+		if code, out := call("DELETE", cards+"/ct", ""); code != 200 || out["was_in_use"] != true {
+			t.Errorf("delete the card in use = %d %v", code, out)
 		}
 	})
 }

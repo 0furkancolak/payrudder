@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"net/netip"
 	"sync"
 	"time"
 )
@@ -22,6 +23,28 @@ type publicLimits struct {
 	otpRequests, otpVerifies, oauths hostedLimiter
 	// twoFactor limits the routes that take a second-factor code.
 	twoFactor hostedLimiter
+	// authFailures counts the failed authentications (an unknown API key or session token) of an address; once over authFailuresPerMinute the address is refused before
+	// any key or session is looked up.
+	authFailures hostedLimiter
+}
+
+// limitKey is what a client address is counted under by the limits above. An IPv4 address counts as itself. An IPv6 subscriber is given a whole /64 and can send from
+// any address in it, so counting the full address would let one subscriber have 2^64 buckets: it is counted by its /64. What is recorded about the visitor (an
+// acceptance, the audit log) stays the address itself.
+func limitKey(addr string) string {
+	a, err := netip.ParseAddr(addr)
+	if err != nil {
+		return addr
+	}
+	a = a.Unmap().WithZone("")
+	if !a.Is6() {
+		return a.String()
+	}
+	p, err := a.Prefix(64)
+	if err != nil {
+		return addr
+	}
+	return p.String()
 }
 
 // hostedLimiter lets a visitor load a handful of pages a minute. A token is 256 random bits, so guessing one is hopeless; this keeps scrapers and
@@ -48,6 +71,14 @@ const (
 
 func (l *hostedLimiter) allow(key string, now time.Time) bool {
 	return l.allowN(key, now, hostedPerMinute)
+}
+
+// over reports whether key has already used perMinute in the current minute, without counting anything.
+func (l *hostedLimiter) over(key string, now time.Time, perMinute int) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	w := l.window[key]
+	return w != nil && now.Sub(w.start) <= time.Minute && w.n >= perMinute
 }
 
 // allowN counts a request of key and reports whether it is within perMinute requests in the current minute.
