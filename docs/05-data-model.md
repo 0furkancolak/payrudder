@@ -667,6 +667,10 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 -- unless the transaction names the tenant in payrudder.sandbox_reset (the sandbox reset, after it found no attempt or ledger row of the live environment; a row whose environment
 -- is not 'sandbox' is refused even then) or payrudder.tenant_move (pkg/pgxx Move). payments_system has no UPDATE on them either. Neither table can be truncated
 -- (statement trigger ledger_no_truncate, hint ledger_table_truncate, migration 00009, tenant 00010), whoever asks.
+-- einvoice_issuances refuses every DELETE the same way (migration 00014, tenant 00015, plan 22 review finding 8): only payrudder.sandbox_reset for a row of the sandbox environment,
+-- or payrudder.tenant_move. The reset asks the database first (ResetLiveRowCount) whether the tenant has a row of a live environment in the ledger, the attempts, the kept
+-- discrepancies, the settlement lines, the e-invoice issuances or the provider subscriptions, or any notification while it has a live provider account (a notification has no
+-- environment of its own), and refuses (admin.sandbox.live_refused) before it deletes anything.
 -- payments_app holds no privilege on any table of payments_db (migration 00007, tenant 00008): payments-worker connects as payments_system only, and these tables have no
 -- row-level security, so a SELECT of the app role would read every tenant's rows. The role exists because the init scripts make one per service; the integration test lists the tables it can read: none.
 
