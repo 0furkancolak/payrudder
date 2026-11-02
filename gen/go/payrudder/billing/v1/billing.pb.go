@@ -5009,8 +5009,10 @@ type HostedPaymentContext struct {
 	CustomerName  string `protobuf:"bytes,10,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
 	Description   string `protobuf:"bytes,11,opt,name=description,proto3" json:"description,omitempty"`
 	Environment   string `protobuf:"bytes,12,opt,name=environment,proto3" json:"environment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The external id of the customer the invoice is out to, empty for a guest paying an ad-hoc link. A provider that vets the payer (iyzico) reads the customer record.
+	CustomerExternalId string `protobuf:"bytes,13,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *HostedPaymentContext) Reset() {
@@ -5123,6 +5125,13 @@ func (x *HostedPaymentContext) GetDescription() string {
 func (x *HostedPaymentContext) GetEnvironment() string {
 	if x != nil {
 		return x.Environment
+	}
+	return ""
+}
+
+func (x *HostedPaymentContext) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
 	}
 	return ""
 }
@@ -12839,7 +12848,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\acredits\x18\x02 \x01(\x03R\acredits\x12\x1a\n" +
 	"\bquantity\x18\x03 \x01(\x05R\bquantity\x12#\n" +
-	"\rvalidity_days\x18\x04 \x01(\x05R\fvalidityDays\"\x88\x03\n" +
+	"\rvalidity_days\x18\x04 \x01(\x05R\fvalidityDays\"\xba\x03\n" +
 	"\x14HostedPaymentContext\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
@@ -12854,7 +12863,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\rcustomer_name\x18\n" +
 	" \x01(\tR\fcustomerName\x12 \n" +
 	"\vdescription\x18\v \x01(\tR\vdescription\x12 \n" +
-	"\venvironment\x18\f \x01(\tR\venvironment\"w\n" +
+	"\venvironment\x18\f \x01(\tR\venvironment\x120\n" +
+	"\x14customer_external_id\x18\r \x01(\tR\x12customerExternalId\"w\n" +
 	"\x1dGetHostedInvoicePdfUrlRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fportal_token\x18\x02 \x01(\tR\vportalToken\x12\x1d\n" +

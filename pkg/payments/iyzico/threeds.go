@@ -19,6 +19,12 @@ const (
 	threeDSAuthPath = "/payment/v2/3dsecure/auth"
 )
 
+// StoresPaymentMethod implements payments.ThreeDSProvider: a payment method token of the form "cardUserKey:cardToken".
+func (c *Client) StoresPaymentMethod(pm string) bool {
+	_, _, err := SplitPaymentMethod(pm)
+	return err == nil
+}
+
 // StartThreeDS implements payments.ThreeDSProvider: it initialises a 3-D Secure payment with the customer's stored card (cardUserKey and cardToken, which
 // docs.iyzico.com/en/advanced/card-storage says a 3DS payment request may use instead of the card details) and returns the page the payer must be shown. No money
 // moves until the payer authenticated and ConfirmReturn has finalised the payment.

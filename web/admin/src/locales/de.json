@@ -3124,6 +3124,7 @@
         "amount_required": "Betrag und Währung sind erforderlich.",
         "bad_id": "Die Rechnungs-ID ist keine gültige ID.",
         "bad_ids": "Die Rechnungs-IDs sind keine gültigen IDs.",
+        "buyer_incomplete": "Der Anbieter braucht mehr Angaben zu diesem Kunden (Telefon, Steuer-ID, Adresse), als der Verkäufer hinterlegt hat.",
         "no_instructions": "Dieser Anbieter hat für diese Währung keine Zahlungsanweisungen.",
         "not_live": "Nur Live-Rechnungen werden über einen Anbieter bezahlt.",
         "payment_in_progress": "Für diese Rechnung wird gerade eine Zahlung gestartet. Versuchen Sie es gleich erneut.",

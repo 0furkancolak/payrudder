@@ -139,6 +139,20 @@ func refineState(state string, rows []ledgerRow, invoiceID string, now time.Time
 	return state
 }
 
+// lastDecline is the decline code of the newest charge row of the invoice when that row is a refusal: why the last attempt did not go through, as the ledger holds it
+// ("insufficient_funds"), else "". The rows are oldest first (ledgerLookup).
+func lastDecline(rows []ledgerRow, invoiceID string) string {
+	for i := len(rows) - 1; i >= 0; i-- {
+		if r := rows[i]; r.InvoiceID == invoiceID && r.Kind == "charge" && r.Status != "pending" {
+			if failedStatus(r.Status) {
+				return r.Detail
+			}
+			return ""
+		}
+	}
+	return ""
+}
+
 // paymentMethod is one way to pay an invoice, as payments-worker offers it.
 type paymentMethod struct {
 	ID       string `json:"id"`
@@ -146,13 +160,16 @@ type paymentMethod struct {
 	Provider string `json:"provider"`
 }
 
-func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, provider string) ([]paymentMethod, error) {
+func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, provider, customer string) ([]paymentMethod, error) {
 	q := url.Values{"environment": {env.Live.String()}, "currency": {currency}}
 	if country != "" {
 		q.Set("country", country)
 	}
 	if provider != "" {
 		q.Set("provider", provider)
+	}
+	if customer != "" {
+		q.Set("customer", customer)
 	}
 	var out struct {
 		Methods []paymentMethod `json:"methods"`
@@ -169,8 +186,9 @@ func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, p
 
 // paymentStart is payments-worker's answer to "start paying this invoice by this method".
 type paymentStart struct {
-	Kind      string `json:"kind"` // redirect or instructions
+	Kind      string `json:"kind"` // redirect, instructions or html
 	URL       string `json:"url"`
+	HTML      string `json:"html"`
 	Reference string `json:"reference"`
 	Lines     []struct {
 		Label string `json:"label"`

@@ -119,6 +119,31 @@ func (q *Queries) FindOpenCheckout(ctx context.Context, arg FindOpenCheckoutPara
 	return i, err
 }
 
+const getChargeByRef = `-- name: GetChargeByRef :one
+SELECT amount_minor, occurred_at FROM payment_ledger
+WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'charge' AND status = 'succeeded' AND provider_ref = $3
+ORDER BY id LIMIT 1
+`
+
+type GetChargeByRefParams struct {
+	TenantID    uuid.UUID
+	InvoiceID   *uuid.UUID
+	ProviderRef *string
+}
+
+type GetChargeByRefRow struct {
+	AmountMinor int64
+	OccurredAt  time.Time
+}
+
+// A successful charge of an invoice by the provider's reference: what was taken and when, for a provider that cancels a payment the day it was taken.
+func (q *Queries) GetChargeByRef(ctx context.Context, arg GetChargeByRefParams) (GetChargeByRefRow, error) {
+	row := q.db.QueryRow(ctx, getChargeByRef, arg.TenantID, arg.InvoiceID, arg.ProviderRef)
+	var i GetChargeByRefRow
+	err := row.Scan(&i.AmountMinor, &i.OccurredAt)
+	return i, err
+}
+
 const getChargeFact = `-- name: GetChargeFact :one
 SELECT status, provider_ref, detail FROM payment_ledger
 WHERE kind = 'charge' AND idempotency_key = $1 AND status IN ('succeeded','declined')
@@ -136,6 +161,20 @@ func (q *Queries) GetChargeFact(ctx context.Context, idempotencyKey *string) (Ge
 	var i GetChargeFactRow
 	err := row.Scan(&i.Status, &i.ProviderRef, &i.Detail)
 	return i, err
+}
+
+const getPendingRef = `-- name: GetPendingRef :one
+SELECT provider_ref FROM payment_ledger
+WHERE kind = 'charge' AND status = 'pending' AND idempotency_key = $1 AND provider_ref IS NOT NULL
+ORDER BY id DESC LIMIT 1
+`
+
+// The provider's reference of the payment a hosted attempt waits on (the checkout form's token, the 3-D Secure payment id), by the attempt's key.
+func (q *Queries) GetPendingRef(ctx context.Context, idempotencyKey *string) (*string, error) {
+	row := q.db.QueryRow(ctx, getPendingRef, idempotencyKey)
+	var provider_ref *string
+	err := row.Scan(&provider_ref)
+	return provider_ref, err
 }
 
 const getRefundFact = `-- name: GetRefundFact :one

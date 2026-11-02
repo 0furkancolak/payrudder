@@ -25,7 +25,10 @@ type ledgerEntry struct {
 	AmountMinor json.Number `json:"amount_minor"`
 	Currency    string      `json:"currency"`
 	ProviderRef string      `json:"provider_ref"`
-	OccurredAt  time.Time   `json:"occurred_at"`
+	// Detail is what the ledger notes about the row: the decline code of a refused charge. It is read by the hosted pages (the reason the payer is told) and not
+	// passed on by the endpoints that list payments.
+	Detail     string    `json:"detail,omitempty"`
+	OccurredAt time.Time `json:"occurred_at"`
 }
 
 // ledgerRow is a ledgerEntry where a list of rows is meant, not a payment.

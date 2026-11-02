@@ -15,6 +15,18 @@ SELECT status, provider_ref, detail FROM payment_ledger
 WHERE kind = 'charge' AND idempotency_key = @idempotency_key AND status IN ('succeeded','declined')
 ORDER BY (status = 'succeeded') DESC, id DESC LIMIT 1;
 
+-- name: GetPendingRef :one
+-- The provider's reference of the payment a hosted attempt waits on (the checkout form's token, the 3-D Secure payment id), by the attempt's key.
+SELECT provider_ref FROM payment_ledger
+WHERE kind = 'charge' AND status = 'pending' AND idempotency_key = @idempotency_key AND provider_ref IS NOT NULL
+ORDER BY id DESC LIMIT 1;
+
+-- name: GetChargeByRef :one
+-- A successful charge of an invoice by the provider's reference: what was taken and when, for a provider that cancels a payment the day it was taken.
+SELECT amount_minor, occurred_at FROM payment_ledger
+WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND status = 'succeeded' AND provider_ref = @provider_ref
+ORDER BY id LIMIT 1;
+
 -- name: ListSuccessfulCharges :many
 SELECT DISTINCT ON (invoice_id, provider, COALESCE(provider_ref, ''))
   invoice_id::text AS invoice_id, provider, COALESCE(provider_ref, '')::text AS provider_ref, currency, amount_minor, occurred_at

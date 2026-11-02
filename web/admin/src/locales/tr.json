@@ -3124,6 +3124,7 @@
         "amount_required": "Tutar ve para birimi gerekli.",
         "bad_id": "Fatura kimliği geçerli bir kimlik değil.",
         "bad_ids": "Fatura kimlikleri geçerli kimlikler değil.",
+        "buyer_incomplete": "Sağlayıcı, bu müşteri hakkında satıcının kayıtlarında bulunandan daha fazla bilgiye (telefon, vergi kimlik numarası, adres) ihtiyaç duyuyor.",
         "no_instructions": "Bu sağlayıcının bu para birimi için ödeme talimatı yok.",
         "not_live": "Yalnızca canlı faturalar bir sağlayıcı üzerinden ödenir.",
         "payment_in_progress": "Bu fatura için bir ödeme başlatılıyor. Birazdan yeniden deneyin.",

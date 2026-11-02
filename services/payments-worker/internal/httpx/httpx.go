@@ -55,7 +55,7 @@ func CodeName(httpStatus int) string {
 		return "UNAUTHENTICATED"
 	case http.StatusNotFound:
 		return "NOT_FOUND"
-	case http.StatusConflict:
+	case http.StatusConflict, http.StatusUnprocessableEntity:
 		return "FAILED_PRECONDITION"
 	case http.StatusRequestEntityTooLarge:
 		return "REQUEST_TOO_LARGE"

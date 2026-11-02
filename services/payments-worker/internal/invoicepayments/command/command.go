@@ -4,9 +4,11 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/buyer"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/invoicepayments/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
@@ -37,7 +40,10 @@ type Deps struct {
 	Resolver target.Resolver
 	Ledger   store.Ledger
 	Attempts store.Attempts
-	Log      *slog.Logger
+	// Customers, when set, is read for the customer of a payment whose provider vets the payer (Capabilities.NeedsBuyer). Nil: the provider is sent only the email and
+	// name of the page.
+	Customers buyer.Reader
+	Log       *slog.Logger
 }
 
 // Payment is what the hosted page asks to pay.
@@ -52,16 +58,24 @@ type Payment struct {
 	Country       string `json:"country"`
 	CustomerEmail string `json:"customer_email"`
 	CustomerName  string `json:"customer_name"`
-	Description   string `json:"description"`
-	ReturnURL     string `json:"return_url"`
-	Environment   string `json:"environment"`
+	// CustomerExternalID names the customer the invoice is out to ("" for a guest), PayerIP is the address of the person on the page.
+	CustomerExternalID string `json:"customer_external_id"`
+	PayerIP            string `json:"payer_ip"`
+	Description        string `json:"description"`
+	ReturnURL          string `json:"return_url"`
+	// CallbackURL is where a provider that posts the result through the payer's browser (iyzico) posts it, with "{key}" where the attempt's key goes (the route of the
+	// gateway that hands the form to the return endpoint). Empty: the provider is not asked to call back.
+	CallbackURL string `json:"callback_url"`
+	Environment string `json:"environment"`
 }
 
 // Started is where the customer goes next.
 type Started struct {
-	// Kind is "redirect" (go to URL) or "instructions" (pay by the Reference and Lines).
+	// Kind is "redirect" (go to URL), "instructions" (pay by the Reference and Lines) or "html" (show HTML, the page of the payer's bank).
 	Kind string
 	URL  string
+	// HTML is the page of Kind "html".
+	HTML string
 	// Reused is set when a checkout that was still open is handed out again.
 	Reused    bool
 	Reference string
@@ -89,6 +103,8 @@ func Start(ctx context.Context, d Deps, tenant uuid.UUID, in Payment) (Started, 
 		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.not_live", "only live invoices are paid through a provider")
 	case in.Method == query.MethodCheckout:
 		return startCheckout(ctx, d, tenant, invoice, in)
+	case in.Method == query.MethodStoredCard:
+		return startStoredCard(ctx, d, tenant, invoice, in)
 	case strings.HasPrefix(in.Method, query.MethodInstructions):
 		return startInstructions(ctx, d, tenant, invoice, strings.TrimPrefix(in.Method, query.MethodInstructions), in)
 	}
@@ -132,14 +148,96 @@ func startCheckout(ctx context.Context, d Deps, t, invoice uuid.UUID, in Payment
 	if redelivered {
 		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.payment_in_progress", "a payment for this invoice is being started; try again in a moment")
 	}
-	co, err := cp.CreateInvoiceCheckout(ctx, payments.CheckoutInvoiceRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number,
-		Description: in.Description, AmountMinor: in.AmountMinor, Currency: in.Currency, CustomerEmail: in.CustomerEmail, CustomerName: in.CustomerName, ReturnURL: in.ReturnURL})
+	b, err := buyerOf(ctx, d, t, prov, in)
 	if err != nil {
-		return Started{}, &refuse.Provider{What: "invoice checkout", Err: err}
+		return Started{}, err
+	}
+	co, err := cp.CreateInvoiceCheckout(ctx, payments.CheckoutInvoiceRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number,
+		Description: in.Description, AmountMinor: in.AmountMinor, Currency: in.Currency, CustomerEmail: in.CustomerEmail, CustomerName: in.CustomerName, ReturnURL: in.ReturnURL,
+		CallbackURL: callbackFor(in.CallbackURL, key), Buyer: b})
+	if err != nil {
+		return Started{}, startFailure("invoice checkout", err)
 	}
 	// Pending is a fact about money at the provider: the customer was sent there. The notification adds the outcome.
 	recordPending(ctx, d, t, invoice, name, key, in, co.Ref, "checkout:"+co.URL)
 	return Started{Kind: "redirect", URL: co.URL}, nil
+}
+
+// callbackFor is the callback URL of an attempt: the template with the attempt's key in its place (the key has colons, which a path takes, and is escaped anyway).
+func callbackFor(template, key string) string {
+	return strings.ReplaceAll(template, "{key}", url.PathEscape(key))
+}
+
+// buyerOf is the customer of a payment whose provider vets the payer (Capabilities.NeedsBuyer), with the address of the person on the page; nil for any other provider
+// and for a guest. A customer record that cannot be read refuses the start (the page says to try again): a payment is not to be refused for the customer's missing data
+// because the record could not be read.
+func buyerOf(ctx context.Context, d Deps, tenant uuid.UUID, prov payments.Provider, in Payment) (*payments.Buyer, error) {
+	if !prov.Capabilities().NeedsBuyer {
+		return nil, nil
+	}
+	b, err := buyer.Of(ctx, d.Customers, tenant, in.CustomerExternalID, in.PayerIP)
+	if err != nil {
+		return nil, &refuse.Provider{What: "read the customer", Err: err}
+	}
+	return b, nil
+}
+
+// startFailure is a provider that refused to start a payment: a customer the provider cannot take for want of data (422, the page says to contact the seller), else the
+// provider's failure.
+func startFailure(what string, err error) error {
+	var inc *payments.BuyerIncompleteError
+	if errors.As(err, &inc) {
+		return refuse.New(http.StatusUnprocessableEntity, "payments.invoice.buyer_incomplete", err.Error())
+	}
+	return &refuse.Provider{What: what, Err: err}
+}
+
+// startStoredCard pays the invoice with the customer's stored card, authenticated by the payer at their bank (3-D Secure). The payer is sent the bank's page; the result
+// comes back to the callback URL and the return endpoint finalises the payment. No card number passes through Payrudder: the stored card is the customer's payment method.
+func startStoredCard(ctx context.Context, d Deps, t, invoice uuid.UUID, in Payment) (Started, error) {
+	if in.CallbackURL == "" || in.CustomerExternalID == "" || d.Customers == nil {
+		return Started{}, refuse.New(http.StatusBadRequest, "payments.invoice.unknown_method", "paying with a stored card needs a customer and a callback url")
+	}
+	name, err := query.RoutedProvider(ctx, d.Query, t, in.Provider, strings.ToUpper(in.Country), in.Currency)
+	if err != nil || name == "" {
+		return Started{}, refuse.New(http.StatusConflict, "payments.account.not_found", "the tenant has no provider account for this payment")
+	}
+	prov, err := liveProvider(ctx, d, t, name)
+	if err != nil {
+		return Started{}, err
+	}
+	tp, ok := prov.(payments.ThreeDSProvider)
+	if !ok || !prov.Capabilities().CanCharge(in.Currency) {
+		return Started{}, refuse.New(http.StatusConflict, "payments.checkout.unsupported", name+" cannot take a 3-D Secure payment in "+in.Currency)
+	}
+	cu, err := d.Customers.GetCustomer(ctx, t, in.CustomerExternalID)
+	if err != nil {
+		return Started{}, &refuse.Provider{What: "read the customer", Err: err}
+	}
+	if !tp.StoresPaymentMethod(cu.GetPaymentMethod()) {
+		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.unknown_method", "the customer has no stored card at "+name)
+	}
+	n, err := d.Attempts.CountLinkAttempts(ctx, t, invoice)
+	if err != nil {
+		return Started{}, fmt.Errorf("count the payment attempts: %w", err)
+	}
+	key := fmt.Sprintf("%s%s:%d", LinkKeyPrefix, invoice, n+1)
+	redelivered, err := startAttempt(ctx, d, t, invoice, name, key, attemptRequest{AmountMinor: in.AmountMinor, Currency: in.Currency, Method: query.MethodStoredCard, SagaID: in.SagaID})
+	if err != nil {
+		return Started{}, err
+	}
+	if redelivered {
+		return Started{}, refuse.New(http.StatusConflict, "payments.invoice.payment_in_progress", "a payment for this invoice is being started; try again in a moment")
+	}
+	st, err := tp.StartThreeDS(ctx, payments.ThreeDSRequest{IdempotencyKey: key, InvoiceID: invoice.String(), Number: in.Number, AmountMinor: in.AmountMinor, Currency: in.Currency,
+		PaymentMethod: cu.GetPaymentMethod(), CallbackURL: callbackFor(in.CallbackURL, key), Buyer: buyer.FromCustomer(cu, in.PayerIP)})
+	if err != nil {
+		return Started{}, startFailure("3-D Secure payment", err)
+	}
+	// Pending is a fact about money at the provider: the payer was sent to their bank, and the payment waits for the authentication. The row is not a "checkout:" one, so
+	// it is never handed out again as a page to go to; the return endpoint finds the payment id here.
+	recordPending(ctx, d, t, invoice, name, key, in, st.Ref, "threeds:"+st.Ref)
+	return Started{Kind: "html", HTML: st.HTML}, nil
 }
 
 func startInstructions(ctx context.Context, d Deps, t, invoice uuid.UUID, name string, in Payment) (Started, error) {

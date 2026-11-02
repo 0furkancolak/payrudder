@@ -91,5 +91,8 @@ type ThreeDSStart struct {
 // ThreeDSProvider is a provider that authenticates a stored-card charge with the payer. The payment is completed by ConfirmReturn when the payer comes back.
 type ThreeDSProvider interface {
 	Provider
+	// StoresPaymentMethod reports whether a customer's payment method token is a stored card of this provider (the form StartThreeDS wants), so that a page offers the
+	// payment only to a customer who has one.
+	StoresPaymentMethod(paymentMethod string) bool
 	StartThreeDS(ctx context.Context, r ThreeDSRequest) (ThreeDSStart, error)
 }

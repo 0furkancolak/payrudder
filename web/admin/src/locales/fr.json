@@ -3124,6 +3124,7 @@
         "amount_required": "Le montant et la devise sont requis.",
         "bad_id": "L'identifiant de la facture n'est pas valide.",
         "bad_ids": "Les identifiants de facture ne sont pas valides.",
+        "buyer_incomplete": "Le prestataire a besoin de plus d'informations sur ce client (téléphone, identifiant fiscal, adresse) que le vendeur n'en a enregistré.",
         "no_instructions": "Ce prestataire n'a pas d'instructions de paiement pour cette devise.",
         "not_live": "Seules les factures en production sont payées via un prestataire.",
         "payment_in_progress": "Un paiement pour cette facture est en cours de démarrage. Réessayez dans un instant.",

@@ -37,7 +37,7 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff model.Effect
 		}
 		env.Command = &commandsv1.CommandEnvelope_ChargePayment{ChargePayment: &commandsv1.ChargePayment{
 			InvoiceId: s.InvoiceID.String(), InvoiceNumber: s.Number, AmountMinor: s.TotalMinor - paid, Currency: s.Currency, PaymentMethod: s.Snap.PaymentMethod, Provider: s.Snap.Provider,
-			DunningAttempt: int32(s.DunningAttempt), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt), //nolint:gosec // 0..3
+			CustomerExternalId: s.Snap.CustomerExternalID, DunningAttempt: int32(s.DunningAttempt), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt), //nolint:gosec // 0..3
 		}}
 	case model.EffQueryStatus:
 		step, route = "status", rabbitx.QueuePaymentStatus

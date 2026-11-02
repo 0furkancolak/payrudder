@@ -52,6 +52,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation"
 	reconciliationcommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/command"
 	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/returns"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions"
 	subscriptionscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions/command"
@@ -141,7 +142,7 @@ func (s *Server) Handler() http.Handler {
 
 // modules are the operator endpoints, one module each, and the modules the caller added.
 func (s *Server) modules() []RouteRegistrar {
-	invoiceQuery := invoicepaymentsquery.Deps{Accounts: s.Accounts, Resolver: s.Resolver, Plans: s.Plans, Log: s.Log}
+	invoiceQuery := invoicepaymentsquery.Deps{Accounts: s.Accounts, Resolver: s.Resolver, Plans: s.Plans, Customers: s.Plans, Log: s.Log}
 	subscriptionQuery := subscriptionsquery.Deps{Plans: s.Plans, Objects: s.Objects, Subscriptions: s.Subscriptions, Log: s.Log}
 	mods := []RouteRegistrar{
 		&accounts.Handler{Log: s.Log,
@@ -152,7 +153,8 @@ func (s *Server) modules() []RouteRegistrar {
 		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
-			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Log: s.Log}},
+			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Customers: s.Plans, Log: s.Log}},
+		&returns.Handler{Log: s.Log, Deps: returns.Deps{Attempts: s.Attempts, Ledger: s.Ledger, Resolver: s.Resolver, Billing: s.Billing, Log: s.Log}},
 		&migrations.Handler{Log: s.Log, Deps: s.migrationDeps()},
 		&catalogue.Handler{Log: s.Log, Resolver: s.Resolver, Deps: cataloguecommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},
 		&customers.Handler{Log: s.Log, Resolver: s.Resolver, Deps: customerscommand.Deps{Plans: s.Plans, Objects: s.Objects, Log: s.Log}},

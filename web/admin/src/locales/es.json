@@ -3124,6 +3124,7 @@
         "amount_required": "Se requieren el importe y la moneda.",
         "bad_id": "El identificador de la factura no es válido.",
         "bad_ids": "Los identificadores de factura no son válidos.",
+        "buyer_incomplete": "El proveedor necesita más datos de este cliente (teléfono, identificación fiscal, dirección) de los que el vendedor tiene registrados.",
         "no_instructions": "Este proveedor no tiene instrucciones de pago para esta moneda.",
         "not_live": "Solo las facturas en producción se pagan a través de un proveedor.",
         "payment_in_progress": "Se está iniciando un pago para esta factura. Inténtalo de nuevo en un momento.",

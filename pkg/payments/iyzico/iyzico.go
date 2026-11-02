@@ -48,8 +48,9 @@ const (
 	SandboxURL = "https://sandbox-api.iyzipay.com"
 )
 
-// Buyer is what iyzico wants to know about the payer. iyzico requires these fields on every payment, also on a stored-card one.
-// Payrudder does not hold them per customer yet, so the account's defaults are sent; real values per customer are a later addition.
+// Buyer is what iyzico wants to know about the payer. iyzico requires these fields on every payment, also on a stored-card one. A request carries the customer's own
+// (payments.Buyer, built from the customer record); these are the account's explicit defaults, used only for a field the customer lacks. A seller who configures none gets
+// a payment refused with the fields named (payments.BuyerIncompleteError) rather than a stranger's identity on it.
 type Buyer struct {
 	Name           string `json:"name"`
 	Surname        string `json:"surname"`
@@ -155,7 +156,7 @@ func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 // Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists. Neither charges nor
 // refunds are idempotent (a repeated refund is a second refund, docs/iyzico-compatibility-matrix.md), so payments-worker guards both itself.
 func Caps() payments.Capabilities {
-	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
+	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, NeedsBuyer: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
 }
 
 func randomKey() string {
