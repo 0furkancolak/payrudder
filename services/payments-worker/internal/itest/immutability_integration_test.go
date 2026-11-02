@@ -13,11 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	paymentsreset "github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // errRollBack ends a transaction of a test that only looked.
@@ -126,5 +128,45 @@ func TestLedgerAndReceiptsAreNotDeletedExceptByAResetOrAMove(t *testing.T) {
 		if _, err := w.At(live).Exec(ctx, stmt, live); pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
 			t.Errorf("payments_system: %s: %v, want permission denied", stmt, err)
 		}
+	}
+}
+
+// payments_app has no table of payments_db, public or a tenant's schema in a cell, nor the shared index of charge keys (migrations 00007 and 00008): payments-worker
+// connects as payments_system only, and these tables have no row-level security, so a SELECT of the app role would read every tenant's attempts, ledger and audit rows.
+func TestTheAppRoleCannotReadAnyTable(t *testing.T) {
+	ctx := testkit.Ctx(t)
+	pg := testkit.StartPostgres(t)
+	pub := testkit.MigratedDB(t, pg, "payments", migrations.FS)
+	cell := testkit.CreateCellDB(t, pg, "payments", "c1")
+	id := uuid.New()
+	if _, err := pgxx.ProvisionTenant(ctx, cell.Migrator, tenantSchemas(), id, nil); err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]struct{ migrator, schema string }{
+		"public": {pub.Migrator, "public"}, "a tenant's schema": {cell.Migrator, tenantdir.Schema(id)}, "the shared schema": {cell.Migrator, pgxx.SharedSchema},
+	} {
+		conn, err := pgx.Connect(ctx, c.migrator)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tables int
+		var readable []string
+		err = conn.QueryRow(ctx, `SELECT count(*), COALESCE(array_agg(c.relname) FILTER (WHERE has_table_privilege('payments_app', c.oid, 'SELECT')), '{}')
+			FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relkind IN ('r', 'p') AND NOT c.relispartition`, c.schema).Scan(&tables, &readable)
+		_ = conn.Close(ctx)
+		if err != nil || tables == 0 {
+			t.Fatalf("%s: %d tables, %v", name, tables, err)
+		}
+		if len(readable) > 0 {
+			t.Errorf("%s: payments_app can read %v", name, readable)
+		}
+	}
+	app, err := pgx.Connect(ctx, pub.App)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = app.Close(ctx) }()
+	if _, err := app.Exec(ctx, `SELECT 1 FROM payment_ledger`); pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
+		t.Errorf("payments_app reading the ledger: %v, want permission denied", err)
 	}
 }

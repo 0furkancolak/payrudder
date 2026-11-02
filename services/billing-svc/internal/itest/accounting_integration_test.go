@@ -32,8 +32,9 @@ func seedPaidInvoiceIn(t *testing.T, tid uuid.UUID, environment, currency string
 	if !refundedAt.IsZero() {
 		status = "void"
 	}
+	// The lines go in while the invoice is a draft; the database takes none once it is not (migration 00006).
 	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
-		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,jsonb_build_object('customer_external_id', 'cus_acc', 'environment', $9::text),'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status, environment); err != nil {
+		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,'draft',jsonb_build_object('customer_external_id', 'cus_acc', 'environment', $8::text),'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, environment); err != nil {
 		t.Fatal(err)
 	}
 	if tax > 0 {
@@ -41,6 +42,9 @@ func seedPaidInvoiceIn(t *testing.T, tid uuid.UUID, environment, currency string
 			tid, id, total-tax, tax); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if _, err := shared.sql.Exec(ctx, `UPDATE invoices SET status = $3 WHERE tenant_id = $1 AND id = $2`, tid, id, status); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',1)`, tid, saga, id); err != nil {
 		t.Fatal(err)
