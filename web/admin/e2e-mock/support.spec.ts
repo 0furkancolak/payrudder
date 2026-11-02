@@ -565,6 +565,8 @@ test.describe("support: tags, canned replies, the report and the badges", () => 
     await expect(dialog.getByTestId("canned-r2")).toContainText("Delete the canned reply “Closing”?");
     await dialog.getByTestId("canned-delete-yes-r2").click();
     await expect(dialog.getByTestId("canned-r2")).toHaveCount(0);
+    // The button that was pressed is gone with its row: keyboard focus moves to the form instead of falling to the page behind the dialog.
+    await expect(dialog.getByTestId("canned-title")).toBeFocused();
   });
 
   test("the report shows the queue and the first answers, and the sidebar counts what waits", async ({ page }) => {
@@ -775,6 +777,7 @@ test.describe("support: search, links, ratings, merges and days off", () => {
     await dialog.getByTestId("holidays-save").click();
     await expect.poll(() => gw.called("PUT", /\/holidays$/).length).toBe(1);
     expect(gw.called("PUT", /\/holidays$/)[0]?.body).toEqual({ holidays: [{ day: "2026-12-25", name: "Christmas" }] });
+    await expect(dialog.getByTestId("holidays-saved")).toBeVisible();
   });
 
   test("the days off dialog starts empty for another app, and Save waits until that app's list has arrived", async ({ page }) => {

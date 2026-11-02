@@ -275,6 +275,7 @@
       "remove": "Retirer",
       "add": "Ajouter un pays",
       "save": "Enregistrer les règles de préavis",
+      "saved": "Les règles de préavis sont enregistrées.",
       "star": "La ligne * vaut pour tout pays sans ligne propre (et pour un client sans pays). Sans elle, la plateforme garde 14 jours.",
       "updated": "Dernier enregistrement par {who} le {date}."
     }
@@ -5898,6 +5899,7 @@
       "name": "Nom (facultatif)",
       "add": "Ajouter le jour",
       "save": "Enregistrer les jours fermés",
+      "saved": "Les jours de congé sont enregistrés.",
       "remove": "Retirer {day}"
     },
     "slaTier": "L'échéance a été calculée pour une app du forfait {tier}.",

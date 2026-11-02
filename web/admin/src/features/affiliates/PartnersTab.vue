@@ -114,7 +114,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
   <Card class="p-3">
     <DataToolbar v-model:search="search" :placeholder="t('affiliates.partners.search')" :active="status !== '' || search !== ''" @clear="status = ''; search = ''">
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
-      <HeaderAction :disabled="!canWrite" :label="t('affiliates.partners.add')" @click="addOpen = true" />
+      <HeaderAction v-if="canWrite" :label="t('affiliates.partners.add')" @click="addOpen = true" />
     </DataToolbar>
     <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <ErrorText :error="update.error.value" class="px-3" />
@@ -198,7 +198,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
     <template v-if="current" #footer>
       <Button type="button" variant="outline" @click="openFrom('referrals', current)">{{ t("affiliates.partners.referralsOf") }}</Button>
       <Button type="button" variant="outline" @click="openFrom('link', current)">{{ t("affiliates.partners.linkAndCode") }}</Button>
-      <Button type="button" variant="outline" :disabled="!canWrite" @click="openFrom('edit', current)">{{ t("affiliates.partners.edit") }}</Button>
+      <Button v-if="canWrite" type="button" variant="outline" @click="openFrom('edit', current)">{{ t("affiliates.partners.edit") }}</Button>
     </template>
   </DetailSheet>
 

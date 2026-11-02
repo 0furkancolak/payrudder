@@ -127,7 +127,7 @@ function createAll() {
   <Card class="p-3">
     <FilterBar :active="status !== ''" class="pt-2" @clear="status = ''">
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
-      <HeaderAction :disabled="!canWrite || create.isPending.value" :label="t('affiliates.payouts.create')" @click="createAll" />
+      <HeaderAction v-if="canWrite" :disabled="create.isPending.value" :label="t('affiliates.payouts.create')" @click="createAll" />
     </FilterBar>
     <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />
@@ -172,7 +172,7 @@ function createAll() {
       <CommissionsTable :key="current.id" :tenant-id="tenantId" :payout-id="current.id" />
     </div>
     <template v-if="current && current.status === 'open'" #footer>
-      <Button type="button" :disabled="!canWrite" @click="payFrom(current)">{{ t("affiliates.payouts.markPaid") }}</Button>
+      <Button v-if="canWrite" type="button" @click="payFrom(current)">{{ t("affiliates.payouts.markPaid") }}</Button>
     </template>
   </DetailSheet>
 

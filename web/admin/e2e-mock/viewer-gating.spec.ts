@@ -48,7 +48,17 @@ const advanceSub = { ...sub, fee_timing: "FEE_TIMING_ADVANCE", scheduled_change:
 const card = { token: "ct", alias: "work", bin: "55287900", last4: "0008", type: "CREDIT_CARD", association: "MASTER_CARD", family: "World", bank: "Halkbank", expire_month: "12", expire_year: "2030", in_use: true };
 const get = (path: string, body: unknown) => (gw: MockGateway) => gw.on((c) => (c.method === "GET" && c.path === path ? { body } : undefined));
 
+const coupon = { id: "c1", code: "WELCOME", name: "Welcome", percent_bps: 1000, duration: "COUPON_DURATION_ONCE", applies_to: ["COUPON_TARGET_SUBSCRIPTION"], active: true, redeemed: 2, promotion_code_count: 2, create_time: "2026-10-01T09:00:00Z" };
+
 const CASES: Case[] = [
+  {
+    name: "coupons",
+    path: "/coupons",
+    mock: get("/v1/coupons", { coupons: [coupon] }),
+    ready: (page) => page.getByTestId("coupon-WELCOME"),
+    offered: (page) => [page.getByTestId("coupons-new")],
+    ticks: true,
+  },
   {
     name: "customers",
     path: "/customers",

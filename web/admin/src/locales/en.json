@@ -275,6 +275,7 @@
       "remove": "Remove",
       "add": "Add a country",
       "save": "Save notice rules",
+      "saved": "The notice rules are saved.",
       "star": "The row * holds for any country without a row of its own (and for a customer with no country). Without it the platform keeps 14 days.",
       "updated": "Last saved by {who} on {date}."
     }
@@ -5898,6 +5899,7 @@
       "name": "Name (optional)",
       "add": "Add the day",
       "save": "Save the days off",
+      "saved": "The days off are saved.",
       "remove": "Remove {day}"
     },
     "slaTier": "The deadline was counted for an app on the {tier} plan.",

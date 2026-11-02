@@ -275,6 +275,7 @@
       "remove": "Quitar",
       "add": "Añadir un país",
       "save": "Guardar las reglas de aviso",
+      "saved": "Las reglas de preaviso están guardadas.",
       "star": "La fila * vale para cualquier país sin fila propia (y para un cliente sin país). Sin ella, la plataforma mantiene 14 días.",
       "updated": "Guardado por última vez por {who} el {date}."
     }
@@ -5898,6 +5899,7 @@
       "name": "Nombre (opcional)",
       "add": "Añadir el día",
       "save": "Guardar los días no laborables",
+      "saved": "Los días libres están guardados.",
       "remove": "Quitar {day}"
     },
     "slaTier": "El plazo se calculó para una app del plan {tier}.",

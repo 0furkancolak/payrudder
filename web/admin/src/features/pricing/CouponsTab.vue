@@ -84,7 +84,7 @@ const actionsOf = (c: Coupon, i: number) => [
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <FilterSelect v-model="targetFilter" multiple :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
-      <HeaderAction test-id="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
+      <HeaderAction v-if="canWrite" test-id="coupons-new" :label="t('billing.coupons.new')" @click="creating = true" />
     </DataToolbar>
     <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-deactivate" @click="bulkDeactivate">{{ t("billing.pricing.coupons.bulk.deactivate") }}</Button>

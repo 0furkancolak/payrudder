@@ -275,6 +275,7 @@
       "remove": "Entfernen",
       "add": "Land hinzufügen",
       "save": "Fristen speichern",
+      "saved": "Die Fristenregeln sind gespeichert.",
       "star": "Die Zeile * gilt für jedes Land ohne eigene Zeile (und für Kunden ohne Land). Ohne sie hält die Plattform 14 Tage.",
       "updated": "Zuletzt gespeichert von {who} am {date}."
     }
@@ -5898,6 +5899,7 @@
       "name": "Name (optional)",
       "add": "Tag hinzufügen",
       "save": "Freie Tage speichern",
+      "saved": "Die freien Tage sind gespeichert.",
       "remove": "{day} entfernen"
     },
     "slaTier": "Die Frist wurde für eine App im Tarif {tier} berechnet.",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -21,6 +21,7 @@ const title = ref("");
 const body = ref("");
 /** The reply whose delete is being asked about, in its own row: a second dialog over this one would sit under its overlay. */
 const asking = ref("");
+const titleField = ref<{ $el: HTMLElement } | null>(null);
 
 function edit(r?: CannedReply) {
   editing.value = r?.id ?? "";
@@ -34,7 +35,13 @@ function save() {
 }
 function remove(r: CannedReply) {
   asking.value = "";
-  actions.deleteCanned.mutate(r.id, { onSuccess: () => (editing.value === r.id ? edit() : undefined) });
+  actions.deleteCanned.mutate(r.id, {
+    onSuccess: () => {
+      if (editing.value === r.id) edit();
+      // The row with the button that was pressed is gone: keyboard focus would fall to the page behind the dialog.
+      void nextTick(() => titleField.value?.$el.focus());
+    },
+  });
 }
 </script>
 
@@ -46,9 +53,9 @@ function remove(r: CannedReply) {
         <DialogDescription>{{ t("support.canned.hint") }}</DialogDescription>
       </DialogHeader>
       <ul v-if="(list.data.value ?? []).length > 0" class="divide-border/70 m-0 flex max-h-56 list-none flex-col divide-y overflow-y-auto p-0 text-sm" data-testid="canned-list">
-        <li v-for="r in list.data.value" :key="r.id" class="flex items-center justify-between gap-3 py-2" :data-testid="`canned-${r.id}`">
-          <span class="min-w-0"><span class="font-medium">{{ r.title }}</span><span class="text-muted-foreground block truncate text-xs">{{ r.body }}</span></span>
-          <span v-if="asking === r.id" class="flex shrink-0 items-center gap-2" role="group" :aria-label="t('support.canned.confirmDelete', { title: r.title })">
+        <li v-for="r in list.data.value" :key="r.id" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2" :data-testid="`canned-${r.id}`">
+          <span class="min-w-0 flex-1"><span class="font-medium">{{ r.title }}</span><span class="text-muted-foreground block truncate text-xs">{{ r.body }}</span></span>
+          <span v-if="asking === r.id" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('support.canned.confirmDelete', { title: r.title })">
             <span class="text-xs">{{ t("support.canned.confirmDelete", { title: r.title }) }}</span>
             <Button type="button" size="sm" variant="destructive" :data-testid="`canned-delete-yes-${r.id}`" @click="remove(r)">{{ t("support.canned.delete") }}</Button>
             <Button type="button" size="sm" variant="ghost" @click="asking = ''">{{ t("common.cancel") }}</Button>
@@ -62,7 +69,7 @@ function remove(r: CannedReply) {
       <p v-else-if="list.isSuccess.value" class="text-muted-foreground m-0 text-sm" data-testid="canned-empty">{{ t("support.canned.empty") }}</p>
       <form class="grid gap-2" @submit.prevent="save">
         <label class="grid gap-1 text-xs">{{ t("support.canned.fieldTitle") }}
-          <Input v-model="title" maxlength="100" data-testid="canned-title" />
+          <Input ref="titleField" v-model="title" maxlength="100" data-testid="canned-title" />
         </label>
         <label class="grid gap-1 text-xs">{{ t("support.canned.fieldBody") }}
           <Textarea v-model="body" rows="5" maxlength="10000" data-testid="canned-body" />

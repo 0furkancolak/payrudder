@@ -5,6 +5,7 @@ import { askConfirm } from "@/shared/lib/confirm";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FormField } from "@/shared/ui/form-field";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -42,7 +43,8 @@ async function toggle() {
       {{ t("tenants.pricePause.by", { who: pause.data.value?.updated_by ?? "", date: fmt.date(pause.data.value?.update_time, "dateTime") }) }}
       <span v-if="pause.data.value?.reason" class="text-muted-foreground break-words" dir="auto"> · {{ pause.data.value.reason }}</span>
     </p>
-    <ErrorText :error="pause.error.value ?? set.error.value" />
+    <ErrorState :error="pause.error.value" :retrying="pause.isFetching.value" compact @retry="pause.refetch()" />
+    <ErrorText :error="set.error.value" />
     <form v-if="pause.data.value" class="flex flex-col gap-3" @submit.prevent="toggle">
       <FormField v-if="!paused" :label="t('tenants.pricePause.reason')" for="pause-reason" :hint="t('tenants.pricePause.reasonHint')">
         <Textarea id="pause-reason" v-model="reason" maxlength="500" rows="2" data-testid="price-pause-reason" />

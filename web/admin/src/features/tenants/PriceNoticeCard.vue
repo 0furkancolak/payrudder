@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FormField } from "@/shared/ui/form-field";
 import { Input } from "@/shared/ui/input";
@@ -52,7 +53,8 @@ function save() {
     </div>
     <p class="text-muted-foreground m-0 text-sm">{{ t("tenants.priceNotice.hint") }}</p>
     <Skeleton v-if="notice.isPending.value" class="h-24 w-full" />
-    <ErrorText :error="notice.error.value ?? set.error.value" />
+    <ErrorState :error="notice.error.value" :retrying="notice.isFetching.value" compact @retry="notice.refetch()" />
+    <ErrorText :error="set.error.value" />
     <form v-if="notice.data.value" class="flex flex-col gap-3" @submit.prevent="save">
       <FormField :label="t('tenants.priceNotice.defaultDays')" for="notice-default" :hint="t('tenants.priceNotice.defaultHint')">
         <Input id="notice-default" v-model="defaultDays" type="number" min="14" max="365" required class="max-w-40" data-testid="price-notice-default" />
@@ -80,6 +82,7 @@ function save() {
         <Button type="button" variant="outline" data-testid="price-notice-add" @click="addRow">{{ t("tenants.priceNotice.add") }}</Button>
         <Button type="submit" :disabled="set.isPending.value" data-testid="price-notice-save">{{ t("tenants.priceNotice.save") }}</Button>
       </div>
+      <p v-if="set.isSuccess.value" class="text-success m-0 text-sm" role="status" data-testid="price-notice-saved">{{ t("tenants.priceNotice.saved") }}</p>
     </form>
   </Card>
 </template>

@@ -35,7 +35,7 @@ function add() {
 <template>
   <div class="flex flex-col gap-2" data-testid="ticket-links">
     <ul v-if="links.length > 0" class="m-0 flex list-none flex-wrap items-center gap-2 p-0 text-sm">
-      <li v-for="l in links" :key="`${l.kind}:${l.app_id}:${l.environment}:${l.ref}`" class="bg-muted flex items-center gap-1 rounded-full py-1 ps-3 pe-2" data-testid="ticket-link">
+      <li v-for="l in links" :key="`${l.kind}:${l.app_id}:${l.environment}:${l.ref}`" class="bg-muted flex max-w-full items-center gap-1 rounded-full py-1 ps-3 pe-2 break-all" data-testid="ticket-link">
         <Link v-if="l.tenant_id" v-bind="recordLink(l.kind, l.ref, l.tenant_id)" class="underline" :title="l.ref">{{ label(l) }}</Link>
         <span v-else :title="l.ref">{{ label(l) }}</span>
         <span v-if="l.app_name" class="text-muted-foreground text-xs">· {{ l.app_name }} · {{ t(`support.links.env.${l.environment}`) }}</span>
