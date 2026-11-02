@@ -476,6 +476,21 @@ func testPortalIsolation(t *testing.T) {
 		t.Fatalf("the portal lists %v, want the customer's two finalized invoices and nothing else", ids)
 	}
 
+	// The subscription summary is the portal customer's own, read from plans-svc, and it opens with a portal token only.
+	subs, err := one.svc.GetPortalSubscriptions(one.visitor, &billingv1.GetPortalSubscriptionsRequest{PortalToken: p.GetToken()})
+	if err != nil || len(subs.GetSubscriptions()) != 1 {
+		t.Fatalf("portal subscriptions = %v, %v", subs, err)
+	}
+	if s := subs.GetSubscriptions()[0]; s.GetPlanName() != "Pro plan" || s.GetState() != "active" || !s.GetPriceKnown() || s.GetPriceMinor() != 1000 || s.GetCurrency() != "USD" || s.GetCurrencyExponent() != 2 || s.GetInterval() != "month" {
+		t.Errorf("the summary = %v", s)
+	}
+	linkTok := one.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 100, Description: "x"}).GetToken()
+	for name, tok := range map[string]string{"a payment link": linkTok, "no token": "", "an unknown token": strings.Repeat("x", 43)} {
+		if _, err := one.svc.GetPortalSubscriptions(one.visitor, &billingv1.GetPortalSubscriptionsRequest{PortalToken: tok}); status.Code(err) != codes.NotFound {
+			t.Errorf("subscriptions with %s: %v", name, err)
+		}
+	}
+
 	// One customer's invoice, through the portal.
 	if inv, err := one.svc.GetHostedInvoice(one.visitor, &billingv1.GetHostedInvoiceRequest{PortalToken: p.GetToken(), InvoiceId: mineA.String()}); err != nil || inv.GetInvoice().GetNumber() != "INV-2026-000401" {
 		t.Fatalf("own invoice = %v, %v", inv, err)
