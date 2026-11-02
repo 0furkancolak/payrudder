@@ -1,5 +1,7 @@
 # 15 — Price increases and notices
 
+**Status (2026-11-02): the leftovers that need no outside party are built:** an operator kill switch (pause every price change; the notifier holds the mail), the subscriptions of a price change in pages past 500, the amount and the date of the mail in the customer's language (done in #328), and a preview of the mail in the console (in the mail-views PR, see below). Open: the date model ("from date X"), a per-country notice table, Paddle-run subscriptions, and what needs a real stack or a lawyer.
+
 ## The request
 List 2 (8): the app must support **making a price increase** and **notifying about it**.
 
@@ -58,3 +60,14 @@ Mass notifications and charges: dry run + approval + rate limiting + a kill swit
 
 ## Verified in this PR
 Run: unit tests (notifier, gateway incl. the OpenAPI route check, plans-svc, the four SDKs), `TestPlansSvc/PriceChange` (record, dry run, rerun, retry, withdraw with an applied change, the seller's own withdrawal stays, the webhook delivery), `TestPlansSvc/RLSIsolationEveryTable`, `TestTenantSchemaMatchesPublic`, `TestPlansSvc/SandboxReset`, both baseline migration cycles, `TestNotifier/PriceChange…` (Kafka + Mailpit), console lint, `vue-tsc`, vitest and the mock e2e of the packages page. **Not verified:** the whole path through a running compose stack (relay to the real broker, Nafru, a seller's provider), the console in a real browser against the real API, the Python SDK's ruff and mypy (not installed here), the legal sufficiency of the notice and of the mail's wording, a price change of thousands of subscriptions (each is its own transaction; the run has no kill switch besides withdrawing).
+
+## Leftovers built (2026-11-02, branch `feat/product-leftovers-2-p15`)
+
+Defaults the implementer chose (**default, not agreed**):
+
+1. **Kill switch.** One platform-wide setting, `PUT /admin/v1/price-change-pause` (operator only), with a reason, in the audit log. While on, no run or retry schedules a subscription (409 `plans.price_change.paused`; dry runs still count; withdrawing still works), a run in progress stops within 100 subscriptions, and the notifier **holds** the mail of price changes already scheduled (it does not drop it). It does not stop a change that is already scheduled from applying at its renewal: withdraw the price change for that. Design and the trade-off in [plans-svc](../03-services/plans-svc.md#as-built-price-changes-plan-15). The operator's tenant list has the switch (Pause or Resume, with a reason, after asking). Not built: a switch per tenant (the operator suspends or freezes the tenant for that, which already stops the mail), and a switch that holds the application of scheduled changes.
+2. **Paging.** `GET /v1/price-changes/{id}` takes `page_size` (1 to 500, default 500, the old limit) and `page_token`, and answers `next_page_token`; a client that sends neither gets what it got before. All four SDKs (the Go and TypeScript ones iterate the pages), the OpenAPI file and the console (100 at a time, "Show more subscriptions") follow. The run itself (the job) has no cap: it takes every subscription of the version, each in its own transaction.
+3. **Amounts in the customer's language.** Already done by #328 (`pkg/localefmt` in the notice's date and amount, with a test per language); nothing left here.
+4. **A compose and Mailpit end to end test** was not built: it needs the whole compose stack (the plan's own "not verifiable here"); the notifier's own integration test (Kafka and Mailpit) now also covers the pause (a notice that arrives while paused is not sent until the release).
+
+Tests: plans-svc integration `TestPlansSvc/PriceChange` (paging in the same order as one piece, the state filter, a bad token and size; the kill switch: refused run and retry, a dry run still counting, nothing scheduled or mailed, a tenant cannot pull it, a reason of 501 characters, a retry after the release), notifier unit `TestPausedPriceChangesHoldTheMail` and integration `TestNotifier/PriceChange…` (no mail while paused, one mail after), gateway `TestOperatorPausesPriceChangesAndTenantsPageThem` and the OpenAPI route check, console mock e2e `price-pause.spec.ts` and `billing.spec.ts` (paging). **Not verified here:** the kill switch on a running multi-replica deployment (the notifier looks every 3 seconds, so a release reaches it within seconds); a run stopped half way: the look every 100 subscriptions has no test of its own (the tests exercise the look at the start of a run), so a stop in the middle of a large run is reasoned, not run.

@@ -55,6 +55,30 @@ func (q *Queries) GetPriceChangeItemChange(ctx context.Context, arg GetPriceChan
 	return i, err
 }
 
+const getPriceChangePause = `-- name: GetPriceChangePause :one
+SELECT paused, reason, updated_by, updated_at FROM price_change_pause
+`
+
+type GetPriceChangePauseRow struct {
+	Paused    bool
+	Reason    string
+	UpdatedBy string
+	UpdatedAt *time.Time
+}
+
+// The kill switch of price changes: one row for the platform (migration 00019). Read by every run, written by the operator.
+func (q *Queries) GetPriceChangePause(ctx context.Context) (GetPriceChangePauseRow, error) {
+	row := q.db.QueryRow(ctx, getPriceChangePause)
+	var i GetPriceChangePauseRow
+	err := row.Scan(
+		&i.Paused,
+		&i.Reason,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listPendingPriceChangeChanges = `-- name: ListPendingPriceChangeChanges :many
 SELECT i.subscription_id, i.change_id
 FROM price_change_items i
@@ -100,14 +124,18 @@ SELECT subscription_id, customer_external_id, state, reason, effective_at, notif
   LEFT JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id
   WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = $1
 ) x
-WHERE $2::text = '' OR x.state = $2::text
+WHERE ($2::text = '' OR x.state = $2::text)
+  AND ($3::text = '' OR (x.customer_external_id, x.subscription_id) > ($3::text, $4::uuid))
 ORDER BY x.customer_external_id, x.subscription_id
-LIMIT 500
+LIMIT $5::int
 `
 
 type ListPriceChangeItemsParams struct {
-	PriceChangeID uuid.UUID
-	State         string
+	PriceChangeID     uuid.UUID
+	State             string
+	AfterCustomer     string
+	AfterSubscription uuid.UUID
+	PageSize          int32
 }
 
 type ListPriceChangeItemsRow struct {
@@ -119,9 +147,16 @@ type ListPriceChangeItemsRow struct {
 	NotifiedAt         *time.Time
 }
 
-// The subscriptions of a price change, by customer; state: skipped, scheduled, applied or withdrawn (empty: all). At most 500.
+// The subscriptions of a price change, by customer, a page at a time (the keyset is the customer's external id and the subscription); state: skipped, scheduled,
+// applied or withdrawn (empty: all). The caller asks for one row more than the page, to know whether there is a next page.
 func (q *Queries) ListPriceChangeItems(ctx context.Context, arg ListPriceChangeItemsParams) ([]ListPriceChangeItemsRow, error) {
-	rows, err := q.db.Query(ctx, listPriceChangeItems, arg.PriceChangeID, arg.State)
+	rows, err := q.db.Query(ctx, listPriceChangeItems,
+		arg.PriceChangeID,
+		arg.State,
+		arg.AfterCustomer,
+		arg.AfterSubscription,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +267,35 @@ WHERE tenant_id = app_tenant_id() AND id = $1
 func (q *Queries) SetPriceChangeEffective(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, setPriceChangeEffective, id)
 	return err
+}
+
+const setPriceChangePause = `-- name: SetPriceChangePause :one
+UPDATE price_change_pause SET paused = $1, reason = $2, updated_by = $3, updated_at = now() RETURNING paused, reason, updated_by, updated_at
+`
+
+type SetPriceChangePauseParams struct {
+	Paused    bool
+	Reason    string
+	UpdatedBy string
+}
+
+type SetPriceChangePauseRow struct {
+	Paused    bool
+	Reason    string
+	UpdatedBy string
+	UpdatedAt *time.Time
+}
+
+func (q *Queries) SetPriceChangePause(ctx context.Context, arg SetPriceChangePauseParams) (SetPriceChangePauseRow, error) {
+	row := q.db.QueryRow(ctx, setPriceChangePause, arg.Paused, arg.Reason, arg.UpdatedBy)
+	var i SetPriceChangePauseRow
+	err := row.Scan(
+		&i.Paused,
+		&i.Reason,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertOpenPriceChange = `-- name: UpsertOpenPriceChange :one

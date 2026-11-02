@@ -28,8 +28,19 @@ import (
 
 // Commands changes subscriptions from one plan version or interval to another.
 type Commands struct {
-	db  *store.DB
-	now func() time.Time
+	db    *store.DB
+	now   func() time.Time
+	pause PauseSource
+}
+
+// PauseSource tells whether the operator has paused price changes (plan 15). The switch is one row of the pooled database, which a tenant placed in a cell cannot
+// reach from its own transaction, so it is read on the system pool.
+type PauseSource func(ctx context.Context) (bool, error)
+
+// WithPause makes the commands honour the kill switch; without it price changes are never paused.
+func (c *Commands) WithPause(p PauseSource) *Commands {
+	c.pause = p
+	return c
 }
 
 // New returns the change commands.

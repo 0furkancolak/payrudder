@@ -6147,7 +6147,10 @@ type GetPriceChangeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Optional: only the subscriptions in this state (scheduled, applied, withdrawn or skipped).
-	State         string `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	State string `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	// 1 to 500, default 500.
+	PageSize      int32  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6196,11 +6199,27 @@ func (x *GetPriceChangeRequest) GetState() string {
 	return ""
 }
 
+func (x *GetPriceChangeRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetPriceChangeRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type GetPriceChangeResponse struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	PriceChange *PriceChange           `protobuf:"bytes,1,opt,name=price_change,json=priceChange,proto3" json:"price_change,omitempty"`
-	// By customer, at most 500.
-	Items         []*PriceChangeItem `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	// By customer, a page of at most page_size.
+	Items []*PriceChangeItem `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	// Empty on the last page.
+	NextPageToken string `protobuf:"bytes,3,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6247,6 +6266,13 @@ func (x *GetPriceChangeResponse) GetItems() []*PriceChangeItem {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *GetPriceChangeResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
 }
 
 type RetryPriceChangeRequest struct {
@@ -9243,13 +9269,17 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x17ListPriceChangesRequest\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\"`\n" +
 	"\x18ListPriceChangesResponse\x12D\n" +
-	"\rprice_changes\x18\x01 \x03(\v2\x1f.payrudder.plans.v1.PriceChangeR\fpriceChanges\"=\n" +
+	"\rprice_changes\x18\x01 \x03(\v2\x1f.payrudder.plans.v1.PriceChangeR\fpriceChanges\"y\n" +
 	"\x15GetPriceChangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05state\x18\x02 \x01(\tR\x05state\"\x97\x01\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\"\xbf\x01\n" +
 	"\x16GetPriceChangeResponse\x12B\n" +
 	"\fprice_change\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PriceChangeR\vpriceChange\x129\n" +
-	"\x05items\x18\x02 \x03(\v2#.payrudder.plans.v1.PriceChangeItemR\x05items\")\n" +
+	"\x05items\x18\x02 \x03(\v2#.payrudder.plans.v1.PriceChangeItemR\x05items\x12&\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\")\n" +
 	"\x17RetryPriceChangeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"c\n" +
 	"\x18RetryPriceChangeResponse\x12G\n" +

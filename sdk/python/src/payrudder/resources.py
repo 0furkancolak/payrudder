@@ -632,12 +632,22 @@ class PriceChangesResource:
         """
         return cast("m.ListPriceChangesResponse", self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
 
-    def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+    def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
         """One price change with its subscriptions and what became of each.
 
         ``GET /v1/price-changes/{id}``
         """
-        return cast("m.GetPriceChangeResponse", self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+        return cast("m.GetPriceChangeResponse", self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state, "page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.PriceChangeItem]:
+        """Every item of ``get_price_change``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.get_price_change(id, state=state, page_size=page_size, options=options, page_token=token)
+            yield from page.get("items", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
         """Try the skipped subscriptions of a price change again.
@@ -2389,12 +2399,23 @@ class AsyncPriceChangesResource:
         """
         return cast("m.ListPriceChangesResponse", await self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
 
-    async def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+    async def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
         """One price change with its subscriptions and what became of each.
 
         ``GET /v1/price-changes/{id}``
         """
-        return cast("m.GetPriceChangeResponse", await self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+        return cast("m.GetPriceChangeResponse", await self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state, "page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.PriceChangeItem]:
+        """Every item of ``get_price_change``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.get_price_change(id, state=state, page_size=page_size, options=options, page_token=token)
+            for item in page.get("items", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     async def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
         """Try the skipped subscriptions of a price change again.

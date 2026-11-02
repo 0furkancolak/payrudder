@@ -71,7 +71,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 		d.Places = placement.NewPlaces(d.SystemPool, nil)
 	}
 	resolver := affiliatescmd.NewResolver(d.Places)
-	plansSrv := newPlans(d.AppDB, resolver)
+	plansSrv := newPlans(d.AppDB, d.SystemPool, resolver)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	plansv1.RegisterWebhookServiceServer(srv, newWebhooks(plansSrv, d.Box, d.WebhookAllowPrivate))
 	plansv1.RegisterMailIntegrationServiceServer(srv, newMailIntegration(plansSrv, d.Box, d.WebhookAllowPrivate))

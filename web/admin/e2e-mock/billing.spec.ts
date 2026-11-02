@@ -221,6 +221,33 @@ test.describe("packages", () => {
     expect(gw.called("POST", "/v1/price-changes/pc-1/withdraw")).toHaveLength(1);
   });
 
+  test("the subscriptions of a price change load a page at a time", async ({ page }) => {
+    const pc = { id: "pc-1", plan_code: "pro", from_version: 1, to_version: 2, notice_days: 30, effective_time: "2026-12-05T10:00:00Z", state: "open", created_by: "boss@example.com", create_time: "2026-11-02T09:00:00Z",
+      withdraw_time: null, withdrawn_by: "", scheduled: 3, applied: 0, withdrawn: 0, skipped: 0 };
+    const item = (n: number) => ({ subscription_id: `s${n}`, customer_external_id: `cus_${n}`, state: "scheduled", reason: "", effective_time: "2026-12-05T10:00:00Z", notify_time: null });
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
+      if (c.path === "/v1/plans") return { body: { plans: [plan] } };
+      if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
+      if (c.method === "GET" && c.path === "/v1/price-changes") return { body: { price_changes: [pc] } };
+      if (c.method === "GET" && c.path === "/v1/price-changes/pc-1") {
+        return c.query.get("page_token") === "next" ? { body: { price_change: pc, items: [item(3)], next_page_token: "" } } : { body: { price_change: pc, items: [item(1), item(2)], next_page_token: "next" } };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await rowAction(page.getByRole("row", { name: /pro/ }), "Schedule a price change");
+    const sheet = page.getByTestId("price-change-sheet");
+    await sheet.getByTestId("pc-details-pc-1").click();
+    const table = sheet.getByTestId("pc-items-pc-1");
+    await expect(table).toContainText("cus_2");
+    await expect(table).not.toContainText("cus_3");
+    await sheet.getByTestId("pc-more-pc-1").click();
+    await expect(table).toContainText("cus_3");
+    await expect(sheet.getByTestId("pc-more-pc-1")).toHaveCount(0);
+    expect(gw.called("GET", "/v1/price-changes/pc-1").map((c) => [c.query.get("page_size"), c.query.get("page_token")])).toEqual([["100", null], ["100", "next"]]);
+  });
+
   test("a version is published with amounts in minor units, one fee per currency", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
       if (c.method === "POST" && c.path === "/v1/plans") return { status: 201, body: { code: "team", name: "Team" } };

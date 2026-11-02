@@ -237,7 +237,20 @@
     "suspend": "Suspender",
     "reinstate": "Reactivar",
     "suspended": "Suspendido",
-    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante."
+    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante.",
+    "pricePause": {
+      "title": "Cambios de precio",
+      "running": "En marcha",
+      "paused": "En pausa",
+      "hint": "El interruptor de emergencia para todos los vendedores: mientras está activo, ningún cambio de precio programa suscripciones (una simulación sigue contando), una ejecución en curso se detiene y los avisos ya en cola esperan. Los cambios ya programados se siguen aplicando en su renovación; el vendedor retira el cambio de precio para detener uno.",
+      "by": "Pausado por {who} el {date}.",
+      "reason": "Motivo",
+      "reasonHint": "Se guarda con el ajuste y en el registro de auditoría. Hasta 500 caracteres.",
+      "pause": "Pausar todos los cambios de precio",
+      "resume": "Reanudar los cambios de precio",
+      "confirmPause": "¿Pausar todos los cambios de precio de la plataforma? Ningún vendedor podrá programar ni reintentar uno hasta que reanudes, y los avisos ya en cola esperan.",
+      "confirmResume": "¿Reanudar los cambios de precio? Los vendedores podrán volver a programar y reintentar, y los avisos que esperaban se enviarán."
+    }
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -862,7 +875,8 @@
           "run_by_provider": "la gestiona un proveedor de pagos",
           "not_changeable": "no se puede mover así",
           "customer_blocked": "el cliente está bloqueado"
-        }
+        },
+        "loadMore": "Mostrar más suscripciones"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",
@@ -3100,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Cambio de precio no encontrado.",
-        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo."
+        "withdrawn": "Este cambio de precio se retiró. Crea uno nuevo.",
+        "paused": "El operador ha pausado los cambios de precio. Inténtalo de nuevo más tarde."
       },
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",

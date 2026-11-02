@@ -511,6 +511,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
 - `plans.price_change.not_found`
+- `plans.price_change.paused`
 - `plans.price_change.withdrawn`
 - `plans.request.invalid`
 - `plans.saas.bad_resource`

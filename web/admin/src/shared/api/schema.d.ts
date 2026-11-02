@@ -950,7 +950,7 @@ export interface paths {
         };
         /**
          * One price change with its subscriptions and what became of each
-         * @description The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+         * @description The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
          */
         get: operations["getPriceChange"];
         put?: never;
@@ -6036,6 +6036,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/price-change-pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether every price change of the platform is paused
+         * @description The kill switch of price changes (plan 15). Never touched, it says `paused: false` with no time.
+         */
+        get: operations["getPriceChangePause"];
+        /**
+         * Pause or resume every price change of the platform
+         * @description While paused, no run or retry (`POST /v1/plans/{code}/price-changes`, `POST /v1/price-changes/{id}/retry`) schedules a subscription: they answer 409
+         *     `plans.price_change.paused` (a dry run still counts, and withdrawing a price change still works), a run in progress stops within a hundred subscriptions, and
+         *     the notifier holds the mail of the price changes already scheduled until the switch is released. A change that is already scheduled is still applied at its
+         *     renewal; withdraw the price change to stop it. Each call is recorded in the audit log with its reason and the signed-in operator.
+         */
+        put: operations["setPriceChangePause"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -6476,9 +6503,22 @@ export interface components {
         ListPriceChangesResponse: {
             price_changes: components["schemas"]["PriceChange"][];
         };
+        SetPriceChangePauseRequest: {
+            paused: boolean;
+            /** @description Why; kept with the setting and shown to the next operator. */
+            reason?: string;
+        };
+        PriceChangePause: {
+            paused: boolean;
+            reason: string;
+            updated_by: string;
+            /** Format: date-time */
+            update_time: string | null;
+        };
         GetPriceChangeResponse: {
             price_change: components["schemas"]["PriceChange"];
             items: components["schemas"]["PriceChangeItem"][];
+            next_page_token: string;
         };
         WithdrawPriceChangeResponse: {
             price_change: components["schemas"]["PriceChange"];
@@ -14425,6 +14465,8 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "scheduled" | "applied" | "withdrawn" | "skipped";
+                page_size?: number;
+                page_token?: string;
             };
             header?: never;
             path: {
@@ -23449,6 +23491,51 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    getPriceChangePause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+        };
+    };
+    setPriceChangePause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPriceChangePauseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+            400: components["responses"]["Error"];
         };
     };
     createApiKey: {
