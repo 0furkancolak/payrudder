@@ -1562,6 +1562,7 @@ export class MailMessagesResource {
    *
    * The mail the notifier sent for the tenant's customers with what became of each: `sending`, `sent`, and what the provider reported (`delivered`, `delayed`,
    * `bounced` for good, `soft_bounced`, `complained`). Mail without a tenant (Payrudder's own) is not in it. A page at a time (`page_size` 1 to 500, default 50).
+   * On a deployment whose gateway is not connected to the notifier the answer is 200 with an empty list and `connected` false.
    *
    * `GET /v1/mail-messages`
    */
@@ -1620,8 +1621,8 @@ export class MailSuppressionsResource {
    * The addresses the tenant's mail is not sent to
    *
    * An address lands here when its mail bounced for good, drew a complaint, or the operator put it here by hand. Mail to it is dropped as done, whatever the mail is.
-   * In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). Answers 503 `gateway.mail.unavailable` on a
-   * deployment whose gateway is not connected to the notifier.
+   * In address order, a page at a time (`page_size` 1 to 500, default 50; `next_page_token` is empty on the last page). On a deployment whose gateway is not connected to
+   * the notifier the answer is 200 with an empty list and `connected` false (lifting an address, which is an action, answers 503 `gateway.mail.unavailable` there).
    *
    * `GET /v1/mail-suppressions`
    */
