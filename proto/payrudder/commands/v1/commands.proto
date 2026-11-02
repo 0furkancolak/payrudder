@@ -101,6 +101,11 @@ message InvoiceSnapshot {
   string customer_tax_id = 27;
   string customer_tax_office = 28;
   string customer_country = 29;
+  // The tenant's IANA time zone when the draft was made: the calendar the dates printed on the document follow (issue date, service periods). Empty on a snapshot
+  // made before it was frozen: UTC, as those documents have always been dated.
+  string time_zone = 30;
+  // The surplus of a negative total that was carried to the customer's credit balance instead (the total printed is 0). 0 for any other invoice.
+  int64 credit_surplus_minor = 31;
 }
 
 // PartySnapshot is a seller or buyer with the legal data an e-invoice needs.

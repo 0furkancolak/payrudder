@@ -27,7 +27,7 @@ const ledger = useCreditLedger(
 type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[number];
 const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.create_time, range.value)), {
-  searchFields: (e) => [e.reason, e.kind ? t(`billing.credits.kind.${e.kind}`) : "", e.source ? t(`billing.credits.source.${e.source}`) : ""],
+  url: "ledger-", searchFields: (e) => [e.reason, e.kind ? t(`billing.credits.kind.${e.kind}`) : "", e.source ? t(`billing.credits.source.${e.source}`) : ""],
   sorts: () => [newest(t, (e) => time(e.create_time)), oldest(t, (e) => time(e.create_time)), amountHigh(t, (e) => amount(e.amount)), amountLow(t, (e) => amount(e.amount))],
   filters: { kind: (e, v) => e.kind === v },
 });

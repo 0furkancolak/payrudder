@@ -163,8 +163,9 @@ func seedBillingTenant(t *testing.T, p *pgxpool.Pool, migratorDSN string, tid uu
 		args []any
 	}{
 		{`INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, number, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, finalized_at)
-			VALUES ($1,$2,$3,'2026-10','REGULAR','INV-2026-000001',$4,'USD',1000,1000,'paid',$5,now())`, []any{tid, inv, cust, uuid.New(), jobSnapshot}},
+			VALUES ($1,$2,$3,'2026-10','REGULAR','INV-2026-000001',$4,'USD',1000,1000,'draft',$5,now())`, []any{tid, inv, cust, uuid.New(), jobSnapshot}},
 		{`INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',600,'Base'), ($1,$2,2,'USAGE',400,'Usage')`, []any{tid, inv}},
+		{`UPDATE invoices SET status = 'paid' WHERE tenant_id = $1 AND id = $2`, []any{tid, inv}}, // the lines go in while it is a draft (migration 00006)
 		{`INSERT INTO invoice_number_seq (tenant_id, year, next_value) VALUES ($1,2026,2)`, []any{tid}},
 		{`INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',3)`, []any{tid, saga, inv}},
 		{`INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause) VALUES ($1,$2,1,'OPEN','PAID','reply:PaymentSucceeded')`, []any{tid, saga}},

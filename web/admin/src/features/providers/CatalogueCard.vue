@@ -29,7 +29,7 @@ const sync = useSyncCatalogue(tenantId, provider, environment);
 const summary = computed(() => sync.data.value);
 type Obj = NonNullable<NonNullable<typeof catalogue.data.value>["objects"]>[number];
 const table = useTableState<Obj>(() => catalogue.data.value?.objects ?? [], {
-  searchFields: (o) => [o.kind, o.key, o.ref],
+  url: "catalogue-", searchFields: (o) => [o.kind, o.key, o.ref],
   sorts: () => [nameAsc(t, (o) => o.key), nameDesc(t, (o) => o.key)],
   filters: { kind: (o, v) => o.kind === v },
 });

@@ -51,6 +51,7 @@ var defaultLocales = map[string]string{"TR": "tr", "DE": "de", "AT": "de", "FR":
 // fallback, and the tax identity and country of both parties. cu is nil for a guest paying an ad-hoc link, who has none of it.
 func DocumentSnapshot(s *sagamodel.Snapshot, t *plansv1.Tenant, cu *plansv1.Customer) {
 	l := t.GetLegal()
+	s.TimeZone = t.GetTimezone()
 	s.SellerTaxID, s.SellerTaxOffice, s.SellerCountry = l.GetTaxId(), l.GetTaxOffice(), t.GetAddress().GetCountry()
 	s.DefaultLocale = defaultLocales[s.SellerCountry]
 	if cu == nil {

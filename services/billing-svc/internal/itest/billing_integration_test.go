@@ -133,9 +133,15 @@ func TestBilling(t *testing.T) {
 		{"SandboxResetKeepsConfigurationAndOtherTenants", testSandboxResetKeepsConfigurationAndOtherTenants},
 		{"RowLevelSecurityIsForcedOnEveryTenantTable", testRowLevelSecurityIsForcedOnEveryTenantTable},
 		{"FinancialRowsAreImmutableInTheDatabase", testFinancialRowsAreImmutable},
+		{"ExpenseInboxesAreScopedToTheirTenant", testExpenseInboxesAreScopedToTheirTenant},
 		{"CreditLedgerKeyIsUsedOncePerLot", testCreditLedgerKeyIsUsedOncePerLot},
 		{"RepeatedLedgerKeysAreRenamedByTheMigration", testRepeatedLedgerKeysAreRenamedByTheMigration},
 		{"EnvironmentIdsAreNotFoundInTheOtherEnvironment", testEnvironmentIdsAreNotFoundInTheOtherEnvironment},
+		{"InvoiceNumberYearIsTheTenantsYear", testInvoiceNumberYearIsTheTenantsYear},
+		{"CreditNoteNumberYearIsTheTenantsYear", testCreditNoteNumberYearIsTheTenantsYear},
+		{"CreditNotesGiveBackTheTaxInProportion", testCreditNotesGiveBackTheTaxInProportion},
+		{"ANegativeTotalBecomesACreditBalance", testANegativeTotalBecomesACreditBalance},
+		{"ATrialEndingInsideThePeriodChargesFromItsEnd", testATrialEndingInsideThePeriodChargesFromItsEnd},
 	} {
 		t.Run(tc.name, tc.fn)
 	}

@@ -124,7 +124,7 @@ system pool) starts when `PAYRUDDER_KAFKA_BROKERS` is set.
 
 ## As built: subscription lifecycle (Phase 13)
 
-`CreateSubscription` takes `trial_days` (0..365; unset takes the plan version's own default, `PlanVersion.trial_days`, set when the version is published; `0` is no trial whatever the default is) and `currency` (default: the customer's billing currency, then the tenant's). The
+`CreateSubscription` takes `trial_days` (0..365; unset takes the plan version's own default, `PlanVersion.trial_days`, set when the version is published; `0` is no trial whatever the default is) and `currency` (default: the customer's billing currency, then the tenant's). A plan version also carries `prorate_after_trial` (migration `00015`): when a trial ends inside a billing period, billing-svc charges that period's fixed fee from the trial's end instead of in full ([ADR 0028](../adr/0028-money-rules-credit-note-tax-surplus-trial-year.md) section 4); a version published without saying has it on, every version that existed before the migration has it off. The
 currency must have a fixed fee on the plan version, and a plan version with metered prices needs a usage price set in it. New RPCs:
 `GetSubscription`, `PauseSubscription`, `ResumeSubscription`, `ScheduleCancellation` (`cancel=false` withdraws it) and `ChangePlan`. State
 moves through `pkg/subscription` (`Next`). `ChangePlan` ends the subscription at the change instant and starts a new one on the other

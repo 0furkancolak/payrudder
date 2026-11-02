@@ -102,7 +102,7 @@ func invoiceProto(r sqlc.GetInvoiceRow) *billingv1.Invoice {
 	inv := &billingv1.Invoice{
 		Id: r.ID.String(), CustomerId: r.CustomerID.String(), CustomerExternalId: r.CustomerExternalID, PeriodId: r.PeriodID, Kind: r.Kind, Number: r.Number,
 		PlanVersionId: planVersion(r.PlanVersionID), Currency: r.Currency, SubtotalMinor: r.SubtotalMinor, TotalMinor: r.TotalMinor, Status: r.Status,
-		SagaState: r.SagaState, PdfObjectKey: r.PdfObjectKey, CreateTime: timestamppb.New(r.CreatedAt),
+		SagaState: r.SagaState, PdfObjectKey: r.PdfObjectKey, CreateTime: timestamppb.New(r.CreatedAt), CreditSurplusMinor: r.CreditSurplusMinor,
 	}
 	if r.FinalizedAt != nil {
 		inv.FinalizeTime = timestamppb.New(*r.FinalizedAt)

@@ -54,6 +54,9 @@ type PlanVersion struct {
 	PlanCode     string
 	BaseFeeMinor int64
 	Prices       map[string]Price
+	// ProrateAfterTrial: when a trial ends inside a billing period, the fixed fee of that period is charged from the trial's end, not in full (a version published before
+	// the rule existed is false).
+	ProrateAfterTrial bool
 }
 
 // Usage is the quantity of one meter, as an exact decimal in meter units.

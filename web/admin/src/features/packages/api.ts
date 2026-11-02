@@ -46,6 +46,8 @@ export interface NewPackage {
   entitlements?: Entitlement[];
   /** The trial in days a new subscription to this version gets unless it says otherwise (0 or left out: none). */
   trialDays?: number;
+  /** Charge the first period after a trial from the trial's end (the server's default for a new version); false charges the whole period. */
+  prorateAfterTrial?: boolean;
 }
 
 /** Creates the package (unless it exists) and publishes a version with these fixed fees. */
@@ -69,6 +71,7 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
             ...(p.prices?.length ? { prices: p.prices } : {}),
             ...(p.entitlements?.length ? { entitlements: p.entitlements } : {}),
             ...(p.trialDays ? { trial_days: p.trialDays } : {}),
+            ...(p.prorateAfterTrial === false ? { prorate_after_trial: false } : {}),
           },
         }),
       );

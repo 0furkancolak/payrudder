@@ -42,7 +42,7 @@ const top = useTopOfAll(() => props.tenantId, codes, () => props.period, 100);
 
 const rows = computed(() => mergeCustomers(customers.data.value?.customers ?? [], top.value.by));
 const table = useTableState<UsageRow>(rows, {
-  searchFields: (r) => [r.externalId, r.name, r.email],
+  url: "customers-", searchFields: (r) => [r.externalId, r.name, r.email],
   sorts: () => [nameAsc(t, (r) => r.name || r.externalId), nameDesc(t, (r) => r.name || r.externalId)],
   filters: {
     meter: (r, v) => v in r.usage,

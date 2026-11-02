@@ -50,22 +50,27 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 				return model.ErrNoRefund
 			}
 		}
-		if amount, err = creditableAmount(ctx, q, tenantID, invoiceID, inv.TotalMinor, amount); err != nil {
+		amount, left, err := creditableAmount(ctx, q, tenantID, invoiceID, inv.TotalMinor, amount)
+		if err != nil {
+			return err
+		}
+		tax, err := taxGivenBack(ctx, q, tenantID, invoiceID, inv.TotalMinor, left, amount)
+		if err != nil {
 			return err
 		}
 		now := c.cfg.Now()
-		year := int32(now.UTC().Year()) //nolint:gosec // a calendar year
+		year := invmodel.NumberYear(now, inv.TimeZone)
 		seq, err := nextCreditNoteSeq(ctx, q, tenantID, year)
 		if err != nil {
 			return err
 		}
 		cn := &model.CreditNote{ID: uuid.New(), CustomerID: inv.CustomerID, InvoiceID: invoiceID, Number: model.Number(inv.Environment, int(year), seq), Currency: inv.Currency,
-			Reason: reason, TotalMinor: amount, CreatedAt: now}
+			Reason: reason, TotalMinor: amount, TaxMinor: tax, CreatedAt: now}
 		if inv.Number != nil {
 			cn.InvoiceNumber = *inv.Number
 		}
 		if err := q.InsertCreditNote(ctx, sqlc.InsertCreditNoteParams{TenantID: tenantID, ID: cn.ID, CustomerID: inv.CustomerID, InvoiceID: invoiceID, Number: cn.Number,
-			Currency: inv.Currency, TotalMinor: amount, Reason: reason, CreatedAt: now, Disposition: model.Disposition(refund)}); err != nil {
+			Currency: inv.Currency, TotalMinor: amount, TaxMinor: tax, Reason: reason, CreatedAt: now, Disposition: model.Disposition(refund)}); err != nil {
 			return err
 		}
 		// Credited in full is a full refund of the purchase: a coupon it used gives its redemption back (the scheduler tells plans-svc).
@@ -104,22 +109,35 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 	return out, err
 }
 
-// creditableAmount is the amount a new credit note takes: what was asked, or what is left of the invoice for 0.
-func creditableAmount(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.UUID, total, amount int64) (int64, error) {
+// creditableAmount is the amount a new credit note takes: what was asked, or what is left of the invoice for 0; left is what the invoice has left to credit.
+func creditableAmount(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.UUID, total, amount int64) (taken, left int64, err error) {
 	credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: tenantID, InvoiceID: invoiceID})
+	if err != nil {
+		return 0, 0, err
+	}
+	left = total - credited
+	switch {
+	case left <= 0:
+		return 0, 0, model.ErrNothingLeft
+	case amount == 0:
+		return left, left, nil
+	case amount < 0 || amount > left:
+		return 0, 0, model.ErrBadAmount
+	}
+	return amount, left, nil
+}
+
+// taxGivenBack is the part of a note of amount that is the invoice's tax coming back (model.TaxShare): the invoice's TAX lines against the tax its earlier notes gave back.
+func taxGivenBack(ctx context.Context, q *sqlc.Queries, tenantID, invoiceID uuid.UUID, total, left, amount int64) (int64, error) {
+	invoiceTax, err := q.SumInvoiceTax(ctx, sqlc.SumInvoiceTaxParams{TenantID: tenantID, InvoiceID: invoiceID})
+	if err != nil || invoiceTax <= 0 {
+		return 0, err
+	}
+	before, err := q.SumCreditNoteTax(ctx, sqlc.SumCreditNoteTaxParams{TenantID: tenantID, InvoiceID: invoiceID})
 	if err != nil {
 		return 0, err
 	}
-	left := total - credited
-	switch {
-	case left <= 0:
-		return 0, model.ErrNothingLeft
-	case amount == 0:
-		return left, nil
-	case amount < 0 || amount > left:
-		return 0, model.ErrBadAmount
-	}
-	return amount, nil
+	return model.TaxShare(invoiceTax, total, before, left, amount), nil
 }
 
 // nextCreditNoteSeq takes the next gap-free number of the tenant and year.

@@ -53,6 +53,20 @@ export function subscriptionAbilities(s: Partial<Pick<Subscription, "owner" | "e
   };
 }
 
+/**
+ * Which of the three one-click changes a ticked subscription takes part in (the same conditions as the buttons of its sheet): a subscription a provider runs is
+ * changed through the provider, so none of these touch it. Cancelling at the period end needs one that has not ended and has no cancellation scheduled; "keep"
+ * withdraws a scheduled cancellation; resuming needs a paused one.
+ */
+export function bulkEligibility(s: Partial<Pick<Subscription, "owner" | "end_time" | "cancel_at_period_end" | "state">>) {
+  const here = s.owner !== "provider";
+  return {
+    cancelAtPeriodEnd: here && !s.end_time && !s.cancel_at_period_end,
+    keep: here && !!s.cancel_at_period_end,
+    resume: here && s.state === "SUBSCRIPTION_STATE_PAUSED",
+  };
+}
+
 /** How many days before its end a trial counts as "ending soon" on the subscriptions page. */
 export const TRIAL_WARNING_DAYS = 7;
 

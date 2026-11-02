@@ -50,6 +50,8 @@ type RefundRow struct {
 	Bucket   time.Time
 	Currency string
 	Refunded int64
+	// Tax is the part of Refunded that is tax given back (a credit note's tax_minor); the tax figure of the bucket goes down by it.
+	Tax int64
 }
 
 // Point is one bucket of the series of a currency.
@@ -165,7 +167,9 @@ func Build(from, to time.Time, gran string, income []IncomeRow, refunds []Refund
 		c := of(r.Currency)
 		if p := point(c, r.Bucket); p != nil {
 			p.Refunds += r.Refunded
+			p.Tax -= r.Tax
 			c.Refunds += r.Refunded
+			c.Tax -= r.Tax
 		}
 	}
 	for i := range expenses {

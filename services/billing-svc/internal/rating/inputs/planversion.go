@@ -31,7 +31,7 @@ func (in *Inputs) PlanVersion(ctx context.Context, cache map[string]rating.PlanV
 // ConvertPlanVersion prices a plan version in currency: the tenant currency uses the base fee and prices, any other the
 // per-currency fee and price set the plan version was published with.
 func ConvertPlanVersion(p *plansv1.PlanVersion, currency, tenantCurrency string) (rating.PlanVersion, error) {
-	pv := rating.PlanVersion{ID: p.GetId(), PlanCode: p.GetPlanCode(), BaseFeeMinor: p.GetBaseFeeMinor(), Prices: map[string]rating.Price{}}
+	pv := rating.PlanVersion{ID: p.GetId(), PlanCode: p.GetPlanCode(), BaseFeeMinor: p.GetBaseFeeMinor(), Prices: map[string]rating.Price{}, ProrateAfterTrial: p.GetProrateAfterTrial()}
 	prices := p.GetPrices()
 	if currency != "" && currency != tenantCurrency {
 		found := false

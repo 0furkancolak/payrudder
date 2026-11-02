@@ -1,5 +1,6 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { matchesSearch, paginate, PAGE_SIZES } from "./paging";
+import { useSelection } from "./selection";
 import { idOf, searchParams, setKind, updateSearch } from "./sheets";
 
 /**
@@ -90,18 +91,7 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
     );
   }
 
-  const rowId = opts.selectId ?? opts.sheet?.id;
-  const ticked = ref<Set<string>>(new Set());
-  const idOfRow = (r: T) => rowId?.(r);
-  const selectedRows = computed(() => filtered.value.filter((r) => {
-    const id = idOfRow(r);
-    return id !== undefined && ticked.value.has(id);
-  }));
-  const pageIds = computed(() => paged.value.items.map(idOfRow).filter((id): id is string => id !== undefined));
-  const allOnPage = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => ticked.value.has(id)));
-  const someOnPage = computed(() => pageIds.value.some((id) => ticked.value.has(id)));
-  const matchingIds = computed(() => filtered.value.map(idOfRow).filter((id): id is string => id !== undefined));
-  const allMatching = computed(() => matchingIds.value.length > 0 && matchingIds.value.every((id) => ticked.value.has(id)));
+  const selection = useSelection(filtered, () => paged.value.items, opts.selectId ?? opts.sheet?.id);
 
   const detail = ref<number | null>(null);
   const row = computed(() => (detail.value === null ? undefined : filtered.value[detail.value]));
@@ -172,42 +162,7 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
     },
     /** Whether the row at this index of the page shown is the one the sheet shows. */
     isOpen: (i: number) => detail.value === (paged.value.page - 1) * size.value + i,
-    selectedRows,
-    allOnPage,
-    someOnPage,
-    /** Every row the search and filters show, on every page, is ticked. */
-    allMatching,
-    /** The page shown is ticked, more rows match than it holds, and not all of them are ticked yet. */
-    canSelectAll: computed(() => allOnPage.value && matchingIds.value.length > pageIds.value.length && !allMatching.value),
-    isTicked: (r: T) => {
-      const id = idOfRow(r);
-      return id !== undefined && ticked.value.has(id);
-    },
-    tick(r: T, on: boolean) {
-      const id = idOfRow(r);
-      if (id === undefined) return;
-      const next = new Set(ticked.value);
-      if (on) next.add(id);
-      else next.delete(id);
-      ticked.value = next;
-    },
-    /** Ticks every row of the page shown, or unticks them when all are ticked. */
-    togglePage() {
-      const next = new Set(ticked.value);
-      const on = !allOnPage.value;
-      for (const id of pageIds.value) {
-        if (on) next.add(id);
-        else next.delete(id);
-      }
-      ticked.value = next;
-    },
-    /** Ticks every row the search and filters show, on every page. */
-    selectAll() {
-      ticked.value = new Set([...ticked.value, ...matchingIds.value]);
-    },
-    clearSelection() {
-      ticked.value = new Set();
-    },
+    ...selection,
     active: computed(() => search.value.trim() !== "" || Object.values(filters.value).some((vs) => vs.some((v) => v !== ""))),
     clear() {
       search.value = "";

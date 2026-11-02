@@ -304,4 +304,10 @@ func drawTotals(pdf *fpdf.Fpdf, l *layout, inv *commandsv1.InvoiceSnapshot, exp 
 	pdf.SetFont(fontFamily, "B", sizeTotal)
 	pdf.CellFormat(colLabelSpan, rowTotal, l.t(kTotal), "", 0, "R", false, 0, "")
 	pdf.CellFormat(colAmount, rowTotal, printable(l.Money(inv.GetTotalMinor(), exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+	// The total is never below zero: what the lines came to below it was added to the customer's credit balance, and the invoice says so.
+	if s := inv.GetCreditSurplusMinor(); s > 0 {
+		pdf.SetFont(fontFamily, "", sizeTable)
+		pdf.CellFormat(colLabelSpan, rowTable, l.t(kCarried), "", 0, "R", false, 0, "")
+		pdf.CellFormat(colAmount, rowTable, printable(l.Money(s, exp, inv.GetCurrency())), "", 1, "R", false, 0, "")
+	}
 }

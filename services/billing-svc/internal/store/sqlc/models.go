@@ -53,17 +53,18 @@ type CreditApplication struct {
 }
 
 type CreditBalance struct {
-	TenantID            uuid.UUID
-	CustomerID          uuid.UUID
-	ID                  uuid.UUID
-	AmountMinor         int64
-	SourceReratingJobID *uuid.UUID
-	AppliedInvoiceID    *uuid.UUID
-	CreatedAt           time.Time
-	SourceAdjustmentID  *uuid.UUID
-	Currency            *string
-	SourceCreditNoteID  *uuid.UUID
-	SourceInvoiceID     *uuid.UUID
+	TenantID               uuid.UUID
+	CustomerID             uuid.UUID
+	ID                     uuid.UUID
+	AmountMinor            int64
+	SourceReratingJobID    *uuid.UUID
+	AppliedInvoiceID       *uuid.UUID
+	CreatedAt              time.Time
+	SourceAdjustmentID     *uuid.UUID
+	Currency               *string
+	SourceCreditNoteID     *uuid.UUID
+	SourceInvoiceID        *uuid.UUID
+	SourceSurplusInvoiceID *uuid.UUID
 }
 
 type CreditLedger struct {
@@ -109,6 +110,7 @@ type CreditNote struct {
 	RefundRequestedAt *time.Time
 	RefundRef         *string
 	RefundError       *string
+	TaxMinor          int64
 }
 
 type CreditNoteSeq struct {

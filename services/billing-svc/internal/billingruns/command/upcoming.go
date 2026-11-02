@@ -31,6 +31,8 @@ type Upcoming struct {
 	Subtotal    int64
 	Tax, Credit int64
 	Total       int64
+	// Surplus is what the lines come to below zero, which the real invoice would add to the customer's credit balance.
+	Surplus int64
 	// Has is false when the customer would get no invoice (no subscription in the period and no late usage to bill).
 	Has bool
 }
@@ -101,7 +103,7 @@ func (m *Manager) Upcoming(ctx context.Context, tenantID uuid.UUID, externalID s
 	if err != nil {
 		return nil, err
 	}
-	out.Has, out.Currency, out.Credit, out.Total = true, d.Currency, credit, d.Total-credit
+	out.Has, out.Currency, out.Credit, out.Total, out.Surplus = true, d.Currency, credit, d.Total-credit, d.CreditSurplus
 	out.Subtotal = rating.Subtotal(d.Lines) - credit
 	for _, l := range d.Lines {
 		if l.Kind == rating.KindTax {

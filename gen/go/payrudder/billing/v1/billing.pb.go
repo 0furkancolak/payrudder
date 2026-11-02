@@ -478,9 +478,12 @@ type Invoice struct {
 	FinalizeTime *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=finalize_time,json=finalizeTime,proto3" json:"finalize_time,omitempty"`
 	Lines        []*InvoiceLine         `protobuf:"bytes,16,rep,name=lines,proto3" json:"lines,omitempty"`
 	// Payments recorded by hand (RecordInvoicePayment), oldest first. Only GetInvoice fills it.
-	Payments      []*InvoicePayment `protobuf:"bytes,17,rep,name=payments,proto3" json:"payments,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Payments []*InvoicePayment `protobuf:"bytes,17,rep,name=payments,proto3" json:"payments,omitempty"`
+	// What the lines came to below zero: late-usage corrections larger than everything else on the invoice. The total is never negative, so the surplus is added to the
+	// customer's credit balance instead (one credit per invoice, applied to their next invoices). 0 for every other invoice.
+	CreditSurplusMinor int64 `protobuf:"varint,18,opt,name=credit_surplus_minor,json=creditSurplusMinor,proto3" json:"credit_surplus_minor,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Invoice) Reset() {
@@ -632,6 +635,13 @@ func (x *Invoice) GetPayments() []*InvoicePayment {
 	return nil
 }
 
+func (x *Invoice) GetCreditSurplusMinor() int64 {
+	if x != nil {
+		return x.CreditSurplusMinor
+	}
+	return 0
+}
+
 type GetUpcomingInvoiceRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	CustomerExternalId string                 `protobuf:"bytes,1,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
@@ -740,14 +750,16 @@ type UpcomingInvoice struct {
 	TaxMinor int64 `protobuf:"varint,9,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
 	// The credit balance the invoice would use (a positive number; the CREDIT line is its negative).
 	CreditMinor int64 `protobuf:"varint,10,opt,name=credit_minor,json=creditMinor,proto3" json:"credit_minor,omitempty"`
-	// What would be charged. Never negative: a net credit from late corrections is clamped to zero, as the real invoice does.
+	// What would be charged. Never negative: a net credit from late corrections is not charged but carried to the credit balance (credit_surplus_minor), as the real invoice does.
 	TotalMinor int64 `protobuf:"varint,11,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
 	// The clock of the estimate.
 	AsOf *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
 	// False when the customer has no subscription in the period (lines is empty then): there is no upcoming invoice.
-	HasInvoice    bool `protobuf:"varint,13,opt,name=has_invoice,json=hasInvoice,proto3" json:"has_invoice,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	HasInvoice bool `protobuf:"varint,13,opt,name=has_invoice,json=hasInvoice,proto3" json:"has_invoice,omitempty"`
+	// What the lines come to below zero, which the real invoice would add to the customer's credit balance (see Invoice.credit_surplus_minor). 0 normally.
+	CreditSurplusMinor int64 `protobuf:"varint,14,opt,name=credit_surplus_minor,json=creditSurplusMinor,proto3" json:"credit_surplus_minor,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpcomingInvoice) Reset() {
@@ -869,6 +881,13 @@ func (x *UpcomingInvoice) GetHasInvoice() bool {
 		return x.HasInvoice
 	}
 	return false
+}
+
+func (x *UpcomingInvoice) GetCreditSurplusMinor() int64 {
+	if x != nil {
+		return x.CreditSurplusMinor
+	}
+	return 0
 }
 
 // InvoicePayment is money received outside a payment provider and recorded by an operator.
@@ -3495,8 +3514,11 @@ type CreditNote struct {
 	// Where the amount went: the customer's credit balance, or back to their card.
 	Disposition CreditNoteDisposition `protobuf:"varint,11,opt,name=disposition,proto3,enum=payrudder.billing.v1.CreditNoteDisposition" json:"disposition,omitempty"`
 	// For a refund to the card: requested until the provider answers, then refunded or failed.
-	RefundState   RefundState `protobuf:"varint,12,opt,name=refund_state,json=refundState,proto3,enum=payrudder.billing.v1.RefundState" json:"refund_state,omitempty"`
-	RefundError   string      `protobuf:"bytes,13,opt,name=refund_error,json=refundError,proto3" json:"refund_error,omitempty"`
+	RefundState RefundState `protobuf:"varint,12,opt,name=refund_state,json=refundState,proto3,enum=payrudder.billing.v1.RefundState" json:"refund_state,omitempty"`
+	RefundError string      `protobuf:"bytes,13,opt,name=refund_error,json=refundError,proto3" json:"refund_error,omitempty"`
+	// The part of total_minor that is tax given back: the note's share of the invoice's total taken from the invoice's tax, so the notes of an invoice together give back
+	// its tax exactly. 0 for an untaxed invoice and for a note made before this field existed. The note's amount net of tax is total_minor - tax_minor.
+	TaxMinor      int64 `protobuf:"varint,14,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3620,6 +3642,13 @@ func (x *CreditNote) GetRefundError() string {
 		return x.RefundError
 	}
 	return ""
+}
+
+func (x *CreditNote) GetTaxMinor() int64 {
+	if x != nil {
+		return x.TaxMinor
+	}
+	return 0
 }
 
 type CreateCreditNoteRequest struct {
@@ -12459,7 +12488,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12=\n" +
 	"\fservice_from\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vserviceFrom\x129\n" +
 	"\n" +
-	"service_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tserviceTo\"\x97\x05\n" +
+	"service_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tserviceTo\"\xc9\x05\n" +
 	"\aInvoice\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -12482,11 +12511,12 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"createTime\x12?\n" +
 	"\rfinalize_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\ffinalizeTime\x127\n" +
 	"\x05lines\x18\x10 \x03(\v2!.payrudder.billing.v1.InvoiceLineR\x05lines\x12@\n" +
-	"\bpayments\x18\x11 \x03(\v2$.payrudder.billing.v1.InvoicePaymentR\bpayments\"M\n" +
+	"\bpayments\x18\x11 \x03(\v2$.payrudder.billing.v1.InvoicePaymentR\bpayments\x120\n" +
+	"\x14credit_surplus_minor\x18\x12 \x01(\x03R\x12creditSurplusMinor\"M\n" +
 	"\x19GetUpcomingInvoiceRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\"_\n" +
 	"\x1aGetUpcomingInvoiceResponse\x12A\n" +
-	"\bupcoming\x18\x01 \x01(\v2%.payrudder.billing.v1.UpcomingInvoiceR\bupcoming\"\xa5\x04\n" +
+	"\bupcoming\x18\x01 \x01(\v2%.payrudder.billing.v1.UpcomingInvoiceR\bupcoming\"\xd7\x04\n" +
 	"\x0fUpcomingInvoice\x12\x1a\n" +
 	"\bestimate\x18\x01 \x01(\bR\bestimate\x120\n" +
 	"\x14customer_external_id\x18\x02 \x01(\tR\x12customerExternalId\x12\x1b\n" +
@@ -12504,7 +12534,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"totalMinor\x12/\n" +
 	"\x05as_of\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\x12\x1f\n" +
 	"\vhas_invoice\x18\r \x01(\bR\n" +
-	"hasInvoice\"\xe3\x02\n" +
+	"hasInvoice\x120\n" +
+	"\x14credit_surplus_minor\x18\x0e \x01(\x03R\x12creditSurplusMinor\"\xe3\x02\n" +
 	"\x0eInvoicePayment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -12719,7 +12750,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"totalMinor\"\x9c\x01\n" +
 	"\x18GetDunningReportResponse\x12@\n" +
 	"\binvoices\x18\x01 \x03(\v2$.payrudder.billing.v1.DunningInvoiceR\binvoices\x12>\n" +
-	"\asummary\x18\x02 \x03(\v2$.payrudder.billing.v1.DunningSummaryR\asummary\"\x97\x04\n" +
+	"\asummary\x18\x02 \x03(\v2$.payrudder.billing.v1.DunningSummaryR\asummary\"\xb4\x04\n" +
 	"\n" +
 	"CreditNote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
@@ -12739,7 +12770,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"createTime\x12M\n" +
 	"\vdisposition\x18\v \x01(\x0e2+.payrudder.billing.v1.CreditNoteDispositionR\vdisposition\x12D\n" +
 	"\frefund_state\x18\f \x01(\x0e2!.payrudder.billing.v1.RefundStateR\vrefundState\x12!\n" +
-	"\frefund_error\x18\r \x01(\tR\vrefundError\"\xb6\x01\n" +
+	"\frefund_error\x18\r \x01(\tR\vrefundError\x12\x1b\n" +
+	"\ttax_minor\x18\x0e \x01(\x03R\btaxMinor\"\xb6\x01\n" +
 	"\x17CreateCreditNoteRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +

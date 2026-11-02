@@ -41,7 +41,7 @@ const canWrite = useCanWrite();
 const meters = useMeters(() => props.tenantId);
 const list = computed<Meter[]>(() => meters.data.value ?? []);
 const table = useTableState<Meter>(list, {
-  searchFields: (m) => [m.code, m.unit_label, m.value_property],
+  url: "meters-", searchFields: (m) => [m.code, m.unit_label, m.value_property],
   sorts: () => [nameAsc(t, (m) => m.code), nameDesc(t, (m) => m.code), newest(t, (m) => time(m.create_time)), oldest(t, (m) => time(m.create_time))],
   filters: { aggregation: (m, v) => m.aggregation === v },
 });

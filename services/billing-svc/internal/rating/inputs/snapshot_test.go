@@ -60,3 +60,17 @@ func TestDocumentSnapshotCustomerCountryAndGuest(t *testing.T) {
 		t.Errorf("guest snapshot = %+v", g)
 	}
 }
+
+// The tenant's time zone is frozen with the draft, for a customer's invoice and for a guest's alike: it dates the invoice (the year of its number, the dates printed on it).
+func TestSnapshotFreezesTheTenantsTimeZone(t *testing.T) {
+	tn := tenantIn("TR")
+	tn.Timezone = "Europe/Istanbul"
+	if got := (SnapshotOf{Tenant: tn, Customer: &plansv1.Customer{}}.Snapshot()).TimeZone; got != "Europe/Istanbul" {
+		t.Errorf("customer snapshot zone = %q", got)
+	}
+	var guest sagamodel.Snapshot
+	DocumentSnapshot(&guest, tn, nil)
+	if guest.TimeZone != "Europe/Istanbul" {
+		t.Errorf("guest snapshot zone = %q", guest.TimeZone)
+	}
+}

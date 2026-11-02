@@ -31,11 +31,12 @@ const (
 	kTCKN          key = "tckn"
 	kEDocumentNote key = "e_document_note"
 	kSandbox       key = "sandbox"
+	kCarried       key = "carried_to_balance"
 )
 
 // allKeys lists the keys, for the test that every layout has every one.
 var allKeys = []key{kInvoice, kNumber, kPeriod, kIssued, kFrom, kBillTo, kDescription, kQuantity, kAmount, kSubtotal, kTotal, kPayByTransfer, kBank, kAccountHolder, kIBAN,
-	kBIC, kPaymentRef, kTransferNote, kTaxID, kTaxOffice, kVATID, kVKN, kTCKN, kEDocumentNote, kSandbox}
+	kBIC, kPaymentRef, kTransferNote, kTaxID, kTaxOffice, kVATID, kVKN, kTCKN, kEDocumentNote, kSandbox, kCarried}
 
 // layout is one language of the document: its words, and (from pkg/localefmt, which the hosted pages share) how it writes numbers, money and dates.
 type layout struct {

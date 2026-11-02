@@ -37,7 +37,7 @@ erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)
 is the only way handlers open a transaction. It runs `SELECT set_config('app.tenant_id', $1, true)` first.
 Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 
-`pgxx.VerifyForcedRLS` fails for every table with a `tenant_id` that lacks the template above and is not on the service's exempt list. It runs in the integration tests of every service with Postgres, and at startup in billing-svc, payments-worker and assets-svc (a deployment with such a table does not serve); the exempt lists are `RLSExempt` in each service's `migrations` package, each table with its reason (billing: `invoice_number_seq`, `outbox`, `expense_inboxes`; payments-worker: every table, the database has no RLS by design; assets-svc: none).
+`pgxx.VerifyForcedRLS` fails for every table with a `tenant_id` that lacks the template above and is not on the service's exempt list. It runs in the integration tests of every service with Postgres, and at startup in billing-svc, payments-worker and assets-svc (a deployment with such a table does not serve); the exempt lists are `RLSExempt` in each service's `migrations` package, each table with its reason (billing: `invoice_number_seq`, `outbox`; payments-worker: every table, the database has no RLS by design; assets-svc: none).
 
 ### Cells: a tenant schema (phase 28, [ADR 0018](adr/0018-tenant-isolation-modes.md))
 
@@ -533,7 +533,7 @@ CREATE TABLE invoice_lines (
 CREATE TABLE invoice_number_seq (
   tenant_id uuid NOT NULL, year int NOT NULL, next_value bigint NOT NULL,
   PRIMARY KEY (tenant_id, year)
-);  -- SELECT ... FOR UPDATE at finalize → gap-free per tenant/year
+);  -- SELECT ... FOR UPDATE at finalize → gap-free per tenant/year; the year is the year in the tenant's time zone (snapshot.time_zone, UTC when absent; ADR 0028). credit_note_seq is the same
 
 CREATE TABLE invoice_sagas (
   tenant_id        uuid NOT NULL,
@@ -568,8 +568,12 @@ CREATE TABLE credit_balances (
   applied_invoice_id uuid,                              -- NULL = unapplied
   PRIMARY KEY (tenant_id, id)
   -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and
-  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice)
+  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice), and source_surplus_invoice_id, the invoice whose lines
+  -- came to less than nothing: its total is 0 and the surplus is this credit (unique per invoice; migration 00007, ADR 0028)
 );
+
+-- As built, credit_notes.tax_minor (migration 00006) is the part of total_minor that is the invoice's tax given back (0 for a note made before it);
+-- plans-svc plan_versions.prorate_after_trial (migration 00015) is false for every version that existed then and true for a new version unless it says otherwise.
 
 CREATE TABLE rerating_jobs (
   tenant_id uuid NOT NULL, id uuid NOT NULL, period_id text NOT NULL, plan_version_id uuid NOT NULL,
@@ -594,7 +598,7 @@ CREATE TABLE outbox (                                  -- the shared pkg/outbox 
 
 RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer and relay use `billing_system`.
 
-**History is immutable in the database, not only by grants** (migrations `00003`, plan 22 G3). An invoice that has left `draft` keeps `subtotal_minor`, `total_minor`, `currency`, `customer_id`, `period_id`, `kind`, `plan_version_id`, `number`, `created_at`, `finalized_at` and its `snapshot` except `snapshot.payment_method` (trigger `invoices_frozen`, SQLSTATE `P0001`, hint `invoice_frozen`); the updates the code makes are `SetInvoiceTotals`, `OpenInvoice` (while a draft), `SetInvoiceStatus`, `SetInvoicePDFKeyBySaga`, `SetInvoicePaymentMethod` and `SetInvoicePromotion`. `invoices`, `invoice_lines`, `credit_notes`, `invoice_payments`, `credit_ledger`, `credit_applications` and `saga_events` refuse every `DELETE` (`financial_row_no_delete`, hint `financial_row_delete`) unless the transaction names the tenant in `payrudder.sandbox_reset` (the sandbox reset after it found no invoice of the live environment; an `invoices` row of a live environment is refused even then) or `payrudder.tenant_move` (`pkg/pgxx` `Move`, after it copied the rows), or the row is a `credit_applications` of an invoice that is now `void` (a void gives back the credit it consumed). `credit_ledger` has a unique index on `(tenant_id, customer_id, idempotency_key, lot_id)` where the key is set (migration `00004`): a consume that takes from several lots writes a row per lot under one key, a grant one row. Not covered: a role with the table owner's rights (the migrator) or `session_replication_role`; the settings above are a guard against code that is wrong, not against a person who holds the database.
+**History is immutable in the database, not only by grants** (migrations `00003` and `00006`, plan 22 G3). An invoice that has left `draft` keeps `subtotal_minor`, `total_minor`, `currency`, `customer_id`, `period_id`, `kind`, `plan_version_id`, `number`, `created_at`, `finalized_at`, its promotion (`coupon_code`, `promotion_code`, `promotion_target`, `bonus_credits`) and its `snapshot` except `snapshot.payment_method` (trigger `invoices_frozen`, SQLSTATE `P0001`, hint `invoice_frozen`); the updates the code makes are `SetInvoiceTotals`, `OpenInvoice`, `SetInvoicePromotion` (all three while a draft), `SetInvoiceStatus`, `SetInvoicePDFKeyBySaga` and `SetInvoicePaymentMethod`. A line is only added to a draft (`invoice_lines_draft_only`, hint `invoice_lines_frozen`; `InsertLines` runs in the transaction that creates the draft), except in a transaction that names the tenant in `payrudder.tenant_move`, which copies the lines of invoices already open or paid. `invoices`, `invoice_lines`, `credit_notes`, `invoice_payments`, `credit_ledger`, `credit_applications` and `saga_events` refuse every `DELETE` (`financial_row_no_delete`, hint `financial_row_delete`) unless the transaction names the tenant in `payrudder.sandbox_reset` (the sandbox reset after it found no invoice of the live environment; an `invoices` row of a live environment is refused even then) or `payrudder.tenant_move` (`pkg/pgxx` `Move`, after it copied the rows), or the row is a `credit_applications` of an invoice that is now `void` (a void gives back the credit it consumed). `credit_ledger` has a unique index on `(tenant_id, customer_id, idempotency_key, lot_id)` where the key is set (migration `00004`): a consume that takes from several lots writes a row per lot under one key, a grant one row. Not covered: a role with the table owner's rights (the migrator) or `session_replication_role`; the settings above are a guard against code that is wrong, not against a person who holds the database.
 
 ---
 
@@ -661,6 +665,8 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 -- payment_ledger and manual_receipts (as built, migration 00002 of payments-worker, plan 22 G3) refuse every DELETE (trigger ledger_no_delete, SQLSTATE P0001, hint ledger_row_delete)
 -- unless the transaction names the tenant in payrudder.sandbox_reset (the sandbox reset, after it found no attempt or ledger row of the live environment; a row whose environment
 -- is not 'sandbox' is refused even then) or payrudder.tenant_move (pkg/pgxx Move). payments_system has no UPDATE on them either.
+-- payments_app holds no privilege on any table of payments_db (migration 00007, tenant 00008): payments-worker connects as payments_system only, and these tables have no
+-- row-level security, so a SELECT of the app role would read every tenant's rows. The role exists because the init scripts make one per service; the integration test lists the tables it can read: none.
 
 -- Reconciliation as a workflow (plan 22 G7, migration 00003 / tenant 00004; docs/reconciliation.md). No row-level security (payments_db has none).
 CREATE TABLE reconciliation_discrepancies (  -- one per thing that does not agree, per tenant and period; fingerprint = hash(kind, invoice, provider, provider_ref)

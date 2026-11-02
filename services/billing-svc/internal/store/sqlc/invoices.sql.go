@@ -101,7 +101,8 @@ const getInvoice = `-- name: GetInvoice :one
 
 SELECT i.id, i.customer_id, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, i.period_id, i.kind,
        COALESCE(i.number, '')::text AS number, i.plan_version_id, i.currency, i.subtotal_minor, i.total_minor, i.status,
-       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at
+       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at,
+       COALESCE(i.snapshot->>'credit_surplus_minor', '0')::bigint AS credit_surplus_minor
 FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 WHERE i.id = $1
 `
@@ -122,6 +123,7 @@ type GetInvoiceRow struct {
 	PdfObjectKey       string
 	CreatedAt          time.Time
 	FinalizedAt        *time.Time
+	CreditSurplusMinor int64
 }
 
 // Invoices and their lines. The tenant-scoped reads run as billing_app inside pgxx.InTenantTx (RLS filters by tenant); the
@@ -145,6 +147,7 @@ func (q *Queries) GetInvoice(ctx context.Context, id uuid.UUID) (GetInvoiceRow, 
 		&i.PdfObjectKey,
 		&i.CreatedAt,
 		&i.FinalizedAt,
+		&i.CreditSurplusMinor,
 	)
 	return i, err
 }
@@ -451,7 +454,8 @@ func (q *Queries) ListInvoiceLinesForSnapshot(ctx context.Context, arg ListInvoi
 const listInvoices = `-- name: ListInvoices :many
 SELECT i.id, i.customer_id, COALESCE(i.snapshot->>'customer_external_id', '')::text AS customer_external_id, i.period_id, i.kind,
        COALESCE(i.number, '')::text AS number, i.plan_version_id, i.currency, i.subtotal_minor, i.total_minor, i.status,
-       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at
+       COALESCE(s.state, '')::text AS saga_state, COALESCE(i.pdf_object_key, '')::text AS pdf_object_key, i.created_at, i.finalized_at,
+       COALESCE(i.snapshot->>'credit_surplus_minor', '0')::bigint AS credit_surplus_minor
 FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 WHERE ($1::uuid IS NULL OR i.customer_id = $1)
   AND ($2::text IS NULL OR i.period_id = $2)
@@ -485,6 +489,7 @@ type ListInvoicesRow struct {
 	PdfObjectKey       string
 	CreatedAt          time.Time
 	FinalizedAt        *time.Time
+	CreditSurplusMinor int64
 }
 
 func (q *Queries) ListInvoices(ctx context.Context, arg ListInvoicesParams) ([]ListInvoicesRow, error) {
@@ -518,6 +523,7 @@ func (q *Queries) ListInvoices(ctx context.Context, arg ListInvoicesParams) ([]L
 			&i.PdfObjectKey,
 			&i.CreatedAt,
 			&i.FinalizedAt,
+			&i.CreditSurplusMinor,
 		); err != nil {
 			return nil, err
 		}
@@ -566,7 +572,7 @@ func (q *Queries) ListRegularInvoiceSnapshots(ctx context.Context, arg ListRegul
 
 const lockInvoiceForFinalize = `-- name: LockInvoiceForFinalize :one
 SELECT status, (snapshot->>'environment')::text AS environment, currency, period_id, total_minor, customer_id,
-       COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id
+       COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, COALESCE(snapshot->>'time_zone', '')::text AS time_zone
 FROM invoices WHERE tenant_id = $1 AND id = $2 FOR UPDATE
 `
 
@@ -583,6 +589,7 @@ type LockInvoiceForFinalizeRow struct {
 	TotalMinor         int64
 	CustomerID         uuid.UUID
 	CustomerExternalID string
+	TimeZone           string
 }
 
 func (q *Queries) LockInvoiceForFinalize(ctx context.Context, arg LockInvoiceForFinalizeParams) (LockInvoiceForFinalizeRow, error) {
@@ -596,6 +603,7 @@ func (q *Queries) LockInvoiceForFinalize(ctx context.Context, arg LockInvoiceFor
 		&i.TotalMinor,
 		&i.CustomerID,
 		&i.CustomerExternalID,
+		&i.TimeZone,
 	)
 	return i, err
 }

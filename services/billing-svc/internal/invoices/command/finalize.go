@@ -14,7 +14,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
-// Finalize assigns the next gap-free number of the tenant and year, opens the invoice and starts its saga, in one
+// Finalize assigns the next gap-free number of the tenant and of the year in the tenant's time zone (the series of a year is its own), opens the invoice and starts its saga, in one
 // transaction: a rollback leaves neither a number consumed nor a saga behind. Finalizing a finalized invoice is a no-op.
 func (c *Commands) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) error {
 	return c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
@@ -27,7 +27,7 @@ func (c *Commands) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) 
 			return nil
 		}
 		now := c.cfg.Now()
-		year := int32(now.UTC().Year()) //nolint:gosec // a calendar year
+		year := invmodel.NumberYear(now, inv.TimeZone)
 		if err := q.EnsureInvoiceNumberSeq(ctx, sqlc.EnsureInvoiceNumberSeqParams{TenantID: tenantID, Year: year}); err != nil {
 			return err
 		}

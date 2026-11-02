@@ -11,6 +11,16 @@ const keys = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => 
 const flat = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => s.items);
 const app = (extra: Partial<ShellContext> = {}): ShellContext => ({ level: "app", appId: "A", scope: "A", tenantId: "T", env: "live", ...extra });
 
+describe("the sidebar's icons (plan 03, complaint 7)", () => {
+  it("no two items of one sidebar draw the same icon, in the person's console and in the platform's", () => {
+    for (const nav of [buildNav(app()), buildNav(app({ saas: true })), buildNav({ level: "platform", platformTenant: "P" })]) {
+      const byIcon = new Map<unknown, string[]>();
+      for (const i of flat(nav)) byIcon.set(i.icon, [...(byIcon.get(i.icon) ?? []), i.key]);
+      expect([...byIcon.values()].filter((keys) => keys.length > 1)).toEqual([]);
+    }
+  });
+});
+
 describe("buildNav", () => {
   it("an app is always selected: the organisation's pages have the same sidebar, with the organisation group at the bottom", () => {
     const org = buildNav({ level: "org", appId: "A", scope: "A", tenantId: "T", env: "live" });

@@ -446,7 +446,12 @@
       "reason": "Grund",
       "bytes": "Bytes"
     },
-    "noMessages": "Keine Nachrichten in dieser Warteschlange."
+    "noMessages": "Keine Nachrichten in dieser Warteschlange.",
+    "bulk": {
+      "redrive": "Redrive für Auswahl",
+      "title": "Die ausgewählten Warteschlangen per Redrive zurückführen?",
+      "confirm": "Warteschlangen: {queues}. Nachrichten, die in ihre Arbeitswarteschlangen zurückgehen (Wiederholungszähler zurückgesetzt): {count}."
+    }
   },
   "playground": {
     "title": "Spielwiese",
@@ -693,7 +698,8 @@
         "estimate": "Schätzung",
         "period": "Zeitraum {period}",
         "none": "Noch nichts zu berechnen: Dieser Kunde hat in diesem Zeitraum kein Abonnement und keine nachträgliche Nutzung zu berechnen.",
-        "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern."
+        "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern.",
+        "creditSurplus": "{amount} würde dem Guthaben des Kunden gutgeschrieben: die Positionen ergeben weniger als null."
       }
     },
     "packages": {
@@ -842,7 +848,12 @@
           "not_changeable": "so nicht umstellbar",
           "customer_blocked": "Kunde ist gesperrt"
         }
-      }
+      },
+      "prorateAfterTrial": "Die erste Periode ab dem Ende der Testphase berechnen",
+      "prorateAfterTrialHelp": "Endet eine Testphase mitten in einer Abrechnungsperiode, wird die Grundgebühr dieser Periode nur vom Ende der Testphase bis zum Periodenende berechnet. Aus: Die Gebühr der ganzen Periode wird berechnet, wie bei Paketen, die vor dieser Option veröffentlicht wurden.",
+      "firstPeriod": "Erste Periode nach der Testphase",
+      "firstPeriodProrated": "Ab dem Ende der Testphase",
+      "firstPeriodWhole": "Die ganze Periode"
     },
     "subscriptions": {
       "new": "Neues Abonnement",
@@ -961,6 +972,13 @@
         "replacedBy": "Durch einen Planwechsel ersetzt: {plan} hat übernommen.",
         "changedFrom": "Durch einen Planwechsel von {plan} entstanden.",
         "open": "Öffnen"
+      },
+      "bulk": {
+        "cancel": "Auswahl zum Periodenende kündigen",
+        "keep": "Auswahl behalten",
+        "resume": "Auswahl fortsetzen",
+        "cancelTitle": "{n} Abonnement zum Periodenende kündigen? | {n} Abonnements zum Periodenende kündigen?",
+        "confirmCancel": "Jedes endet mit seiner laufenden Periode und wird nicht verlängert. Kunden behalten bis dahin den Zugriff; „Auswahl behalten“ nimmt die Kündigung zurück."
       }
     },
     "payments": {
@@ -1140,7 +1158,12 @@
         "empty": "Noch keine Gutscheine.",
         "badPercent": "Kein Prozentsatz: 0,01 bis 100 mit höchstens zwei Dezimalstellen.",
         "badAmount": "Kein Betrag in {currency}: nur Ziffern, höchstens so viele Dezimalstellen wie die Währung.",
-        "repeatingFor": "Erste {n} Gebühren"
+        "repeatingFor": "Erste {n} Gebühren",
+        "bulk": {
+          "deactivate": "Auswahl deaktivieren",
+          "title": "{n} Gutschein deaktivieren? | {n} Gutscheine deaktivieren?",
+          "confirm": "Sie nehmen keine neuen Einlösungen mehr an, und ein deaktivierter Gutschein lässt sich nicht wieder einschalten. Abonnements, die bereits einen haben, behalten ihn."
+        }
       },
       "tax": {
         "title": "Steuer",
@@ -1282,7 +1305,8 @@
       "retryRefund": "Erstattung wiederholen",
       "new": "Neue Gutschrift",
       "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte.",
-      "allWhere": "Überall"
+      "allWhere": "Überall",
+      "taxGiven": "Zurückgegebene Steuer"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -1407,7 +1431,12 @@
       "createdTitle": "Zahlungslink erstellt",
       "createdHint": "Kopieren Sie den Link jetzt und senden Sie ihn an den Zahler.",
       "another": "Weiteren Link erstellen",
-      "customerNone": "Kein Kunde"
+      "customerNone": "Kein Kunde",
+      "bulk": {
+        "revoke": "Auswahl widerrufen",
+        "revokeTitle": "{n} Zahlungslink widerrufen? | {n} Zahlungslinks widerrufen?",
+        "confirmRevoke": "Widerrufene Links funktionieren sofort nicht mehr und lassen sich nicht wiederherstellen. Daraus entstandene unbezahlte Rechnungen werden storniert."
+      }
     },
     "mail": {
       "title": "E-Mail",
@@ -2300,7 +2329,14 @@
       "reinstate": "Wieder freigeben",
       "edit": "Bearbeiten",
       "linkAndCode": "Link und Code",
-      "referralsOf": "Empfehlungen"
+      "referralsOf": "Empfehlungen",
+      "bulk": {
+        "approve": "Auswahl freigeben",
+        "suspend": "Auswahl sperren",
+        "reinstate": "Auswahl wieder freigeben",
+        "suspendTitle": "{n} Partner sperren? | {n} Partner sperren?",
+        "confirmSuspend": "Ein gesperrter Partner erhält keine neuen Zuordnungen oder Provisionen; bereits Freigegebenes bleibt. Wieder freigeben holt ihn zurück."
+      }
     },
     "add": {
       "title": "Partner hinzufügen",
@@ -4062,7 +4098,8 @@
         "service": "Leistungszeitraum",
         "quantity": "Menge",
         "amount": "Betrag",
-        "total": "Summe"
+        "total": "Summe",
+        "creditSurplus": "{amount} wurde dem Guthaben des Kunden gutgeschrieben: die Positionen ergaben weniger als null, und eine Rechnung hat nie einen negativen Betrag."
       },
       "payments": {
         "title": "Zahlungen",

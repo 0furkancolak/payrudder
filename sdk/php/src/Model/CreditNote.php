@@ -25,6 +25,7 @@ final class CreditNote implements Model
      * @param string|null $customerExternalId
      * @param string|null $currency
      * @param int|null $totalMinor
+     * @param int|null $taxMinor
      * @param string|null $reason
      * @param string|null $createTime
      * @param CreditNoteDisposition|string|null $disposition
@@ -40,6 +41,7 @@ final class CreditNote implements Model
         public readonly ?string $customerExternalId = null,
         public readonly ?string $currency = null,
         public readonly ?int $totalMinor = null,
+        public readonly ?int $taxMinor = null,
         public readonly ?string $reason = null,
         public readonly ?string $createTime = null,
         public readonly CreditNoteDisposition|string|null $disposition = null,
@@ -61,6 +63,7 @@ final class CreditNote implements Model
             customerExternalId: Cast::string($data['customer_external_id'] ?? null),
             currency: Cast::string($data['currency'] ?? null),
             totalMinor: Cast::int($data['total_minor'] ?? null),
+            taxMinor: Cast::int($data['tax_minor'] ?? null),
             reason: Cast::string($data['reason'] ?? null),
             createTime: Cast::string($data['create_time'] ?? null),
             disposition: Cast::enum(CreditNoteDisposition::class, $data['disposition'] ?? null),
@@ -83,6 +86,7 @@ final class CreditNote implements Model
             'customer_external_id' => $this->customerExternalId,
             'currency' => $this->currency,
             'total_minor' => Cast::int64($this->totalMinor),
+            'tax_minor' => Cast::int64($this->taxMinor),
             'reason' => $this->reason,
             'create_time' => $this->createTime,
             'disposition' => Cast::wire($this->disposition),
