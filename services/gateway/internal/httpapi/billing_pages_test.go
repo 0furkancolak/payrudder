@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +21,9 @@ var tenantReads = []string{
 }
 
 func TestBillingPagesAreNeverReachableFromAnotherAccount(t *testing.T) {
-	p := newProduct(t, func() []map[string]any { return ledgerRows(time.Now()) }, nil)
+	// Every refused credential below is a failed authentication, which the gateway counts per client address (authFailuresPerMinute): each comes from an address of its own.
+	p := newProduct(t, func() []map[string]any { return ledgerRows(time.Now()) }, func(d *Deps) { d.TrustForwardedFor = true })
+	visitor := 0
 	for _, path := range tenantReads {
 		// Ada asks for Bob's tenants (live and sandbox): the same answer as for a tenant that does not exist.
 		for _, bobs := range []string{bobLive, bobSandbox} {
@@ -39,7 +42,8 @@ func TestBillingPagesAreNeverReachableFromAnotherAccount(t *testing.T) {
 		}
 		// No credential, an expired session, an unknown API key.
 		for _, tok := range []string{"", "qs_expired", "no-such-key"} {
-			if resp, _ := p.call(t, "GET", path, tok, adaLive, ""); resp.StatusCode != 401 {
+			visitor++
+			if resp, _ := p.callFrom(t, fmt.Sprintf("198.51.100.%d", visitor), "GET", path, tok, adaLive, ""); resp.StatusCode != 401 {
 				t.Errorf("GET %s with token %q: %d, want 401", path, tok, resp.StatusCode)
 			}
 		}

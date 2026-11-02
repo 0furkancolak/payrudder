@@ -10,6 +10,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -28,15 +29,25 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/negcache"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // CacheTTL bounds how stale a cached key can be if the revocation eviction fails.
 const CacheTTL = 60 * time.Second
 
+// NegativeTTL and NegativeMax bound the in-memory memory of key prefixes plans-svc does not know or has revoked (internal/negcache).
+const (
+	NegativeTTL = negcache.DefaultTTL
+	NegativeMax = negcache.DefaultMax
+)
+
 var (
 	// ErrUnauthenticated: missing, malformed, unknown, revoked or wrong key. Clients never learn which.
 	ErrUnauthenticated = errors.New("auth: invalid api key")
+	// ErrRepeated is ErrUnauthenticated for a key prefix that was found unknown or revoked a moment ago and is refused from memory. It is the same guess again, not a new
+	// one, so the caller does not count it against the address (a client that keeps using a revoked key would otherwise get its whole address throttled).
+	ErrRepeated = fmt.Errorf("%w (asked a moment ago)", ErrUnauthenticated)
 	// ErrUnavailable: the key isn't cached and plans-svc can't be reached.
 	ErrUnavailable = errors.New("auth: key resolution unavailable")
 	// ErrSuspended: the key is genuine but its tenant is not active (suspended by an operator, or a live tenant that was never activated). Unlike a bad
@@ -115,17 +126,22 @@ type Authenticator struct {
 	toucher     Toucher
 	touchMu     sync.Mutex
 	touched     map[string]time.Time
+	// neg remembers prefixes that were unknown or revoked, so random well-formed keys cost plans-svc one call each per NegativeTTL at most.
+	neg *negcache.Cache
 }
 
 // New returns an Authenticator.
 func New(cache Cache, resolver Resolver, allowedEnvs []string, log *slog.Logger) (*Authenticator, error) {
 	m := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/gateway/auth")
-	failures := m.Counter("gateway_auth_failures", "Rejected API keys by reason")
+	failures := m.Counter("gateway_auth_failures", "Rejected credentials (API keys, session tokens) and throttled addresses, by reason")
 	if err := m.Err(); err != nil {
 		return nil, err
 	}
-	return &Authenticator{cache: cache, resolver: resolver, allowedEnvs: allowedEnvs, log: log, failures: failures, now: time.Now, touched: map[string]time.Time{}}, nil
+	return &Authenticator{cache: cache, resolver: resolver, allowedEnvs: allowedEnvs, log: log, failures: failures, now: time.Now, touched: map[string]time.Time{}, neg: negcache.New(NegativeTTL, NegativeMax)}, nil
 }
+
+// Failures is the counter gateway_auth_failures, by reason. The HTTP layer adds the reasons it sees itself (a refused session token, a throttled address).
+func (a *Authenticator) Failures() metric.Int64Counter { return a.failures }
 
 // WithToucher makes the authenticator record the use of keys, at most once per key and replica every few minutes, in the background.
 func (a *Authenticator) WithToucher(t Toucher) *Authenticator {
@@ -173,7 +189,8 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	e, err := a.lookup(ctx, key.Prefix)
 	if err != nil {
 		if errors.Is(err, ErrUnauthenticated) {
-			return Principal{}, a.fail(ctx, "unknown")
+			a.failures.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", "unknown")))
+			return Principal{}, err // ErrUnauthenticated, or ErrRepeated
 		}
 		return Principal{}, err
 	}
@@ -214,7 +231,8 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	}, nil
 }
 
-// grantOf is the role and permissions of a cached key: its own, or, for an entry from before roles existed, what its scope meant.
+// grantOf is the role and permissions of a cached key: its own, or, for an entry from before roles existed, what its scope meant. An entry with neither a role nor
+// a scope says nothing about what the key may do, so the key may do nothing: it is never read as the scope "" of an old key, which means full.
 func grantOf(e Entry) (string, []string) {
 	if e.Role == apikey.RoleAdmin {
 		// An admin holds everything that exists, whatever the entry was written with.
@@ -222,6 +240,9 @@ func grantOf(e Entry) (string, []string) {
 	}
 	if e.Role != "" {
 		return e.Role, e.Permissions
+	}
+	if e.Scope == "" {
+		return apikey.RoleCustom, e.Permissions
 	}
 	role, ok := apikey.LegacyScope(e.Scope)
 	if !ok {
@@ -232,7 +253,25 @@ func grantOf(e Entry) (string, []string) {
 	return role, perms
 }
 
+// scopeName is the name an old-style scope has in a cache entry; "" for a plans-svc that sent none.
+func scopeName(s plansv1.ApiKey_Scope) string {
+	switch s {
+	case plansv1.ApiKey_SCOPE_FULL:
+		return "full"
+	case plansv1.ApiKey_SCOPE_INGEST:
+		return "ingest"
+	case plansv1.ApiKey_SCOPE_READ:
+		return "read"
+	case plansv1.ApiKey_SCOPE_UNSPECIFIED:
+	}
+	return ""
+}
+
 func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error) {
+	// A prefix found unknown or revoked a moment ago is not asked about again: random well-formed keys miss every cache and would each cost plans-svc a call.
+	if a.neg.Has(prefix) {
+		return Entry{}, ErrRepeated
+	}
 	if a.cache != nil {
 		e, ok, err := a.cache.Get(ctx, prefix)
 		switch {
@@ -240,6 +279,9 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 			// Redis down: fall through to plans-svc.
 			a.log.WarnContext(ctx, "api key cache unavailable", "error", err)
 		case ok:
+			if !e.Active {
+				a.neg.Add(prefix)
+			}
 			return e, nil
 		}
 	}
@@ -247,6 +289,7 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 	if err != nil {
 		switch status.Code(err) {
 		case codes.NotFound, codes.InvalidArgument:
+			a.neg.Add(prefix)
 			return Entry{}, ErrUnauthenticated
 		default:
 			a.log.ErrorContext(ctx, "ResolveApiKey failed", "error", err)
@@ -257,7 +300,10 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 		APIKeyID: res.GetApiKeyId(), TenantID: res.GetTenantId(), Timezone: res.GetTimezone(),
 		Environment: envName(res.GetEnvironment()), Tier: TierName(res.GetTier()),
 		Active: res.GetStatus() == plansv1.ApiKey_STATUS_ACTIVE, KeyHash: res.GetKeyHash(),
-		Status: statusName(res.GetTenantStatus()), Role: res.GetRole(), Permissions: res.GetPermissions(),
+		Status: statusName(res.GetTenantStatus()), Role: res.GetRole(), Permissions: res.GetPermissions(), Scope: scopeName(res.GetScope()),
+	}
+	if !e.Active {
+		a.neg.Add(prefix)
 	}
 	if res.GetExpireTime() != nil {
 		e.ExpiresAt = res.GetExpireTime().AsTime().Unix()
