@@ -47,7 +47,7 @@ const open = ref(false);
 const view = useTabParam("view", ["lots", "ledger"] as const, "lots");
 type Lot = NonNullable<NonNullable<typeof balance.data.value>["lots"]>[number];
 const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
-  searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],
+  url: "lots-", searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],
   sorts: () => [newest(t, (l) => time(l.create_time)), expiresSoon(t, (l) => time(l.expire_time)), amountHigh(t, (l) => amount(l.remaining)), amountLow(t, (l) => amount(l.remaining))],
   filters: { source: (l, v) => l.source === v },
 });

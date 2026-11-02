@@ -446,7 +446,12 @@
       "reason": "Neden",
       "bytes": "Bayt"
     },
-    "noMessages": "Bu kuyrukta ileti yok."
+    "noMessages": "Bu kuyrukta ileti yok.",
+    "bulk": {
+      "redrive": "Seçilenleri yeniden gönder",
+      "title": "Seçilen kuyruklar yeniden gönderilsin mi?",
+      "confirm": "Kuyruk sayısı: {queues}. Çalışma kuyruklarına geri taşınacak mesajlar (deneme sayaçları sıfırlanır): {count}."
+    }
   },
   "playground": {
     "title": "Oyun alanı",
@@ -967,6 +972,13 @@
         "replacedBy": "Plan değişikliğiyle sona erdi: yerine {plan} geçti.",
         "changedFrom": "{plan} aboneliğinden plan değişikliğiyle başladı.",
         "open": "Aç"
+      },
+      "bulk": {
+        "cancel": "Seçilenleri dönem sonunda iptal et",
+        "keep": "Seçilenleri koru",
+        "resume": "Seçilenleri sürdür",
+        "cancelTitle": "{n} abonelik dönem sonunda iptal edilsin mi? | {n} abonelik dönem sonunda iptal edilsin mi?",
+        "confirmCancel": "Her biri mevcut dönemi bittiğinde sona erer ve yenilenmez. Müşteriler o zamana kadar erişimini korur; “Seçilenleri koru” iptali geri alır."
       }
     },
     "payments": {
@@ -1146,7 +1158,12 @@
         "empty": "Henüz kupon yok.",
         "badPercent": "Yüzde değil: 0,01 ile 100 arası, en fazla iki ondalık.",
         "badAmount": "{currency} cinsinden tutar değil: yalnızca rakamlar, para biriminin ondalığını aşmadan.",
-        "repeatingFor": "İlk {n} ücret"
+        "repeatingFor": "İlk {n} ücret",
+        "bulk": {
+          "deactivate": "Seçilenleri devre dışı bırak",
+          "title": "{n} kupon devre dışı bırakılsın mı? | {n} kupon devre dışı bırakılsın mı?",
+          "confirm": "Yeni kullanım almazlar ve devre dışı bırakılan bir kupon yeniden açılamaz. Zaten birine sahip abonelikler onu korur."
+        }
       },
       "tax": {
         "title": "Vergi",
@@ -1414,7 +1431,12 @@
       "createdTitle": "Ödeme bağlantısı oluşturuldu",
       "createdHint": "Bağlantıyı şimdi kopyalayıp ödeme yapacak kişiye gönderin.",
       "another": "Başka bağlantı oluştur",
-      "customerNone": "Müşteri yok"
+      "customerNone": "Müşteri yok",
+      "bulk": {
+        "revoke": "Seçilenleri iptal et",
+        "revokeTitle": "{n} ödeme bağlantısı iptal edilsin mi? | {n} ödeme bağlantısı iptal edilsin mi?",
+        "confirmRevoke": "İptal edilen bağlantılar hemen çalışmayı bırakır ve geri getirilemez. Onlardan oluşan ödenmemiş faturalar iptal edilir."
+      }
     },
     "mail": {
       "title": "E-posta",
@@ -2307,7 +2329,14 @@
       "reinstate": "Yeniden etkinleştir",
       "edit": "Düzenle",
       "linkAndCode": "Bağlantı ve kod",
-      "referralsOf": "Yönlendirmeler"
+      "referralsOf": "Yönlendirmeler",
+      "bulk": {
+        "approve": "Seçilenleri onayla",
+        "suspend": "Seçilenleri askıya al",
+        "reinstate": "Seçilenleri yeniden etkinleştir",
+        "suspendTitle": "{n} ortak askıya alınsın mı? | {n} ortak askıya alınsın mı?",
+        "confirmSuspend": "Askıya alınan ortak yeni yönlendirme ve komisyon almaz; onaylanmış olanlar kalır. Yeniden etkinleştirme onları geri getirir."
+      }
     },
     "add": {
       "title": "Ortak ekle",

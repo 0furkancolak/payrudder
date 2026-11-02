@@ -44,7 +44,7 @@ const when = (v?: string) => fmt.date(v, "short");
 
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const table = useTableState<Row>(rows, {
-  searchFields: (p) => [p.number, p.invoice_id, p.provider, p.provider_ref, p.settlement_batch],
+  url: "settlement-", searchFields: (p) => [p.number, p.invoice_id, p.provider, p.provider_ref, p.settlement_batch],
   sorts: () => [newest(t, (p) => time(p.paid_at)), oldest(t, (p) => time(p.paid_at)), amountHigh(t, (p) => amount(p.amount_minor)), amountLow(t, (p) => amount(p.amount_minor))],
   filters: { state: (p, v) => p.state === v },
 });
@@ -66,7 +66,7 @@ async function importFile() {
 </script>
 
 <template>
-  <Card class="mb-6">
+  <Card class="mb-6" data-testid="settlement-card">
     <div>
       <h2 class="text-lg font-semibold">{{ t("billing.settlement.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.settlement.hint") }}</p>

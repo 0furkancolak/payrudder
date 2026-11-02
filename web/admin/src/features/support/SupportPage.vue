@@ -35,7 +35,7 @@ const actions = useMySupportActions();
 
 const rows = computed(() => tickets.data.value ?? []);
 const table = useTableState(rows, {
-  searchFields: (r) => [r.subject, r.number, r.app_name],
+  url: true, searchFields: (r) => [r.subject, r.number, r.app_name],
   sorts: () => [newest(t, (r) => time(r.last_message_time)), oldest(t, (r) => time(r.last_message_time))],
   sheet: { kind: "ticket", id: (r) => r.id, loaded: () => tickets.isSuccess.value },
 });

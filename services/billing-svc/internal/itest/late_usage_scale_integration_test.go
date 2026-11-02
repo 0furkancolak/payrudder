@@ -21,13 +21,13 @@ func testPriorLateUsageAddsQuantitiesOfDifferentScales(t *testing.T) {
 		period, quantity string
 		scale            int
 	}{{"2026-10", "5", 0}, {"2026-11", "2000", 3}} {
-		// The period of an invoice is set while it is a draft; once it is open the database refuses to change it (migration 00003).
+		// The period of an invoice is set, and its lines are written, while it is a draft; once it is open the database refuses both (migrations 00003, 00006).
 		inv := seedOne(t, e.tid, customer, "cus_scale", "draft", "USD", "INV-2026-00092"+string(rune('1'+i)), 100, "live")
-		if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET period_id = $3, status = 'open' WHERE tenant_id = $1 AND id = $2`, e.tid, inv, l.period); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, amount_minor, description)
 			VALUES ($1,$2,1,'LATE_USAGE','calls','2026-09',$3::numeric,$4,50,'late')`, e.tid, inv, l.quantity, l.scale); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET period_id = $3, status = 'open' WHERE tenant_id = $1 AND id = $2`, e.tid, inv, l.period); err != nil {
 			t.Fatal(err)
 		}
 	}

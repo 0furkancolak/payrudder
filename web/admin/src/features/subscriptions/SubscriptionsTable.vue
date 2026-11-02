@@ -8,10 +8,13 @@ import type { Subscription } from "@/shared/api/client";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { enumWord, label } from "@/shared/lib/labels";
+import { useBulk } from "@/shared/lib/bulk";
+import { useCanWrite } from "@/shared/lib/access";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { SortSelect } from "@/shared/ui/sort-select";
@@ -23,8 +26,8 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useSubscriptions } from "./api";
-import { intervalKey, seatsOf, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
+import { useSubscriptionActions, useSubscriptions } from "./api";
+import { bulkEligibility, intervalKey, seatsOf, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 /** The tenant's subscriptions. A row opens a sheet (the `detail` slot, which gets the subscription) that steps through the rows the list shows. */
 const props = defineProps<{ tenantId: string }>();
@@ -34,6 +37,8 @@ const { t, te } = useI18n();
 const fmt = useFormat();
 const subs = useSubscriptions(() => props.tenantId);
 const list = computed(() => subs.data.value?.subscriptions ?? []);
+const canWrite = useCanWrite();
+const act = useSubscriptionActions(() => props.tenantId);
 
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 const BAD_STATES = ["cancelled", "past_due"];
@@ -68,6 +73,18 @@ function showTrials() {
   table.filters.value = { ...table.filters.value, state: ["trialing"] };
 }
 
+// Changing several at once: the ticked ones each action applies to, one request each. Cancelling asks first (with the count); "keep" and "resume" undo it or
+// are harmless, so they run at once (a selection of more than a page is asked about anyway).
+const bulk = useBulk(table, { name: (s) => s.customer_external_id ?? s.id ?? "" });
+const eligible = (pick: (e: ReturnType<typeof bulkEligibility>) => boolean) => (all: readonly Subscription[]) => all.filter((s) => pick(bulkEligibility(s)));
+const bulkCancel = () =>
+  bulk.run((s) => act.scheduleCancel.mutateAsync(s.id ?? ""), {
+    rows: eligible((e) => e.cancelAtPeriodEnd),
+    confirm: (rows) => ({ title: t("billing.subscriptions.bulk.cancelTitle", { n: rows.length }, rows.length), body: t("billing.subscriptions.bulk.confirmCancel", { n: rows.length }, rows.length), confirmLabel: t("billing.subscriptions.cancelAtPeriodEnd") }),
+  });
+const bulkKeep = () => bulk.run((s) => act.withdrawCancel.mutateAsync(s.id ?? ""), { rows: eligible((e) => e.keep) });
+const bulkResume = () => bulk.run((s) => act.resume.mutateAsync(s.id ?? ""), { rows: eligible((e) => e.resume) });
+
 const current = table.row;
 // A link from a customer or an invoice opens the subscription it names; a filter that hides it is cleared first.
 useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
@@ -93,9 +110,16 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <HeaderAction test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-cancel" @click="bulkCancel">{{ t("billing.subscriptions.bulk.cancel") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-keep" @click="bulkKeep">{{ t("billing.subscriptions.bulk.keep") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-resume" @click="bulkResume">{{ t("billing.subscriptions.bulk.resume") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead>{{ t("billing.subscriptions.customer") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.package") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.subscriptions.seats") }}</TableHead>
@@ -110,6 +134,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
+          <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${s.customer_external_id ?? ''}`" :checked="table.isTicked(s)" @change="(on) => table.tick(s, on)" /></TableCell>
           <TableCell class="font-medium"><CustomerLabel :id="s.customer_external_id" :tenant-id="tenantId" /></TableCell>
           <TableCell class="mono">{{ s.plan_code }} v{{ s.plan_version }}</TableCell>
           <TableCell class="text-end tabular-nums" data-testid="sub-seats-cell">{{ seatsOf(s) }}</TableCell>

@@ -10,6 +10,7 @@ import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -21,6 +22,8 @@ import EditAffiliateDialog from "./EditAffiliateDialog.vue";
 import LinkDialog from "./LinkDialog.vue";
 import { affiliateTone, balancesByAffiliate, type Affiliate } from "./logic";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { useBulk } from "@/shared/lib/bulk";
+import { useServerPageSelection } from "@/shared/lib/selection";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { usePager } from "./paging";
@@ -65,6 +68,17 @@ const statusOptions = computed(() => [
   ...["pending", "active", "suspended"].map((s) => ({ value: s, label: t(`affiliates.status.affiliate.${s}`) })),
 ]);
 const items = computed(() => list.data.value?.items ?? []);
+
+// Changing the status of several partners at once: the ticked ones of the page on screen that the step fits (approve a waiting one, suspend an active one,
+// reinstate a suspended one, the same steps as the row menu). Suspending stops new attributions and commissions, so it asks first, with the count.
+const table = useServerPageSelection(items, (a) => a.id);
+const bulk = useBulk(table, { name: (a) => a.code ?? a.id ?? "" });
+const bulkStep = (from: "pending" | "active" | "suspended", to: "active" | "suspended", confirm?: (rows: readonly Affiliate[]) => { title: string; body: string; confirmLabel: string }) =>
+  bulk.run((a) => update.mutateAsync({ id: a.id ?? "", body: { status: to } }), { rows: (all) => all.filter((a) => a.status === from), confirm });
+const bulkApprove = () => bulkStep("pending", "active");
+const bulkSuspend = () =>
+  bulkStep("active", "suspended", (rows) => ({ title: t("affiliates.partners.bulk.suspendTitle", { n: rows.length }, rows.length), body: t("affiliates.partners.bulk.confirmSuspend", { n: rows.length }, rows.length), confirmLabel: t("affiliates.partners.suspend") }));
+const bulkReinstate = () => bulkStep("suspended", "active");
 /** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
 const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") }, { kind: "partner", id: (a) => a.id ?? "", ready: () => list.isSuccess.value, rewind: pager.reset });
 const index = detail.index;
@@ -103,11 +117,18 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
     </DataToolbar>
     <ErrorText :error="list.error.value" class="px-3" />
     <ErrorText :error="update.error.value" class="px-3" />
+    <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-approve" @click="bulkApprove">{{ t("affiliates.partners.bulk.approve") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-suspend" @click="bulkSuspend">{{ t("affiliates.partners.bulk.suspend") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-reinstate" @click="bulkReinstate">{{ t("affiliates.partners.bulk.reinstate") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("affiliates.partners.empty") }}</p>
     <Table v-else-if="list.data.value">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead v-if="canWrite" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead>{{ t("affiliates.partners.code") }}</TableHead>
           <TableHead>{{ t("affiliates.partners.partner") }}</TableHead>
           <TableHead>{{ t("affiliates.common.status") }}</TableHead>
@@ -120,6 +141,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(a, i) in list.data.value.items" :key="a.id" :data-affiliate="a.code" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+          <TableCell v-if="canWrite"><RowCheck :label="`${t('common.bulk.selectRow')} ${a.code}`" :checked="table.isTicked(a)" @change="(on) => table.tick(a, on)" /></TableCell>
           <TableCell class="mono font-medium">{{ a.code }}</TableCell>
           <TableCell class="min-w-0">
             <div class="font-medium">{{ a.name || a.email }}</div>

@@ -57,7 +57,7 @@ const endpointsTable = useTableState(list, {
   url: true, filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
 });
 const deliveriesTable = useTableState(log, {
-  sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
+  sheet: { kind: "delivery", id: (d) => d.id }, url: "deliveries-", searchFields: (d) => [d.event_type, d.last_error, d.last_status],
   sorts: () => [newest(t, (d) => time(d.create_time)), oldest(t, (d) => time(d.create_time))],
   filters: { state: (d, v) => d.state === v },
 });
