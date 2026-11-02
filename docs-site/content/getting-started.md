@@ -46,6 +46,7 @@ TypeScript, Python, Go and PHP: [SDKs](sdks.html). They are generated from the s
 
 ## Going further
 
+- The ideas behind the API, one page each: [packages and plans](plans-and-packages.html), [subscriptions](subscriptions.html), [invoices](invoices.html), [credits and balances](credits.html) and [failed payments and retries](dunning.html).
 - Coming from another billing system: [Stripe Billing](migrate-from-stripe.html), [Paddle Billing](migrate-from-paddle.html) or [iyzico](migrate-from-iyzico.html).
 - Connecting a payment provider: [Stripe](provider-stripe.html), [Paddle](provider-paddle.html) and [iyzico](provider-iyzico.html).
 - [Tax and e-invoices](tax-and-einvoices.html), and [Security](security.html) (keys, two-factor sign-in, the audit log and webhook signatures).
