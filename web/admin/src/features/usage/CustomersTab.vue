@@ -12,6 +12,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import type { DateRange } from "@/shared/ui/date-range";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -151,7 +152,7 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
       <DetailList :rows="detailRows" />
       <section class="flex flex-col gap-3" :aria-label="t('billing.usage.customers.limits')">
         <h3 class="text-base font-semibold">{{ t("billing.usage.customers.limitsOf", { period }) }}</h3>
-        <ErrorText :error="usage.error.value" />
+        <ErrorState :error="usage.error.value" :retrying="usage.isFetching.value" compact class="mx-0" @retry="usage.refetch()" />
         <p v-if="codes.length === 0" class="text-muted-foreground text-sm">{{ t("billing.usage.empty.hint") }}</p>
         <ul v-else class="flex flex-col divide-y">
           <li v-for="m in perMeter" :key="m.code" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3" :data-testid="`detail-meter-${m.code}`">
@@ -167,7 +168,7 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
             <option v-for="c in codes" :key="c" :value="c">{{ c }}</option>
           </NativeSelect>
         </div>
-        <ErrorText :error="series.error.value" />
+        <ErrorState :error="series.error.value" :retrying="series.isFetching.value" compact class="mx-0" @retry="series.refetch()" />
         <Skeleton v-if="!series.data.value" class="h-64 w-full" />
         <UsageChart
           v-else

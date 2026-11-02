@@ -5,7 +5,7 @@ import en from "@/locales/en.json";
 import es from "@/locales/es.json";
 import fr from "@/locales/fr.json";
 import tr from "@/locales/tr.json";
-import { PERSON_PAGES } from "./layout/nav";
+import { PERSON_PAGES, buildNav } from "./layout/nav";
 import { ALL_TOURS, tourFor } from "./tours";
 
 type Tree = { [key: string]: string | Tree };
@@ -38,6 +38,18 @@ describe("tours", () => {
   it("covers every page a person has in the sidebar", () => {
     const missing = ["overview", "dashboard", "goLive", "apiKeys", "sandbox", "appSettings", "integrations", ...PERSON_PAGES].filter((k) => !tourFor(k));
     expect(missing).toEqual([]);
+  });
+
+  it("covers every page of every sidebar: a person's (with the SaaS plan, the partner portal and the operator's door), the platform's and a tenant's", () => {
+    const sidebars = [
+      buildNav({ level: "app", appId: "A", scope: "A", tenantId: "T", env: "live", saas: true, partner: true, operator: true }),
+      buildNav({ level: "platform", platformTenant: "P" }),
+      buildNav({ level: "tenant", tenantId: "T" }),
+    ];
+    // The two doors take the person to another console and are not pages of their own.
+    const doors = new Set(["operator", "myApps"]);
+    const keys = sidebars.flatMap((s) => s.flatMap((section) => section.items.map((i) => i.key))).filter((k) => !doors.has(k));
+    expect([...new Set(keys)].filter((k) => !tourFor(k))).toEqual([]);
   });
 
   it("the home's tour is the one that starts by itself, and it explains the app switcher, the sidebar, the sandbox switch and the user menu", () => {

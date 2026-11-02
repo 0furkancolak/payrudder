@@ -39,6 +39,7 @@ const (
 	BillingService_CreatePortalLink_FullMethodName     = "/payrudder.billing.v1.BillingService/CreatePortalLink"
 	BillingService_RevokePortalLinks_FullMethodName    = "/payrudder.billing.v1.BillingService/RevokePortalLinks"
 	BillingService_SettleInvoicePayment_FullMethodName = "/payrudder.billing.v1.BillingService/SettleInvoicePayment"
+	BillingService_RecordPaymentDispute_FullMethodName = "/payrudder.billing.v1.BillingService/RecordPaymentDispute"
 	BillingService_GetDunningSettings_FullMethodName   = "/payrudder.billing.v1.BillingService/GetDunningSettings"
 	BillingService_SetDunningSettings_FullMethodName   = "/payrudder.billing.v1.BillingService/SetDunningSettings"
 	BillingService_ListCreditPacks_FullMethodName      = "/payrudder.billing.v1.BillingService/ListCreditPacks"
@@ -107,6 +108,10 @@ type BillingServiceClient interface {
 	RevokePortalLinks(ctx context.Context, in *RevokePortalLinksRequest, opts ...grpc.CallOption) (*RevokePortalLinksResponse, error)
 	// SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
 	SettleInvoicePayment(ctx context.Context, in *SettleInvoicePaymentRequest, opts ...grpc.CallOption) (*SettleInvoicePaymentResponse, error)
+	// RecordPaymentDispute is called by payments-worker when a provider says a customer questioned a payment with their bank, or the case moved on or ended. It announces that
+	// step of the case once (the webhook payment.disputed, one audit entry) and, when the seller asked for it (dunning settings), blocks the customer for a chargeback when a
+	// formal dispute opens. Idempotent per (provider, dispute_ref, outcome).
+	RecordPaymentDispute(ctx context.Context, in *RecordPaymentDisputeRequest, opts ...grpc.CallOption) (*RecordPaymentDisputeResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(ctx context.Context, in *GetDunningSettingsRequest, opts ...grpc.CallOption) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -369,6 +374,16 @@ func (c *billingServiceClient) SettleInvoicePayment(ctx context.Context, in *Set
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SettleInvoicePaymentResponse)
 	err := c.cc.Invoke(ctx, BillingService_SettleInvoicePayment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) RecordPaymentDispute(ctx context.Context, in *RecordPaymentDisputeRequest, opts ...grpc.CallOption) (*RecordPaymentDisputeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordPaymentDisputeResponse)
+	err := c.cc.Invoke(ctx, BillingService_RecordPaymentDispute_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -675,6 +690,10 @@ type BillingServiceServer interface {
 	RevokePortalLinks(context.Context, *RevokePortalLinksRequest) (*RevokePortalLinksResponse, error)
 	// SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
 	SettleInvoicePayment(context.Context, *SettleInvoicePaymentRequest) (*SettleInvoicePaymentResponse, error)
+	// RecordPaymentDispute is called by payments-worker when a provider says a customer questioned a payment with their bank, or the case moved on or ended. It announces that
+	// step of the case once (the webhook payment.disputed, one audit entry) and, when the seller asked for it (dunning settings), blocks the customer for a chargeback when a
+	// formal dispute opens. Idempotent per (provider, dispute_ref, outcome).
+	RecordPaymentDispute(context.Context, *RecordPaymentDisputeRequest) (*RecordPaymentDisputeResponse, error)
 	// GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
 	GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error)
 	// SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -802,6 +821,9 @@ func (UnimplementedBillingServiceServer) RevokePortalLinks(context.Context, *Rev
 }
 func (UnimplementedBillingServiceServer) SettleInvoicePayment(context.Context, *SettleInvoicePaymentRequest) (*SettleInvoicePaymentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SettleInvoicePayment not implemented")
+}
+func (UnimplementedBillingServiceServer) RecordPaymentDispute(context.Context, *RecordPaymentDisputeRequest) (*RecordPaymentDisputeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordPaymentDispute not implemented")
 }
 func (UnimplementedBillingServiceServer) GetDunningSettings(context.Context, *GetDunningSettingsRequest) (*GetDunningSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDunningSettings not implemented")
@@ -1258,6 +1280,24 @@ func _BillingService_SettleInvoicePayment_Handler(srv interface{}, ctx context.C
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BillingServiceServer).SettleInvoicePayment(ctx, req.(*SettleInvoicePaymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_RecordPaymentDispute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordPaymentDisputeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).RecordPaymentDispute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_RecordPaymentDispute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).RecordPaymentDispute(ctx, req.(*RecordPaymentDisputeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1816,6 +1856,10 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SettleInvoicePayment",
 			Handler:    _BillingService_SettleInvoicePayment_Handler,
+		},
+		{
+			MethodName: "RecordPaymentDispute",
+			Handler:    _BillingService_RecordPaymentDispute_Handler,
 		},
 		{
 			MethodName: "GetDunningSettings",

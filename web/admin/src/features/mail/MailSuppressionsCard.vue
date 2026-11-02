@@ -7,6 +7,7 @@ import { useFormat } from "@/shared/lib/format";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
@@ -39,7 +40,8 @@ async function mailAgain(address: string) {
     <h2 class="m-0 px-3 pt-2 text-base font-semibold">{{ t("billing.mail.suppressions.title") }}</h2>
     <p class="text-muted-foreground px-3 pt-1 pb-3 text-sm">{{ t("billing.mail.suppressions.hint") }}</p>
     <Skeleton v-if="list.isPending.value" class="mx-3 h-8 w-64" aria-busy="true" />
-    <ErrorText :error="list.error.value ?? remove.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
+    <ErrorText :error="remove.error.value" class="px-3" />
     <p v-if="list.isSuccess.value && !connected" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-suppressions-not-connected">{{ t("billing.mail.notConnected") }}</p>
     <p v-else-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-suppressions-empty">{{ t("billing.mail.suppressions.empty") }}</p>
     <Table v-if="rows.length > 0">

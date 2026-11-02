@@ -4,6 +4,7 @@ import { HeaderAction } from "@/shared/ui/page-header";
 import { Download, Pencil, Ban, ScanLine, Paperclip } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { useShell } from "@/app/layout/useShell";
@@ -42,6 +43,7 @@ import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, locale } = useI18n();
 const fmt = useFormat();
+const canWrite = useCanWrite();
 const errorText = useErrorText();
 const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
@@ -98,7 +100,7 @@ const categoryOptions = computed(() => [{ value: "", label: t("billing.accountin
 const recurringOptions = computed(() => [{ value: "", label: t("billing.accounting.expenses.allRecurring") }, ...["none", "monthly", "yearly"].map((r) => ({ value: r, label: t(`billing.accounting.recurring.${r}`) }))]);
 const current = table.row;
 const actionsOf = (e: Expense, i: number) =>
-  e.void_time
+  e.void_time || !canWrite.value
     ? [{ key: "view", label: t("common.view"), onSelect: () => table.open(i) }]
     : [
         { key: "edit", label: t("billing.accounting.expenses.edit"), icon: Pencil, onSelect: () => edit(e) },
@@ -190,8 +192,8 @@ async function exportCsv(report: "export" | "coupons" = "export") {
       <FilterSelect v-if="appList.length" v-model="app" :label="t('billing.accounting.app.label')" :options="appOptions" />
       <div class="ms-auto flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" :disabled="!rangeOk || exporting" @click="exportCsv('export')"><Download class="size-4" aria-hidden="true" />{{ t("billing.accounting.export") }}</Button>
-        <Button type="button" variant="outline" data-testid="scan-receipts" @click="scan"><ScanLine class="size-4" aria-hidden="true" />{{ t("billing.accounting.scan.open") }}</Button>
-        <HeaderAction test-id="add-expense" :label="t('billing.accounting.addExpense')" @click="add" />
+        <Button v-if="canWrite" type="button" variant="outline" data-testid="scan-receipts" @click="scan"><ScanLine class="size-4" aria-hidden="true" />{{ t("billing.accounting.scan.open") }}</Button>
+        <HeaderAction v-if="canWrite" test-id="add-expense" :label="t('billing.accounting.addExpense')" @click="add" />
       </div>
     </div>
     <p v-if="!rangeOk" class="text-muted-foreground text-sm">{{ t("billing.accounting.period.invalid") }}</p>
@@ -278,7 +280,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         <dd class="text-end">{{ current.void_reason || day(current.void_time) }}</dd>
       </template>
     </dl>
-    <template v-if="current && !current.void_time" #footer>
+    <template v-if="current && !current.void_time && canWrite" #footer>
       <Button type="button" variant="outline" @click="from(edit, current)"><Pencil class="size-4" aria-hidden="true" />{{ t("billing.accounting.expenses.edit") }}</Button>
       <Button type="button" variant="outline" @click="from(voidOne, current)"><Ban class="size-4" aria-hidden="true" />{{ t("billing.accounting.expenses.void") }}</Button>
     </template>

@@ -31,6 +31,9 @@ enum Purpose {
   PURPOSE_INVOICE_LOGO = 1;
   PURPOSE_INVOICE_ATTACHMENT = 2;
   PURPOSE_GENERAL = 3;
+  // A file attached to a support ticket (png, jpeg, pdf or plain text, at most 5 MiB). It belongs to the help desk, not to the tenant it is stored under: it is
+  // never listed by ListAssets without this purpose, and the tenant API cannot name it.
+  PURPOSE_SUPPORT_ATTACHMENT = 4;
 }
 
 enum AssetStatus {

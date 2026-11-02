@@ -3,7 +3,7 @@ import { useI18n } from "vue-i18n";
 import { lineText } from "@/features/invoices/lineText";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -26,7 +26,7 @@ const upcoming = useUpcomingInvoice(() => props.tenantId, () => props.externalId
       <StatusPill tone="warning">{{ t("billing.customers.upcoming.estimate") }}</StatusPill>
     </div>
     <Skeleton v-if="upcoming.isPending.value" class="h-16 w-full" />
-    <ErrorText v-else-if="upcoming.error.value" :error="upcoming.error.value" />
+    <ErrorState v-else-if="upcoming.error.value" compact class="mx-0 mb-0" :error="upcoming.error.value" :retrying="upcoming.isFetching.value" @retry="upcoming.refetch()" />
     <template v-else-if="upcoming.data.value">
       <p v-if="!upcoming.data.value.has_invoice" class="text-muted-foreground m-0 text-sm" data-testid="upcoming-none">{{ t("billing.customers.upcoming.none") }}</p>
       <template v-else>

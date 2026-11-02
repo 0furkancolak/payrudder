@@ -24,6 +24,52 @@ func (q *Queries) DeleteSupportCannedReply(ctx context.Context, id uuid.UUID) (i
 	return result.RowsAffected(), nil
 }
 
+const getSupportAttachment = `-- name: GetSupportAttachment :one
+SELECT a.id, a.ticket_id, a.storage_tenant_id, a.asset_id, a.filename, m.internal, t.account_id, tn.environment, tn.timezone, tn.tier
+FROM support_attachments a
+JOIN support_messages m ON m.id = a.message_id
+JOIN support_tickets t ON t.id = a.ticket_id
+JOIN tenants tn ON tn.id = a.storage_tenant_id
+WHERE a.id = $1 AND a.ticket_id = $2
+`
+
+type GetSupportAttachmentParams struct {
+	ID       uuid.UUID
+	TicketID uuid.UUID
+}
+
+type GetSupportAttachmentRow struct {
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	Internal        bool
+	AccountID       uuid.UUID
+	Environment     string
+	Timezone        string
+	Tier            string
+}
+
+// One attachment with where it is stored and whether its message is an internal note.
+func (q *Queries) GetSupportAttachment(ctx context.Context, arg GetSupportAttachmentParams) (GetSupportAttachmentRow, error) {
+	row := q.db.QueryRow(ctx, getSupportAttachment, arg.ID, arg.TicketID)
+	var i GetSupportAttachmentRow
+	err := row.Scan(
+		&i.ID,
+		&i.TicketID,
+		&i.StorageTenantID,
+		&i.AssetID,
+		&i.Filename,
+		&i.Internal,
+		&i.AccountID,
+		&i.Environment,
+		&i.Timezone,
+		&i.Tier,
+	)
+	return i, err
+}
+
 const getSupportTicket = `-- name: GetSupportTicket :one
 
 SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(p.name, '')::text AS app_name, t.opened_by,
@@ -103,6 +149,36 @@ func (q *Queries) GetSupportTicket(ctx context.Context, arg GetSupportTicketPara
 		&i.Tags,
 	)
 	return i, err
+}
+
+const insertSupportAttachment = `-- name: InsertSupportAttachment :exec
+INSERT INTO support_attachments (id, ticket_id, message_id, storage_tenant_id, asset_id, filename, content_type, size_bytes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertSupportAttachmentParams struct {
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	MessageID       uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	ContentType     string
+	SizeBytes       int64
+}
+
+func (q *Queries) InsertSupportAttachment(ctx context.Context, arg InsertSupportAttachmentParams) error {
+	_, err := q.db.Exec(ctx, insertSupportAttachment,
+		arg.ID,
+		arg.TicketID,
+		arg.MessageID,
+		arg.StorageTenantID,
+		arg.AssetID,
+		arg.Filename,
+		arg.ContentType,
+		arg.SizeBytes,
+	)
+	return err
 }
 
 const insertSupportCannedReply = `-- name: InsertSupportCannedReply :one
@@ -228,6 +304,55 @@ func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTick
 		arg.SlaZone,
 	)
 	return err
+}
+
+const listSupportAttachments = `-- name: ListSupportAttachments :many
+SELECT a.id, a.message_id, a.filename, a.content_type, a.size_bytes, a.created_at
+FROM support_attachments a JOIN support_messages m ON m.id = a.message_id
+WHERE a.ticket_id = $1 AND ($2::boolean OR NOT m.internal)
+ORDER BY a.created_at, a.id
+`
+
+type ListSupportAttachmentsParams struct {
+	TicketID     uuid.UUID
+	WithInternal bool
+}
+
+type ListSupportAttachmentsRow struct {
+	ID          uuid.UUID
+	MessageID   uuid.UUID
+	Filename    string
+	ContentType string
+	SizeBytes   int64
+	CreatedAt   time.Time
+}
+
+// The attachments of a ticket's messages (those of internal notes only when asked for), oldest first.
+func (q *Queries) ListSupportAttachments(ctx context.Context, arg ListSupportAttachmentsParams) ([]ListSupportAttachmentsRow, error) {
+	rows, err := q.db.Query(ctx, listSupportAttachments, arg.TicketID, arg.WithInternal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSupportAttachmentsRow{}
+	for rows.Next() {
+		var i ListSupportAttachmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MessageID,
+			&i.Filename,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSupportCannedReplies = `-- name: ListSupportCannedReplies :many
@@ -620,6 +745,29 @@ func (q *Queries) SupportAppInAccount(ctx context.Context, arg SupportAppInAccou
 	return found, err
 }
 
+const supportAttachmentTotals = `-- name: SupportAttachmentTotals :one
+SELECT count(*) FILTER (WHERE a.ticket_id = $1)::int AS on_ticket, COALESCE(sum(a.size_bytes), 0)::bigint AS account_bytes
+FROM support_attachments a JOIN support_tickets t ON t.id = a.ticket_id
+WHERE t.account_id = $2
+`
+
+type SupportAttachmentTotalsParams struct {
+	TicketID  uuid.UUID
+	AccountID uuid.UUID
+}
+
+type SupportAttachmentTotalsRow struct {
+	OnTicket     int32
+	AccountBytes int64
+}
+
+func (q *Queries) SupportAttachmentTotals(ctx context.Context, arg SupportAttachmentTotalsParams) (SupportAttachmentTotalsRow, error) {
+	row := q.db.QueryRow(ctx, supportAttachmentTotals, arg.TicketID, arg.AccountID)
+	var i SupportAttachmentTotalsRow
+	err := row.Scan(&i.OnTicket, &i.AccountBytes)
+	return i, err
+}
+
 const supportAuthorName = `-- name: SupportAuthorName :one
 SELECT COALESCE(NULLIF(display_name, ''), email)::text AS name FROM users WHERE id = $1
 `
@@ -803,6 +951,45 @@ func (q *Queries) SupportMailTarget(ctx context.Context, id uuid.UUID) (SupportM
 	return i, err
 }
 
+const supportMessageForAttachment = `-- name: SupportMessageForAttachment :one
+
+SELECT m.id, m.ticket_id, m.author_kind, m.author_user_id, m.internal, t.account_id, t.status
+FROM support_messages m JOIN support_tickets t ON t.id = m.ticket_id
+WHERE m.id = $1 AND m.ticket_id = $2
+`
+
+type SupportMessageForAttachmentParams struct {
+	ID       uuid.UUID
+	TicketID uuid.UUID
+}
+
+type SupportMessageForAttachmentRow struct {
+	ID           uuid.UUID
+	TicketID     uuid.UUID
+	AuthorKind   string
+	AuthorUserID *uuid.UUID
+	Internal     bool
+	AccountID    uuid.UUID
+	Status       string
+}
+
+// --- attachments (plan 12). The bytes are in assets-svc; these rows are the record.
+// The message as the attachment calls need it: whose it is, whether it is a note, and the ticket and account it belongs to.
+func (q *Queries) SupportMessageForAttachment(ctx context.Context, arg SupportMessageForAttachmentParams) (SupportMessageForAttachmentRow, error) {
+	row := q.db.QueryRow(ctx, supportMessageForAttachment, arg.ID, arg.TicketID)
+	var i SupportMessageForAttachmentRow
+	err := row.Scan(
+		&i.ID,
+		&i.TicketID,
+		&i.AuthorKind,
+		&i.AuthorUserID,
+		&i.Internal,
+		&i.AccountID,
+		&i.Status,
+	)
+	return i, err
+}
+
 const supportOpenCount = `-- name: SupportOpenCount :one
 SELECT count(*)::int FROM support_tickets WHERE account_id = $1 AND status IN ('open', 'pending')
 `
@@ -909,6 +1096,63 @@ func (q *Queries) SupportRoleOf(ctx context.Context, arg SupportRoleOfParams) (s
 	var role string
 	err := row.Scan(&role)
 	return role, err
+}
+
+const supportStorageTenant = `-- name: SupportStorageTenant :one
+SELECT t.id, t.environment, t.timezone, t.tier
+FROM tenants t JOIN apps p ON p.id = t.app_id
+WHERE t.account_id = $1 AND p.archived_at IS NULL
+ORDER BY (t.environment = 'live') DESC, p.created_at, t.id LIMIT 1
+`
+
+type SupportStorageTenantRow struct {
+	ID          uuid.UUID
+	Environment string
+	Timezone    string
+	Tier        string
+}
+
+// The tenant whose storage holds an account's help desk files: the oldest live app's live tenant, else the oldest app's sandbox tenant. No row: the account has
+// no app yet.
+func (q *Queries) SupportStorageTenant(ctx context.Context, accountID uuid.UUID) (SupportStorageTenantRow, error) {
+	row := q.db.QueryRow(ctx, supportStorageTenant, accountID)
+	var i SupportStorageTenantRow
+	err := row.Scan(
+		&i.ID,
+		&i.Environment,
+		&i.Timezone,
+		&i.Tier,
+	)
+	return i, err
+}
+
+const supportTenantInAccount = `-- name: SupportTenantInAccount :one
+SELECT t.id, t.environment, t.timezone, t.tier FROM tenants t WHERE t.id = $1 AND t.account_id = $2
+`
+
+type SupportTenantInAccountParams struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+}
+
+type SupportTenantInAccountRow struct {
+	ID          uuid.UUID
+	Environment string
+	Timezone    string
+	Tier        string
+}
+
+// True when the tenant belongs to the account (the gateway names the tenant it stored under; it must be one of the account's).
+func (q *Queries) SupportTenantInAccount(ctx context.Context, arg SupportTenantInAccountParams) (SupportTenantInAccountRow, error) {
+	row := q.db.QueryRow(ctx, supportTenantInAccount, arg.ID, arg.AccountID)
+	var i SupportTenantInAccountRow
+	err := row.Scan(
+		&i.ID,
+		&i.Environment,
+		&i.Timezone,
+		&i.Tier,
+	)
+	return i, err
 }
 
 const supportUnreadCount = `-- name: SupportUnreadCount :one

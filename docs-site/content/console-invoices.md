@@ -6,7 +6,7 @@ It was written from the console's own texts (every name in bold is a string of t
 
 ## Invoices
 
-In the sidebar, under **Customers and billing**, **Invoices**: **What this environment billed. Open one to see its lines and download the PDF.** An invoice appears when a billing period closes (**No invoices yet. They appear when a billing period closes.**); before it has a number it is shown as **Draft**.
+In the sidebar, under **Customers and billing**, **Invoices**: what this environment billed; open one to see its lines and download the PDF. An invoice appears when a billing period closes (**No invoices yet. They appear when a billing period closes.**); before it has a number it is shown as **Draft**.
 
 The list has a search (number, customer id, period), a **Status** filter (**draft**, **open**, **paid**, **uncollectible**, **void**) and a date range, which starts on the current month. The columns are **Number**, **Customer**, **Period**, **Total** (in the invoice's own currency), **Status** and **Created**. Rows come a page at a time (**Previous** and **Next**). Opening a row shows the invoice in a sheet that you can step through with the arrows without going back to the list.
 
@@ -34,7 +34,7 @@ An invoice of the sandbox has **Simulate payment**: **Run this invoice's payment
 
 ## Payments
 
-**Payments**, next to Invoices: **Charges and refunds, newest first. Each payment shows the outcome it settled on.** The list can be filtered by status and type (**Charge** or **Refund**), and **View invoice** opens the invoice a payment belongs to. The page shows the **Latest 1000 ledger entries**.
+**Payments**, next to Invoices: charges and refunds, newest first, each with the outcome it settled on. The list can be filtered by status and type (**Charge** or **Refund**), and **View invoice** opens the invoice a payment belongs to. The page shows the **Latest 1000 ledger entries**.
 
 ## Payment links
 

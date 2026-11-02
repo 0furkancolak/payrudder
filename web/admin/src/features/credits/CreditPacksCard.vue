@@ -6,6 +6,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenantCurrency } from "@/features/tenants/currency";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
+import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { parseMajor } from "@/shared/lib/money";
 import { CREDITS_RE, CREDIT_VALIDITY_MAX_DAYS } from "@/shared/lib/rules";
@@ -18,6 +19,7 @@ import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -34,6 +36,7 @@ const props = defineProps<{ tenantId: string }>();
 const emit = defineEmits<{ purchaseLink: [pack: { id: string; name: string }] }>();
 const { t, locale } = useI18n();
 const fmt = useFormat();
+const canWrite = useCanWrite();
 
 const packs = useCreditPacks(() => props.tenantId);
 const createPack = useCreateCreditPack(() => props.tenantId);
@@ -57,7 +60,7 @@ const table = useTableState<Pack>(() => packs.data.value?.packs ?? [], {
   filters: { state: (p, v) => (v === "active" ? !!p.active : !p.active) },
 });
 const states = computed(() => [{ value: "", label: t("common.all") }, { value: "active", label: t("billing.credits.packs.onSale") }, { value: "inactive", label: t("billing.credits.packs.withdrawn") }]);
-const rowActions = (p: Pack) => [
+const rowActions = (p: Pack) => !canWrite.value ? [] : [
   ...(p.active ? [{ key: "purchase-link", label: t("billing.credits.packs.purchaseLink"), icon: Link2, onSelect: () => emit("purchaseLink", { id: p.id ?? "", name: p.name ?? "" }) }] : []),
   { key: p.active ? "withdraw" : "restore", label: p.active ? t("billing.credits.packs.withdraw") : t("billing.credits.packs.restore"), icon: p.active ? Ban : Undo2, separatorBefore: !!p.active, disabled: setActive.isPending.value, onSelect: () => setActive.mutate({ id: p.id ?? "", active: !p.active }) },
 ];
@@ -102,9 +105,9 @@ function submitPack() {
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
-      <HeaderAction :label="t('billing.credits.packs.new')" @click="open = true" />
+      <HeaderAction v-if="canWrite" :label="t('billing.credits.packs.new')" @click="open = true" />
     </DataToolbar>
-    <ErrorText :error="packs.error.value" class="px-3" />
+    <ErrorState :error="packs.error.value" :retrying="packs.isFetching.value" compact @retry="packs.refetch()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

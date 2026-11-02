@@ -13,6 +13,7 @@ import (
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/deadletters"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/disputes"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dunning"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices"
@@ -49,6 +50,7 @@ type (
 	deadLetterHandler = deadletters.Handler
 	einvoiceHandler   = einvoices.Handler
 	paymentHandler    = payments.Handler
+	disputeHandler    = disputes.Handler
 )
 
 // unimplemented answers UNIMPLEMENTED for the methods no module serves. It is embedded one level deeper than the module handlers so
@@ -76,6 +78,7 @@ type Server struct {
 	*deadLetterHandler
 	*einvoiceHandler
 	*paymentHandler
+	*disputeHandler
 }
 
 // Deps are the modules the API serves and the databases they read and write through.
@@ -90,6 +93,8 @@ type Deps struct {
 	Rerating    *reratingcmd.Commands
 	Inputs      *inputs.Inputs
 	Hosted      *hostedcmd.Backend
+	// Blocker blocks a customer of a chargeback (plans-svc); nil never blocks.
+	Blocker disputes.Blocker
 }
 
 // New returns the API.
@@ -110,6 +115,7 @@ func New(d Deps) *Server {
 		deadLetterHandler: deadletters.New(),
 		einvoiceHandler:   einvoices.New(app, einv),
 		paymentHandler:    payments.New(system, eng),
+		disputeHandler:    disputes.New(system, d.Blocker),
 	}
 }
 

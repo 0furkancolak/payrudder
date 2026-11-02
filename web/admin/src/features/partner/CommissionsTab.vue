@@ -5,7 +5,7 @@ import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "@/features/affiliates/paging";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import FilterBar from "@/features/affiliates/FilterBar.vue";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -31,7 +31,7 @@ const list = useCommissions(() => props.id, status, pager.token, pager.size);
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
     </FilterBar>
     <p class="text-muted-foreground m-0 px-3 pb-2 text-xs">{{ t("partner.commissions.hint") }}</p>
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-24" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground m-0 px-3 py-4 text-sm">{{ t("partner.commissions.empty") }}</p>
     <Table v-else-if="list.data.value">

@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذه ليست فاتورة حقيقية.</strong></p>{{end}}
+<h2>يرجى تأكيد دفعتك للفاتورة {{index .D "invoice_number"}}</h2>
+<p>مرحباً {{index .D "customer_name"}}، يطلب منك مصرفك تأكيد دفعة بمبلغ <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> للفاتورة <strong>{{index .D "invoice_number"}}</strong> (الفترة {{index .D "period"}}). لم يتم خصم أي مبلغ بعد.</p>
+{{if index .D "pay_url"}}<p><a href="{{index .D "pay_url"}}">تأكيد الدفعة</a></p>
+<p>إذا لم يُفتح الرابط، انسخ هذا العنوان إلى متصفحك: {{index .D "pay_url"}}</p>{{else}}<p>افتح صفحة دفع هذه الفاتورة من الرابط الذي أرسلناه إليك سابقاً، أو اطلب رابطاً جديداً من {{index .D "tenant_name"}}.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

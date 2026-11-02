@@ -11,6 +11,7 @@ import { type Currency } from "@/shared/lib/currencies";
 import { firstError } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
 import { FormField } from "@/shared/ui/form-field";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -111,7 +112,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
 <template>
   <p class="text-muted-foreground mb-3 px-1 text-sm">{{ t("apps.immutable") }}</p>
   <Card class="mb-6 p-3">
-    <ErrorText :error="apps.error.value" class="px-3 pb-2" />
+    <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" compact @retry="apps.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />

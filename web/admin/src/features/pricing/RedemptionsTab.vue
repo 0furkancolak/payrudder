@@ -10,7 +10,7 @@ import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useCoupons, useRedemptions } from "./api";
@@ -75,7 +75,7 @@ const detailRows = computed(() => {
 
 <template>
   <Card class="p-3" data-testid="redemptions-list">
-    <ErrorText :error="list.error.value" class="px-3 pb-2" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <DataToolbar v-model:search="customer" :placeholder="t('billing.coupons.searchCustomer')" :active="active" @clear="clear">
       <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
     </DataToolbar>

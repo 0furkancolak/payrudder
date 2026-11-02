@@ -214,6 +214,16 @@ func StatusPending(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_PENDING}}}
 }
 
+// ActionRequired is the reply to a charge the provider will not take without the customer (3-D Secure): not a decline, billing mails the customer and waits.
+func ActionRequired(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentActionRequired{PaymentActionRequired: &commandsv1.PaymentActionRequired{PspChargeId: "pi_stub"}}}
+}
+
+// StatusActionRequired is a payment status reply saying the payment still waits for the customer.
+func StatusActionRequired(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: commandsv1.PaymentStatus_STATE_ACTION_REQUIRED, PspChargeId: "pi_stub"}}}
+}
+
 // PdfFailed is a permanent render failure.
 func PdfFailed(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PdfFailed{PdfFailed: &commandsv1.PdfFailed{Reason: "template error"}}}

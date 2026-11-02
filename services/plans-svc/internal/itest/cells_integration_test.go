@@ -3,6 +3,7 @@
 package itest
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
@@ -23,7 +25,7 @@ import (
 // looked up without knowing the tenant (the api keys by prefix, the queue of the reset runner).
 var globalTables = []string{
 	"accounts", "tenants", "apps", "users", "account_members", "account_invites", "user_sessions", "user_tokens", "user_identities", "login_codes", "user_onboarding",
-	"config_promotions", "app_audit", "go_live_audit", "tenant_status_events", "api_keys", "sandbox_resets", "support_tickets", "support_messages", "support_events", "support_canned_replies",
+	"config_promotions", "app_audit", "go_live_audit", "tenant_status_events", "api_keys", "sandbox_resets", "support_tickets", "support_messages", "support_events", "support_canned_replies", "support_attachments",
 	"user_totp", "user_recovery_codes", "login_challenges", "price_change_pause",
 }
 
@@ -204,11 +206,29 @@ func movePlansTenant(t *testing.T, w *world, e *env, tn *plansv1.Tenant, suffix 
 		}
 	}
 
+	// The tenant's audit chain goes with it: the copy keeps the numbers and hashes its rows have, and the verifier finds the chain whole in the new place.
+	chainWhole := func(where string) {
+		t.Helper()
+		pool, schema := e.auditPlace(tn.GetId())
+		rep, err := audit.Verify(context.Background(), pool, schema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p := problemsOf(rep, tn.GetId()); len(p) != 0 {
+			t.Errorf("%s: the tenant's audit chain does not verify: %v", where, p)
+		}
+		if seqs, _, _ := e.chainRows(t, tn.GetId()); len(seqs) == 0 {
+			t.Errorf("%s: the tenant has no audit entries (the test would not look at the chain)", where)
+		}
+	}
+	chainWhole("in the pooled database")
+
 	rep := move(pooled, cell)
 	if rep.Rows() < 30 {
 		t.Fatalf("only %d rows were copied", rep.Rows())
 	}
 	same("in the cell")
+	chainWhole("in the cell")
 	for _, table := range []string{"customers", "affiliate_journal", "affiliate_attributions"} {
 		if n := (&jobWorld{e: e, w: w}).pooledCount(t, tn.GetId(), table); n != 0 {
 			t.Fatalf("%d rows of %s are left in the pooled database", n, table)
@@ -221,6 +241,7 @@ func movePlansTenant(t *testing.T, w *world, e *env, tn *plansv1.Tenant, suffix 
 	move(cell, pooled)
 	// Identity values are renumbered into the pooled database, so the outbox rows have other ids.
 	same("back in the pooled database", "outbox")
+	chainWhole("back in the pooled database")
 	if _, err := e.plans.GetCustomer(as(tn.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_" + suffix}); err != nil {
 		t.Fatalf("a request after the move back: %v", err)
 	}

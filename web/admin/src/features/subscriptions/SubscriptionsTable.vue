@@ -22,7 +22,7 @@ import { newest, oldest, time } from "@/shared/lib/sortDefs";
 
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -97,7 +97,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
 
 <template>
   <Card class="p-3">
-    <ErrorText :error="subs.error.value" class="px-3" />
+    <ErrorState :error="subs.error.value" :retrying="subs.isFetching.value" compact @retry="subs.refetch()" />
     <div v-if="ending.length > 0" class="bg-warning-soft text-warning mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2.5 text-sm" role="status" data-testid="trials-ending">
       <span>{{ t("billing.subscriptions.trialsEnding", { n: ending.length, days: TRIAL_WARNING_DAYS }, ending.length) }}</span>
       <Button type="button" size="sm" variant="outline" data-testid="trials-ending-show" @click="showTrials">{{ t("billing.subscriptions.showTrials") }}</Button>
@@ -107,7 +107,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
       <FilterSelect v-model="intervalFilter" multiple :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
       <DateRangePicker v-model="range" />
-      <HeaderAction test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
+      <HeaderAction v-if="canWrite" test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <BulkBar v-if="canWrite" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">

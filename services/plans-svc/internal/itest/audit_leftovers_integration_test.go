@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,74 @@ func testAuditLeftovers(t *testing.T) {
 		}
 		if ev, _ := one(t, "coupon.deactivated"); ev.GetTargetId() != "SPRING" {
 			t.Errorf("coupon.deactivated = %v", ev)
+		}
+	})
+
+	t.Run("a customer's data and a coupon on a subscription", func(t *testing.T) {
+		const newEmail, taxID, street, token = "dana.new@data.example", "1234567890", "12 Secret Street", "pm_live_audit_chain_token"
+		secrets = append(secrets, newEmail, taxID, street, token)
+		if _, err := e.plans.CreateCustomer(tctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_data", Name: "Dana Data", Email: "dana@data.example"}); err != nil {
+			t.Fatal(err)
+		}
+		fields := func(d map[string]any) []string {
+			var out []string
+			for _, f := range d["fields"].([]any) {
+				out = append(out, f.(string))
+			}
+			return out
+		}
+		// Contact: the entry names the fields that changed, not their values; a call that changes nothing says nothing.
+		if _, err := e.plans.SetCustomerContact(tctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_data", Name: "Dana Data", Email: newEmail}); err != nil {
+			t.Fatal(err)
+		}
+		ev, d := one(t, "customer.contact_changed")
+		if ev.GetTargetType() != "customer" || ev.GetBeforeHash() == "" || ev.GetAfterHash() == "" || ev.GetBeforeHash() == ev.GetAfterHash() || d["external_id"] != "cus_data" ||
+			!slices.Contains(fields(d), "email") || slices.Contains(fields(d), "name") {
+			t.Errorf("customer.contact_changed = %v %v", ev, d)
+		}
+		if _, err := e.plans.SetCustomerContact(tctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_data", Name: "Dana Data", Email: newEmail}); err != nil {
+			t.Fatal(err)
+		}
+		one(t, "customer.contact_changed")
+		// Address, tax data and the payment method.
+		if _, err := e.plans.SetCustomerAddress(tctx, &plansv1.SetCustomerAddressRequest{ExternalId: "cus_data", Address: &plansv1.Address{Line1: street, City: "Berlin", PostalCode: "10115", Country: "DE"}}); err != nil {
+			t.Fatal(err)
+		}
+		if ev, d := one(t, "customer.address_changed"); ev.GetAfterHash() == "" || ev.GetBeforeHash() == ev.GetAfterHash() || !slices.Equal(fields(d), []string{"address"}) {
+			t.Errorf("customer.address_changed = %v %v", ev, d)
+		}
+		if _, err := e.plans.SetCustomerTax(tctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_data", TaxId: taxID, TaxOffice: "Mitte"}); err != nil {
+			t.Fatal(err)
+		}
+		if ev, d := one(t, "customer.tax_changed"); ev.GetAfterHash() == "" || ev.GetBeforeHash() == ev.GetAfterHash() || !slices.Contains(fields(d), "tax_id") {
+			t.Errorf("customer.tax_changed = %v %v", ev, d)
+		}
+		if _, err := e.plans.SetPaymentMethod(tctx, &plansv1.SetPaymentMethodRequest{ExternalId: "cus_data", PaymentMethod: token}); err != nil {
+			t.Fatal(err)
+		}
+		if ev, d := one(t, "customer.payment_method_changed"); ev.GetAfterHash() == "" || ev.GetBeforeHash() == ev.GetAfterHash() || !slices.Equal(fields(d), []string{"payment_method"}) {
+			t.Errorf("customer.payment_method_changed = %v %v", ev, d)
+		}
+		// A coupon on a subscription, put there and taken off.
+		if _, err := e.plans.CreateCoupon(tctx, &plansv1.CreateCouponRequest{Coupon: &plansv1.Coupon{Code: "CHAIN10", PercentBps: 1000, Duration: plansv1.CouponDuration_COUPON_DURATION_FOREVER}}); err != nil {
+			t.Fatal(err)
+		}
+		sub, err := e.plans.CreateSubscription(tctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_data", PlanCode: "basic", PlanVersion: 1, StartTime: timestamppb.New(time.Now().Add(-time.Hour).Truncate(time.Microsecond))})
+		if err != nil {
+			t.Fatal(err)
+		}
+		subID := sub.GetSubscription().GetId()
+		if _, err := e.plans.ApplyCoupon(tctx, &plansv1.ApplyCouponRequest{SubscriptionId: subID, Code: "CHAIN10"}); err != nil {
+			t.Fatal(err)
+		}
+		if ev, d := one(t, "subscription.coupon_applied"); ev.GetTargetType() != "subscription" || ev.GetTargetId() != subID || d["coupon"] != "CHAIN10" {
+			t.Errorf("subscription.coupon_applied = %v %v", ev, d)
+		}
+		if _, err := e.plans.RemoveCoupon(tctx, &plansv1.RemoveCouponRequest{SubscriptionId: subID}); err != nil {
+			t.Fatal(err)
+		}
+		if ev, d := one(t, "subscription.coupon_removed"); ev.GetTargetId() != subID || d["coupon"] != "CHAIN10" {
+			t.Errorf("subscription.coupon_removed = %v %v", ev, d)
 		}
 	})
 

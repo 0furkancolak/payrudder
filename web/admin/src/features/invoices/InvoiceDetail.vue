@@ -16,6 +16,7 @@ import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
+import { DisputeCard } from "@/features/disputes";
 import { InvoiceRelated } from "@/features/related";
 import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
@@ -83,6 +84,7 @@ function askReject(outcome: "rejected" | "expired") {
 
     <TransferCard v-if="transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
     <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+    <DisputeCard :tenant-id="tenantId" :invoice-id="invoiceId" />
 
     <InvoiceLines :inv="inv" />
 
@@ -115,7 +117,7 @@ function askReject(outcome: "rejected" | "expired") {
 
     <section class="flex flex-col gap-3" :aria-label="t('invoice.saga')">
       <h2 class="text-lg font-semibold tracking-tight">{{ t("invoice.saga") }}</h2>
-      <ErrorText :error="saga.error.value" />
+      <ErrorState :error="saga.error.value" :retrying="saga.isFetching.value" compact class="mx-0" @retry="saga.refetch()" />
       <Table :aria-label="t('invoice.saga')">
         <TableHeader>
           <TableRow class="hover:bg-transparent">

@@ -146,9 +146,38 @@ const (
 	KindSubscription NotificationKind = "subscription"
 	// KindPaymentMethod: a customer saved a payment method on a page made by SetupProvider.
 	KindPaymentMethod NotificationKind = "payment_method"
+	// KindDispute: the cardholder questioned a payment with their bank, or the case moved on or ended (Notification.Dispute).
+	KindDispute NotificationKind = "dispute"
 	// KindIgnored is an event Payrudder has no use for (a transaction that was merely created, for example).
 	KindIgnored NotificationKind = "ignored"
 )
+
+// DisputeOutcome is where a dispute stands, in Payrudder's three words whatever the provider's vocabulary.
+type DisputeOutcome string
+
+const (
+	// DisputeOpen: undecided. For a formal dispute the provider has taken the money back until it decides.
+	DisputeOpen DisputeOutcome = "open"
+	// DisputeWon: decided for the seller, or closed without ever becoming a chargeback: nothing is lost (a formal dispute's money is back).
+	DisputeWon DisputeOutcome = "won"
+	// DisputeLost: decided for the cardholder: the money stays with them.
+	DisputeLost DisputeOutcome = "lost"
+)
+
+// DisputeEvent is what a dispute notification says about the case.
+type DisputeEvent struct {
+	// ID is the provider's reference of the case, the same in every notification about it.
+	ID string
+	// Status is the provider's own word (Stripe's needs_response, under_review, won, lost; Paddle's action and status).
+	Status  string
+	Outcome DisputeOutcome
+	// Formal is a chargeback proper, which takes the money back. False is an inquiry or a warning ahead of one (Stripe's warning_* statuses, Paddle's chargeback_warning).
+	Formal bool
+	// Reason is the cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received); empty when the provider does not say.
+	Reason string
+	// EvidenceDue is when the seller's evidence is due; zero when the provider does not say.
+	EvidenceDue time.Time
+}
 
 // Notification is what a confirmed provider notification says.
 type Notification struct {
@@ -165,6 +194,9 @@ type Notification struct {
 	Subscription *SubscriptionEvent
 	// PaymentMethod is set for KindPaymentMethod.
 	PaymentMethod *SavedPaymentMethod
+	// Dispute is set for KindDispute. ProviderRef is then the payment that is disputed (the reference the ledger holds for the charge), AmountMinor and Currency what is
+	// disputed.
+	Dispute *DisputeEvent
 	// OccurredAt is when the provider says the event happened; zero when it does not say.
 	OccurredAt time.Time
 }
@@ -222,6 +254,21 @@ type PendingError struct{ Ref string }
 
 func (e *PendingError) Error() string {
 	return "payment accepted by the provider; the outcome arrives by notification (" + e.Ref + ")"
+}
+
+// ActionRequiredError is returned by a charge that cannot go on without the customer being there (Stripe's 3-D Secure on an off-session payment). It is not a decline
+// and nothing was charged: the saga asks the customer to come back and waits. Ref is the provider's reference of the payment that waits, which Status asks about.
+type ActionRequiredError struct{ Ref string }
+
+func (e *ActionRequiredError) Error() string {
+	return "payment needs the customer to act at the provider (" + e.Ref + ")"
+}
+
+// RefStatuser is an adapter that can ask about a charge by the provider's own reference (Stripe's PaymentIntent id) instead of searching for it by the idempotency key.
+// payments-worker keeps the reference of the first response of a charge and asks it first; a search stays for a charge that has none. key is the charge's idempotency
+// key, which the adapter checks the payment against.
+type RefStatuser interface {
+	StatusByRef(ctx context.Context, ref, key string) (StatusResult, error)
 }
 
 // CheckoutRequest asks a provider that hosts the checkout for a page where the customer pays and, for a provider that runs

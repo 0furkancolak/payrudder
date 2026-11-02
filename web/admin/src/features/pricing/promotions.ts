@@ -1,5 +1,10 @@
+import { askConfirm } from "@/shared/lib/confirm";
 import { formatMinor, minorDigits, parseMajor } from "@/shared/lib/money";
 import { parsePercent, type CodeTemplate, type CouponTarget, type NewCoupon } from "./api";
+
+/** Deactivating a promotion code ends its redemptions at once: every place that offers it asks first. True when the person said yes. */
+export const confirmDeactivateCode = (t: (key: string, named?: Record<string, unknown>) => string, code: string) =>
+  askConfirm({ title: t("billing.pricing.promotions.codes.confirmTitle", { code }), body: t("billing.pricing.promotions.codes.confirmBody"), confirmLabel: t("billing.pricing.coupons.deactivate") });
 
 /** A promotion code is 2 to 40 letters, digits, - or _. The server compares it in any letter case. */
 export const CODE_PATTERN = /^[A-Za-z0-9_-]{2,40}$/;

@@ -20,7 +20,7 @@ const rows = computed(() => (props.limit ? all.value.slice(0, props.limit) : all
 </script>
 
 <template>
-  <RelatedSection :title="t('related.payments')" :empty="!payments.isPending.value && rows.length === 0" :hide-title="bare" :empty-text="emptyText">
+  <RelatedSection :title="t('related.payments')" :empty="!payments.isPending.value && rows.length === 0" :hide-title="bare" :empty-text="emptyText" :error="payments.data.value ? undefined : payments.error.value" :retrying="payments.isFetching.value" @retry="payments.refetch()">
     <template v-if="$slots.action && all.length > rows.length" #action><slot name="action" /></template>
     <template v-if="payments.isPending.value">
       <li v-for="n in 2" :key="n"><Skeleton class="h-12 w-full rounded-xl" /></li>

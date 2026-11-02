@@ -221,6 +221,9 @@ type AuditEvent struct {
 	SourceIp   string
 	RequestID  string
 	CreatedAt  time.Time
+	Seq        int64
+	PrevHash   string
+	RowHash    string
 }
 
 type ConfigPromotion struct {
@@ -695,6 +698,18 @@ type SubscriptionTrialNotice struct {
 	NotifiedAt     time.Time
 }
 
+type SupportAttachment struct {
+	ID              uuid.UUID
+	TicketID        uuid.UUID
+	MessageID       uuid.UUID
+	StorageTenantID uuid.UUID
+	AssetID         uuid.UUID
+	Filename        string
+	ContentType     string
+	SizeBytes       int64
+	CreatedAt       time.Time
+}
+
 type SupportCannedReply struct {
 	ID        uuid.UUID
 	Title     string
@@ -846,11 +861,12 @@ type UserOnboarding struct {
 }
 
 type UserRecoveryCode struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	CodeHash  []byte
-	UsedAt    *time.Time
-	CreatedAt time.Time
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	CodeHash    []byte
+	UsedAt      *time.Time
+	CreatedAt   time.Time
+	HashVersion int16
 }
 
 type UserSession struct {

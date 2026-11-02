@@ -512,6 +512,24 @@ func (q *Queries) SystemCountClick(ctx context.Context, arg SystemCountClickPara
 	return result.RowsAffected(), nil
 }
 
+const systemLandingTrusted = `-- name: SystemLandingTrusted :one
+SELECT EXISTS (
+  SELECT 1 FROM tenants t
+  JOIN account_members m ON m.account_id = t.account_id AND m.role = 'owner'
+  JOIN users u ON u.id = m.user_id AND u.email_verified_at IS NOT NULL
+  WHERE t.id = $1 AND t.environment = 'live' AND t.status = 'active'
+)::boolean AS trusted
+`
+
+// system. Whether a visitor of the public link may be redirected straight to the program's landing page: the tenant is live and active, and an owner of its account has
+// verified their e-mail address. Read from the pooled database, which has a row for every tenant, also one whose affiliates live in a cell.
+func (q *Queries) SystemLandingTrusted(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, systemLandingTrusted, tenantID)
+	var trusted bool
+	err := row.Scan(&trusted)
+	return trusted, err
+}
+
 const systemResolveAffiliateCode = `-- name: SystemResolveAffiliateCode :one
 SELECT a.tenant_id, a.id, a.code, a.status AS affiliate_status, p.status AS program_status, p.attribution_window_days, p.daily_click_cap, p.landing_url
 FROM affiliates a JOIN affiliate_programs p ON p.tenant_id = a.tenant_id

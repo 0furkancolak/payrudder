@@ -2,8 +2,9 @@
 // layer, see mailx.Event) and the operator's view of the suppression list they fill. A permanent bounce or a complaint puts the recipient on the list of the tenant
 // the mail was sent for, and the notifier stops mailing that address for that tenant.
 //
-// All routes are signed with the shared secret like Payrudder's own webhooks (pkg/webhooksig). A GET or DELETE has an empty body, so its signature covers only the
-// timestamp: a captured request can be replayed for five minutes, which for a list and for lifting a suppression is harmless.
+// All routes are signed with the shared secret (pkg/webhooksig). The signature (v2) covers the method, the path, the query, the timestamp and the body, so a signature
+// captured from one request is no good for another: a GET or DELETE has an empty body, and a v1 signature (timestamp and body only) of one was good for every other
+// empty-bodied route for five minutes. v1 is refused unless AcceptV1 is set for the length of a rollout from a gateway that does not sign v2 yet.
 package mailevents
 
 import (
@@ -71,8 +72,10 @@ type List interface {
 type Handler struct {
 	// Secret signs every request; the listener is not started without one.
 	Secret string
-	Notes  Notes
-	List   List
+	// AcceptV1 also accepts the old signature over the timestamp and body (NOTIFIER_MAIL_EVENTS_ACCEPT_V1), for the length of a rollout. Off by default.
+	AcceptV1 bool
+	Notes    Notes
+	List     List
 	// Messages is the log of a tenant's mail; nil answers 501 on its route.
 	Messages Messages
 	// PreviewPriceChange renders the price-change notice as the consumer would write it, from the numbers the console has; nil answers 501 on its route.
@@ -88,6 +91,16 @@ const (
 	maxAddr  = 320
 	outcomes = "outcome"
 )
+
+// v1Total counts the requests accepted on a v1 signature, so that whoever runs a rollout can see when the last sender has moved to v2.
+var v1Total = func() metric.Int64Counter {
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/notifier").Int64Counter("notifier_mail_events_v1_signatures",
+		metric.WithDescription("Requests to the mail-events listener accepted on a v1 signature (NOTIFIER_MAIL_EVENTS_ACCEPT_V1): the senders that have not moved to v2"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
 
 var eventsTotal = func() metric.Int64Counter {
 	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/notifier").Int64Counter("notifier_mail_events",
@@ -132,9 +145,13 @@ func (h *Handler) signed(next func(http.ResponseWriter, *http.Request, []byte)) 
 		if h.Now != nil {
 			now = h.Now
 		}
-		if h.Secret == "" || webhooksig.Verify(r.Header.Get(webhooksig.Header()), body, h.Secret, now(), 0) != nil {
+		header := r.Header.Get(webhooksig.Header())
+		if h.Secret == "" || webhooksig.VerifyRequest(header, r.Method, r.URL, body, h.Secret, now(), 0, h.AcceptV1) != nil {
 			write(w, http.StatusUnauthorized, problem{"the signature is missing or does not verify"})
 			return
+		}
+		if !strings.Contains(header, "v2=") {
+			v1Total.Add(r.Context(), 1)
 		}
 		next(w, r, body)
 	}

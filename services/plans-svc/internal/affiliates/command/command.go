@@ -7,7 +7,6 @@ import (
 	"errors"
 	"math/big"
 	"net/mail"
-	"net/url"
 	"strings"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
@@ -160,8 +160,8 @@ func parseProgram(in *plansv1.AffiliateProgram) (sqlc.UpsertAffiliateProgramPara
 	if u := in.GetLandingUrl(); u != "" {
 		if len(u) > 500 {
 			v.Add("landing_url", "at most 500 characters")
-		} else if parsed, err := url.Parse(u); err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
-			v.Add("landing_url", "an http(s) address")
+		} else if err := safehttp.ValidateLandingURL(u); err != nil {
+			v.Add("landing_url", "a public http(s) address: it "+err.Error())
 		} else {
 			p.LandingUrl = &u
 		}

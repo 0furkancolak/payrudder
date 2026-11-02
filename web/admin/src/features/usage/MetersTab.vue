@@ -16,7 +16,6 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import type { DateRange } from "@/shared/ui/date-range";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -164,7 +163,7 @@ const actionsOf = (m: Meter, i: number) => [
       <section class="flex flex-col gap-3" :aria-label="t('billing.usage.top.title')">
         <h3 class="text-base font-semibold">{{ t("billing.usage.top.title") }}</h3>
         <p class="text-muted-foreground -mt-2 text-sm">{{ t("billing.usage.top.hint", { meter: current.code, period }) }}</p>
-        <ErrorText :error="top.error.value" />
+        <ErrorState :error="top.error.value" :retrying="top.isFetching.value" compact class="mx-0" @retry="top.refetch()" />
         <Skeleton v-if="top.isPending.value" class="h-24 w-full" />
         <p v-else-if="ranking.length === 0" class="text-muted-foreground text-sm">{{ t("billing.usage.top.empty") }}</p>
         <BarList v-else :items="ranking" />

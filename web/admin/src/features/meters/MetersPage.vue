@@ -16,6 +16,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Input } from "@/shared/ui/input";
@@ -177,7 +178,7 @@ function submit() {
   </Sheet>
 
   <Card class="p-3">
-    <ErrorText :error="meters.error.value" class="px-3" />
+    <ErrorState :error="meters.error.value" :retrying="meters.isFetching.value" compact @retry="meters.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="table.filters.value.category" multiple :label="t('billing.meters.category')" :options="[{ value: '', label: t('billing.meters.allCategories') }, ...inUse.map((c) => ({ value: c }))]" />

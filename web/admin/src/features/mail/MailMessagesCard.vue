@@ -5,7 +5,7 @@ import { useFormat } from "@/shared/lib/format";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -29,7 +29,7 @@ const TONES: Record<MailMessage["state"], Tone> = { sending: "info", sent: "neut
     <h2 class="m-0 px-3 pt-2 text-base font-semibold">{{ t("billing.mail.messages.title") }}</h2>
     <p class="text-muted-foreground px-3 pt-1 pb-3 text-sm">{{ t("billing.mail.messages.hint") }}</p>
     <Skeleton v-if="list.isPending.value" class="mx-3 h-8 w-64" aria-busy="true" />
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <p v-if="list.isSuccess.value && !connected" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-messages-not-connected">{{ t("billing.mail.notConnected") }}</p>
     <p v-else-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-messages-empty">{{ t("billing.mail.messages.empty") }}</p>
     <Table v-if="rows.length > 0">

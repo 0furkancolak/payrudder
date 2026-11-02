@@ -173,6 +173,26 @@ export function useCustomerBlockEvents(tenantId: MaybeRefOrGetter<string>, exter
   });
 }
 
+export type StoredCard = components["schemas"]["StoredCard"];
+
+/** The cards the payment provider holds for a customer (their payment method names whose): bank, last four digits, expiry; never a number. Asked only when the customer has a payment method. */
+export function useCustomerCards(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "cards", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/cards", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== "" && toValue(tenantId) !== "" && toValue(on)),
+  });
+}
+
+/** Deletes one stored card at the provider and reads the list again. The answer says whether it was the card the customer's invoices are charged with. */
+export function useDeleteCustomerCard(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => unwrap(tenantApi(toValue(tenantId)).DELETE("/v1/customers/{external_id}/cards/{token}", { params: { path: { external_id: toValue(externalId), token } } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: [...customerKeys.list(toValue(tenantId)), "cards", toValue(externalId)] }),
+  });
+}
+
 export interface CustomerTax {
   tax_id?: string;
   tax_office?: string;
