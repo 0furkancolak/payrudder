@@ -5260,7 +5260,7 @@
     "steps": {
       "key": {
         "title": "An API key",
-        "todo": "Create one on the API keys page of the app; it is shown once.",
+        "todo": "Create one below (or on the API keys page of the app); it is shown once.",
         "done": "You have a key."
       },
       "meter": {
@@ -5301,6 +5301,31 @@
       "queued": "Waiting for your server to answer.",
       "delivered": "Your server accepted it ({answer}).",
       "failed": "Your server did not accept it: {answer}. Fix your handler, then send another; Payrudder also retries on its own."
+    },
+    "key": {
+      "title": "Create an API key",
+      "help": "Makes a key that can only send usage events, for the environment you are looking at. It is shown once, here: this page holds it only until you say you have copied it.",
+      "create": "Create an ingest key",
+      "once": "Copy it now. It is not shown again, and this page does not keep it. Put it in PAYRUDDER_API_KEY.",
+      "done": "I have copied it"
+    },
+    "sample": {
+      "create": "Create a sample meter and customer",
+      "help": "Sandbox only. Makes the meter {meter} and the customer {customer}, for whichever of the two is missing, so the code below works as it stands."
+    },
+    "testEvent": {
+      "title": "Send a test event",
+      "help": "Sends one event of quantity 1 for {customer} on {meter}, from this page. Sandbox only.",
+      "need": "Choose a meter and type a customer id first.",
+      "send": "Send a test event",
+      "badge": {
+        "accepted": "Accepted",
+        "duplicate": "Counted before",
+        "rejected": "Rejected"
+      },
+      "accepted": "The event was accepted. The checklist turns green once it is counted, a few seconds from now.",
+      "duplicate": "An event with this key was counted before; nothing was added.",
+      "rejected": "The event was rejected: {code}. {message}"
     }
   },
   "contracts": {

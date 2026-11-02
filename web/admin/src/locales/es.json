@@ -5260,7 +5260,7 @@
     "steps": {
       "key": {
         "title": "Una clave de API",
-        "todo": "Cree una en la página de claves de API de la app; se muestra una vez.",
+        "todo": "Cree una abajo (o en la página Claves de API de la aplicación); se muestra una sola vez.",
         "done": "Tiene una clave."
       },
       "meter": {
@@ -5301,6 +5301,31 @@
       "queued": "Esperando la respuesta de su servidor.",
       "delivered": "Su servidor lo aceptó ({answer}).",
       "failed": "Su servidor no lo aceptó: {answer}. Corrija su manejador y envíe otro; Payrudder también reintenta por su cuenta."
+    },
+    "key": {
+      "title": "Crear una clave de API",
+      "help": "Crea una clave que solo puede enviar eventos de uso, para el entorno que está viendo. Se muestra una sola vez, aquí: esta página la guarda en memoria solo hasta que diga que la ha copiado.",
+      "create": "Crear una clave de ingesta",
+      "once": "Cópiela ahora. No se mostrará de nuevo y esta página no la conserva. Póngala en PAYRUDDER_API_KEY.",
+      "done": "Ya la he copiado"
+    },
+    "sample": {
+      "create": "Crear un medidor y un cliente de ejemplo",
+      "help": "Solo sandbox. Crea el medidor {meter} y el cliente {customer}, según lo que falte, para que el código de abajo funcione tal cual."
+    },
+    "testEvent": {
+      "title": "Enviar un evento de prueba",
+      "help": "Envía desde esta página un evento de cantidad 1 para {customer} en {meter}. Solo sandbox.",
+      "need": "Elija primero un medidor y escriba un id de cliente.",
+      "send": "Enviar un evento de prueba",
+      "badge": {
+        "accepted": "Aceptado",
+        "duplicate": "Ya contado",
+        "rejected": "Rechazado"
+      },
+      "accepted": "El evento fue aceptado. La lista se pone en verde cuando se cuente, en unos segundos.",
+      "duplicate": "Ya se contó un evento con esta clave; no se añadió nada.",
+      "rejected": "El evento fue rechazado: {code}. {message}"
     }
   },
   "contracts": {
