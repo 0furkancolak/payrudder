@@ -387,6 +387,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.invoice.amount_required`
 - `payments.invoice.bad_id`
 - `payments.invoice.bad_ids`
+- `payments.invoice.buyer_incomplete`
 - `payments.invoice.no_instructions`
 - `payments.invoice.not_live`
 - `payments.invoice.payment_in_progress`

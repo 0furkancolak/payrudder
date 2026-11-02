@@ -2418,9 +2418,29 @@ export interface paths {
         put?: never;
         /**
          * Pay the invoice by one of the methods the page offers
-         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
          */
         post: operations["hostedInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/return/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Where a provider posts the result of a payment made on its own page
+         * @description The callback URL the gateway gives a provider that sends the payer back with a form (iyzico: the checkout form posts `token`, the 3-D Secure page `paymentId`, `status`, `mdStatus` and `conversationData`). `key` is the key of the payment attempt the gateway opened. The form is not believed: payments-worker asks the provider what the payment is, records it and settles the invoice, and the payer is redirected to the invoice page whatever the outcome, which shows paid, processing, or failed with the reason. The same form posted twice changes nothing. At most 60 a minute per address.
+         */
+        post: operations["hostedInvoiceReturn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2583,6 +2603,26 @@ export interface paths {
          * @description Same as the payment link's pay, scoped to the portal's customer, with the same agreement fields and the same 422. At most 10 a minute per address.
          */
         post: operations["portalInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/invoices/{invoice_id}/return/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Where a provider posts the result of a payment made on its own page, for a portal invoice
+         * @description Same as the payment link's return, scoped to the portal's customer; the payer is redirected to the invoice's page in the portal.
+         */
+        post: operations["portalInvoiceReturn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16756,7 +16796,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            /** @description An agreement the seller requires was not accepted, or the provider needs more about the customer (phone, tax id, address) than the seller has on file: the page says so */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -16764,6 +16804,40 @@ export interface operations {
                 content: {
                     "text/html": string;
                 };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedInvoiceReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Too many requests */
             429: {
@@ -17111,7 +17185,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            /** @description An agreement the seller requires was not accepted, or the provider needs more about the customer than the seller has on file: the page says so */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -17119,6 +17193,41 @@ export interface operations {
                 content: {
                     "text/html": string;
                 };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalInvoiceReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                invoice_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Redirect to the invoice page */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Too many requests */
             429: {
