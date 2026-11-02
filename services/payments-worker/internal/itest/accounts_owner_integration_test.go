@@ -175,7 +175,8 @@ func TestOwnerProviderConnection(t *testing.T) {
 		if strings.Contains(body, "DE89") || strings.Contains(body, "Ada Labs") {
 			t.Errorf("settings leaked into the audit log: %s", body)
 		}
-		if code, body := do("GET", "/admin/audit-events?actor=ada@example.com", "", ""); code != 200 || !strings.Contains(body, "provider_account.removed") {
+		// The view across tenants reads the pooled database (internal/auditlog); a tenant in a cell is read by asking for that tenant, as above.
+		if code, body := do("GET", "/admin/audit-events?actor=ada@example.com", "", ""); code != 200 || (!cellsMode() && !strings.Contains(body, "provider_account.removed")) {
 			t.Errorf("operator view: %d %s", code, body)
 		}
 		if code, _ := do("GET", "/admin/tenants/"+tenant.String()+"/audit-events?page_size=0x", "", ""); code != 400 {
