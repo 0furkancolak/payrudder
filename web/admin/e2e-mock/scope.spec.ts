@@ -128,7 +128,7 @@ test.describe("the sidebar", () => {
     const sections = page.getByTestId("sidebar-nav").locator("section");
     await expect(sections.locator("h2")).toHaveText(["Overview", "Customers and billing", "Usage and products", "Money", "Developers", "App settings", "Organisation"]);
     const groups = async (name: string) => await sections.filter({ has: page.getByRole("heading", { name, exact: true }) }).getByRole("link").allInnerTexts();
-    expect(await groups("Customers and billing")).toEqual(["Customers", "Subscriptions", "Invoices", "Payments", "Payment links", "Credits"]);
+    expect(await groups("Customers and billing")).toEqual(["Customers", "Blocklist", "Subscriptions", "Invoices", "Payments", "Payment links", "Credits"]);
     expect(await groups("Usage and products")).toEqual(["Usage", "Meters", "Packages", "Tax and retries", "Coupons"]);
     expect(await groups("Money")).toEqual(["Accounting", "Reports", "Affiliates"]);
     expect(await groups("Organisation")).toEqual(["Members", "Organisation integrations", "Help", "Organisation settings"]);

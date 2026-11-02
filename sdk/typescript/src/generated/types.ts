@@ -1281,7 +1281,7 @@ export interface Dispute {
   handled: boolean;
   /** Absent when the case is not marked */
   handled_time?: string;
-  /** Who marked it; absent when it is not marked and for a viewer of the account */
+  /** Who marked it; absent when it is not marked, for a viewer of the account, and for an API key that holds no audit:read (the read_only and billing roles) */
   handled_by?: string;
   /** How many notes you wrote (`GET /v1/disputes/{id}/history`) */
   note_count: Int64;
