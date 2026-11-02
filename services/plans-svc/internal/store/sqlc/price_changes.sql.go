@@ -74,7 +74,7 @@ type GetPriceChangeNoticeSettingsRow struct {
 	UpdatedAt         *time.Time
 }
 
-// The notice rules of price changes (migration 00028): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
+// The notice rules of price changes (migration 00029): the notice a run uses when it names none, and the least notice per country ('*' = any other country). Platform
 // data on the system pool; the operator replaces the whole table in one transaction.
 func (q *Queries) GetPriceChangeNoticeSettings(ctx context.Context) (GetPriceChangeNoticeSettingsRow, error) {
 	row := q.db.QueryRow(ctx, getPriceChangeNoticeSettings)
