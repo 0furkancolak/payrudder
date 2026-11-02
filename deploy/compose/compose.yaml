@@ -692,6 +692,9 @@ services:
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
       PAYRUDDER_REDIS_URL: redis://redis:6379/0   # the mail rate limit's buckets, shared by the replicas
+      # The listener the gateway's Mail tab (suppression list, message log, preview) reads; not published outside the compose network. Change the secret outside a laptop.
+      NOTIFIER_EVENTS_ADDR: ":9111"
+      NOTIFIER_MAIL_EVENTS_SECRET: ${NOTIFIER_MAIL_EVENTS_SECRET:-local-mail-events-secret-change-me}
       SMTP_ADDR: mailpit:1025
       NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
       NAFRU_API_KEY: ${NAFRU_API_KEY:-}
@@ -887,6 +890,8 @@ services:
       PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
       PAYRUDDER_ANALYTICS_ADDR: dns:///analytics-svc:7006
       PAYRUDDER_ASSETS_ADDR: dns:///assets-svc:7007
+      PAYRUDDER_NOTIFIER_EVENTS_URL: http://notifier:9111
+      PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET: ${NOTIFIER_MAIL_EVENTS_SECRET:-local-mail-events-secret-change-me}
       PAYRUDDER_REDIS_URL: redis://redis:6379/0
       PAYRUDDER_OPERATOR_TOKEN: ${PAYRUDDER_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}

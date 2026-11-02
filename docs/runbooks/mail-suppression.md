@@ -13,7 +13,7 @@ The listener is off until it has an address and a secret:
 | `NOTIFIER_EVENTS_ADDR` | where the notifier listens (`:9111`); empty is off |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | at least 16 characters; every request is signed with it (`openssl rand -base64 32`). The notifier refuses to start with an address and no secret |
 
-Expose the port only to what calls it (the translating layer, an operator's shell); it is not behind the gateway and does not use the console's login. The Helm chart and the compose file do not set these two: add them to the notifier's `env` and a Service for the port when you run the layer.
+Expose the port only to what calls it (the translating layer, an operator's shell); it is not behind the gateway and does not use the console's login. The compose file sets them (on the notifier and, as `PAYRUDDER_NOTIFIER_EVENTS_URL` and `PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET`, on the gateway) with a local secret and publishes no port. The Helm chart and Railway do not set them: add them to the notifier's `env` and a Service for the port when you run the layer.
 
 ## The console and the tenant API
 
