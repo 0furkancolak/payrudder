@@ -1,5 +1,5 @@
 -- payments_db, tenant schema: several e-invoice integrator accounts, routing by the buyer's country and the audit trail's kind (docs/plans/10, ADR 0026). The same
--- change as public 00003_integration_accounts.sql, written for a schema.
+-- change as public 00005_integration_accounts.sql, written for a schema.
 
 -- +goose Up
 ALTER TABLE einvoice_accounts ADD COLUMN is_default boolean NOT NULL DEFAULT false;

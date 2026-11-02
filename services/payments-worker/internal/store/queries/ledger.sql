@@ -17,7 +17,7 @@ ORDER BY (status = 'succeeded') DESC, id DESC LIMIT 1;
 
 -- name: ListSuccessfulCharges :many
 SELECT DISTINCT ON (invoice_id, provider, COALESCE(provider_ref, ''))
-  invoice_id::text AS invoice_id, provider, COALESCE(provider_ref, '')::text AS provider_ref, currency, amount_minor
+  invoice_id::text AS invoice_id, provider, COALESCE(provider_ref, '')::text AS provider_ref, currency, amount_minor, occurred_at
 FROM payment_ledger WHERE tenant_id = @tenant_id AND kind = 'charge' AND status = 'succeeded' AND invoice_id IS NOT NULL
 ORDER BY invoice_id, provider, COALESCE(provider_ref, ''), id;
 

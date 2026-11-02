@@ -124,7 +124,10 @@
       "amount_mismatch": "Montant différent",
       "duplicate_charge": "Débitée plusieurs fois",
       "charge_without_paid": "Débitée, facture non payée",
-      "conflicting_outcomes": "Succès et échec enregistrés"
+      "conflicting_outcomes": "Succès et échec enregistrés",
+      "settlement_missing": "Payé, absent du règlement du fournisseur",
+      "settlement_mismatch": "Le montant réglé diffère",
+      "fee_mismatch": "Les frais du fournisseur diffèrent"
     },
     "ledgerKind": {
       "charge": "débit",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Virement bancaire",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Ouvert",
+      "explained": "Expliqué",
+      "resolved": "Résolu"
+    },
+    "discrepancyEvent": {
+      "detected": "Trouvé",
+      "reopened": "Rouvert",
+      "cleared": "Effacé par une exécution ultérieure",
+      "assigned": "Assigné",
+      "explained": "Expliqué",
+      "resolved": "Résolu"
+    },
+    "resolution": {
+      "ledger_fact": "Écriture ajoutée au grand livre",
+      "credit_note": "Avoir émis",
+      "refunded_at_provider": "Remboursé chez le fournisseur",
+      "corrected_in_billing": "Corrigé dans la facturation",
+      "not_an_error": "Pas une erreur",
+      "other": "Autre",
+      "cleared": "Plus trouvé"
+    },
+    "settlementState": {
+      "not_reported": "Payé, non déclaré",
+      "pending_payout": "Déclaré, virement en attente",
+      "settled": "Réglé"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "La limite doit être une quantité avec au plus {n} décimales.",
         "thresholds": "Les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000."
       }
+    },
+    "reconcile": {
+      "title": "File de revue",
+      "hint": "Ce que la comparaison a trouvé, conservé : qui en est responsable, ce qui en a été dit et comment cela s'est terminé. La planification la lance pour chaque locataire ayant reçu un paiement réel ; résoudre un écart ne le fait pas disparaître, et une exécution ultérieure qui le trouve encore le rouvre.",
+      "show": "Afficher",
+      "view": {
+        "review": "À revoir",
+        "resolved": "Résolus",
+        "all": "Tous"
+      },
+      "period": "Période",
+      "owner": "Responsable",
+      "note": "Note",
+      "noteHint": "Ce que vous avez découvert et ce qui a été fait. Obligatoire.",
+      "resolution": "Résolution",
+      "settled": "Réglé",
+      "firstSeen": "Vu pour la première fois",
+      "lastSeen": "Vu pour la dernière fois",
+      "history": "Historique",
+      "assign": "Assigner",
+      "explain": "Expliquer",
+      "resolve": "Résoudre",
+      "resolveSelected": "Résoudre la sélection",
+      "explainHint": "La garder dans la file avec la raison. Pour un écart connu qui attend.",
+      "resolveHint": "La terminer. Rien ne change chez le fournisseur ni dans une facture ; la résolution dit ce qui a été fait ailleurs.",
+      "factHint": "Écrit dans le grand livre des paiements un débit réussi du montant de la facture, pour le fournisseur et la référence indiqués. Vérifiez d'abord le paiement chez le fournisseur.",
+      "confirmTitle": "Résoudre {n} écarts ?",
+      "confirmBody": "Chacun est résolu avec la même résolution et la même note, et reçoit sa propre entrée d'historique.",
+      "counts": "Écarts par statut",
+      "ran": "Période {period} : {found} trouvés, {opened} nouveaux, {reopened} rouverts, {cleared} effacés.",
+      "lastRun": "Dernière exécution {when} par {by} pour {period} : {found} trouvés.",
+      "neverRun": "Aucune exécution pour l'instant. Lancez une période ou attendez la planification.",
+      "by": {
+        "schedule": "la planification",
+        "operator": "l'opérateur"
+      },
+      "nothingToReview": "Rien à revoir.",
+      "nothing": "Rien ici.",
+      "more": "Les {n} plus récents sont affichés. Restreignez la vue pour voir les autres."
+    },
+    "settlement": {
+      "title": "Payé et réglé",
+      "hint": "Un paiement réussi est la parole du grand livre. L'argent revient au locataire une fois que le fournisseur l'a réglé, moins ses frais. Voici les paiements de la période avec ce que le fournisseur, ou un rapport importé, dit de chacun.",
+      "provider": "Fournisseur (clé de compte)",
+      "providerHint": "Pour un rapport sans colonne fournisseur",
+      "file": "Rapport (CSV)",
+      "import": "Importer le rapport",
+      "imported": "{lines} ligne(s) lues, {changed} nouvelles ou modifiées.",
+      "counts": "Paiements par état de règlement",
+      "paidOn": "Payé",
+      "fee": "Frais du fournisseur",
+      "expected": "attendu {fee}",
+      "batch": "Virement / lot",
+      "empty": "Aucun paiement réussi du fournisseur sur cette période."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Ce prestataire de paiement est inconnu."
       },
       "reconcile": {
-        "bad_period": "La période doit ressembler à 2026-10."
+        "bad_period": "La période doit ressembler à 2026-10.",
+        "bad_filter": "Une valeur de filtre n'est pas connue de cette liste.",
+        "bad_ledger_fact": "Une écriture de grand livre demande le fournisseur et sa référence du paiement, et ne résout qu'une facture payée absente du grand livre.",
+        "bad_resolution": "Choisissez l'une des résolutions proposées.",
+        "not_found": "Cet écart n'existe pas.",
+        "note_required": "Dites ce que vous avez découvert : une note est obligatoire.",
+        "resolved": "Il est résolu. Une exécution qui le retrouve le rouvre.",
+        "too_long": "Ce texte est trop long.",
+        "too_many": "Choisissez entre 1 et 100 écarts."
       },
       "request": {
         "bad_body": "Le corps de la requête doit être un JSON valide.",
@@ -3014,6 +3106,16 @@
         "provider_not_configured": "Aucun prestataire de paiement n'est configuré pour ce compte.",
         "rejected": "Le prestataire de paiement a rejeté la demande.",
         "timeout": "Le prestataire de paiement n'a pas répondu à temps."
+      },
+      "settlement": {
+        "bad_csv": "Le rapport n'a pas été importé : une ligne est erronée et rien n'a été conservé.",
+        "bad_fee_rule": "La règle de frais n'est pas valide : vérifiez le fournisseur, la devise et le taux.",
+        "bad_since": "Le début doit être dans le passé, au plus 400 jours en arrière.",
+        "fee_rule_not_found": "Cette règle de frais n'existe pas."
+      },
+      "failover": {
+        "bad_target": "Un basculement demande deux comptes différents qui existent dans l'environnement ; un virement bancaire ne peut pas y participer.",
+        "not_found": "Aucun basculement n'est défini pour ce compte."
       }
     },
     "einvoice": {

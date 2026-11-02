@@ -1,10 +1,11 @@
 package render
 
+import "github.com/0furkancolak/payrudder/pkg/localefmt"
+
 // The words of the five layouts. UNVERIFIED: the wording of the legal lines (e_document_note, and "Fatura" as the title of a Turkish document that is not itself the
 // e-Fatura or e-Arşiv invoice) has not been read by an accountant (docs/plans/05-customer-locale-tax-documents.md).
 
-var english = layout{code: "en", decimal: ".", group: ",", minGroup: 1, moneyGap: " ", dateFmt: "%d %s %d", monthYearFmt: "%s %d",
-	months: [12]string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"},
+var english = layout{code: "en", Format: localefmt.For("en"),
 	words: map[key]string{
 		kInvoice: "INVOICE", kNumber: "Number", kPeriod: "Period", kIssued: "Issued", kFrom: "From", kBillTo: "Bill to",
 		kDescription: "Description", kQuantity: "Quantity", kAmount: "Amount", kSubtotal: "Subtotal", kTotal: "Total",
@@ -15,8 +16,7 @@ var english = layout{code: "en", decimal: ".", group: ",", minGroup: 1, moneyGap
 		kSandbox:       "SANDBOX - not a real invoice",
 	}}
 
-var turkish = layout{code: "tr", decimal: ",", group: ".", minGroup: 1, moneyGap: " ", dateFmt: "%d %s %d", monthYearFmt: "%s %d",
-	months: [12]string{"Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"},
+var turkish = layout{code: "tr", Format: localefmt.For("tr"),
 	words: map[key]string{
 		kInvoice: "FATURA", kNumber: "Fatura no", kPeriod: "Dönem", kIssued: "Düzenleme tarihi", kFrom: "Satıcı", kBillTo: "Alıcı",
 		kDescription: "Açıklama", kQuantity: "Miktar", kAmount: "Tutar", kSubtotal: "Ara toplam", kTotal: "Genel toplam",
@@ -27,8 +27,7 @@ var turkish = layout{code: "tr", decimal: ",", group: ".", minGroup: 1, moneyGap
 		kSandbox:       "SANDBOX - gerçek fatura değildir",
 	}}
 
-var german = layout{code: "de", decimal: ",", group: ".", minGroup: 1, moneyGap: " ", dateFmt: "%d. %s %d", monthYearFmt: "%s %d",
-	months: [12]string{"Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"},
+var german = layout{code: "de", Format: localefmt.For("de"),
 	words: map[key]string{
 		kInvoice: "RECHNUNG", kNumber: "Rechnungsnummer", kPeriod: "Zeitraum", kIssued: "Ausgestellt am", kFrom: "Von", kBillTo: "Rechnung an",
 		kDescription: "Beschreibung", kQuantity: "Menge", kAmount: "Betrag", kSubtotal: "Zwischensumme", kTotal: "Gesamtbetrag",
@@ -39,8 +38,7 @@ var german = layout{code: "de", decimal: ",", group: ".", minGroup: 1, moneyGap:
 		kSandbox:       "SANDBOX - keine echte Rechnung",
 	}}
 
-var french = layout{code: "fr", decimal: ",", group: " ", minGroup: 1, moneyGap: " ", dateFmt: "%d %s %d", monthYearFmt: "%s %d",
-	months: [12]string{"janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"},
+var french = layout{code: "fr", Format: localefmt.For("fr"),
 	words: map[key]string{
 		kInvoice: "FACTURE", kNumber: "Numéro", kPeriod: "Période", kIssued: "Date d'émission", kFrom: "Émetteur", kBillTo: "Facturé à",
 		kDescription: "Description", kQuantity: "Quantité", kAmount: "Montant", kSubtotal: "Sous-total", kTotal: "Total",
@@ -51,8 +49,7 @@ var french = layout{code: "fr", decimal: ",", group: " ", minGroup: 1, moneyGa
 		kSandbox:       "SANDBOX - ce n'est pas une vraie facture",
 	}}
 
-var spanish = layout{code: "es", decimal: ",", group: ".", minGroup: 2, moneyGap: " ", dateFmt: "%d de %s de %d", monthYearFmt: "%s de %d",
-	months: [12]string{"enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"},
+var spanish = layout{code: "es", Format: localefmt.For("es"),
 	words: map[key]string{
 		kInvoice: "FACTURA", kNumber: "Número", kPeriod: "Período", kIssued: "Fecha de emisión", kFrom: "Emisor", kBillTo: "Facturar a",
 		kDescription: "Descripción", kQuantity: "Cantidad", kAmount: "Importe", kSubtotal: "Subtotal", kTotal: "Total",

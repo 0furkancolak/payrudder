@@ -151,8 +151,8 @@ func TestSandboxBillingEndToEnd(t *testing.T) {
 	}
 	b, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.HasPrefix(string(b), "%PDF-") || !strings.Contains(string(b), "SANDBOX") {
-		t.Fatalf("presigned download: %d, %d bytes, sandbox watermark %v", resp.StatusCode, len(b), strings.Contains(string(b), "SANDBOX"))
+	if resp.StatusCode != 200 || !strings.HasPrefix(string(b), "%PDF-") || !strings.Contains(string(b), "/Subject (payrudder-sandbox)") {
+		t.Fatalf("presigned download: %d, %d bytes, sandbox marker %v", resp.StatusCode, len(b), strings.Contains(string(b), "/Subject (payrudder-sandbox)"))
 	}
 	// Exactly one charge reached the provider, for the invoice total.
 	if ch := pspCharges(t, id); len(ch) != 1 || ch[0].Status != "succeeded" || ch[0].AmountMinor != 1005 {
