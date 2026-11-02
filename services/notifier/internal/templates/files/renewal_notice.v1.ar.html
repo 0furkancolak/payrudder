@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذا ليس إشعارًا حقيقيًا.</strong></p>{{end}}
+<h2>سيتجدد اشتراكك قريبًا</h2>
+<p>مرحبًا {{index .D "customer_name"}}، سيتجدد اشتراكك <strong>{{index .D "plan_code"}}</strong> لدى <strong>{{index .D "tenant_name"}}</strong> في <strong>{{index .D "renewal_date"}}</strong>. الدفعة القادمة بقيمة <strong>{{index .D "price"}}</strong> ({{if eq (index .D "interval") "year"}}سنوي{{else}}شهري{{end}}).</p>
+{{if index .D "cancel_text"}}<h3>كيفية الإلغاء</h3>
+<p style="white-space: pre-line">{{index .D "cancel_text"}}</p>{{else}}<p>إذا كنت لا ترغب في المتابعة، فيرجى إبلاغ {{index .D "tenant_name"}} قبل ذلك التاريخ.</p>{{end}}
+<p>لا تحتاج إلى فعل أي شيء للمتابعة.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

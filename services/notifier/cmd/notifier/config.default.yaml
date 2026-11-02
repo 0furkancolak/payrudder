@@ -26,4 +26,7 @@ PAYRUDDER_TRIAL_DLQ_TOPIC: "subscription.trial-will-end.dlq.v1"
 PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC: "subscription.price-change.dlq.v1"
 # Where the contract acceptances (contract.accepted.v1) that can never be mailed go.
 PAYRUDDER_CONTRACT_DLQ_TOPIC: "contract.accepted.dlq.v1"
+# Where the renewal notices (subscription.renewal-notice.v1) and the withdrawal acknowledgements (contract.withdrawal-received.v1) that can never be mailed go.
+PAYRUDDER_RENEWAL_DLQ_TOPIC: "subscription.renewal-notice.dlq.v1"
+PAYRUDDER_WITHDRAWAL_DLQ_TOPIC: "contract.withdrawal-received.dlq.v1"
 PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "10s"

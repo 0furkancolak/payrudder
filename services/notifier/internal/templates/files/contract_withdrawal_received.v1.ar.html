@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذا ليس إقرارًا حقيقيًا بالاستلام.</strong></p>{{end}}
+<h2>تلقينا طلب انسحابك</h2>
+<p>مرحبًا {{index .D "customer_name"}}، تلقّى {{index .D "tenant_name"}} بيان انسحابك في <strong>{{index .D "received_at"}}</strong>. هذه الرسالة هي إقرار بالاستلام وليست قرارًا بشأن انسحابك بعد.</p>
+<h3>ما أرسلته</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>احتفظ بهذه الرسالة: فهي إثبات لوقت وصول بيانك.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

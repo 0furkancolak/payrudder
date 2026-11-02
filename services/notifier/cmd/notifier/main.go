@@ -28,8 +28,10 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/mailevents"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/pricechange"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/renewalmail"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/withdrawalmail"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
 
@@ -71,8 +73,12 @@ type Config struct {
 	// PriceChangeDLQTopic receives the price-change facts that can never be mailed; the Kafka group of that consumer is the group with "-price-change" appended.
 	PriceChangeDLQTopic string `env:"PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC"`
 	// ContractDLQTopic receives the contract acceptances that can never be mailed; the Kafka group of that consumer is the group with "-contracts" appended.
-	ContractDLQTopic string        `env:"PAYRUDDER_CONTRACT_DLQ_TOPIC"`
-	SessionTimeout   time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	ContractDLQTopic string `env:"PAYRUDDER_CONTRACT_DLQ_TOPIC"`
+	// RenewalDLQTopic and WithdrawalDLQTopic receive the renewal notices and the withdrawal acknowledgements that can never be mailed; the Kafka groups of those consumers
+	// are the group with "-renewals" and "-withdrawals" appended.
+	RenewalDLQTopic    string        `env:"PAYRUDDER_RENEWAL_DLQ_TOPIC"`
+	WithdrawalDLQTopic string        `env:"PAYRUDDER_WITHDRAWAL_DLQ_TOPIC"`
+	SessionTimeout     time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -196,6 +202,28 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer contractConsumer.Close()
 
+	renewalGroup := cfg.Group + "-renewals"
+	renewalOffsets := store.Offsets{DB: pool, Group: renewalGroup, Topic: renewalmail.Topic}
+	rm := &renewalmail.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: renewalOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.RenewalDLQTopic, Consumer: renewalGroup}, Log: log}
+	renewalConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: renewalGroup, Topic: renewalmail.Topic,
+		LoadOffsets: renewalOffsets.Load, Handler: rm, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer renewalConsumer.Close()
+
+	withdrawalGroup := cfg.Group + "-withdrawals"
+	withdrawalOffsets := store.Offsets{DB: pool, Group: withdrawalGroup, Topic: withdrawalmail.Topic}
+	wm := &withdrawalmail.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: withdrawalOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.WithdrawalDLQTopic, Consumer: withdrawalGroup}, Log: log}
+	withdrawalConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: withdrawalGroup, Topic: withdrawalmail.Topic,
+		LoadOffsets: withdrawalOffsets.Load, Handler: wm, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer withdrawalConsumer.Close()
+
 	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
@@ -210,6 +238,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return trialConsumer.Run(gctx) })
 	g.Go(func() error { return priceConsumer.Run(gctx) })
 	g.Go(func() error { return contractConsumer.Run(gctx) })
+	g.Go(func() error { return renewalConsumer.Run(gctx) })
+	g.Go(func() error { return withdrawalConsumer.Run(gctx) })
 	if cfg.EventsAddr != "" {
 		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, Notes: notes, List: suppressions, Log: log}
 		g.Go(func() error {
