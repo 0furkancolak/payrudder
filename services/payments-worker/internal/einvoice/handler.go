@@ -173,8 +173,12 @@ func (h *Handler) issue(ctx context.Context, c *commandsv1.IssueEInvoice, docID,
 	if err != nil {
 		return nil, err
 	}
-	if found && (prior.Status == store.IssuanceIssued || prior.Status == store.IssuanceCancelled) {
-		return issued(prior), nil // answered before; the integrator is not asked again
+	// Answered before; the integrator is not asked again. A cancelled document is answered as cancelled: "issued" would turn it back into an issued one at billing.
+	if found && prior.Status == store.IssuanceCancelled {
+		return cancelledReply(), nil
+	}
+	if found && prior.Status == store.IssuanceIssued {
+		return issued(prior), nil
 	}
 
 	d := Document(c, sandbox)

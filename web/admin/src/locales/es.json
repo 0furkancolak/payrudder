@@ -1306,7 +1306,25 @@
       "new": "Nueva nota de crédito",
       "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta.",
       "allWhere": "Cualquiera",
-      "taxGiven": "Impuesto devuelto"
+      "taxGiven": "Impuesto devuelto",
+      "resolve": {
+        "action": "Resolver el reembolso",
+        "title": "Resolver el reembolso de {number}",
+        "description": "Úselo cuando un reembolso haya fallado o su resultado sea desconocido. No se vuelve a consultar al proveedor hasta que indique lo que encontró: compruebe primero allí si se reembolsó al cliente.",
+        "formLabel": "resolver el reembolso",
+        "found": "¿Qué encontró en el proveedor?",
+        "refunded": "Reembolsado",
+        "notRefunded": "No reembolsado",
+        "refundId": "Referencia del reembolso",
+        "refundIdHint": "La referencia del reembolso en el proveedor, o la de la transferencia que hizo fuera de Payrudder. Se anota en el libro de pagos.",
+        "notRefundedHint": "El reembolso se pedirá de nuevo al proveedor con una clave nueva. Si el primero sí se hizo, el cliente cobra dos veces: elija esto solo tras comprobarlo.",
+        "note": "Qué comprobó",
+        "noteHint": "Opcional. Se guarda en el registro de auditoría.",
+        "submitRefunded": "Registrar como reembolsado",
+        "submitNotRefunded": "Pedir de nuevo",
+        "confirmRefunded": "¿Registrar {number} ({amount}) como reembolsado, con la referencia {ref}? La nota de crédito pasa a reembolsada y el reembolso se anota en el libro de pagos.",
+        "confirmNotRefunded": "Indica que {number} ({amount}) no se reembolsó. El reembolso se pedirá de nuevo al proveedor con una clave nueva; si el primero se hizo, el cliente cobra dos veces. ¿Continuar?"
+      }
     },
     "webhooks": {
       "title": "Webhooks",
@@ -2786,7 +2804,10 @@
         "bad_page_size": "El tamaño de página debe estar entre 1 y 200.",
         "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
         "not_found": "No se encontró esta nota de crédito.",
-        "reason_too_long": "El motivo puede tener como máximo 500 caracteres."
+        "reason_too_long": "El motivo puede tener como máximo 500 caracteres.",
+        "bad_refund_id": "Indique la referencia del reembolso en el proveedor (una línea, 200 caracteres como máximo) si el reembolso se hizo, y ninguna si no se hizo.",
+        "bad_resolution": "Indique si se reembolsó al cliente o no.",
+        "note_too_long": "La nota puede tener 500 caracteres como máximo."
       },
       "dunning": {
         "bad_delay": "Cada retraso de reintento debe estar entre 1 y 720 horas.",

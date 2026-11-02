@@ -520,6 +520,23 @@ func (q *Queries) ReissueSaga(ctx context.Context, arg ReissueSagaParams) error 
 	return err
 }
 
+const sagaEventCauseExists = `-- name: SagaEventCauseExists :one
+SELECT EXISTS (SELECT 1 FROM saga_events WHERE tenant_id = $1 AND saga_id = $2 AND cause = $3::text)
+`
+
+type SagaEventCauseExistsParams struct {
+	TenantID uuid.UUID
+	SagaID   uuid.UUID
+	Cause    string
+}
+
+func (q *Queries) SagaEventCauseExists(ctx context.Context, arg SagaEventCauseExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, sagaEventCauseExists, arg.TenantID, arg.SagaID, arg.Cause)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const transitionSaga = `-- name: TransitionSaga :execrows
 UPDATE invoice_sagas SET state = $1, version = version + 1, attempt = $2, step_attempt = $3, step_deadline = $4,
        dunning_attempt = $5, next_attempt_at = $6, last_error = NULLIF($7::text, ''), updated_at = $8

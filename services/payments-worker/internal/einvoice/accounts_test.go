@@ -174,3 +174,21 @@ func TestNoDefaultAccountIsAMissingAccount(t *testing.T) {
 		t.Errorf("DE = %v", r)
 	}
 }
+
+// A document that was issued and then cancelled is answered as cancelled when its issue command comes again (a late redelivery): "issued" would make billing mark a cancelled
+// legal document issued again.
+func TestAnIssueRepeatedAfterACancelIsAnsweredCancelled(t *testing.T) {
+	a := &accounts{byKey: map[string]string{"stub": "main"}, def: "stub"}
+	iss := &issuances{rows: map[uuid.UUID]*store.Issuance{}}
+	h := newHandler(a, iss)
+	doc := uuid.New()
+	if r := result(t, h, liveCommand(doc, "issue", "TR")); r.GetState() != "issued" {
+		t.Fatalf("issue = %v", r)
+	}
+	if r := result(t, h, liveCommand(doc, "cancel", "TR")); r.GetState() != "cancelled" {
+		t.Fatalf("cancel = %v", r)
+	}
+	if r := result(t, h, liveCommand(doc, "issue", "TR")); r.GetState() != "cancelled" || r.GetLegalNumber() != "" {
+		t.Errorf("an issue after the cancel = %v, want cancelled", r)
+	}
+}

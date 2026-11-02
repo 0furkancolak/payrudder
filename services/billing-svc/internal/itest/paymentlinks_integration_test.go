@@ -601,8 +601,13 @@ func testSettleInvoicePayment(t *testing.T) {
 	}
 	// A second confirmation is not a second payment; the operator sees it as a discrepancy in payments-worker.
 	again, err := settle(l.mine, 2500, "EUR")
-	if err != nil || again.GetSettled() {
-		t.Errorf("settling a paid invoice = %v, %v", again, err)
+	if err != nil || again.GetSettled() || !again.GetRepeat() {
+		t.Errorf("settling a paid invoice with the payment that paid it = %v, %v; want not settled, a repeat", again, err)
+	}
+	// Another payment (another reference) for the paid invoice is not a repeat: it is the discrepancy.
+	second, err := l.svc.SettleInvoicePayment(l.mine, &billingv1.SettleInvoicePaymentRequest{InvoiceId: invoiceID, Provider: "paddle", ProviderRef: "txn_2", AmountMinor: 2500, Currency: "EUR"})
+	if err != nil || second.GetSettled() || second.GetRepeat() {
+		t.Errorf("a second payment for the paid invoice = %v, %v; want not settled and not a repeat", second, err)
 	}
 	if n := countType(l.events(), "payment_link.paid"); n != 1 {
 		t.Errorf("payment_link.paid x%d", n)

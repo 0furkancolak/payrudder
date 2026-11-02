@@ -3,6 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { createApi } from "./api.js";
 import type { AuditRecord } from "./audit.js";
+import { READ_TOOL_SPECS } from "./generated/read-tools.js";
 import { MAX_REPLY, createServer } from "./server.js";
 
 interface Seen {
@@ -31,7 +32,8 @@ describe("tools offered", () => {
   it("offers only the read tools by default, each marked read-only", async () => {
     const { client } = await connect({});
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["get_customer", "get_customer_usage", "get_invoice", "list_customers", "list_invoices", "list_meters", "list_payments", "list_plans", "list_subscriptions"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(READ_TOOL_SPECS.map((t) => t.name).sort());
+    expect(tools).toHaveLength(25);
     expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
   });
 

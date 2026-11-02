@@ -91,7 +91,7 @@ func TestPortalShowsCreditsAndBuysAPack(t *testing.T) {
 
 	// Buy: the form carries only the pack and a quantity; the price is billing's.
 	r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy", url.Values{"pack_id": {"pack-1"}, "quantity": {"3"}, "price_minor": {"1"}}, nil)
-	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox {
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?wait=1" {
 		t.Fatalf("buy = %d %v", r.StatusCode, r.Header)
 	}
 	purchaseMu.Lock()
@@ -100,7 +100,7 @@ func TestPortalShowsCreditsAndBuysAPack(t *testing.T) {
 	if got.GetPortalToken() != portalTok || got.GetPackId() != "pack-1" || got.GetQuantity() != 3 {
 		t.Errorf("billing was asked %v", got)
 	}
-	if r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy?lang=tr", url.Values{"pack_id": {"pack-1"}}, nil); r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=tr" {
+	if r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy?lang=tr", url.Values{"pack_id": {"pack-1"}}, nil); r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=tr&wait=1" {
 		t.Errorf("the language is lost: %v", r.Header)
 	}
 	// A bad quantity is passed on as it is for billing to refuse.

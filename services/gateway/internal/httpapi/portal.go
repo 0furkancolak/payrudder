@@ -251,8 +251,10 @@ func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
 		ReferralCode: refCode, ReferralTouchTime: refAt})
 	switch {
 	case err == nil:
+		// The new invoice goes through its saga first: wait for it on the server, as Continue does, so the payer lands on the pay buttons.
+		s.waitUntilPayable(r.Context(), resp.GetInvoiceToken())
 		hostedHeaders(w)
-		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+		http.Redirect(w, r, withWait("/i/"+resp.GetInvoiceToken()+langSuffix(r)), http.StatusSeeOther)
 	case isPromoError(errkey.Of(err)):
 		s.message(w, r, http.StatusUnprocessableEntity, lang, l["cr_buy_title"], promoErrorText(l, errkey.Of(err)), back)
 	case status.Code(err) == codes.PermissionDenied || status.Code(err) == codes.InvalidArgument || errkey.Of(err) == "billing.invoice_link.not_found":
