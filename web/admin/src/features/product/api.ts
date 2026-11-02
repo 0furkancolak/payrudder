@@ -6,7 +6,7 @@ import { POLL } from "@/shared/api/limits";
 import type { components } from "@/shared/api/schema";
 import type { Currency } from "@/shared/lib/currencies";
 import type { Environment } from "@/shared/lib/environment";
-import { toApiLocale } from "@/shared/lib/locale";
+import { toApiLocale, type ApiLocale } from "@/shared/lib/locale";
 import { activeAccount, personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
 import type { KeyPermission, KeyRole } from "./apiKeys";
 import { AFFILIATE_ROLE, ownMemberships } from "./lib";
@@ -301,7 +301,7 @@ export type LiveProviders = S["LiveProviders"];
 export function useSaveBillingProfile(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (body: { legal: S["LegalInfoInput"]; address: S["AddressInput"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
+    mutationFn: (body: { legal: S["LegalInfoInput"]; address: S["AddressInput"]; default_language?: ApiLocale }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
     onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
   });
 }

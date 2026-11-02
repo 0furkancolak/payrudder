@@ -255,6 +255,9 @@ func testCreditPacksAreBoughtFromThePortal(t *testing.T) {
 	if err != nil || page.GetCreditBalance() != 40 || len(page.GetCreditLots()) != 1 || !page.GetCanBuyCredits() || len(page.GetCreditPacks()) != 1 {
 		t.Fatalf("portal = %v, %v", page, err)
 	}
+	if page.GetTimeZone() != "UTC" { // a customer with no invoice yet: the calendar of the tenant itself
+		t.Errorf("portal time zone = %q, want the tenant's", page.GetTimeZone())
+	}
 	if pk := page.GetCreditPacks()[0]; pk.GetId() != starter.GetId() || pk.GetCredits() != 1000 || pk.GetPriceMinor() != 500 || pk.GetValidityDays() != 90 || pk.GetCurrencyExponent() != 2 {
 		t.Errorf("pack on the portal = %v", pk)
 	}

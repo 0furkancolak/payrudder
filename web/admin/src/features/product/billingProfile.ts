@@ -1,5 +1,6 @@
 import { cleanAddress, validateAddress, type Address, type AddressProblem } from "@/shared/lib/address";
 import type { components } from "@/shared/api/schema";
+import { API_LOCALES, type ApiLocale } from "@/shared/lib/locale";
 
 /**
  * The countries whose invoices need the seller's tax id: Turkey and the EU member states. The same list as `taxIDCountries` in
@@ -25,9 +26,11 @@ export interface ProfileForm {
   city: string;
   region: string;
   postalCode: string;
+  /** The language of the invoices and mails of a customer who has none of their own (the tenant's `default_language`; English when none was chosen). */
+  defaultLanguage: ApiLocale;
 }
 
-export const emptyProfile = (): ProfileForm => ({ legalName: "", taxId: "", taxOffice: "", country: "", line1: "", line2: "", city: "", region: "", postalCode: "" });
+export const emptyProfile = (): ProfileForm => ({ legalName: "", taxId: "", taxOffice: "", country: "", line1: "", line2: "", city: "", region: "", postalCode: "", defaultLanguage: "en" });
 
 export type ProfileField = keyof ProfileForm;
 /** Why a field is refused: the form shows `product.goLive.profile.problems.<code>`. */
@@ -37,7 +40,7 @@ export type ProfileProblems = Partial<Record<ProfileField, ProfileProblem>>;
 const text = (s: string) => s.trim();
 
 /** The form filled from the stored live tenant (an empty form for a tenant with nothing saved). */
-export function fromTenant(t: { legal?: components["schemas"]["LegalInfoInput"] | null; address?: components["schemas"]["AddressInput"] | null } | undefined): ProfileForm {
+export function fromTenant(t: { legal?: components["schemas"]["LegalInfoInput"] | null; address?: components["schemas"]["AddressInput"] | null; default_language?: string | null } | undefined): ProfileForm {
   return {
     legalName: t?.legal?.legal_name ?? "",
     taxId: t?.legal?.tax_id ?? "",
@@ -48,6 +51,7 @@ export function fromTenant(t: { legal?: components["schemas"]["LegalInfoInput"] 
     city: t?.address?.city ?? "",
     region: t?.address?.region ?? "",
     postalCode: t?.address?.postal_code ?? "",
+    defaultLanguage: API_LOCALES.find((l) => l === t?.default_language) ?? "en",
   };
 }
 
@@ -82,9 +86,9 @@ export function validateProfile(f: ProfileForm): ProfileProblems {
 }
 
 /** The request body for `PUT /app/v1/apps/{id}/billing-profile`. */
-export function profileBody(f: ProfileForm): { legal: components["schemas"]["LegalInfoInput"]; address: components["schemas"]["AddressInput"] } {
+export function profileBody(f: ProfileForm): { legal: components["schemas"]["LegalInfoInput"]; address: components["schemas"]["AddressInput"]; default_language: ApiLocale } {
   const legal: components["schemas"]["LegalInfoInput"] = { legal_name: text(f.legalName) };
   if (normalizeTaxId(f.taxId) !== "") legal.tax_id = normalizeTaxId(f.taxId);
   if (text(f.taxOffice) !== "") legal.tax_office = text(f.taxOffice);
-  return { legal, address: addressOf(f) };
+  return { legal, address: addressOf(f), default_language: f.defaultLanguage };
 }

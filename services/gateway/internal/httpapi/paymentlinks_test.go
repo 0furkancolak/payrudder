@@ -42,6 +42,7 @@ const (
 	tokPayHeld     = "tok-payheld-0123456789abcdefghijklmnopqrst"
 	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
+	portalZoneTok  = "portalzone-123456789abcdefghijklmnopqrstuvwxyz"
 	// tokPaidCustomer is the link to a paid invoice of a customer, tokPaidGuest to a paid invoice of a payment link with no customer.
 	tokPaidCustomer = "tok-paid-customer-0123456789abcdefghijklm"
 	tokPaidGuest    = "tok-paid-guest-0123456789abcdefghijklmnop"
@@ -233,6 +234,12 @@ func (fakeBilling) GetHostedLogoUrl(_ context.Context, req *billingv1.GetHostedL
 }
 
 func (fakeBilling) GetPortal(_ context.Context, req *billingv1.GetPortalRequest) (*billingv1.GetPortalResponse, error) {
+	if req.GetPortalToken() == portalZoneTok {
+		// The seller is in Istanbul: an invoice issued at 22:30 UTC on 31 December is the first of January there.
+		return &billingv1.GetPortalResponse{CustomerName: "Ada", SellerName: "Acme", Environment: "live", TenantId: liveTenantID, CustomerId: "cust-uuid", TimeZone: "Europe/Istanbul",
+			Invoices: []*billingv1.PortalInvoice{{Id: "inv-new-year", Number: "INV-2027-000001", Status: "paid", TotalMinor: 1500, Currency: "USD", CurrencyExponent: 2,
+				IssueTime: timestamppb.New(time.Date(2026, 12, 31, 22, 30, 0, 0, time.UTC))}}}, nil
+	}
 	if req.GetPortalToken() != portalTok {
 		return nil, status.Error(codes.NotFound, "no such link")
 	}

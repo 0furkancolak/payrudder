@@ -3,6 +3,7 @@
 package trials
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
+	"github.com/0furkancolak/payrudder/pkg/localefmt"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
@@ -98,9 +100,10 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	if err != nil {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
+	locale := cmp.Or(cust.GetCustomer().GetLocale(), tn.GetTenant().GetDefaultLanguage())
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
 		Key: ev.GetEventId(), Kind: "trial", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(),
-		Data:    withLocale(mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone()), cust.GetCustomer().GetLocale()),
+		Data:    withLocale(mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone(), locale), locale),
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
@@ -116,15 +119,16 @@ func withLocale(d map[string]string, locale string) map[string]string {
 }
 
 // mailData is what the template reads. The end of the trial is written in the tenant's time zone (UTC when it has none, or one this host does not know), which is
-// the calendar its customers live by.
-func mailData(ev *eventsv1.TrialWillEnd, customerName, tenantName, zone string) map[string]string {
+// the calendar its customers live by, and in the language of the mail (pkg/localefmt).
+func mailData(ev *eventsv1.TrialWillEnd, customerName, tenantName, zone, locale string) map[string]string {
 	loc := time.UTC
 	if l, err := time.LoadLocation(zone); err == nil && zone != "" {
 		loc = l
 	}
 	end := ev.GetTrialEndsAt().AsTime().In(loc)
+	f := localefmt.For(locale)
 	return map[string]string{
 		"customer_name": customerName, "tenant_name": tenantName, "plan_code": ev.GetPlanCode(),
-		"trial_end_date": end.Format("2 Jan 2006"), "trial_end": end.Format("2 Jan 2006, 15:04") + " (" + loc.String() + ")",
+		"trial_end_date": f.Date(end), "trial_end": f.Date(end) + ", " + end.Format("15:04") + " (" + loc.String() + ")",
 	}
 }

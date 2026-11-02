@@ -181,3 +181,20 @@ func TestCreditSurplusIsPrinted(t *testing.T) {
 		}
 	}
 }
+
+// The issue date is the day on the seller's calendar (docs/plans/05): an invoice issued at 22:30 UTC on 31 December is dated the first of January when the seller is in
+// Istanbul. A snapshot that froze no zone, or one that does not load, is dated by UTC as every invoice was.
+func TestIssueDateFollowsTheSellersTimeZone(t *testing.T) {
+	s := snapshot()
+	s.IssuedAt = timestamppb.New(time.Date(2026, 12, 31, 22, 30, 0, 0, time.UTC))
+	for zone, want := range map[string]string{"Europe/Istanbul": "Issued: 1 January 2027", "": "Issued: 31 December 2026", "Not/AZone": "Issued: 31 December 2026", "Pacific/Honolulu": "Issued: 31 December 2026"} {
+		s.TimeZone = zone
+		pdf, err := PDF(s, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if text := pdfText(t, pdf); !strings.Contains(text, want) {
+			t.Errorf("zone %q: the PDF lacks %q: %s", zone, want, text)
+		}
+	}
+}

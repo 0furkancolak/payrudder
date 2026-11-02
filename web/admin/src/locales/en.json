@@ -4190,7 +4190,9 @@
         "problems": {
           "required": "Required.",
           "taxIdFormat": "5 to 20 letters and digits."
-        }
+        },
+        "defaultLanguage": "Language of invoices and mails",
+        "defaultLanguageHint": "Used for a customer who has no language of their own, on the invoice PDF and in the mails. A customer's own language, set on the customer, always wins."
       },
       "provider": {
         "title": "Payment provider",

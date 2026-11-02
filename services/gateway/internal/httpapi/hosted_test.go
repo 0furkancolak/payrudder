@@ -19,6 +19,12 @@ import (
 
 const goodToken = "0123456789abcdefghijklmnopqrstuvwxyz0123456"
 
+// zoneToken is the link of an invoice whose seller is in Istanbul; noZoneToken the same invoice from a snapshot that froze no time zone.
+const (
+	zoneToken   = "zone56789abcdefghijklmnopqrstuvwxyz0123456789"
+	noZoneToken = "nozone6789abcdefghijklmnopqrstuvwxyz012345678"
+)
+
 // transferToken is the link of an open invoice paid by bank transfer.
 const transferToken = "transfer56789abcdefghijklmnopqrstuvwxyz01234"
 
@@ -38,6 +44,18 @@ func (fakeBilling) GetHostedInvoice(_ context.Context, req *billingv1.GetHostedI
 		return nil, status.Error(codes.Unavailable, "billing is down")
 	}
 	if r, ok := scenarioInvoice(req); ok {
+		return r, nil
+	}
+	if req.GetToken() == zoneToken || req.GetToken() == noZoneToken {
+		// Issued at 01:30 on 1 January 2027 in Istanbul, which is still the evening of 31 December in UTC; its service period ends at midnight there.
+		r := &billingv1.GetHostedInvoiceResponse{
+			Invoice: &billingv1.Invoice{Number: "INV-2027-000001", Currency: "USD", SubtotalMinor: 100, TotalMinor: 100, Status: "open", FinalizeTime: timestamppb.New(time.Date(2026, 12, 31, 22, 30, 0, 0, time.UTC)),
+				Lines: []*billingv1.InvoiceLine{{Description: "Base fee", AmountMinor: 100, ServiceFrom: timestamppb.New(time.Date(2026, 11, 30, 21, 0, 0, 0, time.UTC)), ServiceTo: timestamppb.New(time.Date(2026, 12, 31, 21, 0, 0, 0, time.UTC))}}},
+			SellerName: "Acme", CustomerName: "Ada", CurrencyExponent: 2,
+		}
+		if req.GetToken() == zoneToken {
+			r.TimeZone = "Europe/Istanbul"
+		}
 		return r, nil
 	}
 	if req.GetToken() == transferToken {

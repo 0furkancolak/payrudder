@@ -44,7 +44,7 @@ func New(app pgxx.Beginner, system *tenantdb.DB, backend *command.Backend, eng *
 		d:    command.Deps{App: app, System: system, Engine: eng, Dir: backend},
 		q: query.Deps{App: app, System: system, Seller: func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {
 			s, err := backend.Seller(ctx, tenantID)
-			return query.Seller{Name: s.Name, LogoKey: s.LogoKey, Environment: s.Environment}, err
+			return query.Seller{Name: s.Name, LogoKey: s.LogoKey, Environment: s.Environment, TimeZone: s.TimeZone}, err
 		}},
 	}
 }
@@ -318,7 +318,7 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		return nil, err
 	}
 	resp := &billingv1.GetPortalResponse{
-		CustomerName: page.CustomerName, CustomerLocale: page.CustomerLocale, SellerName: page.SellerName, LogoAvailable: page.LogoAvailable, Environment: page.Environment,
+		CustomerName: page.CustomerName, CustomerLocale: page.CustomerLocale, TimeZone: page.TimeZone, SellerName: page.SellerName, LogoAvailable: page.LogoAvailable, Environment: page.Environment,
 		ExpireTime: timestamppb.New(scope.ExpiresAt), TenantId: scope.TenantID.String(), CustomerId: scope.Portal.CustomerID.String(),
 	}
 	payRefused := false
@@ -416,7 +416,7 @@ func (h *Handler) StartPortalPurchase(ctx context.Context, req *billingv1.StartP
 
 func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceResponse {
 	resp := &billingv1.GetHostedInvoiceResponse{
-		CustomerLocale: p.CustomerLocale, CustomerType: p.CustomerType, Kind: p.Kind, ExpireTime: timestamppb.New(p.ExpiresAt), SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
+		CustomerLocale: p.CustomerLocale, CustomerType: p.CustomerType, TimeZone: p.TimeZone, Kind: p.Kind, ExpireTime: timestamppb.New(p.ExpiresAt), SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
 	}
 	if p.Adhoc != nil {
 		resp.Adhoc = &billingv1.HostedAdhoc{Description: p.Adhoc.Description, AmountMinor: p.Adhoc.AmountMinor, Currency: p.Adhoc.Currency,

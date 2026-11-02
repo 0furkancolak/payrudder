@@ -110,6 +110,8 @@ message UpdateTenantSettingsRequest {
   LegalInfo legal = 9;
   // "off", "finalized" or "paid"; empty leaves it unchanged.
   string e_invoice_on = 10;
+  // The language of the tenant's documents and mails for a customer who has none: en, tr, de, fr, es or ar; empty leaves it unchanged.
+  string default_language = 11;
 }
 
 message UpdateTenantSettingsResponse {

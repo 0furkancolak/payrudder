@@ -43,17 +43,13 @@ func (s SnapshotOf) Snapshot() sagamodel.Snapshot {
 	return snap
 }
 
-// defaultLocales is the language of the countries whose language the invoice PDF can print (docs/plans/05): the fallback when a customer has none of their own. A
-// country that is not listed falls back to English; Arabic-speaking countries are not listed because the PDF library cannot shape Arabic.
-var defaultLocales = map[string]string{"TR": "tr", "DE": "de", "AT": "de", "FR": "fr", "ES": "es"}
-
-// DocumentSnapshot freezes what the printed invoice needs besides the addressees: the customer's language and kind, the language of the seller's country as the
+// DocumentSnapshot freezes what the printed invoice needs besides the addressees: the customer's language and kind, the tenant's default language (its own setting) as the
 // fallback, and the tax identity and country of both parties. cu is nil for a guest paying an ad-hoc link, who has none of it.
 func DocumentSnapshot(s *sagamodel.Snapshot, t *plansv1.Tenant, cu *plansv1.Customer) {
 	l := t.GetLegal()
 	s.TimeZone = t.GetTimezone()
 	s.SellerTaxID, s.SellerTaxOffice, s.SellerCountry = l.GetTaxId(), l.GetTaxOffice(), t.GetAddress().GetCountry()
-	s.DefaultLocale = defaultLocales[s.SellerCountry]
+	s.DefaultLocale = t.GetDefaultLanguage()
 	if cu == nil {
 		return
 	}

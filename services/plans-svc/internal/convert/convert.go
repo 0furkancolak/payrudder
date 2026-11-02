@@ -90,7 +90,7 @@ func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
 		InvoiceLogoAssetId: UUIDStr(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
 		Legal: LegalFromJSON(t.Legal), EInvoiceOn: t.EInvoiceOn, BankTransfer: BankTransferFromJSON(t.BankTransfer),
-		Status: domain.StatusFromDB(t.Status), ActivateTime: tsp(t.ActivatedAt), TermsAcceptTime: tsp(t.TermsAcceptedAt),
+		Status: domain.StatusFromDB(t.Status), ActivateTime: tsp(t.ActivatedAt), TermsAcceptTime: tsp(t.TermsAcceptedAt), DefaultLanguage: t.DefaultLanguage,
 	}
 }
 

@@ -98,7 +98,14 @@ func (c *Commands) UpdateBillingProfile(ctx context.Context, req *plansv1.Update
 		if err := domain.ValidateBillingProfile(address, legal); err != nil {
 			return err
 		}
-		row, err = q.UpdateTenantBillingProfile(ctx, sqlc.UpdateTenantBillingProfileParams{ID: row.ID, Address: convert.AddressJSON(address), Legal: convert.LegalJSON(legal)})
+		if err := domain.ValidateDefaultLanguage(req.GetDefaultLanguage()); err != nil {
+			return err
+		}
+		var language *string
+		if v := req.GetDefaultLanguage(); v != "" {
+			language = &v
+		}
+		row, err = q.UpdateTenantBillingProfile(ctx, sqlc.UpdateTenantBillingProfileParams{ID: row.ID, Address: convert.AddressJSON(address), Legal: convert.LegalJSON(legal), DefaultLanguage: language})
 		if err != nil {
 			return convert.Err(err, "tenant")
 		}

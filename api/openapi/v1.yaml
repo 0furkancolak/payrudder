@@ -7863,6 +7863,7 @@ components:
       properties:
         legal: { $ref: "#/components/schemas/LegalInfoInput" }
         address: { $ref: "#/components/schemas/AddressInput" }
+        default_language: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the invoices and mails of a customer who has none of their own. Left out: unchanged (English for a new tenant)" }
     AppAcceptTermsResponse:
       type: object
       required: [accept_time]
@@ -8562,6 +8563,7 @@ components:
         address: { $ref: "#/components/schemas/AddressInput" }
         legal: { $ref: "#/components/schemas/LegalInfoInput" }
         e_invoice_on: { type: string, enum: ["off", finalized, paid] }
+        default_language: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the invoices and mails of a customer who has none of their own. Left out: unchanged" }
     SetTenantStatusRequest:
       type: object
       required: [status]
@@ -10768,7 +10770,7 @@ components:
               provider: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     Tenant:
       type: object
-      required: [id, account_id, app_id, address, legal, e_invoice_on, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
+      required: [id, account_id, app_id, address, legal, e_invoice_on, default_language, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]
       properties:
         id: { type: string, format: uuid }
         account_id: { type: string, format: uuid }
@@ -10776,6 +10778,7 @@ components:
         address: { allOf: [{ $ref: "#/components/schemas/Address" }], nullable: true }
         legal: { allOf: [{ $ref: "#/components/schemas/LegalInfo" }], nullable: true }
         e_invoice_on: { type: string, enum: ["off", finalized, paid], description: When an invoice becomes an e-document }
+        default_language: { type: string, enum: ["", en, tr, de, fr, es, ar], description: "The language of the tenant's invoices and mails for a customer who has none of their own. Empty is English" }
         environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
         name: { type: string }
         tier: { type: string }

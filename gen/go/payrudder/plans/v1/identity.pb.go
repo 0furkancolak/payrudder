@@ -2768,9 +2768,11 @@ type UpdateMyBillingProfileRequest struct {
 	// legal_name and, where the country's invoices need one, tax_id are required; tax_office, mersis_no and trade_registry_no are optional.
 	Legal *LegalInfo `protobuf:"bytes,3,opt,name=legal,proto3" json:"legal,omitempty"`
 	// line1, city and country (ISO 3166-1 alpha-2) are required.
-	Address       *Address `protobuf:"bytes,4,opt,name=address,proto3" json:"address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Address *Address `protobuf:"bytes,4,opt,name=address,proto3" json:"address,omitempty"`
+	// The language of the invoices and mails of a customer who has none of their own: en, tr, de, fr, es or ar; empty leaves it unchanged.
+	DefaultLanguage string `protobuf:"bytes,5,opt,name=default_language,json=defaultLanguage,proto3" json:"default_language,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateMyBillingProfileRequest) Reset() {
@@ -2829,6 +2831,13 @@ func (x *UpdateMyBillingProfileRequest) GetAddress() *Address {
 		return x.Address
 	}
 	return nil
+}
+
+func (x *UpdateMyBillingProfileRequest) GetDefaultLanguage() string {
+	if x != nil {
+		return x.DefaultLanguage
+	}
+	return ""
 }
 
 type UpdateMyBillingProfileResponse struct {
@@ -6519,12 +6528,13 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x0eprovider_ready\x18\x03 \x01(\bR\rproviderReady\x12!\n" +
 	"\faccept_terms\x18\x04 \x01(\bR\vacceptTerms\"L\n" +
 	"\x15ActivateMyAppResponse\x123\n" +
-	"\ago_live\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.GoLiveR\x06goLive\"\xbb\x01\n" +
+	"\ago_live\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.GoLiveR\x06goLive\"\xe6\x01\n" +
 	"\x1dUpdateMyBillingProfileRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x123\n" +
 	"\x05legal\x18\x03 \x01(\v2\x1d.payrudder.plans.v1.LegalInfoR\x05legal\x125\n" +
-	"\aaddress\x18\x04 \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\"T\n" +
+	"\aaddress\x18\x04 \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\x12)\n" +
+	"\x10default_language\x18\x05 \x01(\tR\x0fdefaultLanguage\"T\n" +
 	"\x1eUpdateMyBillingProfileResponse\x122\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"F\n" +
 	"\x14AcceptMyTermsRequest\x12\x17\n" +

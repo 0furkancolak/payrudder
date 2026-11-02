@@ -8586,6 +8586,11 @@ export interface components {
         AppSaveBillingProfileRequest: {
             legal?: components["schemas"]["LegalInfoInput"];
             address?: components["schemas"]["AddressInput"];
+            /**
+             * @description The language of the invoices and mails of a customer who has none of their own. Left out: unchanged (English for a new tenant)
+             * @enum {string}
+             */
+            default_language?: "en" | "tr" | "de" | "fr" | "es" | "ar";
         };
         AppAcceptTermsResponse: {
             /** Format: date-time */
@@ -9306,6 +9311,11 @@ export interface components {
             legal?: components["schemas"]["LegalInfoInput"];
             /** @enum {string} */
             e_invoice_on?: "off" | "finalized" | "paid";
+            /**
+             * @description The language of the invoices and mails of a customer who has none of their own. Left out: unchanged
+             * @enum {string}
+             */
+            default_language?: "en" | "tr" | "de" | "fr" | "es" | "ar";
         };
         SetTenantStatusRequest: {
             /** @enum {string} */
@@ -12451,6 +12461,11 @@ export interface components {
              * @enum {string}
              */
             e_invoice_on: "off" | "finalized" | "paid";
+            /**
+             * @description The language of the tenant's invoices and mails for a customer who has none of their own. Empty is English
+             * @enum {string}
+             */
+            default_language: "" | "en" | "tr" | "de" | "fr" | "es" | "ar";
             /** @enum {string} */
             environment: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             name: string;

@@ -155,8 +155,9 @@ type methodView struct{ ID, Label string }
 type pageBase struct {
 	L                map[string]string
 	Lang, Dir, Brand string
-	// F writes the numbers and dates of the page in its language.
+	// F writes the numbers and dates of the page in its language; Zone is the calendar its days are of (the seller's time zone, UTC when the invoice froze none).
 	F    *localefmt.Format
+	Zone *time.Location
 	Logo string
 	Test bool
 	// What the coloured side of the page says: who the page is from, the amount it is about and a line under it (the state of the invoice, the customer).
@@ -164,8 +165,19 @@ type pageBase struct {
 }
 
 func newBase(lang string) pageBase {
-	return pageBase{L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Brand: brand.Name(), F: localefmt.For(lang)}
+	return pageBase{L: hostedText(lang), Lang: lang, Dir: hostedDir(lang), Brand: brand.Name(), F: localefmt.For(lang), Zone: time.UTC}
 }
+
+// zoneOf loads an IANA time zone; a name that is empty or does not load is UTC, which is how every page was dated.
+func zoneOf(name string) *time.Location {
+	if loc, err := time.LoadLocation(name); err == nil {
+		return loc
+	}
+	return time.UTC
+}
+
+// Day writes a day in words, as the calendar of the page's zone has it: the same moment is the first of January in Istanbul while it is still the 31st of December in UTC.
+func (b pageBase) Day(t time.Time) string { return b.F.Date(t.In(b.Zone)) }
 
 // hostedBank is where to send the money for an invoice paid by bank transfer.
 type hostedBank struct{ Name, Holder, IBAN, BIC, Reference string }
@@ -191,19 +203,20 @@ type invoiceHeader struct {
 
 // newInvoiceHeader reads the header from billing's answer. The lines carry their service period when withPeriod is set (the invoice page shows it, the
 // receipt does not).
-func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, f *localefmt.Format, withPeriod bool) invoiceHeader {
+func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, b pageBase, withPeriod bool) invoiceHeader {
+	f := b.F
 	inv := resp.GetInvoice()
 	exp := int(resp.GetCurrencyExponent())
 	h := invoiceHeader{Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(), Currency: inv.GetCurrency(),
 		Total:         f.Amount(inv.GetTotalMinor(), exp),
 		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines()}
 	if t := inv.GetFinalizeTime(); t != nil {
-		h.Date = f.Date(t.AsTime().UTC())
+		h.Date = b.Day(t.AsTime())
 	}
 	for _, l := range inv.GetLines() {
 		line := hostedLine{Description: l.GetDescription(), Amount: f.Amount(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
 		if from, to := l.GetServiceFrom(), l.GetServiceTo(); withPeriod && from != nil && to != nil {
-			line.Period = f.Date(from.AsTime().UTC()) + " – " + f.Date(to.AsTime().UTC())
+			line.Period = b.Day(from.AsTime()) + " – " + b.Day(to.AsTime())
 		}
 		h.Lines = append(h.Lines, line)
 	}
@@ -213,6 +226,7 @@ func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, f *localefmt.For
 // hostedBase is the page base of a page about an invoice of the scope: language, brand, the seller's logo when it has one, and the test-mode banner.
 func hostedBase(resp *billingv1.GetHostedInvoiceResponse, sc scope, lang string) pageBase {
 	b := newBase(lang)
+	b.Zone = zoneOf(resp.GetTimeZone())
 	b.Test = resp.GetEnvironment() == env.Sandbox.String()
 	b.SideSeller = resp.GetSellerName()
 	if resp.GetLogoAvailable() {
@@ -324,7 +338,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	q := langSuffix(r)
 	base := hostedBase(resp, sc, lang)
 	v := &invoiceView{
-		pageBase: base, invoiceHeader: newInvoiceHeader(resp, base.F, true), Status: inv.GetStatus(),
+		pageBase: base, invoiceHeader: newInvoiceHeader(resp, base, true), Status: inv.GetStatus(),
 		Subtotal: base.F.Amount(inv.GetSubtotalMinor(), int(resp.GetCurrencyExponent())), HasPDF: resp.GetPdfAvailable(),
 		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Self: sc.page() + q, Back: sc.back(), State: stateOf(resp),
 	}
@@ -727,11 +741,11 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	inv := resp.GetInvoice()
 	lang = customerLang(r, resp.GetCustomerLocale())
 	base := hostedBase(resp, sc, lang)
-	v := &receiptView{pageBase: base, invoiceHeader: newInvoiceHeader(resp, base.F, false), Back: sc.page() + langSuffix(r)}
+	v := &receiptView{pageBase: base, invoiceHeader: newInvoiceHeader(resp, base, false), Back: sc.page() + langSuffix(r)}
 	v.SideAmount = v.Total + " " + v.Currency
 	for _, row := range s.ledgerRowsOf(r.Context(), resp) {
 		if row.InvoiceID == inv.GetId() && row.Kind == "charge" && row.Status == "succeeded" {
-			v.PaidOn, v.PaidWith = v.F.Date(row.OccurredAt.UTC()), row.Provider
+			v.PaidOn, v.PaidWith = v.Day(row.OccurredAt), row.Provider
 		}
 	}
 	s.render(w, r, http.StatusOK, "receipt", v)
