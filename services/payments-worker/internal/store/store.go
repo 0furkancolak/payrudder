@@ -106,16 +106,18 @@ func (a Attempts) Start(ctx context.Context, commandID, tenantID, invoiceID uuid
 
 // ChargedBefore reports whether another charge command of the tenant was started for the invoice under key, or under a failover key made from it (the attempt at another
 // account). Billing re-issues a charge nobody answered in time with a new command id and the same key, so Start alone takes that for a first try; a provider that does not
-// dedupe by key (iyzico, Paddle) must then be asked, and a charge that failed over must go on where it went, not charge again (docs/plans/22).
-func (a Attempts) ChargedBefore(ctx context.Context, tenant, invoice uuid.UUID, key string, except uuid.UUID) (bool, error) {
+// dedupe by key (iyzico, Paddle) must then be asked, and a charge that failed over must go on where it went, not charge again (docs/plans/22). It also returns the account
+// (stripe~eu) the first attempt under the key went to, this command's own row included, empty when there is none: only that account knows the key, so the charge is asked
+// and sent there, whatever the default account has become since.
+func (a Attempts) ChargedBefore(ctx context.Context, tenant, invoice uuid.UUID, key string, except uuid.UUID) (provider string, before bool, err error) {
 	if err := requireTenant(a.DB, tenant); err != nil {
-		return false, err
+		return "", false, err
 	}
-	n, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (int64, error) {
-		return q.CountEarlierChargeAttempts(ctx, sqlc.CountEarlierChargeAttemptsParams{TenantID: tenant, InvoiceID: invoice, ExceptCommandID: except, IdempotencyKey: key,
+	r, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.EarlierChargeAttemptsRow, error) {
+		return q.EarlierChargeAttempts(ctx, sqlc.EarlierChargeAttemptsParams{TenantID: tenant, InvoiceID: invoice, ExceptCommandID: except, IdempotencyKey: key,
 			FailoverPrefix: payments.FailoverPrefix(key)})
 	})
-	return n > 0, err
+	return r.FirstProvider, r.Others > 0, err
 }
 
 // RefundsUnder returns what the other refund commands of the tenant answered that were started under an idempotency key (the command itself is left out). Billing

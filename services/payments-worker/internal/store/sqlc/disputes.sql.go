@@ -13,7 +13,8 @@ import (
 )
 
 const disputeFactExists = `-- name: DisputeFactExists :one
-SELECT EXISTS (SELECT 1 FROM payment_ledger WHERE tenant_id = $1 AND provider = $2 AND kind = 'dispute' AND provider_ref = $3 AND status = $4::text)
+SELECT (EXISTS (SELECT 1 FROM payment_ledger l WHERE l.tenant_id = $1 AND l.provider = $2 AND l.kind = 'dispute' AND l.provider_ref = $3 AND l.status = $4::text)
+  AND (NOT $5::bool OR EXISTS (SELECT 1 FROM payment_disputes d WHERE d.tenant_id = $1 AND d.provider = $2 AND d.dispute_ref = $3 AND d.formal)))::bool AS known
 `
 
 type DisputeFactExistsParams struct {
@@ -21,19 +22,23 @@ type DisputeFactExistsParams struct {
 	Provider    string
 	ProviderRef *string
 	Status      string
+	Formal      bool
 }
 
-// Whether this step of a case (its provider reference and the status the ledger writes for the outcome) is in the ledger already: it was announced then.
+// Whether this step of a case (its provider reference and the status the ledger writes for the outcome) is in the ledger already: it was announced then. A formal step is
+// known only when the case is formal already: Stripe's inquiry (warning_needs_response) and the chargeback it becomes (needs_response) are one ledger row (open), and the
+// chargeback is a step of its own all the same.
 func (q *Queries) DisputeFactExists(ctx context.Context, arg DisputeFactExistsParams) (bool, error) {
 	row := q.db.QueryRow(ctx, disputeFactExists,
 		arg.TenantID,
 		arg.Provider,
 		arg.ProviderRef,
 		arg.Status,
+		arg.Formal,
 	)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+	var known bool
+	err := row.Scan(&known)
+	return known, err
 }
 
 const getChargeByPaymentRef = `-- name: GetChargeByPaymentRef :one
@@ -250,6 +255,62 @@ func (q *Queries) ListDisputes(ctx context.Context, arg ListDisputesParams) ([]L
 			&i.HandledAt,
 			&i.HandledBy,
 			&i.NoteCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLostDisputes = `-- name: ListLostDisputes :many
+SELECT dispute_ref, payment_ref, provider, invoice_id, amount_minor, currency, formal, provider_status, reason, opened_at
+FROM payment_disputes WHERE tenant_id = $1 AND outcome = 'lost' AND invoice_id IS NOT NULL AND opened_at >= $2 AND opened_at < $3 ORDER BY opened_at, id
+`
+
+type ListLostDisputesParams struct {
+	TenantID     uuid.UUID
+	OpenedFrom   time.Time
+	OpenedBefore time.Time
+}
+
+type ListLostDisputesRow struct {
+	DisputeRef     string
+	PaymentRef     string
+	Provider       string
+	InvoiceID      *uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	Formal         bool
+	ProviderStatus string
+	Reason         string
+	OpenedAt       time.Time
+}
+
+// What the reconciliation keeps raising for a case the cardholder won: the money is gone, and the invoice may still be paid. Only the cases opened in the period asked for.
+func (q *Queries) ListLostDisputes(ctx context.Context, arg ListLostDisputesParams) ([]ListLostDisputesRow, error) {
+	rows, err := q.db.Query(ctx, listLostDisputes, arg.TenantID, arg.OpenedFrom, arg.OpenedBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLostDisputesRow{}
+	for rows.Next() {
+		var i ListLostDisputesRow
+		if err := rows.Scan(
+			&i.DisputeRef,
+			&i.PaymentRef,
+			&i.Provider,
+			&i.InvoiceID,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.Formal,
+			&i.ProviderStatus,
+			&i.Reason,
+			&i.OpenedAt,
 		); err != nil {
 			return nil, err
 		}

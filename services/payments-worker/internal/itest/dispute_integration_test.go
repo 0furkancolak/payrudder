@@ -183,6 +183,29 @@ func TestDisputeNotificationsAreAnnouncedOncePerStep(t *testing.T) {
 	if told.got[len(told.got)-1].GetFormal() {
 		t.Error("an inquiry was announced as a chargeback")
 	}
+	// The inquiry becomes a chargeback (the same dispute, now needs_response): that is announced as a step of its own, once, with no other row in the ledger; a repeat of
+	// the inquiry (late) or of the chargeback (funds withdrawn, evidence sent) is told to nobody.
+	told.mu.Lock()
+	before := len(told.got)
+	told.mu.Unlock()
+	post("evt_10", "charge.dispute.updated", dispute("du_3", "needs_response", "pi_1"))
+	if got := told.steps(); len(got) != before+1 || got[before] != "du_3 open" || !told.got[before].GetFormal() {
+		t.Fatalf("the escalation of an inquiry: told %v (formal %v), want one more du_3 open as a chargeback", got, told.got[len(told.got)-1].GetFormal())
+	}
+	post("evt_11", "charge.dispute.funds_withdrawn", dispute("du_3", "needs_response", "pi_1"))
+	post("evt_12", "charge.dispute.updated", dispute("du_3", "under_review", "pi_1"))
+	post("evt_13", "charge.dispute.updated", dispute("du_3", "warning_under_review", "pi_1"))
+	if got := told.steps(); len(got) != before+1 {
+		t.Errorf("a repeat of the escalation was told again: %v", got)
+	}
+	formal := false
+	c, err := cases.List(ctx, tenant, invoice, "open", 10)
+	for _, d := range c {
+		formal = formal || d.DisputeRef == "du_3" && d.Formal
+	}
+	if err != nil || !formal {
+		t.Errorf("the escalated case du_3 is not formal: %+v, %v", c, err)
+	}
 
 	// The operator lists them, of one invoice and of one outcome.
 	req, _ := http.NewRequest("GET", api.URL+"/admin/tenants/"+tenant.String()+"/disputes?invoice_id="+invoice.String()+"&outcome=open", nil)

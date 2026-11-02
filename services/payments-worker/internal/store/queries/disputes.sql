@@ -45,6 +45,11 @@ SELECT id, action, note, actor, created_at FROM payment_dispute_events WHERE ten
 SELECT dispute_ref, payment_ref, provider, invoice_id, amount_minor, currency, formal, provider_status, reason, opened_at
 FROM payment_disputes WHERE tenant_id = @tenant_id AND outcome = 'open' AND invoice_id IS NOT NULL ORDER BY opened_at, id;
 
+-- name: ListLostDisputes :many
+-- What the reconciliation keeps raising for a case the cardholder won: the money is gone, and the invoice may still be paid. Only the cases opened in the period asked for.
+SELECT dispute_ref, payment_ref, provider, invoice_id, amount_minor, currency, formal, provider_status, reason, opened_at
+FROM payment_disputes WHERE tenant_id = @tenant_id AND outcome = 'lost' AND invoice_id IS NOT NULL AND opened_at >= @opened_from AND opened_at < @opened_before ORDER BY opened_at, id;
+
 -- name: GetChargeByPaymentRef :one
 -- The successful charge the ledger holds for a provider's payment reference, whichever invoice: the invoice a dispute is about.
 SELECT invoice_id, amount_minor, currency FROM payment_ledger
@@ -52,5 +57,8 @@ WHERE tenant_id = @tenant_id AND provider = @provider AND kind = 'charge' AND st
 ORDER BY id LIMIT 1;
 
 -- name: DisputeFactExists :one
--- Whether this step of a case (its provider reference and the status the ledger writes for the outcome) is in the ledger already: it was announced then.
-SELECT EXISTS (SELECT 1 FROM payment_ledger WHERE tenant_id = @tenant_id AND provider = @provider AND kind = 'dispute' AND provider_ref = @provider_ref AND status = @status::text);
+-- Whether this step of a case (its provider reference and the status the ledger writes for the outcome) is in the ledger already: it was announced then. A formal step is
+-- known only when the case is formal already: Stripe's inquiry (warning_needs_response) and the chargeback it becomes (needs_response) are one ledger row (open), and the
+-- chargeback is a step of its own all the same.
+SELECT (EXISTS (SELECT 1 FROM payment_ledger l WHERE l.tenant_id = @tenant_id AND l.provider = @provider AND l.kind = 'dispute' AND l.provider_ref = @provider_ref AND l.status = @status::text)
+  AND (NOT @formal::bool OR EXISTS (SELECT 1 FROM payment_disputes d WHERE d.tenant_id = @tenant_id AND d.provider = @provider AND d.dispute_ref = @provider_ref AND d.formal)))::bool AS known;

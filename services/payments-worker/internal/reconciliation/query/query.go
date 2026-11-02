@@ -66,7 +66,8 @@ const (
 	FeeMismatch        = settlement.KindFee      // the provider kept another fee than the fee rule expects
 
 	// PaymentDisputed: a customer questioned the payment of an invoice with their bank and the case is undecided (a chargeback has taken the money back until it is, an
-	// inquiry has not). It is raised in the period the case was opened in, and clears when it ends.
+	// inquiry has not), or was lost while billing still calls the invoice paid. It is raised in the period the case was opened in, and clears when it ends in the seller's
+	// favour or the invoice is no longer paid.
 	PaymentDisputed = "payment_disputed"
 )
 
@@ -161,7 +162,7 @@ func Get(ctx context.Context, d Deps, t uuid.UUID, pid string) (*Reconciliation,
 	return rec, nil
 }
 
-// disputes raises the cases opened in the period that are still undecided.
+// disputes raises the cases opened in the period that are still undecided, and those that were lost while billing still calls the invoice paid.
 func (rec *Reconciliation) disputes(ctx context.Context, d Deps, t uuid.UUID, pid string, paid map[string]*billingv1.Invoice) error {
 	if d.Disputes.DB == nil {
 		return nil
@@ -171,21 +172,51 @@ func (rec *Reconciliation) disputes(ctx context.Context, d Deps, t uuid.UUID, pi
 		return err
 	}
 	for _, o := range open {
-		if period.PeriodOf(o.OpenedAt, time.UTC) != pid {
-			continue
+		if period.PeriodOf(o.OpenedAt, time.UTC) == pid {
+			rec.addDispute(o, paid[o.InvoiceID.String()].GetNumber(), "")
 		}
-		what := "inquiry"
-		if o.Formal {
-			what = "chargeback"
-		}
-		detail := fmt.Sprintf("%s, %s", what, o.Status)
-		if o.Reason != "" {
-			detail += ", " + o.Reason
-		}
+	}
+	from, before, err := period.Bounds(pid, time.UTC)
+	if err != nil {
+		return err
+	}
+	lost, err := d.Disputes.Lost(ctx, t, from, before)
+	if err != nil {
+		return err
+	}
+	for _, o := range lost {
 		id := o.InvoiceID.String()
-		rec.add(Discrepancy{Kind: PaymentDisputed, InvoiceID: id, Number: paid[id].GetNumber(), Provider: o.Provider, ProviderRef: o.Ref, Currency: o.Currency, LedgerMinor: o.AmountMinor, Detail: detail})
+		inv, isPaid := paid[id]
+		if !isPaid {
+			// The invoice may be of an earlier period than the case: billing says whether it is still paid.
+			if inv, err = d.Billing.GetInvoice(ctx, t, id); err != nil {
+				if status.Code(err) == codes.NotFound {
+					continue // not one of this tenant's invoices
+				}
+				return billingFailure("look up an invoice", err)
+			}
+			if inv.GetStatus() != "paid" {
+				continue
+			}
+		}
+		rec.addDispute(o, inv.GetNumber(), "the invoice is still paid")
 	}
 	return nil
+}
+
+func (rec *Reconciliation) addDispute(o store.OpenDispute, number, note string) {
+	what := "inquiry"
+	if o.Formal {
+		what = "chargeback"
+	}
+	detail := fmt.Sprintf("%s, %s", what, o.Status)
+	if o.Reason != "" {
+		detail += ", " + o.Reason
+	}
+	if note != "" {
+		detail += "; " + note
+	}
+	rec.add(Discrepancy{Kind: PaymentDisputed, InvoiceID: o.InvoiceID.String(), Number: number, Provider: o.Provider, ProviderRef: o.Ref, Currency: o.Currency, LedgerMinor: o.AmountMinor, Detail: detail})
 }
 
 // settle puts the successful payments of the period's paid invoices beside the settlement lines kept for the tenant. A payment settled by hand (a bank transfer) is not

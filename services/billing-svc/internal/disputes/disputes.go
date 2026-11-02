@@ -39,8 +39,8 @@ type Handler struct {
 // New returns the handler over the billing_system database; plans nil never blocks.
 func New(system *tenantdb.DB, plans Blocker) *Handler { return &Handler{system: system, plans: plans} }
 
-// RecordPaymentDispute implements billingv1.BillingServiceServer. It is idempotent per (provider, dispute, outcome): the webhook event has a key of its own, and the audit
-// entry is written only when the event was new to the outbox. The block is asked for again on every call that finds a formal dispute open, because a block that failed
+// RecordPaymentDispute implements billingv1.BillingServiceServer. It is idempotent per (provider, dispute, outcome, and for an open case whether it is a chargeback: Stripe's
+// inquiry that escalates is the same dispute): the webhook event has a key of its own, and the audit entry is written only when the event was new to the outbox. The block is asked for again on every call that finds a formal dispute open, because a block that failed
 // must be tried again and a second block of a blocked customer changes nothing.
 func (h *Handler) RecordPaymentDispute(ctx context.Context, req *billingv1.RecordPaymentDisputeRequest) (*billingv1.RecordPaymentDisputeResponse, error) {
 	ti, err := tenant.Require(ctx)
@@ -81,7 +81,11 @@ func (h *Handler) RecordPaymentDispute(ctx context.Context, req *billingv1.Recor
 		if t := req.GetEvidenceDueTime(); t != nil {
 			data["evidence_due_time"] = t.AsTime().UTC().Format(time.RFC3339)
 		}
-		out.Announced, err = tenantevents.WriteNew(ctx, tx, ti.ID, tenantevents.EventPaymentDisputed, req.GetProvider()+"|"+req.GetDisputeRef()+"|"+req.GetOutcome(), at, data)
+		key := req.GetProvider() + "|" + req.GetDisputeRef() + "|" + req.GetOutcome()
+		if req.GetOutcome() == "open" && req.GetFormal() {
+			key += "|formal" // the chargeback an inquiry became is a step of its own; the key of the inquiry (and of every event before this) is unchanged
+		}
+		out.Announced, err = tenantevents.WriteNew(ctx, tx, ti.ID, tenantevents.EventPaymentDisputed, key, at, data)
 		if err != nil {
 			return err
 		}

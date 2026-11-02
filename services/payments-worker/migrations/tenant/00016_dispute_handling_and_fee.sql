@@ -28,12 +28,14 @@ CREATE TRIGGER payment_dispute_events_no_delete BEFORE DELETE ON payment_dispute
 GRANT SELECT, INSERT, DELETE ON payment_dispute_events TO payments_system;
 
 -- The fee of a dispute is a row of the ledger of its own (kind dispute_fee, the provider reference of the case with ":fee"): money the provider took from the seller. The
--- constraint is added NOT VALID and validated after, which does not hold the ledger's writers up for the length of a scan.
+-- constraint is added NOT VALID and validated after, but this file is one transaction (goose), so the ACCESS EXCLUSIVE lock that DROP/ADD CONSTRAINT takes is held through the
+-- VALIDATE scan: the ledger's writers wait for the length of a scan of payment_ledger. (Only separate transactions would let them through: a goose no-transaction migration.)
 ALTER TABLE payment_ledger DROP CONSTRAINT payment_ledger_kind_check;
 ALTER TABLE payment_ledger ADD CONSTRAINT payment_ledger_kind_check CHECK (kind IN ('charge', 'refund', 'dispute', 'dispute_fee', 'payout')) NOT VALID;
 ALTER TABLE payment_ledger VALIDATE CONSTRAINT payment_ledger_kind_check;
 
 -- +goose Down
+-- Roll forward only: the old kind check fails once a row of kind dispute_fee exists, and dropping payment_dispute_events deletes the seller's notes.
 ALTER TABLE payment_ledger DROP CONSTRAINT payment_ledger_kind_check;
 ALTER TABLE payment_ledger ADD CONSTRAINT payment_ledger_kind_check CHECK (kind IN ('charge', 'refund', 'dispute', 'payout'));
 DROP TABLE payment_dispute_events;
