@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -172,6 +173,11 @@ func (w *Worker) handle(ctx context.Context, queue string, d amqp.Delivery) rabb
 		w.result(ctx, queue, "poison")
 		return rabbitx.Reject
 	case err != nil:
+		// A provider that said how long to wait (a Retry-After) is not asked sooner than that.
+		var waiter interface{ RetryDelay() time.Duration }
+		if errors.As(err, &waiter) {
+			rabbitx.AskRetryAfter(ctx, waiter.RetryDelay())
+		}
 		w.Log.WarnContext(ctx, "command failed, retrying", "queue", queue, "command_id", cmd.GetCommandId(), "attempt", rabbitx.Attempt(d), "error", err)
 		w.result(ctx, queue, "retry")
 		return rabbitx.Retry

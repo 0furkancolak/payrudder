@@ -199,6 +199,9 @@ type ProviderSubscription struct {
 	NextBilledAt            *time.Time
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
+	ScheduledAction         *string
+	ScheduledEffectiveAt    *time.Time
+	ScheduledResumeAt       *time.Time
 }
 
 type ReconciliationDiscrepancy struct {

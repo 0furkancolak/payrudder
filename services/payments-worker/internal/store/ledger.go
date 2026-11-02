@@ -126,6 +126,27 @@ func (l Ledger) ChargeFact(ctx context.Context, tenant uuid.UUID, key string) (F
 	return f, true, nil
 }
 
+// PendingRef returns the provider's reference of the payment the hosted attempt under key waits on (the checkout form's token, the 3-D Secure payment id), if the ledger
+// holds a pending row for it.
+func (l Ledger) PendingRef(ctx context.Context, tenant uuid.UUID, key string) (string, bool, error) {
+	ref, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (*string, error) { return q.GetPendingRef(ctx, &key) })
+	if !ok || ref == nil {
+		return "", false, err
+	}
+	return *ref, true, nil
+}
+
+// ChargeOfRef returns what a successful charge of the invoice was and when it was taken, by the provider's reference, if the ledger holds it.
+func (l Ledger) ChargeOfRef(ctx context.Context, tenant, invoice uuid.UUID, ref string) (amountMinor int64, at time.Time, found bool, err error) {
+	r, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (sqlc.GetChargeByRefRow, error) {
+		return q.GetChargeByRef(ctx, sqlc.GetChargeByRefParams{TenantID: tenant, InvoiceID: &invoice, ProviderRef: &ref})
+	})
+	if !ok {
+		return 0, time.Time{}, false, err
+	}
+	return r.AmountMinor, r.OccurredAt, true, nil
+}
+
 // RefundFact returns the provider's reference of the refund the tenant made for an invoice under an idempotency key, if the ledger holds one.
 func (l Ledger) RefundFact(ctx context.Context, tenant, invoice uuid.UUID, key string) (string, bool, error) {
 	ref, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (*string, error) {

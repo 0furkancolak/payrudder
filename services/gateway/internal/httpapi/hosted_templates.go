@@ -85,7 +85,7 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 <div class="wrap" tabindex="0"><table><thead><tr><th>{{.L.description}}</th><th class="n">{{.L.amount}} ({{.Currency}})</th></tr></thead><tbody>
 {{range .Lines}}<tr><td>{{.Description}}{{if .Period}}<div class="muted">{{.Period}}</div>{{end}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}}</td></tr>
 {{end}}</tbody><tfoot><tr><td>{{.L.subtotal}}</td><td class="n">{{.Subtotal}}</td></tr><tr><td>{{.L.total}}</td><td class="n">{{.Total}} {{.Currency}}</td></tr></tfoot></table></div>
-{{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}{{if .CheckAgain}}<a class="btn alt" id="check-again" href="{{.Self}}">{{.L.check_again}}</a>{{end}}
+{{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}{{if .CheckAgain}}<a class="btn alt" id="check-again" href="{{.Again}}">{{.L.check_again}}</a>{{end}}
 {{with .Bank}}<div class="pay"><b>{{$.L.payBy}}</b><dl><dt>{{$.L.bank}}</dt><dd>{{.Name}}</dd><dt>{{$.L.holder}}</dt><dd>{{.Holder}}</dd><dt>{{$.L.iban}}</dt><dd class="mono">{{.IBAN}}</dd>{{if .BIC}}<dt>{{$.L.bic}}</dt><dd class="mono">{{.BIC}}</dd>{{end}}<dt>{{$.L.bankRef}}</dt><dd class="mono">{{.Reference}}</dd></dl><p class="muted">{{$.L.referenceHint}}</p></div>{{end}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
 {{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}

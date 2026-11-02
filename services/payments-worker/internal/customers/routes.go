@@ -24,6 +24,33 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	const base = "/admin/tenants/{tenant}/providers/{provider}/customers/{external_id}"
 	mux.HandleFunc("POST "+base, guard(h.ensure))
 	mux.HandleFunc("POST "+base+"/portal", guard(h.portal))
+	mux.HandleFunc("POST "+base+"/payment-method-setup", guard(h.setupPaymentMethod))
+}
+
+// setupPaymentMethod opens the provider's page where the customer saves a payment method for later charges; the body names where the customer returns to. The method is
+// learned from the provider's notification, not from this call.
+func (h *Handler) setupPaymentMethod(w http.ResponseWriter, r *http.Request) {
+	tg, ok := httpx.ProviderTarget(w, r, h.Resolver)
+	if !ok {
+		return
+	}
+	api, err := target.As[payments.SetupProvider](tg, "saving a payment method")
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	var in struct {
+		ReturnURL string `json:"return_url"`
+	}
+	if !httpx.DecodeBody(w, r, &in) {
+		return
+	}
+	co, err := command.SetupPaymentMethod(r.Context(), h.Deps, tg, api, r.PathValue("external_id"), in.ReturnURL)
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"url": co.URL, "ref": co.Ref})
 }
 
 func (h *Handler) ensure(w http.ResponseWriter, r *http.Request) {

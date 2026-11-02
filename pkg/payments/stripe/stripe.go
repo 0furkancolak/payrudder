@@ -5,6 +5,8 @@
 //   - Charge: a PaymentIntent confirmed off session for a saved payment method ("pm_...") of the customer, with Stripe's own Idempotency-Key header;
 //   - Status: finds the PaymentIntent that carries Payrudder's key in its metadata, through Stripe's search;
 //   - Refund: a refund of the PaymentIntent (the charge id), partial or whole;
+//   - CreateSetupCheckout: a hosted Checkout Session in setup mode, where the customer saves a card on a Stripe Customer for the off-session charges above; the
+//     notification that it was saved (checkout.session.completed, then the SetupIntent) gives the "cus_...:pm_..." Charge takes;
 //   - CreateInvoiceCheckout: a hosted Checkout Session for one invoice, tagged with the key of the charge;
 //   - ConfirmNotification: verifies the Stripe-Signature of a webhook (HMAC-SHA256 over "t.body" with the endpoint's signing secret) and turns the event into
 //     payments.Notification.
@@ -49,8 +51,9 @@ const APIVersion = "2026-09-30.endive"
 type Settings struct {
 	// APIKey is a secret or restricted key: sk_live_..., sk_test_..., rk_live_... or rk_test_.... Its prefix says whether the account is live or test.
 	APIKey string `json:"api_key"`
-	// WebhookSecret is the signing secret (whsec_...) of the webhook endpoint Stripe sends to Payrudder's webhook URL.
-	WebhookSecret string `json:"webhook_secret"`
+	// WebhookSecret is the signing secret (whsec_...) of the webhook endpoint Stripe sends to Payrudder's webhook URL. It can be left out when the account is connected
+	// and filled in by RegisterWebhook, which creates the endpoint and stores the secret Stripe shows then; until it is there no notification is believed.
+	WebhookSecret string `json:"webhook_secret,omitempty"`
 	// BaseURL defaults to Stripe's API host. Another host is for tests and is refused when a person connects the account themselves.
 	BaseURL string `json:"base_url,omitempty"`
 	// WebhookTolerance is how old a signed webhook may be, in seconds. Default 300, Stripe's own default.
@@ -72,8 +75,8 @@ type Client struct {
 
 // New returns a client with the given per-request timeout (default 10 s).
 func New(s Settings, timeout time.Duration) (*Client, error) {
-	if s.APIKey == "" || s.WebhookSecret == "" {
-		return nil, errors.New("stripe: api_key and webhook_secret are required")
+	if s.APIKey == "" {
+		return nil, errors.New("stripe: api_key is required")
 	}
 	if !validKey(s.APIKey) {
 		return nil, errors.New("stripe: api_key must be a secret or restricted key (sk_live_, sk_test_, rk_live_ or rk_test_)")
@@ -176,6 +179,7 @@ type apiError struct {
 		Type        string `json:"type"`
 		Code        string `json:"code"`
 		DeclineCode string `json:"decline_code"`
+		AdviceCode  string `json:"advice_code"`
 		Message     string `json:"message"`
 	} `json:"error"`
 }
@@ -251,7 +255,7 @@ func (c *Client) refusal(resp *http.Response, raw []byte) error {
 		if code == "" {
 			code = "card_declined"
 		}
-		return &payments.DeclinedError{Code: normalizeDecline(code)}
+		return &payments.DeclinedError{Code: normalizeDecline(code), Final: doNotRetry(e.Error.AdviceCode)}
 	}
 	switch retry := resp.Header.Get("Stripe-Should-Retry"); {
 	case retry == "false":
@@ -264,6 +268,13 @@ func (c *Client) refusal(resp *http.Response, raw []byte) error {
 	}
 	return &Error{Status: resp.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message}
 }
+
+// doNotRetry reads Stripe's advice on a declined card payment. Of the three advice codes only do_not_try_again says not to retry: "The card was declined and you
+// shouldn't use it again for the same transaction" (docs.stripe.com/declines/card.md, read 2026-11-02); try_again_later and confirm_card_data do not. The decline
+// codes themselves never say it: even stolen_card, lost_card and fraudulent only say what not to tell the customer (docs.stripe.com/declines/codes.md), so no decline code
+// is classified here. UNVERIFIED: that "the same transaction" covers a later dunning attempt of the same invoice (Payrudder treats it so), and that Stripe sends the
+// advice at all for an off-session charge; no account has been used.
+func doNotRetry(advice string) bool { return advice == "do_not_try_again" }
 
 // normalizeDecline gives one code to "the customer must come back and authenticate": authentication_required, and authentication_not_handled, the decline an
 // issuer gives when the customer tried to go on without it (docs.stripe.com/declines/codes, read 2026-11-02). The Stripe-vocabulary codes otherwise pass as they are.
@@ -307,7 +318,13 @@ type paymentIntent struct {
 	LastPaymentError *struct {
 		Code        string `json:"code"`
 		DeclineCode string `json:"decline_code"`
+		AdviceCode  string `json:"advice_code"`
 	} `json:"last_payment_error"`
+}
+
+// final reports Stripe's advice not to try the payment again (last_payment_error.advice_code, docs.stripe.com/api/payment_intents/object.md, read 2026-11-02).
+func (p paymentIntent) final() bool {
+	return p.LastPaymentError != nil && doNotRetry(p.LastPaymentError.AdviceCode)
 }
 
 func (p paymentIntent) declineCode() string {
@@ -363,7 +380,7 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 	case "requires_action":
 		return payments.ChargeResult{}, &payments.DeclinedError{Code: "authentication_required"}
 	default: // requires_payment_method, requires_confirmation, canceled
-		return payments.ChargeResult{}, &payments.DeclinedError{Code: pi.declineCode()}
+		return payments.ChargeResult{}, &payments.DeclinedError{Code: pi.declineCode(), Final: pi.final()}
 	}
 }
 
@@ -420,7 +437,7 @@ func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult,
 	case "succeeded":
 		return payments.StatusResult{State: payments.StateSucceeded, ChargeID: pi.ID}, nil
 	case "requires_payment_method", "canceled":
-		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: pi.declineCode()}, nil
+		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: pi.declineCode(), Final: pi.final()}, nil
 	case "requires_action":
 		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: "authentication_required"}, nil
 	}
@@ -472,6 +489,119 @@ func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutI
 	return payments.Checkout{URL: out.URL, Ref: out.ID}, nil
 }
 
+// CreateSetupCheckout makes a hosted Checkout Session in setup mode: the customer enters a card, nothing is charged, and Stripe "automatically attaches the resulting
+// payment method to that Customer" (docs.stripe.com/payments/save-and-reuse.md, read 2026-11-02, the Customers v1 variant). The Customer is made first
+// (POST /v1/customers) unless r.CustomerRef is known, because the session takes an existing one; currency is required in setup mode "when allowed_payment_method_types
+// is not set", which this never sets. The Customer's key is the Payrudder customer's, so a second click inside 24 hours makes no second Customer. The session carries
+// payrudder_customer_id and payrudder_external_id in its metadata, which ConfirmNotification reads back from checkout.session.completed. The seller's terms for saving
+// and later charging a card (the agreement the guide's "Compliance" section asks for, with the customer's consent) are not collected here: they belong to the page the
+// customer comes from. UNVERIFIED: that Checkout's own text suffices as that consent, and everything against a real account.
+func (c *Client) CreateSetupCheckout(ctx context.Context, r payments.SetupRequest) (payments.SetupCheckout, error) {
+	if r.IdempotencyKey == "" || r.ReturnURL == "" || len(r.Currency) != 3 || r.PayrudderCustomerID == "" || r.ExternalID == "" {
+		return payments.SetupCheckout{}, errors.New("stripe: a setup checkout needs a key, a return address, a currency and the customer")
+	}
+	ref := r.CustomerRef
+	if ref == "" {
+		form := url.Values{"metadata[payrudder_customer_id]": {r.PayrudderCustomerID}, "metadata[payrudder_external_id]": {r.ExternalID}}
+		if r.Email != "" {
+			form.Set("email", r.Email)
+		}
+		if r.Name != "" {
+			form.Set("name", r.Name)
+		}
+		var cus struct {
+			ID string `json:"id"`
+		}
+		if err := c.do(ctx, http.MethodPost, "/v1/customers", form, "payrudder-customer-"+r.PayrudderCustomerID, &cus); err != nil {
+			return payments.SetupCheckout{}, err
+		}
+		if cus.ID == "" {
+			return payments.SetupCheckout{}, errors.New("stripe: a customer without an id")
+		}
+		ref = cus.ID
+	}
+	form := url.Values{
+		"mode": {"setup"}, "customer": {ref}, "currency": {strings.ToLower(r.Currency)}, "success_url": {r.ReturnURL}, "cancel_url": {r.ReturnURL},
+		"metadata[payrudder_customer_id]": {r.PayrudderCustomerID}, "metadata[payrudder_external_id]": {r.ExternalID},
+	}
+	var out struct {
+		ID  string `json:"id"`
+		URL string `json:"url"`
+	}
+	if err := c.do(ctx, http.MethodPost, "/v1/checkout/sessions", form, r.IdempotencyKey, &out); err != nil {
+		return payments.SetupCheckout{}, err
+	}
+	if out.URL == "" {
+		return payments.SetupCheckout{}, errors.New("stripe: the checkout session has no url")
+	}
+	return payments.SetupCheckout{URL: out.URL, Ref: out.ID, CustomerRef: ref}, nil
+}
+
+// savedMethod turns a completed setup-mode Checkout Session into the notification that a method was saved. The session names the SetupIntent, which is retrieved for
+// its payment_method ("Retrieve the SetupIntent to get the payment_method ID", docs.stripe.com/payments/save-and-reuse.md, read 2026-11-02): a SetupIntent that did
+// not succeed, a session Payrudder did not make (no ids in its metadata) and a method on no customer are ignored, because nothing could be charged with them.
+func (c *Client) savedMethod(ctx context.Context, n payments.Notification, customer, setupIntent string, meta map[string]string) (payments.Notification, error) {
+	if setupIntent == "" || meta["payrudder_customer_id"] == "" || meta["payrudder_external_id"] == "" {
+		return n, nil
+	}
+	var si struct {
+		Status        string `json:"status"`
+		PaymentMethod string `json:"payment_method"`
+		Customer      string `json:"customer"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/v1/setup_intents/"+url.PathEscape(setupIntent), nil, "", &si); err != nil {
+		return n, err
+	}
+	if si.Customer != "" {
+		customer = si.Customer
+	}
+	if si.Status != "succeeded" || si.PaymentMethod == "" || customer == "" {
+		return n, nil
+	}
+	n.Kind, n.ProviderRef = payments.KindPaymentMethod, si.PaymentMethod
+	n.PaymentMethod = &payments.SavedPaymentMethod{CustomerRef: customer, Token: customer + ":" + si.PaymentMethod,
+		PayrudderCustomerID: meta["payrudder_customer_id"], ExternalID: meta["payrudder_external_id"]}
+	return n, nil
+}
+
+// WebhookEvents are the event types the adapter turns into notifications (ConfirmNotification); the endpoint RegisterWebhook creates is enabled for exactly these.
+var WebhookEvents = []string{
+	"payment_intent.succeeded", "payment_intent.payment_failed",
+	"checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed",
+	"refund.updated", "refund.failed",
+}
+
+// RegisterWebhook creates the webhook endpoint at Stripe (POST /v1/webhook_endpoints, docs.stripe.com/api/webhook_endpoints/create, read 2026-11-02): enabled for
+// WebhookEvents and generating its events with the API version the adapter reads (api_version, one of the documented values), so a payload is shaped as
+// ConfirmNotification expects whatever the account's own default is. The endpoint is an account endpoint (connect defaults to false) and sends full objects
+// ("snapshot"): the call has no parameter for the thin payloads of event destinations. The signing secret is "populated" in this answer (the page says
+// nothing of a later retrieval, so it is taken now). The Idempotency-Key derives from the address, the events and the version: a repeated click inside Stripe's
+// 24 hours gets the first answer instead of a second endpoint; after that a second call creates a second endpoint, and the old one is deleted at Stripe.
+// UNVERIFIED: the permission a restricted key needs for it; behaviour against a real account.
+func (c *Client) RegisterWebhook(ctx context.Context, r payments.WebhookRegistration) (payments.WebhookEndpoint, error) {
+	u, err := url.Parse(r.URL)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return payments.WebhookEndpoint{}, errors.New("stripe: the webhook address must be an https:// URL")
+	}
+	form := url.Values{"url": {r.URL}, "api_version": {c.s.APIVersion}, "description": {"Payrudder"}}
+	for i, e := range WebhookEvents {
+		form.Set("enabled_events["+strconv.Itoa(i)+"]", e)
+	}
+	sum := sha256.Sum256([]byte(r.URL + "|" + c.s.APIVersion + "|" + strings.Join(WebhookEvents, ",")))
+	var out struct {
+		ID            string   `json:"id"`
+		Secret        string   `json:"secret"`
+		EnabledEvents []string `json:"enabled_events"`
+	}
+	if err := c.do(ctx, http.MethodPost, "/v1/webhook_endpoints", form, "payrudder-webhook-"+hex.EncodeToString(sum[:16]), &out); err != nil {
+		return payments.WebhookEndpoint{}, err
+	}
+	if out.ID == "" || out.Secret == "" {
+		return payments.WebhookEndpoint{}, errors.New("stripe: the webhook endpoint came back without an id or a signing secret")
+	}
+	return payments.WebhookEndpoint{ID: out.ID, Secret: out.Secret, Events: out.EnabledEvents}, nil
+}
+
 // SignatureHeader builds a Stripe-Signature header value for body at time ts (what Stripe does when it sends). Used to test and to simulate.
 func SignatureHeader(secret string, ts time.Time, body []byte) string {
 	unix := strconv.FormatInt(ts.Unix(), 10)
@@ -489,6 +619,9 @@ func sign(secret, ts string, body []byte) string {
 var ErrBadSignature = fmt.Errorf("stripe: bad webhook signature: %w", payments.ErrUnverified)
 
 func (c *Client) verify(body []byte, header http.Header) error {
+	if c.s.WebhookSecret == "" {
+		return fmt.Errorf("%w: this account has no webhook secret yet: register the webhook endpoint", ErrBadSignature)
+	}
 	ts, sigs := "", []string(nil)
 	for _, part := range strings.Split(header.Get("Stripe-Signature"), ",") {
 		k, v, ok := strings.Cut(strings.TrimSpace(part), "=")
@@ -540,7 +673,7 @@ func ParseNotification(body []byte, _ http.Header) (payments.NotificationRef, er
 }
 
 // ConfirmNotification implements payments.Notifier. Stripe signs its webhooks, so the signature is the confirmation; nothing is believed that does not verify.
-func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http.Header) (payments.Notification, error) {
+func (c *Client) ConfirmNotification(ctx context.Context, body []byte, header http.Header) (payments.Notification, error) {
 	if err := c.verify(body, header); err != nil {
 		return payments.Notification{}, err
 	}
@@ -570,6 +703,9 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		}
 	case "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed":
 		var s struct {
+			Mode          string            `json:"mode"`
+			Customer      string            `json:"customer"`
+			SetupIntent   string            `json:"setup_intent"`
 			PaymentIntent string            `json:"payment_intent"`
 			PaymentStatus string            `json:"payment_status"`
 			AmountTotal   int64             `json:"amount_total"`
@@ -578,6 +714,13 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		}
 		if err := json.Unmarshal(e.Data.Object, &s); err != nil {
 			return n, fmt.Errorf("stripe: checkout session: %w", err)
+		}
+		if s.Mode == "setup" {
+			// A card saved: no payment, so payment_status is no_payment_required and nothing below applies.
+			if e.Type != "checkout.session.completed" {
+				return n, nil
+			}
+			return c.savedMethod(ctx, n, s.Customer, s.SetupIntent, s.Metadata)
 		}
 		switch {
 		case e.Type == "checkout.session.async_payment_failed":
@@ -626,4 +769,6 @@ var (
 	_ payments.HealthChecker           = (*Client)(nil)
 	_ payments.KeyModer                = (*Client)(nil)
 	_ payments.LiveModer               = (*Client)(nil)
+	_ payments.WebhookRegistrar        = (*Client)(nil)
+	_ payments.SetupProvider           = (*Client)(nil)
 )

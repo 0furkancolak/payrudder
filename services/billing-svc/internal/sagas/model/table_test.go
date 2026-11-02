@@ -188,6 +188,28 @@ func TestLinkCollectedInvoiceWaitsForTheCustomer(t *testing.T) {
 	check(PdfRendered, EvContinue, Ctx{TotalMinor: 500, MaxDunning: 3}, PaymentRequested, EffCharge)
 }
 
+// A provider that says a payment must not be tried again (PaymentDeclined.final) ends dunning at once, however many attempts are left: the invoice is uncollectible
+// (still payable by the customer on the hosted page), or for a link-collected invoice back with its customer. An ordinary decline with attempts left is dunned.
+func TestADeclineThatMustNotBeRetriedSkipsDunning(t *testing.T) {
+	left := Ctx{TotalMinor: 500, DunningAttempt: 0, MaxDunning: 3}
+	for _, c := range []struct {
+		from State
+		ev   Event
+	}{
+		{PaymentRequested, EvPaymentDeclinedFinal}, {PaymentUnknown, EvPaymentDeclinedFinal}, {PaymentUnknown, EvStatusDeclinedFinal}, {PaymentPending, EvStatusDeclinedFinal},
+	} {
+		if r, ok := Next(c.from, c.ev, left); !ok || r.To != Uncollectible || r.Effect != EffNone {
+			t.Errorf("Next(%s, %s) with attempts left = %+v %v, want UNCOLLECTIBLE", c.from, c.ev, r, ok)
+		}
+		if r, ok := Next(c.from, c.ev, Ctx{TotalMinor: 500, Link: true, MaxDunning: 3}); !ok || r.To != AwaitingPayment {
+			t.Errorf("Next(%s, %s) on a link = %+v %v, want AWAITING_PAYMENT", c.from, c.ev, r, ok)
+		}
+	}
+	if r, _ := Next(PaymentRequested, EvPaymentDeclined, left); r.To != PaymentDeclined || r.Effect != EffScheduleDunning {
+		t.Errorf("an ordinary decline with attempts left = %+v, want dunning", r)
+	}
+}
+
 func TestProviderThatMailsItsOwnReceiptSkipsOurs(t *testing.T) {
 	got, ok := Next(Paid, EvContinue, Ctx{TotalMinor: 100, Paid: true, ProviderMails: true})
 	if !ok || got.To != Completed || got.Effect != EffNone {

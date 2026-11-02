@@ -324,6 +324,8 @@ test.describe("the security page", () => {
     await gw.install(page);
     await signInAsAda(page);
     await pickLanguage(page, "ar");
+    // The choice is kept as the page switches; a reload before it has switched would keep the old one (slow on CI).
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await page.goto("/app/security");
     await expect(page.getByRole("heading", { name: "الأمان" })).toBeVisible();
     await expect(page.getByTestId("two-factor-card")).toContainText("تسجيل الدخول بخطوتين");

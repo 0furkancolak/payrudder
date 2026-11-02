@@ -537,14 +537,19 @@ func testStatusNotFound(t *testing.T) {
 		s := e.sagaStates("2026-10")
 		return len(s) == 2 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
-	keys := map[string]int{}
+	keys, customers := map[string]int{}, map[string]bool{}
 	for _, c := range stub.Commands() {
 		if ch := c.GetChargePayment(); ch != nil {
 			keys[ch.GetIdempotencyKey()]++
+			customers[ch.GetCustomerExternalId()] = true
 		}
 	}
 	if len(keys) != 2 {
 		t.Fatalf("idempotency keys = %v, want 2 distinct (one per invoice)", keys)
+	}
+	// A provider that vets the payer (iyzico) reads the customer record, so every charge names the customer it is for.
+	if len(customers) != 2 || !customers["cus_a"] || !customers["cus_b"] {
+		t.Errorf("customers named by the charge commands = %v, want cus_a and cus_b", customers)
 	}
 	for k, n := range keys {
 		if n != 2 {

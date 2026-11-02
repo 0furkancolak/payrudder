@@ -84,3 +84,9 @@ func (p PlansClient) TenantCurrency(ctx context.Context, id uuid.UUID) (string, 
 	r, err := p.Admin.GetTenant(tenant.OutgoingContext(tenant.WithOperator(ctx)), &plansv1.GetTenantRequest{TenantId: id.String()})
 	return r.GetTenant().GetCurrency(), err
 }
+
+// SetCustomerPaymentMethod implements PlansAPI: the method a customer saved at a provider becomes the one their invoices are charged with.
+func (p PlansClient) SetCustomerPaymentMethod(ctx context.Context, id uuid.UUID, externalID, method string) error {
+	_, err := p.Client.SetPaymentMethod(tenant.OutgoingFor(ctx, id), &plansv1.SetPaymentMethodRequest{ExternalId: externalID, PaymentMethod: method})
+	return err
+}

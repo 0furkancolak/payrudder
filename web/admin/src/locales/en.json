@@ -1025,6 +1025,13 @@
       "runByProviders": "Subscriptions the providers run",
       "reference": "Reference",
       "nextBilled": "Next billed",
+      "scheduled": "Announced by the provider",
+      "scheduledCancel": "Cancels on {date}",
+      "scheduledPause": "Pauses on {date}",
+      "scheduledPauseUntil": "Pauses on {date}, resumes on {resume}",
+      "scheduledResume": "Resumes on {date}",
+      "scheduledOther": "{action} on {date}",
+      "scheduledNone": "Nothing announced",
       "noProviderSubscriptions": "No subscription is run by a provider yet.",
       "catalogue": {
         "title": "Catalogue at the provider",
@@ -3124,6 +3131,7 @@
         "amount_required": "The amount and the currency are required.",
         "bad_id": "The invoice id is not a valid id.",
         "bad_ids": "The invoice ids are not valid ids.",
+        "buyer_incomplete": "The provider needs more about this customer (phone, tax id, address) than the seller has on file.",
         "no_instructions": "This provider has no payment instructions for this currency.",
         "not_live": "Only live invoices are paid through a provider.",
         "payment_in_progress": "A payment for this invoice is being started. Try again in a moment.",
@@ -4182,7 +4190,7 @@
           "usage_product_id": "Usage product id (pro_...)",
           "buyer_name": "Buyer first name",
           "buyer_surname": "Buyer last name",
-          "buyer_identity_number": "Buyer identity number",
+          "buyer_identity_number": "Used as the buyer's identity number only for a customer who has no tax id on file; every other customer's own is sent. Your billing profile fills it in. Clear it and such a payment is refused instead, with the missing field named.",
           "buyer_email": "Buyer e-mail",
           "buyer_address": "Buyer address",
           "buyer_city": "Buyer city",
@@ -4339,7 +4347,7 @@
           "iyzico": "Enter your live iyzico merchant keys. They are checked with iyzico before they are stored.",
           "paddle": "Enter your live Paddle keys and webhook secret. They are checked with Paddle before they are stored.",
           "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank.",
-          "stripe": "Enter your live Stripe secret key and the signing secret of the webhook endpoint. The key is checked with Stripe before it is stored."
+          "stripe": "Enter your live Stripe secret key. It is checked with Stripe before it is stored. Then let Payrudder create the webhook endpoint, or paste the signing secret of one you made yourself."
         },
         "envNote": "This connects the live environment. The sandbox keeps running on the built-in simulator.",
         "testOk": "The provider accepts these keys.",
@@ -4355,12 +4363,21 @@
         "sandboxIntro": {
           "iyzico": "Enter the keys of your iyzico sandbox account. They are checked with iyzico's test host before they are stored.",
           "paddle": "Enter the keys of your Paddle sandbox account and its webhook secret. They are checked with Paddle's sandbox before they are stored.",
-          "banktransfer": "A bank transfer has no test mode: the sandbox uses the built-in simulator."
+          "banktransfer": "A bank transfer has no test mode: the sandbox uses the built-in simulator.",
+          "stripe": "Enter a test-mode secret key of your Stripe account (it starts with sk_test_ or rk_test_). It is checked with Stripe, and has to be a test key, before it is stored."
         },
         "sandboxEnvNote": "This connects the sandbox environment to the provider's test mode. A sandbox charge whose payment method is the provider's own token goes to it; the pm_sandbox_ scenarios stay on the simulator. Live keys are refused, and live is not touched.",
         "sandboxKeys": {
           "iyzico": "Use the keys of the iyzico sandbox panel (the API key starts with sandbox-).",
-          "paddle": "Use a key of your Paddle sandbox account (it starts with pdl_sdbx_)."
+          "paddle": "Use a key of your Paddle sandbox account (it starts with pdl_sdbx_).",
+          "stripe": "Use a test-mode key of your Stripe account (it starts with sk_test_ or rk_test_)."
+        },
+        "webhook": {
+          "title": "Webhook endpoint",
+          "hint": "Stripe tells Payrudder about payments and refunds through a webhook endpoint. Payrudder can ask Stripe to create it (for the events it handles) and keep the signing secret, so nothing is copied by hand. Creating it again adds another endpoint at Stripe; delete the old one there.",
+          "register": "Create the webhook endpoint",
+          "registering": "Creating...",
+          "done": "Stripe created the endpoint and Payrudder keeps its signing secret."
         }
       },
       "help": {
@@ -4377,7 +4394,7 @@
         },
         "stripe": {
           "api_key": "In the Stripe Dashboard under Developers, API keys, create a restricted or secret live key (it starts with sk_live_ or rk_live_).",
-          "webhook_secret": "Under Developers, Webhooks, add an endpoint to the address shown in Payrudder for payment_intent, checkout.session and refund events, and copy its signing secret (it starts with whsec_)."
+          "webhook_secret": "Leave it empty and use \"Create the webhook endpoint\" after connecting: Payrudder asks Stripe to make the endpoint and keeps its signing secret. Or, under Developers, Webhooks, add an endpoint yourself to the address shown in Payrudder for payment_intent, checkout.session and refund events, and paste its signing secret (it starts with whsec_)."
         }
       },
       "sandbox": {

@@ -1025,6 +1025,13 @@
       "runByProviders": "Suscripciones que gestionan los proveedores",
       "reference": "Referencia",
       "nextBilled": "Próximo cobro",
+      "scheduled": "Anunciado por el proveedor",
+      "scheduledCancel": "Se cancelará el {date}",
+      "scheduledPause": "Se pausará el {date}",
+      "scheduledPauseUntil": "Se pausará el {date} y se reanudará el {resume}",
+      "scheduledResume": "Se reanuda el {date}",
+      "scheduledOther": "{action} el {date}",
+      "scheduledNone": "Nada anunciado",
       "noProviderSubscriptions": "Aún ninguna suscripción la gestiona un proveedor.",
       "catalogue": {
         "title": "Catálogo en el proveedor",
@@ -3124,6 +3131,7 @@
         "amount_required": "Se requieren el importe y la moneda.",
         "bad_id": "El identificador de la factura no es válido.",
         "bad_ids": "Los identificadores de factura no son válidos.",
+        "buyer_incomplete": "El proveedor necesita más datos de este cliente (teléfono, identificación fiscal, dirección) de los que el vendedor tiene registrados.",
         "no_instructions": "Este proveedor no tiene instrucciones de pago para esta moneda.",
         "not_live": "Solo las facturas en producción se pagan a través de un proveedor.",
         "payment_in_progress": "Se está iniciando un pago para esta factura. Inténtalo de nuevo en un momento.",
@@ -4182,7 +4190,7 @@
           "usage_product_id": "ID del producto de uso (pro_...)",
           "buyer_name": "Nombre del comprador",
           "buyer_surname": "Apellido del comprador",
-          "buyer_identity_number": "Número de identidad del comprador",
+          "buyer_identity_number": "Se usa como número de identidad del comprador solo para un cliente sin número fiscal registrado; de los demás se envía el suyo. Tu perfil de facturación lo rellena. Vacíalo y ese pago se rechaza, indicando el campo que falta.",
           "buyer_email": "Correo del comprador",
           "buyer_address": "Dirección del comprador",
           "buyer_city": "Ciudad del comprador",
@@ -4339,7 +4347,7 @@
           "iyzico": "Introduce tus claves de comercio live de iyzico. Se comprueban con iyzico antes de guardarse.",
           "paddle": "Introduce tus claves live de Paddle y el secreto del webhook. Se comprueban con Paddle antes de guardarse.",
           "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco.",
-          "stripe": "Introduzca su clave secreta live de Stripe y el secreto de firma del endpoint de webhook. La clave se comprueba con Stripe antes de guardarse."
+          "stripe": "Introduzca su clave secreta de Stripe en producción. Se comprueba con Stripe antes de guardarse. Después deje que Payrudder cree el endpoint del webhook, o pegue el secreto de firma de uno que haya creado usted."
         },
         "envNote": "Esto conecta el entorno live. El sandbox sigue funcionando con el simulador integrado.",
         "testOk": "El proveedor acepta estas claves.",
@@ -4355,12 +4363,21 @@
         "sandboxIntro": {
           "iyzico": "Introduzca las claves de su cuenta sandbox de iyzico. Se comprueban con el host de pruebas de iyzico antes de guardarse.",
           "paddle": "Introduzca las claves de su cuenta sandbox de Paddle y su secreto de webhook. Se comprueban con el sandbox de Paddle antes de guardarse.",
-          "banktransfer": "La transferencia bancaria no tiene modo de prueba: el sandbox usa el simulador integrado."
+          "banktransfer": "La transferencia bancaria no tiene modo de prueba: el sandbox usa el simulador integrado.",
+          "stripe": "Introduzca una clave secreta del modo de prueba de su cuenta de Stripe (empieza por sk_test_ o rk_test_). Se comprueba con Stripe y debe ser una clave de prueba antes de guardarse."
         },
         "sandboxEnvNote": "Esto conecta el entorno sandbox al modo de prueba del proveedor. Un cobro sandbox cuyo método de pago es el token propio del proveedor va allí; los escenarios pm_sandbox_ siguen en el simulador. Las claves live se rechazan y live no se toca.",
         "sandboxKeys": {
           "iyzico": "Use las claves del panel sandbox de iyzico (la clave de API empieza por sandbox-).",
-          "paddle": "Use una clave de su cuenta sandbox de Paddle (empieza por pdl_sdbx_)."
+          "paddle": "Use una clave de su cuenta sandbox de Paddle (empieza por pdl_sdbx_).",
+          "stripe": "Use una clave del modo de prueba de su cuenta de Stripe (empieza por sk_test_ o rk_test_)."
+        },
+        "webhook": {
+          "title": "Endpoint del webhook",
+          "hint": "Stripe avisa a Payrudder de los pagos y reembolsos mediante un endpoint de webhook. Payrudder puede pedir a Stripe que lo cree (para los eventos que procesa) y guardar el secreto de firma, sin copiar nada a mano. Crearlo de nuevo añade otro endpoint en Stripe; borre el antiguo allí.",
+          "register": "Crear el endpoint del webhook",
+          "registering": "Creando...",
+          "done": "Stripe creó el endpoint y Payrudder guarda su secreto de firma."
         }
       },
       "help": {
@@ -4377,7 +4394,7 @@
         },
         "stripe": {
           "api_key": "En el panel de Stripe, en Desarrolladores, Claves de API, cree una clave live restringida o secreta (empieza por sk_live_ o rk_live_).",
-          "webhook_secret": "En Desarrolladores, Webhooks, añada un endpoint a la dirección que muestra Payrudder para los eventos payment_intent, checkout.session y refund, y copie su secreto de firma (empieza por whsec_)."
+          "webhook_secret": "Déjelo vacío y use «Crear el endpoint del webhook» tras conectar: Payrudder pide a Stripe que lo cree y guarda el secreto de firma. O, en Developers, Webhooks, añada usted un endpoint a la dirección que muestra Payrudder para los eventos payment_intent, checkout.session y refund, y pegue su secreto de firma (empieza por whsec_)."
         }
       },
       "sandbox": {
