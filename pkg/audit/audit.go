@@ -18,10 +18,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 )
@@ -93,8 +97,38 @@ var actionRe = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+)+$`)
 // ErrBadEvent is an event the log refuses: a programming error, not a runtime condition.
 var ErrBadEvent = errors.New("audit: bad event")
 
-// Record appends e to audit_events through db, in db's transaction. A failure must fail the change it records: the caller returns the error.
-func Record(ctx context.Context, db Execer, e Event) error {
+// writeFailed counts every entry that could not be written (audit_write_failed_total{area,reason}): reason "insert" is the database refusing it (a missing partition or
+// grant, a full disk, a lost connection), "bad_event" a programming error. Record's callers fail the change the entry belongs to, so a rising count is a rising count of
+// refused sign-ins, key changes and price changes; AuditWriteFailed pages on it. area is the part of the action before the dot, which a developer chooses, so the
+// number of series is the number of areas in the code.
+var writeFailed = func() metric.Int64Counter {
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/pkg/audit").Int64Counter("audit_write_failed", metric.WithDescription("Audit entries that could not be written, by area of the action and reason"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
+func countFailure(ctx context.Context, action, reason string) {
+	area := "invalid"
+	if actionRe.MatchString(action) && len(action) <= 80 {
+		area, _, _ = strings.Cut(action, ".")
+	}
+	writeFailed.Add(ctx, 1, metric.WithAttributes(attribute.String("area", area), attribute.String("reason", reason)))
+}
+
+// Record appends e to audit_events through db, in db's transaction. A failure must fail the change it records: the caller returns the error. Every failure is counted
+// (writeFailed).
+func Record(ctx context.Context, db Execer, e Event) (err error) {
+	defer func() {
+		if err != nil {
+			reason := "insert"
+			if errors.Is(err, ErrBadEvent) {
+				reason = "bad_event"
+			}
+			countFailure(ctx, e.Action, reason)
+		}
+	}()
 	if len(e.Action) > 80 || !actionRe.MatchString(e.Action) {
 		return fmt.Errorf("%w: action %q", ErrBadEvent, e.Action)
 	}
