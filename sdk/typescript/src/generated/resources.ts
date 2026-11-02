@@ -3,6 +3,7 @@ import type { RequestOptions, Transport } from "../transport";
 import { seg } from "../transport";
 import type {
   AccountingSummary,
+  AddBlocklistEntryRequest,
   AddressInput,
   Affiliate,
   AffiliateFunnel,
@@ -15,6 +16,7 @@ import type {
   AttributeCustomerResponse,
   BillingRun,
   BlockCustomerRequest,
+  BlocklistEntry,
   CancelSubscriptionQuery,
   CancelSubscriptionResponse,
   ChangePlanRequest,
@@ -130,6 +132,7 @@ import type {
   ListAssetsResponse,
   ListAuditEventsQuery,
   ListAuditEventsResponse,
+  ListBlocklistResponse,
   ListContractAcceptancesQuery,
   ListContractAcceptancesResponse,
   ListContractVersionsQuery,
@@ -634,6 +637,43 @@ export class AuditEventsResource {
    */
   exportAuditEvents(query?: ExportAuditEventsQuery, options?: RequestOptions): Promise<string> {
     return this.t.request<string>({ method: "GET", path: `/v1/audit-events/export`, query, response: "text" }, options);
+  }
+}
+
+export class BlocklistResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * Your blocklist, newest first
+   *
+   * The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail address or tax id, may not match (error key `plans.customer.blocklisted`, on creating a customer and on changing the contact details or the tax data). At most 1000 entries, so the list is not paged. Customers that exist when an entry is added are not touched: block them from the customer list. The operator keeps a platform-wide list of its own that holds the same gates for every app; it is not shown here and a refusal does not say which list it was. Needs customers:read.
+   *
+   * `GET /v1/blocklist`
+   */
+  listBlocklist(options?: RequestOptions): Promise<ListBlocklistResponse> {
+    return this.t.request<ListBlocklistResponse>({ method: "GET", path: `/v1/blocklist`, response: "json" }, options);
+  }
+
+  /**
+   * Put an e-mail address, a tax id or an external customer id on your blocklist
+   *
+   * The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an external id as it is. An entry that is there is returned as it is. The note is yours and is never shown to the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full` at 1000 entries. Needs customers:write.
+   *
+   * `POST /v1/blocklist`
+   */
+  addBlocklistEntry(body: AddBlocklistEntryRequest, options?: RequestOptions): Promise<BlocklistEntry> {
+    return this.t.request<BlocklistEntry>({ method: "POST", path: `/v1/blocklist`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Take an entry off your blocklist
+   *
+   * Needs customers:write.
+   *
+   * `DELETE /v1/blocklist/{id}`
+   */
+  removeBlocklistEntry(id: string, options?: RequestOptions): Promise<void> {
+    return this.t.request<void>({ method: "DELETE", path: `/v1/blocklist/${seg(id)}`, response: "none" }, options);
   }
 }
 

@@ -20,6 +20,7 @@ import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { partnerRoutes } from "@/features/partner/routes";
 import { auditRoutes } from "@/features/audit/routes";
+import { blocklistRoutes } from "@/features/blocklist/routes";
 import { returnTo, safeNext } from "./lib";
 import { OAUTH_ERRORS } from "./lib";
 
@@ -140,6 +141,7 @@ export function personRoutes(parent: AnyRoute) {
       ...mailRoutes(tenant),
       ...contractRoutes(tenant),
       ...auditRoutes(tenant),
+      ...blocklistRoutes(tenant),
     ]),
   ]);
 }

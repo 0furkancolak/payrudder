@@ -25,7 +25,7 @@ import (
 // looked up without knowing the tenant (the api keys by prefix, the queue of the reset runner).
 var globalTables = []string{
 	"accounts", "tenants", "apps", "users", "account_members", "account_invites", "user_sessions", "user_tokens", "user_identities", "login_codes", "user_onboarding",
-	"config_promotions", "app_audit", "go_live_audit", "tenant_status_events", "api_keys", "sandbox_resets", "support_tickets", "support_messages", "support_events", "support_canned_replies", "support_attachments",
+	"config_promotions", "app_audit", "go_live_audit", "tenant_status_events", "platform_blocklist", "api_keys", "sandbox_resets", "support_tickets", "support_messages", "support_events", "support_canned_replies", "support_attachments",
 	"user_totp", "user_recovery_codes", "login_challenges", "price_change_pause",
 }
 

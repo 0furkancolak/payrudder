@@ -19,20 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AdminService_CreateAccount_FullMethodName          = "/payrudder.plans.v1.AdminService/CreateAccount"
-	AdminService_CreateApp_FullMethodName              = "/payrudder.plans.v1.AdminService/CreateApp"
-	AdminService_ListApps_FullMethodName               = "/payrudder.plans.v1.AdminService/ListApps"
-	AdminService_GetTenant_FullMethodName              = "/payrudder.plans.v1.AdminService/GetTenant"
-	AdminService_ListTenants_FullMethodName            = "/payrudder.plans.v1.AdminService/ListTenants"
-	AdminService_UpdateTenantSettings_FullMethodName   = "/payrudder.plans.v1.AdminService/UpdateTenantSettings"
-	AdminService_CreateApiKey_FullMethodName           = "/payrudder.plans.v1.AdminService/CreateApiKey"
-	AdminService_RevokeApiKey_FullMethodName           = "/payrudder.plans.v1.AdminService/RevokeApiKey"
-	AdminService_ResolveApiKey_FullMethodName          = "/payrudder.plans.v1.AdminService/ResolveApiKey"
-	AdminService_TouchApiKey_FullMethodName            = "/payrudder.plans.v1.AdminService/TouchApiKey"
-	AdminService_SetTenantStatus_FullMethodName        = "/payrudder.plans.v1.AdminService/SetTenantStatus"
-	AdminService_ListTenantStatusEvents_FullMethodName = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
-	AdminService_GetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/GetPriceChangePause"
-	AdminService_SetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/SetPriceChangePause"
+	AdminService_CreateAccount_FullMethodName                = "/payrudder.plans.v1.AdminService/CreateAccount"
+	AdminService_CreateApp_FullMethodName                    = "/payrudder.plans.v1.AdminService/CreateApp"
+	AdminService_ListApps_FullMethodName                     = "/payrudder.plans.v1.AdminService/ListApps"
+	AdminService_GetTenant_FullMethodName                    = "/payrudder.plans.v1.AdminService/GetTenant"
+	AdminService_ListTenants_FullMethodName                  = "/payrudder.plans.v1.AdminService/ListTenants"
+	AdminService_UpdateTenantSettings_FullMethodName         = "/payrudder.plans.v1.AdminService/UpdateTenantSettings"
+	AdminService_CreateApiKey_FullMethodName                 = "/payrudder.plans.v1.AdminService/CreateApiKey"
+	AdminService_RevokeApiKey_FullMethodName                 = "/payrudder.plans.v1.AdminService/RevokeApiKey"
+	AdminService_ResolveApiKey_FullMethodName                = "/payrudder.plans.v1.AdminService/ResolveApiKey"
+	AdminService_TouchApiKey_FullMethodName                  = "/payrudder.plans.v1.AdminService/TouchApiKey"
+	AdminService_SetTenantStatus_FullMethodName              = "/payrudder.plans.v1.AdminService/SetTenantStatus"
+	AdminService_ListTenantStatusEvents_FullMethodName       = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
+	AdminService_ListPlatformBlocklist_FullMethodName        = "/payrudder.plans.v1.AdminService/ListPlatformBlocklist"
+	AdminService_AddPlatformBlocklistEntry_FullMethodName    = "/payrudder.plans.v1.AdminService/AddPlatformBlocklistEntry"
+	AdminService_RemovePlatformBlocklistEntry_FullMethodName = "/payrudder.plans.v1.AdminService/RemovePlatformBlocklistEntry"
+	AdminService_GetPriceChangePause_FullMethodName          = "/payrudder.plans.v1.AdminService/GetPriceChangePause"
+	AdminService_SetPriceChangePause_FullMethodName          = "/payrudder.plans.v1.AdminService/SetPriceChangePause"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -66,6 +69,13 @@ type AdminServiceClient interface {
 	SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(ctx context.Context, in *ListTenantStatusEventsRequest, opts ...grpc.CallOption) (*ListTenantStatusEventsResponse, error)
+	// ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
+	// except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
+	ListPlatformBlocklist(ctx context.Context, in *ListPlatformBlocklistRequest, opts ...grpc.CallOption) (*ListPlatformBlocklistResponse, error)
+	// AddPlatformBlocklistEntry adds an entry to the platform-wide list (adding one that is there returns it). It is recorded in the audit log without the value.
+	AddPlatformBlocklistEntry(ctx context.Context, in *AddPlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*AddPlatformBlocklistEntryResponse, error)
+	// RemovePlatformBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+	RemovePlatformBlocklistEntry(ctx context.Context, in *RemovePlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*RemovePlatformBlocklistEntryResponse, error)
 	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
 	GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error)
 	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
@@ -202,6 +212,36 @@ func (c *adminServiceClient) ListTenantStatusEvents(ctx context.Context, in *Lis
 	return out, nil
 }
 
+func (c *adminServiceClient) ListPlatformBlocklist(ctx context.Context, in *ListPlatformBlocklistRequest, opts ...grpc.CallOption) (*ListPlatformBlocklistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPlatformBlocklistResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListPlatformBlocklist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) AddPlatformBlocklistEntry(ctx context.Context, in *AddPlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*AddPlatformBlocklistEntryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddPlatformBlocklistEntryResponse)
+	err := c.cc.Invoke(ctx, AdminService_AddPlatformBlocklistEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) RemovePlatformBlocklistEntry(ctx context.Context, in *RemovePlatformBlocklistEntryRequest, opts ...grpc.CallOption) (*RemovePlatformBlocklistEntryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemovePlatformBlocklistEntryResponse)
+	err := c.cc.Invoke(ctx, AdminService_RemovePlatformBlocklistEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *adminServiceClient) GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPriceChangePauseResponse)
@@ -253,6 +293,13 @@ type AdminServiceServer interface {
 	SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error)
+	// ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
+	// except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
+	ListPlatformBlocklist(context.Context, *ListPlatformBlocklistRequest) (*ListPlatformBlocklistResponse, error)
+	// AddPlatformBlocklistEntry adds an entry to the platform-wide list (adding one that is there returns it). It is recorded in the audit log without the value.
+	AddPlatformBlocklistEntry(context.Context, *AddPlatformBlocklistEntryRequest) (*AddPlatformBlocklistEntryResponse, error)
+	// RemovePlatformBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+	RemovePlatformBlocklistEntry(context.Context, *RemovePlatformBlocklistEntryRequest) (*RemovePlatformBlocklistEntryResponse, error)
 	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
 	GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error)
 	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
@@ -304,6 +351,15 @@ func (UnimplementedAdminServiceServer) SetTenantStatus(context.Context, *SetTena
 }
 func (UnimplementedAdminServiceServer) ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTenantStatusEvents not implemented")
+}
+func (UnimplementedAdminServiceServer) ListPlatformBlocklist(context.Context, *ListPlatformBlocklistRequest) (*ListPlatformBlocklistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPlatformBlocklist not implemented")
+}
+func (UnimplementedAdminServiceServer) AddPlatformBlocklistEntry(context.Context, *AddPlatformBlocklistEntryRequest) (*AddPlatformBlocklistEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddPlatformBlocklistEntry not implemented")
+}
+func (UnimplementedAdminServiceServer) RemovePlatformBlocklistEntry(context.Context, *RemovePlatformBlocklistEntryRequest) (*RemovePlatformBlocklistEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemovePlatformBlocklistEntry not implemented")
 }
 func (UnimplementedAdminServiceServer) GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPriceChangePause not implemented")
@@ -548,6 +604,60 @@ func _AdminService_ListTenantStatusEvents_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_ListPlatformBlocklist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPlatformBlocklistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListPlatformBlocklist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListPlatformBlocklist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListPlatformBlocklist(ctx, req.(*ListPlatformBlocklistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_AddPlatformBlocklistEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddPlatformBlocklistEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).AddPlatformBlocklistEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_AddPlatformBlocklistEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).AddPlatformBlocklistEntry(ctx, req.(*AddPlatformBlocklistEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_RemovePlatformBlocklistEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemovePlatformBlocklistEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).RemovePlatformBlocklistEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_RemovePlatformBlocklistEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).RemovePlatformBlocklistEntry(ctx, req.(*RemovePlatformBlocklistEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AdminService_GetPriceChangePause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPriceChangePauseRequest)
 	if err := dec(in); err != nil {
@@ -638,6 +748,18 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTenantStatusEvents",
 			Handler:    _AdminService_ListTenantStatusEvents_Handler,
+		},
+		{
+			MethodName: "ListPlatformBlocklist",
+			Handler:    _AdminService_ListPlatformBlocklist_Handler,
+		},
+		{
+			MethodName: "AddPlatformBlocklistEntry",
+			Handler:    _AdminService_AddPlatformBlocklistEntry_Handler,
+		},
+		{
+			MethodName: "RemovePlatformBlocklistEntry",
+			Handler:    _AdminService_RemovePlatformBlocklistEntry_Handler,
 		},
 		{
 			MethodName: "GetPriceChangePause",

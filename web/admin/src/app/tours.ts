@@ -1,6 +1,7 @@
 import { watch } from "vue";
 import { accountingTour } from "@/features/accounting/tour";
 import { auditTour } from "@/features/audit/tour";
+import { blocklistTour, platformBlocklistTour } from "@/features/blocklist/tour";
 import { affiliatesTour } from "@/features/affiliates/tour";
 import { contractsTour } from "@/features/contracts/tour";
 import { creditsTour } from "@/features/credits/tour";
@@ -66,6 +67,8 @@ const TOURS: Readonly<Record<string, Tour>> = {
   contracts: contractsTour,
   audit: auditTour,
   auditLog: auditTour,
+  blocklist: blocklistTour,
+  platformBlocklist: platformBlocklistTour,
   tenants: tenantsTour,
   playground: playgroundTour,
   deadLetters: deadLettersTour,

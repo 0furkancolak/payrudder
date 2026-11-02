@@ -12,6 +12,7 @@ import (
 	apikeysapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	apikeysqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/blocklist"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	tenantsapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants"
 	tenantscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/command"
@@ -23,6 +24,7 @@ type (
 	accountsHandler = accountsapi.Handler
 	tenantsHandler  = tenantsapi.Handler
 	apiKeysHandler  = apikeysapi.Handler
+	blocklistAdmin  = blocklist.AdminHandler
 )
 
 // unimplementedAdmin answers Unimplemented for a method of AdminService that no module serves yet. It is embedded one level deeper than the module
@@ -38,6 +40,7 @@ type AdminServer struct {
 	*accountsHandler
 	*tenantsHandler
 	*apiKeysHandler
+	*blocklistAdmin
 
 	accounts *accountscmd.Commands
 	keys     *apikeyscmd.Commands
@@ -53,6 +56,7 @@ func newAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []
 		accountsHandler: accountsapi.New(accounts, accountsqry.New(systemPool)),
 		tenantsHandler:  tenantsapi.New(tenantscmd.New(systemPool, keys, log).WithBanApproval(banApproval).WithMail(mail, appURL), tenantsqry.New(systemPool)),
 		apiKeysHandler:  apikeysapi.New(keys, apikeysqry.New(systemPool)),
+		blocklistAdmin:  blocklist.NewAdminHandler(blocklist.NewPlatform(systemPool)),
 		accounts:        accounts,
 		keys:            keys,
 	}

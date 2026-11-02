@@ -31,6 +31,8 @@ type services struct {
 	Assets *AssetsService
 	// AuditEvents groups the audit events operations.
 	AuditEvents *AuditEventsService
+	// Blocklist groups the blocklist operations.
+	Blocklist *BlocklistService
 	// ContractAcceptances groups the contract acceptances operations.
 	ContractAcceptances *ContractAcceptancesService
 	// ContractWithdrawals groups the contract withdrawals operations.
@@ -111,6 +113,7 @@ func (s *services) initServices(c *Client) {
 	s.Analytics = (*AnalyticsService)(&service{c: c})
 	s.Assets = (*AssetsService)(&service{c: c})
 	s.AuditEvents = (*AuditEventsService)(&service{c: c})
+	s.Blocklist = (*BlocklistService)(&service{c: c})
 	s.ContractAcceptances = (*ContractAcceptancesService)(&service{c: c})
 	s.ContractWithdrawals = (*ContractWithdrawalsService)(&service{c: c})
 	s.Contracts = (*ContractsService)(&service{c: c})
@@ -735,6 +738,51 @@ func (s *AuditEventsService) ExportAuditEvents(ctx context.Context, params *Expo
 		return nil, err
 	}
 	return out, nil
+}
+
+// BlocklistService is the blocklist namespace of the API.
+type BlocklistService service
+
+// ListBlocklist: Your blocklist, newest first (GET /v1/blocklist).
+//
+// The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail
+// address or tax id, may not match (error key `plans.customer.blocklisted`, on creating a customer and on
+// changing the contact details or the tax data). At most 1000 entries, so the list is not paged. Customers that
+// exist when an entry is added are not touched: block them from the customer list. The operator keeps a
+// platform-wide list of its own that holds the same gates for every app; it is not shown here and a refusal
+// does not say which list it was. Needs customers:read.
+func (s *BlocklistService) ListBlocklist(ctx context.Context, opts ...RequestOption) (*ListBlocklistResponse, error) {
+	var out ListBlocklistResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/blocklist", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// AddBlocklistEntry: Put an e-mail address, a tax id or an external customer id on your blocklist (POST
+// /v1/blocklist).
+//
+// The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an
+// external id as it is. An entry that is there is returned as it is. The note is yours and is never shown to
+// the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full`
+// at 1000 entries. Needs customers:write.
+func (s *BlocklistService) AddBlocklistEntry(ctx context.Context, req *AddBlocklistEntryRequest, opts ...RequestOption) (*BlocklistEntry, error) {
+	if req == nil {
+		req = &AddBlocklistEntryRequest{}
+	}
+	var body any = req
+	var out BlocklistEntry
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/blocklist", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RemoveBlocklistEntry: Take an entry off your blocklist (DELETE /v1/blocklist/{id}).
+//
+// Needs customers:write.
+func (s *BlocklistService) RemoveBlocklistEntry(ctx context.Context, id string, opts ...RequestOption) error {
+	return s.c.do(ctx, requestSpec{method: http.MethodDelete, path: "/v1/blocklist/" + url.PathEscape(id), query: nil, body: nil}, nil, opts)
 }
 
 // ContractAcceptancesService is the contract acceptances namespace of the API.

@@ -261,6 +261,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/blocklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your blocklist, newest first
+         * @description The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail address or tax id, may not match (error key `plans.customer.blocklisted`, on creating a customer and on changing the contact details or the tax data). At most 1000 entries, so the list is not paged. Customers that exist when an entry is added are not touched: block them from the customer list. The operator keeps a platform-wide list of its own that holds the same gates for every app; it is not shown here and a refusal does not say which list it was. Needs customers:read.
+         */
+        get: operations["listBlocklist"];
+        put?: never;
+        /**
+         * Put an e-mail address, a tax id or an external customer id on your blocklist
+         * @description The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an external id as it is. An entry that is there is returned as it is. The note is yours and is never shown to the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full` at 1000 entries. Needs customers:write.
+         */
+        post: operations["addBlocklistEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blocklist/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Take an entry off your blocklist
+         * @description Needs customers:write.
+         */
+        delete: operations["removeBlocklistEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/tax": {
         parameters: {
             query?: never;
@@ -6505,6 +6549,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/blocklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The operator's platform-wide blocklist, newest first
+         * @description The same kinds of entry as an app's own list (plan 13), held against every app except the platform's own (the SaaS customers). At most 1000 entries. An app is never told which list refused a customer.
+         */
+        get: operations["listPlatformBlocklist"];
+        put?: never;
+        /**
+         * Put a value on the platform-wide blocklist
+         * @description Normalised as an app's entry is. Recorded in the audit log without the value (the kind only). Error key `plans.blocklist.full` at 1000 entries.
+         */
+        post: operations["addPlatformBlocklistEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/blocklist/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take an entry off the platform-wide blocklist */
+        delete: operations["removePlatformBlocklistEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/price-change-pause": {
         parameters: {
             query?: never;
@@ -7086,6 +7171,29 @@ export interface components {
             actor: string;
             /** Format: date-time */
             create_time: string;
+        };
+        BlocklistEntry: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "email" | "tax_id" | "external_id";
+            /** @description The normalised value */
+            value: string;
+            /** @description The owner's own note; never shown to the person the entry is about */
+            note: string;
+            /** @description A person's address, key:<api key id>, or operator */
+            created_by: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListBlocklistResponse: {
+            entries: components["schemas"]["BlocklistEntry"][];
+        };
+        AddBlocklistEntryRequest: {
+            /** @enum {string} */
+            kind: "email" | "tax_id" | "external_id";
+            value: string;
+            note?: string;
         };
         ListCustomerBlockEventsResponse: {
             events: components["schemas"]["CustomerBlockEvent"][];
@@ -14171,6 +14279,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ListCustomerBlockEventsResponse"];
                 };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listBlocklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBlocklistResponse"];
+                };
+            };
+        };
+    };
+    addBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddBlocklistEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlocklistEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    removeBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["Error"];
         };
@@ -24994,6 +25169,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ListTenantStatusEventsResponse"];
                 };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listPlatformBlocklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBlocklistResponse"];
+                };
+            };
+        };
+    };
+    addPlatformBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddBlocklistEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlocklistEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    removePlatformBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["Error"];
         };

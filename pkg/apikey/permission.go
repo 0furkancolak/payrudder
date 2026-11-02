@@ -224,6 +224,8 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return rw("contracts") // the texts and the settings: a legal act, not a customer record
 	case "contract-acceptances":
 		return rw("customers")
+	case "blocklist":
+		return rw("customers") // who may not become a customer is a customer record
 	case "contract-withdrawals":
 		// Deciding a withdrawal is a customer record; asking for the refund makes a credit note that returns money to a card, which needs what creates one anywhere else.
 		// Accepting a withdrawal that refunds is checked in the handler (the body and the seller's setting decide it).

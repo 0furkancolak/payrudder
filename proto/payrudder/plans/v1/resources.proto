@@ -544,3 +544,17 @@ enum CouponDuration {
   // Every fee, for as long as the subscription lasts.
   COUPON_DURATION_FOREVER = 3;
 }
+
+// One entry of a blocklist (the app's, or the operator's platform-wide one).
+message BlocklistEntry {
+  string id = 1;
+  // "email", "tax_id" or "external_id".
+  string kind = 2;
+  // The normalised value.
+  string value = 3;
+  // The owner's own note, never shown to the person the entry is about.
+  string note = 4;
+  // Who added it: a person's address, "key:<id>" for an API key, or "operator".
+  string created_by = 5;
+  google.protobuf.Timestamp create_time = 6;
+}

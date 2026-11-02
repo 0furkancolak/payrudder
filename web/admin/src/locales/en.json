@@ -3073,7 +3073,8 @@
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid.",
         "quota_reached": "The customer limit of this account's plan has been reached.",
-        "blocked": "This customer is blocked, so nothing new can be started for them."
+        "blocked": "This customer is blocked, so nothing new can be started for them.",
+        "blocklisted": "This customer matches a blocklist, so it cannot be created or changed this way."
       },
       "common": {
         "not_found": "It was not found.",
@@ -3182,6 +3183,9 @@
         "version_stale": "A newer version of this text was published. Show the current one and ask again.",
         "withdrawal_decided": "This withdrawal request cannot change to that status.",
         "withdrawal_not_found": "No such withdrawal request."
+      },
+      "blocklist": {
+        "full": "A blocklist holds at most 1000 entries. Remove some before adding more."
       }
     },
     "common": {
@@ -4950,7 +4954,9 @@
       "connect": "Connect your app",
       "contracts": "Contracts",
       "audit": "Audit log",
-      "auditLog": "Audit log"
+      "auditLog": "Audit log",
+      "blocklist": "Blocklist",
+      "platformBlocklist": "Platform blocklist"
     },
     "newApp": "New app"
   },
@@ -5367,6 +5373,12 @@
       "einvoice": {
         "intro": "Connect the integrator that signs and sends your e-invoices, and set how the documents are made.",
         "list": "The accounts connected for this tenant, one per environment. A live account sends real documents; the sandbox one only simulates."
+      },
+      "blocklist": {
+        "intro": "The e-mail addresses, tax ids and customer ids you have turned away. A new customer that matches is refused, so a person cannot come back under another id."
+      },
+      "platformBlocklist": {
+        "intro": "The operator's blocklist, held against every app. An app is never told which list refused a customer."
       }
     }
   },
@@ -6302,5 +6314,43 @@
     "closed": "Closed",
     "reference": "Case",
     "case": "Case"
+  },
+  "blocklist": {
+    "new": "Add to the blocklist",
+    "hint": "A new customer, or a customer's new e-mail address or tax id, that matches an entry here is refused. Customers you already have are not touched: block them from the customer list. The operator keeps a list of its own for all apps; it is not shown here.",
+    "hintPlatform": "Held against every app: a new customer, or a customer's new e-mail address or tax id, that matches an entry here is refused, and the app is not told which list refused it. The platform's own customers (the organisations) are not held to it.",
+    "search": "Search the list",
+    "empty": "Nothing on the blocklist",
+    "emptyHint": "Add an e-mail address, a tax id or a customer id of someone you have turned away, so that they cannot come back under another id.",
+    "emptyHintPlatform": "Add what the operator wants refused in every app.",
+    "kinds": {
+      "email": "E-mail address",
+      "tax_id": "Tax id",
+      "external_id": "Customer id"
+    },
+    "columns": {
+      "value": "Value",
+      "kind": "Kind",
+      "note": "Note",
+      "addedBy": "Added by",
+      "added": "Added"
+    },
+    "remove": "Remove",
+    "removeConfirm": "Take {value} off the blocklist? A new customer with it can be created again.",
+    "add": {
+      "title": "Add to the blocklist",
+      "description": "A new customer that matches, or a customer who changes to a matching e-mail address or tax id, is refused. Customers you already have are not touched.",
+      "descriptionPlatform": "Held against every app. It is recorded in the audit log without the value.",
+      "kind": "What it is",
+      "value": "Value",
+      "valueHint": {
+        "email": "Matched in lower case.",
+        "tax_id": "Spaces and dashes are ignored.",
+        "external_id": "Matched exactly, capitals included."
+      },
+      "note": "Your note",
+      "noteHint": "For you only; it is never shown to the person.",
+      "submit": "Add"
+    }
   }
 }

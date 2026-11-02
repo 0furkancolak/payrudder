@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/blocklist"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/model"
@@ -262,7 +263,7 @@ func (c *Commands) Ensure(ctx context.Context, account uuid.UUID) error {
 		} else if err != nil {
 			return convert.Err(err, "account")
 		}
-		if _, err := c.plans.CreateCustomer(pctx, &plansv1.CreateCustomerRequest{ExternalId: account.String(), Name: a.Name, Email: email}); err != nil && status.Code(err) != codes.AlreadyExists {
+		if _, err := c.plans.CreateCustomer(blocklist.WithoutPlatform(pctx), &plansv1.CreateCustomerRequest{ExternalId: account.String(), Name: a.Name, Email: email}); err != nil && status.Code(err) != codes.AlreadyExists {
 			return err
 		}
 	}

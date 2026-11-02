@@ -3,6 +3,7 @@ import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { affiliateRoutes } from "@/features/affiliates/routes";
 import { contractRoutes } from "@/features/contracts/routes";
 import { auditOperatorRoutes, auditRoutes } from "@/features/audit/routes";
+import { blocklistOperatorRoutes, blocklistRoutes } from "@/features/blocklist/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { PERSON_PAGES, activeItem, buildNav, type ShellContext } from "./nav";
@@ -49,7 +50,7 @@ describe("buildNav", () => {
     expect(nav.map((s) => s.key)).toEqual(["overview", "customersBilling", "usageProducts", "money", "developers", "settings", "account"]);
     const section = (key: string) => nav.find((s) => s.key === key)?.items.map((i) => i.key);
     expect(section("overview")).toEqual(["dashboard", "goLive"]);
-    expect(section("customersBilling")).toEqual(["customers", "subscriptions", "invoices", "payments", "paymentLinks", "credits"]);
+    expect(section("customersBilling")).toEqual(["customers", "blocklist", "subscriptions", "invoices", "payments", "paymentLinks", "credits"]);
     expect(section("usageProducts")).toEqual(["usage", "meters", "packages", "pricing", "coupons"]);
     expect(section("money")).toEqual(["accounting", "reports", "affiliates"]);
     expect(section("developers")).toEqual(["apiKeys", "connect", "webhooks", "sandbox"]);
@@ -105,7 +106,7 @@ describe("buildNav", () => {
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
-    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "supportInbox", "auditLog", "myApps"]);
+    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "supportInbox", "platformBlocklist", "auditLog", "myApps"]);
     const tenant = keys(buildNav({ level: "tenant", tenantId: "T" }));
     for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps", "myApps"]) expect(tenant).toContain(k);
   });
@@ -257,5 +258,7 @@ describe("Audit log", () => {
     expect(keys(buildNav(app(), new Set(["customers"])))).not.toContain("audit");
     expect(pathsOf(auditRoutes(parent))).toEqual(["audit"]);
     expect(pathsOf(auditOperatorRoutes(parent))).toEqual(["/audit"]);
+    expect(pathsOf(blocklistRoutes(parent))).toEqual(["blocklist"]);
+    expect(pathsOf(blocklistOperatorRoutes(parent))).toEqual(["/blocklist"]);
   });
 });

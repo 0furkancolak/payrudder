@@ -108,6 +108,9 @@ type fakePlans struct {
 	// customer is what GetCustomer answers to a lookup by Payrudder's id (the hosted pages know the customer by it); nil keeps the failure the other tests expect.
 	customer    *plansv1.Customer
 	lastBlock   *plansv1.BlockCustomerRequest
+	lastListAdd *plansv1.AddBlocklistEntryRequest
+	lastListDel *plansv1.RemoveBlocklistEntryRequest
+	lastPlatAdd *plansv1.AddPlatformBlocklistEntryRequest
 	lastUnblock *plansv1.UnblockCustomerRequest
 	lastStatus  *plansv1.SetTenantStatusRequest
 	lastPause   *plansv1.SetPriceChangePauseRequest

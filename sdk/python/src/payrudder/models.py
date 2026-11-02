@@ -195,6 +195,28 @@ class ListCustomerBlockEventsResponse(TypedDict):
     events: list[CustomerBlockEvent]
 
 
+class BlocklistEntry(TypedDict):
+    id: str
+    kind: Literal["email", "tax_id", "external_id"]
+    value: str
+    note: str
+    created_by: str
+    create_time: str
+
+
+class ListBlocklistResponse(TypedDict):
+    entries: list[BlocklistEntry]
+
+
+class _AddBlocklistEntryRequestRequired(TypedDict):
+    kind: Literal["email", "tax_id", "external_id"]
+    value: str
+
+
+class AddBlocklistEntryRequest(_AddBlocklistEntryRequestRequired, total=False):
+    note: str
+
+
 class CustomerTax(TypedDict, total=False):
     tax_id: str
     tax_office: str

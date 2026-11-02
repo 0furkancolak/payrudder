@@ -3073,7 +3073,8 @@
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil.",
         "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı.",
-        "blocked": "Bu müşteri engelli, bu yüzden onun için yeni bir şey başlatılamaz."
+        "blocked": "Bu müşteri engelli, bu yüzden onun için yeni bir şey başlatılamaz.",
+        "blocklisted": "Bu müşteri bir engelleme listesiyle eşleşiyor; bu şekilde oluşturulamaz veya değiştirilemez."
       },
       "common": {
         "not_found": "Bulunamadı.",
@@ -3182,6 +3183,9 @@
         "version_stale": "Bu metnin daha yeni bir sürümü yayımlandı. Güncel olanı gösterip yeniden onay alın.",
         "withdrawal_decided": "Bu cayma talebi o duruma geçemez.",
         "withdrawal_not_found": "Böyle bir cayma talebi yok."
+      },
+      "blocklist": {
+        "full": "Bir engelleme listesi en fazla 1000 kayıt tutar. Daha fazlasını eklemeden önce bazılarını kaldırın."
       }
     },
     "common": {
@@ -4950,7 +4954,9 @@
       "connect": "Uygulamanı bağla",
       "contracts": "Sözleşmeler",
       "audit": "Denetim günlüğü",
-      "auditLog": "Denetim günlüğü"
+      "auditLog": "Denetim günlüğü",
+      "blocklist": "Engelleme listesi",
+      "platformBlocklist": "Platform engelleme listesi"
     },
     "newApp": "Yeni uygulama"
   },
@@ -5367,6 +5373,12 @@
       "einvoice": {
         "intro": "E-faturalarınızı imzalayıp gönderen entegratörü bağlayın ve belgelerin nasıl oluşturulacağını ayarlayın.",
         "list": "Bu kiracı için bağlı hesaplar, ortam başına bir tane. Canlı hesap gerçek belge gönderir; sandbox olan yalnızca simüle eder."
+      },
+      "blocklist": {
+        "intro": "Geri çevirdiğiniz e-posta adresleri, vergi numaraları ve müşteri kimlikleri. Eşleşen yeni bir müşteri reddedilir; böylece kimse başka bir kimlikle geri dönemez."
+      },
+      "platformBlocklist": {
+        "intro": "Operatörün engelleme listesi, her uygulamaya uygulanır. Uygulamaya bir müşteriyi hangi listenin reddettiği söylenmez."
       }
     }
   },
@@ -6302,5 +6314,43 @@
     "closed": "Kapandı",
     "reference": "Vaka",
     "case": "Vaka"
+  },
+  "blocklist": {
+    "new": "Engelleme listesine ekle",
+    "hint": "Burada bir kayıtla eşleşen yeni bir müşteri, ya da bir müşterinin yeni e-posta adresi veya vergi numarası reddedilir. Mevcut müşterilerinize dokunulmaz: onları müşteri listesinden engelleyin. Operatör tüm uygulamalar için kendi listesini tutar; burada gösterilmez.",
+    "hintPlatform": "Her uygulamaya uygulanır: burada bir kayıtla eşleşen yeni bir müşteri, ya da bir müşterinin yeni e-posta adresi veya vergi numarası reddedilir; uygulamaya hangi listenin reddettiği söylenmez. Platformun kendi müşterileri (kuruluşlar) buna tabi değildir.",
+    "search": "Listede ara",
+    "empty": "Engelleme listesi boş",
+    "emptyHint": "Geri çevirdiğiniz birinin e-posta adresini, vergi numarasını veya müşteri kimliğini ekleyin; başka bir kimlikle geri dönemesin.",
+    "emptyHintPlatform": "Operatörün her uygulamada reddedilmesini istediği değeri ekleyin.",
+    "kinds": {
+      "email": "E-posta adresi",
+      "tax_id": "Vergi numarası",
+      "external_id": "Müşteri kimliği"
+    },
+    "columns": {
+      "value": "Değer",
+      "kind": "Tür",
+      "note": "Not",
+      "addedBy": "Ekleyen",
+      "added": "Eklendi"
+    },
+    "remove": "Kaldır",
+    "removeConfirm": "{value} engelleme listesinden kaldırılsın mı? Bununla yeni bir müşteri yeniden oluşturulabilir.",
+    "add": {
+      "title": "Engelleme listesine ekle",
+      "description": "Eşleşen yeni bir müşteri, ya da eşleşen bir e-posta adresine veya vergi numarasına geçen bir müşteri reddedilir. Mevcut müşterilerinize dokunulmaz.",
+      "descriptionPlatform": "Her uygulamaya uygulanır. Denetim günlüğüne değer yazılmadan kaydedilir.",
+      "kind": "Ne olduğu",
+      "value": "Değer",
+      "valueHint": {
+        "email": "Küçük harfle eşleştirilir.",
+        "tax_id": "Boşluklar ve tireler yok sayılır.",
+        "external_id": "Büyük harfler dahil tam eşleşir."
+      },
+      "note": "Notunuz",
+      "noteHint": "Yalnızca sizin için; kişiye asla gösterilmez.",
+      "submit": "Ekle"
+    }
   }
 }

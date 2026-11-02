@@ -19,6 +19,7 @@ import (
 	portalcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/portal/command"
 	portalqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/portal/query"
 	affiliatesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/blocklist"
 	changesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes"
 	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
@@ -84,6 +85,7 @@ type (
 	taxHandler           = taxapi.Handler
 	reportsHandler       = reportsapi.Handler
 	mailSettingsHandler  = mailsettingsapi.Handler
+	blocklistHandler     = blocklist.Handler
 )
 
 // unimplemented answers Unimplemented for a method of PlansService that no module serves yet. It is embedded one level deeper than the
@@ -108,6 +110,7 @@ type Server struct {
 	*taxHandler
 	*reportsHandler
 	*mailSettingsHandler
+	*blocklistHandler
 
 	db       *store.DB
 	now      func() time.Time
@@ -121,8 +124,9 @@ func newPlans(appDB pgxx.Beginner, systemPool *pgxpool.Pool, resolver *affiliate
 	now := time.Now
 
 	subscriptionsQ := subscriptionsqry.New(db, now)
+	lists := blocklist.New(db, systemPool)
 	return &Server{
-		customersHandler:     customersapi.New(customerscmd.New(db).WithReferral(affiliatescmd.Attribute, now), customersqry.New(db)),
+		customersHandler:     customersapi.New(customerscmd.New(db).WithReferral(affiliatescmd.Attribute, now).WithBlocklist(lists.Check), customersqry.New(db)),
 		metersHandler:        metersapi.New(meterscmd.New(db), metersqry.New(db)),
 		overridesHandler:     overridesapi.New(overridescmd.New(db, now), overridesqry.New(db)),
 		plansHandler:         plansapi.New(planscmd.New(db), plansqry.New(db)),
@@ -135,6 +139,7 @@ func newPlans(appDB pgxx.Beginner, systemPool *pgxpool.Pool, resolver *affiliate
 		taxHandler:           taxapi.New(taxcmd.New(db), taxqry.New(db)),
 		reportsHandler:       reportsapi.New(reportsqry.New(db, now)),
 		mailSettingsHandler:  mailsettingsapi.New(mailsettingscmd.New(db), mailsettingsqry.New(db)),
+		blocklistHandler:     blocklist.NewHandler(lists),
 		db:                   db,
 		now:                  now,
 		resolver:             resolver,

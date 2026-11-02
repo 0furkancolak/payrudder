@@ -41,6 +41,9 @@ func (s *Server) goLiveRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
 		{"GET", "/admin/v1/tenants/{id}/status-events", AccessOperator, "", s.tenantStatusEvents},
+		{"GET", "/admin/v1/blocklist", AccessOperator, "", s.listPlatformBlocklist},
+		{"POST", "/admin/v1/blocklist", AccessOperator, "", s.addPlatformBlocklistEntry},
+		{"DELETE", "/admin/v1/blocklist/{id}", AccessOperator, "", s.removePlatformBlocklistEntry},
 		{"GET", "/admin/v1/price-change-pause", AccessOperator, "", s.priceChangePause},
 		{"PUT", "/admin/v1/price-change-pause", AccessOperator, "", s.setPriceChangePause},
 	}

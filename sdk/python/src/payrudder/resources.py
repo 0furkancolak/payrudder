@@ -312,6 +312,34 @@ class CustomersResource:
         return cast("m.ListCustomerPaymentsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/payments", query={"limit": limit}, response_wire='ListCustomerPaymentsResponse', options=options))
 
 
+class BlocklistResource:
+    """``/v1/blocklist`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_blocklist(self, *, options: RequestOptions | None = None) -> m.ListBlocklistResponse:
+        """Your blocklist, newest first.
+
+        ``GET /v1/blocklist``
+        """
+        return cast("m.ListBlocklistResponse", self._client._request("GET", "/v1/blocklist", options=options))
+
+    def add_blocklist_entry(self, body: m.AddBlocklistEntryRequest, *, options: RequestOptions | None = None) -> m.BlocklistEntry:
+        """Put an e-mail address, a tax id or an external customer id on your blocklist.
+
+        ``POST /v1/blocklist``
+        """
+        return cast("m.BlocklistEntry", self._client._request("POST", "/v1/blocklist", body=body, options=options))
+
+    def remove_blocklist_entry(self, id: str, *, options: RequestOptions | None = None) -> None:
+        """Take an entry off your blocklist.
+
+        ``DELETE /v1/blocklist/{id}``
+        """
+        self._client._request("DELETE", f"/v1/blocklist/{_p(id)}", returns="none", options=options)
+
+
 class ContractsResource:
     """``/v1/contracts`` and related operations."""
 
@@ -1802,6 +1830,7 @@ class Resources:
 
     events: EventsResource
     customers: CustomersResource
+    blocklist: BlocklistResource
     contracts: ContractsResource
     contract_acceptances: ContractAcceptancesResource
     contract_withdrawals: ContractWithdrawalsResource
@@ -1845,6 +1874,7 @@ class Resources:
     def _init_resources(self, client: Payrudder) -> None:
         self.events = EventsResource(client)
         self.customers = CustomersResource(client)
+        self.blocklist = BlocklistResource(client)
         self.contracts = ContractsResource(client)
         self.contract_acceptances = ContractAcceptancesResource(client)
         self.contract_withdrawals = ContractWithdrawalsResource(client)
@@ -2180,6 +2210,34 @@ class AsyncCustomersResource:
         ``GET /v1/customers/{external_id}/payments``
         """
         return cast("m.ListCustomerPaymentsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/payments", query={"limit": limit}, response_wire='ListCustomerPaymentsResponse', options=options))
+
+
+class AsyncBlocklistResource:
+    """``/v1/blocklist`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_blocklist(self, *, options: RequestOptions | None = None) -> m.ListBlocklistResponse:
+        """Your blocklist, newest first.
+
+        ``GET /v1/blocklist``
+        """
+        return cast("m.ListBlocklistResponse", await self._client._request("GET", "/v1/blocklist", options=options))
+
+    async def add_blocklist_entry(self, body: m.AddBlocklistEntryRequest, *, options: RequestOptions | None = None) -> m.BlocklistEntry:
+        """Put an e-mail address, a tax id or an external customer id on your blocklist.
+
+        ``POST /v1/blocklist``
+        """
+        return cast("m.BlocklistEntry", await self._client._request("POST", "/v1/blocklist", body=body, options=options))
+
+    async def remove_blocklist_entry(self, id: str, *, options: RequestOptions | None = None) -> None:
+        """Take an entry off your blocklist.
+
+        ``DELETE /v1/blocklist/{id}``
+        """
+        await self._client._request("DELETE", f"/v1/blocklist/{_p(id)}", returns="none", options=options)
 
 
 class AsyncContractsResource:
@@ -3691,6 +3749,7 @@ class AsyncResources:
 
     events: AsyncEventsResource
     customers: AsyncCustomersResource
+    blocklist: AsyncBlocklistResource
     contracts: AsyncContractsResource
     contract_acceptances: AsyncContractAcceptancesResource
     contract_withdrawals: AsyncContractWithdrawalsResource
@@ -3734,6 +3793,7 @@ class AsyncResources:
     def _init_resources(self, client: AsyncPayrudder) -> None:
         self.events = AsyncEventsResource(client)
         self.customers = AsyncCustomersResource(client)
+        self.blocklist = AsyncBlocklistResource(client)
         self.contracts = AsyncContractsResource(client)
         self.contract_acceptances = AsyncContractAcceptancesResource(client)
         self.contract_withdrawals = AsyncContractWithdrawalsResource(client)

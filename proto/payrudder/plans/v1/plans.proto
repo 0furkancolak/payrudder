@@ -25,6 +25,14 @@ service PlansService {
   rpc UnblockCustomer(UnblockCustomerRequest) returns (UnblockCustomerResponse);
   // ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
   rpc ListCustomerBlockEvents(ListCustomerBlockEventsRequest) returns (ListCustomerBlockEventsResponse);
+  // ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
+  // customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
+  rpc ListBlocklist(ListBlocklistRequest) returns (ListBlocklistResponse);
+  // AddBlocklistEntry adds an entry (adding one that is there returns it). The value is normalised: an e-mail address in lower case, a tax id without spaces and
+  // dashes in capitals. Customers that exist already are not touched.
+  rpc AddBlocklistEntry(AddBlocklistEntryRequest) returns (AddBlocklistEntryResponse);
+  // RemoveBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+  rpc RemoveBlocklistEntry(RemoveBlocklistEntryRequest) returns (RemoveBlocklistEntryResponse);
   // SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
   rpc SetCustomerTax(SetCustomerTaxRequest) returns (SetCustomerTaxResponse);
 
@@ -275,6 +283,31 @@ message CustomerBlockEvent {
   // On a block: whether it also suspended the customer's service.
   bool suspend_service = 8;
 }
+
+message ListBlocklistRequest {}
+
+message ListBlocklistResponse {
+  repeated BlocklistEntry entries = 1;
+}
+
+message AddBlocklistEntryRequest {
+  string kind = 1;
+  string value = 2;
+  string note = 3;
+  // Set by the gateway from who is signed in; a body cannot name another person.
+  string actor = 4;
+}
+
+message AddBlocklistEntryResponse {
+  BlocklistEntry entry = 1;
+}
+
+message RemoveBlocklistEntryRequest {
+  string id = 1;
+  string actor = 2;
+}
+
+message RemoveBlocklistEntryResponse {}
 
 message SetCustomerTaxRequest {
   string external_id = 1;
