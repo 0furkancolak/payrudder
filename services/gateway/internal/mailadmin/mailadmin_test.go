@@ -72,6 +72,10 @@ func TestClientSignsEveryRequestAndReadsTheAnswers(t *testing.T) {
 	if err := c.Unsuppress(ctx, tid, "gone@example.com"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("lifting what is not there: %v", err)
 	}
+	// An address the URL has to escape is signed as it is sent: the notifier verifies the path it received.
+	if err := c.Unsuppress(ctx, tid, "o'brien+tag%41 x@example.com"); err != nil {
+		t.Errorf("lifting an address that needs escaping: %v", err)
+	}
 	if msgs, _, err := c.Messages(ctx, tid, "", 0); err != nil || msgs == nil || len(msgs) != 0 {
 		t.Errorf("messages: %v %v (a list, never null)", msgs, err)
 	}
@@ -82,7 +86,7 @@ func TestClientSignsEveryRequestAndReadsTheAnswers(t *testing.T) {
 	if _, err := c.PreviewPriceChange(ctx, PriceChangePreview{}); err == nil || !strings.Contains(err.Error(), "plan_code") {
 		t.Errorf("a refused preview: %v %v", err, bad)
 	}
-	if len(*seen) != 6 || !strings.Contains((*seen)[0], "tenant_id="+tid.String()) || !strings.Contains((*seen)[0], "page_size=20") {
+	if len(*seen) != 7 || !strings.Contains((*seen)[0], "tenant_id="+tid.String()) || !strings.Contains((*seen)[0], "page_size=20") {
 		t.Errorf("requests = %v", *seen)
 	}
 }
