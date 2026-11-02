@@ -20,6 +20,8 @@ type publicLimits struct {
 	resets, tokenUses hostedLimiter
 	// otpRequests, otpVerifies and oauths limit the one-time code and provider sign-in routes.
 	otpRequests, otpVerifies, oauths hostedLimiter
+	// twoFactor limits the routes that take a second-factor code.
+	twoFactor hostedLimiter
 }
 
 // hostedLimiter lets a visitor load a handful of pages a minute. A token is 256 random bits, so guessing one is hopeless; this keeps scrapers and

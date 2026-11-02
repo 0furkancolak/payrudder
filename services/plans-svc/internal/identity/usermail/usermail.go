@@ -1,6 +1,7 @@
 // Package usermail sends the mail Payrudder itself writes to people (not to a tenant's customers, which is the notifier's job through the tenant's own mail
 // switch): an address to verify, a password to reset, an invitation to join an account, the warning that somebody tried to sign up with an address that
-// already has an account, and the help desk's notices (a new ticket for the operators, an answer or a new status for the person). Texts exist in the six languages of the console. A mail is sent in the background with a bounded number at a time: the request that
+// already has an account, the help desk's notices (a new ticket for the operators, an answer or a new status for the person), and the notice to the owners of an account
+// that the operator took a live app out of service or put it back (plan 14). Texts exist in the six languages of the console. A mail is sent in the background with a bounded number at a time: the request that
 // caused it never waits for the SMTP relay, and a lost mail is something the person can ask for again (resend, forgot password).
 package usermail
 
@@ -36,6 +37,12 @@ const (
 	KindTicketReply Kind = "ticket_reply"
 	// KindTicketStatus tells the person who opened a ticket that its status changed (the operator solved or closed it, or it closed by itself).
 	KindTicketStatus Kind = "ticket_status"
+	// KindTenantSuspended, KindTenantFrozen and KindTenantBanned tell the owners of an account that the operator took a live app out of service, and
+	// KindTenantReinstated that it is back (plan 14). They name the app and say what stops; the operator's reason is not in them.
+	KindTenantSuspended  Kind = "tenant_suspended"
+	KindTenantFrozen     Kind = "tenant_frozen"
+	KindTenantBanned     Kind = "tenant_banned"
+	KindTenantReinstated Kind = "tenant_reinstated"
 )
 
 // Mail is one message to compose. Link is the full URL the button opens; the token inside it is the only secret.
@@ -44,8 +51,10 @@ type Mail struct {
 	To     string
 	Locale string
 	Link   string
-	// Account is the organisation an invitation is for; Inviter is who invited (a display name or an address); Role is the role offered.
+	// Account is the organisation an invitation is for; Inviter is who invited (a display name or an address); Role is the role offered. App is the app a tenant
+	// status mail is about.
 	Account string
+	App     string
 	Inviter string
 	Role    string
 	// Code is the one-time sign-in code of a KindCode mail.
@@ -124,7 +133,7 @@ func Render(m Mail) (subject, text, htmlBody string) {
 	loc := Locale(m.Locale)
 	c := texts[loc][m.Kind]
 	// One pass, so a name that looks like a placeholder (a ticket subject "{status}") is not filled in again.
-	fillWith := strings.NewReplacer("{account}", oneLine(m.Account), "{inviter}", oneLine(m.Inviter), "{code}", oneLine(m.Code), "{role}", roleWord(loc, m.Role),
+	fillWith := strings.NewReplacer("{account}", oneLine(m.Account), "{app}", oneLine(m.App), "{inviter}", oneLine(m.Inviter), "{code}", oneLine(m.Code), "{role}", roleWord(loc, m.Role),
 		"{ticket}", oneLine(m.Ticket), "{subject}", oneLine(m.Subject), "{status}", ticketWord(loc, m.Status), "{priority}", ticketWord(loc, m.Priority))
 	fill := fillWith.Replace
 	lines := make([]string, len(c.Lines))

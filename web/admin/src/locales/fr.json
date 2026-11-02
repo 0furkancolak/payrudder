@@ -3087,7 +3087,8 @@
         "bad_body": "Le corps de la requête doit être un JSON valide.",
         "bad_environment": "L'environnement doit être sandbox ou live.",
         "bad_tenant": "L'identifiant du compte n'est pas valide.",
-        "too_large": "La requête est trop volumineuse."
+        "too_large": "La requête est trop volumineuse.",
+        "bad_audit_filter": "Le filtre du journal d'audit n'est pas valide."
       },
       "subscription": {
         "cannot_cancel": "Ce prestataire ne peut pas résilier un abonnement depuis ici.",
@@ -3250,6 +3251,16 @@
         "country_required": "Choisissez le pays de l'entreprise.",
         "address_required": "Saisissez la rue et la ville.",
         "tax_id_required": "Un numéro fiscal est obligatoire pour les factures dans ce pays."
+      },
+      "two_factor": {
+        "invalid": "Code incorrect ou expiré.",
+        "bad_code": "Code incorrect. Saisissez les six chiffres affichés maintenant par l'application d'authentification, ou un code de récupération.",
+        "already_enabled": "La connexion en deux étapes est déjà activée.",
+        "not_enabled": "La connexion en deux étapes n'est pas activée.",
+        "no_setup": "Commencez d'abord la configuration : scannez le code, puis confirmez-le.",
+        "not_configured": "Ce déploiement ne peut pas encore proposer la connexion en deux étapes : il n'a pas de clé de secrets.",
+        "required_by_organisation": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes : vous ne pouvez donc pas la désactiver.",
+        "setup_required": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la d'abord sur la page Sécurité."
       }
     },
     "gateway": {
@@ -3519,6 +3530,18 @@
       "tickets": {
         "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
       }
+    },
+    "audit": {
+      "unavailable": "Le journal d'audit n'a pas pu être lu auprès de tous les services. Réessayez.",
+      "page_token": {
+        "invalid": "Cette page du journal n'est plus valide. Rechargez la liste."
+      },
+      "filter": {
+        "bad_tenant": "L'identifiant du locataire n'est pas valide.",
+        "bad_account": "L'identifiant du compte n'est pas valide.",
+        "bad_time": "Les dates ne sont pas valides, ou le début est postérieur à la fin.",
+        "bad_page_size": "La taille de page doit être comprise entre 1 et 200."
+      }
     }
   },
   "product": {
@@ -3532,7 +3555,8 @@
     },
     "nav": {
       "home": "Accueil",
-      "settings": "Réglages"
+      "settings": "Réglages",
+      "security": "Sécurité"
     },
     "hero": {
       "title": "Tous les paiements de toutes vos applications, au même endroit, au calme."
@@ -3787,7 +3811,8 @@
         "settings": "Réglages (taxes, routage, e-mail)",
         "assets": "Fichiers",
         "contracts": "Accords (textes et réglages)",
-        "sandbox": "Outils sandbox"
+        "sandbox": "Outils sandbox",
+        "audit": "Journal d'audit"
       },
       "permissionCount": "{n} permissions sur {total}",
       "customNeedsOne": "Choisissez au moins une permission.",
@@ -3912,7 +3937,9 @@
       "rename": "Nom du compte",
       "save": "Enregistrer le nom",
       "noneTitle": "Vous ne faites partie d'aucun compte",
-      "noneBody": "Vous avez quitté votre dernier compte ou en avez été retiré. Demandez à un propriétaire de vous réinviter, ou inscrivez-vous avec une autre adresse."
+      "noneBody": "Vous avez quitté votre dernier compte ou en avez été retiré. Demandez à un propriétaire de vous réinviter, ou inscrivez-vous avec une autre adresse.",
+      "requireTwoFactor": "Exiger la connexion en deux étapes pour les propriétaires",
+      "requireTwoFactorHint": "Les propriétaires qui n'ont pas configuré la connexion en deux étapes restent sur la page Sécurité tant qu'ils ne l'ont pas fait. Désactivé par défaut."
     },
     "invite": {
       "title": "Vous êtes invité",
@@ -4517,6 +4544,78 @@
         "sandbox": "Passer en Sandbox",
         "live": "Passer en production"
       }
+    },
+    "security": {
+      "title": "Sécurité",
+      "intro": "Comment vous vous connectez et comment le protéger.",
+      "setupRequired": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la ci-dessous : tant que ce n'est pas fait, rien d'autre n'est disponible dans la console."
+    },
+    "twoFactor": {
+      "title": "Connexion en deux étapes",
+      "on": "Activée",
+      "off": "Désactivée",
+      "offBody": "Après votre mot de passe, votre code par e-mail ou Google, la connexion demande aussi un code à six chiffres d'une application d'authentification. Quelqu'un qui découvre votre mot de passe ne peut toujours pas entrer.",
+      "onBody": "La connexion demande un code à six chiffres de votre application d'authentification après votre mot de passe, votre code par e-mail ou Google.",
+      "since": "Activée le",
+      "codesLeft": "Codes de récupération restants",
+      "codesLow": "Il ne reste que {n} codes de récupération. Générez-en de nouveaux avant qu'il n'y en ait plus : si vous perdez votre téléphone, ce sont les seuls moyens de revenir.",
+      "turnOn": "Activer",
+      "turnOff": "Désactiver",
+      "regenerate": "Générer de nouveaux codes de récupération",
+      "requiredNote": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes : elle ne peut donc pas être désactivée.",
+      "disableTitle": "Désactiver la connexion en deux étapes ?",
+      "disableBody": "Saisissez un code actuel de votre application d'authentification, ou un code de récupération. Votre compte ne sera alors protégé que par votre méthode de connexion.",
+      "regenerateTitle": "Générer de nouveaux codes de récupération ?",
+      "regenerateBody": "Saisissez un code actuel de votre application d'authentification, ou un code de récupération. Les anciens codes de récupération cessent de fonctionner.",
+      "regeneratedBody": "Ils remplacent vos anciens codes de récupération. Ils ne sont affichés que maintenant.",
+      "prompt": {
+        "label": "Code",
+        "hint": "Six chiffres de l'application, ou un code de récupération."
+      },
+      "setup": {
+        "scan": {
+          "title": "Scanner le code",
+          "body": "Ouvrez une application d'authentification sur votre téléphone et scannez ce code."
+        },
+        "code": {
+          "title": "Saisir le code",
+          "body": "Saisissez les six chiffres que l'application affiche maintenant, pour prouver qu'elle est configurée."
+        },
+        "codes": {
+          "title": "Conservez vos codes de récupération",
+          "body": "La connexion en deux étapes est maintenant activée."
+        },
+        "qrLabel": "Code QR pour votre application d'authentification",
+        "cantScan": "Impossible de scanner ? Saisissez plutôt cette clé dans l'application.",
+        "secretLabel": "Clé secrète",
+        "copySecret": "Copier",
+        "next": "Suivant",
+        "back": "Retour",
+        "turnOn": "Activer"
+      },
+      "codes": {
+        "body": "Chaque code ne fonctionne qu'une fois. Si vous perdez votre téléphone, un code de récupération est le seul moyen de vous connecter. Ils ne sont affichés que maintenant.",
+        "list": "Codes de récupération",
+        "download": "Télécharger en .txt",
+        "copy": "Copier",
+        "saved": "J'ai conservé ces codes",
+        "done": "Terminé"
+      },
+      "file": {
+        "title": "Codes de récupération Payrudder pour {email}, {date}",
+        "note": "Chaque code ne fonctionne qu'une fois. Conservez ce fichier en lieu sûr et privé."
+      },
+      "step": {
+        "title": "Vérification en deux étapes",
+        "intro": "Ouvrez votre application d'authentification et saisissez le code à six chiffres qu'elle affiche.",
+        "recoveryIntro": "Saisissez l'un de vos codes de récupération. Chacun ne fonctionne qu'une fois.",
+        "submit": "Vérifier",
+        "recoveryLabel": "Code de récupération",
+        "recoveryHint": "Lettres et chiffres, tirets facultatifs.",
+        "useRecovery": "Utiliser un code de récupération",
+        "useApp": "Utiliser l'application d'authentification",
+        "restart": "Recommencer"
+      }
     }
   },
   "shell": {
@@ -4586,7 +4685,9 @@
       "support": "Aide",
       "supportInbox": "Boîte de support",
       "connect": "Connecter votre app",
-      "contracts": "Contrats"
+      "contracts": "Contrats",
+      "audit": "Journal d'audit",
+      "auditLog": "Journal d'audit"
     },
     "noApps": "Aucune application",
     "newApp": "Nouvelle application"
@@ -4976,6 +5077,9 @@
         "agreementsTitle": "Accords",
         "settings": "Choisissez les accords que les clients doivent accepter et combien de temps leur adresse et leur navigateur sont conservés.",
         "settingsTitle": "Réglages"
+      },
+      "audit": {
+        "intro": "Chaque modification des clés, membres, prix, webhooks, clients, remboursements et comptes de prestataires est enregistrée ici. Les entrées ne peuvent être ni modifiées ni supprimées."
       }
     }
   },
@@ -5541,6 +5645,118 @@
       "received": "Quand elle vous est parvenue (facultatif)",
       "receivedHint": "Laissez vide pour maintenant.",
       "submit": "Enregistrer la rétractation"
+    }
+  },
+  "audit": {
+    "title": "Journal d'audit",
+    "intro": "Qui a fait quoi et quand : clés, membres, prix, webhooks, clients, remboursements et comptes de prestataires. Les entrées ne peuvent être ni modifiées ni supprimées.",
+    "adminIntro": "Le journal d'audit de tous les locataires, du plus récent au plus ancien. Filtrez par locataire pour n'en voir qu'un.",
+    "empty": "Rien n'a encore été enregistré.",
+    "export": "Exporter en CSV",
+    "loadMore": "Charger plus",
+    "incomplete": "Certaines entrées peuvent manquer. Ces parties du journal n'ont pas répondu : {sources}. Réessayez dans un instant.",
+    "sources": {
+      "plans": "clés, membres, forfaits, clients et webhooks",
+      "billing": "factures et avoirs",
+      "payments": "comptes de prestataires de paiement"
+    },
+    "filters": {
+      "area": "Domaine",
+      "anyArea": "Tous les domaines",
+      "actor": "Auteur : e-mail ou identifiant",
+      "tenant": "Identifiant du locataire"
+    },
+    "columns": {
+      "time": "Heure",
+      "actor": "Auteur",
+      "action": "Action",
+      "summary": "Résumé",
+      "target": "Cible"
+    },
+    "fields": {
+      "summary": "Résumé",
+      "time": "Heure",
+      "actor": "Auteur",
+      "actorId": "Identifiant de l'auteur",
+      "target": "Cible",
+      "targetId": "Identifiant de la cible",
+      "ip": "IP source",
+      "request": "Identifiant de la requête",
+      "tenant": "Identifiant du locataire",
+      "account": "Identifiant du compte",
+      "before": "Empreinte avant",
+      "after": "Empreinte après",
+      "detail": "Détail"
+    },
+    "actorTypes": {
+      "user": "Personne",
+      "api_key": "Clé API",
+      "operator": "Opérateur",
+      "system": "Système"
+    },
+    "areas": {
+      "api_key": "Clés API",
+      "member": "Membres",
+      "plan": "Forfaits",
+      "webhook_endpoint": "Points de terminaison webhook",
+      "customer": "Clients",
+      "credit_note": "Avoirs",
+      "invoice": "Factures",
+      "provider_account": "Comptes de prestataires",
+      "tenant": "Réglages et statut du locataire",
+      "two_factor": "Connexion en deux étapes",
+      "sign_in": "Connexion",
+      "account": "Organisation"
+    },
+    "actions": {
+      "api_key": {
+        "created": "Clé API créée",
+        "rotated": "Clé API renouvelée",
+        "revoked": "Clé API révoquée",
+        "expiring": "Clé API bientôt expirée"
+      },
+      "member": {
+        "invited": "Membre invité",
+        "joined": "Membre arrivé",
+        "role_changed": "Rôle d'un membre modifié",
+        "removed": "Membre retiré"
+      },
+      "plan": {
+        "created": "Forfait créé",
+        "version_published": "Version de forfait publiée"
+      },
+      "webhook_endpoint": {
+        "created": "Point de terminaison webhook créé",
+        "updated": "Point de terminaison webhook modifié",
+        "deleted": "Point de terminaison webhook supprimé",
+        "secret_rotated": "Secret webhook renouvelé"
+      },
+      "customer": {
+        "blocked": "Client bloqué",
+        "unblocked": "Client débloqué"
+      },
+      "credit_note": {
+        "issued": "Avoir émis",
+        "refunded": "Avoir remboursé",
+        "refund_failed": "Remboursement échoué",
+        "refund_retried": "Remboursement relancé"
+      },
+      "provider_account": {
+        "connected": "Compte de prestataire connecté",
+        "replaced": "Compte de prestataire remplacé",
+        "removed": "Compte de prestataire retiré",
+        "default_changed": "Prestataire par défaut modifié"
+      },
+      "tenant": {
+        "status_requested": "Changement de statut demandé",
+        "status_changed": "Statut modifié",
+        "settings_updated": "Réglages modifiés"
+      },
+      "two_factor": {
+        "enabled": "Connexion en deux étapes activée",
+        "disabled": "Connexion en deux étapes désactivée",
+        "recovery_codes_regenerated": "Codes de récupération régénérés"
+      }
     }
   }
 }

@@ -342,6 +342,32 @@ type AttributeCustomerResponse struct {
 	Reason     string `json:"reason"`
 }
 
+// AuditEvent is an object of the API; see components.schemas.AuditEvent in api/openapi/v1.yaml.
+type AuditEvent struct {
+	ID string `json:"id"`
+	// Empty for an entry that belongs to no tenant
+	TenantID string `json:"tenant_id"`
+	// Set for an entry that is an account's and no tenant's (its members)
+	AccountID string `json:"account_id"`
+	// One of: user, api_key, operator, system.
+	ActorType  string `json:"actor_type"`
+	ActorID    string `json:"actor_id"`
+	ActorEmail string `json:"actor_email"`
+	// <area>.<what>, for example api_key.created
+	Action     string `json:"action"`
+	TargetType string `json:"target_type"`
+	TargetID   string `json:"target_id"`
+	// One line for a person; secrets are masked
+	Summary string `json:"summary"`
+	// A small JSON object of what changed, as text; it holds no secret
+	DetailJSON string     `json:"detail_json"`
+	BeforeHash string     `json:"before_hash"`
+	AfterHash  string     `json:"after_hash"`
+	SourceIP   string     `json:"source_ip"`
+	RequestID  string     `json:"request_id"`
+	CreateTime *time.Time `json:"create_time"`
+}
+
 // BillingRun is an object of the API; see components.schemas.BillingRun in api/openapi/v1.yaml.
 type BillingRun struct {
 	TenantID string `json:"tenant_id"`
@@ -1788,6 +1814,15 @@ type ListAssetsResponse struct {
 	NextPageToken string  `json:"next_page_token"`
 }
 
+// ListAuditEventsResponse is the response of ListAuditEvents.
+type ListAuditEventsResponse struct {
+	Events        []AuditEvent `json:"events"`
+	NextPageToken string       `json:"next_page_token"`
+	// A service that keeps part of the log did not answer: the page may lack its entries
+	Incomplete         bool     `json:"incomplete"`
+	UnavailableSources []string `json:"unavailable_sources"`
+}
+
 // ListContractAcceptancesResponse is the response of ListContractAcceptances.
 type ListContractAcceptancesResponse struct {
 	Acceptances []ContractAcceptance `json:"acceptances"`
@@ -3159,6 +3194,94 @@ func (p *PresignPartsParams) values() url.Values {
 	}
 	if p.Count != nil {
 		v.Set("count", strconv.Itoa(*p.Count))
+	}
+	return v
+}
+
+// ListAuditEventsParams are the query parameters of ListAuditEvents.
+type ListAuditEventsParams struct {
+	// Action names such as api_key.created, or an area such as api_key.*, separated by commas
+	Action string
+	// An actor id (user id, API key id) or an e-mail address
+	Actor      string
+	TargetType string
+	TargetID   string
+	// Inclusive, RFC 3339
+	From *time.Time
+	// Exclusive, RFC 3339
+	To        *time.Time
+	PageSize  *int
+	PageToken string
+}
+
+func (p *ListAuditEventsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Action != "" {
+		v.Set("action", p.Action)
+	}
+	if p.Actor != "" {
+		v.Set("actor", p.Actor)
+	}
+	if p.TargetType != "" {
+		v.Set("target_type", p.TargetType)
+	}
+	if p.TargetID != "" {
+		v.Set("target_id", p.TargetID)
+	}
+	if p.From != nil {
+		v.Set("from", p.From.UTC().Format(time.RFC3339Nano))
+	}
+	if p.To != nil {
+		v.Set("to", p.To.UTC().Format(time.RFC3339Nano))
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// ExportAuditEventsParams are the query parameters of ExportAuditEvents.
+type ExportAuditEventsParams struct {
+	// Action names such as api_key.created, or an area such as api_key.*, separated by commas
+	Action string
+	// An actor id (user id, API key id) or an e-mail address
+	Actor      string
+	TargetType string
+	TargetID   string
+	// Inclusive, RFC 3339
+	From *time.Time
+	// Exclusive, RFC 3339
+	To *time.Time
+}
+
+func (p *ExportAuditEventsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Action != "" {
+		v.Set("action", p.Action)
+	}
+	if p.Actor != "" {
+		v.Set("actor", p.Actor)
+	}
+	if p.TargetType != "" {
+		v.Set("target_type", p.TargetType)
+	}
+	if p.TargetID != "" {
+		v.Set("target_id", p.TargetID)
+	}
+	if p.From != nil {
+		v.Set("from", p.From.UTC().Format(time.RFC3339Nano))
+	}
+	if p.To != nil {
+		v.Set("to", p.To.UTC().Format(time.RFC3339Nano))
 	}
 	return v
 }

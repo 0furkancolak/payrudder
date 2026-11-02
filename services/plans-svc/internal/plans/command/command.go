@@ -3,10 +3,15 @@ package command
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	metersqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters/query"
@@ -22,15 +27,23 @@ type Commands struct{ db *store.DB }
 // New returns the plan commands.
 func New(db *store.DB) *Commands { return &Commands{db: db} }
 
+// audit writes one entry of the audit log about a plan of the caller's tenant, in the transaction of the change.
+func (c *Commands) audit(ctx context.Context, tx pgx.Tx, action, target, summary string, detail map[string]any) error {
+	t, _ := tenant.FromContext(ctx)
+	return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: action, TargetType: "plan", TargetID: target, Summary: summary, Detail: detail})
+}
+
 // Create adds a plan with no version yet.
 func (c *Commands) Create(ctx context.Context, req *plansv1.CreatePlanRequest) (*plansv1.Plan, error) {
 	if err := domain.ValidatePlan(req); err != nil {
 		return nil, err
 	}
 	var out sqlc.Plan
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) (err error) {
-		out, err = q.InsertPlan(ctx, sqlc.InsertPlanParams{ID: idgen.NewUUIDv7(), Code: req.GetCode(), Name: req.GetName()})
-		return err
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) (err error) {
+		if out, err = q.InsertPlan(ctx, sqlc.InsertPlanParams{ID: idgen.NewUUIDv7(), Code: req.GetCode(), Name: req.GetName()}); err != nil {
+			return err
+		}
+		return c.audit(ctx, tx, "plan.created", out.ID.String(), "created the plan "+out.Code, map[string]any{"code": out.Code, "name": out.Name})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "plan")
@@ -41,7 +54,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreatePlanRequest) (
 // PublishVersion adds the next immutable version of a plan: its fees, prices and entitlements.
 func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanVersionRequest) (*plansv1.PlanVersion, error) {
 	var out *plansv1.PlanVersion
-	publish := func(q *sqlc.Queries) error {
+	publish := func(q *sqlc.Queries, tx pgx.Tx) error {
 		plan, err := q.GetPlanByCode(ctx, req.GetPlanCode())
 		if err != nil {
 			return convert.Err(err, "plan")
@@ -95,13 +108,16 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 				return err
 			}
 		}
-		out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.TrialDays, pv.PublishedAt, scales)
-		return err
+		if out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.TrialDays, pv.PublishedAt, scales); err != nil {
+			return err
+		}
+		return c.audit(ctx, tx, "plan.version_published", pv.ID.String(), fmt.Sprintf("published version %d of the plan %s", pv.Version, plan.Code),
+			map[string]any{"plan": plan.Code, "version": pv.Version, "base_fee_minor": pv.BaseFeeMinor, "trial_days": pv.TrialDays, "fees": len(fees), "prices": len(in.Prices)})
 	}
 	// Two concurrent publishes of the same plan collide on UNIQUE (tenant, plan, version); retry once.
-	err := c.db.Tx(ctx, publish)
+	err := c.db.TxWith(ctx, publish)
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation && pgxx.ConstraintName(err) == "plan_versions_tenant_id_plan_id_version_key" {
-		err = c.db.Tx(ctx, publish)
+		err = c.db.TxWith(ctx, publish)
 	}
 	if err != nil {
 		return nil, convert.Err(err, "plan version")

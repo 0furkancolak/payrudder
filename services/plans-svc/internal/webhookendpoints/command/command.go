@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -16,11 +17,13 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -138,7 +141,7 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 		return nil, err
 	}
 	var out *plansv1.WebhookEndpoint
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		if err := requireActive(ctx, q); err != nil {
 			return err
 		}
@@ -155,12 +158,27 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 		}
 		out = endpointsqry.EndpointMessage(sqlc.ListWebhookEndpointsRow(r))
 		out.Secret = secret
-		return nil
+		return c.audit(ctx, tx, "webhook_endpoint.created", id, "created the webhook endpoint "+where(r.Url), map[string]any{"url": where(r.Url), "event_types": types})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "webhook endpoint")
 	}
 	return out, nil
+}
+
+// where is an endpoint's address without its query and credentials: the part a reader needs, and none a secret could be in.
+func where(raw string) string {
+	u, err := neturl.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host + u.Path
+}
+
+// audit writes one entry of the audit log about an endpoint of the caller's tenant, in the transaction of the change.
+func (c *Commands) audit(ctx context.Context, tx pgx.Tx, action string, endpoint uuid.UUID, summary string, detail map[string]any) error {
+	t, _ := tenant.FromContext(ctx)
+	return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: action, TargetType: "webhook_endpoint", TargetID: endpoint.String(), Summary: summary, Detail: detail})
 }
 
 // UpdateEndpoint replaces an endpoint's url, description, event types and active flag.
@@ -174,7 +192,7 @@ func (c *Commands) UpdateEndpoint(ctx context.Context, req *plansv1.UpdateWebhoo
 		return nil, err
 	}
 	var out *plansv1.WebhookEndpoint
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		if req.GetActive() {
 			if err := requireActive(ctx, q); err != nil {
 				return err
@@ -185,7 +203,8 @@ func (c *Commands) UpdateEndpoint(ctx context.Context, req *plansv1.UpdateWebhoo
 			return err
 		}
 		out = endpointsqry.EndpointMessage(sqlc.ListWebhookEndpointsRow(r))
-		return nil
+		return c.audit(ctx, tx, "webhook_endpoint.updated", id, "changed the webhook endpoint "+where(r.Url),
+			map[string]any{"url": where(r.Url), "event_types": types, "active": r.Active})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "webhook endpoint")
@@ -199,12 +218,19 @@ func (c *Commands) DeleteEndpoint(ctx context.Context, rawID string) error {
 	if err != nil {
 		return err
 	}
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		ep, err := q.GetWebhookEndpoint(ctx, id)
+		if err != nil {
+			return err
+		}
 		n, err := q.DeleteWebhookEndpoint(ctx, id)
 		if err == nil && n == 0 {
 			return pgx.ErrNoRows
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		return c.audit(ctx, tx, "webhook_endpoint.deleted", id, "deleted the webhook endpoint "+where(ep.Url), map[string]any{"url": where(ep.Url)})
 	})
 	if err != nil {
 		return convert.Err(err, "webhook endpoint")
@@ -226,7 +252,7 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 		return nil, err
 	}
 	var out *plansv1.WebhookEndpoint
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		until := c.now().Add(secretOverlap)
 		r, err := q.RotateWebhookSecret(ctx, sqlc.RotateWebhookSecretParams{ID: id, SecretEnc: sealed, Until: &until})
 		if err != nil {
@@ -234,7 +260,7 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 		}
 		out = endpointsqry.EndpointMessage(sqlc.ListWebhookEndpointsRow(r))
 		out.Secret = secret
-		return nil
+		return c.audit(ctx, tx, "webhook_endpoint.secret_rotated", id, "rolled the signing secret of "+where(r.Url), map[string]any{"url": where(r.Url), "old_secret_valid_until": until.UTC()})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "webhook endpoint")

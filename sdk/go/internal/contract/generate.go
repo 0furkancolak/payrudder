@@ -22,6 +22,7 @@ var responseOverride = map[string]string{}
 // pageItemsOverride picks the list property to iterate when a page has more than one array.
 var pageItemsOverride = map[string]string{
 	"listAffiliateJournal": "entries",
+	"listAuditEvents":      "events",
 }
 
 // reserved are names the SDK defines by hand; a spec schema with one of them would clash.

@@ -13,10 +13,11 @@ import (
 )
 
 type Account struct {
-	ID        uuid.UUID
-	Name      string
-	CreatedAt time.Time
-	Platform  bool
+	ID               uuid.UUID
+	Name             string
+	CreatedAt        time.Time
+	Platform         bool
+	RequireTwoFactor bool
 }
 
 type AccountInvite struct {
@@ -201,6 +202,25 @@ type AppAudit struct {
 	Action    string
 	Detail    json.RawMessage
 	CreatedAt time.Time
+}
+
+type AuditEvent struct {
+	ID         uuid.UUID
+	TenantID   *uuid.UUID
+	AccountID  *uuid.UUID
+	ActorType  string
+	ActorID    string
+	ActorEmail string
+	Action     string
+	TargetType string
+	TargetID   string
+	Summary    string
+	Detail     json.RawMessage
+	BeforeHash string
+	AfterHash  string
+	SourceIp   string
+	RequestID  string
+	CreatedAt  time.Time
 }
 
 type ConfigPromotion struct {
@@ -417,6 +437,15 @@ type GoLiveAudit struct {
 	Action       string
 	Detail       json.RawMessage
 	CreatedAt    time.Time
+}
+
+type LoginChallenge struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash []byte
+	Attempts  int32
+	ExpiresAt time.Time
+	CreatedAt time.Time
 }
 
 type LoginCode struct {
@@ -796,6 +825,14 @@ type UserOnboarding struct {
 	UpdatedAt time.Time
 }
 
+type UserRecoveryCode struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	CodeHash  []byte
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}
+
 type UserSession struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID
@@ -814,6 +851,14 @@ type UserToken struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 	UsedAt    *time.Time
+}
+
+type UserTotp struct {
+	UserID      uuid.UUID
+	SecretEnc   []byte
+	ConfirmedAt *time.Time
+	LastStep    int64
+	CreatedAt   time.Time
 }
 
 type WebhookDelivery struct {

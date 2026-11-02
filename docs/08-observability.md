@@ -100,6 +100,17 @@ RED for every gRPC/HTTP endpoint (from `otelgrpc`/`otelhttp`). Business and corr
 - Levels: `INFO` for state transitions (saga, billing run), `WARN` for reconciled drift and retries, `ERROR` for DLQ and failures.
 - No payloads, no API keys, no emails at INFO. A `slog.LogValuer` redacts sensitive types.
 
+## Error tracking (off by default)
+
+Logs and traces say what happened to a request; they do not tell you that a handler panicked at 03:00 until someone looks. `pkg/errtrack` sends **panics and unexpected errors** to a Sentry-compatible server, which groups them into issues with a stack, a release and a trace id. It is **off**: nothing is sent,, unless `PAYRUDDER_ERROR_TRACKING_URL` holds a DSN (`https://<public key>@host/<project id>`). A DSN that does not parse is logged ("error tracking is off") and ignored: a process never refuses to start over its error reporting.
+
+- **Server:** anything that accepts a Sentry envelope: self-hosted [GlitchTip](https://glitchtip.com) (one container plus Postgres, the lightest), self-hosted Sentry, or sentry.io. The client is a few hundred lines of standard library (`POST <host>/api/<project>/envelope/` with the `X-Sentry-Auth` key, one `event` item), so there is no vendor library in the services. An OTLP log export was the other candidate; an error server needs grouping and a stack, which an OTLP log record does not carry.
+- **What is reported:** a panic of a service's main goroutine and of every goroutine started with `app.Group.Go` (reported, flushed, then the process dies as before); a panic recovered by a gRPC handler (`pkg/grpcx`) or a message handler (`pkg/rabbitx`); in the gateway, a panic in an HTTP handler and every answer that is a 500 because something behind the gateway failed (`Internal`, `Unknown`, `DataLoss`; not a 4xx, not `Unavailable`, which the metrics and alerts cover). A panic is reported once: the 500 the gateway then answers is not reported again.
+- **What is not reported:** panics of goroutines a service starts itself outside `Group.Go`; errors that are only logged; anything while the variable is unset. Code that handles an error but wants it known calls `errtrack.Capture(ctx, err)`.
+- **Secrets:** every message and tag passes `logx.Scrub` (API keys `qk_…`, sessions `qs_…`, webhook secrets `whsec_…`, provider keys, bearer tokens, the password of a URL, `password=`/`token=`/`secret=` values) before it leaves. No request body, header or customer data is sent: a report carries the error text, the stack, the service, release, environment, host, `http.method`, `request_id` and `trace_id`. Do not put customer data in error texts.
+- **Limits:** one report per place and message per minute (numbers and ids in the text are ignored when comparing), at most 60 per minute per process, four sends in flight; the rest are dropped. A report that cannot be delivered is a WARN line, never an error to the caller.
+- **Not wired:** the Helm charts do not set the variable (a DSN is a secret: add it to the service's Secret yourself); the console (Vue) has no browser error tracking.
+
 ## Dashboards (Grafana, provisioned from `deploy/grafana/dashboards/*.json`)
 
 1. **Ingest overview:** events/s by result, p50/p99 latency, outbox depth and age, 429s by tenant.
@@ -134,9 +145,9 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - `SagaStuck`: `saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"} > 0` for 15m
 - `FrozenPeriodViolation`: any increase (page)
 - `ReconcileDriftHigh`: corrections > 1% of active keys per cycle
-- Provider health (plan 22 G8, no alert yet): `provider_health_checks{provider,result}`, `provider_breaker_transitions{provider,to}`, `provider_breaker_rejections{provider}` (payments-worker)
-- Reconciliation (plan 22 G7, no alert yet): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (payments-worker)
-- Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page)
+- Provider health (plan 22 G8): `provider_health_checks{provider,result}` (no alert), `provider_breaker_transitions{provider,to}` (`ProviderCircuitOpened`), `provider_breaker_rejections{provider}` (`ProviderChargesRefused`) (payments-worker)
+- Reconciliation (plan 22 G7): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (no alert), and the gauge `reconciliation_discrepancies_open{kind}` (live discrepancies with status open, read on each scrape; `ReconciliationBacklog`, `SettlementOverdue`) (payments-worker)
+- Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page); from the counters of G1, G7 and G8: `LedgerWriteFailed` (`ledger_write_failures{provider,kind}`, page), `RefundOutcomeUnknown` (`refund_outcome_unknown{provider}`, warn), `ProviderCircuitOpened` (warn), `ProviderChargesRefused` (page), `ReconciliationBacklog` and `SettlementOverdue` (warn)
 - Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified` (warn). A stack that never ran PITR raises no PITR alert (there is no metric to go stale); a stack that should run it watches the `pitr-agent` container itself
 - `Watchdog`: always firing, routed to its own receiver, the dead man's switch
 

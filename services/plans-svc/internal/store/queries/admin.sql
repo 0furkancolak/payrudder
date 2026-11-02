@@ -121,3 +121,15 @@ WHERE k.prefix = $1;
 
 -- name: ListTenants :many
 SELECT * FROM tenants WHERE id > @after::uuid ORDER BY id LIMIT @page_size::int;
+
+-- Who is told when the operator changes a live tenant's status: the owners of its account who have proven their address, in their own language, with the names the mail
+-- is about (the app, the account). An owner with an unproven address gets nothing: the address may not be theirs.
+-- name: TenantStatusMailTargets :many
+SELECT lower(u.email)::text AS email, u.locale, a.name AS account_name, ap.name AS app_name
+FROM tenants t
+JOIN accounts a ON a.id = t.account_id
+JOIN apps ap ON ap.id = t.app_id
+JOIN account_members m ON m.account_id = a.id AND m.role = 'owner'
+JOIN users u ON u.id = m.user_id
+WHERE t.id = @tenant_id AND u.email_verified_at IS NOT NULL
+ORDER BY m.created_at, u.id;

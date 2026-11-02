@@ -29,6 +29,8 @@ type services struct {
 	Analytics *AnalyticsService
 	// Assets groups the assets operations.
 	Assets *AssetsService
+	// AuditEvents groups the audit events operations.
+	AuditEvents *AuditEventsService
 	// ContractAcceptances groups the contract acceptances operations.
 	ContractAcceptances *ContractAcceptancesService
 	// ContractWithdrawals groups the contract withdrawals operations.
@@ -100,6 +102,7 @@ func (s *services) initServices(c *Client) {
 	s.Affiliates = (*AffiliatesService)(&service{c: c})
 	s.Analytics = (*AnalyticsService)(&service{c: c})
 	s.Assets = (*AssetsService)(&service{c: c})
+	s.AuditEvents = (*AuditEventsService)(&service{c: c})
 	s.ContractAcceptances = (*ContractAcceptancesService)(&service{c: c})
 	s.ContractWithdrawals = (*ContractWithdrawalsService)(&service{c: c})
 	s.Contracts = (*ContractsService)(&service{c: c})
@@ -665,6 +668,61 @@ func (s *AssetsService) DownloadAsset(ctx context.Context, id string, opts ...Re
 		return nil, err
 	}
 	return &out, nil
+}
+
+// AuditEventsService is the audit events namespace of the API.
+type AuditEventsService service
+
+// ListAuditEvents: The audit log of the tenant, newest first (GET /v1/audit-events).
+//
+// Who did what and when, for the actions that change money or access: API keys created, rotated and revoked;
+// members invited, changed and removed; plan versions published; webhook endpoints created, changed, deleted
+// and their secrets rolled; customers blocked and unblocked; credit notes and refunds; the operator's invoice
+// actions; payment provider accounts connected, replaced, removed and made the default; the tenant's status and
+// settings. Each entry has the actor (a person, an API key, the operator or the system), the target, a one-line
+// summary with no secret in it, a small `detail` object, the address and the request id. The log is
+// append-only: the database refuses any change to an entry. It is read from several services and merged; when
+// one does not answer, `incomplete` is true and `unavailable_sources` names it. Needs the permission
+// `audit:read` (an admin key has it; the `read_only` role does not). A person who is a viewer of the account
+// may not read it.
+func (s *AuditEventsService) ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) (*ListAuditEventsResponse, error) {
+	var out ListAuditEventsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/audit-events", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListAuditEventsAll walks every page of ListAuditEvents and yields the items one by one. It stops at the first
+// error, which is yielded once.
+func (s *AuditEventsService) ListAuditEventsAll(ctx context.Context, params *ListAuditEventsParams, opts ...RequestOption) iter.Seq2[AuditEvent, error] {
+	return paginate(func(token string) ([]AuditEvent, string, error) {
+		var p ListAuditEventsParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListAuditEvents(ctx, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Events, page.NextPageToken, nil
+	})
+}
+
+// ExportAuditEvents: The audit log as CSV (the newest 5000 entries of the filter) (GET /v1/audit-events/export).
+//
+// The same filter as `listAuditEvents`, one line per entry with the columns id, create_time, tenant_id,
+// account_id, actor_type, actor_id, actor_email, action, target_type, target_id, summary, detail (JSON),
+// before_hash, after_hash, source_ip, request_id. A cell that starts with `=`, `+`, `-` or `@` gets a leading
+// `'`, so a spreadsheet does not run it. An export that cannot read every service fails with `503
+// audit.unavailable` rather than leave entries out. Needs `audit:read`.
+func (s *AuditEventsService) ExportAuditEvents(ctx context.Context, params *ExportAuditEventsParams, opts ...RequestOption) ([]byte, error) {
+	var out []byte
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/audit-events/export", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // ContractAcceptancesService is the contract acceptances namespace of the API.

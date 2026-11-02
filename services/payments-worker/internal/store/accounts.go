@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
@@ -44,6 +45,11 @@ type Audit struct {
 	VerifiedRemote bool
 }
 
+// accountEntry writes the audit log entry (pkg/audit) of a change to a provider account, in the transaction of the change. The detail never holds settings.
+func accountEntry(ctx context.Context, tx pgx.Tx, tenant uuid.UUID, action, provider, env, summary string, detail map[string]any) error {
+	return audit.Record(ctx, tx, audit.Event{TenantID: tenant, Action: action, TargetType: "provider_account", TargetID: provider + "/" + env, Summary: summary, Detail: detail})
+}
+
 // Kinds of account the audit trail tells apart.
 const (
 	KindPayment  = "payment"
@@ -56,12 +62,12 @@ func (a Accounts) Put(ctx context.Context, tenant uuid.UUID, provider, env strin
 }
 
 // PutAudited is Put with the entry of the audit trail.
-func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, env string, settings []byte, makeDefault bool, audit Audit) error {
+func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, env string, settings []byte, makeDefault bool, who Audit) error {
 	sealed, err := a.Box.Seal(settings, aad(tenant, provider, env))
 	if err != nil {
 		return err
 	}
-	return tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+	return tx(ctx, a.DB, tenant, func(tx pgx.Tx, q *sqlc.Queries) error {
 		if makeDefault {
 			if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
 				return err
@@ -80,8 +86,12 @@ func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, en
 		}); err != nil {
 			return err
 		}
-		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: action,
-			Actor: audit.Actor, IsDefault: makeDefault, VerifiedRemote: audit.VerifiedRemote})
+		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: action,
+			Actor: who.Actor, IsDefault: makeDefault, VerifiedRemote: who.VerifiedRemote}); err != nil {
+			return err
+		}
+		return accountEntry(ctx, tx, tenant, "provider_account."+action, provider, env, fmt.Sprintf("%s the %s account at %s", action, env, provider),
+			map[string]any{"provider": provider, "environment": env, "default": makeDefault, "verified_remote": who.VerifiedRemote})
 	})
 }
 
@@ -91,15 +101,19 @@ func (a Accounts) Delete(ctx context.Context, tenant uuid.UUID, provider, env st
 }
 
 // DeleteAudited is Delete with the entry of the audit trail (written only when there was an account to remove).
-func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider, env string, audit Audit) (bool, error) {
+func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider, env string, who Audit) (bool, error) {
 	var deleted bool
-	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+	err := tx(ctx, a.DB, tenant, func(tx pgx.Tx, q *sqlc.Queries) error {
 		n, err := q.DeleteProviderAccount(ctx, sqlc.DeleteProviderAccountParams{TenantID: tenant, Provider: provider, Environment: env})
 		if err != nil || n != 1 {
 			return err
 		}
 		deleted = true
-		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "removed", Actor: audit.Actor})
+		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "removed", Actor: who.Actor}); err != nil {
+			return err
+		}
+		return accountEntry(ctx, tx, tenant, "provider_account.removed", provider, env, fmt.Sprintf("removed the %s account at %s", env, provider),
+			map[string]any{"provider": provider, "environment": env})
 	})
 	return deleted, err
 }
@@ -143,9 +157,9 @@ func (a Accounts) Default(ctx context.Context, tenant uuid.UUID, env string) (st
 
 // SetDefault makes an existing account the one live charges go to, without touching its settings; the previous default stops being one. It reports whether
 // there was such an account. The move is recorded in the audit trail.
-func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, env string, audit Audit) (bool, error) {
+func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, env string, who Audit) (bool, error) {
 	var found bool
-	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+	err := tx(ctx, a.DB, tenant, func(tx pgx.Tx, q *sqlc.Queries) error {
 		if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
 			return err
 		}
@@ -158,8 +172,12 @@ func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, en
 			return ErrNoAccount
 		}
 		found = true
-		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "default_set",
-			Actor: audit.Actor, IsDefault: true})
+		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "default_set",
+			Actor: who.Actor, IsDefault: true}); err != nil {
+			return err
+		}
+		return accountEntry(ctx, tx, tenant, "provider_account.default_changed", provider, env, fmt.Sprintf("made %s the default %s provider", provider, env),
+			map[string]any{"provider": provider, "environment": env})
 	})
 	if errors.Is(err, ErrNoAccount) {
 		return false, nil
