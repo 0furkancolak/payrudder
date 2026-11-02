@@ -86,7 +86,7 @@ test.describe("coupons", () => {
     const red = detail.getByTestId("redemption-r1");
     await expect(red).toContainText("cus_1");
     await expect(red).toContainText("$5.00");
-    await red.getByRole("button").click();
+    await red.getByRole("button", { name: "d0000000" }).click();
     await expect(page).toHaveURL(/sheet=.*peek(%3A|:)invoice(%3A|:)[^,]*d0000000-0000-4000-8000-000000000001/);
     await expect(detail.getByTestId("redemption-r2")).toContainText("Reversed");
     await expect(detail.getByTestId("redemption-r2")).toContainText("+250 credits");
