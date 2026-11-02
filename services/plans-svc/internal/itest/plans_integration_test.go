@@ -175,8 +175,13 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 			return err
 		}
 		// A line of a customer's block history without blocking the fixture's customer, which later steps use.
-		_, err = tx.Exec(context.Background(), `INSERT INTO customer_block_events (tenant_id, id, customer_id, action, actor)
-			SELECT app_tenant_id(), gen_random_uuid(), id, 'blocked', 'seed' FROM customers LIMIT 1`)
+		if _, err = tx.Exec(context.Background(), `INSERT INTO customer_block_events (tenant_id, id, customer_id, action, actor)
+			SELECT app_tenant_id(), gen_random_uuid(), id, 'blocked', 'seed' FROM customers LIMIT 1`); err != nil {
+			return err
+		}
+		// The renewal notice of a contract is written by the job over all tenants (contracts_followups_integration_test.go), which would also queue a mail.
+		_, err = tx.Exec(context.Background(), `INSERT INTO contract_renewal_notices (tenant_id, customer_id, renews_at, subscription_id, price_minor, currency)
+			SELECT app_tenant_id(), customer_id, now(), id, 100, 'USD' FROM subscriptions LIMIT 1`)
 		return err
 	}); err != nil {
 		t.Fatal(err)
