@@ -274,6 +274,7 @@ for (const c of CASES) {
         await row.getByTestId("row-actions").click();
         for (const name of c.menu.viewer) await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
       }
+      else await expect(row.getByTestId("row-actions")).toHaveCount(0);
       for (const name of c.menu.absent) await expect(page.getByRole(c.menu.viewer.length > 1 ? "menuitem" : "button", { name, exact: true })).toHaveCount(0);
     }
   });
