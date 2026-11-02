@@ -4,16 +4,19 @@ package itest
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 
 	auditv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/audit/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/audit"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 )
 
 // actedAs is ctx with the actor the gateway would have put in it.
@@ -275,6 +278,54 @@ func testAuditLog(t *testing.T) {
 		var n int
 		if err := e.system.QueryRow(ctx, `SELECT count(*) FROM audit_events`).Scan(&n); err != nil || n == 0 {
 			t.Errorf("the log is empty after the attempts: %d, %v", n, err)
+		}
+	})
+
+	// TRUNCATE does not fire a row trigger: the owner is stopped by a statement trigger, and the other roles hold no such privilege (security review).
+	t.Run("the table is not truncated", func(t *testing.T) {
+		owner, err := pgx.Connect(ctx, e.db.Migrator)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = owner.Close(ctx) }()
+		for _, stmt := range []string{`TRUNCATE audit_events`, `TRUNCATE audit_events, contract_acceptances, contract_snapshots`, `TRUNCATE customers CASCADE`} {
+			_, err := owner.Exec(ctx, stmt)
+			var pe *pgconn.PgError
+			if !errors.As(err, &pe) || pe.Code != pgxx.CodeRaiseException || pe.Hint != "evidence_table_truncate" {
+				t.Errorf("the owner: %s: %v", stmt, err)
+			}
+		}
+		for who, run := range map[string]func(string) error{
+			"system": func(q string) error { _, err := e.system.Exec(ctx, q); return err },
+			"app":    func(q string) error { _, err := e.app.Exec(ctx, q); return err },
+		} {
+			if err := run(`TRUNCATE audit_events`); pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
+				t.Errorf("%s: want 42501, got %v", who, err)
+			}
+		}
+	})
+
+	// What the protection is not, written down so the claim in the docs is the tested one: the system role holds DELETE for the copy of a tenant, and the trigger lets that
+	// through when the transaction names the tenant; nothing else of the log goes. (Rolled back: the test only looks.)
+	t.Run("the one way a row of a tenant goes is the move's own", func(t *testing.T) {
+		var tenantID string
+		if err := e.system.QueryRow(ctx, `SELECT tenant_id::text FROM audit_events WHERE tenant_id IS NOT NULL LIMIT 1`).Scan(&tenantID); err != nil {
+			t.Skip("the pooled database holds no tenant's entries (every tenant is in a cell)")
+		}
+		tx, err := e.system.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		if _, err := tx.Exec(ctx, `SELECT set_config('payrudder.tenant_move', $1, true)`, tenantID); err != nil {
+			t.Fatal(err)
+		}
+		if tag, err := tx.Exec(ctx, `DELETE FROM audit_events WHERE tenant_id = $1::uuid`, tenantID); err != nil || tag.RowsAffected() == 0 {
+			t.Errorf("a transaction that names the tenant could not delete its entries: %v %v", tag, err)
+		}
+		// Another tenant's entries, and the entries that belong to no tenant, stay out of reach of that setting.
+		if _, err := tx.Exec(ctx, `DELETE FROM audit_events WHERE tenant_id IS DISTINCT FROM $1::uuid`, tenantID); err == nil {
+			t.Error("the setting let another tenant's entries go")
 		}
 	})
 }
