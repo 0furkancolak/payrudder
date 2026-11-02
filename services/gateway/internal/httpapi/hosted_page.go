@@ -93,6 +93,17 @@ func langSuffix(r *http.Request) string {
 	return ""
 }
 
+// withWait marks a page address "wait for the state to settle": a page in "processing" holds the request on the server (up to startWait) instead of answering at once.
+// The pages have no script and no meta refresh, so this is how the payer lands on "Paid" after paying and "Check again" does not need a second click.
+func withWait(u string) string {
+	if strings.Contains(u, "?") {
+		return u + "&wait=1"
+	}
+	return u + "?wait=1"
+}
+
+func waitRequested(r *http.Request) bool { return r.URL.Query().Get("wait") == "1" }
+
 func htmlPage(w http.ResponseWriter, code int, logo bool, forms string) {
 	hostedHeadersCSP(w, pageCSP(logo, forms))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -278,8 +289,33 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 		return
 	}
 	v := s.invoiceView(r.Context(), r, sc, lang, resp)
+	if waitRequested(r) && v.State == "processing" {
+		v = s.waitForSettled(r, sc, lang, v)
+	}
 	s.render(w, r, http.StatusOK, "invoice", v)
 }
+
+// waitForSettled looks at an invoice that is "processing" again every startPoll, for at most startWait, and returns the view once it is not (or the last view).
+func (s *Server) waitForSettled(r *http.Request, sc scope, lang string, v *invoiceView) *invoiceView {
+	ctx, cancel := context.WithTimeout(r.Context(), startWait)
+	defer cancel()
+	for v.State == "processing" {
+		select {
+		case <-ctx.Done():
+			return v
+		case <-time.After(startPoll):
+		}
+		resp, err := s.d.Hosted.GetHostedInvoice(ctx, sc.get())
+		if err != nil || resp.GetInvoice() == nil {
+			return v
+		}
+		v = s.invoiceView(ctx, r, sc, lang, resp)
+	}
+	return v
+}
+
+// Again is the address of the "Check again" link: the same page, held on the server while the payment is still processing.
+func (v *invoiceView) Again() string { return withWait(v.Self) }
 
 func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse) *invoiceView {
 	inv := resp.GetInvoice()
@@ -754,7 +790,8 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	if resp.GetAction() != "provider" {
 		hostedHeaders(w)
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		// A payment through the saga (sandbox, demo) settles in seconds: the page waits for it.
+		http.Redirect(w, r, withWait(back), http.StatusSeeOther)
 		return
 	}
 	p := resp.GetPayment()
