@@ -76,7 +76,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliateServiceServer(srv, newAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, resolver, d.Log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.Places))
-	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Log)
+	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Mail, d.AppURL, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL}))

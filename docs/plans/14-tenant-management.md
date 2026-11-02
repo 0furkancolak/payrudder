@@ -1,6 +1,6 @@
 # 14 — Tenant management: freeze, ban
 
-**Status (2026-11-01): built, with the defaults below (not agreed). Open: the first charge of an invoice finalized before the hold, a mail to the account owner, appeals, retention before deletion, an account or person ban, operator roles, scheduled suspension.**
+**Status (2026-11-02): built, with the defaults below (not agreed), including a mail to the account owners on every change. Open: the first charge of an invoice finalized before the hold (documented in [13](13-customer-ban.md#the-first-charge-of-an-invoice-finalized-before-a-hold-plan-14-not-built)), appeals, retention before deletion, an account or person ban, operator roles, scheduled suspension.**
 
 ## The request
 List 2 (10): tenant management with **ban, freeze** and similar operations.
@@ -71,5 +71,19 @@ Defaults the implementer chose (**default, not agreed**):
 
 - **The first charge of an invoice finalized before the hold.** The saga issues it after the PDF; only the dunning retry is held. Holding the first charge needs a hold outcome in the transition table (`sagas/model/table.go`, another change), or a refusal reply from payments-worker that does not start dunning. A tenant frozen between a finalize and its charge is charged once.
 - **payments-worker is unchanged.** A provider's confirmation of a payment already started is recorded whatever the status (the money moved).
-- **A mail to the account owner** when their tenant is put on hold (needs plans 11/12 for the sender and the template), **appeals**, **retention before deletion** of a banned tenant's data, **account or person bans**, **operator roles**, **scheduled suspension** (for example an unpaid platform invoice) and the **per-environment** question (only live tenants have a status; sandbox is always active).
+- **Appeals, retention before deletion** of a banned tenant's data, **account or person bans**, **operator roles**, **scheduled suspension** (for example an unpaid platform invoice) and the **per-environment** question (only live tenants have a status; sandbox is always active). The mail to the owner is built (below).
 - **Not verified here:** the console pages in a browser, and the rollout order with an older release.
+
+## Done (2026-11-02, branch `feat/tenant-status-mails`): mail to the account owners
+
+Defaults the implementer chose (**default, not agreed**):
+
+1. **Who is told.** Every owner of the tenant's account whose address is proven (`users.email_verified_at`), in their own language (`users.locale`, six languages, English for any other), not the administrators and viewers, and not an owner whose address is unproven (it may not be theirs). Plans-svc's own mail to people (`identity/usermail`, the sender of verification, invitation and help-desk mail), not the notifier (that one writes to a *tenant's customers* through the tenant's mail switch, and is switched off for a tenant on hold on purpose).
+2. **When.** After the change is committed, once per change of status of a live tenant: `suspended`, `frozen` or `banned` say which way the app went (moving between them mails again, with the new word), and `active` after any of them says it is **reinstated**. Activating an inactive tenant is not a reinstatement and sends nothing; neither does a call that leaves the status as it was, nor a ban that is only waiting for the second operator. A mail that cannot be composed or sent is logged and never fails or undoes the change (the sender is bounded and in the background, as for every user mail).
+3. **What it says.** The app's name and the account's, what stops (API keys, the console read-only, payments on hosted pages, charges, mail and webhooks; "your data is kept" for suspended and frozen only), and a button to the owner's help page (`{app url}/app/support`, plan 12) to write to the operator, which is also the only appeal there is. **It does not say why**: the category and the reason are the operator's notes (they can name a fraud case or a legal matter) and are not in the mail; a customer-facing reason is a product decision (**default: none**). A ban says that only an operator can lift it, with a reason.
+4. **Tests.** `usermail`: every language has the four texts with the same placeholders and lines, the app name is on one line and escaped in the HTML, no placeholder is left. `tenants/command`: which change maps to which mail. plans-svc integration `TenantStatusMails`: suspend, freeze, ban and reinstate each reach both verified owners in the first owner's language naming the app and nobody else (an owner whose address is unproven and an administrator get none), activation and a repeated status send none. The test fails without the call (checked once).
+
+### Not built, and why
+
+- **Retention before deletion and an account or person ban** are not simple: a ban of an account or a person needs a status on `accounts` or `users`, a check in sign-in and in every session and key path (the gateway today reads the *tenant's* status), a rule for what happens to the account's other apps, and a retention period and a deletion job, none of which has an owner's decision. Documented, not started.
+- **Not verified here:** the mail in a real mailbox or relay (the tests record what is sent; the texts were not read by a native speaker of each language), and the order of rollout (an older plans-svc simply sends no mail).

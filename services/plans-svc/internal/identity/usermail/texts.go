@@ -71,6 +71,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Open the ticket",
 			Ignore:  "You get this because you opened the ticket. Replies to this e-mail are not read: write in the ticket.",
 		},
+		KindTenantSuspended: {
+			Subject: "Payrudder suspended {app}",
+			Lines:   []string{"Payrudder has suspended {app} (live). Its API keys are refused, the console is read-only, no payment is taken on its payment pages and no customer is charged until it is reinstated.", "Your data is kept. If you think this is a mistake, or you want to settle what led to it, open a support ticket."},
+			Button:  "Contact support",
+			Ignore:  "You get this because you own the account {account}.",
+		},
+		KindTenantFrozen: {
+			Subject: "Payrudder froze {app}",
+			Lines:   []string{"Payrudder has frozen {app} (live). It is read-only: you can see everything, but nothing can be changed, no usage is accepted and no payment is taken until it is reinstated.", "Your data is kept. If you think this is a mistake, or you want to settle what led to it, open a support ticket."},
+			Button:  "Contact support",
+			Ignore:  "You get this because you own the account {account}.",
+		},
+		KindTenantBanned: {
+			Subject: "Payrudder banned {app}",
+			Lines:   []string{"Payrudder has banned {app} (live). Its API keys are refused, no payment is taken, no customer is charged and no mail or webhook leaves until the ban is lifted.", "If you think this is a mistake, open a support ticket. Only a Payrudder operator can lift a ban, and has to give a reason."},
+			Button:  "Contact support",
+			Ignore:  "You get this because you own the account {account}.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} is back in service",
+			Lines:   []string{"Payrudder has reinstated {app} (live). Its API keys work again, payments are taken, and the webhooks that waited are delivered.", "Nothing else changed. If something looks wrong, open a support ticket."},
+			Button:  "Contact support",
+			Ignore:  "You get this because you own the account {account}.",
+		},
 	},
 	"tr": {
 		KindVerify: {
@@ -120,6 +144,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"{ticket} numaralı talebinizin ({subject}) durumu değişti: {status}.", "Ayrıntıları görmek için talebi açın."},
 			Button:  "Talebi aç",
 			Ignore:  "Talebi siz açtığınız için bu iletiyi alıyorsunuz. Bu e-postaya verilen yanıtlar okunmaz: yanıtınızı talebe yazın.",
+		},
+		KindTenantSuspended: {
+			Subject: "Payrudder {app} uygulamasını askıya aldı",
+			Lines:   []string{"Payrudder {app} (canlı) uygulamasını askıya aldı. API anahtarları reddediliyor, konsol salt okunur, ödeme sayfalarında ödeme alınmıyor ve yeniden etkinleştirilene kadar hiçbir müşteriden tahsilat yapılmıyor.", "Verileriniz saklanıyor. Bunun bir hata olduğunu düşünüyorsanız ya da buna yol açan durumu çözmek istiyorsanız bir destek talebi açın."},
+			Button:  "Destekle iletişime geç",
+			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
+		},
+		KindTenantFrozen: {
+			Subject: "Payrudder {app} uygulamasını dondurdu",
+			Lines:   []string{"Payrudder {app} (canlı) uygulamasını dondurdu. Uygulama salt okunur: her şeyi görebilirsiniz ama hiçbir şey değiştirilemez, kullanım kabul edilmez ve yeniden etkinleştirilene kadar ödeme alınmaz.", "Verileriniz saklanıyor. Bunun bir hata olduğunu düşünüyorsanız ya da buna yol açan durumu çözmek istiyorsanız bir destek talebi açın."},
+			Button:  "Destekle iletişime geç",
+			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
+		},
+		KindTenantBanned: {
+			Subject: "Payrudder {app} uygulamasını yasakladı",
+			Lines:   []string{"Payrudder {app} (canlı) uygulamasını yasakladı. API anahtarları reddediliyor, ödeme alınmıyor, hiçbir müşteriden tahsilat yapılmıyor ve yasak kaldırılana kadar e-posta ya da webhook gönderilmiyor.", "Bunun bir hata olduğunu düşünüyorsanız bir destek talebi açın. Yasağı yalnızca bir Payrudder operatörü, bir gerekçe göstererek kaldırabilir."},
+			Button:  "Destekle iletişime geç",
+			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} yeniden hizmette",
+			Lines:   []string{"Payrudder {app} (canlı) uygulamasını yeniden etkinleştirdi. API anahtarları yeniden çalışıyor, ödemeler alınıyor ve bekleyen webhook'lar iletiliyor.", "Başka hiçbir şey değişmedi. Bir şey yanlış görünüyorsa bir destek talebi açın."},
+			Button:  "Destekle iletişime geç",
+			Ignore:  "{account} hesabının sahibi olduğunuz için bu iletiyi alıyorsunuz.",
 		},
 	},
 	"de": {
@@ -171,6 +219,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Ticket öffnen",
 			Ignore:  "Sie erhalten diese Nachricht, weil Sie das Ticket eröffnet haben. Antworten auf diese E-Mail werden nicht gelesen: schreiben Sie im Ticket.",
 		},
+		KindTenantSuspended: {
+			Subject: "Payrudder hat {app} ausgesetzt",
+			Lines:   []string{"Payrudder hat {app} (Live) ausgesetzt. Die API-Schlüssel werden abgelehnt, die Konsole ist schreibgeschützt, auf den Zahlungsseiten wird keine Zahlung angenommen und bis zur Wiederfreigabe wird kein Kunde belastet.", "Ihre Daten bleiben erhalten. Wenn Sie glauben, dass das ein Irrtum ist, oder die Ursache klären möchten, eröffnen Sie ein Support-Ticket."},
+			Button:  "Support kontaktieren",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
+		},
+		KindTenantFrozen: {
+			Subject: "Payrudder hat {app} eingefroren",
+			Lines:   []string{"Payrudder hat {app} (Live) eingefroren. Es ist schreibgeschützt: Sie sehen alles, aber nichts kann geändert werden, keine Nutzung wird angenommen und bis zur Wiederfreigabe wird keine Zahlung eingezogen.", "Ihre Daten bleiben erhalten. Wenn Sie glauben, dass das ein Irrtum ist, oder die Ursache klären möchten, eröffnen Sie ein Support-Ticket."},
+			Button:  "Support kontaktieren",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
+		},
+		KindTenantBanned: {
+			Subject: "Payrudder hat {app} gesperrt",
+			Lines:   []string{"Payrudder hat {app} (Live) gesperrt. Die API-Schlüssel werden abgelehnt, es wird keine Zahlung angenommen, kein Kunde belastet und keine E-Mail und kein Webhook versendet, bis die Sperre aufgehoben wird.", "Wenn Sie glauben, dass das ein Irrtum ist, eröffnen Sie ein Support-Ticket. Eine Sperre hebt nur ein Payrudder-Operator mit einer Begründung auf."},
+			Button:  "Support kontaktieren",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} ist wieder in Betrieb",
+			Lines:   []string{"Payrudder hat {app} (Live) wieder freigegeben. Die API-Schlüssel funktionieren wieder, Zahlungen werden angenommen und die wartenden Webhooks werden zugestellt.", "Sonst hat sich nichts geändert. Wenn etwas nicht stimmt, eröffnen Sie ein Support-Ticket."},
+			Button:  "Support kontaktieren",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie Inhaber des Kontos {account} sind.",
+		},
 	},
 	"fr": {
 		KindVerify: {
@@ -220,6 +292,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Le statut de votre ticket {ticket} ({subject}) a changé : {status}.", "Ouvrez le ticket pour voir les détails."},
 			Button:  "Ouvrir le ticket",
 			Ignore:  "Vous recevez ce message parce que vous avez ouvert le ticket. Les réponses à cet e-mail ne sont pas lues : écrivez dans le ticket.",
+		},
+		KindTenantSuspended: {
+			Subject: "Payrudder a suspendu {app}",
+			Lines:   []string{"Payrudder a suspendu {app} (production). Ses clés d'API sont refusées, la console est en lecture seule, aucun paiement n'est pris sur ses pages de paiement et aucun client n'est débité jusqu'à sa réactivation.", "Vos données sont conservées. Si vous pensez qu'il s'agit d'une erreur, ou si vous voulez régler ce qui y a conduit, ouvrez un ticket de support."},
+			Button:  "Contacter le support",
+			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTenantFrozen: {
+			Subject: "Payrudder a gelé {app}",
+			Lines:   []string{"Payrudder a gelé {app} (production). Il est en lecture seule : vous pouvez tout voir, mais rien ne peut être modifié, aucun usage n'est accepté et aucun paiement n'est pris jusqu'à sa réactivation.", "Vos données sont conservées. Si vous pensez qu'il s'agit d'une erreur, ou si vous voulez régler ce qui y a conduit, ouvrez un ticket de support."},
+			Button:  "Contacter le support",
+			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTenantBanned: {
+			Subject: "Payrudder a banni {app}",
+			Lines:   []string{"Payrudder a banni {app} (production). Ses clés d'API sont refusées, aucun paiement n'est pris, aucun client n'est débité et aucun e-mail ni webhook ne part tant que le bannissement n'est pas levé.", "Si vous pensez qu'il s'agit d'une erreur, ouvrez un ticket de support. Seul un opérateur Payrudder peut lever un bannissement, en indiquant un motif."},
+			Button:  "Contacter le support",
+			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} est de nouveau en service",
+			Lines:   []string{"Payrudder a réactivé {app} (production). Ses clés d'API fonctionnent de nouveau, les paiements sont pris et les webhooks en attente sont envoyés.", "Rien d'autre n'a changé. Si quelque chose vous semble anormal, ouvrez un ticket de support."},
+			Button:  "Contacter le support",
+			Ignore:  "Vous recevez ce message parce que vous êtes propriétaire du compte {account}.",
 		},
 	},
 	"es": {
@@ -271,6 +367,30 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "Abrir el ticket",
 			Ignore:  "Recibes este mensaje porque abriste el ticket. Las respuestas a este correo no se leen: escribe en el ticket.",
 		},
+		KindTenantSuspended: {
+			Subject: "Payrudder ha suspendido {app}",
+			Lines:   []string{"Payrudder ha suspendido {app} (producción). Sus claves de API se rechazan, la consola es de solo lectura, no se cobra en sus páginas de pago y no se carga a ningún cliente hasta que se reactive.", "Sus datos se conservan. Si cree que es un error, o quiere resolver lo que lo causó, abra un ticket de soporte."},
+			Button:  "Contactar con soporte",
+			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
+		},
+		KindTenantFrozen: {
+			Subject: "Payrudder ha congelado {app}",
+			Lines:   []string{"Payrudder ha congelado {app} (producción). Es de solo lectura: puede verlo todo, pero no se puede cambiar nada, no se acepta uso y no se cobra ningún pago hasta que se reactive.", "Sus datos se conservan. Si cree que es un error, o quiere resolver lo que lo causó, abra un ticket de soporte."},
+			Button:  "Contactar con soporte",
+			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
+		},
+		KindTenantBanned: {
+			Subject: "Payrudder ha vetado {app}",
+			Lines:   []string{"Payrudder ha vetado {app} (producción). Sus claves de API se rechazan, no se cobra ningún pago, no se carga a ningún cliente y no sale ningún correo ni webhook hasta que se levante el veto.", "Si cree que es un error, abra un ticket de soporte. Solo un operador de Payrudder puede levantar un veto, indicando un motivo."},
+			Button:  "Contactar con soporte",
+			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} vuelve a estar en servicio",
+			Lines:   []string{"Payrudder ha reactivado {app} (producción). Sus claves de API vuelven a funcionar, se cobran los pagos y se envían los webhooks que esperaban.", "No ha cambiado nada más. Si algo le parece mal, abra un ticket de soporte."},
+			Button:  "Contactar con soporte",
+			Ignore:  "Recibe este mensaje porque es propietario de la cuenta {account}.",
+		},
 	},
 	"ar": {
 		KindVerify: {
@@ -320,6 +440,30 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"تغيّرت حالة تذكرتك {ticket} ({subject}): {status}.", "افتح التذكرة لعرض التفاصيل."},
 			Button:  "فتح التذكرة",
 			Ignore:  "تصلك هذه الرسالة لأنك فتحت التذكرة. لا تُقرأ الردود على هذه الرسالة الإلكترونية: اكتب في التذكرة.",
+		},
+		KindTenantSuspended: {
+			Subject: "علّقت Payrudder تطبيق {app}",
+			Lines:   []string{"علّقت Payrudder تطبيق {app} (إنتاج). مفاتيح واجهة البرمجة مرفوضة، ولوحة التحكم للقراءة فقط، ولا تُقبل مدفوعات في صفحات الدفع ولا يُحصَّل من أي عميل إلى أن تتم إعادة التفعيل.", "بياناتك محفوظة. إن كنت تظن أن هذا خطأ، أو تريد معالجة ما أدّى إليه، فافتح تذكرة دعم."},
+			Button:  "تواصل مع الدعم",
+			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
+		},
+		KindTenantFrozen: {
+			Subject: "جمّدت Payrudder تطبيق {app}",
+			Lines:   []string{"جمّدت Payrudder تطبيق {app} (إنتاج). التطبيق للقراءة فقط: يمكنك رؤية كل شيء لكن لا يمكن تغيير أي شيء، ولا يُقبل أي استخدام ولا تُقبل أي مدفوعات إلى أن تتم إعادة التفعيل.", "بياناتك محفوظة. إن كنت تظن أن هذا خطأ، أو تريد معالجة ما أدّى إليه، فافتح تذكرة دعم."},
+			Button:  "تواصل مع الدعم",
+			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
+		},
+		KindTenantBanned: {
+			Subject: "حظرت Payrudder تطبيق {app}",
+			Lines:   []string{"حظرت Payrudder تطبيق {app} (إنتاج). مفاتيح واجهة البرمجة مرفوضة، ولا تُقبل أي مدفوعات، ولا يُحصَّل من أي عميل، ولا يخرج أي بريد أو webhook إلى أن يُرفع الحظر.", "إن كنت تظن أن هذا خطأ فافتح تذكرة دعم. لا يرفع الحظر إلا مشغّل في Payrudder وبسبب مذكور."},
+			Button:  "تواصل مع الدعم",
+			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
+		},
+		KindTenantReinstated: {
+			Subject: "{app} عاد إلى الخدمة",
+			Lines:   []string{"أعادت Payrudder تفعيل {app} (إنتاج). تعمل مفاتيح واجهة البرمجة من جديد، وتُقبل المدفوعات، وتُرسل الـwebhooks التي كانت تنتظر.", "لم يتغير شيء آخر. إن بدا لك شيء غير صحيح فافتح تذكرة دعم."},
+			Button:  "تواصل مع الدعم",
+			Ignore:  "تصلك هذه الرسالة لأنك مالك الحساب {account}.",
 		},
 	},
 }

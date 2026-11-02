@@ -27,6 +27,7 @@ import (
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -36,6 +37,8 @@ type Commands struct {
 	keys        *apikeyscmd.Commands
 	log         *slog.Logger
 	banApproval bool
+	mail        usermail.Sender // tells the owners of a status change; nil: nobody
+	appURL      string
 	now         func() time.Time
 }
 
@@ -250,6 +253,7 @@ func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRe
 		if err := c.keys.EvictTenant(ctx, id); err != nil {
 			return nil, err
 		}
+		c.notifyOwners(ctx, id, from, out.Status)
 	}
 	return convert.Tenant(out), nil
 }
