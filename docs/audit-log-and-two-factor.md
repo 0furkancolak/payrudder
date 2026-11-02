@@ -57,6 +57,10 @@ Filters: `action` (names or areas like `api_key.*`, comma separated), `actor` (i
 
 The areas above that the plan listed last (price changes to sign-in locks) are in the console's filter and labelled in the six languages (`audit.areas` and `audit.actions` in the locales; `KNOWN_ACTIONS` and `AUDIT_AREAS` in `web/admin/src/features/audit/lib.ts`).
 
+### When an entry cannot be written
+
+`audit.Record` counts every entry it could not write (`audit_write_failed_total{area,reason}`; `area` is the part of the action before the dot, `reason` is `insert` for the database and `bad_event` for an action name or detail the log refuses). The error goes back to the caller, which fails the change the entry belongs to (an entry is written in the transaction of its change, so a change without its entry never happens). A few hooks are best effort by design (`user.sign_in_locked`): they log and go on, and the counter still counts. `AuditWriteFailed` pages on three `insert` failures in one service in ten minutes (default, not agreed): a failing log means failing sign-ins, key changes and price changes, so it is a database problem to fix first (a missing monthly partition or grant on `audit_events`, a full disk, a lost connection). Tested in `pkg/audit` (a written entry is not counted; a refused insert, a bad action and an oversized detail are, by area and reason) and by promtool.
+
 ### Adding a hook
 
 1. In the command that makes the change, inside its transaction: `audit.Record(ctx, tx, audit.Event{TenantID: ..., Action: "area.what", TargetType: ..., TargetID: ..., Summary: ..., Detail: map[string]any{...}})`, and return its error. In plans-svc `store.DB.TxWith` hands the transaction over.
