@@ -39,7 +39,7 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
 </script>
 
 <template>
-  <Card>
+  <Card data-testid="providers-catalogue">
     <h2 class="text-base font-semibold">{{ t("billing.providers.catalogue.title") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.catalogue.hint") }}</p>
     <form class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]" role="form" :aria-label="t('billing.providers.catalogue.title')" @submit.prevent="sync.mutate(plan)">

@@ -279,6 +279,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.payments.not_configured`
 - `gateway.payments.unreachable`
 - `gateway.rate_limit.exceeded`
+- `gateway.region.unknown`
 - `gateway.region.wrong`
 - `gateway.request.bad_tenant_id`
 - `gateway.request.invalid`
@@ -457,6 +458,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.api_key.app_archived`
 - `plans.api_key.bad_role`
 - `plans.api_key.tenant_not_active`
+- `plans.app.bad_region`
 - `plans.app.bad_slug`
 - `plans.app.slug_taken`
 - `plans.change.bad_proration`
@@ -552,6 +554,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.webhook.too_many_endpoints`
 - `support.account.not_member`
 - `support.app.not_found`
+- `support.canned_reply.not_found`
 - `support.ticket.closed`
 - `support.ticket.not_found`
 - `support.tickets.too_many`

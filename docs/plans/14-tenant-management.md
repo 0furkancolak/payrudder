@@ -6,11 +6,11 @@
 List 2 (10): tenant management with **ban, freeze** and similar operations.
 
 ## Where we are
-Tenant `status` is `inactive`, `active`, `suspended`. The API `PUT /admin/v1/tenants/{id}/status` suspends or reinstates (a suspended tenant's keys stop at once: `gateway.auth.tenant_not_active`); activating an inactive tenant needs a reason and is logged. #252 added suspend/reinstate to the operator's tenant list (row action, badge, bulk with a result report).
+Tenant `status` is one of **five** values: `inactive`, `active`, `suspended`, `frozen` and `banned` (the first version, #252, had `inactive`, `active` and `suspended`; the other two came on 2026-11-01, see "Done" below). The API `PUT /admin/v1/tenants/{id}/status` moves between them (a suspended or banned tenant's keys stop at once: `gateway.auth.tenant_not_active`; a frozen tenant's are read-only: `gateway.auth.tenant_read_only`); activating an inactive tenant, a ban and lifting a ban need a reason and every change is recorded. #252 added suspend/reinstate to the operator's tenant list (row action, badge, bulk with a result report).
 
 ## Gaps
-- Only suspend/reinstate. No **ban** (permanent, with data retention rules), no **freeze** that keeps the console readable but blocks writes (read-only mode), no **billing hold**, no scheduled suspension (e.g. unpaid platform invoice), no reason categories, no customer-facing explanation or mail to the account owner, no appeal, no audit log view (only the API), no per-environment behaviour (sandbox vs live) decided.
-- Suspension does not stop background work: renewals, dunning, webhooks deliveries, scheduled mails still run for a suspended tenant? (not verified).
+- ~~Only suspend/reinstate. No ban, no freeze, no reason categories, no mail to the account owner, no audit log view.~~ Built (the sections below): `frozen` (read-only) and `banned` (a suspension meant to last, with an optional second operator), reason categories and a history, a mail to the owners, a banner in the console, filters on the history. **Still not there:** retention rules before deleting a banned tenant's data, a billing hold as a state of its own, scheduled suspension (e.g. an unpaid platform invoice), an appeal as a form (the help page is the appeal), and per-environment behaviour (only live tenants have a status; sandbox is always active).
+- ~~Suspension does not stop background work: renewals, dunning, webhooks deliveries, scheduled mails still run for a suspended tenant? (not verified).~~ Traced and enforced, see "What stops where" below; the one thing that still runs is the first charge of an invoice finalized before the hold.
 - The account (organisation) level: banning a person or an account (not a single tenant) is not modelled; SaaS plan enforcement interplay (Phase 55) unchecked.
 - Operator permissions: all operators can do everything; no two-person rule for destructive actions.
 

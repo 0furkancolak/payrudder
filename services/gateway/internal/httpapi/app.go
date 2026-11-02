@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"slices"
 
 	"google.golang.org/grpc/codes"
 
@@ -32,6 +33,7 @@ func (s *Server) appRoutes() []Route {
 		{"POST", "/auth/signout", AccessSession, ratelimit.ClassWrite, s.signOut},
 		{"GET", "/auth/me", AccessSession, ratelimit.ClassRead, s.me},
 		{"GET", "/app/v1/account", AccessSession, ratelimit.ClassRead, s.withAccount(s.appAccount)},
+		{"GET", "/app/v1/regions", AccessSession, ratelimit.ClassRead, s.appRegions},
 		{"GET", "/app/v1/apps", AccessSession, ratelimit.ClassRead, s.withAccount(s.appList)},
 		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.withAccount(s.appCreate)},
 		{"GET", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassRead, s.appGet},
@@ -90,6 +92,43 @@ func (s *Server) appAccount(w http.ResponseWriter, r *http.Request, sess session
 	respond(w, r, http.StatusOK, resp, err)
 }
 
+// regionNames are the regions an app can be pinned to from this deployment: the one this gateway serves and the ones it knows an address for (PAYRUDDER_REGION and
+// PAYRUDDER_REGION_URLS), sorted, and the default (this gateway's own). With the region guard off (Deps.Region nil) there are none and nothing is pinned here.
+func (s *Server) regionNames() (names []string, def string) {
+	g := s.d.Region
+	if g == nil {
+		return []string{}, ""
+	}
+	names = append(names, g.Name)
+	for n := range g.URLs {
+		if n != g.Name {
+			names = append(names, n)
+		}
+	}
+	slices.Sort(names)
+	return names, g.Name
+}
+
+// appRegion is the region a new app is pinned to: the one the person chose if this deployment knows it, else this gateway's own, else (guard off) none, which leaves plans-svc
+// to apply its own default.
+func (s *Server) appRegion(chosen string) (string, error) {
+	names, def := s.regionNames()
+	if chosen == "" {
+		return def, nil
+	}
+	if !slices.Contains(names, chosen) {
+		return "", errkey.New(codes.InvalidArgument, "gateway.region.unknown", "region: not a region of this deployment (GET /app/v1/regions lists them)")
+	}
+	return chosen, nil
+}
+
+// appRegions is GET /app/v1/regions: where an app can be pinned from this deployment, and where it is by default. Empty lists mean the deployment has no regions.
+func (s *Server) appRegions(w http.ResponseWriter, r *http.Request) {
+	names, def := s.regionNames()
+	noStore(w)
+	writeJSONValue(w, http.StatusOK, map[string]any{"regions": names, "default_region": def})
+}
+
 func (s *Server) appList(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	resp, err := s.d.Identity.ListMyApps(r.Context(), &plansv1.ListMyAppsRequest{UserId: sess.UserID, AccountId: id})
 	respond(w, r, http.StatusOK, resp, err)
@@ -101,13 +140,19 @@ func (s *Server) appCreate(w http.ResponseWriter, r *http.Request, sess session,
 		Slug     string `json:"slug"`
 		Currency string `json:"currency"`
 		Timezone string `json:"timezone"`
+		Region   string `json:"region"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
 		return
 	}
+	region, err := s.appRegion(body.Region)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 	resp, err := s.d.Identity.CreateMyApp(r.Context(), &plansv1.CreateMyAppRequest{
-		UserId: sess.UserID, AccountId: id, Name: body.Name, Slug: body.Slug, Currency: body.Currency, Timezone: body.Timezone})
+		UserId: sess.UserID, AccountId: id, Name: body.Name, Slug: body.Slug, Currency: body.Currency, Timezone: body.Timezone, Region: region})
 	respond(w, r, http.StatusCreated, resp.GetApp(), err)
 }
 

@@ -17,6 +17,8 @@ interface ListCase {
   path?: string;
   open?: (page: Page) => Promise<void>;
   mock: (gw: MockGateway) => MockGateway;
+  /** What the tenant of the operator's page has besides the defaults (an app list needs the tenant's account). */
+  tenant?: Record<string, unknown>;
   /** A page of the person's console (signed in as Ada) instead of the operator's. */
   person?: boolean;
   /** The part of the page the list is in, when the page has several lists. */
@@ -31,6 +33,8 @@ interface ListCase {
   filter?: { chip: string; option: string | RegExp; keep: string[] };
   /** The prefix of the list's parameters in the address (`""` for the bare ones), when the list keeps its state there. */
   url?: string;
+  /** False for a list that keeps its sort in the address but not its filters (the operator's support inbox). */
+  filterInUrl?: boolean;
 }
 
 const get = (path: string, body: unknown, status = 200) => (gw: MockGateway) => gw.on((c) => (c.method === "GET" && c.path === path ? { status, body } : undefined));
@@ -78,7 +82,15 @@ const entry = (id: string, kind: string, amount: string, reason: string, created
 /** What the credits page asks besides the list under test. */
 const creditsPage = () => all(get("/v1/customers", { customers: [customer("cus_1")] }), get("/v1/credit-packs", { packs: [] }), get("/v1/customers/cus_1", customer("cus_1")));
 const customer = (id: string) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, billing_currency: "TRY", create_time: day(1) });
-const ticket = (id: string, number: number, subject: string, last: number) => ({ id, number, account_id: "a", account_name: "Ada Labs", app_id: "", app_name: "", opened_by: "u1", opened_by_name: "Ada", subject, category: "question", priority: "normal", status: "open", assignee: "", create_time: day(1), update_time: day(last), last_message_time: day(last), last_author: "customer", first_response_due: day(last), first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false });
+const ticket = (id: string, number: number, subject: string, last: number) => ({ id, number, account_id: "a", account_name: "Ada Labs", app_id: "", app_name: "", opened_by: "u1", opened_by_name: "Ada", subject, category: "question", priority: "normal", status: "open", assignee: "", create_time: day(1), update_time: day(last), last_message_time: day(last), last_author: "customer", first_response_due: day(last), first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, tags: [] });
+const appRow = (id: string, name: string, slug: string, created: number, environment: string) => ({ id, account_id: "acc-1", name, slug, create_time: day(created), tenants: [{ id: `t-${id}`, environment, currency: "TRY", timezone: "Europe/Istanbul" }] });
+const creditNote = (id: string, number: string, total: string, where: "toCredit" | "refunded" | "refundFailed", created: number) => ({
+  id, number, invoice_number: `INV-${number}`, customer_external_id: "cus_1", currency: "TRY", total_minor: total, reason: "goodwill", create_time: day(created),
+  disposition: where === "toCredit" ? "CREDIT_NOTE_DISPOSITION_CREDIT" : "CREDIT_NOTE_DISPOSITION_REFUND",
+  refund_state: where === "refunded" ? "REFUND_STATE_REFUNDED" : where === "refundFailed" ? "REFUND_STATE_FAILED" : "",
+});
+const delivery = (id: string, type: string, state: "SUCCEEDED" | "FAILED", created: number) => ({ id, event_id: `ev-${id}`, event_type: type, endpoint_id: "ep1", state: `WEBHOOK_DELIVERY_STATE_${state}`, attempts: 1, last_status: state === "FAILED" ? 500 : 200, last_error: "", create_time: day(created) });
+const dead = (id: string, deliveries: number) => ({ message_id: id, delivery_count: deliveries, reason: "rejected", body_bytes: 120 });
 const CASES: ListCase[] = [
   {
     name: "subscriptions",
@@ -372,6 +384,98 @@ const CASES: ListCase[] = [
     sort: { value: "oldest", order: ["Invoice question", "Webhook is late", "Payment failed"] },
     url: "",
   },
+  // --- the lists that live beside or inside something else: an account's apps, the credit notes, a webhook's deliveries, a queue's messages, the provider's catalogue, the operator's inbox
+  {
+    name: "apps of an account",
+    path: "/apps",
+    tenant: { account_id: "acc-1" },
+    mock: get("/admin/v1/accounts/acc-1/apps", { apps: [appRow("a1", "Mid", "mid", 12, "ENVIRONMENT_LIVE"), appRow("a2", "Alpha", "alpha", 3, "ENVIRONMENT_SANDBOX"), appRow("a3", "Zeta", "zeta", 20, "ENVIRONMENT_LIVE")] }),
+    rows: ["Mid", "Alpha", "Zeta"],
+    sort: { value: "name_asc", order: ["Alpha", "Mid", "Zeta"] },
+    filter: { chip: "Environments", option: /sandbox/i, keep: ["Alpha"] },
+    url: "f_",
+  },
+  {
+    name: "credit notes",
+    path: "/payments",
+    mock: all(paymentsPage(), get("/v1/credit-notes", { credit_notes: [creditNote("n1", "CN-1", "300", "toCredit", 12), creditNote("n2", "CN-2", "900", "refunded", 3), creditNote("n3", "CN-3", "100", "refundFailed", 20)] })),
+    scope: (page) => page.getByTestId("credit-notes-card"),
+    rows: ["CN-1", "CN-2", "CN-3"],
+    sort: { value: "amount_desc", order: ["CN-2", "CN-1", "CN-3"] },
+    filter: { chip: "Went to", option: "Refund failed", keep: ["CN-3"] },
+  },
+  {
+    name: "webhook deliveries",
+    open: async (page) => {
+      await openTenantPage(page, "/webhooks");
+      await page.getByRole("row", { name: /example.com\/hook/ }).click();
+    },
+    mock: all(
+      get("/v1/webhook-endpoints", { endpoints: [endpoint("ep1", "https://example.com/hook", true, 5)] }),
+      get("/v1/webhook-deliveries", { deliveries: [delivery("d1", "invoice.paid", "SUCCEEDED", 12), delivery("d2", "customer.blocked", "FAILED", 3), delivery("d3", "invoice.voided", "SUCCEEDED", 20)] }),
+    ),
+    scope: (page) => page.getByRole("region", { name: "Deliveries" }),
+    rows: ["invoice.paid", "customer.blocked", "invoice.voided"],
+    sort: { value: "oldest", order: ["customer.blocked", "invoice.paid", "invoice.voided"] },
+    filter: { chip: "Status", option: "Failed", keep: ["customer.blocked"] },
+    url: "deliveries-",
+  },
+  {
+    name: "messages of a dead-letter queue",
+    open: async (page) => {
+      await signInAsOperator(page);
+      await page.goto("/dead-letters");
+      await page.getByRole("row", { name: /alpha.dlq/ }).click();
+    },
+    mock: (gw) =>
+      gw.on((c) =>
+        c.method === "GET" && c.path === "/admin/v1/dead-letters"
+          ? { body: { queues: [{ queue: "alpha", messages: "3" }], messages: c.query.get("queue") ? [dead("msg-a", 2), dead("msg-b", 9), dead("msg-c", 5)] : [] } }
+          : undefined,
+      ),
+    scope: (page) => page.getByRole("dialog"),
+    rows: ["msg-a", "msg-b", "msg-c"],
+    sort: { value: "count_desc", order: ["msg-b", "msg-c", "msg-a"] },
+  },
+  {
+    name: "the provider's catalogue",
+    open: async (page) => {
+      await openTenantPage(page, "/providers");
+      await page.getByRole("form", { name: "Catalogue at the provider" }).getByLabel("Provider").selectOption("paddle");
+    },
+    mock: all(
+      providersPage(),
+      get("/v1/routing-rules", { rules: [] }),
+      get("/v1/plans", { plans: [] }),
+      get(`/admin/v1/tenants/${TENANT}/providers/paddle/catalogue`, { objects: [{ kind: "product", key: "plan:pro", ref: "pro_1" }, { kind: "price", key: "v1|month|USD", ref: "pri_1" }, { kind: "price", key: "v1|month|EUR", ref: "pri_2" }] }),
+    ),
+    scope: (page) => page.getByTestId("providers-catalogue"),
+    rows: ["plan:pro", "v1|month|USD", "v1|month|EUR"],
+    sort: { value: "name_asc", order: ["plan:pro", "v1|month|EUR", "v1|month|USD"] },
+    filter: { chip: "Kind", option: "product", keep: ["plan:pro"] },
+    // The choice of provider, environment and package is the card's own state, not the address's: a reload shows no catalogue, so the address is not tried.
+  },
+  {
+    name: "the operator's support inbox",
+    open: async (page) => {
+      await signInAsOperator(page);
+      await page.goto("/support");
+    },
+    // The inbox's filters are the server's: the mock answers the way the server does, so the list under test is the one the filter produced.
+    mock: (gw) =>
+      gw.on((c) => {
+        if (c.method !== "GET" || c.path !== "/admin/v1/support/tickets") return undefined;
+        const priority = c.query.get("priority");
+        const all = [ticket("t1", 1001, "Webhook is late", 12), ticket("t2", 1002, "Invoice question", 3), ticket("t3", 1003, "Payment failed", 20)].map((t, i) => ({ ...t, priority: ["normal", "low", "high"][i] }));
+        return { body: { tickets: all.filter((t) => !priority || t.priority === priority) } };
+      }),
+    rows: ["Webhook is late", "Invoice question", "Payment failed"],
+    sort: { value: "priority_desc", order: ["Payment failed", "Webhook is late", "Invoice question"] },
+    filter: { chip: "Priority", option: "High", keep: ["Payment failed"] },
+    url: "",
+    // The inbox's filters are the page's state sent to the server, not the address's: only the sort survives a reload.
+    filterInUrl: false,
+  },
 ];
 
 const root = (page: Page, c: ListCase): Locator | Page => c.scope?.(page) ?? page;
@@ -379,7 +483,7 @@ const root = (page: Page, c: ListCase): Locator | Page => c.scope?.(page) ?? pag
 const orderOf = (where: Locator | Page, known: string[], item: "row" | "listitem" = "row") => async () => (await where.getByRole(item).allInnerTexts()).map((t) => known.find((k) => t.includes(k))).filter(Boolean);
 
 async function openList(page: Page, c: ListCase): Promise<MockGateway> {
-  const gw = c.mock(c.person ? productGateway(new MockGateway()).gw : baseTenant(new MockGateway()));
+  const gw = c.mock(c.person ? productGateway(new MockGateway()).gw : baseTenant(new MockGateway(), c.tenant));
   await gw.install(page);
   if (c.open) await c.open(page);
   else if (c.person) {
@@ -423,7 +527,7 @@ for (const c of CASES) {
       await page.getByTestId("filter-apply").click();
       await list.waitFor({ state: "hidden" });
       await expect.poll(orderOf(root(page, c), c.rows, c.item)).toEqual(keep);
-      if (c.url !== undefined) {
+      if (c.url !== undefined && c.filterInUrl !== false) {
         await page.reload();
         await expect.poll(orderOf(root(page, c), c.rows, c.item)).toEqual(keep);
       }

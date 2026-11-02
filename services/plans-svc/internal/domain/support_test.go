@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,5 +121,37 @@ func TestSupportDeadlineCountsBusinessHoursInTheZone(t *testing.T) {
 	// An unknown zone counts in UTC instead of failing the ticket.
 	if got := SupportFirstResponseDue(t0, "urgent", "Mars/Olympus"); !got.Equal(t0.Add(time.Hour)) {
 		t.Errorf("unknown zone: %v", got)
+	}
+}
+
+func TestNormalizeSupportTags(t *testing.T) {
+	got, err := NormalizeSupportTags([]string{" Refund", "vat", "REFUND", "", "tax-2026"})
+	if err != nil || !reflect.DeepEqual(got, []string{"refund", "vat", "tax-2026"}) {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	if got, err := NormalizeSupportTags(nil); err != nil || got == nil || len(got) != 0 {
+		t.Errorf("no tags = %v, %v (an empty list, not nil: the column is not null)", got, err)
+	}
+	for name, in := range map[string][]string{"a space": {"two words"}, "an upper-case symbol": {"a_b"}, "starts with a hyphen": {"-a"}, "too long": {strings.Repeat("x", 31)}, "six": {"a", "b", "c", "d", "e", "f"}} {
+		if _, err := NormalizeSupportTags(in); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+	// The same word twice counts once.
+	if _, err := NormalizeSupportTags([]string{"a", "b", "c", "d", "e", "E"}); err != nil {
+		t.Errorf("five distinct tags: %v", err)
+	}
+}
+
+func TestValidateSupportAssignee(t *testing.T) {
+	ops := []string{"ops@example.com", "kim@example.com"}
+	for name, c := range map[string]struct {
+		to, current string
+		ok          bool
+	}{"nobody": {"", "ops@example.com", true}, "an operator": {"KIM@example.com", "", true}, "what it was": {"Sam the intern", "Sam the intern", true},
+		"a stranger": {"stranger@example.com", "", false}, "a name that is not what it was": {"Sam", "Sam the intern", false}} {
+		if err := ValidateSupportAssignee(c.to, c.current, ops); (err == nil) != c.ok {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }

@@ -62,10 +62,12 @@ const deliveriesTable = useTableState(log, {
   filters: { state: (d, v) => d.state === v },
 });
 const current = endpointsTable.row;
+// Another endpoint, or none, starts the deliveries clean; the first opening (a reload, a shared link) keeps the filter and the sort the address brought.
 watch(
   () => current.value?.id,
-  (id) => {
+  (id, was) => {
     selected.value = id ?? "";
+    if (was === undefined && id !== undefined) return;
     deliveriesTable.clear();
     range.value = thisMonth();
   },

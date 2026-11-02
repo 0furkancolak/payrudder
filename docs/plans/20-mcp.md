@@ -4,12 +4,16 @@
 List 2 (1): **MCP**.
 
 ## Where we are
-#257: `mcp/`, a stdio MCP server using the official SDK: nine read-only tools (meters, customers, a customer's usage, plans, subscriptions, invoices, payments), two write tools (create customer, send usage events) only when `PAYRUDDER_MCP_WRITES=1`, the API key is the limit; validation before requests, encoded ids, truncated long answers, errors with API keys. Tested with an in-memory MCP client and over real stdio against a local HTTP server; README, CI job.
+#257 made `mcp/`, a stdio MCP server using the official SDK; it has grown (2026-11-02, [progress parts below](#progress-2026-11-02-branch-featdx-docs-mcp)) to this:
+- **25 read-only tools generated from `api/openapi/v1.yaml`** by an allow-list (`mcp/scripts/read-tools.config.mjs`), so tools and API cannot drift, plus **two write tools** (create customer, send usage events) that exist only when `PAYRUDDER_MCP_WRITES=1`; the API key's role is the limit. What is deliberately not offered is listed and tested (`NOT_OFFERED`).
+- **Two transports:** stdio, and **streamable HTTP** behind `PAYRUDDER_MCP_HTTP_PORT` (each request carries the caller's own API key as a bearer token; no OAuth).
+- **An audit log** (one JSON line per tool call on stderr, arguments about a person replaced), **resources** (`payrudder://openapi` and the public guides), **four prompts**, untrusted fields tagged `<untrusted>`, and since the fourth part two switches that default to the safe side: `PAYRUDDER_MCP_ALLOW_PERSONAL_DATA` (customers' names, e-mail, phone, tax id and address are redacted) and `PAYRUDDER_MCP_ALLOW_LIVE` (a live key is refused).
+- Tested with an in-memory MCP client, over real stdio against a local HTTP server (a spawned `dist/main.js`) and over streamable HTTP with two callers; README with the draft risk table, CI job `mcp`.
 
 ## Gaps
 - **Which MCP is meant was not asked.** There are at least three: (a) an MCP server for the *tenant API* (built), (b) an MCP for the **operator** (support, tenants), (c) an MCP that exposes **Payrudder's documentation** to assistants, and (d) the console/app *being* an MCP client. Only (a) exists.
-- Stdio only: a hosted (HTTP/SSE "streamable HTTP") server with OAuth is what remote assistants need; no auth model beyond one key; no per-tool permissions or rate limits; no audit of what an assistant did; no resources (OpenAPI, docs) or prompts; tools not generated from the OpenAPI (hand-picked, so they can drift).
-- Prompt-injection exposure: answers contain customer-written text; the README warns but nothing sanitises or tags untrusted fields.
+- ~~Stdio only; no audit of what an assistant did; no resources or prompts; tools not generated from the OpenAPI.~~ Built: streamable HTTP with a bearer API key per request, the audit log, resources, four prompts and generated tools (see "Where we are"). **Still open:** OAuth with the console's sign-in (a hosted server for people who have no key), a **limit per key** (the gateway limits per tenant and route class, so a key's share is a gateway change), per-tool permissions beyond the key's role.
+- ~~Prompt-injection exposure: nothing sanitises or tags untrusted fields.~~ Fields people write are tagged `<untrusted>` and a new field of an allow-listed answer must be classified before a model sees it (the generator and a test fail otherwise); free text the list does not name can still reach the model, and a model's respect for the tag is not verified.
 - Not tried with a real assistant (Claude Desktop/Code) by a person.
 - No coverage of billing actions (refunds, credit notes, cancel) by design; unspecified whether the owner wants any.
 
@@ -24,7 +28,7 @@ Audience, hosting, authentication (API key vs OAuth with the console's sign-in),
 ## Work
 1. Spec of audiences and tool sets, with a risk table per tool. *(Draft table written, not signed: `mcp/README.md`.)*
 2. Generate read tools from the OpenAPI (with an allow-list) so tools and API never drift; test the mapping. *(Done; 25 read tools, see the third progress part.)*
-3. Streamable HTTP transport + OAuth (if hosted); per-key rate limits and audit log.
+3. Streamable HTTP transport + OAuth (if hosted); per-key rate limits and audit log. *(HTTP with a bearer key and the audit log are done; OAuth and a limit per key are open, the second a gateway change.)*
 4. Resources: OpenAPI and docs as MCP resources; a few prompts (monthly revenue review, find the customer over limit). *(Done: resources, and four prompts.)*
 5. Operator MCP in a separate server with its own auth and an approval step for any write.
 6. Evaluate with real assistants on scripted tasks; record results.
@@ -39,8 +43,8 @@ Assistant behaviour (needs a person and a client).
 Giving an assistant write access to billing: default to read-only and confirmations.
 
 ## Review addendum (2026-11-01)
-- Tests use `InMemoryTransport` only (`mcp/src/server.test.ts`); no stdio spawn test, and `mcp.yml` runs typecheck, test and build. API-key roles already limit tools (`read_only`, `billing`, `ingest_only`, custom, enforced by the gateway); `main.ts` warns when writes are enabled with an admin key.
-- Work: stdio spawn test; tag untrusted fields; generate read tools from OpenAPI with an allow-list and a mapping test; streamable HTTP with bearer API-key auth.
+- ~~Tests use `InMemoryTransport` only; no stdio spawn test.~~ `mcp/src/stdio.test.ts` spawns the built server (first progress part); `mcp.yml` runs typecheck, test and build, and also when the OpenAPI file or the public docs change. API-key roles already limit tools (`read_only`, `billing`, `ingest_only`, custom, enforced by the gateway); `main.ts` warns when writes are enabled with an admin key.
+- ~~Work: stdio spawn test; tag untrusted fields; generate read tools from OpenAPI with an allow-list and a mapping test; streamable HTTP with bearer API-key auth.~~ All four are done (progress parts below).
 
 ## Progress (2026-11-02, branch `feat/dx-docs-mcp`)
 

@@ -12,7 +12,7 @@ export interface BulkResult<T> {
   failed: { row: T; error: unknown }[];
 }
 
-export async function runBulk<T>(rows: readonly T[], act: (row: T) => Promise<unknown>): Promise<BulkResult<T>> {
+export async function runBulk<T>(rows: readonly T[], act: (row: T) => Promise<unknown>, onStep?: (done: number, failed: number) => void): Promise<BulkResult<T>> {
   const out: BulkResult<T> = { ok: [], failed: [] };
   for (const row of rows) {
     try {
@@ -21,8 +21,19 @@ export async function runBulk<T>(rows: readonly T[], act: (row: T) => Promise<un
     } catch (error) {
       out.failed.push({ row, error });
     }
+    onStep?.(out.ok.length, out.failed.length);
   }
   return out;
+}
+
+/** A run on more rows than this shows its progress in the bar (done and not changed so far); a shorter one is over before anybody could read it. */
+export const BULK_PROGRESS_FROM = 20;
+
+/** How far a run has come: rows done, rows that failed, rows in all. */
+export interface BulkProgress {
+  done: number;
+  failed: number;
+  total: number;
 }
 
 /** What `useBulk` needs of a list (useTableState has all of it). */
@@ -82,8 +93,9 @@ export function bulkQuestion(own: ConfirmOptions | undefined, n: number, pageSiz
 
 /**
  * The bulk action of a list, the same everywhere: ask once when the action cannot be undone (or touches more than a page of rows, with the count), run it on the
- * ticked rows one by one, say "n done, m not changed" with the names of the rows that failed, untick the ones that were done and leave the failed ones ticked so
- * the same action can be repeated. `table` is the list's useTableState, `name` is what a row is called in the note, `rest` is set for a list that holds only the first
+ * ticked rows one by one (a run on more than {@link BULK_PROGRESS_FROM} rows shows how far it has come, `bar.progress`), say "n done, m not changed" with the names of
+ * the rows that failed, untick the ones that were done and leave the failed ones ticked so the same action can be repeated. There is one request per row, not one for
+ * the batch: the per-row calls are the API that exists (docs/plans/02-filters-sort-bulk.md says why there is no batch call). `table` is the list's useTableState, `name` is what a row is called in the note, `rest` is set for a list that holds only the first
  * server page. `bar` is what the page binds to BulkBar.
  */
 export function useBulk<T>(table: BulkTable<T>, opts: { name: (row: T) => string; rest?: RestOfList }) {
@@ -91,6 +103,7 @@ export function useBulk<T>(table: BulkTable<T>, opts: { name: (row: T) => string
   const note = ref("");
   const busy = ref(false);
   const loading = ref(false);
+  const progress = ref<BulkProgress | null>(null);
   /** `rows` narrows the ticked ones the action applies to (revoking skips the keys that are revoked already); `confirm` is the question, when there is one (it may depend on the rows). */
   async function run(act: (row: T) => Promise<unknown>, o: { confirm?: ConfirmOptions | ((rows: readonly T[]) => ConfirmOptions | undefined); rows?: (all: readonly T[]) => readonly T[] } = {}) {
     const rows = o.rows ? o.rows(table.selectedRows.value) : table.selectedRows.value;
@@ -101,7 +114,12 @@ export function useBulk<T>(table: BulkTable<T>, opts: { name: (row: T) => string
     });
     if (ask && !(await askConfirm(ask))) return;
     busy.value = true;
-    const r = await runBulk(rows, act);
+    const total = rows.length;
+    if (total > BULK_PROGRESS_FROM) progress.value = { done: 0, failed: 0, total };
+    const r = await runBulk(rows, act, (done, failed) => {
+      if (progress.value) progress.value = { done, failed, total };
+    });
+    progress.value = null;
     busy.value = false;
     for (const row of r.ok) table.tick(row, false);
     note.value = t("common.bulk.done", { ok: r.ok.length, failed: r.failed.length }) + (r.failed.length > 0 ? ` · ${t("common.bulk.notChanged")}: ${r.failed.map((f) => opts.name(f.row)).join(", ")}` : "");
@@ -123,6 +141,7 @@ export function useBulk<T>(table: BulkTable<T>, opts: { name: (row: T) => string
     offer: table.canSelectAll.value || (!!opts.rest?.has() && table.allOnPage.value),
     more: !!opts.rest?.has(),
     loading: loading.value,
+    progress: progress.value ?? undefined,
   }));
   return { note, busy, run, selectAll, bar };
 }

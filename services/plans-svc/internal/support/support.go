@@ -95,7 +95,7 @@ func ticketOf(r sqlc.GetSupportTicketRow) *plansv1.SupportTicket {
 		Subject: r.Subject, Category: r.Category, Priority: r.Priority, Status: r.Status, Assignee: r.Assignee, LastAuthor: r.LastAuthor,
 		CreateTime: timestamppb.New(r.CreatedAt), UpdateTime: timestamppb.New(r.UpdatedAt), LastMessageTime: timestamppb.New(r.LastMessageAt),
 		FirstResponseDue: timestamppb.New(r.FirstResponseDue), FirstResponseTime: ts(r.FirstRespondedAt), SlaBreached: r.SlaBreached,
-		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount, Unread: r.Unread,
+		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount, Unread: r.Unread, Tags: r.Tags,
 	}
 	if r.Number != nil {
 		t.Number = *r.Number
@@ -123,20 +123,23 @@ func eventsOf(rows []sqlc.ListSupportEventsRow) []*plansv1.SupportEvent {
 }
 
 func stateOf(r sqlc.LockSupportTicketRow) domain.SupportTicketState {
-	return domain.SupportTicketState{Status: r.Status, Priority: r.Priority, Assignee: r.Assignee, FirstResponseDue: r.FirstResponseDue, FirstRespondedAt: r.FirstRespondedAt, SolvedAt: r.SolvedAt,
+	return domain.SupportTicketState{Status: r.Status, Priority: r.Priority, Assignee: r.Assignee, Tags: r.Tags, FirstResponseDue: r.FirstResponseDue, FirstRespondedAt: r.FirstRespondedAt, SolvedAt: r.SolvedAt,
 		CreatedAt: r.CreatedAt, Zone: r.SlaZone}
 }
 
 // actor is who made a change, as the history shows it.
 type actor struct{ kind, name string }
 
-// save writes the new state of a ticket and, for each of status, priority and assignee that differs from prev, a line in the history.
+// save writes the new state of a ticket and, for each of status, priority, assignee and tags that differs from prev, a line in the history.
 func save(ctx context.Context, q *sqlc.Queries, id uuid.UUID, prev, next domain.SupportTicketState, lastAuthor string, touch bool, by actor) error {
-	if err := q.SaveSupportTicket(ctx, sqlc.SaveSupportTicketParams{ID: id, Status: next.Status, Priority: next.Priority, Assignee: next.Assignee, LastAuthor: lastAuthor, FirstResponseDue: next.FirstResponseDue,
+	if next.Tags == nil {
+		next.Tags = []string{}
+	}
+	if err := q.SaveSupportTicket(ctx, sqlc.SaveSupportTicketParams{ID: id, Status: next.Status, Priority: next.Priority, Assignee: next.Assignee, Tags: next.Tags, LastAuthor: lastAuthor, FirstResponseDue: next.FirstResponseDue,
 		FirstRespondedAt: next.FirstRespondedAt, SolvedAt: next.SolvedAt, Touch: touch}); err != nil {
 		return err
 	}
-	for _, c := range []struct{ kind, from, to string }{{"status", prev.Status, next.Status}, {"priority", prev.Priority, next.Priority}, {"assignee", prev.Assignee, next.Assignee}} {
+	for _, c := range []struct{ kind, from, to string }{{"status", prev.Status, next.Status}, {"priority", prev.Priority, next.Priority}, {"assignee", prev.Assignee, next.Assignee}, {"tags", strings.Join(prev.Tags, ","), strings.Join(next.Tags, ",")}} {
 		if c.from == c.to {
 			continue
 		}
@@ -156,7 +159,11 @@ func ticket(ctx context.Context, q *sqlc.Queries, id uuid.UUID, viewer *uuid.UUI
 		}
 		return nil, err
 	}
-	return ticketOf(r), nil
+	t := ticketOf(r)
+	if viewer != nil {
+		t.Tags = nil // the operator's labels are not the person's to read
+	}
+	return t, nil
 }
 
 func list(ctx context.Context, q *sqlc.Queries, p sqlc.ListSupportTicketsParams) ([]*plansv1.SupportTicket, error) {
@@ -167,6 +174,9 @@ func list(ctx context.Context, q *sqlc.Queries, p sqlc.ListSupportTicketsParams)
 	out := make([]*plansv1.SupportTicket, len(rows))
 	for i, r := range rows {
 		out[i] = ticketOf(sqlc.GetSupportTicketRow(r))
+		if p.UserID != nil {
+			out[i].Tags = nil // the operator's labels are not the person's to read
+		}
 	}
 	return out, nil
 }
@@ -247,7 +257,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		if err != nil {
 			return err
 		}
-		mails, err = s.operatorMails(ctx, q, id)
+		mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketNew)
 		return err
 	})
 	if err != nil {
@@ -337,6 +347,7 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		return nil, err
 	}
 	var out *plansv1.SupportTicket
+	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := lockedFor(ctx, q, id, &user)
@@ -363,11 +374,20 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 			return err
 		}
 		out, err = ticket(ctx, q, id, &user)
+		if err != nil {
+			return err
+		}
+		// The operators are told when the person answers the operator (the ticket was waiting for them, or solved); a second message in a row adds no second mail,
+		// the ticket is in the queue already.
+		if row.LastAuthor == "operator" {
+			mails, err = s.operatorMails(ctx, q, id, usermail.KindTicketCustomerReply)
+		}
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
+	s.send(ctx, mails)
 	return &plansv1.ReplyMySupportTicketResponse{Ticket: out}, nil
 }
 
@@ -427,7 +447,7 @@ func (s *Service) ListSupportTickets(ctx context.Context, req *plansv1.ListSuppo
 		return nil, err
 	}
 	tickets, err := list(ctx, sqlc.New(s.pool), sqlc.ListSupportTicketsParams{Status: req.GetStatus(), Priority: req.GetPriority(), Assignee: req.GetAssignee(),
-		Search: likeEscaped(req.GetSearch()), SlaBreached: req.GetSlaBreached()})
+		Search: likeEscaped(req.GetSearch()), SlaBreached: req.GetSlaBreached(), Tag: strings.ToLower(strings.TrimSpace(req.GetTag()))})
 	if err != nil {
 		return nil, err
 	}
@@ -541,10 +561,19 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 			}
 		}
 		if req.Assignee != nil {
-			if err := domain.ValidateSupportAssignee(req.GetAssignee()); err != nil {
+			a := strings.TrimSpace(req.GetAssignee())
+			if err := domain.ValidateSupportAssignee(a, prev.Assignee, s.cfg.Operators); err != nil {
 				return err
 			}
-			next.Assignee = strings.TrimSpace(req.GetAssignee())
+			if a != prev.Assignee {
+				a = strings.ToLower(a) // the operators' addresses are kept lower case; an assignee from before the list is kept as it was
+			}
+			next.Assignee = a
+		}
+		if req.GetSetTags() {
+			if next.Tags, err = domain.NormalizeSupportTags(req.GetTags()); err != nil {
+				return err
+			}
 		}
 		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"operator", by}); err != nil {
 			return err

@@ -1323,9 +1323,11 @@ type CreateMyAppRequest struct {
 	AccountId string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	Name      string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Empty: the name in lower case with dashes.
-	Slug          string `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
-	Currency      string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
-	Timezone      string `protobuf:"bytes,6,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	Slug     string `protobuf:"bytes,4,opt,name=slug,proto3" json:"slug,omitempty"`
+	Currency string `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	Timezone string `protobuf:"bytes,6,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	// The region of the app's tenants (see Tenant.region); empty takes the deployment's default.
+	Region        string `protobuf:"bytes,7,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1398,6 +1400,13 @@ func (x *CreateMyAppRequest) GetCurrency() string {
 func (x *CreateMyAppRequest) GetTimezone() string {
 	if x != nil {
 		return x.Timezone
+	}
+	return ""
+}
+
+func (x *CreateMyAppRequest) GetRegion() string {
+	if x != nil {
+		return x.Region
 	}
 	return ""
 }
@@ -6534,7 +6543,7 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\amembers\x18\x04 \x03(\v2!.payrudder.plans.v1.AccountMemberR\amembers\x12;\n" +
 	"\vcreate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12@\n" +
-	"\x1drequire_two_factor_for_owners\x18\x06 \x01(\bR\x19requireTwoFactorForOwners\"\xac\x01\n" +
+	"\x1drequire_two_factor_for_owners\x18\x06 \x01(\bR\x19requireTwoFactorForOwners\"\xc4\x01\n" +
 	"\x12CreateMyAppRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
@@ -6542,7 +6551,8 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x04 \x01(\tR\x04slug\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12\x1a\n" +
-	"\btimezone\x18\x06 \x01(\tR\btimezone\"@\n" +
+	"\btimezone\x18\x06 \x01(\tR\btimezone\x12\x16\n" +
+	"\x06region\x18\a \x01(\tR\x06region\"@\n" +
 	"\x13CreateMyAppResponse\x12)\n" +
 	"\x03app\x18\x01 \x01(\v2\x17.payrudder.plans.v1.AppR\x03app\"K\n" +
 	"\x11ListMyAppsRequest\x12\x17\n" +

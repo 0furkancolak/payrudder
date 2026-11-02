@@ -120,7 +120,7 @@ async function run(name: string, count: number) {
         </TableBody>
       </Table>
       <TableEmpty v-if="messages.length > 0 && messagesTable.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
-      <TableEmpty v-else-if="messages.length === 0 && !list.isPending.value">{{ t("deadLetters.noMessages") }}</TableEmpty>
+      <TableEmpty v-else-if="messages.length === 0 && !list.isPending.value && !list.isPlaceholderData.value">{{ t("deadLetters.noMessages") }}</TableEmpty>
       <DataPagination v-if="messages.length > 0" v-model:page="messagesTable.page.value" v-model:size="messagesTable.size.value" :pages="messagesTable.pages.value" :total="messagesTable.total.value" />
     </div>
   </DetailSheet>

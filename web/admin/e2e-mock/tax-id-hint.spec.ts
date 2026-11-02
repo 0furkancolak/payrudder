@@ -18,7 +18,7 @@ test("a number that is not a VKN is hinted at, a good one is not, and saving sta
   await page.getByTestId("customer-cus_1").click();
   await page.getByTestId("customer-edit").click();
   await page.getByTestId("customer-edit-tax").click();
-  const id = page.getByRole("textbox", { name: "Tax ID" }).first();
+  const id = page.getByLabel("VKN (10-digit tax number)");
   await id.fill("12345");
   await expect(page.getByTestId("tax-id-hint")).toContainText("VKN");
   await id.fill("1234567890");
