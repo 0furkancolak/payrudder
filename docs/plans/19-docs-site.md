@@ -54,3 +54,15 @@ Not done: tutorials (usage-based billing end to end, migrating from Stripe), pro
 
 Not verified: the Pages deploy (needs Pages switched to the "GitHub Actions" source and the variable set; the workflow has not run on GitHub); the pages were looked at in Chrome on a desktop viewport only; the tabs need JavaScript (without it every language is shown one under the other); the build needs Node 22.18 or newer (it reads `snippets.ts` by stripping its types).
 
+
+## Progress (2026-11-02, branch `feat/sdk-cli-errors`)
+
+Done:
+- **Tutorials** (status `draft`, written from the OpenAPI file, the console's playground and the existing guides, not reviewed by the owner and not run end to end by a person): *Usage-based billing, end to end* (meter, package, customer, subscription, usage, close the period in the sandbox, invoice, a declined payment), *Receive webhooks on your machine* (a verifying handler per language made by the console's snippet generator, the CLI's `listen`, what to look at when a delivery does not arrive) and *Let a customer pay* (invoice link, payment links, the customer's own page). A test reads every `$BASE/v1/...` call in them (path and verb) against the OpenAPI file, so a renamed route fails the build. A link from a guide to the API reference now stays a link (it used to be turned into plain text), and repository documents can link to a site guide by its path (`../docs-site/content/cli.md`).
+- **Command line page** (status `pre-release`); a test fails when the program lists a command the page does not show.
+- **Change log page**, made at build from git: the tags `vX.Y.Z` and the titles of the pull requests merged between them; with no tag (today) it says there is no release and lists the latest 50 merged pull requests as "Unreleased". `docs.yml` now checks out the full history. Tested against real temporary repositories (tags in version order, SDK tags ignored, no tag, no git).
+- **Errors page:** the status of each failure as the four SDKs raise it (Go `Kind*`, TypeScript, Python and PHP classes; a test fails when an SDK gains an error type the page does not map) and what the command line prints and exits with.
+
+Defaults (not agreed): the change log lists pull request titles verbatim; they are written for maintainers (plan numbers, internal names), so read them before the site is hosted; the tutorials use `curl` only, the SDK calls being the same one method per operation.
+
+Not done: *migrating from Stripe*, provider guides, the tax and e-invoice guide, the console user guide, the security page, "try it", schema search, versioning, redirects, print/PDF, translations, an external-link checker, hosting. Not verified: the pages were looked at in Chrome on a desktop viewport only (CLI page and change log); the Pages deploy still has not run.

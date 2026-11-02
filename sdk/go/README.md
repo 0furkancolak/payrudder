@@ -223,6 +223,27 @@ constants list the event type names; `InvoiceEventData`, `CreditNoteEventData`, 
 `Assets.UploadAssets(ctx, []payrudder.AssetFile{...})` builds the multipart request (up to 20 files, 25 MiB each). Larger
 files use `CreateUploadSession`, `PresignParts` and `CompleteUploadFile`.
 
+## Command line
+
+`cmd/payrudder` is a command line built on this package (standard library only, so `go install` needs nothing else). From a checkout:
+
+```sh
+cd sdk/go && go install ./cmd/payrudder            # or: go run ./cmd/payrudder <command>
+
+payrudder login                                     # stores the key (0600) in your config directory after the API accepted it
+payrudder events send --customer cus_42 --meter api_calls --quantity 3
+payrudder events tail --customer cus_42             # follows the usage totals (the API does not list events)
+payrudder webhooks trigger ping                     # sends a test event to your endpoint and reports how it answered
+payrudder webhooks listen --forward-to http://localhost:3000/webhooks/payrudder --secret whsec_...
+payrudder customers list --json
+payrudder invoices list --status open
+```
+
+The key comes from `$PAYRUDDER_API_KEY` or the login, the address from `--base-url`, `$PAYRUDDER_BASE_URL` or the login. `webhooks listen` receives deliveries
+on `127.0.0.1:4242` (Payrudder has to be able to reach that address: a stack on your own machine can; a hosted one needs a tunnel and `--public-url`, which registers it
+as a temporary endpoint and deletes it when the command stops), verifies each with the secret, prints it, and passes it on unchanged. The documentation is in the docs
+site ("Command line"); `payrudder help` lists the commands. Pre-release like the package: not published.
+
 ## Development
 
 The typed part (`types_gen.go`, `services_gen.go`) is generated from `api/openapi/v1.yaml`:
@@ -247,4 +268,4 @@ The unit tests run against a local fake server; no network and no Payrudder stac
 
 ## License
 
-The same as the repository: see [`LICENSE`](LICENSE), which points to the root licence.
+The same as the repository (Elastic License 2.0): see [`LICENSE`](LICENSE), a copy of the root licence.

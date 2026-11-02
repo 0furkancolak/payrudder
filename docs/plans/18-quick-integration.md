@@ -58,3 +58,9 @@ Not done (still open from the work list): key creation inline and the sample met
 
 Not verified: the Python, Go and PHP install lines were not executed (they are the lines of the SDK READMEs); the Docker fallback for PHP was not exercised; `snippets.yml` has not run on GitHub; the ten-minute claim needs a person.
 
+
+## Progress (2026-11-02, branch `feat/sdk-cli-errors`)
+
+Done here: the **webhook tunnel helper and the "send a test webhook" from a terminal** exist as the command line (`payrudder webhooks listen` receives, verifies and forwards deliveries to the developer's app, and with `--public-url` registers the developer's own tunnel as a temporary endpoint and deletes it on exit; `payrudder webhooks trigger ping` sends the test event and reports the answer; `events send` sends a usage event and `events tail` follows a customer's usage). See [22](22-platform-audit-and-roadmap.md) G16 for the defaults. No tunnel is provided: a hosted Payrudder needs the developer's own (cloudflared, ngrok). The three console items of the work list (inline key, sample meter and customer, test event) are in their own pull request (branch `feat/connect-first-steps`).
+
+Still open: the CI job that runs each snippet against the compose stack, framework templates, the rejected-event viewer, integration health over time, publishing the SDKs. The install lines still say "not on <registry> yet" (`sdk-publish.yml` exists, manual and a dry run, never run).

@@ -47,7 +47,7 @@ func TestNewDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.baseURL != "http://localhost:42800" || c.timeout != 30*time.Second || c.maxRetries != 2 || c.userAgent != "payrudder-go/0.0.0" {
+	if c.baseURL != "http://localhost:42800" || c.timeout != 30*time.Second || c.maxRetries != 2 || c.userAgent != "payrudder-go/"+Version {
 		t.Fatalf("defaults: %+v", c)
 	}
 }

@@ -1,17 +1,20 @@
 import { createServer as listen, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createApi } from "./api.js";
+import { keyPrefix, type Audit } from "./audit.js";
 import { createServer } from "./server.js";
 
 /**
  * Streamable HTTP (MCP spec 2025-03-26), for an assistant that is not on the same machine as the server. It is stateless: every POST to /mcp carries the caller's own API
  * key as a bearer token and is answered on its own, with that key and no other (nothing is shared between callers, no session is kept). The API address is the server's
  * (never taken from a request), so a caller cannot point it somewhere else. The key's role is what limits the caller; the server does not check the key, the API does on
- * the first call. This is key authentication only: there is no OAuth and no per-caller rate limit yet (docs/plans/20-mcp.md).
+ * the first call. This is key authentication only: there is no OAuth and no rate limit of its own (the API's limits are per tenant and shared by every key), and every tool call is written to the audit log (audit.ts) with the caller's key prefix (docs/plans/20-mcp.md).
  */
 export interface HttpOptions {
   baseUrl: string;
   allowWrites?: boolean;
+  /** One record per tool call, with the caller's key prefix (audit.ts). */
+  audit?: Audit;
   /** Injected in tests. */
   fetch?: typeof fetch;
 }
@@ -56,7 +59,7 @@ export function createHttpServer(o: HttpOptions): Server {
       const key = /^Bearer (.+)$/i.exec(req.headers.authorization ?? "")?.[1]?.trim();
       if (!key || !KEY.test(key)) return reply(res, 401, "Send your Payrudder API key (qk_test_... or qk_live_...) as a bearer token.", { "WWW-Authenticate": 'Bearer realm="payrudder-mcp"' });
       const body = await readBody(req);
-      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false });
+      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}) });
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         void transport.close();

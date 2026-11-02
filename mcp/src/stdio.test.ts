@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import type { Readable } from "node:stream";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // The built server, started as an assistant starts it: a child process that speaks MCP on its stdin and stdout, against a small HTTP server that plays the API. The
@@ -47,6 +48,24 @@ describe("the built server over stdio", () => {
     } finally {
       await client.close();
     }
+  }, 30_000);
+
+  it("writes one JSON audit line per tool call to stderr, without the secret, and stays silent with PAYRUDDER_MCP_AUDIT=0", async () => {
+    const lines = async (extra: Record<string, string>) => {
+      const transport = new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_ab12cd34_TOPSECRET", ...extra }), stderr: "pipe" });
+      let err = "";
+      (transport.stderr as Readable).on("data", (c: Buffer) => (err += c.toString()));
+      const client = new Client({ name: "test", version: "0" });
+      await client.connect(transport);
+      await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
+      await client.close();
+      return err.split("\n").filter((l) => l.startsWith("{"));
+    };
+    const on = await lines({});
+    expect(on).toHaveLength(1);
+    expect(JSON.parse(on[0] ?? "")).toMatchObject({ event: "mcp.tool_call", tool: "get_customer", write: false, transport: "stdio", key: "qk_test_ab12cd34", args: { customer_external_id: "cus_1" }, ok: true });
+    expect(on[0]).not.toContain("TOPSECRET");
+    expect(await lines({ PAYRUDDER_MCP_AUDIT: "0" })).toEqual([]);
   }, 30_000);
 
   it("offers the write tools only with PAYRUDDER_MCP_WRITES=1", async () => {

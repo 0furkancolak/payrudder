@@ -164,13 +164,33 @@ test("the concept pages are built, in the sidebar, and say what the repository d
 test("the pages for concepts do not point at a path the API does not have", async () => {
   const known = new Set(Object.keys(doc.paths));
   const toPattern = (p) => new RegExp(`^${p.replace(/\{[^}]+\}/g, "[^/]+")}$`);
-  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started"]) {
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started", "cli", "tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments"]) {
     const md = await readFile(join(here, "content", `${page}.md`), "utf8");
-    for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) {
-      const path = m[1].replace(/\/$/, "");
+    const seen = [];
+    for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) seen.push(m[1].replace(/\/$/, ""));
+    // The tutorials call the API in code blocks: $BASE/v1/plans/starter/versions, $BASE/v1/invoices/$INVOICE_ID/links?x=1
+    for (const m of md.matchAll(/\$BASE(\/v1\/[A-Za-z0-9_\-/$]+)/g)) seen.push(m[1].replace(/\/$/, "").split("/").map((seg) => (seg.startsWith("$") ? "{param}" : seg)).join("/"));
+    for (const path of seen) {
       assert.ok([...known].some((k) => toPattern(k).test(path) || k === path), `${page}.md names ${path}, which is not in the OpenAPI file`);
     }
+    if (["tutorial-usage-billing", "tutorial-payments"].includes(page)) assert.ok(seen.length >= 3, `${page}.md calls fewer than three API routes: is the check reading it?`);
   }
+});
+
+test("every method a tutorial calls is one the route has", async () => {
+  // `api -X POST $BASE/v1/...` and `api $BASE/v1/... -d` (a body means POST) against the verbs of the OpenAPI file.
+  let checked = 0;
+  for (const page of ["tutorial-usage-billing", "tutorial-payments"]) {
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    for (const m of md.matchAll(/^api (?:-X (POST|GET|PUT|PATCH|DELETE) )?(?:"?\$BASE)(\/v1\/[A-Za-z0-9_\-/$]+)([^\n]*)$/gm)) {
+      const path = m[2].replace(/\/$/, "").split("/").map((seg) => (seg.startsWith("$") ? "{param}" : seg)).join("/");
+      const verb = (m[1] ?? (/ -d /.test(m[3]) ? "POST" : "GET")).toLowerCase();
+      const route = Object.entries(doc.paths).find(([k]) => new RegExp(`^${k.replace(/\{[^}]+\}/g, "[^/]+")}$`).test(path));
+      assert.ok(route?.[1][verb], `${page}.md: ${verb.toUpperCase()} ${path} is not an operation of the OpenAPI file`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked >= 10, `only ${checked} calls were read`);
 });
 
 // ---- the error catalogue
@@ -216,4 +236,49 @@ test("the operations that send usage and verify a webhook have a tab for every l
   assert.ok(!events.includes("quotify"));
   // An operation without tabs keeps its curl.
   assert.ok((await readFile(join(out, "api", "meters.html"), "utf8")).includes("<summary>curl</summary>"));
+});
+
+// ---- the command line, the tutorials, the change log
+
+test("the command line page documents every command the program lists", async () => {
+  const go = await readFile(resolve(here, "../sdk/go/cmd/payrudder/cli.go"), "utf8");
+  const usage = go.slice(go.indexOf("const usageText = `"), go.indexOf("`", go.indexOf("const usageText = `") + 20));
+  const commands = [...usage.matchAll(/^ {2}([a-z]+(?: [a-z]+)?) {2,}\S/gm)].map((m) => m[1]);
+  assert.ok(commands.length >= 10, `read only ${commands.length} commands from the usage text`);
+  const html = await readFile(join(out, "cli.html"), "utf8");
+  for (const c of commands) assert.ok(html.includes(`payrudder ${c}`), `cli.html does not show "payrudder ${c}"`);
+  assert.match(html, /data-status="pre-release"/);
+  const sdks = (await readFile(join(out, "sdks.html"), "utf8")).split("<main>")[1] ?? "";
+  assert.match(sdks, /<a href="cli\.html">Command line<\/a>/, "the SDKs page should lead to the command line");
+});
+
+test("the three tutorials are built, in the sidebar, and link only to pages and anchors that exist", async () => {
+  for (const page of ["tutorial-usage-billing", "tutorial-webhooks", "tutorial-payments"]) {
+    const h = await readFile(join(out, `${page}.html`), "utf8");
+    assert.match(h, /data-status="draft"/);
+    assert.match(h, new RegExp(`href="${page}\\.html"`), `${page} is not in the sidebar`);
+  }
+  // The links to the API reference survive (they used to be turned into plain text).
+  assert.match(await readFile(join(out, "tutorial-usage-billing.html"), "utf8"), /href="api\/plans\.html"/);
+  // The webhook tutorial ends with the handler in every language, made by the console's generator.
+  const hooks = await readFile(join(out, "tutorial-webhooks.html"), "utf8");
+  for (const l of LANGS) assert.ok(hooks.includes(`role="tabpanel" data-lang="${l}"`), `no ${l} handler`);
+  assert.ok(hooks.includes("constructEvent"));
+});
+
+test("the errors page maps every error type of the four SDKs and says what the command line does", async () => {
+  const html = await readFile(join(out, "errors.html"), "utf8");
+  const sdk = (f) => readFile(resolve(here, "../sdk", f), "utf8");
+  const goKinds = [...(await sdk("go/errors.go")).matchAll(/^\t(Kind[A-Za-z]+)\b/gm)].map((m) => m[1]);
+  assert.ok(goKinds.length >= 9);
+  const ts = [...(await sdk("typescript/src/errors.ts")).matchAll(/^export class (\w+)/gm)].map((m) => m[1]);
+  const py = [...(await sdk("python/src/payrudder/errors.py")).matchAll(/^class (\w+)/gm)].map((m) => m[1]).filter((n) => !["PayrudderError", "ConfigurationError", "WebhookSignatureError"].includes(n));
+  const php = (await readdir(resolve(here, "../sdk/php/src/Exception"))).map((f) => f.replace(".php", "")).filter((n) => !["PayrudderException", "ConfigurationException", "UnexpectedResponseException", "WebhookException"].includes(n));
+  for (const n of [...goKinds, ...ts, ...py, ...php]) assert.ok(html.includes(`<code>${n}</code>`), `errors.html does not map ${n}`);
+  assert.match(html, /exits 1/);
+});
+
+test("a link to the API reference stays a link only when that page exists", async () => {
+  const h = await readFile(join(out, "tutorial-payments.html"), "utf8");
+  assert.match(h, /href="api\/customers\.html"/);
 });

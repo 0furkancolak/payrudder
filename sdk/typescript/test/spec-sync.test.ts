@@ -86,6 +86,5 @@ describe("SDK stays in sync with api/openapi/v1.yaml", () => {
   it("package version matches VERSION", () => {
     const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { version: string };
     expect(pkg.version).toBe(VERSION);
-    expect(VERSION).toBe("0.0.0");
   });
 });
