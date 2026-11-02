@@ -773,7 +773,7 @@ test.describe("billing pages of the app", () => {
     await expect(page.getByRole("button", { name: "Publish version" })).toHaveCount(0);
     await page.getByTestId("sidebar").getByRole("link", { name: "Coupons", exact: true }).click();
     await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "New coupon" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "New coupon" })).toHaveCount(0);
     await page.getByTestId("sidebar").getByRole("link", { name: "Tax and retries" }).click();
     await expect(page.getByRole("button", { name: "Save settings" })).toBeDisabled();
     await expect(page.getByTestId("block-on-chargeback")).toBeDisabled();
