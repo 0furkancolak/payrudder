@@ -100,7 +100,7 @@ func TestPortalShowsCreditsAndBuysAPack(t *testing.T) {
 	if got.GetPortalToken() != portalTok || got.GetPackId() != "pack-1" || got.GetQuantity() != 3 {
 		t.Errorf("billing was asked %v", got)
 	}
-	if r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy?lang=tr", url.Values{"pack_id": {"pack-1"}}, nil); r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=tr" {
+	if r, _ := send(t, noRedirect(), http.MethodPost, ts.URL+"/c/"+portalTok+"/credits/buy?lang=tr", url.Values{"pack_id": {"pack-1"}}, nil); r.Header.Get("Location") != "/i/"+tokOpenSandbox+"?lang=tr&wait=1" {
 		t.Errorf("the language is lost: %v", r.Header)
 	}
 	// A bad quantity is passed on as it is for billing to refuse.
