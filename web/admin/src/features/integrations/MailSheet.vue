@@ -3,7 +3,7 @@ import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
-import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "@/features/mail/api";
+import { DEFAULT_ON, MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "@/features/mail/api";
 import { useApp, useMe } from "@/features/product/api";
 import { ACCOUNT_LABEL } from "@/features/providers/connections";
 import { tenantOf } from "@/shared/lib/environment";
@@ -48,8 +48,8 @@ const settings = useMailSettings(liveTenant);
 const setCategory = useSetMailCategory(liveTenant);
 const enabled = computed(() => {
   const state = new Map<string, boolean>();
-  for (const c of settings.data.value?.categories ?? []) if (c.category) state.set(c.category, c.enabled ?? true);
-  return (category: MailCategory) => state.get(category) ?? true;
+  for (const c of settings.data.value?.categories ?? []) if (c.category) state.set(c.category, c.enabled ?? DEFAULT_ON(c.category));
+  return (category: MailCategory) => state.get(category) ?? DEFAULT_ON(category);
 });
 
 // --- the own provider

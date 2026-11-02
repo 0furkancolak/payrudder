@@ -35,6 +35,8 @@ create subscription.renewal-notice.v1       6 90
 create subscription.renewal-notice.dlq.v1   1 30
 create contract.withdrawal-received.v1      6 90
 create contract.withdrawal-received.dlq.v1  1 30
+create customer.block-notice.v1             6 90
+create customer.block-notice.dlq.v1         1 30
 create plans.entitlements.v1                6 compact
 create billing.invoices.v1                  6 400
 create billing.invoices.dlq.v1              1 30

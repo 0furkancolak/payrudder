@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Mitteilung.</strong></p>{{end}}
+<h2>Ihr Konto ist nicht mehr eingeschränkt</h2>
+<p>Hallo {{index .D "customer_name"}}, {{index .D "tenant_name"}} hat die Einschränkung Ihres Kontos aufgehoben. Sie können wieder kaufen und Ihren Tarif ändern, und Ihr Zugang zum Dienst ist wieder da.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -1546,14 +1546,16 @@
         "payment_receipts": "Payment receipts",
         "payment_failed": "Payment failed",
         "usage_alerts": "Usage alerts",
-        "system": "System"
+        "system": "System",
+        "customer_notices": "Customer notices"
       },
       "descriptions": {
         "invoice_issued": "Tells the customer that a new invoice was finalized.",
         "payment_receipts": "The receipt after a successful payment.",
         "payment_failed": "A failed payment, a retry and the notice that Payrudder gave up collecting.",
         "usage_alerts": "A customer passed a usage limit of its plan.",
-        "system": "Every other message Payrudder sends."
+        "system": "Every other message Payrudder sends.",
+        "customer_notices": "Tells a customer that you blocked them, or lifted the block (never why). Off until you switch it on."
       },
       "providerNote": "A payment provider that sends its own receipts (Paddle) keeps sending them; this switch only controls Payrudder's mail.",
       "loadMore": "Show more",

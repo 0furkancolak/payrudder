@@ -455,14 +455,19 @@ func (q *Queries) GetDefaultMailIntegration(ctx context.Context) (TenantMailInte
 }
 
 const getMailDisabled = `-- name: GetMailDisabled :one
-SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id()
+SELECT disabled, customer_notices_on FROM tenant_mail_settings WHERE tenant_id = app_tenant_id()
 `
 
-func (q *Queries) GetMailDisabled(ctx context.Context) ([]string, error) {
+type GetMailDisabledRow struct {
+	Disabled          []string
+	CustomerNoticesOn bool
+}
+
+func (q *Queries) GetMailDisabled(ctx context.Context) (GetMailDisabledRow, error) {
 	row := q.db.QueryRow(ctx, getMailDisabled)
-	var disabled []string
-	err := row.Scan(&disabled)
-	return disabled, err
+	var i GetMailDisabledRow
+	err := row.Scan(&i.Disabled, &i.CustomerNoticesOn)
+	return i, err
 }
 
 const getMailIntegration = `-- name: GetMailIntegration :one
@@ -2955,12 +2960,17 @@ func (q *Queries) UpsertEntitlementOverride(ctx context.Context, arg UpsertEntit
 }
 
 const upsertMailDisabled = `-- name: UpsertMailDisabled :exec
-INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), $1::text[], now())
-ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at
+INSERT INTO tenant_mail_settings (tenant_id, disabled, customer_notices_on, updated_at) VALUES (app_tenant_id(), $1::text[], $2, now())
+ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, customer_notices_on = EXCLUDED.customer_notices_on, updated_at = EXCLUDED.updated_at
 `
 
-func (q *Queries) UpsertMailDisabled(ctx context.Context, disabled []string) error {
-	_, err := q.db.Exec(ctx, upsertMailDisabled, disabled)
+type UpsertMailDisabledParams struct {
+	Disabled          []string
+	CustomerNoticesOn bool
+}
+
+func (q *Queries) UpsertMailDisabled(ctx context.Context, arg UpsertMailDisabledParams) error {
+	_, err := q.db.Exec(ctx, upsertMailDisabled, arg.Disabled, arg.CustomerNoticesOn)
 	return err
 }
 

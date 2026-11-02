@@ -1,0 +1,7 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real notice.</strong></p>{{end}}
+<h2>Your account is no longer restricted</h2>
+<p>Hi {{index .D "customer_name"}}, {{index .D "tenant_name"}} has lifted the restriction on your account. You can make purchases and change your plan again, and your access to the service is back.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

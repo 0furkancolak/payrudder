@@ -1546,14 +1546,16 @@
         "payment_receipts": "إيصالات الدفع",
         "payment_failed": "فشل الدفع",
         "usage_alerts": "تنبيهات الاستخدام",
-        "system": "النظام"
+        "system": "النظام",
+        "customer_notices": "إشعارات العملاء"
       },
       "descriptions": {
         "invoice_issued": "يُعلم العميل بأن فاتورة جديدة قد اعتُمدت.",
         "payment_receipts": "الإيصال بعد دفعة ناجحة.",
         "payment_failed": "دفعة فاشلة ومحاولة جديدة وإشعار بأن Payrudder توقف عن التحصيل.",
         "usage_alerts": "تجاوز عميل حد الاستخدام في خطته.",
-        "system": "كل رسالة أخرى يرسلها Payrudder."
+        "system": "كل رسالة أخرى يرسلها Payrudder.",
+        "customer_notices": "يُعلم العميل بأنك حظرته أو رفعت الحظر عنه (دون ذكر السبب أبدًا). متوقف حتى تشغّله."
       },
       "providerNote": "مزوّد الدفع الذي يرسل إيصالاته بنفسه (Paddle) يواصل إرسالها؛ هذا المفتاح يتحكم في بريد Payrudder فقط.",
       "loadMore": "عرض المزيد",

@@ -1546,14 +1546,16 @@
         "payment_receipts": "Ödeme makbuzları",
         "payment_failed": "Ödeme başarısız",
         "usage_alerts": "Kullanım uyarıları",
-        "system": "Sistem"
+        "system": "Sistem",
+        "customer_notices": "Müşteri bildirimleri"
       },
       "descriptions": {
         "invoice_issued": "Müşteriye yeni bir faturanın kesildiğini bildirir.",
         "payment_receipts": "Başarılı bir ödemeden sonraki makbuz.",
         "payment_failed": "Başarısız ödeme, yeniden deneme ve Payrudder'ın tahsilattan vazgeçtiği bildirimi.",
         "usage_alerts": "Bir müşteri planının kullanım limitini aştı.",
-        "system": "Payrudder'ın gönderdiği diğer tüm iletiler."
+        "system": "Payrudder'ın gönderdiği diğer tüm iletiler.",
+        "customer_notices": "Bir müşteriye onu engellediğinizi ya da engeli kaldırdığınızı bildirir (nedenini asla). Siz açana kadar kapalıdır."
       },
       "providerNote": "Kendi makbuzunu gönderen bir ödeme sağlayıcısı (Paddle) göndermeye devam eder; bu anahtar yalnızca Payrudder'ın e-postalarını yönetir.",
       "loadMore": "Daha fazla göster",

@@ -3929,7 +3929,7 @@ func (x *RoutingRule) GetProvider() string {
 	return ""
 }
 
-// MailCategorySetting is one kind of mail and whether it is sent. Categories: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
+// MailCategorySetting is one kind of mail and whether it is sent. Categories: invoice_issued, payment_receipts, payment_failed, usage_alerts, system, customer_notices (the notice to a blocked or unblocked customer: off until switched on).
 type MailCategorySetting struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Category      string                 `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"`

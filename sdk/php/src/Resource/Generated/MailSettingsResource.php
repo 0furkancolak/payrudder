@@ -19,7 +19,7 @@ use Payrudder\RequestOptions;
 final class MailSettingsResource extends AbstractResource
 {
     /**
-     * Which kinds of e-mail Payrudder sends for the tenant (all on until switched off) (GET /v1/mail-settings).
+     * Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except customer_notices, which is off until switched on) (GET /v1/mail-settings).
      *
      * @param RequestOptions|null $options
      *

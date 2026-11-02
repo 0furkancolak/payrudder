@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir bildirim değildir.</strong></p>{{end}}
+<h2>Hesabınız kısıtlandı</h2>
+<p>Merhaba {{index .D "customer_name"}}, {{if index .D "until"}}{{index .D "tenant_name"}}, hesabınızı <strong>{{index .D "until"}}</strong> tarihine kadar kısıtladı.{{else}}{{index .D "tenant_name"}}, hesabınızı kısıtladı.{{end}} Bu süre boyunca yeni satın alma başlatamaz veya planınızı değiştiremezsiniz.</p>
+{{if index .D "service_suspended"}}<p>Hizmete erişiminiz de askıya alındı.</p>{{end}}
+<p>Mevcut abonelikleriniz ve faturalarınız bu bildirimle iptal edilmez. Bunun bir hata olduğunu düşünüyorsanız lütfen {{index .D "tenant_name"}} ile iletişime geçin.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -2290,13 +2290,15 @@ func (s *MailPreviewsService) PreviewPriceChangeMail(ctx context.Context, req *P
 // MailSettingsService is the mail settings namespace of the API.
 type MailSettingsService service
 
-// GetMailSettings: Which kinds of e-mail Payrudder sends for the tenant (all on until switched off) (GET
-// /v1/mail-settings).
+// GetMailSettings: Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except
+// customer_notices, which is off until switched on) (GET /v1/mail-settings).
 //
-// Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a
-// category that is off is dropped by the notifier (counted in `notifier_mail_dropped_total`), not retried.
-// Whether a provider sends its own receipts is a separate rule (Paddle does, so Payrudder sends none for its
-// payments).
+// Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`,
+// `customer_notices`. `customer_notices` is the notice to a customer that the seller blocked them or lifted the
+// block (never with the seller's reason); it is **off** until the tenant switches it on, the other categories
+// are on. A mail of a category that is off is dropped by the notifier (counted in
+// `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule
+// (Paddle does, so Payrudder sends none for its payments).
 func (s *MailSettingsService) GetMailSettings(ctx context.Context, opts ...RequestOption) (*MailSettings, error) {
 	var out MailSettings
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/mail-settings", query: nil, body: nil}, &out, opts); err != nil {

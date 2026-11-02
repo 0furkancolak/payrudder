@@ -282,7 +282,10 @@ func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest)
 		if until != nil {
 			data["blocked_until"] = until.UTC().Format(time.RFC3339)
 		}
-		return emit(ctx, q, webhooksmodel.CustomerBlocked, data, now)
+		if err := emit(ctx, q, webhooksmodel.CustomerBlocked, data, now); err != nil {
+			return err
+		}
+		return queueNotice(ctx, q, out.TenantID, out.ID, "blocked", req.GetSuspendService(), until, now)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -335,7 +338,10 @@ func liftBlock(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, cur sqlc.Custome
 		Summary: summary + out.ExternalID, Detail: map[string]any{"external_id": out.ExternalID}}); err != nil {
 		return out, err
 	}
-	return out, emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)
+	if err := emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now); err != nil {
+		return out, err
+	}
+	return out, queueNotice(ctx, q, out.TenantID, out.ID, "unblocked", false, nil, now)
 }
 
 // recordCustomer writes the entry of a change of the customer's own data: the names of the fields that changed, and the hashes of the state before and after.
