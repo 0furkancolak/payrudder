@@ -32,6 +32,8 @@ var subjects = map[string]string{
 	"contract_accepted.v1":            "Your agreement with {{.tenant_name}}",
 	"renewal_notice.v1":               "Your {{.plan_code}} subscription renews on {{.renewal_date}}",
 	"contract_withdrawal_received.v1": "We received your withdrawal",
+	"customer_blocked.v1":             "Your account with {{.tenant_name}} has been restricted",
+	"customer_unblocked.v1":           "Your account with {{.tenant_name}} is no longer restricted",
 }
 
 // localeSubjects are the subject lines in the other languages (en is `subjects`); a template or language that has none uses the English one.
@@ -47,6 +49,8 @@ var localeSubjects = map[string]map[string]string{
 		"contract_accepted.v1":            "{{.tenant_name}} ile sözleşmeniz",
 		"renewal_notice.v1":               "{{.plan_code}} aboneliğiniz {{.renewal_date}} tarihinde yenileniyor",
 		"contract_withdrawal_received.v1": "Cayma bildiriminizi aldık",
+		"customer_blocked.v1":             "{{.tenant_name}} hesabınız kısıtlandı",
+		"customer_unblocked.v1":           "{{.tenant_name}} hesabınızdaki kısıtlama kaldırıldı",
 	},
 	"de": {
 		"invoice_paid.v1":                 "Beleg für Rechnung {{.invoice_number}}",
@@ -59,6 +63,8 @@ var localeSubjects = map[string]map[string]string{
 		"contract_accepted.v1":            "Ihre Vereinbarung mit {{.tenant_name}}",
 		"renewal_notice.v1":               "Ihr Abonnement {{.plan_code}} verlängert sich am {{.renewal_date}}",
 		"contract_withdrawal_received.v1": "Wir haben Ihren Widerruf erhalten",
+		"customer_blocked.v1":             "Ihr Konto bei {{.tenant_name}} wurde eingeschränkt",
+		"customer_unblocked.v1":           "Ihr Konto bei {{.tenant_name}} ist nicht mehr eingeschränkt",
 	},
 	"fr": {
 		"invoice_paid.v1":                 "Reçu de la facture {{.invoice_number}}",
@@ -71,6 +77,8 @@ var localeSubjects = map[string]map[string]string{
 		"contract_accepted.v1":            "Votre accord avec {{.tenant_name}}",
 		"renewal_notice.v1":               "Votre abonnement {{.plan_code}} se renouvelle le {{.renewal_date}}",
 		"contract_withdrawal_received.v1": "Nous avons reçu votre rétractation",
+		"customer_blocked.v1":             "Votre compte chez {{.tenant_name}} a été restreint",
+		"customer_unblocked.v1":           "Votre compte chez {{.tenant_name}} n’est plus restreint",
 	},
 	"es": {
 		"invoice_paid.v1":                 "Recibo de la factura {{.invoice_number}}",
@@ -83,6 +91,8 @@ var localeSubjects = map[string]map[string]string{
 		"contract_accepted.v1":            "Su acuerdo con {{.tenant_name}}",
 		"renewal_notice.v1":               "Su suscripción {{.plan_code}} se renueva el {{.renewal_date}}",
 		"contract_withdrawal_received.v1": "Hemos recibido su desistimiento",
+		"customer_blocked.v1":             "Su cuenta en {{.tenant_name}} ha sido restringida",
+		"customer_unblocked.v1":           "Su cuenta en {{.tenant_name}} ya no está restringida",
 	},
 	"ar": {
 		"invoice_paid.v1":                 "إيصال الفاتورة {{.invoice_number}}",
@@ -95,6 +105,8 @@ var localeSubjects = map[string]map[string]string{
 		"contract_accepted.v1":            "اتفاقيتك مع {{.tenant_name}}",
 		"renewal_notice.v1":               "سيتجدد اشتراكك {{.plan_code}} في {{.renewal_date}}",
 		"contract_withdrawal_received.v1": "تلقينا طلب انسحابك",
+		"customer_blocked.v1":             "تم تقييد حسابك لدى {{.tenant_name}}",
+		"customer_unblocked.v1":           "لم يعد حسابك لدى {{.tenant_name}} مقيّدًا",
 	},
 }
 

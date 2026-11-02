@@ -34,7 +34,7 @@ func TestRenderAllTemplates(t *testing.T) {
 	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",
 		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80", "plan_code": "pro", "trial_end": "6 Nov 2026, 21:30 (UTC)", "trial_end_date": "6 Nov 2026", "effective_date": "6 Dec 2026", "new_renewal": "12.00 USD", "accepted_at": "2 Nov 2026, 10:00 UTC", "snapshot_html": "<h2>Terms</h2><p>Acme terms</p>", "snapshot_sha256": "abc123",
 		"renewal_date": "9 Nov 2026", "price": "30.00 TRY", "interval": "month", "cancel_text": "Cancel in your account.", "statement": "I withdraw.", "received_at": "2 Nov 2026, 10:00 UTC"}
-	if len(Names()) != 10 {
+	if len(Names()) != 12 {
 		t.Fatalf("templates = %v", Names())
 	}
 	for _, n := range Names() {

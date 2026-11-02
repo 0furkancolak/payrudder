@@ -1790,9 +1790,9 @@ paths:
   /v1/mail-settings:
     get:
       operationId: getMailSettings
-      summary: Which kinds of e-mail Payrudder sends for the tenant (all on until switched off)
+      summary: Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except customer_notices, which is off until switched on)
       description: |
-        Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
+        Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`, `customer_notices`. `customer_notices` is the notice to a customer that the seller blocked them or lifted the block (never with the seller's reason); it is **off** until the tenant switches it on, the other categories are on. A mail of a category that is off is dropped by the notifier
         (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Payrudder sends none for its payments).
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MailSettings" } } } }
@@ -11821,7 +11821,7 @@ components:
             type: object
             required: [category, enabled]
             properties:
-              category: { type: string, enum: [invoice_issued, payment_receipts, payment_failed, usage_alerts, system] }
+              category: { type: string, enum: [invoice_issued, payment_receipts, payment_failed, usage_alerts, system, customer_notices] }
               enabled: { type: boolean }
     MailSettingsInput:
       type: object
@@ -11831,7 +11831,7 @@ components:
           items:
             type: object
             properties:
-              category: { type: string, enum: [invoice_issued, payment_receipts, payment_failed, usage_alerts, system] }
+              category: { type: string, enum: [invoice_issued, payment_receipts, payment_failed, usage_alerts, system, customer_notices] }
               enabled: { type: boolean }
     RoutingRules:
       type: object

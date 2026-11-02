@@ -855,9 +855,10 @@ type TenantMailRouting struct {
 }
 
 type TenantMailSetting struct {
-	TenantID  uuid.UUID
-	Disabled  []string
-	UpdatedAt time.Time
+	TenantID          uuid.UUID
+	Disabled          []string
+	UpdatedAt         time.Time
+	CustomerNoticesOn bool
 }
 
 type TenantStatusEvent struct {

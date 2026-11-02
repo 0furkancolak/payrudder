@@ -408,11 +408,11 @@ DELETE FROM tax_rates WHERE tenant_id = app_tenant_id();
 INSERT INTO tax_rates (tenant_id, country, name, rate_bps) VALUES (app_tenant_id(), @country, @name, @rate_bps);
 
 -- name: GetMailDisabled :one
-SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id();
+SELECT disabled, customer_notices_on FROM tenant_mail_settings WHERE tenant_id = app_tenant_id();
 
 -- name: UpsertMailDisabled :exec
-INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), @disabled::text[], now())
-ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at;
+INSERT INTO tenant_mail_settings (tenant_id, disabled, customer_notices_on, updated_at) VALUES (app_tenant_id(), @disabled::text[], @customer_notices_on, now())
+ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, customer_notices_on = EXCLUDED.customer_notices_on, updated_at = EXCLUDED.updated_at;
 
 -- The tenant's own e-mail provider accounts (phase 53, plan 10). The key is sealed; plans-svc's own commands open it. An account is named by its key in `provider`
 -- ("nafru", "nafru~eu"); one is the default.

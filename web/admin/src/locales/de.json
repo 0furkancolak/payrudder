@@ -1546,14 +1546,16 @@
         "payment_receipts": "Zahlungsbelege",
         "payment_failed": "Zahlung fehlgeschlagen",
         "usage_alerts": "Nutzungswarnungen",
-        "system": "System"
+        "system": "System",
+        "customer_notices": "Kundenmitteilungen"
       },
       "descriptions": {
         "invoice_issued": "Teilt dem Kunden mit, dass eine neue Rechnung abgeschlossen wurde.",
         "payment_receipts": "Der Beleg nach einer erfolgreichen Zahlung.",
         "payment_failed": "Eine fehlgeschlagene Zahlung, ein neuer Versuch und die Mitteilung, dass Payrudder die Einziehung aufgegeben hat.",
         "usage_alerts": "Ein Kunde hat ein Nutzungslimit seines Tarifs überschritten.",
-        "system": "Alle übrigen Nachrichten von Payrudder."
+        "system": "Alle übrigen Nachrichten von Payrudder.",
+        "customer_notices": "Teilt einem Kunden mit, dass Sie ihn gesperrt oder die Sperre aufgehoben haben (nie den Grund). Aus, bis Sie es einschalten."
       },
       "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Payrudder.",
       "loadMore": "Mehr anzeigen",

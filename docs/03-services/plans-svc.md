@@ -94,6 +94,7 @@ The follow-ups (migrations public 00011, tenant 00009): `contract_settings` gain
 | `subscription.trial-will-end.v1` | The trial-ending reminder records a notice (below) | `{tenant_id}/{customer_id}` |
 | `subscription.renewal-notice.v1` | The renewal notice records a notice (contracts, above) | `{tenant_id}/{customer_id}` |
 | `contract.withdrawal-received.v1` | A customer withdrew on a hosted page (contracts, above) | `{tenant_id}/{customer_id}` |
+| `customer.block-notice.v1` | A customer was blocked, or a block was lifted or ran out (plan 13): in the transaction of the block or the lift, whether or not the app has the notices on | `{tenant_id}/{customer_id}` |
 
 Produced through plans-svc's own **outbox** in the same transaction as the subscription change.
 Tombstone (null value) when a subscription ends.

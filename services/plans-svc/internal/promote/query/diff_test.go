@@ -76,11 +76,11 @@ func TestTaxesCouponsMailAndWebhooks(t *testing.T) {
 	}
 
 	off := func(cats ...string) []*plansv1.MailCategorySetting {
-		out := []*plansv1.MailCategorySetting{{Category: "invoice_issued", Enabled: true}, {Category: "usage_alerts", Enabled: true}}
+		out := []*plansv1.MailCategorySetting{{Category: "invoice_issued", Enabled: true}, {Category: "usage_alerts", Enabled: true}, {Category: "customer_notices", Enabled: false}}
 		for _, c := range cats {
 			for _, s := range out {
 				if s.Category == c {
-					s.Enabled = false
+					s.Enabled = !s.Enabled // off becomes on for the category that is off by default
 				}
 			}
 		}
@@ -94,6 +94,9 @@ func TestTaxesCouponsMailAndWebhooks(t *testing.T) {
 		"same choice":                     {off("usage_alerts"), off("usage_alerts"), sme},
 		"live untouched takes the choice": {off("usage_alerts"), off(), mkc},
 		"live chose otherwise":            {off("usage_alerts"), off("invoice_issued"), cfl},
+		"the notices are off by default":  {off(), off(), sme},
+		"the sandbox switched them on":    {off("customer_notices"), off(), mkc},
+		"live switched them on too":       {off("customer_notices"), off("customer_notices"), sme},
 	} {
 		if got := Mail(tc.sandbox, tc.live)[0].Action; got != tc.want {
 			t.Errorf("mail, %s: %v, want %v", name, got, tc.want)

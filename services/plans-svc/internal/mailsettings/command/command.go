@@ -4,6 +4,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
@@ -43,7 +44,9 @@ func (c *Commands) Set(ctx context.Context, in []*plansv1.MailCategorySetting) (
 			return err
 		}
 		disabled = apply(current, in)
-		if err := q.UpsertMailDisabled(ctx, disabled); err != nil {
+		// The category that is off until it is switched on is a flag of its own in the row; the others are listed when they are off.
+		stored := slices.DeleteFunc(slices.Clone(disabled), func(c string) bool { return c == mailcategory.CustomerNotices })
+		if err := q.UpsertMailDisabled(ctx, sqlc.UpsertMailDisabledParams{Disabled: stored, CustomerNoticesOn: !slices.Contains(disabled, mailcategory.CustomerNotices)}); err != nil {
 			return err
 		}
 		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "mail_settings.changed", TargetType: "mail_settings", Before: current, After: disabled,

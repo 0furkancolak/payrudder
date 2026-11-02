@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/mailcategory"
 )
 
 // The families, in the order they are applied (a plan's prices need its meters first).
@@ -215,27 +216,27 @@ func couponTerms(c *plansv1.Coupon) string {
 		c.GetDurationPeriods(), c.GetMaxRedemptions(), c.GetBonusPercentBps(), expire, strings.Join(targets, ","))
 }
 
-// Mail compares the mail categories switched off. A live environment that never switched anything off takes the sandbox's choice; one that did and differs is a
-// conflict. The two are one object, "settings".
+// Mail compares the mail categories that differ from their default (switched off, except the notices to a blocked customer, which are off until switched on). A live
+// environment that never changed anything takes the sandbox's choice; one that did and differs is a conflict. The two are one object, "settings".
 func Mail(sandbox, live []*plansv1.MailCategorySetting) []Decision {
-	off := func(s []*plansv1.MailCategorySetting) []string {
+	changed := func(s []*plansv1.MailCategorySetting) []string {
 		var d []string
 		for _, c := range s {
-			if !c.GetEnabled() {
+			if c.GetEnabled() == slices.Contains(mailcategory.DefaultOff(), c.GetCategory()) {
 				d = append(d, c.GetCategory())
 			}
 		}
 		sort.Strings(d)
 		return d
 	}
-	sb, lv := off(sandbox), off(live)
+	sb, lv := changed(sandbox), changed(live)
 	switch {
 	case slices.Equal(sb, lv):
 		return []Decision{same("settings")}
 	case len(lv) == 0:
 		return []Decision{create("settings", sandbox)}
 	default:
-		return []Decision{conflict("settings", fmt.Sprintf("switched off in the sandbox: %v; in live: %v", sb, lv))}
+		return []Decision{conflict("settings", fmt.Sprintf("changed in the sandbox: %v; in live: %v", sb, lv))}
 	}
 }
 

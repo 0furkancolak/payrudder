@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es un aviso real.</strong></p>{{end}}
+<h2>Su cuenta ya no está restringida</h2>
+<p>Hola {{index .D "customer_name"}}, {{index .D "tenant_name"}} ha levantado la restricción de su cuenta. Puede volver a comprar y cambiar de plan, y su acceso al servicio se ha restablecido.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

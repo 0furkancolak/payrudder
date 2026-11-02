@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// CustomerBlockNotice says a customer was blocked, or that a block was lifted (by the seller, or by itself when it ran out), so that the customer can be told. plans-svc
+// writes it to its outbox in the transaction of the block or the lift and publishes it on customer.block-notice.v1 (key: {tenant_id}/{customer_id}); notifier turns it into
+// the customer's e-mail when the app has the mail category customer_notices on (it is off until the seller switches it on). It carries nothing of the seller's reasons: the
+// category and the note of a block are the seller's, never the customer's (docs/plans/13-customer-ban.md).
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message CustomerBlockNotice {
+  // uuidv5(tenant|customer|kind|occurred_at): one block or lift of one customer is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  // "blocked" or "unblocked", as the customer's block history writes them.
+  string kind = 4;
+  // For "blocked": the block also suspends the customer's service (entitlement checks deny).
+  bool service_suspended = 5;
+  // For "blocked": the end of the block, when it has one.
+  google.protobuf.Timestamp blocked_until = 6;
+  google.protobuf.Timestamp occurred_at = 7;
+}

@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذا ليس إشعارًا حقيقيًا.</strong></p>{{end}}
+<h2>تم تقييد حسابك</h2>
+<p>مرحبًا {{index .D "customer_name"}}، {{if index .D "until"}}قيّد {{index .D "tenant_name"}} حسابك حتى <strong>{{index .D "until"}}</strong>.{{else}}قيّد {{index .D "tenant_name"}} حسابك.{{end}} طوال هذه المدة لا يمكنك بدء مشتريات جديدة أو تغيير خطتك.</p>
+{{if index .D "service_suspended"}}<p>تم أيضًا تعليق وصولك إلى الخدمة.</p>{{end}}
+<p>لا يؤدي هذا الإشعار إلى إلغاء الاشتراكات والفواتير الموجودة لديك. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع {{index .D "tenant_name"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

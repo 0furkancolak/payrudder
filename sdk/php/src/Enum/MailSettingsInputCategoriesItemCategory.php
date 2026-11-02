@@ -13,4 +13,5 @@ enum MailSettingsInputCategoriesItemCategory: string
     case PaymentFailed = 'payment_failed';
     case UsageAlerts = 'usage_alerts';
     case System = 'system';
+    case CustomerNotices = 'customer_notices';
 }
