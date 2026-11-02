@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -115,5 +117,20 @@ func TestMailWebhookSecretSetting(t *testing.T) {
 		if load(kv...) == nil {
 			t.Errorf("%s was accepted", name)
 		}
+	}
+}
+
+// An operator who never set the mail provider's delivery webhook gets 404 on its route and no other sign: the gateway says at start that it is off, and says nothing when it is on.
+func TestMailWebhookLogsWhenOff(t *testing.T) {
+	logged := func(secret string) string {
+		var buf bytes.Buffer
+		logMailWebhook(slog.New(slog.NewTextHandler(&buf, nil)), &Config{MailWebhookSecret: secret})
+		return buf.String()
+	}
+	if out := logged(""); !strings.Contains(out, "/inbound/mail-events") || !strings.Contains(out, "PAYRUDDER_MAIL_WEBHOOK_SECRET") {
+		t.Errorf("an unset webhook secret logged %q", out)
+	}
+	if out := logged("whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="); out != "" {
+		t.Errorf("a set webhook secret logged %q", out)
 	}
 }

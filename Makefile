@@ -261,12 +261,12 @@ helm-uninstall: $(BIN)/helm ## Remove both releases
 
 .PHONY: helm-lint
 helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file (a KEDA ScaledObject and a PrometheusRule have no schema in kubeconform: tests/helm checks them)
-	@# values-small.yaml is a production profile: the pepper is a value of the secrets file it is paired with, so the lint is given one (tests/helm checks that the chart refuses to render without it).
+	@# values-small.yaml is a production profile: the pepper and the public URL are values of the secrets file it is paired with, so the lint is given them (tests/helm checks that the chart refuses to render without them).
 	@set -e; for c in payrudder payrudder-infra; do \
 	  for v in deploy/helm/$$c/values*.yaml; do \
 	    echo "== $$c $$v"; \
-	    $(BIN)/helm lint deploy/helm/$$c -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789; \
-	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject,PrometheusRule -; \
+	    $(BIN)/helm lint deploy/helm/$$c -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 --set global.publicURL=https://api.example.com; \
+	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v --set auth.otpPepper=lint-only-pepper-0123456789abcdef0123456789 --set global.publicURL=https://api.example.com | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject,PrometheusRule -; \
 	  done; \
 	done
 

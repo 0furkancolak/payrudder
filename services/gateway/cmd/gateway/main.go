@@ -288,6 +288,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 			return nil, fmt.Errorf("PAYRUDDER_PAYMENTS_URL: %w", err)
 		}
 	}
+	logMailWebhook(log, cfg)
 	var mail httpapi.MailAdmin
 	if cfg.NotifierURL != "" {
 		c, err := mailadmin.New(cfg.NotifierURL, cfg.NotifierSecret, nil)
@@ -336,6 +337,14 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
 		TrustedProxies: proxies, TrustedProxySecret: cfg.TrustedProxySecret,
 	}), nil
+}
+
+// logMailWebhook says at start when the mail provider's delivery webhook is off: its route answers 404 then, and nothing else shows that bounces and complaints never reach the
+// suppression list.
+func logMailWebhook(log *slog.Logger, cfg *Config) {
+	if cfg.MailWebhookSecret == "" {
+		log.Info("the mail provider's delivery webhook (/inbound/mail-events) is off, so bounces and complaints do not reach the suppression list: set PAYRUDDER_MAIL_WEBHOOK_SECRET (and PAYRUDDER_NOTIFIER_EVENTS_URL) to switch it on")
+	}
 }
 
 // addReadinessChecks registers what readiness depends on.

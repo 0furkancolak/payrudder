@@ -420,3 +420,43 @@ func TestErrorTrackingURLIsSetOnEveryGoServiceWhenGiven(t *testing.T) {
 		}
 	}
 }
+
+// The provider's webhook of delivery events answers 404 until the gateway has PAYRUDDER_MAIL_WEBHOOK_SECRET, a secret the operator gets from the provider (it cannot be generated),
+// so the bootstrap passes MAIL_WEBHOOK_SECRET on to the gateway, and to nobody else, and sets nothing when it is empty. The README's gateway table lists it.
+func TestMailWebhookSecretIsSetOnTheGatewayWhenGiven(t *testing.T) {
+	repo := root(t)
+	const secret = "whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
+	run := func(value string) map[string]string {
+		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run")
+		cmd.Env = append(os.Environ(), "MAIL_WEBHOOK_SECRET="+value)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("dry run: %v\n%s", err, out)
+		}
+		per := map[string]string{}
+		for _, line := range strings.Split(string(out), "\n") {
+			if _, rest, ok := strings.Cut(line, "railway variable set --service "); ok {
+				svc, _, _ := strings.Cut(rest, " ")
+				per[svc] += " " + rest + "\n"
+			}
+		}
+		return per
+	}
+	without, with := run(""), run(secret)
+	for svc, vars := range without {
+		if strings.Contains(vars, "PAYRUDDER_MAIL_WEBHOOK_SECRET") {
+			t.Errorf("%s gets a mail webhook secret that nobody gave", svc)
+		}
+	}
+	for svc, vars := range with {
+		if has := strings.Contains(vars, " PAYRUDDER_MAIL_WEBHOOK_SECRET="+secret); has != (svc == "gateway") {
+			t.Errorf("%s: PAYRUDDER_MAIL_WEBHOOK_SECRET set = %v, want %v", svc, has, svc == "gateway")
+		}
+	}
+	if !strings.Contains(with["gateway"], "PAYRUDDER_NOTIFIER_EVENTS_URL=") {
+		t.Errorf("the gateway gets the webhook secret without the notifier's address, and refuses to start:\n%s", with["gateway"])
+	}
+	if !strings.Contains(section(read(t, repo, "deploy", "railway", "README.md"), "gateway"), "| `PAYRUDDER_MAIL_WEBHOOK_SECRET` |") {
+		t.Error("README.md's gateway table lacks PAYRUDDER_MAIL_WEBHOOK_SECRET")
+	}
+}
