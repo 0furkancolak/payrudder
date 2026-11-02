@@ -647,7 +647,7 @@ WHERE ($1::uuid IS NULL OR t.account_id IN (SELECT m.account_id FROM account_mem
   AND ($4::text = '' OR t.assignee = $4::text)
   AND ($5::text = '' OR $5::text = ANY(t.tags))
   AND ($6::text = '' OR t.subject ILIKE '%' || $6::text || '%' OR t.number::text = ltrim($6::text, '#')
-       -- The words of the messages (migration 00027): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
+       -- The words of the messages (migration 00029): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
        OR EXISTS (SELECT 1 FROM support_messages sm WHERE sm.ticket_id = t.id AND ($7::boolean OR NOT sm.internal) AND sm.tsv @@ websearch_to_tsquery('simple', $8::text)))
   AND (NOT $9::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
@@ -877,7 +877,7 @@ type RateSupportTicketParams struct {
 	ID      uuid.UUID
 }
 
-// --- ratings, merges and links (plan 12, migration 00027)
+// --- ratings, merges and links (plan 12, migration 00029)
 func (q *Queries) RateSupportTicket(ctx context.Context, arg RateSupportTicketParams) error {
 	_, err := q.db.Exec(ctx, rateSupportTicket, arg.Rating, arg.Comment, arg.ID)
 	return err

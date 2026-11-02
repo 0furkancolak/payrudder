@@ -36,7 +36,7 @@ WHERE (sqlc.narg('user_id')::uuid IS NULL OR t.account_id IN (SELECT m.account_i
   AND (@assignee::text = '' OR t.assignee = @assignee::text)
   AND (@tag::text = '' OR @tag::text = ANY(t.tags))
   AND (@search::text = '' OR t.subject ILIKE '%' || @search::text || '%' OR t.number::text = ltrim(@search::text, '#')
-       -- The words of the messages (migration 00027): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
+       -- The words of the messages (migration 00029): the person's list reads the public ones only, the operator's the notes too. @query is the text as typed.
        OR EXISTS (SELECT 1 FROM support_messages sm WHERE sm.ticket_id = t.id AND (@with_internal::boolean OR NOT sm.internal) AND sm.tsv @@ websearch_to_tsquery('simple', @query::text)))
   AND (NOT @sla_breached::boolean OR (t.first_responded_at IS NULL AND t.status = 'open' AND t.first_response_due < now()) OR t.first_responded_at > t.first_response_due)
 ORDER BY t.last_message_at DESC, t.id
@@ -247,7 +247,7 @@ JOIN support_tickets t ON t.id = a.ticket_id
 JOIN tenants tn ON tn.id = a.storage_tenant_id
 WHERE a.id = @id AND a.ticket_id = @ticket_id;
 
--- --- ratings, merges and links (plan 12, migration 00027)
+-- --- ratings, merges and links (plan 12, migration 00029)
 
 -- name: RateSupportTicket :exec
 UPDATE support_tickets SET rating = @rating::smallint, rating_comment = @comment, rated_at = now(), updated_at = now() WHERE id = @id;
