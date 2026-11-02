@@ -143,7 +143,10 @@ paths:
         a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
         yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
         stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
-        (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
+        (the end of a block by itself sends none). Usage ingestion is not affected, and entitlements are unless you set `suspend_service`: then every entitlement
+        check of this customer answers `allowed: false` and `suspended: true` (the limits and the counted usage are untouched, and the events you send are still
+        accepted and counted) until you lift the block or it ends by itself. The service is suspended only when the block is new: a block already in force is kept
+        as it is, so lift it first to change it.
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       requestBody:
         content: { application/json: { schema: { $ref: "#/components/schemas/BlockCustomerRequest" } } }
@@ -5447,19 +5450,21 @@ components:
         reason: { type: string, maxLength: 500, description: "Your note on why; never shown to the customer." }
         category: { $ref: "#/components/schemas/CustomerBlockCategory" }
         blocked_until: { type: string, format: date-time, description: "When the block ends by itself; must be in the future. Absent: until you lift it." }
+        suspend_service: { type: boolean, description: "Also suspend the customer's service: every entitlement check answers allowed false (suspended true) until the block is lifted or ends. Usage is still accepted and counted. Default false." }
     CustomerBlockCategory:
       type: string
       enum: [fraud, chargeback, abuse, request, other]
       description: "Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open."
     CustomerBlockEvent:
       type: object
-      required: [id, action, category, reason, actor, create_time]
+      required: [id, action, category, reason, suspend_service, actor, create_time]
       properties:
         id: { type: string, format: uuid }
         action: { type: string, enum: [blocked, unblocked] }
         category: { type: string, description: "Empty when none was given; else a CustomerBlockCategory" }
         reason: { type: string }
         blocked_until: { type: string, format: date-time, nullable: true }
+        suspend_service: { type: boolean, description: "On a block: whether it also suspended the customer's service" }
         actor: { type: string, description: "A person's address, key:<api key id>, or operator" }
         create_time: { type: string, format: date-time }
     ListCustomerBlockEventsResponse:
@@ -5819,7 +5824,7 @@ components:
         transfer: { $ref: "#/components/schemas/InvoiceTransfer" }
     EntitlementStatus:
       type: object
-      required: [customer_external_id, meter_code, period_id, used, limit, unlimited, allowed, as_of, window, window_id, resets_at, mode, over_limit, overridden]
+      required: [customer_external_id, meter_code, period_id, used, limit, unlimited, allowed, as_of, window, window_id, resets_at, mode, over_limit, overridden, suspended]
       properties:
         customer_external_id: { type: string }
         meter_code: { type: string }
@@ -5827,7 +5832,7 @@ components:
         used: { type: string, description: Exact decimal with the meter's scale, examples: ["10.500"] }
         limit: { type: [string, "null"], description: Exact decimal; null when unlimited, examples: ["10.500"] }
         unlimited: { type: boolean }
-        allowed: { type: boolean, description: "unlimited, used < limit, or a soft or notify limit" }
+        allowed: { type: boolean, description: "(unlimited, used < limit, or a soft or notify limit) and not suspended" }
         as_of: { type: [string, "null"], format: date-time }
         window: { type: string, enum: [hour, day, week, month, year, lifetime], description: What the limit counts over; month for a meter without a limit }
         window_id: { type: string, description: "The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05, 2026-W45, 2026 for a year or all for the lifetime", examples: ["2026-11-05"] }
@@ -5835,6 +5840,7 @@ components:
         mode: { type: string, enum: [hard, soft, notify] }
         over_limit: { type: boolean, description: "not unlimited and used >= limit, whatever the mode" }
         overridden: { type: boolean, description: "The limit is the customer's own override, not its package's" }
+        suspended: { type: boolean, description: "You suspended this customer's service (a block with suspend_service): allowed is false on every meter, with or without a limit. Usage is still accepted and counted." }
     IngestEventsRequest:
       type: object
       required: [events]
@@ -8597,6 +8603,7 @@ components:
         category: { type: string, description: "Empty when none was given; else a CustomerBlockCategory" }
         reason: { type: string, description: "Your own note" }
         blocked_until: { type: string, format: date-time, description: "Absent: until lifted" }
+        suspend_service: { type: boolean, description: "The block also suspended the customer's service. Absent on an event queued before this field existed: read it as false." }
     CustomerBlockedEvent:
       type: object
       description: "The body of a delivery of type customer.blocked"
@@ -9107,7 +9114,7 @@ components:
         districts: { type: array, items: { $ref: "#/components/schemas/GeoDistrict" } }
     Customer:
       type: object
-      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, block_reason, block_category, phone, tax_id_warning]
+      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, block_reason, block_category, service_suspended, phone, tax_id_warning]
       properties:
         id: { type: string, format: uuid }
         external_id: { type: string }
@@ -9127,6 +9134,7 @@ components:
         block_reason: { type: string, description: "The seller's own note on the block; never shown to the customer." }
         block_category: { type: string, description: "Why: fraud, chargeback, abuse, request or other; empty when none was given." }
         blocked_until: { type: string, format: date-time, nullable: true, description: "When the block ends by itself; absent: until it is lifted." }
+        service_suspended: { type: boolean, description: "The block also suspends the customer's service: every entitlement check answers allowed false. Read it with block_time and blocked_until, it holds only while the block does." }
         phone: { type: string, description: "The customer's mobile number as E.164 (+905321234567); empty when none." }
         tax_id_validated_at: { type: string, format: date-time, nullable: true, description: "When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised." }
         tax_id_warning: { type: string, description: "One of tr_individual, tr_business, tr_any, tr_is_tckn, tr_is_vkn, eu_vat, or empty. A hint, never a refusal: the id does not look like the kind of number this customer should have (tr_individual: not a TCKN; tr_business: not a VKN; tr_any: neither; tr_is_tckn: a business was given a TCKN; tr_is_vkn: an individual was given a VKN; eu_vat: a business in the EU has no VAT id of its country's shape). Worked out from the stored id, country and customer_type, so it follows a change of any of them. Empty: nothing to say." }

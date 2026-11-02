@@ -48,18 +48,18 @@ RETURNING *;
 SELECT * FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1 FOR UPDATE;
 
 -- name: BlockCustomer :one
-UPDATE customers SET blocked_at = @blocked_at, block_reason = @reason, block_category = @category, blocked_until = sqlc.narg(blocked_until)
+UPDATE customers SET blocked_at = @blocked_at, block_reason = @reason, block_category = @category, blocked_until = sqlc.narg(blocked_until), block_suspend_service = @suspend_service
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
 -- name: UnblockCustomer :one
-UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', blocked_until = NULL
+UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', blocked_until = NULL, block_suspend_service = false
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
 -- name: InsertCustomerBlockEvent :exec
-INSERT INTO customer_block_events (tenant_id, id, customer_id, action, category, reason, blocked_until, actor, created_at)
-VALUES (app_tenant_id(), @id, @customer_id, @action, @category, @reason, sqlc.narg(blocked_until), @actor, @created_at);
+INSERT INTO customer_block_events (tenant_id, id, customer_id, action, category, reason, blocked_until, suspend_service, actor, created_at)
+VALUES (app_tenant_id(), @id, @customer_id, @action, @category, @reason, sqlc.narg(blocked_until), @suspend_service, @actor, @created_at);
 
 -- name: ListCustomerBlockEvents :many
 SELECT * FROM customer_block_events WHERE tenant_id = app_tenant_id() AND customer_id = @customer_id

@@ -985,9 +985,12 @@ type BlockCustomerRequest struct {
 	// When the block ends by itself; it must be in the future. Unset: until it is lifted.
 	BlockedUntil *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=blocked_until,json=blockedUntil,proto3" json:"blocked_until,omitempty"`
 	// Who blocks; set by the gateway (the person's address, or the key), never by a client.
-	Actor         string `protobuf:"bytes,5,opt,name=actor,proto3" json:"actor,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Actor string `protobuf:"bytes,5,opt,name=actor,proto3" json:"actor,omitempty"`
+	// Also suspend the customer's service: limits-svc answers "not allowed" for every meter until the block is lifted or ends (usage is still ingested). Needs the
+	// customer not to be blocked already (a block in force is kept as it is).
+	SuspendService bool `protobuf:"varint,6,opt,name=suspend_service,json=suspendService,proto3" json:"suspend_service,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *BlockCustomerRequest) Reset() {
@@ -1053,6 +1056,13 @@ func (x *BlockCustomerRequest) GetActor() string {
 		return x.Actor
 	}
 	return ""
+}
+
+func (x *BlockCustomerRequest) GetSuspendService() bool {
+	if x != nil {
+		return x.SuspendService
+	}
+	return false
 }
 
 type BlockCustomerResponse struct {
@@ -1294,10 +1304,12 @@ type CustomerBlockEvent struct {
 	Reason       string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	BlockedUntil *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=blocked_until,json=blockedUntil,proto3" json:"blocked_until,omitempty"`
 	// Who did it: a person's address, "key:<id>" for an API key, or "operator".
-	Actor         string                 `protobuf:"bytes,6,opt,name=actor,proto3" json:"actor,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Actor      string                 `protobuf:"bytes,6,opt,name=actor,proto3" json:"actor,omitempty"`
+	CreateTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// On a block: whether it also suspended the customer's service.
+	SuspendService bool `protobuf:"varint,8,opt,name=suspend_service,json=suspendService,proto3" json:"suspend_service,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CustomerBlockEvent) Reset() {
@@ -1377,6 +1389,13 @@ func (x *CustomerBlockEvent) GetCreateTime() *timestamppb.Timestamp {
 		return x.CreateTime
 	}
 	return nil
+}
+
+func (x *CustomerBlockEvent) GetSuspendService() bool {
+	if x != nil {
+		return x.SuspendService
+	}
+	return false
 }
 
 type SetCustomerTaxRequest struct {
@@ -8834,14 +8853,15 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x05phone\x18\x06 \x01(\tH\x00R\x05phone\x88\x01\x01B\b\n" +
 	"\x06_phone\"V\n" +
 	"\x1aSetCustomerContactResponse\x128\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xc2\x01\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xeb\x01\n" +
 	"\x14BlockCustomerRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
 	"\bcategory\x18\x03 \x01(\tR\bcategory\x12?\n" +
 	"\rblocked_until\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedUntil\x12\x14\n" +
-	"\x05actor\x18\x05 \x01(\tR\x05actor\"Q\n" +
+	"\x05actor\x18\x05 \x01(\tR\x05actor\x12'\n" +
+	"\x0fsuspend_service\x18\x06 \x01(\bR\x0esuspendService\"Q\n" +
 	"\x15BlockCustomerResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"O\n" +
 	"\x16UnblockCustomerRequest\x12\x1f\n" +
@@ -8854,7 +8874,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\"a\n" +
 	"\x1fListCustomerBlockEventsResponse\x12>\n" +
-	"\x06events\x18\x01 \x03(\v2&.payrudder.plans.v1.CustomerBlockEventR\x06events\"\x84\x02\n" +
+	"\x06events\x18\x01 \x03(\v2&.payrudder.plans.v1.CustomerBlockEventR\x06events\"\xad\x02\n" +
 	"\x12CustomerBlockEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1a\n" +
@@ -8863,7 +8883,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\rblocked_until\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedUntil\x12\x14\n" +
 	"\x05actor\x18\x06 \x01(\tR\x05actor\x12;\n" +
 	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\xa0\x01\n" +
+	"createTime\x12'\n" +
+	"\x0fsuspend_service\x18\b \x01(\bR\x0esuspendService\"\xa0\x01\n" +
 	"\x15SetCustomerTaxRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x15\n" +

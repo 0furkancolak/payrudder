@@ -348,39 +348,41 @@ type CouponRedemption struct {
 }
 
 type Customer struct {
-	TenantID           uuid.UUID
-	ID                 uuid.UUID
-	ExternalID         string
-	Name               string
-	Email              string
-	PaymentMethod      *string
-	CreatedAt          time.Time
-	Country            *string
-	BillingCurrency    *string
-	Address            json.RawMessage
-	TaxID              string
-	TaxOffice          string
-	EInvoiceRegistered bool
-	Locale             string
-	CustomerType       string
-	BlockedAt          *time.Time
-	BlockReason        string
-	BlockCategory      string
-	BlockedUntil       *time.Time
-	Phone              string
-	TaxIDValidatedAt   *time.Time
+	TenantID            uuid.UUID
+	ID                  uuid.UUID
+	ExternalID          string
+	Name                string
+	Email               string
+	PaymentMethod       *string
+	CreatedAt           time.Time
+	Country             *string
+	BillingCurrency     *string
+	Address             json.RawMessage
+	TaxID               string
+	TaxOffice           string
+	EInvoiceRegistered  bool
+	Locale              string
+	CustomerType        string
+	BlockedAt           *time.Time
+	BlockReason         string
+	BlockCategory       string
+	BlockedUntil        *time.Time
+	Phone               string
+	TaxIDValidatedAt    *time.Time
+	BlockSuspendService bool
 }
 
 type CustomerBlockEvent struct {
-	TenantID     uuid.UUID
-	ID           uuid.UUID
-	CustomerID   uuid.UUID
-	Action       string
-	Category     string
-	Reason       string
-	BlockedUntil *time.Time
-	Actor        string
-	CreatedAt    time.Time
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	CustomerID     uuid.UUID
+	Action         string
+	Category       string
+	Reason         string
+	BlockedUntil   *time.Time
+	Actor          string
+	CreatedAt      time.Time
+	SuspendService bool
 }
 
 type CustomerCoupon struct {

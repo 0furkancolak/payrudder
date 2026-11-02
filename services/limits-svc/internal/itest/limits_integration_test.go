@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -33,6 +35,7 @@ func TestLimits(t *testing.T) {
 		"RedisFlushRebuildsAndReconciles":  testRedisFlush,
 		"LateEventNotCounted":              testLateEvent,
 		"EntitlementChangeVisible":         testEntitlementVisible,
+		"SuspensionComesFromTheTopic":      testSuspensionFromTopic,
 		"FractionalLimitFiresAtExactUnits": testFractionalLimit,
 		"MaxMeterAndFilterAndCount":        testMeterSemantics,
 		"CounterOverflowGuard":             testOverflow,
@@ -377,6 +380,46 @@ func testEntitlementVisible(t *testing.T) {
 	other := tenant.NewContext(context.Background(), tenant.Info{ID: uuid.New()})
 	if r, err := svc.CheckEntitlement(other, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: "api"}); err != nil || r.GetStatus().GetUsedUnits() != 0 {
 		t.Fatalf("other tenant sees %v, %v", r, err)
+	}
+}
+
+// The customer's suspension arrives the way plans-svc publishes it (a record on the key of an empty meter), reaches every meter of the customer, leaves the counting
+// alone, and ends with a tombstone on that key.
+func testSuspensionFromTopic(t *testing.T) {
+	e := newEnv(t)
+	tn, cust := uuid.New(), uuid.New()
+	p := e.startPod(podOpts{})
+	svc := grpcapi.New(shared.rdb, p.ents, e.meters, nil)
+	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tn, Timezone: "Europe/Istanbul"})
+	check := func(meter string) *limitsv1.LimitStatus {
+		r, err := svc.CheckEntitlement(ctx, &limitsv1.CheckEntitlementRequest{CustomerId: cust.String(), MeterCode: meter})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.GetStatus()
+	}
+	e.setEntitlement(tn, cust, "api", 100, 0, 100)
+	testkit.Eventually(t, 30*time.Second, "entitlement visible", func() bool { return check("api").GetLimitUnits() == 100 })
+	if st := check("api"); !st.GetAllowed() || st.GetSuspended() {
+		t.Fatalf("before: %v", st)
+	}
+
+	susp := &eventsv1.EntitlementState{TenantId: tn.String(), CustomerId: cust.String(), Suspended: true, ValidFrom: timestamppb.New(time.Now().Add(-time.Hour))}
+	key := fmt.Sprintf("%s/%s/", tn, cust)
+	e.produceEntitlement(key, mustMarshal(t, susp))
+	testkit.Eventually(t, 30*time.Second, "suspension visible", func() bool { return check("api").GetSuspended() })
+	for _, meter := range []string{"api", "calls"} {
+		if st := check(meter); st.GetAllowed() || !st.GetSuspended() {
+			t.Fatalf("suspended, %s: %v", meter, st)
+		}
+	}
+	e.produce(e.event(tn, cust, "api", 2, 0, nil))
+	testkit.Eventually(t, 20*time.Second, "usage still counted", func() bool { return check("api").GetUsedUnits() == 2 })
+
+	e.produceEntitlement(key, nil) // tombstone
+	testkit.Eventually(t, 30*time.Second, "suspension lifted", func() bool { return !check("api").GetSuspended() })
+	if st := check("api"); !st.GetAllowed() || st.GetLimitUnits() != 100 || st.GetUsedUnits() != 2 {
+		t.Fatalf("after: %v", st)
 	}
 }
 
