@@ -1174,6 +1174,12 @@ export interface CustomerBlockEvent {
   create_time: string;
 }
 
+export interface CustomerCards {
+  /** The provider that holds the cards; empty when the customer has none */
+  provider: string;
+  cards: Array<StoredCard>;
+}
+
 export interface CustomerContact {
   name: string;
   email: string;
@@ -1204,6 +1210,13 @@ export interface CustomerTax {
   tax_office?: string;
   /** The customer is registered for e-fatura */
   e_invoice_registered?: boolean;
+}
+
+export interface DeletedCustomerCard {
+  provider: string;
+  deleted: boolean;
+  /** The deleted card was the one the customer's payment method names: set a new payment method */
+  was_in_use: boolean;
 }
 
 export interface DunningSettings {
@@ -2917,6 +2930,25 @@ export interface SignedUrl {
   url: string;
   /** RFC 3339, UTC */
   expires_at: string;
+}
+
+export interface StoredCard {
+  /** The provider's card token (cardToken): what the delete names */
+  token: string;
+  alias: string;
+  /** The first digits of the number (the BIN) */
+  bin: string;
+  last4: string;
+  /** CREDIT_CARD, DEBIT_CARD or PREPAID_CARD */
+  type: string;
+  /** VISA, MASTER_CARD, ... */
+  association: string;
+  family: string;
+  bank: string;
+  expire_month: string;
+  expire_year: string;
+  /** The customer's payment method names this card */
+  in_use: boolean;
 }
 
 export interface Subscription {

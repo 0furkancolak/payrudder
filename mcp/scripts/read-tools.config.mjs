@@ -49,6 +49,7 @@ export const NOT_OFFERED = {
   getInboxItemFile: "the bytes of a received mail attachment",
   getContractSnapshot: "the page a customer accepted, with the address and browser they used",
   listContractAcceptances: "a customer's address and browser (personal data) for every acceptance",
+  listCustomerCards: "a customer's stored cards: the bank, the last four digits and the provider's card token, which is what deletes the card",
   listWebhookEndpoints: "an endpoint's address can carry a token in its path or query, and the model has no use for it",
   listWebhookDeliveries: "the answer body the customer's own server gave, which anyone can write",
   listAuditEvents: "staff e-mail addresses and network addresses, and free text of the detail",

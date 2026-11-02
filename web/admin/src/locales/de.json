@@ -736,7 +736,20 @@
         "note": "Eine Schätzung zum {when}, berechnet wie die echte Rechnung. Sie ändert sich mit jedem Ereignis bis zum Abschluss des Zeitraums; ein später geänderter Tarif, Gutschein oder Steuersatz kann sie ebenfalls ändern.",
         "creditSurplus": "{amount} würde dem Guthaben des Kunden gutgeschrieben: die Positionen ergeben weniger als null."
       },
-      "taxNotSaved": "Der Kunde wurde angelegt, aber seine Steuerdaten wurden nicht gespeichert. Schließen Sie dieses Fenster, öffnen Sie den Kunden und versuchen Sie es mit Bearbeiten, Steuerdaten erneut."
+      "taxNotSaved": "Der Kunde wurde angelegt, aber seine Steuerdaten wurden nicht gespeichert. Schließen Sie dieses Fenster, öffnen Sie den Kunden und versuchen Sie es mit Bearbeiten, Steuerdaten erneut.",
+      "cards": {
+        "title": "Gespeicherte Karten",
+        "card": "Karte",
+        "none": "Der Zahlungsanbieter hat keine Karte für diesen Kunden.",
+        "inUse": "Für Rechnungen belastet",
+        "delete": "Karte löschen",
+        "deleteAria": "Die Karte mit den Endziffern {last4} löschen",
+        "deleteTitle": "Karte mit den Endziffern {last4} löschen?",
+        "deleteBody": "Die Karte wird beim Zahlungsanbieter gelöscht und kann nicht mehr belastet werden. Das lässt sich nicht rückgängig machen: der Kunde müsste sie dort, wo Karten gespeichert werden, neu eingeben.",
+        "deleteInUse": "Das ist die Karte, mit der die Rechnungen des Kunden belastet werden. Nach dem Löschen schlägt die nächste Abbuchung fehl, bis für den Kunden eine neue Zahlungsmethode gesetzt ist. Die Karte wird beim Zahlungsanbieter gelöscht, das lässt sich nicht rückgängig machen.",
+        "deletedInUse": "Die Karte wurde gelöscht. Es war die Karte, mit der die Rechnungen des Kunden belastet werden: Setzen Sie eine neue Zahlungsmethode für den Kunden.",
+        "hint": "Payrudder speichert keine Kartennummern: eine Karte wird dort gespeichert, wo der Zahler sie eingibt, und die Zahlungsmethode des Kunden benennt sie. Hier sehen Sie die Karten und können eine löschen."
+      }
     },
     "packages": {
       "new": "Neues Paket",
@@ -3299,7 +3312,8 @@
         "not_live": "Nur Live-Rechnungen werden über einen Anbieter bezahlt.",
         "payment_in_progress": "Für diese Rechnung wird gerade eine Zahlung gestartet. Versuchen Sie es gleich erneut.",
         "return_url_required": "Für eine Checkout-Zahlung ist eine Rücksprungadresse erforderlich.",
-        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt."
+        "unknown_method": "Diese Zahlungsmethode ist nicht bekannt.",
+        "installment_unavailable": "Diese Ratenzahl wird für diese Karte und diesen Betrag nicht angeboten. Zahlen Sie einmal oder wählen Sie eine der Optionen auf der Seite."
       },
       "ledger": {
         "bad_limit": "Das Limit muss zwischen 1 und 1000 liegen.",
@@ -3367,6 +3381,9 @@
       "failover": {
         "bad_target": "Ein Failover braucht zwei verschiedene Konten, die es in der Umgebung gibt; eine Banküberweisung kann nicht daran teilnehmen.",
         "not_found": "Für dieses Konto ist kein Failover eingerichtet."
+      },
+      "card": {
+        "not_found": "Der Kunde hat keine solche gespeicherte Karte."
       }
     },
     "einvoice": {
@@ -4376,7 +4393,8 @@
           "buyer_country": "Land des Käufers",
           "buyer_zip_code": "Postleitzahl des Käufers",
           "buyer_ip": "Öffentliche IP-Adresse Ihres Unternehmens",
-          "buyer_gsm_number": "Telefonnummer des Käufers"
+          "buyer_gsm_number": "Telefonnummer des Käufers",
+          "enabled_installments": "Raten, die der Zahler wählen darf"
         },
         "problems": {
           "required": "Pflichtfeld.",
@@ -4564,7 +4582,8 @@
           "api_key": "Im iyzico-Händlerpanel unter Einstellungen, Firmeneinstellungen, API-Schlüssel. Verwenden Sie das Live-Paar.",
           "secret_key": "Steht am selben Ort neben dem API-Schlüssel. Er wird dort nur einmal angezeigt; kopieren Sie ihn jetzt.",
           "buyer_identity_number": "Die Steuernummer (TCKN oder VKN) der Person oder Firma, die bei Zahlungen als Käufer erscheint. Ihr Rechnungsprofil füllt sie aus.",
-          "buyer_ip": "Die feste öffentliche IP-Adresse, von der Ihr Unternehmen Anfragen sendet; iyzico bindet die Schlüssel daran."
+          "buyer_ip": "Die feste öffentliche IP-Adresse, von der Ihr Unternehmen Anfragen sendet; iyzico bindet die Schlüssel daran.",
+          "enabled_installments": "Zahlen aus 1, 2, 3, 6, 9 und 12, durch Kommas getrennt, zum Beispiel 1, 3, 6. Sie werden im Zahlungsformular von iyzico und, für eine gespeicherte Karte, auf der Rechnungsseite angeboten; die Zinsen sind die in Ihrem iyzico-Panel eingestellten, der Zahler kann also mehr als die Rechnung zahlen und die Rechnung gilt trotzdem als voll bezahlt. Leer lassen für Einmalzahlungen. Beim Austausch der Schlüssel erneut eintragen."
         },
         "paddle": {
           "api_key": "In Paddle unter Developer tools, Authentication einen Live-API-Schlüssel erstellen.",

@@ -381,6 +381,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.account.sync_failed`
 - `payments.billing.failed`
 - `payments.billing.not_configured`
+- `payments.card.not_found`
 - `payments.charge.currency_not_supported`
 - `payments.charge.pending`
 - `payments.charge.provider_not_configured`
@@ -396,6 +397,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.invoice.bad_id`
 - `payments.invoice.bad_ids`
 - `payments.invoice.buyer_incomplete`
+- `payments.invoice.installment_unavailable`
 - `payments.invoice.no_instructions`
 - `payments.invoice.not_live`
 - `payments.invoice.payment_in_progress`
