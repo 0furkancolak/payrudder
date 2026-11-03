@@ -807,6 +807,23 @@
         "bannerSuspended": "Service suspendu : les vérifications de droits répondent « non autorisé ».",
         "suspended": "Service suspendu"
       },
+      "appeal": {
+        "title": "Contestation du client",
+        "untrusted": "Écrit par le client : texte non fiable, affiché en texte brut uniquement.",
+        "sent": "Envoyée le {date}",
+        "status": {
+          "open": "En attente de votre réponse",
+          "accepted": "Acceptée",
+          "rejected": "Rejetée",
+          "closed": "Close (blocage levé)"
+        },
+        "answer": "Votre réponse",
+        "answerHint": "Obligatoire pour rejeter. Le client la lit sur sa page de portail. 1000 caractères au maximum.",
+        "accept": "Accepter et lever le blocage",
+        "reject": "Rejeter",
+        "confirmAccept": "Accepter cette contestation et lever le blocage de {name} ?",
+        "decidedBy": "décidée par {actor}"
+      },
       "upcoming": {
         "title": "Prochaine facture",
         "estimate": "Estimation",
@@ -3327,6 +3344,11 @@
         "not_held": "On ne peut faire appel que pour une app que l'opérateur a suspendue, gelée ou bannie.",
         "exists": "Un recours est déjà ouvert. L'opérateur y répondra.",
         "not_open": "Ce recours a déjà été tranché."
+      },
+      "customer_appeal": {
+        "exists": "Une contestation de ce client est déjà ouverte.",
+        "not_blocked": "Ce client n’est pas bloqué, il n’y a rien à contester.",
+        "not_open": "Cette contestation a déjà été tranchée."
       }
     },
     "common": {

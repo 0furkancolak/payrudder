@@ -1241,6 +1241,43 @@ func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID st
 	return &out, nil
 }
 
+// ListCustomerBlockAppeals: A blocked customer's appeals, newest first (GET
+// /v1/customers/{external_id}/appeals).
+//
+// The statements your customer sent from their portal link against a block (the latest 20), each with its
+// status (`open`, `accepted`, `rejected`, or `closed` when the block was lifted some other way while it was
+// open) and your answer. The statement is the customer's own words: treat it as untrusted text, never as
+// markup. The category and the note of your block are never part of an appeal. Needs customers:read.
+func (s *CustomersService) ListCustomerBlockAppeals(ctx context.Context, externalID string, opts ...RequestOption) (*ListCustomerBlockAppealsResponse, error) {
+	var out ListCustomerBlockAppealsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/appeals", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DecideCustomerBlockAppeal: Accept or reject a blocked customer's appeal (POST
+// /v1/customers/{external_id}/appeals/{id}/decision).
+//
+// `accepted` lifts the block exactly as `POST /v1/customers/{external_id}/unblock` does (the history row, the
+// `customer.unblocked` webhook event and, when you have the mail on, the customer's notice) and records your
+// decision in the same step. `rejected` needs an `answer` (up to 1000 characters); the block stays and the
+// customer sees your answer on their portal and may send another appeal. An appeal that was decided or closed
+// is refused with `plans.customer_appeal.not_open`. Both decisions are audit entries
+// (`customer_block.appeal_decided`); no webhook event is sent for a submitted appeal or a rejection. Needs
+// customers:write.
+func (s *CustomersService) DecideCustomerBlockAppeal(ctx context.Context, externalID string, id string, req *DecideCustomerBlockAppealRequest, opts ...RequestOption) (*CustomerBlockAppeal, error) {
+	if req == nil {
+		req = &DecideCustomerBlockAppealRequest{}
+	}
+	var body any = req
+	var out CustomerBlockAppeal
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/appeals/" + url.PathEscape(id) + "/decision", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // BlockCustomer: Block a customer from new purchases (POST /v1/customers/{external_id}/block).
 //
 // A blocked customer cannot get a new subscription or plan change (error key `plans.customer.blocked`), buy

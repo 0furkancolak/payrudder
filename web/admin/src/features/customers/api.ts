@@ -173,6 +173,32 @@ export function useCustomerBlockEvents(tenantId: MaybeRefOrGetter<string>, exter
   });
 }
 
+export type CustomerBlockAppeal = components["schemas"]["CustomerBlockAppeal"];
+
+/** The appeals a blocked customer sent from their portal link, newest first. The statement is the customer's own words: untrusted. */
+export function useCustomerBlockAppeals(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "appeals", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/appeals", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== ""),
+  });
+}
+
+/** Accepts (the block is lifted) or rejects (an answer is needed) an open appeal, then reads the customers and their appeals again. */
+export function useDecideCustomerBlockAppeal(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { externalId: string; id: string; decision: "accepted" | "rejected"; answer?: string }) =>
+      unwrap(
+        tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/appeals/{id}/decision", {
+          params: { path: { external_id: v.externalId, id: v.id } },
+          body: { decision: v.decision, ...(v.answer ? { answer: v.answer } : {}) },
+        }),
+      ),
+    onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
+  });
+}
+
 export type StoredCard = components["schemas"]["StoredCard"];
 
 /** The cards the payment provider holds for a customer (their payment method names whose): bank, last four digits, expiry; never a number. Asked only when the customer has a payment method. */

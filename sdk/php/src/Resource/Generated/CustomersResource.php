@@ -28,9 +28,11 @@ use Payrudder\Model\CreditLedgerEntry;
 use Payrudder\Model\CreditLedgerPage;
 use Payrudder\Model\CreditResult;
 use Payrudder\Model\Customer;
+use Payrudder\Model\CustomerBlockAppeal;
 use Payrudder\Model\CustomerCards;
 use Payrudder\Model\CustomerContact;
 use Payrudder\Model\CustomerTax;
+use Payrudder\Model\DecideCustomerBlockAppealRequest;
 use Payrudder\Model\DeletedCustomerCard;
 use Payrudder\Model\EntitlementOverride;
 use Payrudder\Model\EntitlementStatus;
@@ -40,6 +42,7 @@ use Payrudder\Model\GetCustomerUsageResponse;
 use Payrudder\Model\GrantCustomerCouponRequest;
 use Payrudder\Model\GrantCustomerCouponResponse;
 use Payrudder\Model\ListContractAcceptancesResponse;
+use Payrudder\Model\ListCustomerBlockAppealsResponse;
 use Payrudder\Model\ListCustomerBlockEventsResponse;
 use Payrudder\Model\ListCustomerPaymentsResponse;
 use Payrudder\Model\ListCustomersResponse;
@@ -255,6 +258,34 @@ final class CustomersResource extends AbstractResource
     public function listCustomerBlockEvents(string $externalId, ?RequestOptions $options = null): ListCustomerBlockEventsResponse
     {
         return ListCustomerBlockEventsResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/block-events', [], null, $options));
+    }
+
+    /**
+     * A blocked customer's appeals, newest first (GET /v1/customers/{external_id}/appeals).
+     *
+     * @param string $externalId
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function listCustomerBlockAppeals(string $externalId, ?RequestOptions $options = null): ListCustomerBlockAppealsResponse
+    {
+        return ListCustomerBlockAppealsResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/appeals', [], null, $options));
+    }
+
+    /**
+     * Accept or reject a blocked customer's appeal (POST /v1/customers/{external_id}/appeals/{id}/decision).
+     *
+     * @param string $externalId
+     * @param string $id
+     * @param DecideCustomerBlockAppealRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function decideCustomerBlockAppeal(string $externalId, string $id, DecideCustomerBlockAppealRequest|array $body, ?RequestOptions $options = null): CustomerBlockAppeal
+    {
+        return CustomerBlockAppeal::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/appeals/' . rawurlencode($id) . '/decision', [], Cast::body($body), $options));
     }
 
     /**

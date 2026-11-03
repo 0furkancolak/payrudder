@@ -46,6 +46,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("LabelledAccounts", testLabelledAccounts)
 	t.Run("CustomerBlock", testCustomerBlock)
 	t.Run("CustomerBlockDetails", testCustomerBlockDetails)
+	t.Run("CustomerBlockAppeals", testCustomerBlockAppeals)
 	t.Run("CustomerBlockSweep", testCustomerBlockSweep)
 	t.Run("Blocklist", testBlocklist)
 	t.Run("TenantStatus", testTenantStatus)
@@ -201,6 +202,11 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		// A line of a customer's block history without blocking the fixture's customer, which later steps use.
 		if _, err = tx.Exec(context.Background(), `INSERT INTO customer_block_events (tenant_id, id, customer_id, action, actor)
 			SELECT app_tenant_id(), gen_random_uuid(), id, 'blocked', 'seed' FROM customers LIMIT 1`); err != nil {
+			return err
+		}
+		// A closed appeal of the same customer (not an open one, which later steps could trip over).
+		if _, err = tx.Exec(context.Background(), `INSERT INTO customer_block_appeals (tenant_id, id, customer_id, status, statement, decided_by, decided_at)
+			SELECT app_tenant_id(), gen_random_uuid(), id, 'closed', 'seed', 'system', now() FROM customers LIMIT 1`); err != nil {
 			return err
 		}
 		// The renewal notice of a contract is written by the job over all tenants (contracts_followups_integration_test.go), which would also queue a mail.

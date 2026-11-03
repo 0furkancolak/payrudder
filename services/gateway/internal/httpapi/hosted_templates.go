@@ -122,6 +122,19 @@ const portalAgreeTmpl = `{{define "portalAgree"}}<form method="post" action="{{.
 <label class="check"><input type="checkbox" name="consent_waiver" value="1" required><span>{{.L.consent_waiver}}</span></label>{{end}}
 <button class="btn" type="submit">{{.L.agreements_accept}}</button></form>{{end}}`
 
+// The appeal of a blocked customer: the form, or the note that one is waiting for the seller, and the seller's answer to the last one when it was a rejection. Seller and
+// customer text is printed through html/template like everything else.
+const appealTmpl = `{{define "appeal"}}{{template "head" .}}
+<h1>{{.L.appeal_title}}</h1>
+{{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+{{if .Answer}}<p class="lbl">{{.L.appeal_answer}}</p><p>{{.Answer}}</p>{{end}}
+{{if .Open}}<p>{{.L.appeal_open}}</p><a class="btn alt" href="{{.Back}}">{{.L.appeal_back}}</a>
+{{else}}<p>{{.L.appeal_intro}}</p>
+<form method="post" action="{{.Action}}" class="wd">
+<label class="lbl" for="a-text">{{.L.appeal_statement}}</label><textarea class="fld" id="a-text" name="statement" maxlength="2000" rows="6" required>{{.Statement}}</textarea>
+<button class="btn" type="submit">{{.L.appeal_send}}</button><a class="btn alt" href="{{.Back}}">{{.L.appeal_back}}</a></form>{{end}}
+{{template "foot" .}}{{end}}`
+
 // The withdrawal function (Directive 2011/83/EU art. 11a): the statement, then the page that shows what will be sent with the confirmation button.
 const withdrawTmpl = `{{define "withdraw"}}{{template "head" .}}
 <h1>{{if .Review}}{{.L.withdraw_review}}{{else}}{{.L.withdraw_title}}{{end}}</h1>
@@ -210,6 +223,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a>{{if .PdfHref}} · <a href="{{.PdfHref}}">{{$.L.agreements_pdf}}</a>{{end}}</td></tr>
 {{end}}</tbody></table></div>{{end}}
 {{if .Withdraw}}<div class="noprint"><a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a></div>{{end}}
+{{if .Appeal}}<div class="noprint"><a class="btn alt" href="{{.Appeal}}">{{.L.appeal_link}}</a></div>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>
 <div class="stat"><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> <span class="muted">{{.L.cr_unit}}</span></div>
 {{if .Lots}}<div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
@@ -223,7 +237,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 
 // parsePageTemplates parses the templates; the tests parse a second set to run it with stricter options than the one the handlers use.
 func parsePageTemplates() *template.Template {
-	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + installmentsTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + leavingTmpl + privacyTmpl))
+	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + installmentsTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + appealTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + leavingTmpl + privacyTmpl))
 }
 
 var pageTemplates = parsePageTemplates()

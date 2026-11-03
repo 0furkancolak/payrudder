@@ -92,6 +92,24 @@ func (s *Server) listCustomerBlockEvents(w http.ResponseWriter, r *http.Request)
 	respond(w, r, http.StatusOK, resp, err)
 }
 
+// listCustomerBlockAppeals is GET /v1/customers/{external_id}/appeals: the customer's appeals against a block, newest first. The statement is the customer's own words.
+func (s *Server) listCustomerBlockAppeals(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ListCustomerBlockAppeals(r.Context(), &plansv1.ListCustomerBlockAppealsRequest{ExternalId: r.PathValue("external_id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// decideCustomerBlockAppeal is POST /v1/customers/{external_id}/appeals/{id}/decision: accepted lifts the block, rejected needs an answer. Who decides is the gateway's word.
+func (s *Server) decideCustomerBlockAppeal(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.DecideCustomerBlockAppealRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.ExternalId, req.AppealId, req.Actor = r.PathValue("external_id"), r.PathValue("id"), s.tenantActorOf(r)
+	resp, err := s.d.Plans.DecideCustomerBlockAppeal(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetAppeal(), err)
+}
+
 // tenantActorOf is who a change on the tenant API is recorded for: a signed-in person is their verified address, an API key is "key:<id>", and the machine token is
 // its X-Payrudder-Actor header or "operator". A client cannot name another person: the actor in a body is overwritten.
 func (s *Server) tenantActorOf(r *http.Request) string {

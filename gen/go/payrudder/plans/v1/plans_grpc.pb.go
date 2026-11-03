@@ -29,6 +29,9 @@ const (
 	PlansService_BlockCustomer_FullMethodName                    = "/payrudder.plans.v1.PlansService/BlockCustomer"
 	PlansService_UnblockCustomer_FullMethodName                  = "/payrudder.plans.v1.PlansService/UnblockCustomer"
 	PlansService_ListCustomerBlockEvents_FullMethodName          = "/payrudder.plans.v1.PlansService/ListCustomerBlockEvents"
+	PlansService_SubmitCustomerBlockAppeal_FullMethodName        = "/payrudder.plans.v1.PlansService/SubmitCustomerBlockAppeal"
+	PlansService_ListCustomerBlockAppeals_FullMethodName         = "/payrudder.plans.v1.PlansService/ListCustomerBlockAppeals"
+	PlansService_DecideCustomerBlockAppeal_FullMethodName        = "/payrudder.plans.v1.PlansService/DecideCustomerBlockAppeal"
 	PlansService_ListBlocklist_FullMethodName                    = "/payrudder.plans.v1.PlansService/ListBlocklist"
 	PlansService_AddBlocklistEntry_FullMethodName                = "/payrudder.plans.v1.PlansService/AddBlocklistEntry"
 	PlansService_RemoveBlocklistEntry_FullMethodName             = "/payrudder.plans.v1.PlansService/RemoveBlocklistEntry"
@@ -117,6 +120,14 @@ type PlansServiceClient interface {
 	UnblockCustomer(ctx context.Context, in *UnblockCustomerRequest, opts ...grpc.CallOption) (*UnblockCustomerResponse, error)
 	// ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
 	ListCustomerBlockEvents(ctx context.Context, in *ListCustomerBlockEventsRequest, opts ...grpc.CallOption) (*ListCustomerBlockEventsResponse, error)
+	// SubmitCustomerBlockAppeal records the statement of a blocked customer (up to 2000 characters), sent from the portal link the seller gave them. One open appeal per
+	// customer (plans.customer_appeal.exists); a customer whose block is not in force has nothing to appeal (plans.customer_appeal.not_blocked). The gateway calls it for
+	// the customer the portal token names; the statement is the customer's words and is untrusted wherever it is shown.
+	SubmitCustomerBlockAppeal(ctx context.Context, in *SubmitCustomerBlockAppealRequest, opts ...grpc.CallOption) (*SubmitCustomerBlockAppealResponse, error)
+	// ListCustomerBlockAppeals returns the customer's appeals, newest first (the latest 20). It never carries the category or the note of the block.
+	ListCustomerBlockAppeals(ctx context.Context, in *ListCustomerBlockAppealsRequest, opts ...grpc.CallOption) (*ListCustomerBlockAppealsResponse, error)
+	// DecideCustomerBlockAppeal accepts (lifts the block as UnblockCustomer does, with its webhook and notice) or rejects (needs an answer) an open appeal.
+	DecideCustomerBlockAppeal(ctx context.Context, in *DecideCustomerBlockAppealRequest, opts ...grpc.CallOption) (*DecideCustomerBlockAppealResponse, error)
 	// ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
 	// customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
 	ListBlocklist(ctx context.Context, in *ListBlocklistRequest, opts ...grpc.CallOption) (*ListBlocklistResponse, error)
@@ -335,6 +346,36 @@ func (c *plansServiceClient) ListCustomerBlockEvents(ctx context.Context, in *Li
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCustomerBlockEventsResponse)
 	err := c.cc.Invoke(ctx, PlansService_ListCustomerBlockEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SubmitCustomerBlockAppeal(ctx context.Context, in *SubmitCustomerBlockAppealRequest, opts ...grpc.CallOption) (*SubmitCustomerBlockAppealResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitCustomerBlockAppealResponse)
+	err := c.cc.Invoke(ctx, PlansService_SubmitCustomerBlockAppeal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListCustomerBlockAppeals(ctx context.Context, in *ListCustomerBlockAppealsRequest, opts ...grpc.CallOption) (*ListCustomerBlockAppealsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCustomerBlockAppealsResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListCustomerBlockAppeals_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) DecideCustomerBlockAppeal(ctx context.Context, in *DecideCustomerBlockAppealRequest, opts ...grpc.CallOption) (*DecideCustomerBlockAppealResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DecideCustomerBlockAppealResponse)
+	err := c.cc.Invoke(ctx, PlansService_DecideCustomerBlockAppeal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -994,6 +1035,14 @@ type PlansServiceServer interface {
 	UnblockCustomer(context.Context, *UnblockCustomerRequest) (*UnblockCustomerResponse, error)
 	// ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
 	ListCustomerBlockEvents(context.Context, *ListCustomerBlockEventsRequest) (*ListCustomerBlockEventsResponse, error)
+	// SubmitCustomerBlockAppeal records the statement of a blocked customer (up to 2000 characters), sent from the portal link the seller gave them. One open appeal per
+	// customer (plans.customer_appeal.exists); a customer whose block is not in force has nothing to appeal (plans.customer_appeal.not_blocked). The gateway calls it for
+	// the customer the portal token names; the statement is the customer's words and is untrusted wherever it is shown.
+	SubmitCustomerBlockAppeal(context.Context, *SubmitCustomerBlockAppealRequest) (*SubmitCustomerBlockAppealResponse, error)
+	// ListCustomerBlockAppeals returns the customer's appeals, newest first (the latest 20). It never carries the category or the note of the block.
+	ListCustomerBlockAppeals(context.Context, *ListCustomerBlockAppealsRequest) (*ListCustomerBlockAppealsResponse, error)
+	// DecideCustomerBlockAppeal accepts (lifts the block as UnblockCustomer does, with its webhook and notice) or rejects (needs an answer) an open appeal.
+	DecideCustomerBlockAppeal(context.Context, *DecideCustomerBlockAppealRequest) (*DecideCustomerBlockAppealResponse, error)
 	// ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
 	// customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
 	ListBlocklist(context.Context, *ListBlocklistRequest) (*ListBlocklistResponse, error)
@@ -1147,6 +1196,15 @@ func (UnimplementedPlansServiceServer) UnblockCustomer(context.Context, *Unblock
 }
 func (UnimplementedPlansServiceServer) ListCustomerBlockEvents(context.Context, *ListCustomerBlockEventsRequest) (*ListCustomerBlockEventsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCustomerBlockEvents not implemented")
+}
+func (UnimplementedPlansServiceServer) SubmitCustomerBlockAppeal(context.Context, *SubmitCustomerBlockAppealRequest) (*SubmitCustomerBlockAppealResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitCustomerBlockAppeal not implemented")
+}
+func (UnimplementedPlansServiceServer) ListCustomerBlockAppeals(context.Context, *ListCustomerBlockAppealsRequest) (*ListCustomerBlockAppealsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCustomerBlockAppeals not implemented")
+}
+func (UnimplementedPlansServiceServer) DecideCustomerBlockAppeal(context.Context, *DecideCustomerBlockAppealRequest) (*DecideCustomerBlockAppealResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DecideCustomerBlockAppeal not implemented")
 }
 func (UnimplementedPlansServiceServer) ListBlocklist(context.Context, *ListBlocklistRequest) (*ListBlocklistResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListBlocklist not implemented")
@@ -1531,6 +1589,60 @@ func _PlansService_ListCustomerBlockEvents_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).ListCustomerBlockEvents(ctx, req.(*ListCustomerBlockEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SubmitCustomerBlockAppeal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitCustomerBlockAppealRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SubmitCustomerBlockAppeal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SubmitCustomerBlockAppeal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SubmitCustomerBlockAppeal(ctx, req.(*SubmitCustomerBlockAppealRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListCustomerBlockAppeals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCustomerBlockAppealsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListCustomerBlockAppeals(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListCustomerBlockAppeals_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListCustomerBlockAppeals(ctx, req.(*ListCustomerBlockAppealsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_DecideCustomerBlockAppeal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecideCustomerBlockAppealRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).DecideCustomerBlockAppeal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_DecideCustomerBlockAppeal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).DecideCustomerBlockAppeal(ctx, req.(*DecideCustomerBlockAppealRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2690,6 +2802,18 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCustomerBlockEvents",
 			Handler:    _PlansService_ListCustomerBlockEvents_Handler,
+		},
+		{
+			MethodName: "SubmitCustomerBlockAppeal",
+			Handler:    _PlansService_SubmitCustomerBlockAppeal_Handler,
+		},
+		{
+			MethodName: "ListCustomerBlockAppeals",
+			Handler:    _PlansService_ListCustomerBlockAppeals_Handler,
+		},
+		{
+			MethodName: "DecideCustomerBlockAppeal",
+			Handler:    _PlansService_DecideCustomerBlockAppeal_Handler,
 		},
 		{
 			MethodName: "ListBlocklist",

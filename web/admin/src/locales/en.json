@@ -807,6 +807,23 @@
         "bannerSuspended": "Service suspended: entitlement checks answer “not allowed”.",
         "suspended": "Service suspended"
       },
+      "appeal": {
+        "title": "Appeal from the customer",
+        "untrusted": "Written by the customer: untrusted text, shown as plain text only.",
+        "sent": "Sent {date}",
+        "status": {
+          "open": "Waiting for you",
+          "accepted": "Accepted",
+          "rejected": "Rejected",
+          "closed": "Closed (block lifted)"
+        },
+        "answer": "Your answer",
+        "answerHint": "Required to reject. The customer reads it on their portal page. Up to 1000 characters.",
+        "accept": "Accept and lift the block",
+        "reject": "Reject",
+        "confirmAccept": "Accept this appeal and lift the block on {name}?",
+        "decidedBy": "decided by {actor}"
+      },
       "upcoming": {
         "title": "Upcoming invoice",
         "estimate": "Estimate",
@@ -3326,6 +3343,11 @@
       "appeal": {
         "not_held": "Only an app the operator has suspended, frozen or banned can be appealed.",
         "exists": "An appeal is open already. The operator will answer it.",
+        "not_open": "This appeal was decided already."
+      },
+      "customer_appeal": {
+        "exists": "An appeal of this customer is open already.",
+        "not_blocked": "This customer is not blocked, so there is nothing to appeal.",
         "not_open": "This appeal was decided already."
       }
     },

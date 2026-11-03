@@ -63,7 +63,7 @@ func renderCases(lang string) []renderCase {
 		Payments:   []portalPaymentRow{{Date: f.Date(day), Kind: b.L["kind_charge"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: "15.00", Currency: "USD"}, {Date: f.Date(day), Kind: b.L["kind_refund"], Number: "INV-2", Status: b.L["pay_succeeded"], Provider: "paddle", Amount: f.Minus + "5.00", Currency: "USD", Negative: true}},
 		Lots:       []portalLotRow{{Granted: "10,000", Remaining: "2,500", Expires: f.Date(day)}, {Granted: "10,000", Remaining: "10,000"}},
 		Packs:      []portalPackRow{{ID: "p1", Name: "Starter", Credits: "10,000", Price: "5.00", Currency: "USD", Valid: b.L["cr_forever"]}},
-		Agreements: []portalAgreementRow{{Label: b.L["kind_tos"], Number: "2", Date: f.Date(day), Href: "/c/token/agreements/acc-1"}}, Ask: contracts, AgreeAction: "/c/token/agreements", Withdraw: "/c/token/withdraw"}
+		Agreements: []portalAgreementRow{{Label: b.L["kind_tos"], Number: "2", Date: f.Date(day), Href: "/c/token/agreements/acc-1"}}, Ask: contracts, AgreeAction: "/c/token/agreements", Withdraw: "/c/token/withdraw", Appeal: "/c/token/appeal"}
 	paidInvoice := invoice(nil)
 	paidInvoice.Payable, paidInvoice.State, paidInvoice.Withdraw = false, "paid", "/i/token/withdraw"
 	choices := []withdrawChoice{{ID: "i1", Label: b.L["withdraw_invoice"] + " INV-1 · " + f.Date(day) + " · 50.00 USD"}, {ID: "i2", Label: b.L["withdraw_invoice"] + " INV-2"}}
@@ -87,6 +87,8 @@ func renderCases(lang string) []renderCase {
 		{"leaving", "leaving", &leavingView{pageBase: plain, To: "https://shop.example.com/welcome?ref=ANN", Host: "shop.example.com"}}, {"privacy", "privacy", &privacyView{pageBase: plain}},
 		{"portal", "portal", portal}, {"invoice-paid-withdraw", "invoice", paidInvoice},
 		{"withdraw", "withdraw", withdraw(false, choices)}, {"withdraw-one-contract", "withdraw", withdraw(false, choices[:1])}, {"withdraw-review", "withdraw", withdraw(true, nil)},
+		{"appeal", "appeal", &appealView{pageBase: b, Action: "/c/token/appeal", Back: "/c/token", Statement: "It was <b>a mistake</b>\nsecond line", Error: b.L["appeal_invalid"], Answer: "We checked: no <script>"}},
+		{"appeal-open", "appeal", &appealView{pageBase: b, Action: "/c/token/appeal", Back: "/c/token", Open: true}},
 		{"portal-empty", "portal", &portalView{pageBase: b, Seller: "Acme", Customer: "Ada"}},
 	}
 }

@@ -64,9 +64,11 @@ import type {
   CreditSettings,
   CreditSettingsInputParams,
   Customer,
+  CustomerBlockAppeal,
   CustomerCards,
   CustomerContact,
   CustomerTax,
+  DecideCustomerBlockAppealRequest,
   DeletedCustomerCard,
   Dispute,
   DisputeEvent,
@@ -151,6 +153,7 @@ import type {
   ListCreditNotesQuery,
   ListCreditNotesResponse,
   ListCreditPacksQuery,
+  ListCustomerBlockAppealsResponse,
   ListCustomerBlockEventsResponse,
   ListCustomerPaymentsQuery,
   ListCustomerPaymentsResponse,
@@ -1098,6 +1101,28 @@ export class CustomersResource {
    */
   listCustomerBlockEvents(externalId: string, options?: RequestOptions): Promise<ListCustomerBlockEventsResponse> {
     return this.t.request<ListCustomerBlockEventsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/block-events`, response: "json" }, options);
+  }
+
+  /**
+   * A blocked customer's appeals, newest first
+   *
+   * The statements your customer sent from their portal link against a block (the latest 20), each with its status (`open`, `accepted`, `rejected`, or `closed` when the block was lifted some other way while it was open) and your answer. The statement is the customer's own words: treat it as untrusted text, never as markup. The category and the note of your block are never part of an appeal. Needs customers:read.
+   *
+   * `GET /v1/customers/{external_id}/appeals`
+   */
+  listCustomerBlockAppeals(externalId: string, options?: RequestOptions): Promise<ListCustomerBlockAppealsResponse> {
+    return this.t.request<ListCustomerBlockAppealsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/appeals`, response: "json" }, options);
+  }
+
+  /**
+   * Accept or reject a blocked customer's appeal
+   *
+   * `accepted` lifts the block exactly as `POST /v1/customers/{external_id}/unblock` does (the history row, the `customer.unblocked` webhook event and, when you have the mail on, the customer's notice) and records your decision in the same step. `rejected` needs an `answer` (up to 1000 characters); the block stays and the customer sees your answer on their portal and may send another appeal. An appeal that was decided or closed is refused with `plans.customer_appeal.not_open`. Both decisions are audit entries (`customer_block.appeal_decided`); no webhook event is sent for a submitted appeal or a rejection. Needs customers:write.
+   *
+   * `POST /v1/customers/{external_id}/appeals/{id}/decision`
+   */
+  decideCustomerBlockAppeal(externalId: string, id: string, body: DecideCustomerBlockAppealRequest, options?: RequestOptions): Promise<CustomerBlockAppeal> {
+    return this.t.request<CustomerBlockAppeal>({ method: "POST", path: `/v1/customers/${seg(externalId)}/appeals/${seg(id)}/decision`, body, bodyKind: "json", response: "json" }, options);
   }
 
   /**

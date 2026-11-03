@@ -1248,6 +1248,22 @@ type Customer struct {
 	TaxIDWarning string `json:"tax_id_warning"`
 }
 
+// CustomerBlockAppeal is an object of the API; see components.schemas.CustomerBlockAppeal in
+// api/openapi/v1.yaml.
+type CustomerBlockAppeal struct {
+	ID string `json:"id"`
+	// One of: open, accepted, rejected, closed.
+	Status string `json:"status"`
+	// The customer's own words. Untrusted: show as text only
+	Statement string `json:"statement"`
+	// Your answer; empty until decided, and for an accepted appeal that had none
+	Answer string `json:"answer"`
+	// A person's address, key:<api key id>, or system for a closed appeal
+	DecidedBy  string     `json:"decided_by"`
+	CreateTime time.Time  `json:"create_time"`
+	DecideTime *time.Time `json:"decide_time,omitempty"`
+}
+
 // CustomerBlockEvent is an object of the API; see components.schemas.CustomerBlockEvent in api/openapi/v1.yaml.
 type CustomerBlockEvent struct {
 	ID string `json:"id"`
@@ -1309,6 +1325,14 @@ type CustomerTax struct {
 	TaxOffice string `json:"tax_office,omitempty"`
 	// The customer is registered for e-fatura
 	EInvoiceRegistered *bool `json:"e_invoice_registered,omitempty"`
+}
+
+// DecideCustomerBlockAppealRequest is the request body of DecideCustomerBlockAppeal.
+type DecideCustomerBlockAppealRequest struct {
+	// One of: accepted, rejected.
+	Decision string `json:"decision"`
+	// Required to reject
+	Answer string `json:"answer,omitempty"`
 }
 
 // DeletedCustomerCard is an object of the API; see components.schemas.DeletedCustomerCard in
@@ -2043,6 +2067,11 @@ type ListCouponsResponse struct {
 type ListCreditNotesResponse struct {
 	CreditNotes   []CreditNote `json:"credit_notes"`
 	NextPageToken string       `json:"next_page_token"`
+}
+
+// ListCustomerBlockAppealsResponse is the response of ListCustomerBlockAppeals.
+type ListCustomerBlockAppealsResponse struct {
+	Appeals []CustomerBlockAppeal `json:"appeals"`
 }
 
 // ListCustomerBlockEventsResponse is the response of ListCustomerBlockEvents.

@@ -396,6 +396,18 @@ type Customer struct {
 	BlockSuspendService bool
 }
 
+type CustomerBlockAppeal struct {
+	TenantID   uuid.UUID
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	Status     string
+	Statement  string
+	Answer     string
+	DecidedBy  string
+	CreatedAt  time.Time
+	DecidedAt  *time.Time
+}
+
 type CustomerBlockEvent struct {
 	TenantID       uuid.UUID
 	ID             uuid.UUID
