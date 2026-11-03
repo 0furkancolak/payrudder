@@ -3,6 +3,7 @@ import { safeGet, safeSet } from "./storage";
 
 const PERSON_KEY = "payrudder.sessionToken";
 const OPERATOR_KEY = "payrudder.operator";
+const ROLE_KEY = "payrudder.operatorRole";
 const ACCOUNT_KEY = "payrudder.account";
 
 // Storage can be blocked; the token then lives for the life of the page only.
@@ -11,6 +12,7 @@ const write = (key: string, value: string | null) => void safeSet("session", key
 
 const person = ref<string | null>(read(PERSON_KEY));
 const operator = ref<boolean>(read(OPERATOR_KEY) === "1");
+const operatorRole = ref<string | null>(read(ROLE_KEY));
 const account = ref<string | null>(read(ACCOUNT_KEY));
 
 /**
@@ -28,23 +30,30 @@ export const activeAccount = readonly(account);
  */
 export const isOperator = computed(() => person.value !== null && operator.value);
 
+/** The operator's role from the server (`operator_role`): "operator_admin", or "operator_support" (read-only). Null for a person who is no operator. */
+export const operatorRoleName = readonly(operatorRole);
+/** A read-only support operator: the console hides what writes (the server refuses it with 403 either way). */
+export const isSupportOperator = computed(() => isOperator.value && operatorRole.value === "operator_support");
+
 /** The bearer credential for the gateway: the session token of this tab. */
 export function currentToken(): string | null {
   return person.value;
 }
 
-export function setPersonToken(value: string | null, isOperatorSession = false): void {
+export function setPersonToken(value: string | null, isOperatorSession = false, role: string | null = null): void {
   person.value = value;
   write(PERSON_KEY, value);
-  setOperatorFlag(value !== null && isOperatorSession);
+  setOperatorFlag(value !== null && isOperatorSession, role);
   // A new sign-in starts in the person's first account; a sign-out forgets the choice.
   setActiveAccount(null);
 }
 
 /** Records the server's verdict on whether this session belongs to an operator (from /auth/me). */
-export function setOperatorFlag(value: boolean): void {
+export function setOperatorFlag(value: boolean, role: string | null = null): void {
   operator.value = value;
   write(OPERATOR_KEY, value ? "1" : null);
+  operatorRole.value = value ? role : null;
+  write(ROLE_KEY, value ? role : null);
 }
 
 export function setActiveAccount(id: string | null): void {

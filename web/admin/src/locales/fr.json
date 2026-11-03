@@ -5139,7 +5139,11 @@
       "blocklist": "Liste de blocage",
       "platformBlocklist": "Liste de blocage de la plateforme"
     },
-    "newApp": "Nouvelle application"
+    "newApp": "Nouvelle application",
+    "operatorRole": {
+      "operator_support": "Opérateur (support, lecture seule)",
+      "operator_admin": "Opérateur (admin)"
+    }
   },
   "privacy": {
     "hide": "Masquer les montants",

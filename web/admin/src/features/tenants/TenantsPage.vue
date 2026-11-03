@@ -23,6 +23,9 @@ import { useRestOfTenants, useSetTenantStatus, useTenants } from "./api";
 import PriceNoticeCard from "./PriceNoticeCard.vue";
 import PricePauseCard from "./PricePauseCard.vue";
 import TenantAppealsCard from "./TenantAppealsCard.vue";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 const { t, te } = useI18n();
 const tenants = useTenants();
@@ -68,8 +71,8 @@ const change = (status: "active" | "suspended", only?: typeof list.value) =>
   <ErrorState :error="tenants.error.value" :retrying="tenants.isFetching.value" class="mb-3" @retry="tenants.refetch()" />
   <Card class="p-3">
     <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
-      <Button type="button" size="sm" variant="outline" data-testid="bulk-suspend" @click="change('suspended')">{{ t("tenants.suspend") }}</Button>
-      <Button type="button" size="sm" variant="outline" data-testid="bulk-reinstate" @click="change('active')">{{ t("tenants.reinstate") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="!canWrite" data-testid="bulk-suspend" @click="change('suspended')">{{ t("tenants.suspend") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="!canWrite" data-testid="bulk-reinstate" @click="change('active')">{{ t("tenants.reinstate") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">

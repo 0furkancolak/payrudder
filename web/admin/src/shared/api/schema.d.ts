@@ -8548,6 +8548,11 @@ export interface components {
             expire_time: string | null;
             /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator?: boolean;
+            /**
+             * @description Present for an operator: operator_admin (PAYRUDDER_OPERATOR_EMAILS) or operator_support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS, read-only; wins when an address is on both). The page hides write controls for the support role; the server refuses its writes with 403 anyway.
+             * @enum {string}
+             */
+            operator_role?: "operator_admin" | "operator_support";
         };
         SessionInfo: {
             user: components["schemas"]["AuthUser"] | null;
@@ -8556,6 +8561,11 @@ export interface components {
             expire_time: string | null;
             /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator: boolean;
+            /**
+             * @description Present for an operator: operator_admin (PAYRUDDER_OPERATOR_EMAILS) or operator_support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS, read-only; wins when an address is on both). The page hides write controls for the support role; the server refuses its writes with 403 anyway.
+             * @enum {string}
+             */
+            operator_role?: "operator_admin" | "operator_support";
         };
         PlanLimit: {
             /** @enum {string} */

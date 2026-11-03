@@ -6,6 +6,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorText } from "@/shared/ui/error-text";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { useOperatorSupportActions, type SupportTicket } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * Merges the open ticket into another ticket of the same person (the help desk refuses any other pair): its messages and files move there and it is closed with a
@@ -45,7 +48,7 @@ function merge() {
       <ErrorText :error="actions.merge.error.value" />
       <DialogFooter>
         <Button type="button" variant="ghost" @click="open = false">{{ t("common.cancel") }}</Button>
-        <Button type="button" :disabled="!into || actions.merge.isPending.value" data-testid="merge-confirm" @click="merge">{{ t("support.merge.confirm") }}</Button>
+        <Button type="button" :disabled="!canWrite || !into || actions.merge.isPending.value" data-testid="merge-confirm" @click="merge">{{ t("support.merge.confirm") }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

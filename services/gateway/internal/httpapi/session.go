@@ -104,6 +104,8 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	if s.isOperator(sess.User) {
 		p, err := s.actAs(r.Context(), id)
 		p.Actor = audit.Actor{Type: audit.ActorOperator, ID: sess.User.GetEmail(), Email: sess.User.GetEmail()}
+		// A support operator acting as a tenant reads and nothing more, like a held tenant (the tenant routes refuse a write with gateway.auth.tenant_read_only).
+		p.ReadOnly = p.ReadOnly || !s.operatorRole(sess.User).CanWrite()
 		return p, err
 	}
 	resp, err := s.d.Identity.ResolveMyTenant(r.Context(), &plansv1.ResolveMyTenantRequest{UserId: sess.UserID, TenantId: id})

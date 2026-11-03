@@ -31,6 +31,7 @@ done
 [[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
 REPO=${REPO:-owner/payrudder}
 # OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
+# OPERATOR_SUPPORT_EMAILS (environment, comma separated): read-only support operators (the console, nothing that writes); on both lists = support; empty: none.
 # ERROR_TRACKING_URL (environment): the DSN of a GlitchTip or Sentry project (https://<public key>@host/<project id>); set as PAYRUDDER_ERROR_TRACKING_URL on every Go service. Empty: not set, error tracking stays off.
 # MAIL_WEBHOOK_SECRET (environment): the "whsec_..." signing secret of the mail provider's webhook of delivery events, which points at https://<gateway domain>/inbound/mail-events; set as
 # PAYRUDDER_MAIL_WEBHOOK_SECRET on the gateway. Empty: not set, the route answers 404 and bounces and complaints never reach the suppression list. The webhook needs the gateway's
@@ -167,7 +168,7 @@ note "plans-svc"
 go_service plans-svc services/plans-svc 9100
 pg_vars plans-svc plans app system migrator
 vars plans-svc 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_KAFKA_BROKERS=$KAFKA" 'PAYRUDDER_SECRETS_KEY=${{payments-worker.PAYRUDDER_SECRETS_KEY}}' \
-  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" \
+  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
   "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" \
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}'
 # A sandbox reset also empties analytics-svc where there is one (the small profile has none: its step is skipped).
@@ -235,7 +236,7 @@ vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGES
   "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "PAYRUDDER_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
   'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live \
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
-  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" \
+  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
   PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111 'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}'
 if [[ -n ${MAIL_WEBHOOK_SECRET:-} ]]; then vars gateway "PAYRUDDER_MAIL_WEBHOOK_SECRET=$MAIL_WEBHOOK_SECRET"; fi
 

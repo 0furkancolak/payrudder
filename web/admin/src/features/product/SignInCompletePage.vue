@@ -36,7 +36,7 @@ onMounted(async () => {
   try {
     // The server's verdict on whether this person is an operator (the fragment carries only the token).
     const me = await unwrap(api.GET("/auth/me"));
-    setOperatorFlag(me.operator === true);
+    setOperatorFlag(me.operator === true, me.operator_role ?? null);
   } catch {
     // The session is checked again by the first page; if it is no good the person lands on the sign-in page.
   }

@@ -23,6 +23,8 @@ MAIL_FROM: "Payrudder <no-reply@payrudder.local>"
 PAYRUDDER_APP_URL: "http://localhost:42301"
 # The platform operators (the gateway's setting of the same name): a new support ticket is mailed to each, in their language. Empty: nobody is mailed.
 PAYRUDDER_OPERATOR_EMAILS: ""
+# Read-only support operators (comma separated): they see every operator page and change nothing. An address on both lists is a support operator. Empty by default.
+PAYRUDDER_OPERATOR_SUPPORT_EMAILS: ""
 # A support ticket that has waited for the person for this long (status "waiting for you") closes by itself, and the person is mailed. 0 switches it off. The job
 # looks this often.
 PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER: "168h"

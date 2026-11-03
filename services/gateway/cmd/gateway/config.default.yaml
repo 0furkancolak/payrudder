@@ -17,6 +17,8 @@ PAYRUDDER_APP_URL: "http://localhost:42301"
 PAYRUDDER_GOOGLE_ISSUER: "https://accounts.google.com"
 # Addresses (comma separated) of the people who are platform operators. Empty by default: nobody. A listed person must also have verified the address.
 PAYRUDDER_OPERATOR_EMAILS: ""
+# Read-only support operators (comma separated): they see every operator page and change nothing. An address on both lists is a support operator. Empty by default.
+PAYRUDDER_OPERATOR_SUPPORT_EMAILS: ""
 # Whether an operator's session needs two-factor sign-in (on/off). Not set here: unset it is on unless PAYRUDDER_ENV is local, ci or kind. A compose or Helm install on a real host runs as one of those: set it to on there.
 # Networks (CIDRs, comma separated) of proxies whose X-Forwarded-For is believed even from a public address. Empty by default: only a private or loopback peer,
 # and only with PAYRUDDER_TRUST_FORWARDED_FOR. For Cloudflare use PAYRUDDER_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.

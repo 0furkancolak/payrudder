@@ -42,6 +42,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/operator"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
@@ -126,6 +127,9 @@ type Deps struct {
 	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
 	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string
+	// OperatorSupportEmails lists the read-only support operators (PAYRUDDER_OPERATOR_SUPPORT_EMAILS), lower case: they may call the operator routes that read, and no other. An
+	// address also on OperatorEmails is a support operator.
+	OperatorSupportEmails []string
 	// OperatorRequireTwoFactor (PAYRUDDER_OPERATOR_REQUIRE_2FA) makes an operator's session need two-factor sign-in: an operator without it is treated like an owner whose account
 	// requires it and has not set it up (identity.two_factor.setup_required on every route but /auth/*). The machine token is no person and is not asked.
 	OperatorRequireTwoFactor bool
@@ -232,7 +236,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rt Route, spa
 	case AccessSession:
 		return s.authorizeSession(w, r, rt, span)
 	case AccessOperator:
-		return s.authorizeOperator(w, r)
+		return s.authorizeOperator(w, r, rt)
 	default:
 		return s.authorizeTenant(w, r, rt, span)
 	}
@@ -256,14 +260,19 @@ func (s *Server) authorizeSession(w http.ResponseWriter, r *http.Request, rt Rou
 }
 
 // authorizeOperator admits the machine token or the session of an operator user.
-func (s *Server) authorizeOperator(w http.ResponseWriter, r *http.Request) (context.Context, bool) {
-	ok, person, err := s.operatorAllowed(r)
+// A support operator (read-only) is refused with 403 gateway.auth.permission_denied on a route that writes.
+func (s *Server) authorizeOperator(w http.ResponseWriter, r *http.Request, rt Route) (context.Context, bool) {
+	ok, person, role, err := s.operatorAllowed(r)
 	if err != nil {
 		writeError(w, r, err)
 		return nil, false
 	}
 	if !ok {
 		writeError(w, r, errkey.New(codes.Unauthenticated, "identity.operator.required", "operator access required"))
+		return nil, false
+	}
+	if !role.CanWrite() && operatorWrites(rt.Method, rt.Path) {
+		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "a support operator is read-only: this request needs the operator_admin role"))
 		return nil, false
 	}
 	ctx := tenant.WithOperator(r.Context())
@@ -466,32 +475,32 @@ func operatorFrom(ctx context.Context) string {
 // every request, so signing out, a revoked session or a removed address takes effect at once; nothing the client sends decides it.
 // An unreachable plans-svc is an error (503), not a refusal, so a signed-in operator is not told to sign in again because of an outage.
 // person is the operator's verified address when a session let them in, "" for the machine token.
-func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err error) {
+func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, role operator.Role, err error) {
 	if s.operatorOK(r) {
-		return true, "", nil
+		return true, "", operator.Admin, nil
 	}
 	if !strings.HasPrefix(bearerToken(r), sessionPrefix) {
 		if bearerToken(r) != "" {
 			s.authFailed(r, "operator_token")
 		}
-		return false, "", nil
+		return false, "", operator.None, nil
 	}
 	sess, err := s.session(r)
 	switch {
 	case status.Code(err) == codes.Unavailable:
-		return false, "", err
+		return false, "", operator.None, err
 	case err != nil:
-		return false, "", nil
-	case !s.isOperator(sess.User):
+		return false, "", operator.None, nil
+	case s.operatorRole(sess.User) == operator.None:
 		// A valid session that is not an operator's: signed in, but not allowed (403), so the page does not mistake it for an expired session.
-		return false, "", errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
+		return false, "", operator.None, errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
 	}
 	// The same rule as for every route of a session: an operator who owes two-factor sign-in (an account they own requires it, or the deployment asks it of operators) has
 	// not earned the platform yet.
 	if err := requireSecondFactorSetup(sess.User, r.URL.Path); err != nil {
-		return false, "", err
+		return false, "", operator.None, err
 	}
-	return true, normalizeEmail(sess.User.GetEmail()), nil
+	return true, normalizeEmail(sess.User.GetEmail()), s.operatorRole(sess.User), nil
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {

@@ -5139,7 +5139,11 @@
       "blocklist": "Sperrliste",
       "platformBlocklist": "Plattform-Sperrliste"
     },
-    "newApp": "Neue App"
+    "newApp": "Neue App",
+    "operatorRole": {
+      "operator_support": "Operator (Support, nur lesen)",
+      "operator_admin": "Operator (Admin)"
+    }
   },
   "privacy": {
     "hide": "Beträge ausblenden",

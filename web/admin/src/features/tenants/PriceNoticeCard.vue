@@ -11,6 +11,9 @@ import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { usePriceChangeNotice, useSetPriceChangeNotice } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * The operator's notice rules for price changes (plan 15): the notice a seller's run uses when it names none, and the least notice per country (`*` is any country
@@ -79,8 +82,8 @@ function save() {
         {{ t("tenants.priceNotice.updated", { who: notice.data.value.updated_by, date: fmt.date(notice.data.value.update_time, "dateTime") }) }}
       </p>
       <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" data-testid="price-notice-add" @click="addRow">{{ t("tenants.priceNotice.add") }}</Button>
-        <Button type="submit" :disabled="set.isPending.value" data-testid="price-notice-save">{{ t("tenants.priceNotice.save") }}</Button>
+        <Button type="button" variant="outline" :disabled="!canWrite" data-testid="price-notice-add" @click="addRow">{{ t("tenants.priceNotice.add") }}</Button>
+        <Button type="submit" :disabled="!canWrite || set.isPending.value" data-testid="price-notice-save">{{ t("tenants.priceNotice.save") }}</Button>
       </div>
       <p v-if="set.isSuccess.value" class="text-success m-0 text-sm" role="status" data-testid="price-notice-saved">{{ t("tenants.priceNotice.saved") }}</p>
     </form>
