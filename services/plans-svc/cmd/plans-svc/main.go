@@ -27,6 +27,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/operator"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
@@ -92,6 +93,9 @@ type Config struct {
 	AppURL string `env:"PAYRUDDER_APP_URL"`
 	// OperatorEmails lists the platform operators (the same setting as the gateway's): a new support ticket is mailed to each. Empty: no operator is mailed.
 	OperatorEmails []string `env:"PAYRUDDER_OPERATOR_EMAILS" envSeparator:","`
+	// OperatorSupportEmails is the gateway's read-only support list (PAYRUDDER_OPERATOR_SUPPORT_EMAILS). Read here only so that an address on both lists is not mailed as an admin;
+	// a support operator changes nothing, so no ticket mail goes to them.
+	OperatorSupportEmails []string `env:"PAYRUDDER_OPERATOR_SUPPORT_EMAILS" envSeparator:","`
 	// SupportAutoCloseAfter is how long a ticket may wait for the person before it closes by itself; 0 switches it off. SupportAutoCloseEvery is how often the job looks.
 	SupportAutoCloseAfter time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER"`
 	SupportAutoCloseEvery time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY"`
@@ -288,7 +292,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	// Scheduled suspensions are applied, and the end of a banned tenant's retention period is marked (docs/plans/14-tenant-management.md): the same commands the operator's calls use.
 	lifecycle := tenantscmd.New(places.Pool(), apikeyscmd.New(places.Pool(), evictor, log), log).WithBanApproval(cfg.BanApproval).WithMail(mail, cfg.AppURL).WithRetention(cfg.BanRetentionDays)
 	w := &workers{cfg: cfg, lifecycle: lifecycle, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd,
-		support: support.New(systemPool, log, support.Config{Mail: mail, Operators: cfg.OperatorEmails, AppURL: cfg.AppURL})}
+		support: support.New(systemPool, log, support.Config{Mail: mail, Operators: operator.Parse(cfg.OperatorEmails, cfg.OperatorSupportEmails).Admins(), AppURL: cfg.AppURL})}
 	return w.run(ctx)
 }
 
@@ -412,7 +416,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
 		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, DefaultRegion: cfg.DefaultRegion, BanApproval: cfg.BanApproval, BanRetentionDays: cfg.BanRetentionDays, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
-		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, SupportOpensPerHour: cfg.SupportOpensPerHour, SupportMailBurst: cfg.SupportMailBurst, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: operator.Parse(cfg.OperatorEmails, cfg.OperatorSupportEmails).Admins(), SupportOpensPerHour: cfg.SupportOpensPerHour, SupportMailBurst: cfg.SupportMailBurst, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
 	return srv, grpcHealth, box, saasCmd, nil

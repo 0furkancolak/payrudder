@@ -14,6 +14,9 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Textarea } from "@/shared/ui/textarea";
 import { STATUS_CATEGORIES, useSetTenantStatus, useTenant, useTenantStatusEvents, type StatusCategory, type TenantStatusWord } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * The operator's hand on a live tenant: where it is (active, suspended, frozen, banned), the form that moves it with a category and a reason, and the history of
@@ -110,7 +113,7 @@ async function apply() {
       <p v-if="chosen" class="text-muted-foreground m-0 text-sm sm:col-span-2" data-testid="status-effect">{{ t(`tenant.status.effects.${chosen}`) }}</p>
       <ErrorText class="sm:col-span-2" :error="set.error.value" />
       <div class="sm:col-span-2">
-        <Button type="submit" :disabled="!chosen || set.isPending.value || missingReason" data-testid="status-apply">{{ chosen ? t("tenant.status.apply", { status: t(`tenant.status.names.${chosen}`) }) : t("tenant.status.applyNone") }}</Button>
+        <Button type="submit" :disabled="!canWrite || !chosen || set.isPending.value || missingReason" data-testid="status-apply">{{ chosen ? t("tenant.status.apply", { status: t(`tenant.status.names.${chosen}`) }) : t("tenant.status.applyNone") }}</Button>
       </div>
     </form>
     <p v-else-if="current && !live" class="text-muted-foreground m-0 text-sm">{{ t("tenant.status.sandbox") }}</p>

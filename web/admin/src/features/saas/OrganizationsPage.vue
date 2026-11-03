@@ -17,6 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { askConfirm } from "@/shared/lib/confirm";
 import { useClearOverrides, useOrganizations, useResetTwoFactor, useSetOrganizationPlan } from "./api";
 import { RESOURCES, isUnlimited, parseLimit, stateTone, type OrganizationRow } from "./lib";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /** The operator's view of the organisations: plan, state and usage of each, and the manual override (a plan without a checkout, limits of its own). */
 const { t } = useI18n();
@@ -214,13 +217,13 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
             </FormField>
             <ErrorText :error="firstError(reset)" box />
             <div>
-              <Button type="button" variant="outline" :disabled="!canReset" data-testid="org-2fa-reset" @click="resetTwoFactor">{{ t("saas.admin.twoFactor.reset") }}</Button>
+              <Button type="button" variant="outline" :disabled="!canWrite || !canReset" data-testid="org-2fa-reset" @click="resetTwoFactor">{{ t("saas.admin.twoFactor.reset") }}</Button>
             </div>
           </section>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" type="button" :disabled="clear.isPending.value || !chosen?.overridden" data-testid="org-clear" @click="clearAll">{{ t("saas.admin.clear") }}</Button>
-          <Button type="submit" form="org-plan" :disabled="set.isPending.value" data-testid="org-save">{{ t("saas.admin.save") }}</Button>
+          <Button variant="ghost" type="button" :disabled="!canWrite || clear.isPending.value || !chosen?.overridden" data-testid="org-clear" @click="clearAll">{{ t("saas.admin.clear") }}</Button>
+          <Button type="submit" form="org-plan" :disabled="!canWrite || set.isPending.value" data-testid="org-save">{{ t("saas.admin.save") }}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

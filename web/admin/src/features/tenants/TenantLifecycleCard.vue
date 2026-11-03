@@ -12,6 +12,9 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Textarea } from "@/shared/ui/textarea";
 import { STATUS_CATEGORIES, useCancelScheduledTenantStatus, useScheduleTenantStatus, useTenant, useTenantLifecycle, type StatusCategory } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * Retention and the schedule of a live tenant (plan 14), for the operator: the day a banned tenant's data is kept until (a job marks it due and deletes nothing), and the
@@ -60,7 +63,7 @@ async function drop() {
       <div class="flex flex-wrap items-center justify-between gap-3 text-sm" data-testid="lifecycle-schedule">
         <span v-if="l?.scheduled_status">{{ t("tenant.lifecycle.scheduled", { status: t(`tenant.status.names.${l.scheduled_status}`), date: fmt.date(l.scheduled_time, "dateTime"), by: l.scheduled_by }) }}</span>
         <span v-else class="text-muted-foreground">{{ t("tenant.lifecycle.none") }}</span>
-        <Button v-if="l?.scheduled_status" type="button" size="sm" variant="outline" :disabled="cancel.isPending.value" data-testid="lifecycle-cancel" @click="drop">{{ t("tenant.lifecycle.cancel") }}</Button>
+        <Button v-if="l?.scheduled_status" type="button" size="sm" variant="outline" :disabled="!canWrite || cancel.isPending.value" data-testid="lifecycle-cancel" @click="drop">{{ t("tenant.lifecycle.cancel") }}</Button>
       </div>
       <ErrorText :error="cancel.error.value" />
 
@@ -86,7 +89,7 @@ async function drop() {
         </FormField>
         <ErrorText class="sm:col-span-2" :error="schedule.error.value" />
         <div class="sm:col-span-2">
-          <Button type="submit" :disabled="!when || schedule.isPending.value" data-testid="schedule-submit">{{ t("tenant.lifecycle.submit") }}</Button>
+          <Button type="submit" :disabled="!canWrite || !when || schedule.isPending.value" data-testid="schedule-submit">{{ t("tenant.lifecycle.submit") }}</Button>
         </div>
       </form>
     </template>

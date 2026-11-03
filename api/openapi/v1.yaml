@@ -1,7 +1,7 @@
 openapi: 3.1.0
 # Maintainers: the `/admin/v1` routes below require `Authorization: Bearer <operator token>` (the machine credential `PAYRUDDER_OPERATOR_TOKEN`, for scripts,
 # `payrudderctl` and tests; it is never typed into a page) or the session token of a platform operator: a person who signed in and verified an address listed in
-# `PAYRUDDER_OPERATOR_EMAILS`. The server decides this on every request. This note is a comment, not the description, because the description is public: the developer
+# `PAYRUDDER_OPERATOR_EMAILS` (or `PAYRUDDER_OPERATOR_SUPPORT_EMAILS`: read-only, GET and the POSTs that only read). The server decides this on every request. This note is a comment, not the description, because the description is public: the developer
 # site, the SDKs and the MCP server's OpenAPI resource show it, and they cover the tenant API (`/v1/*`) only. This file is hand-maintained (docs/03-services/gateway.md):
 # a contract test fails if a route in the gateway's route table is missing here or vice versa.
 info:
@@ -7573,6 +7573,7 @@ components:
         token: { type: string, description: "qs_..., shown once; send as Authorization: Bearer" }
         expire_time: { type: string, format: date-time, description: "14 days from now; slides on use, never beyond 90 days from sign-in", nullable: true }
         operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
+        operator_role: { type: string, enum: [operator_admin, operator_support], description: "Present for an operator: operator_admin (PAYRUDDER_OPERATOR_EMAILS) or operator_support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS, read-only; wins when an address is on both). The page hides write controls for the support role; the server refuses its writes with 403 anyway." }
     SessionInfo:
       type: object
       required: [user, memberships, expire_time, operator]
@@ -7581,6 +7582,7 @@ components:
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         expire_time: { type: string, format: date-time, nullable: true }
         operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
+        operator_role: { type: string, enum: [operator_admin, operator_support], description: "Present for an operator: operator_admin (PAYRUDDER_OPERATOR_EMAILS) or operator_support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS, read-only; wins when an address is on both). The page hides write controls for the support role; the server refuses its writes with 403 anyway." }
     PlanLimit:
       type: object
       required: [resource, limit, mode]

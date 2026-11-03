@@ -18,6 +18,9 @@ import { SortSelect } from "@/shared/ui/sort-select";
 import { amount, countHigh, countLow, nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDeadLetters, useRedrive } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 const { t } = useI18n();
 const queue = ref("");
@@ -67,7 +70,7 @@ async function run(name: string, count: number) {
       <SortSelect v-if="queuesTable.sorts.value.length > 0" v-model="queuesTable.sort.value" :options="queuesTable.sorts.value" />
     </DataToolbar>
     <BulkBar v-bind="bulk.bar.value" @clear="queuesTable.clearSelection()" @select-all="bulk.selectAll()">
-      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-redrive" @click="bulkRedrive">{{ t("deadLetters.bulk.redrive") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="!canWrite || bulk.busy.value" data-testid="bulk-redrive" @click="bulkRedrive">{{ t("deadLetters.bulk.redrive") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>

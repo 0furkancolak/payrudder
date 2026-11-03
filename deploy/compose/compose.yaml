@@ -488,6 +488,8 @@ services:
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
       # The operators (as on the gateway): a new support ticket is mailed to each.
       PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}
+      # Read-only support operators: the operator console without anything that writes. An address on both lists is a support operator. Empty: none.
+      PAYRUDDER_OPERATOR_SUPPORT_EMAILS: ${PAYRUDDER_OPERATOR_SUPPORT_EMAILS:-}
       # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
       PAYRUDDER_OTP_PEPPER: ${PAYRUDDER_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
       # The services a sandbox reset empties (phase 45 E).
@@ -945,6 +947,8 @@ services:
       # The operator console is for people: whoever signs in with one of these addresses (and has verified it) is a platform operator. The dev seed's
       # first user by default. The operator token above is the machine credential only (scripts, payrudderctl, tests); no page asks for it.
       PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}
+      # Read-only support operators: the operator console without anything that writes. An address on both lists is a support operator. Empty: none.
+      PAYRUDDER_OPERATOR_SUPPORT_EMAILS: ${PAYRUDDER_OPERATOR_SUPPORT_EMAILS:-}
       # "Continue with Google": shown only when both are set. For a real client see docs/13-admin-ui.md; for the in-repo mock provider start the `oidc`
       # profile and set the three values listed in docs/10-local-dev.md.
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}

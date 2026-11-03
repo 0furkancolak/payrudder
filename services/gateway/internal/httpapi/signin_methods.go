@@ -18,6 +18,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/operator"
 )
 
 // The three ways to sign in (phase 42): e-mail and password (session.go's signIn), a one-time code mailed to the address, and Google. The operator console has
@@ -38,31 +39,18 @@ func (s *Server) methods(w http.ResponseWriter, r *http.Request) {
 
 // isOperator reports whether a user is a platform operator. The decision is made here, on the server, from two things the client cannot influence: the address
 // is on the configured list (PAYRUDDER_OPERATOR_EMAILS) and the person has proven they own it. Nothing about it is stored on the user or sent by the client.
-func (s *Server) isOperator(u *plansv1.User) bool {
-	if u == nil || !u.GetEmailVerified() || u.GetEmail() == "" {
-		return false
+func (s *Server) isOperator(u *plansv1.User) bool { return s.operatorRole(u) != operator.None }
+
+// operatorRole is the role of a user: admin (PAYRUDDER_OPERATOR_EMAILS), support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS; wins when the address is on both lists) or none.
+func (s *Server) operatorRole(u *plansv1.User) operator.Role {
+	if u == nil {
+		return operator.None
 	}
-	email := normalizeEmail(u.GetEmail())
-	for _, o := range s.d.OperatorEmails {
-		if subtleEqual(o, email) {
-			return true
-		}
-	}
-	return false
+	return operator.Parse(s.d.OperatorEmails, s.d.OperatorSupportEmails).Of(u.GetEmail(), u.GetEmailVerified())
 }
 
-func subtleEqual(a, b string) bool { return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1 }
-
-// NormalizeOperatorEmails turns the comma list of the setting into the list the server compares against (trimmed, lower case, empty entries dropped).
-func NormalizeOperatorEmails(list []string) []string {
-	out := make([]string, 0, len(list))
-	for _, e := range list {
-		if e = normalizeEmail(e); e != "" {
-			out = append(out, e)
-		}
-	}
-	return out
-}
+// NormalizeOperatorEmails turns the comma list of a setting into the list the server compares against (trimmed, lower case, empty entries dropped).
+func NormalizeOperatorEmails(list []string) []string { return operator.Parse(list, nil).Admins() }
 
 // withOperator renders a proto response as JSON with the server's verdict "operator": true|false added. The flag only tells the page whether to show the
 // operator console; every operator route decides for itself again, from the session, on each request.
@@ -71,7 +59,11 @@ func (s *Server) withOperator(u *plansv1.User, body []byte) ([]byte, error) {
 	if err := json.Unmarshal(body, &m); err != nil {
 		return nil, err
 	}
-	m["operator"] = json.RawMessage(strconv.FormatBool(s.isOperator(u)))
+	role := s.operatorRole(u)
+	m["operator"] = json.RawMessage(strconv.FormatBool(role != operator.None))
+	if role != operator.None {
+		m["operator_role"], _ = json.Marshal(role)
+	}
 	return json.Marshal(m)
 }
 

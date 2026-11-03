@@ -35,6 +35,9 @@ import SupportReportCard from "./SupportReportCard.vue";
 import TicketBadges from "./TicketBadges.vue";
 import TicketLinks from "./TicketLinks.vue";
 import TicketThread from "./TicketThread.vue";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * The operator's support inbox: every ticket of every account, filtered by status, priority, assignee or "late" (the first answer is overdue), newest activity
@@ -182,7 +185,7 @@ async function send() {
         <option value="">{{ t("support.columns.assignee") }}</option>
         <option v-for="o in operatorOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </NativeSelect>
-      <Button type="button" size="sm" :disabled="bulk.busy.value" data-testid="bulk-apply" @click="applyBulk">{{ t("common.applyFilter") }}</Button>
+      <Button type="button" size="sm" :disabled="!canWrite || bulk.busy.value" data-testid="bulk-apply" @click="applyBulk">{{ t("common.applyFilter") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <div class="flex flex-wrap items-end gap-3 p-2" data-testid="support-filters">
@@ -238,7 +241,7 @@ async function send() {
       <p class="text-muted-foreground text-xs">{{ shown.opened_by_name }} · {{ shown.account_name }}<template v-if="shown.app_name"> · {{ shown.app_name }}</template> · {{ t(`support.category.${shown.category}`) }}</p>
       <div class="grid gap-3 sm:grid-cols-3">
         <label class="grid gap-1 text-xs">{{ t("support.columns.status") }}
-          <NativeSelect :model-value="shown.status" data-testid="ticket-status" @change="setStatus($event.target as HTMLSelectElement)">
+          <NativeSelect :model-value="shown.status" :disabled="!canWrite" data-testid="ticket-status" @change="setStatus($event.target as HTMLSelectElement)">
             <option v-for="s in STATUSES" :key="s" :value="s">{{ t(`support.status.${s}`) }}</option>
           </NativeSelect>
         </label>
@@ -248,7 +251,7 @@ async function send() {
           </NativeSelect>
         </label>
         <label class="grid gap-1 text-xs">{{ t("support.columns.assignee") }}
-          <NativeSelect :model-value="shown.assignee" data-testid="ticket-assignee" @change="change({ assignee: ($event.target as HTMLSelectElement).value })">
+          <NativeSelect :model-value="shown.assignee" :disabled="!canWrite" data-testid="ticket-assignee" @change="change({ assignee: ($event.target as HTMLSelectElement).value })">
             <option value="">{{ t("support.unassigned") }}</option>
             <option v-for="o in assignable" :key="o.value" :value="o.value">{{ o.label }}</option>
           </NativeSelect>
@@ -280,8 +283,8 @@ async function send() {
       </p>
       <p v-if="shown.merged_into_id" class="bg-muted m-0 rounded-2xl px-4 py-3 text-sm" data-testid="ticket-merged">{{ t("support.merge.mergedInto", { number: shown.merged_into_number }) }}</p>
       <div v-else class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" data-testid="merge-open" @click="merging = true">{{ t("support.merge.open") }}</Button>
-        <Button v-if="shown.app_id" type="button" variant="ghost" size="sm" data-testid="holidays-open" @click="holidaying = true">{{ t("support.holidays.open", { app: shown.app_name }) }}</Button>
+        <Button type="button" variant="outline" size="sm" :disabled="!canWrite" data-testid="merge-open" @click="merging = true">{{ t("support.merge.open") }}</Button>
+        <Button v-if="shown.app_id" type="button" variant="ghost" size="sm" :disabled="!canWrite" data-testid="holidays-open" @click="holidaying = true">{{ t("support.holidays.open", { app: shown.app_name }) }}</Button>
       </div>
       <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="operator" />
       <form v-if="!shown.merged_into_id" class="grid gap-2" @submit.prevent="send">
@@ -294,13 +297,13 @@ async function send() {
             <option value="">{{ t("support.canned.insert") }}</option>
             <option v-for="c in canned.data.value ?? []" :key="c.id" :value="c.id">{{ c.title }}</option>
           </NativeSelect>
-          <Button type="button" variant="ghost" size="sm" data-testid="canned-manage" @click="managing = true">{{ t("support.canned.manage") }}</Button>
+          <Button type="button" variant="ghost" size="sm" :disabled="!canWrite" data-testid="canned-manage" @click="managing = true">{{ t("support.canned.manage") }}</Button>
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <label class="flex items-center gap-2 text-sm">
             <Checkbox :model-value="internal" data-testid="inbox-internal" @update:model-value="(v: boolean | 'indeterminate') => (internal = v === true)" />{{ t("support.internalNote") }}
           </label>
-          <Button type="submit" :disabled="actions.reply.isPending.value || reply.trim() === ''" data-testid="inbox-send">{{ internal ? t("support.addNote") : t("support.sendReply") }}</Button>
+          <Button type="submit" :disabled="!canWrite || actions.reply.isPending.value || reply.trim() === ''" data-testid="inbox-send">{{ internal ? t("support.addNote") : t("support.sendReply") }}</Button>
         </div>
       </form>
     </div>

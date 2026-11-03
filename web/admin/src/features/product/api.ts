@@ -37,9 +37,9 @@ export const productKeys = {
 };
 
 /** A new session starts from nothing cached (another person's data must not show) and keeps the token of this tab. */
-export function startSession(queries: QueryClient, s: { token?: string; operator?: boolean }): void {
+export function startSession(queries: QueryClient, s: { token?: string; operator?: boolean; operator_role?: "operator_admin" | "operator_support" }): void {
   queries.clear();
-  setPersonToken(s.token ?? null, s.operator === true);
+  setPersonToken(s.token ?? null, s.operator === true, s.operator_role ?? null);
 }
 
 /**
@@ -132,7 +132,7 @@ export function useMe() {
     queryFn: async () => {
       const me = await unwrap(api.GET("/auth/me"));
       // The server's verdict on whether this person is a platform operator decides whether the shell shows the operator console.
-      setOperatorFlag(me.operator === true);
+      setOperatorFlag(me.operator === true, me.operator_role ?? null);
       // The account routes act on the person's first membership unless one is named. When that is a seller's account (the role affiliate: a partner of the
       // seller, not a member of anything) or a chosen account the person no longer belongs to, name their first own account instead.
       const own = ownMemberships(me.memberships);

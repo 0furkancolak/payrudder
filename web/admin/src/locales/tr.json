@@ -5139,7 +5139,11 @@
       "blocklist": "Engelleme listesi",
       "platformBlocklist": "Platform engelleme listesi"
     },
-    "newApp": "Yeni uygulama"
+    "newApp": "Yeni uygulama",
+    "operatorRole": {
+      "operator_support": "Operatör (salt okunur destek)",
+      "operator_admin": "Operatör (yönetici)"
+    }
   },
   "privacy": {
     "hide": "Tutarları gizle",

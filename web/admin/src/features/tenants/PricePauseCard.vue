@@ -12,6 +12,9 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Textarea } from "@/shared/ui/textarea";
 import { usePriceChangePause, useSetPriceChangePause } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * The operator's kill switch for price changes (plan 15): pause every price change of every seller (no run schedules a subscription, a run in progress stops, the
@@ -50,7 +53,7 @@ async function toggle() {
         <Textarea id="pause-reason" v-model="reason" maxlength="500" rows="2" data-testid="price-pause-reason" />
       </FormField>
       <div>
-        <Button type="submit" :variant="paused ? 'default' : 'outline'" :disabled="set.isPending.value" data-testid="price-pause-toggle">{{ t(paused ? "tenants.pricePause.resume" : "tenants.pricePause.pause") }}</Button>
+        <Button type="submit" :variant="paused ? 'default' : 'outline'" :disabled="!canWrite || set.isPending.value" data-testid="price-pause-toggle">{{ t(paused ? "tenants.pricePause.resume" : "tenants.pricePause.pause") }}</Button>
       </div>
     </form>
   </Card>

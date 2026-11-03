@@ -42,6 +42,7 @@ const (
 	tokNeedsSetup         = "qs_needs_setup"          // Ada, an owner of an account that requires two-factor sign-in, who has not set it up
 	tokOperatorNeedsSetup = "qs_operator_needs_setup" // an operator who owns such an account and has not set it up
 	tokOperatorTwoFactor  = "qs_operator_2fa"         // an operator with two-factor sign-in on
+	tokSupport            = "qs_support"              // help@example.com, verified: a read-only support operator
 	tokSpoof              = "qs_spoof"                // an address that only starts like a listed one
 	opUser                = "44444444-4444-4444-8444-444444444444"
 	opUser2               = "55555555-5555-4555-8555-555555555555"
@@ -116,7 +117,7 @@ type fakeUser struct {
 
 var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com", true}, tokBob: {bobUser, "bob@example.com", true}, tokViewer: {viewerUser, "view@example.com", true},
 	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}, tokNeedsSetup: {adaUser, "ada@example.com", true},
-	tokOperatorNeedsSetup: {opUser, "boss@example.com", true}, tokOperatorTwoFactor: {opUser, "boss@example.com", true}}
+	tokOperatorNeedsSetup: {opUser, "boss@example.com", true}, tokOperatorTwoFactor: {opUser, "boss@example.com", true}, tokSupport: {"55555555-5555-4555-8555-555555555555", "help@example.com", true}}
 
 func (f *fakeIdentity) memberships(user string) []*plansv1.Membership {
 	base := f.baseMemberships(user)

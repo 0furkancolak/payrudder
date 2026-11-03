@@ -128,6 +128,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PORT` | `8000` | the HTTP API; the public domain's port |
 | `PAYRUDDER_OPERATOR_TOKEN` | generated | at least 32 characters; the machine credential of the operator API (scripts, `payrudderctl`); never typed into the console |
 | `PAYRUDDER_OPERATOR_EMAILS` | e.g. `you@example.com` | comma separated; people who sign in with one of these and have verified it are platform operators (empty: nobody) |
+| `PAYRUDDER_OPERATOR_SUPPORT_EMAILS` | empty | comma separated; read-only support operators: they see the operator console and change nothing; an address on both lists is a support operator. Set it with `OPERATOR_SUPPORT_EMAILS=... deploy/railway/bootstrap.sh ...` |
 | `PAYRUDDER_OPERATOR_REQUIRE_2FA` | unset (on) | operators need two-factor sign-in: unset it is on here (`PAYRUDDER_ENV=railway`); an operator sets it up on the console's security page first ([how](../../docs/audit-log-and-two-factor.md#two-factor-sign-in)) |
 | `PAYRUDDER_TRUSTED_PROXY_SECRET` | generated, 32+ characters | only with the console on Cloudflare: the same value as the Worker secret `EDGE_AUTH_SECRET`; makes the gateway count sign-in limits per visitor ([runbook](../../docs/runbooks/console-first-deploy.md)) |
 | `PAYRUDDER_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |

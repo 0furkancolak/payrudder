@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { useCreateAccount, useMe, useSwitchAccount } from "@/features/product/api";
 import { ownMemberships } from "@/features/product/lib";
 import { useLeave } from "@/features/product/useLeave";
-import { activeAccount } from "@/shared/lib/session";
+import { activeAccount, operatorRoleName } from "@/shared/lib/session";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
 import { applyLocale, languages, locales } from "../i18n";
 import { Button } from "@/shared/ui/button";
@@ -79,6 +79,7 @@ const subContent = 'bg-popover text-popover-foreground shadow-pop z-50 min-w-40 
       <DropdownMenuLabel class="font-normal">
         <span class="block truncate text-sm font-medium">{{ name }}</span>
         <span v-if="me.data.value?.user?.display_name" class="text-muted-foreground block truncate text-xs">{{ me.data.value?.user?.email }}</span>
+        <span v-if="operatorRoleName" class="text-muted-foreground block truncate text-xs" data-testid="operator-role">{{ t(`shell.operatorRole.${operatorRoleName}`) }}</span>
       </DropdownMenuLabel>
       <template v-if="orgs.length > 0">
         <DropdownMenuSeparator />

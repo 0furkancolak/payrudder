@@ -5139,7 +5139,11 @@
       "blocklist": "قائمة الحظر",
       "platformBlocklist": "قائمة حظر المنصة"
     },
-    "newApp": "تطبيق جديد"
+    "newApp": "تطبيق جديد",
+    "operatorRole": {
+      "operator_support": "مشغّل (دعم، للقراءة فقط)",
+      "operator_admin": "مشغّل (مسؤول)"
+    }
   },
   "privacy": {
     "hide": "إخفاء المبالغ",

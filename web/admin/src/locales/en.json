@@ -5139,7 +5139,11 @@
       "blocklist": "Blocklist",
       "platformBlocklist": "Platform blocklist"
     },
-    "newApp": "New app"
+    "newApp": "New app",
+    "operatorRole": {
+      "operator_support": "Operator (read-only support)",
+      "operator_admin": "Operator (admin)"
+    }
   },
   "privacy": {
     "hide": "Hide amounts",

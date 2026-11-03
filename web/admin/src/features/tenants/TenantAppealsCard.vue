@@ -15,6 +15,9 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Textarea } from "@/shared/ui/textarea";
 import { useDecideTenantAppeal, useTenantAppeals, type TenantAppeal } from "./api";
+import { useCanWrite } from "@/shared/lib/access";
+
+const canWrite = useCanWrite();
 
 /**
  * The owners' appeals against a hold (plan 14), for the operator: one tenant's (on its page), or every tenant's open ones (`all`, on the list of tenants). A row opens the
@@ -89,8 +92,8 @@ async function send(decision: "accepted" | "rejected") {
         </form>
       </SheetBody>
       <SheetFooter>
-        <Button type="button" variant="outline" :disabled="decide.isPending.value || answer.trim() === ''" data-testid="appeal-reject" @click="send('rejected')">{{ t("tenant.appeals.reject") }}</Button>
-        <Button type="button" :disabled="decide.isPending.value" data-testid="appeal-accept" @click="send('accepted')">{{ t("tenant.appeals.accept") }}</Button>
+        <Button type="button" variant="outline" :disabled="!canWrite || decide.isPending.value || answer.trim() === ''" data-testid="appeal-reject" @click="send('rejected')">{{ t("tenant.appeals.reject") }}</Button>
+        <Button type="button" :disabled="!canWrite || decide.isPending.value" data-testid="appeal-accept" @click="send('accepted')">{{ t("tenant.appeals.accept") }}</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>

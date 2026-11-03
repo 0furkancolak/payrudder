@@ -74,6 +74,7 @@ operatorToken: local-operator-token-change-me-0123456789   # the machine credent
 auth:
   appURL: http://localhost:42301   # the console's public address: mailed links and the return from Google point into it
   operatorEmails: ""               # comma separated: people who sign in with one of these (verified) addresses are platform operators
+  operatorSupportEmails: ""        # comma separated: read-only support operators (see everything in the operator console, change nothing); on both lists = support (PAYRUDDER_OPERATOR_SUPPORT_EMAILS)
   trustedProxies: ""               # comma separated CIDRs of a proxy with a fixed address whose X-Forwarded-For is believed (PAYRUDDER_TRUSTED_PROXIES); empty: none
   trustedProxySecret: ""           # >= 32 characters; the console Worker's EDGE_AUTH_SECRET. Set: its X-Forwarded-For is believed (PAYRUDDER_TRUSTED_PROXY_SECRET); empty: off
   otpPepper: ""                    # keys the hash of one-time sign-in codes and recovery codes (`openssl rand -hex 32`). Empty: a development environment (global.environment local, ci, kind) gets a public local value; any other must set it, and plans-svc refuses to start without it
@@ -138,6 +139,7 @@ services:
       PAYRUDDER_NOTIFIER_EVENTS_URL: '{{ if .Values.mail.eventsSecret }}http://notifier:9111{{ end }}'
       PAYRUDDER_APP_URL: "{{ .Values.auth.appURL }}"
       PAYRUDDER_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
+      PAYRUDDER_OPERATOR_SUPPORT_EMAILS: "{{ .Values.auth.operatorSupportEmails }}"
       PAYRUDDER_TRUSTED_PROXIES: "{{ .Values.auth.trustedProxies }}"
       PAYRUDDER_GOOGLE_REDIRECT_URL: "{{ .Values.auth.google.redirectURL }}"
       PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
@@ -170,6 +172,7 @@ services:
       PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
       PAYRUDDER_APP_URL: "{{ .Values.auth.appURL }}"
       PAYRUDDER_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
+      PAYRUDDER_OPERATOR_SUPPORT_EMAILS: "{{ .Values.auth.operatorSupportEmails }}"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
