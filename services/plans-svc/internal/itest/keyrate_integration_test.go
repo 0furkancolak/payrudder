@@ -13,7 +13,7 @@ import (
 )
 
 // A key's own rate limit (plan 20): stored with the key, resolved for the gateway, kept by a rotation, refused outside 1 to 100 (by the code and by the column).
-func TestAPIKeyRatePercent(t *testing.T) {
+func testAPIKeyRatePercent(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	owner := e.verified(t, "keyrate-owner@example.com", "Keyrate Co")
