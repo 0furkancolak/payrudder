@@ -4161,6 +4161,11 @@
         "audit": "Audit log"
       },
       "permissionCount": "{n} of {total} permissions",
+      "ratePercent": "Rate limit (% of plan)",
+      "ratePercentHelp": "Optional. A share of your plan's request limit that only this key may use, from 1 to 100. Leave empty for no limit of its own: the key then draws on the whole limit, like every other key.",
+      "ratePercentInvalid": "Enter a whole number from 1 to 100, or leave it empty.",
+      "ratePercentOwn": "{n}% of plan",
+      "ratePercentNone": "No limit of its own",
       "customNeedsOne": "Choose at least one permission.",
       "create": "Create key",
       "createTitleSandbox": "New sandbox key",

@@ -1407,7 +1407,10 @@ type ApiKey struct {
 	// The role the key was issued with: admin, billing, read_only, ingest_only or custom (pkg/apikey).
 	Role string `protobuf:"bytes,11,opt,name=role,proto3" json:"role,omitempty"`
 	// What the key may do, resource:action (pkg/apikey). The gateway answers 403 gateway.auth.permission_denied for a route that needs one the key lacks.
-	Permissions   []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Permissions []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	// The key's own rate limit as a share of the tenant's limit for each route class, 1 to 100; 0 = no limit of its own. The gateway answers 429 gateway.rate_limit.exceeded
+	// when the key has spent its share, although the tenant has room.
+	RatePercent   int32 `protobuf:"varint,13,opt,name=rate_percent,json=ratePercent,proto3" json:"rate_percent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1524,6 +1527,13 @@ func (x *ApiKey) GetPermissions() []string {
 		return x.Permissions
 	}
 	return nil
+}
+
+func (x *ApiKey) GetRatePercent() int32 {
+	if x != nil {
+		return x.RatePercent
+	}
+	return 0
 }
 
 // Customer is a tenant's end customer, the entity that gets invoiced.
@@ -3938,7 +3948,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\ractivate_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\factivateTime\x12F\n" +
 	"\x11terms_accept_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0ftermsAcceptTime\x12)\n" +
 	"\x10default_language\x18\x13 \x01(\tR\x0fdefaultLanguage\x12\x16\n" +
-	"\x06region\x18\x14 \x01(\tR\x06region\"\xcd\x05\n" +
+	"\x06region\x18\x14 \x01(\tR\x06region\"\xf0\x05\n" +
 	"\x06ApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +
@@ -3955,7 +3965,8 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"expireTime\x12\x12\n" +
 	"\x04role\x18\v \x01(\tR\x04role\x12 \n" +
-	"\vpermissions\x18\f \x03(\tR\vpermissions\"G\n" +
+	"\vpermissions\x18\f \x03(\tR\vpermissions\x12!\n" +
+	"\frate_percent\x18\r \x01(\x05R\vratePercent\"G\n" +
 	"\x06Status\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATUS_ACTIVE\x10\x01\x12\x12\n" +

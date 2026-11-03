@@ -1079,7 +1079,7 @@ func (q *Queries) ListAccountMembers(ctx context.Context, accountID uuid.UUID) (
 }
 
 const listApiKeysOfTenants = `-- name: ListApiKeysOfTenants :many
-SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions FROM api_keys WHERE tenant_id = ANY($1::uuid[]) ORDER BY created_at DESC, id
+SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions, rate_percent FROM api_keys WHERE tenant_id = ANY($1::uuid[]) ORDER BY created_at DESC, id
 `
 
 func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUID) ([]ApiKey, error) {
@@ -1104,6 +1104,7 @@ func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUI
 			&i.ExpiresAt,
 			&i.Role,
 			&i.Permissions,
+			&i.RatePercent,
 		); err != nil {
 			return nil, err
 		}

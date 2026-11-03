@@ -111,13 +111,19 @@ Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route tha
   fallback. An integration test drives both with an identical sequence and asserts identical decisions.
 
 - `ingest` is charged **per event**, not per request, so batching gives no bypass.
+- **A key's own limit** (plan 20). `api_keys.rate_percent` (1 to 100, NULL = none) travels in the key's cache entry and the `Principal`. A request authenticated by such a key
+  is charged in a second GCRA bucket `gw:rl:{tenant}:{class}:key:{key_id}` whose limit is that percentage of the tenant's tier limit for the class (burst at least 1; a batch
+  above the key's burst costs the whole burst), **first**, then in the tenant's bucket. A refusal by the key bucket is the same `429 gateway.rate_limit.exceeded` with
+  `Retry-After` and does not touch the tenant's bucket (the other keys' room); a tenant refusal after the key was charged leaves that cost with the key. A key without a
+  percentage costs no extra Redis call. Redis failing is handled per bucket as above (this replica's share, in memory). The percentage is read from the cache entry
+  (60 s, evicted when the key is revoked or rotated; it cannot be changed after creation).
 - If Redis is unavailable, **fail open** with a local in-memory token bucket per pod
   (limit ÷ replica count). Availability of ingest matters more than strict rate limits.
   Counted in metric `gateway_ratelimit_fallback_total`.
 
 ## Owned data
 
-Redis only: `gw:apikey:{prefix}` (cache), `gw:rl:{tenant_id}:{class}` (GCRA state). Nothing durable.
+Redis only: `gw:apikey:{prefix}` (cache), `gw:rl:{tenant_id}:{class}` and `gw:rl:{tenant_id}:{class}:key:{key_id}` (GCRA state). Nothing durable.
 
 Reference data in the binary: the GeoNames country, region and district lists (`internal/geo`, embedded gzip, made by `cmd/geoimport`), served read-only
 under `GET /app/v1/geo/*` to any session. See [geo-data.md](../geo-data.md).

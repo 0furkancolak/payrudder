@@ -164,6 +164,9 @@ message ApiKey {
   string role = 11;
   // What the key may do, resource:action (pkg/apikey). The gateway answers 403 gateway.auth.permission_denied for a route that needs one the key lacks.
   repeated string permissions = 12;
+  // The key's own rate limit as a share of the tenant's limit for each route class, 1 to 100; 0 = no limit of its own. The gateway answers 429 gateway.rate_limit.exceeded
+  // when the key has spent its share, although the tenant has room.
+  int32 rate_percent = 13;
 }
 
 // Customer is a tenant's end customer, the entity that gets invoiced.

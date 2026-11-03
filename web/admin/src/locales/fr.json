@@ -4161,6 +4161,11 @@
         "audit": "Journal d'audit"
       },
       "permissionCount": "{n} permissions sur {total}",
+      "ratePercent": "Limite de débit (% du forfait)",
+      "ratePercentHelp": "Facultatif. Une part de la limite de requêtes de votre forfait que cette clé seule peut utiliser, de 1 à 100. Laissez vide pour aucune limite propre : la clé puise alors dans la limite entière, comme les autres clés.",
+      "ratePercentInvalid": "Saisissez un nombre entier de 1 à 100, ou laissez le champ vide.",
+      "ratePercentOwn": "{n} % du forfait",
+      "ratePercentNone": "Aucune limite propre",
       "customNeedsOne": "Choisissez au moins une permission.",
       "create": "Créer la clé",
       "createTitleSandbox": "Nouvelle clé sandbox",

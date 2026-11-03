@@ -2211,8 +2211,10 @@ type CreateMyApiKeyRequest struct {
 	// The older way to choose a role; use role and permissions.
 	Scope ApiKey_Scope `protobuf:"varint,4,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
 	// admin (default), billing, read_only, ingest_only or custom.
-	Role          string   `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
-	Permissions   []string `protobuf:"bytes,6,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Role        string   `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
+	Permissions []string `protobuf:"bytes,6,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	// Optional own rate limit of the key, 1 to 100 (percent of the tenant's limit per route class); 0 = none. Anything else is identity.api_key.bad_rate_percent.
+	RatePercent   int32 `protobuf:"varint,7,opt,name=rate_percent,json=ratePercent,proto3" json:"rate_percent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2287,6 +2289,13 @@ func (x *CreateMyApiKeyRequest) GetPermissions() []string {
 		return x.Permissions
 	}
 	return nil
+}
+
+func (x *CreateMyApiKeyRequest) GetRatePercent() int32 {
+	if x != nil {
+		return x.RatePercent
+	}
+	return 0
 }
 
 type CreateMyApiKeyResponse struct {
@@ -6844,14 +6853,15 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"a\n" +
 	"\x17ResolveMyTenantResponse\x122\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\x12\x12\n" +
-	"\x04role\x18\x02 \x01(\tR\x04role\"\xf8\x01\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\"\x9b\x02\n" +
 	"\x15CreateMyApiKeyRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12A\n" +
 	"\venvironment\x18\x03 \x01(\x0e2\x1f.payrudder.plans.v1.EnvironmentR\venvironment\x126\n" +
 	"\x05scope\x18\x04 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\x12\x12\n" +
 	"\x04role\x18\x05 \x01(\tR\x04role\x12 \n" +
-	"\vpermissions\x18\x06 \x03(\tR\vpermissions\"k\n" +
+	"\vpermissions\x18\x06 \x03(\tR\vpermissions\x12!\n" +
+	"\frate_percent\x18\a \x01(\x05R\vratePercent\"k\n" +
 	"\x16CreateMyApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"F\n" +

@@ -177,6 +177,8 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		Role        string   `json:"role"`
 		Permissions []string `json:"permissions"`
 		Scope       string   `json:"scope"`
+		// RatePercent is the key's own rate limit, 1 to 100 percent of the tenant's limit for each route class; absent or null = none.
+		RatePercent *int `json:"rate_percent"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
@@ -195,6 +197,13 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("role", "admin, billing, read_only, ingest_only or custom, with known permissions"))
 		return
 	}
+	ratePercent := 0
+	if body.RatePercent != nil {
+		if ratePercent = *body.RatePercent; ratePercent < 1 || ratePercent > 100 {
+			writeError(w, r, invalid("rate_percent", "between 1 and 100, or leave it out for no limit of its own"))
+			return
+		}
+	}
 	// The environment of a key is always named: there is no default, so a key is never made for live by leaving a field out.
 	keyEnv, err := env.Parse(body.Environment)
 	if err != nil {
@@ -202,7 +211,7 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noStore(w)
-	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Role: role, Permissions: body.Permissions})
+	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Role: role, Permissions: body.Permissions, RatePercent: int32(ratePercent)})
 	respond(w, r, http.StatusCreated, resp, err)
 }
 

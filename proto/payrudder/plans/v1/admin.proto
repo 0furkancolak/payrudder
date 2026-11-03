@@ -159,6 +159,8 @@ message CreateApiKeyRequest {
   string role = 3;
   // For custom: the permissions. For a fixed role: optional, and a subset of the role's own.
   repeated string permissions = 4;
+  // Optional own rate limit of the key, 1 to 100 (percent of the tenant's limit per route class); 0 = none. Anything else is plans.api_key.bad_rate_percent.
+  int32 rate_percent = 5;
 }
 
 message CreateApiKeyResponse {
@@ -195,6 +197,8 @@ message ResolveApiKeyResponse {
   string role = 11;
   // The permissions the gateway enforces. The role admin always lists every permission that exists.
   repeated string permissions = 12;
+  // The key's own rate limit (percent of the tenant's limit), 0 = none.
+  int32 rate_percent = 13;
 }
 
 message TouchApiKeyRequest {

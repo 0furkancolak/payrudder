@@ -50,8 +50,11 @@ func New(systemPool *pgxpool.Pool, evict Evictor, log *slog.Logger) *Commands {
 func (c *Commands) q() *sqlc.Queries { return sqlc.New(c.pool) }
 
 // Issue makes a key with the role and permissions (already checked by domain.KeyGrant) for the tenant and returns it with its plaintext, which is shown
-// once. A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one or an app that was deleted.
-func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, permissions []string) (*plansv1.ApiKey, string, error) {
+// once. ratePercent (0 = none) is the key's own share of the tenant's rate limit; it is checked here, whoever calls. A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one or an app that was deleted.
+func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, permissions []string, ratePercent int32) (*plansv1.ApiKey, string, error) {
+	if err := domain.ValidRatePercent(ratePercent); err != nil {
+		return nil, "", err
+	}
 	t, err := c.q().GetTenant(ctx, tenantID)
 	if err != nil {
 		return nil, "", convert.Err(err, "tenant")
@@ -79,12 +82,12 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, p
 		err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 			var err error
 			if row, err = sqlc.New(tx).InsertApiKey(ctx, sqlc.InsertApiKeyParams{
-				ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Role: role, Permissions: permissions,
+				ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Role: role, Permissions: permissions, RatePercent: ratePtr(ratePercent),
 			}); err != nil {
 				return err
 			}
 			return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "api_key.created", TargetType: "api_key", TargetID: row.ID.String(),
-				Summary: fmt.Sprintf("created the %s key %s with the role %s", keyEnv, key.Prefix, role), Detail: map[string]any{"prefix": key.Prefix, "role": role, "permissions": permissions}})
+				Summary: fmt.Sprintf("created the %s key %s with the role %s", keyEnv, key.Prefix, role), Detail: map[string]any{"prefix": key.Prefix, "role": role, "permissions": permissions, "rate_percent": ratePercent}})
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 			continue // prefix collision: draw again
@@ -96,6 +99,14 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, p
 		return convert.APIKey(row), key.String(), nil
 	}
 	return nil, "", errkey.New(codes.Aborted, "identity.api_key.prefix_unavailable", "could not allocate a unique key prefix; retry")
+}
+
+// ratePtr is NULL (no own limit) for 0.
+func ratePtr(p int32) *int32 {
+	if p == 0 {
+		return nil
+	}
+	return &p
 }
 
 // Revoke revokes the key and evicts it from the gateway cache.

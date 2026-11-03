@@ -75,6 +75,14 @@ func KeyGrant(role string, permissions []string, legacy plansv1.ApiKey_Scope) (o
 	return apikey.Resolve(role, permissions)
 }
 
+// ValidRatePercent checks the own rate limit of a new key: 0 is none, otherwise 1 to 100 percent of the tenant's limit.
+func ValidRatePercent(p int32) error {
+	if p < 0 || p > 100 {
+		return Invalid("rate_percent", "between 1 and 100, or empty for no limit of its own")
+	}
+	return nil
+}
+
 // KeyScope is the summary of a role for readers of the deprecated scope field: ingest for ingest_only, read for read_only, full for the rest.
 func KeyScope(role string) plansv1.ApiKey_Scope {
 	switch role {

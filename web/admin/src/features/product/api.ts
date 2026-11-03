@@ -265,8 +265,8 @@ export function useDeleteApp(id: MaybeRefOrGetter<string>) {
 export function useCreateApiKey(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { environment: Environment; role: KeyRole; permissions?: KeyPermission[] }) =>
-      unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment: v.environment, role: v.role, ...(v.permissions ? { permissions: v.permissions } : {}) } })),
+    mutationFn: (v: { environment: Environment; role: KeyRole; permissions?: KeyPermission[]; ratePercent?: number }) =>
+      unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment: v.environment, role: v.role, ...(v.permissions ? { permissions: v.permissions } : {}), ...(v.ratePercent ? { rate_percent: v.ratePercent } : {}) } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.keys(toValue(id)) }),
   });
 }

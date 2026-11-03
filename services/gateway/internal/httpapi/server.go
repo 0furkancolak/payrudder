@@ -61,6 +61,8 @@ type Authenticator interface {
 // Limiter charges rate-limit cost.
 type Limiter interface {
 	Allow(ctx context.Context, tenantID, tier string, class ratelimit.Class, cost int) (ratelimit.Decision, error)
+	// AllowKey charges the own bucket of an API key (percent of the tenant's limit); it is called before Allow.
+	AllowKey(ctx context.Context, keyID, tenantID, tier string, class ratelimit.Class, cost, percent int) (ratelimit.Decision, error)
 }
 
 // Deps are the upstreams of the API.
@@ -322,8 +324,16 @@ func debugAllowed(rt Route, ctx context.Context, r *http.Request) bool {
 
 type principalKey struct{}
 
-// charge takes cost units from the tenant's limit for class and answers 429 itself when there are none left.
+// charge takes cost units from the tenant's limit for class and answers 429 itself when there are none left. A key with a limit of its own (a percentage of the
+// tenant's) is charged first in its own bucket, and refused with the same 429 when it has spent its share although the tenant has room; a key without one costs nothing extra.
 func (s *Server) charge(w http.ResponseWriter, r *http.Request, p auth.Principal, class ratelimit.Class, cost int) bool {
+	if p.RatePercent > 0 && p.Tenant.APIKeyID != "" {
+		d, err := s.d.Limiter.AllowKey(r.Context(), p.Tenant.APIKeyID, p.Tenant.ID.String(), p.Tier, class, cost, p.RatePercent)
+		if err == nil && !d.Allowed {
+			s.refuseRate(w, r, d, class)
+			return false
+		}
+	}
 	return s.chargeKey(w, r, p.Tenant.ID.String(), p.Tier, class, cost)
 }
 
@@ -331,11 +341,15 @@ func (s *Server) charge(w http.ResponseWriter, r *http.Request, p auth.Principal
 func (s *Server) chargeKey(w http.ResponseWriter, r *http.Request, key, tier string, class ratelimit.Class, cost int) bool {
 	d, err := s.d.Limiter.Allow(r.Context(), key, tier, class, cost)
 	if err == nil && !d.Allowed {
-		w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
-		writeError(w, r, errkey.New(codes.ResourceExhausted, "gateway.rate_limit.exceeded", "rate limit exceeded for "+string(class)))
+		s.refuseRate(w, r, d, class)
 		return false
 	}
 	return true
+}
+
+func (s *Server) refuseRate(w http.ResponseWriter, r *http.Request, d ratelimit.Decision, class ratelimit.Class) {
+	w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
+	writeError(w, r, errkey.New(codes.ResourceExhausted, "gateway.rate_limit.exceeded", "rate limit exceeded for "+string(class)))
 }
 
 func principalFrom(ctx context.Context) auth.Principal {

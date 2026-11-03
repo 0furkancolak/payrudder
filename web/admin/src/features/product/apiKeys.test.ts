@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission } from "./apiKeys";
+import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, parseRatePercent, permissionCount, permissionsOfRole, ratePercentOf, roleOfKey, type KeyPermission } from "./apiKeys";
 
 describe("key roles", () => {
   it("a new key starts on a role that can only read", () => {
@@ -53,6 +53,26 @@ describe("keyRequest", () => {
   });
   it("a custom key with nothing chosen is not a request", () => {
     expect(keyRequest("custom", new Set())).toBeNull();
+  });
+});
+
+describe("a key's own rate limit", () => {
+  it("empty means none, 1 to 100 is a share of the plan", () => {
+    expect(parseRatePercent("")).toEqual({ ok: true, value: undefined });
+    expect(parseRatePercent("  ")).toEqual({ ok: true, value: undefined });
+    expect(parseRatePercent(null)).toEqual({ ok: true, value: undefined });
+    expect(parseRatePercent("1")).toEqual({ ok: true, value: 1 });
+    expect(parseRatePercent(" 100 ")).toEqual({ ok: true, value: 100 });
+    expect(parseRatePercent(25)).toEqual({ ok: true, value: 25 });
+  });
+  it("0, 101, fractions, signs and text are refused", () => {
+    for (const bad of ["0", "101", "1000", "-5", "2.5", "1e2", "abc", "50%", 0, 101]) expect(parseRatePercent(bad), String(bad)).toEqual({ ok: false });
+  });
+  it("a key from the API without a percentage (0, null, absent) has none", () => {
+    expect(ratePercentOf({})).toBe(0);
+    expect(ratePercentOf({ rate_percent: null })).toBe(0);
+    expect(ratePercentOf({ rate_percent: 0 })).toBe(0);
+    expect(ratePercentOf({ rate_percent: 30 })).toBe(30);
   });
 });
 

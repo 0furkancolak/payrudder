@@ -28,6 +28,8 @@ A permission is `resource:action` (`customers:read`, `invoices:write`, `events:w
 
 ## Rotating and revoking
 
+A key can also have a **rate limit of its own**, a share of your plan's limit for each kind of request: in the console give the key a *Rate limit (% of plan)* from 1 to 100 (or send `rate_percent` when you create it). A key at 20 may use a fifth of the limit and gets `429` with the key `gateway.rate_limit.exceeded` and a `Retry-After` header when that fifth is spent, even if your other keys have left room; the rest of the limit stays for them. Leave it empty and the key only draws on the whole limit, like today. A rotated key keeps its share.
+
 Rotating a key (in the console, or `POST /app/v1/apps/{id}/api-keys/{key_id}/rotate`) makes a new key with the same role and environment and sets an end time on the old one, so you can deploy the new key before the old one stops: during that overlap both work, afterwards the old one is `401`. Revoking a key stops it. Rotate when a key may have leaked and whenever someone who knew it leaves.
 
 ## When a request is refused

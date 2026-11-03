@@ -93,6 +93,7 @@ type fakeIdentity struct {
 	terms     []*plansv1.AcceptMyTermsRequest
 	lastRole  string
 	lastPerms []string
+	lastRate  int32
 
 	// What the onboarding routes passed on.
 	onboardingGets    []*plansv1.GetMyOnboardingRequest
@@ -323,7 +324,7 @@ func (f *fakeIdentity) CreateMyApiKey(_ context.Context, req *plansv1.CreateMyAp
 		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
 	}
 	f.mu.Lock()
-	f.lastRole, f.lastPerms = req.GetRole(), req.GetPermissions()
+	f.lastRole, f.lastPerms, f.lastRate = req.GetRole(), req.GetPermissions(), req.GetRatePercent()
 	f.mu.Unlock()
 	return &plansv1.CreateMyApiKeyResponse{ApiKey: &plansv1.ApiKey{Id: "key-new", Prefix: "abcdefgh"}, Plaintext: "qk_live_abcdefgh_secret"}, nil
 }

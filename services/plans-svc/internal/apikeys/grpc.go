@@ -35,7 +35,7 @@ func (h *Handler) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyReq
 	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "plans.api_key.bad_role", "role: admin, billing, read_only, ingest_only or custom, with known permissions")
 	}
-	key, plaintext, err := h.cmd.Issue(ctx, id, role, perms)
+	key, plaintext, err := h.cmd.Issue(ctx, id, role, perms, req.GetRatePercent())
 	if err != nil {
 		return nil, err
 	}

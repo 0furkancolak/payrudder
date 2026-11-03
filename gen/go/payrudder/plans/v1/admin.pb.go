@@ -757,7 +757,9 @@ type CreateApiKeyRequest struct {
 	// admin (default), billing, read_only, ingest_only or custom.
 	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	// For custom: the permissions. For a fixed role: optional, and a subset of the role's own.
-	Permissions   []string `protobuf:"bytes,4,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Permissions []string `protobuf:"bytes,4,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	// Optional own rate limit of the key, 1 to 100 (percent of the tenant's limit per route class); 0 = none. Anything else is plans.api_key.bad_rate_percent.
+	RatePercent   int32 `protobuf:"varint,5,opt,name=rate_percent,json=ratePercent,proto3" json:"rate_percent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -818,6 +820,13 @@ func (x *CreateApiKeyRequest) GetPermissions() []string {
 		return x.Permissions
 	}
 	return nil
+}
+
+func (x *CreateApiKeyRequest) GetRatePercent() int32 {
+	if x != nil {
+		return x.RatePercent
+	}
+	return 0
 }
 
 type CreateApiKeyResponse struct {
@@ -1021,7 +1030,9 @@ type ResolveApiKeyResponse struct {
 	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
 	Role       string                 `protobuf:"bytes,11,opt,name=role,proto3" json:"role,omitempty"`
 	// The permissions the gateway enforces. The role admin always lists every permission that exists.
-	Permissions   []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Permissions []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	// The key's own rate limit (percent of the tenant's limit), 0 = none.
+	RatePercent   int32 `protobuf:"varint,13,opt,name=rate_percent,json=ratePercent,proto3" json:"rate_percent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1138,6 +1149,13 @@ func (x *ResolveApiKeyResponse) GetPermissions() []string {
 		return x.Permissions
 	}
 	return nil
+}
+
+func (x *ResolveApiKeyResponse) GetRatePercent() int32 {
+	if x != nil {
+		return x.RatePercent
+	}
+	return 0
 }
 
 type TouchApiKeyRequest struct {
@@ -2986,12 +3004,13 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"eInvoiceOn\x12)\n" +
 	"\x10default_language\x18\v \x01(\tR\x0fdefaultLanguage\"R\n" +
 	"\x1cUpdateTenantSettingsResponse\x122\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"\xa0\x01\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"\xc3\x01\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x126\n" +
 	"\x05scope\x18\x02 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12 \n" +
-	"\vpermissions\x18\x04 \x03(\tR\vpermissions\"i\n" +
+	"\vpermissions\x18\x04 \x03(\tR\vpermissions\x12!\n" +
+	"\frate_percent\x18\x05 \x01(\x05R\vratePercent\"i\n" +
 	"\x14CreateApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"3\n" +
@@ -3001,7 +3020,7 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\x14RevokeApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\".\n" +
 	"\x14ResolveApiKeyRequest\x12\x16\n" +
-	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xad\x04\n" +
+	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xd0\x04\n" +
 	"\x15ResolveApiKeyResponse\x12\x1c\n" +
 	"\n" +
 	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\x12\x1b\n" +
@@ -3017,7 +3036,8 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"expireTime\x12\x12\n" +
 	"\x04role\x18\v \x01(\tR\x04role\x12 \n" +
-	"\vpermissions\x18\f \x03(\tR\vpermissions\"2\n" +
+	"\vpermissions\x18\f \x03(\tR\vpermissions\x12!\n" +
+	"\frate_percent\x18\r \x01(\x05R\vratePercent\"2\n" +
 	"\x12TouchApiKeyRequest\x12\x1c\n" +
 	"\n" +
 	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\"\x15\n" +

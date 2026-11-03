@@ -4161,6 +4161,11 @@
         "audit": "Denetim günlüğü"
       },
       "permissionCount": "{n} / {total} izin",
+      "ratePercent": "İstek sınırı (planın %'si)",
+      "ratePercentHelp": "İsteğe bağlı. Yalnızca bu anahtarın kullanabileceği, planınızın istek sınırından 1 ile 100 arasında bir pay. Boş bırakırsanız anahtarın kendi sınırı olmaz: diğer anahtarlar gibi sınırın tamamından yararlanır.",
+      "ratePercentInvalid": "1 ile 100 arasında bir tam sayı girin ya da boş bırakın.",
+      "ratePercentOwn": "planın %{n}'i",
+      "ratePercentNone": "Kendi sınırı yok",
       "customNeedsOne": "En az bir izin seçin.",
       "create": "Anahtar oluştur",
       "createTitleSandbox": "Yeni sandbox anahtarı",
