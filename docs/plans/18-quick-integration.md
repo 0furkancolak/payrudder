@@ -113,3 +113,8 @@ Defaults (not agreed): exact versions of the top-level gems and packages, no `Ge
 Not done: a Ruby SDK (the Rails client is not published or generated from the OpenAPI file), a job against the compose stack, publishing the SDKs, the rejected-event viewer, integration health over time.
 
 Not verified: the `rails` and `django` jobs have not run on GitHub; neither template ran against a real gateway or key; the Rails smoke test ran on Ruby 4.0.6 and the app was booted on 3.4, not smoke-tested there; Django ran on Python 3.14 here and CI uses 3.12; `bin/rails server` was started once by hand (development mode: `/healthz` answered and a bad `/usage` was refused), not in CI.
+
+## Progress (2026-11-03), branch `docs/usage-best-practices`
+
+- **"Sending usage well" page** (`docs-site/content/usage-best-practices.md`, Concepts): batching, keys that survive a retry, what to retry, `event_time`, customer first, string quantities, corrections, limits as eventual, sandbox vs live keys. Every rule restates `usage-metering.md`, `idempotency.md` and `errors.md`; nothing new is promised. Docs-site tests pass (58).
+- Still open from this plan: a job against the compose stack, PHP snippet run for real, rejected-event viewer, integration health over time, publishing the SDKs.

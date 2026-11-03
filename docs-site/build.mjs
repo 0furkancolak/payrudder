@@ -41,6 +41,7 @@ export const GUIDES = [
   { section: "Payment providers", src: content("provider-iyzico.md"), page: "provider-iyzico", title: "iyzico", status: "draft" },
   { section: "Concepts", src: content("authentication.md"), page: "authentication", title: "Authentication", status: "draft" },
   { section: "Concepts", src: content("usage-metering.md"), page: "usage-metering", title: "Usage metering", status: "draft" },
+  { section: "Concepts", src: content("usage-best-practices.md"), page: "usage-best-practices", title: "Sending usage well", status: "draft" },
   { section: "Concepts", src: content("plans-and-packages.md"), page: "plans-and-packages", title: "Packages and plans", status: "draft" },
   { section: "Concepts", src: content("subscriptions.md"), page: "subscriptions", title: "Subscriptions", status: "draft" },
   { section: "Concepts", src: content("invoices.md"), page: "invoices", title: "Invoices", status: "draft" },
