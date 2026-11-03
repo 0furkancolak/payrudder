@@ -442,12 +442,14 @@ func (q *Queries) SystemListDueNotices(ctx context.Context, arg SystemListDueNot
 
 const takeDueNotice = `-- name: TakeDueNotice :one
 UPDATE price_change_items i SET notified_at = $1::timestamptz, notice_event = NULL, notice_send_at = NULL, updated_at = now()
-FROM price_changes pc, subscription_changes c
+FROM price_changes pc, subscription_changes c,
+     -- RETURNING would give the row as it is after the update (notice_event NULL), so the fact is read from the row as it was.
+     (SELECT o.notice_event FROM price_change_items o WHERE o.tenant_id = app_tenant_id() AND o.price_change_id = $2 AND o.subscription_id = $3) old
 WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = $2 AND i.subscription_id = $3
   AND i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= $1::timestamptz
   AND pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
   AND c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
-RETURNING i.notice_event
+RETURNING old.notice_event
 `
 
 type TakeDueNoticeParams struct {

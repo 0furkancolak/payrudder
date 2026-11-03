@@ -39,12 +39,14 @@ LIMIT @batch::int;
 -- is not waiting any more. The caller holds the subscription's lock.
 -- name: TakeDueNotice :one
 UPDATE price_change_items i SET notified_at = @now::timestamptz, notice_event = NULL, notice_send_at = NULL, updated_at = now()
-FROM price_changes pc, subscription_changes c
+FROM price_changes pc, subscription_changes c,
+     -- RETURNING would give the row as it is after the update (notice_event NULL), so the fact is read from the row as it was.
+     (SELECT o.notice_event FROM price_change_items o WHERE o.tenant_id = app_tenant_id() AND o.price_change_id = @price_change_id AND o.subscription_id = @subscription_id) old
 WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id AND i.subscription_id = @subscription_id
   AND i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= @now::timestamptz
   AND pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
   AND c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
-RETURNING i.notice_event;
+RETURNING old.notice_event;
 
 -- The change an item carries and its state ('' when the item is a skip). No row: the price change has not met this subscription.
 -- name: GetPriceChangeItemChange :one
