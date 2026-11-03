@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { contractsGateway, version, withdrawal } from "./contracts";
 import { MockGateway } from "./gateway";
 import { METERS } from "./usage";
 import { ACCOUNT, APP, billingGateway, INVOICE_2, invoice, invoiceLines, LIVE, productGateway, SANDBOX, signInAsAda } from "./product";
@@ -172,6 +173,41 @@ const CASES: Case[] = [
     },
     offered: (page) => [page.getByTestId("row-action-reverse")],
   },
+  {
+    name: "contracts: agreements",
+    path: "/contracts",
+    mock: (gw) => {
+      contractsGateway(gw, { versions: [version("tos", "consumer", 1, { en: "Terms" })] });
+      return gw;
+    },
+    ready: (page) => page.getByTestId("agreement-tos~consumer"),
+    offered: (page) => [page.getByTestId("agreement-publish-tos~consumer")],
+  },
+  {
+    name: "contracts: withdrawals",
+    path: "/contracts?tab=withdrawals",
+    mock: (gw) => {
+      contractsGateway(gw, { withdrawals: [withdrawal("w1", "cus_a", "received", "I changed my mind"), withdrawal("w2", "cus_b", "accepted", "Refund please", { invoice_id: "inv_1" })] });
+      return gw;
+    },
+    ready: (page) => page.getByTestId("withdrawal-w1"),
+    offered: (page) => [page.getByTestId("withdrawal-accepted-w1"), page.getByTestId("withdrawal-rejected-w1"), page.getByTestId("withdrawal-refund-w2")],
+  },
+  {
+    name: "a customer's sheet: the agreements and withdrawals",
+    path: "/customers",
+    mock: (gw) => {
+      contractsGateway(gw, { withdrawals: [withdrawal("w1", "cus_a", "received", "I changed my mind")] });
+      return get("/v1/customers", { customers: [customer] })(gw);
+    },
+    ready: (page) => page.getByTestId("customer-cus_a"),
+    after: async (page) => {
+      await page.getByTestId("customer-cus_a").click();
+      await page.getByTestId("customer-tab-agreements").click();
+      await expect(page.getByTestId("customer-withdrawal")).toContainText("I changed my mind"); // a viewer reads it
+    },
+    offered: (page) => [page.getByTestId("withdrawal-record"), page.getByTestId("customer-withdrawals-link")],
+  },
   // --- what lives inside a sheet or a card of a page (the review of 2026-11-02 found these still offering writes)
   {
     name: "a subscription's sheet",
@@ -295,6 +331,30 @@ for (const c of CASES) {
 }
 
 // --- pages whose controls are not a header button
+
+test("contracts: a viewer reads the settings and cannot change them", async ({ page }) => {
+  const { gw } = productGateway(new MockGateway(), { role: "viewer", memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "viewer" }] });
+  contractsGateway(gw);
+  await gw.install(page);
+  await signInAsAda(page);
+  await page.goto(`/app/t/${LIVE}/contracts?tab=settings`);
+  await expect(page.getByTestId("contracts-retention")).toHaveValue("36");
+  await expect(page.getByTestId("contracts-retention")).toBeDisabled();
+  await expect(page.getByTestId("contracts-immediate")).toBeDisabled();
+  await expect(page.getByTestId("contracts-refund")).toBeDisabled();
+  await expect(page.getByTestId("contracts-function")).toBeDisabled();
+  await expect(page.getByTestId("contracts-save")).toBeDisabled();
+});
+
+test("contracts: an owner can change the settings", async ({ page }) => {
+  const { gw } = productGateway(new MockGateway(), { role: "owner" });
+  contractsGateway(gw);
+  await gw.install(page);
+  await signInAsAda(page);
+  await page.goto(`/app/t/${LIVE}/contracts?tab=settings`);
+  await expect(page.getByTestId("contracts-retention")).toBeEnabled();
+  await expect(page.getByTestId("contracts-function")).toBeEnabled();
+});
 
 test("mail: the switches of a viewer show the state and cannot be changed", async ({ page }) => {
   const { gw } = productGateway(new MockGateway(), { role: "viewer", memberships: [{ account_id: ACCOUNT, account_name: "Ada Labs", role: "viewer" }] });
