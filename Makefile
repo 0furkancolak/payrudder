@@ -17,10 +17,9 @@ SDKROOT := $(shell printf 'int main(void){return 0;}' > /tmp/payrudder-sdk-probe
   ok() { cc -isysroot "$$1" /tmp/payrudder-sdk-probe.c -framework CoreFoundation -lresolv -o /dev/null >/dev/null 2>&1; }; \
   if ok "$$(xcrun --show-sdk-path 2>/dev/null)"; then :; else \
     for s in $$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk 2>/dev/null | sort -rV); do ok "$$s" && { echo "$$s"; break; }; done; fi)
+# Empty means the default SDK links, so nothing is exported. No `undefine` here: macOS ships make 3.81 and it needs 3.82.
 ifneq ($(strip $(SDKROOT)),)
 export SDKROOT
-else
-undefine SDKROOT
 endif
 endif
 endif
