@@ -74,6 +74,7 @@ test-mode.html
 tutorial-payments.html
 tutorial-usage-billing.html
 tutorial-webhooks.html
+usage-best-practices.html
 usage-metering.html
 versioning.html
 webhooks.html
