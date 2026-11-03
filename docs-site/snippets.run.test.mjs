@@ -2,7 +2,7 @@
 // checkout, against docs-site/fakeapi.mjs, a stand-in made from api/openapi/v1.yaml. What this proves: the code a developer pastes starts, reaches the address it was
 // given, sends a bearer key and a body that fits the contract (known route, required fields, formats), and reads the answer. What it does not prove: that the real gateway
 // accepts the request (no database, no key check, no business rule) - that is the compose stack's job, which no job here starts. PHP is linted and looked up, not run
-// (web/admin/src/features/connect/snippets.sdk.test.ts), because the SDK has no autoloader outside Composer.
+// (web/admin/src/features/connect/__tests__/snippets.sdk.test.ts), because the SDK has no autoloader outside Composer.
 //
 // A tool that is missing skips its language, unless SNIPPETS_REQUIRE_TOOLS=1 (the snippets-run workflow sets it), where it fails. SNIPPETS_PYTHON names a Python that
 // has httpx. The TypeScript SDK must be built first (cd sdk/typescript && npm ci && npm run build).

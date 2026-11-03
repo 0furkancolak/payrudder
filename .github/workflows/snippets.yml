@@ -50,4 +50,4 @@ jobs:
         working-directory: web/admin
         env:
           SNIPPETS_REQUIRE_TOOLS: "1"
-        run: npx vitest run src/features/connect/snippets.sdk.test.ts
+        run: npx vitest run src/features/connect/__tests__/snippets.sdk.test.ts

@@ -99,7 +99,7 @@ func TestTurkishChecksumsAgreeWithAnIndependentImplementation(t *testing.T) {
 // The vectors of the VAT checksums were produced and judged by python-stdnum (stdnum.eu.vat, which routes to the module of each country), the same implementation as
 // above: the valid ones are the examples of its documentation or numbers found by searching and judged valid by it, the invalid ones are those of its documentation or a
 // valid one with one character changed that it judges invalid. Every one of them has the shape of a VAT id, so a false is the checksum's doing. They are the vectors of
-// euVatVectors in web/admin/src/shared/lib/taxid.test.ts. A country with no checksum here (SK, XI) has no vector; see euVATWithoutChecksum.
+// euVatVectors in web/admin/src/shared/lib/__tests__/taxid.test.ts. A country with no checksum here (SK, XI) has no vector; see euVATWithoutChecksum.
 var euVATVectors = []struct {
 	id string
 	ok bool
@@ -320,7 +320,7 @@ func TestDetectAndValid(t *testing.T) {
 	}
 }
 
-// The same cases, with the same keys, as taxIdHint in web/admin/src/shared/lib/taxid.test.ts: the server's warning and the form's hint must not disagree.
+// The same cases, with the same keys, as taxIdHint in web/admin/src/shared/lib/__tests__/taxid.test.ts: the server's warning and the form's hint must not disagree.
 func TestCheckIsAHintNeverARefusal(t *testing.T) {
 	for _, c := range []struct {
 		id, country, kind string
