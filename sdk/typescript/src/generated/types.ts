@@ -1186,6 +1186,19 @@ export interface Customer {
   tax_id_warning: string;
 }
 
+export interface CustomerBlockAppeal {
+  id: string;
+  status: "open" | "accepted" | "rejected" | "closed";
+  /** The customer's own words. Untrusted: show as text only */
+  statement: string;
+  /** Your answer; empty until decided, and for an accepted appeal that had none */
+  answer: string;
+  /** A person's address, key:<api key id>, or system for a closed appeal */
+  decided_by: string;
+  create_time: string;
+  decide_time?: string | null;
+}
+
 /** Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open. */
 export type CustomerBlockCategory = "fraud" | "chargeback" | "abuse" | "request" | "other";
 
@@ -1239,6 +1252,12 @@ export interface CustomerTax {
   tax_office?: string;
   /** The customer is registered for e-fatura */
   e_invoice_registered?: boolean;
+}
+
+export interface DecideCustomerBlockAppealRequest {
+  decision: "accepted" | "rejected";
+  /** Required to reject */
+  answer?: string;
 }
 
 export interface DeletedCustomerCard {
@@ -2148,6 +2167,10 @@ export interface ListCreditNotesResponse {
 export interface ListCreditPacksQuery {
   /** true leaves out packs withdrawn from sale */
   active?: boolean;
+}
+
+export interface ListCustomerBlockAppealsResponse {
+  appeals: Array<CustomerBlockAppeal>;
 }
 
 export interface ListCustomerBlockEventsResponse {

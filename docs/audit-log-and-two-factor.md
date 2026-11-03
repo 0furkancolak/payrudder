@@ -23,6 +23,7 @@ A row: `id`, `tenant_id` (NULL for an entry that belongs to no tenant), `account
 | `plan.created`, `plan.version_published` | plans-svc `plans/command` |
 | `webhook_endpoint.created`, `.updated`, `.deleted`, `.secret_rotated` | plans-svc `webhookendpoints/command` |
 | `customer.blocked`, `customer.unblocked` | plans-svc `customers/command` (next to `customer_block_events`) |
+| `customer_block.appeal_submitted`, `customer_block.appeal_decided` (the decision in the detail; the customer's statement is not) | plans-svc `customers/command/appeals.go` (plan 13) |
 | `customer.contact_changed`, `customer.address_changed`, `customer.tax_changed`, `customer.payment_method_changed` | plans-svc `customers/command`: the names of the fields that changed and the hashes of the state before and after (`before_hash`, `after_hash`), never the values: a name, an address, a tax id and a payment token are personal data or a credential. A contact call that changes nothing writes nothing |
 | `subscription.coupon_applied`, `subscription.coupon_removed` (the seller's own coupon code is named) | plans-svc `coupons/command` |
 | `tenant.status_changed`, `tenant.status_requested`, `tenant.settings_updated` (field names only) | plans-svc `tenants/command` (next to `tenant_status_events`) |

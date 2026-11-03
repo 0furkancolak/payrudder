@@ -208,6 +208,31 @@ class ListCustomerBlockEventsResponse(TypedDict):
     events: list[CustomerBlockEvent]
 
 
+class _CustomerBlockAppealRequired(TypedDict):
+    id: str
+    status: Literal["open", "accepted", "rejected", "closed"]
+    statement: str
+    answer: str
+    decided_by: str
+    create_time: str
+
+
+class CustomerBlockAppeal(_CustomerBlockAppealRequired, total=False):
+    decide_time: str | None
+
+
+class ListCustomerBlockAppealsResponse(TypedDict):
+    appeals: list[CustomerBlockAppeal]
+
+
+class _DecideCustomerBlockAppealRequestRequired(TypedDict):
+    decision: Literal["accepted", "rejected"]
+
+
+class DecideCustomerBlockAppealRequest(_DecideCustomerBlockAppealRequestRequired, total=False):
+    answer: str
+
+
 class BlocklistEntry(TypedDict):
     id: str
     kind: Literal["email", "tax_id", "external_id"]

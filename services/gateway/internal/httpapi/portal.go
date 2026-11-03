@@ -51,6 +51,8 @@ type portalView struct {
 	Ask         *contractView
 	AgreeAction string
 	Withdraw    string
+	// Appeal is the link to the appeal form, shown only to a customer whose block is in force; it never says why they are blocked.
+	Appeal string
 }
 
 // portalSubRow is one subscription as the summary shows it: the plan, its state as a badge, what one period costs, and a few facts (dates, quantity, who bills it).
@@ -107,6 +109,9 @@ func (s *Server) portalPageWith(w http.ResponseWriter, r *http.Request, code int
 	portalCredits(v, resp, token, q)
 	s.portalAgreements(r.Context(), v, resp, token, lang, q, problem)
 	v.Withdraw = s.withdrawalLink(r.Context(), subjectOfPortal(resp, token), q)
+	if s.appealOffered(r.Context(), resp) {
+		v.Appeal = "/c/" + token + "/appeal" + q
+	}
 	s.render(w, r, code, "portal", v)
 }
 

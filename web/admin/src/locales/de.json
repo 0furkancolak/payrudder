@@ -807,6 +807,23 @@
         "bannerSuspended": "Dienst ausgesetzt: Berechtigungsprüfungen antworten mit „nicht erlaubt“.",
         "suspended": "Dienst ausgesetzt"
       },
+      "appeal": {
+        "title": "Einspruch des Kunden",
+        "untrusted": "Vom Kunden geschrieben: nicht vertrauenswürdiger Text, nur als reiner Text angezeigt.",
+        "sent": "Gesendet am {date}",
+        "status": {
+          "open": "Wartet auf Sie",
+          "accepted": "Angenommen",
+          "rejected": "Abgelehnt",
+          "closed": "Geschlossen (Sperre aufgehoben)"
+        },
+        "answer": "Ihre Antwort",
+        "answerHint": "Zum Ablehnen erforderlich. Der Kunde liest sie auf seiner Portalseite. Höchstens 1000 Zeichen.",
+        "accept": "Annehmen und Sperre aufheben",
+        "reject": "Ablehnen",
+        "confirmAccept": "Diesen Einspruch annehmen und die Sperre von {name} aufheben?",
+        "decidedBy": "entschieden von {actor}"
+      },
       "upcoming": {
         "title": "Kommende Rechnung",
         "estimate": "Schätzung",
@@ -3326,6 +3343,11 @@
       "appeal": {
         "not_held": "Nur gegen eine App, die der Betreiber ausgesetzt, eingefroren oder gesperrt hat, kann Einspruch eingelegt werden.",
         "exists": "Es ist bereits ein Einspruch offen. Der Betreiber wird ihn beantworten.",
+        "not_open": "Über diesen Einspruch wurde bereits entschieden."
+      },
+      "customer_appeal": {
+        "exists": "Ein Einspruch dieses Kunden ist bereits offen.",
+        "not_blocked": "Dieser Kunde ist nicht gesperrt, es gibt nichts anzufechten.",
         "not_open": "Über diesen Einspruch wurde bereits entschieden."
       }
     },

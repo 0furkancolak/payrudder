@@ -94,6 +94,30 @@ func (r *Queries) List(ctx context.Context, req *plansv1.ListCustomersRequest) (
 	return resp, nil
 }
 
+// Appeals returns the customer's appeals against a block, newest first (the latest 20). Nothing of the block itself (category, note) is in them.
+func (r *Queries) Appeals(ctx context.Context, externalID string) (*plansv1.ListCustomerBlockAppealsResponse, error) {
+	if externalID == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	var rows []sqlc.CustomerBlockAppeal
+	err := r.db.Tx(ctx, func(q *sqlc.Queries) error {
+		c, err := q.GetCustomerByExternalID(ctx, externalID)
+		if err != nil {
+			return err
+		}
+		rows, err = q.ListCustomerBlockAppeals(ctx, c.ID)
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	out := &plansv1.ListCustomerBlockAppealsResponse{Appeals: make([]*plansv1.CustomerBlockAppeal, 0, len(rows))}
+	for _, a := range rows {
+		out.Appeals = append(out.Appeals, convert.CustomerBlockAppeal(a))
+	}
+	return out, nil
+}
+
 // blockEventsLimit is how many events of a customer's block history are returned: the latest.
 const blockEventsLimit = 100
 

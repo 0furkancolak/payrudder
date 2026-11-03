@@ -226,6 +226,20 @@ const CASES: Case[] = [
     offered: (page) => [page.getByTestId("card-delete")],
   },
   {
+    name: "a blocked customer's sheet: the appeal",
+    path: "/customers",
+    mock: (gw) =>
+      get("/v1/customers/cus_a/appeals", { appeals: [{ id: "ap1", status: "open", statement: "It was a mistake.", answer: "", decided_by: "", create_time: "2026-11-01T10:00:00Z", decide_time: null }] })(
+        get("/v1/customers", { customers: [{ ...customer, block_time: "2026-10-28T10:00:00Z" }] })(gw),
+      ),
+    ready: (page) => page.getByTestId("customer-cus_a"),
+    after: async (page) => {
+      await page.getByTestId("customer-cus_a").click();
+      await expect(page.getByTestId("customer-appeal-statement")).toContainText("It was a mistake."); // a viewer reads it
+    },
+    offered: (page) => [page.getByTestId("customer-appeal-accept"), page.getByTestId("customer-appeal-reject"), page.getByTestId("customer-appeal-answer-input")],
+  },
+  {
     name: "an open invoice's sheet in the sandbox",
     path: "/invoices",
     tenant: SANDBOX,

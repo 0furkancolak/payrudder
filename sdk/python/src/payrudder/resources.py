@@ -151,6 +151,20 @@ class CustomersResource:
         """
         return cast("m.ListCustomerBlockEventsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/block-events", options=options))
 
+    def list_customer_block_appeals(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListCustomerBlockAppealsResponse:
+        """A blocked customer's appeals, newest first.
+
+        ``GET /v1/customers/{external_id}/appeals``
+        """
+        return cast("m.ListCustomerBlockAppealsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/appeals", options=options))
+
+    def decide_customer_block_appeal(self, external_id: str, id: str, body: m.DecideCustomerBlockAppealRequest, *, options: RequestOptions | None = None) -> m.CustomerBlockAppeal:
+        """Accept or reject a blocked customer's appeal.
+
+        ``POST /v1/customers/{external_id}/appeals/{id}/decision``
+        """
+        return cast("m.CustomerBlockAppeal", self._client._request("POST", f"/v1/customers/{_p(external_id)}/appeals/{_p(id)}/decision", body=body, options=options))
+
     def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.
 
@@ -2097,6 +2111,20 @@ class AsyncCustomersResource:
         ``GET /v1/customers/{external_id}/block-events``
         """
         return cast("m.ListCustomerBlockEventsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/block-events", options=options))
+
+    async def list_customer_block_appeals(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListCustomerBlockAppealsResponse:
+        """A blocked customer's appeals, newest first.
+
+        ``GET /v1/customers/{external_id}/appeals``
+        """
+        return cast("m.ListCustomerBlockAppealsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/appeals", options=options))
+
+    async def decide_customer_block_appeal(self, external_id: str, id: str, body: m.DecideCustomerBlockAppealRequest, *, options: RequestOptions | None = None) -> m.CustomerBlockAppeal:
+        """Accept or reject a blocked customer's appeal.
+
+        ``POST /v1/customers/{external_id}/appeals/{id}/decision``
+        """
+        return cast("m.CustomerBlockAppeal", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/appeals/{_p(id)}/decision", body=body, options=options))
 
     async def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.

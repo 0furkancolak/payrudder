@@ -326,6 +326,9 @@ func liftBlock(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, cur sqlc.Custome
 	if err != nil {
 		return out, err
 	}
+	if err := q.CloseCustomerBlockAppeals(ctx, out.ID); err != nil {
+		return out, err
+	}
 	if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "unblocked", Actor: actor, CreatedAt: now}); err != nil {
 		return out, err
 	}

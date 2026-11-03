@@ -22,6 +22,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { addressLine, useCustomerBlockEvents } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
+import CustomerBlockAppeals from "./CustomerBlockAppeals.vue";
 import CorrectUsageSheet from "./CorrectUsageSheet.vue";
 import CustomerCardRequest from "./CustomerCardRequest.vue";
 import CustomerPaymentPage from "./CustomerPaymentPage.vue";
@@ -115,6 +116,9 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       </div>
       <Button v-if="!locked" size="sm" variant="outline" data-testid="customer-unblock" @click="emit('unblock')"><CircleCheck aria-hidden="true" />{{ t("billing.customers.block.lift") }}</Button>
     </div>
+
+    <!-- The customer's appeal against the block, when they sent one -->
+    <CustomerBlockAppeals v-if="blocked" :tenant-id="tenantId" :external-id="id" :locked="locked" />
 
     <!-- What can be done -->
     <div v-if="!locked" class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">

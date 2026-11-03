@@ -174,6 +174,11 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 	}
 }
 
+// CustomerBlockAppeal maps an appeal of a blocked customer.
+func CustomerBlockAppeal(a sqlc.CustomerBlockAppeal) *plansv1.CustomerBlockAppeal {
+	return &plansv1.CustomerBlockAppeal{Id: a.ID.String(), Status: a.Status, Statement: a.Statement, Answer: a.Answer, DecidedBy: a.DecidedBy, CreateTime: ts(a.CreatedAt), DecideTime: tsPtr(a.DecidedAt)}
+}
+
 // CustomerBlockEvent maps a row of a customer's block history.
 func CustomerBlockEvent(e sqlc.CustomerBlockEvent) *plansv1.CustomerBlockEvent {
 	return &plansv1.CustomerBlockEvent{Id: e.ID.String(), Action: e.Action, Category: e.Category, Reason: e.Reason, BlockedUntil: tsPtr(e.BlockedUntil), SuspendService: e.SuspendService, Actor: e.Actor, CreateTime: ts(e.CreatedAt)}

@@ -508,6 +508,9 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `plans.customer.blocklisted`
 - `plans.customer.quota_reached`
 - `plans.customer.tax_invalid`
+- `plans.customer_appeal.exists`
+- `plans.customer_appeal.not_blocked`
+- `plans.customer_appeal.not_open`
 - `plans.fee.invalid_period`
 - `plans.fee.not_period_start`
 - `plans.mail.unknown_category`

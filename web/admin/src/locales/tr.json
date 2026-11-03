@@ -807,6 +807,23 @@
         "bannerSuspended": "Hizmet askıda: yetki kontrolleri “izin yok” yanıtını veriyor.",
         "suspended": "Hizmet askıya alındı"
       },
+      "appeal": {
+        "title": "Müşterinin itirazı",
+        "untrusted": "Müşteri yazdı: güvenilmeyen metin, yalnızca düz metin olarak gösterilir.",
+        "sent": "{date} tarihinde gönderildi",
+        "status": {
+          "open": "Yanıtınız bekleniyor",
+          "accepted": "Kabul edildi",
+          "rejected": "Reddedildi",
+          "closed": "Kapandı (engel kaldırıldı)"
+        },
+        "answer": "Yanıtınız",
+        "answerHint": "Reddetmek için zorunlu. Müşteri bunu portal sayfasında okur. En fazla 1000 karakter.",
+        "accept": "Kabul et ve engeli kaldır",
+        "reject": "Reddet",
+        "confirmAccept": "Bu itiraz kabul edilsin ve {name} üzerindeki engel kaldırılsın mı?",
+        "decidedBy": "karar veren: {actor}"
+      },
       "upcoming": {
         "title": "Gelecek fatura",
         "estimate": "Tahmin",
@@ -3326,6 +3343,11 @@
       "appeal": {
         "not_held": "Yalnızca operatörün askıya aldığı, dondurduğu veya yasakladığı bir uygulamaya itiraz edilebilir.",
         "exists": "Zaten açık bir itiraz var. Operatör yanıtlayacak.",
+        "not_open": "Bu itiraz zaten karara bağlandı."
+      },
+      "customer_appeal": {
+        "exists": "Bu müşterinin açık bir itirazı zaten var.",
+        "not_blocked": "Bu müşteri engelli değil, itiraz edilecek bir şey yok.",
         "not_open": "Bu itiraz zaten karara bağlandı."
       }
     },

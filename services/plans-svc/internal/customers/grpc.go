@@ -62,6 +62,26 @@ func (h *Handler) ListCustomerBlockEvents(ctx context.Context, req *plansv1.List
 	return h.qry.BlockEvents(ctx, req.GetExternalId())
 }
 
+func (h *Handler) SubmitCustomerBlockAppeal(ctx context.Context, req *plansv1.SubmitCustomerBlockAppealRequest) (*plansv1.SubmitCustomerBlockAppealResponse, error) {
+	a, err := h.cmd.SubmitAppeal(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SubmitCustomerBlockAppealResponse{Appeal: a}, nil
+}
+
+func (h *Handler) ListCustomerBlockAppeals(ctx context.Context, req *plansv1.ListCustomerBlockAppealsRequest) (*plansv1.ListCustomerBlockAppealsResponse, error) {
+	return h.qry.Appeals(ctx, req.GetExternalId())
+}
+
+func (h *Handler) DecideCustomerBlockAppeal(ctx context.Context, req *plansv1.DecideCustomerBlockAppealRequest) (*plansv1.DecideCustomerBlockAppealResponse, error) {
+	a, err := h.cmd.DecideAppeal(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.DecideCustomerBlockAppealResponse{Appeal: a}, nil
+}
+
 func (h *Handler) SetCustomerTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.SetCustomerTaxResponse, error) {
 	c, err := h.cmd.SetTax(ctx, req)
 	if err != nil {

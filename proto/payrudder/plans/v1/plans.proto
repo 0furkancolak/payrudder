@@ -25,6 +25,14 @@ service PlansService {
   rpc UnblockCustomer(UnblockCustomerRequest) returns (UnblockCustomerResponse);
   // ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
   rpc ListCustomerBlockEvents(ListCustomerBlockEventsRequest) returns (ListCustomerBlockEventsResponse);
+  // SubmitCustomerBlockAppeal records the statement of a blocked customer (up to 2000 characters), sent from the portal link the seller gave them. One open appeal per
+  // customer (plans.customer_appeal.exists); a customer whose block is not in force has nothing to appeal (plans.customer_appeal.not_blocked). The gateway calls it for
+  // the customer the portal token names; the statement is the customer's words and is untrusted wherever it is shown.
+  rpc SubmitCustomerBlockAppeal(SubmitCustomerBlockAppealRequest) returns (SubmitCustomerBlockAppealResponse);
+  // ListCustomerBlockAppeals returns the customer's appeals, newest first (the latest 20). It never carries the category or the note of the block.
+  rpc ListCustomerBlockAppeals(ListCustomerBlockAppealsRequest) returns (ListCustomerBlockAppealsResponse);
+  // DecideCustomerBlockAppeal accepts (lifts the block as UnblockCustomer does, with its webhook and notice) or rejects (needs an answer) an open appeal.
+  rpc DecideCustomerBlockAppeal(DecideCustomerBlockAppealRequest) returns (DecideCustomerBlockAppealResponse);
   // ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
   // customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
   rpc ListBlocklist(ListBlocklistRequest) returns (ListBlocklistResponse);
@@ -282,6 +290,53 @@ message CustomerBlockEvent {
   google.protobuf.Timestamp create_time = 7;
   // On a block: whether it also suspended the customer's service.
   bool suspend_service = 8;
+}
+
+// An appeal of a blocked customer against the seller's block (docs/plans/13-customer-ban.md).
+message CustomerBlockAppeal {
+  string id = 1;
+  // "open", "accepted", "rejected", or "closed" (the block was lifted by other means while it was open).
+  string status = 2;
+  // The customer's own words. Untrusted.
+  string statement = 3;
+  // The seller's answer; required to reject.
+  string answer = 4;
+  // Who decided: a person's address, "key:<id>", or "system" for a closed appeal.
+  string decided_by = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp decide_time = 7;
+}
+
+message SubmitCustomerBlockAppealRequest {
+  string external_id = 1;
+  string statement = 2;
+}
+
+message SubmitCustomerBlockAppealResponse {
+  CustomerBlockAppeal appeal = 1;
+}
+
+message ListCustomerBlockAppealsRequest {
+  string external_id = 1;
+}
+
+message ListCustomerBlockAppealsResponse {
+  repeated CustomerBlockAppeal appeals = 1;
+}
+
+message DecideCustomerBlockAppealRequest {
+  string external_id = 1;
+  string appeal_id = 2;
+  // "accepted" or "rejected".
+  string decision = 3;
+  // At most 1000 characters; required to reject.
+  string answer = 4;
+  // Set by the gateway; a client cannot name it.
+  string actor = 5;
+}
+
+message DecideCustomerBlockAppealResponse {
+  CustomerBlockAppeal appeal = 1;
 }
 
 message ListBlocklistRequest {}

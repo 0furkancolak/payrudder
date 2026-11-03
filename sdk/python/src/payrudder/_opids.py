@@ -20,6 +20,8 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "blockCustomer": ("customers", "block_customer", "POST /v1/customers/{external_id}/block"),
     "unblockCustomer": ("customers", "unblock_customer", "POST /v1/customers/{external_id}/unblock"),
     "listCustomerBlockEvents": ("customers", "list_customer_block_events", "GET /v1/customers/{external_id}/block-events"),
+    "listCustomerBlockAppeals": ("customers", "list_customer_block_appeals", "GET /v1/customers/{external_id}/appeals"),
+    "decideCustomerBlockAppeal": ("customers", "decide_customer_block_appeal", "POST /v1/customers/{external_id}/appeals/{id}/decision"),
     "listBlocklist": ("blocklist", "list_blocklist", "GET /v1/blocklist"),
     "addBlocklistEntry": ("blocklist", "add_blocklist_entry", "POST /v1/blocklist"),
     "removeBlocklistEntry": ("blocklist", "remove_blocklist_entry", "DELETE /v1/blocklist/{id}"),

@@ -122,12 +122,17 @@ type fakePlans struct {
 	lastOperator bool
 	lastPM       string
 	// customer is what GetCustomer answers to a lookup by Payrudder's id (the hosted pages know the customer by it); nil keeps the failure the other tests expect.
-	customer     *plansv1.Customer
-	lastBlock    *plansv1.BlockCustomerRequest
-	lastListAdd  *plansv1.AddBlocklistEntryRequest
-	lastListDel  *plansv1.RemoveBlocklistEntryRequest
-	lastPlatAdd  *plansv1.AddPlatformBlocklistEntryRequest
-	lastUnblock  *plansv1.UnblockCustomerRequest
+	customer    *plansv1.Customer
+	lastBlock   *plansv1.BlockCustomerRequest
+	lastListAdd *plansv1.AddBlocklistEntryRequest
+	lastListDel *plansv1.RemoveBlocklistEntryRequest
+	lastPlatAdd *plansv1.AddPlatformBlocklistEntryRequest
+	lastUnblock *plansv1.UnblockCustomerRequest
+	// The appeals of a blocked customer (hosted_appeal_test.go).
+	lastAppeal   *plansv1.SubmitCustomerBlockAppealRequest
+	lastDecide   *plansv1.DecideCustomerBlockAppealRequest
+	appeals      []*plansv1.CustomerBlockAppeal
+	appealError  error
 	lastStatus   *plansv1.SetTenantStatusRequest
 	lastPause    *plansv1.SetPriceChangePauseRequest
 	lastNotice   *plansv1.SetPriceChangeNoticeRequest

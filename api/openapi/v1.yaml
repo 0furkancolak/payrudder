@@ -262,6 +262,38 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCustomerBlockEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/appeals:
+    get:
+      operationId: listCustomerBlockAppeals
+      summary: A blocked customer's appeals, newest first
+      description: >
+        The statements your customer sent from their portal link against a block (the latest 20), each with its status (`open`, `accepted`, `rejected`, or `closed` when the
+        block was lifted some other way while it was open) and your answer. The statement is the customer's own words: treat it as untrusted text, never as markup. The
+        category and the note of your block are never part of an appeal. Needs customers:read.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCustomerBlockAppealsResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/appeals/{id}/decision:
+    post:
+      operationId: decideCustomerBlockAppeal
+      summary: Accept or reject a blocked customer's appeal
+      description: >
+        `accepted` lifts the block exactly as `POST /v1/customers/{external_id}/unblock` does (the history row, the `customer.unblocked` webhook event and, when you have the
+        mail on, the customer's notice) and records your decision in the same step. `rejected` needs an `answer` (up to 1000 characters); the block stays and the customer sees
+        your answer on their portal and may send another appeal. An appeal that was decided or closed is refused with `plans.customer_appeal.not_open`. Both decisions are
+        audit entries (`customer_block.appeal_decided`); no webhook event is sent for a submitted appeal or a rejection. Needs customers:write.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DecideCustomerBlockAppealRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerBlockAppeal" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /v1/blocklist:
     get:
       operationId: listBlocklist
@@ -2351,6 +2383,40 @@ paths:
         "422": { description: "The name or the contract is missing", content: { text/html: { schema: { type: string } } } }
         "429": { description: "Too many requests" }
         "503": { description: "The withdrawal could not be recorded: nothing was sent, try again", content: { text/html: { schema: { type: string } } } }
+  /c/{token}/appeal:
+    get:
+      operationId: portalAppealPage
+      summary: "A blocked customer's appeal: the form (public, the token is the credential)"
+      description: >
+        Reached from the link the portal shows to a customer whose block is in force; the portal link is the only credential, as on every portal page. The page never says why the customer is blocked. It shows the form,
+        or that an appeal is waiting for the seller, and the seller's answer to the last one when it was rejected. 404 for a link that does not exist and for a customer who is not blocked (or whose block has ended).
+        At most 60 requests a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The form, or the note that an appeal is waiting", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist, or the customer is not blocked", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+    post:
+      operationId: portalAppealSubmit
+      summary: Send the appeal
+      description: >
+        Form field `statement` (up to 2000 characters), for the customer the token names. One appeal is open at a time: a second one is answered with the note that the first waits. The seller sees it on the
+        customer in the console and through `GET /v1/customers/{external_id}/appeals`; no mail and no webhook event is sent for it. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { statement: { type: string, maxLength: 2000 } }, required: [statement] }
+      responses:
+        "200": { description: "The acknowledgement page (also for an appeal that is open already)", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The link does not exist, or the customer is not blocked", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The statement is empty or too long: the form is shown again", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+        "503": { description: "The appeal could not be recorded: try again", content: { text/html: { schema: { type: string } } } }
   /c/{token}/agreements:
     post:
       operationId: portalAgree
@@ -6765,6 +6831,28 @@ components:
         suspend_service: { type: boolean, description: "On a block: whether it also suspended the customer's service" }
         actor: { type: string, description: "A person's address, key:<api key id>, or operator" }
         create_time: { type: string, format: date-time }
+    CustomerBlockAppeal:
+      type: object
+      required: [id, status, statement, answer, decided_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [open, accepted, rejected, closed] }
+        statement: { type: string, maxLength: 2000, description: "The customer's own words. Untrusted: show as text only" }
+        answer: { type: string, maxLength: 1000, description: "Your answer; empty until decided, and for an accepted appeal that had none" }
+        decided_by: { type: string, description: "A person's address, key:<api key id>, or system for a closed appeal" }
+        create_time: { type: string, format: date-time }
+        decide_time: { type: string, format: date-time, nullable: true }
+    ListCustomerBlockAppealsResponse:
+      type: object
+      required: [appeals]
+      properties:
+        appeals: { type: array, items: { $ref: "#/components/schemas/CustomerBlockAppeal" } }
+    DecideCustomerBlockAppealRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [accepted, rejected] }
+        answer: { type: string, maxLength: 1000, description: "Required to reject" }
     BlocklistEntry:
       type: object
       required: [id, kind, value, note, created_by, create_time]

@@ -281,6 +281,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A blocked customer's appeals, newest first
+         * @description The statements your customer sent from their portal link against a block (the latest 20), each with its status (`open`, `accepted`, `rejected`, or `closed` when the block was lifted some other way while it was open) and your answer. The statement is the customer's own words: treat it as untrusted text, never as markup. The category and the note of your block are never part of an appeal. Needs customers:read.
+         */
+        get: operations["listCustomerBlockAppeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/appeals/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or reject a blocked customer's appeal
+         * @description `accepted` lifts the block exactly as `POST /v1/customers/{external_id}/unblock` does (the history row, the `customer.unblocked` webhook event and, when you have the mail on, the customer's notice) and records your decision in the same step. `rejected` needs an `answer` (up to 1000 characters); the block stays and the customer sees your answer on their portal and may send another appeal. An appeal that was decided or closed is refused with `plans.customer_appeal.not_open`. Both decisions are audit entries (`customer_block.appeal_decided`); no webhook event is sent for a submitted appeal or a rejection. Needs customers:write.
+         */
+        post: operations["decideCustomerBlockAppeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/blocklist": {
         parameters: {
             query?: never;
@@ -2926,6 +2966,30 @@ export interface paths {
          * @description Records the statement (source `hosted`, with the time it arrived), sends the webhook event contract.withdrawal_requested and, when the customer has an e-mail address, queues the acknowledgement of receipt on a durable medium with the content of the statement and the date and time (`contract.withdrawal-received.v1`). A second confirmation for the same invoice records nothing and says so. It decides nothing: the seller does. At most 10 a minute per address.
          */
         post: operations["portalWithdrawConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/appeal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A blocked customer's appeal: the form (public, the token is the credential)
+         * @description Reached from the link the portal shows to a customer whose block is in force; the portal link is the only credential, as on every portal page. The page never says why the customer is blocked. It shows the form, or that an appeal is waiting for the seller, and the seller's answer to the last one when it was rejected. 404 for a link that does not exist and for a customer who is not blocked (or whose block has ended). At most 60 requests a minute per address.
+         */
+        get: operations["portalAppealPage"];
+        put?: never;
+        /**
+         * Send the appeal
+         * @description Form field `statement` (up to 2000 characters), for the customer the token names. One appeal is open at a time: a second one is answered with the note that the first waits. The seller sees it on the customer in the console and through `GET /v1/customers/{external_id}/appeals`; no mail and no webhook event is sent for it. At most 10 a minute per address.
+         */
+        post: operations["portalAppealSubmit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7556,6 +7620,31 @@ export interface components {
             actor: string;
             /** Format: date-time */
             create_time: string;
+        };
+        CustomerBlockAppeal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "open" | "accepted" | "rejected" | "closed";
+            /** @description The customer's own words. Untrusted: show as text only */
+            statement: string;
+            /** @description Your answer; empty until decided, and for an accepted appeal that had none */
+            answer: string;
+            /** @description A person's address, key:<api key id>, or system for a closed appeal */
+            decided_by: string;
+            /** Format: date-time */
+            create_time: string;
+            /** Format: date-time */
+            decide_time?: string | null;
+        };
+        ListCustomerBlockAppealsResponse: {
+            appeals: components["schemas"]["CustomerBlockAppeal"][];
+        };
+        DecideCustomerBlockAppealRequest: {
+            /** @enum {string} */
+            decision: "accepted" | "rejected";
+            /** @description Required to reject */
+            answer?: string;
         };
         BlocklistEntry: {
             /** Format: uuid */
@@ -14917,6 +15006,59 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    listCustomerBlockAppeals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListCustomerBlockAppealsResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    decideCustomerBlockAppeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideCustomerBlockAppealRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerBlockAppeal"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     listBlocklist: {
         parameters: {
             query?: never;
@@ -19577,6 +19719,108 @@ export interface operations {
                 content?: never;
             };
             /** @description The withdrawal could not be recorded: nothing was sent, try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    portalAppealPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The form, or the note that an appeal is waiting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist, or the customer is not blocked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalAppealSubmit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    statement: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The acknowledgement page (also for an appeal that is open already) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The link does not exist, or the customer is not blocked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The statement is empty or too long: the form is shown again */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The appeal could not be recorded: try again */
             503: {
                 headers: {
                     [name: string]: unknown;

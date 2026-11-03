@@ -807,6 +807,23 @@
         "bannerSuspended": "Servicio suspendido: las comprobaciones de derechos responden «no permitido».",
         "suspended": "Servicio suspendido"
       },
+      "appeal": {
+        "title": "Apelación del cliente",
+        "untrusted": "Escrito por el cliente: texto no confiable, se muestra solo como texto plano.",
+        "sent": "Enviada el {date}",
+        "status": {
+          "open": "Esperando su respuesta",
+          "accepted": "Aceptada",
+          "rejected": "Rechazada",
+          "closed": "Cerrada (bloqueo levantado)"
+        },
+        "answer": "Su respuesta",
+        "answerHint": "Obligatoria para rechazar. El cliente la lee en su página del portal. Máximo 1000 caracteres.",
+        "accept": "Aceptar y levantar el bloqueo",
+        "reject": "Rechazar",
+        "confirmAccept": "¿Aceptar esta apelación y levantar el bloqueo de {name}?",
+        "decidedBy": "decidida por {actor}"
+      },
       "upcoming": {
         "title": "Próxima factura",
         "estimate": "Estimación",
@@ -3327,6 +3344,11 @@
         "not_held": "Solo se puede apelar una app que el operador haya suspendido, congelado o vetado.",
         "exists": "Ya hay una apelación abierta. El operador la responderá.",
         "not_open": "Esta apelación ya fue resuelta."
+      },
+      "customer_appeal": {
+        "exists": "Ya hay una apelación abierta de este cliente.",
+        "not_blocked": "Este cliente no está bloqueado, no hay nada que apelar.",
+        "not_open": "Esta apelación ya fue decidida."
       }
     },
     "common": {
