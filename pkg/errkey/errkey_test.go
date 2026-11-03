@@ -133,7 +133,7 @@ func TestEveryDefaultIsListed(t *testing.T) {
 }
 
 // TestEveryKeyIsTranslated reads the console's locale files and fails when a listed key has no text in one of the six languages, so a new key cannot ship
-// untranslated. web/admin/src/shared/lib/errors.test.ts checks the same from the other side (and that no stale text stays).
+// untranslated. web/admin/src/shared/lib/__tests__/errors.test.ts checks the same from the other side (and that no stale text stays).
 func TestEveryKeyIsTranslated(t *testing.T) {
 	doc, err := os.ReadFile("../../docs/error-keys.md")
 	if err != nil {
