@@ -874,6 +874,10 @@ message SchedulePriceChangeRequest {
   // renewal from it, a yearly one possibly months later) instead of on its next renewal. At least notice_days from now and at most two years. A run that continues an
   // open price change must name the date that price change has (or none, if it has none).
   google.protobuf.Timestamp effective_from = 7;
+  // Optional: send each customer's notice mail this many days before the subscription's new price starts, instead of when the run schedules it. 0 = send at once.
+  // At least notice_days and at most 365. A customer is never told later than their notice (the longer of notice_days and the minimum of their country): where this
+  // is shorter the mail goes out that much before, and a mail that is due already goes at once. A run that continues an open price change must name the same value.
+  int32 notice_send_days_before = 8;
 }
 
 message PriceChangeSkipped {
@@ -918,6 +922,8 @@ message PriceChange {
   int32 skipped = 15;
   // The date the seller chose the new price to start from; unset when each subscription moves on its next renewal.
   google.protobuf.Timestamp effective_from = 16;
+  // Days before the new price that the notice mails go out (0: at once, when the run schedules).
+  int32 notice_send_days_before = 17;
 }
 
 message PriceChangeItem {

@@ -572,19 +572,20 @@ type PlatformBlocklist struct {
 }
 
 type PriceChange struct {
-	TenantID      uuid.UUID
-	ID            uuid.UUID
-	PlanCode      string
-	FromVersion   int32
-	ToVersion     int32
-	NoticeDays    int32
-	EffectiveAt   time.Time
-	State         string
-	CreatedBy     string
-	CreatedAt     time.Time
-	WithdrawnAt   *time.Time
-	WithdrawnBy   string
-	EffectiveFrom *time.Time
+	TenantID             uuid.UUID
+	ID                   uuid.UUID
+	PlanCode             string
+	FromVersion          int32
+	ToVersion            int32
+	NoticeDays           int32
+	EffectiveAt          time.Time
+	State                string
+	CreatedBy            string
+	CreatedAt            time.Time
+	WithdrawnAt          *time.Time
+	WithdrawnBy          string
+	EffectiveFrom        *time.Time
+	NoticeSendDaysBefore *int32
 }
 
 type PriceChangeItem struct {
@@ -596,6 +597,8 @@ type PriceChangeItem struct {
 	EffectiveAt    *time.Time
 	NotifiedAt     *time.Time
 	UpdatedAt      time.Time
+	NoticeSendAt   *time.Time
+	NoticeEvent    []byte
 }
 
 type PriceChangeNoticeRule struct {

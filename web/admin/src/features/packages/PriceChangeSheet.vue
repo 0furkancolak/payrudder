@@ -30,6 +30,8 @@ const toVersion = ref("");
 const noticeDays = ref("30");
 /** The optional date (yyyy-mm-dd) the new price starts from; empty moves each subscription at its next renewal. */
 const fromDate = ref("");
+/** The optional days before the new price that the notice mails go out; empty sends them when the run schedules the change. */
+const sendDays = ref("");
 const checked = ref<PriceChangeResult | null>(null);
 const done = ref<PriceChangeResult | null>(null);
 
@@ -39,21 +41,24 @@ watch(open, (isOpen) => {
   toVersion.value = "";
   noticeDays.value = "30";
   fromDate.value = "";
+  sendDays.value = "";
   checked.value = null;
   done.value = null;
   previewLocale.value = "";
   run.reset();
   preview.reset();
 });
-watch([fromVersion, toVersion, noticeDays, fromDate], () => ((checked.value = null), preview.reset()));
+watch([fromVersion, toVersion, noticeDays, fromDate, sendDays], () => ((checked.value = null), preview.reset()));
 
-const valid = computed(() => Number(fromVersion.value) >= 1 && Number(noticeDays.value) >= 14 && Number(noticeDays.value) <= 365 && (toVersion.value === "" || Number(toVersion.value) >= 1));
+const sendDaysValid = computed(() => sendDays.value === "" || (Number(sendDays.value) >= Number(noticeDays.value) && Number(sendDays.value) <= 365));
+const valid = computed(() => Number(fromVersion.value) >= 1 && Number(noticeDays.value) >= 14 && Number(noticeDays.value) <= 365 && (toVersion.value === "" || Number(toVersion.value) >= 1) && sendDaysValid.value);
 const args = (dryRun: boolean) => ({
   code: props.code,
   fromVersion: Number(fromVersion.value),
   toVersion: toVersion.value ? Number(toVersion.value) : undefined,
   noticeDays: Number(noticeDays.value),
   ...(fromDate.value ? { effectiveFrom: `${fromDate.value}T00:00:00Z` } : {}),
+  ...(sendDays.value ? { noticeSendDaysBefore: Number(sendDays.value) } : {}),
   dryRun,
 });
 /** The example mail counts its date as now plus the notice: with a start date, that is the days to it (the mail API takes at most a year). */
@@ -105,6 +110,11 @@ const reasons = (r: PriceChangeResult) => {
           <label class="grid gap-1 text-sm">{{ t("billing.packages.priceChange.fromDate") }}
             <Input v-model="fromDate" type="date" data-testid="pc-from-date" />
             <span class="text-muted-foreground text-xs">{{ t("billing.packages.priceChange.fromDateHelp") }}</span>
+          </label>
+          <label class="grid gap-1 text-sm">{{ t("billing.packages.priceChange.sendDays") }}
+            <Input v-model="sendDays" type="number" :min="noticeDays || 14" max="365" data-testid="pc-send-days" :aria-invalid="!sendDaysValid" />
+            <span class="text-muted-foreground text-xs">{{ t("billing.packages.priceChange.sendDaysHelp") }}</span>
+            <span v-if="!sendDaysValid" class="text-destructive text-xs" role="alert" data-testid="pc-send-days-error">{{ t("billing.packages.priceChange.sendDaysInvalid") }}</span>
           </label>
         </form>
         <ErrorText :error="run.error.value" />

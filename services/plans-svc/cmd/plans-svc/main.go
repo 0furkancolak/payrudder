@@ -38,6 +38,7 @@ import (
 	accountscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/accounts/command"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	customerscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
@@ -464,6 +465,8 @@ func (w *workers) run(ctx context.Context) error {
 	g.Go(func() error { return contracts.NewRenewer(w.places, w.app, w.log).Run(gctx) })
 	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log).WithPlaces(w.places)
 	g.Go(func() error { return trials.Run(gctx) })
+	// The notice mails of price changes held until N days before the new price are sent when they are due (docs/plans/15-price-increase.md).
+	g.Go(func() error { return changescmd.NewNoticeSweeper(w.pool, w.app, w.places, 0, w.log).Run(gctx) })
 	// A block that ran out by itself is cleared, and customer.unblocked is sent (docs/plans/13-customer-ban.md).
 	g.Go(func() error { return customerscmd.NewSweeper(w.pool, w.app, w.places, 0, w.log).Run(gctx) })
 	g.Go(func() error { return w.lifecycle.RunLifecycle(gctx, time.Minute) })

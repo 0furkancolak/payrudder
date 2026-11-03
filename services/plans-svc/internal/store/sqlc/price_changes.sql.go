@@ -250,7 +250,7 @@ func (q *Queries) ListPriceChangeNoticeRules(ctx context.Context) ([]PriceChange
 }
 
 const listPriceChanges = `-- name: ListPriceChanges :many
-SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
+SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.notice_send_days_before, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
        COALESCE(n.scheduled, 0)::int AS scheduled, COALESCE(n.applied, 0)::int AS applied, COALESCE(n.withdrawn, 0)::int AS withdrawn, COALESCE(n.skipped, 0)::int AS skipped
 FROM price_changes pc
 LEFT JOIN LATERAL (
@@ -271,22 +271,23 @@ type ListPriceChangesParams struct {
 }
 
 type ListPriceChangesRow struct {
-	ID            uuid.UUID
-	PlanCode      string
-	FromVersion   int32
-	ToVersion     int32
-	NoticeDays    int32
-	EffectiveAt   time.Time
-	EffectiveFrom *time.Time
-	State         string
-	CreatedBy     string
-	CreatedAt     time.Time
-	WithdrawnAt   *time.Time
-	WithdrawnBy   string
-	Scheduled     int32
-	Applied       int32
-	Withdrawn     int32
-	Skipped       int32
+	ID                   uuid.UUID
+	PlanCode             string
+	FromVersion          int32
+	ToVersion            int32
+	NoticeDays           int32
+	EffectiveAt          time.Time
+	EffectiveFrom        *time.Time
+	NoticeSendDaysBefore *int32
+	State                string
+	CreatedBy            string
+	CreatedAt            time.Time
+	WithdrawnAt          *time.Time
+	WithdrawnBy          string
+	Scheduled            int32
+	Applied              int32
+	Withdrawn            int32
+	Skipped              int32
 }
 
 // Newest first, with the number of subscriptions in each state; one by id, or the ones of a plan.
@@ -307,6 +308,7 @@ func (q *Queries) ListPriceChanges(ctx context.Context, arg ListPriceChangesPara
 			&i.NoticeDays,
 			&i.EffectiveAt,
 			&i.EffectiveFrom,
+			&i.NoticeSendDaysBefore,
 			&i.State,
 			&i.CreatedBy,
 			&i.CreatedAt,
@@ -389,28 +391,106 @@ func (q *Queries) SetPriceChangePause(ctx context.Context, arg SetPriceChangePau
 	return i, err
 }
 
+const systemListDueNotices = `-- name: SystemListDueNotices :many
+SELECT i.tenant_id, i.price_change_id, i.subscription_id, i.notice_send_at::timestamptz AS notice_send_at
+FROM price_change_items i
+JOIN price_changes pc ON pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
+JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
+WHERE i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= $1::timestamptz
+ORDER BY i.notice_send_at, i.subscription_id
+LIMIT $2::int
+`
+
+type SystemListDueNoticesParams struct {
+	Now   time.Time
+	Batch int32
+}
+
+type SystemListDueNoticesRow struct {
+	TenantID       uuid.UUID
+	PriceChangeID  uuid.UUID
+	SubscriptionID uuid.UUID
+	NoticeSendAt   time.Time
+}
+
+// system. The held notices that are due at now: still unsent, their change still waiting (a withdrawn or applied change is never mailed), their price change open.
+// Across tenants; the sweep re-checks each one in its tenant's transaction.
+func (q *Queries) SystemListDueNotices(ctx context.Context, arg SystemListDueNoticesParams) ([]SystemListDueNoticesRow, error) {
+	rows, err := q.db.Query(ctx, systemListDueNotices, arg.Now, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SystemListDueNoticesRow{}
+	for rows.Next() {
+		var i SystemListDueNoticesRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.PriceChangeID,
+			&i.SubscriptionID,
+			&i.NoticeSendAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const takeDueNotice = `-- name: TakeDueNotice :one
+UPDATE price_change_items i SET notified_at = $1::timestamptz, notice_event = NULL, notice_send_at = NULL, updated_at = now()
+FROM price_changes pc, subscription_changes c,
+     -- RETURNING would give the row as it is after the update (notice_event NULL), so the fact is read from the row as it was.
+     (SELECT o.notice_event FROM price_change_items o WHERE o.tenant_id = app_tenant_id() AND o.price_change_id = $2 AND o.subscription_id = $3) old
+WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = $2 AND i.subscription_id = $3
+  AND i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= $1::timestamptz
+  AND pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
+  AND c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
+RETURNING old.notice_event
+`
+
+type TakeDueNoticeParams struct {
+	Now            time.Time
+	PriceChangeID  uuid.UUID
+	SubscriptionID uuid.UUID
+}
+
+// Sends one held notice: marks it and gives back the fact to write to the outbox. No row: it was sent already (another pass or instance), or is not held, or its change
+// is not waiting any more. The caller holds the subscription's lock.
+func (q *Queries) TakeDueNotice(ctx context.Context, arg TakeDueNoticeParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, takeDueNotice, arg.Now, arg.PriceChangeID, arg.SubscriptionID)
+	var notice_event []byte
+	err := row.Scan(&notice_event)
+	return notice_event, err
+}
+
 const upsertOpenPriceChange = `-- name: UpsertOpenPriceChange :one
 
-INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, created_by)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7::timestamptz, $8)
+INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, notice_send_days_before, created_by)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7::timestamptz, $8::int, $9)
 ON CONFLICT (tenant_id, plan_code, from_version, to_version) WHERE state = 'open' DO UPDATE SET notice_days = EXCLUDED.notice_days
-RETURNING id, effective_from
+RETURNING id, effective_from, notice_send_days_before
 `
 
 type UpsertOpenPriceChangeParams struct {
-	ID            uuid.UUID
-	PlanCode      string
-	FromVersion   int32
-	ToVersion     int32
-	NoticeDays    int32
-	EffectiveAt   time.Time
-	EffectiveFrom *time.Time
-	CreatedBy     string
+	ID                   uuid.UUID
+	PlanCode             string
+	FromVersion          int32
+	ToVersion            int32
+	NoticeDays           int32
+	EffectiveAt          time.Time
+	EffectiveFrom        *time.Time
+	NoticeSendDaysBefore *int32
+	CreatedBy            string
 }
 
 type UpsertOpenPriceChangeRow struct {
-	ID            uuid.UUID
-	EffectiveFrom *time.Time
+	ID                   uuid.UUID
+	EffectiveFrom        *time.Time
+	NoticeSendDaysBefore *int32
 }
 
 // Price changes (plan 15): the record of a run of SchedulePriceChange and what happened to each subscription. The state of a scheduled item is the state of its
@@ -427,18 +507,21 @@ func (q *Queries) UpsertOpenPriceChange(ctx context.Context, arg UpsertOpenPrice
 		arg.NoticeDays,
 		arg.EffectiveAt,
 		arg.EffectiveFrom,
+		arg.NoticeSendDaysBefore,
 		arg.CreatedBy,
 	)
 	var i UpsertOpenPriceChangeRow
-	err := row.Scan(&i.ID, &i.EffectiveFrom)
+	err := row.Scan(&i.ID, &i.EffectiveFrom, &i.NoticeSendDaysBefore)
 	return i, err
 }
 
 const upsertPriceChangeItem = `-- name: UpsertPriceChangeItem :exec
-INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, change_id, reason, effective_at, notified_at)
-VALUES (app_tenant_id(), $1, $2, $3::uuid, $4, $5::timestamptz, $6::timestamptz)
+INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, change_id, reason, effective_at, notified_at, notice_send_at, notice_event)
+VALUES (app_tenant_id(), $1, $2, $3::uuid, $4, $5::timestamptz, $6::timestamptz,
+        $7::timestamptz, $8::bytea)
 ON CONFLICT (tenant_id, price_change_id, subscription_id)
-DO UPDATE SET change_id = EXCLUDED.change_id, reason = EXCLUDED.reason, effective_at = EXCLUDED.effective_at, notified_at = EXCLUDED.notified_at, updated_at = now()
+DO UPDATE SET change_id = EXCLUDED.change_id, reason = EXCLUDED.reason, effective_at = EXCLUDED.effective_at, notified_at = EXCLUDED.notified_at,
+              notice_send_at = EXCLUDED.notice_send_at, notice_event = EXCLUDED.notice_event, updated_at = now()
 `
 
 type UpsertPriceChangeItemParams struct {
@@ -448,9 +531,12 @@ type UpsertPriceChangeItemParams struct {
 	Reason         string
 	EffectiveAt    *time.Time
 	NotifiedAt     *time.Time
+	NoticeSendAt   *time.Time
+	NoticeEvent    []byte
 }
 
 // What a run did to one subscription: scheduled (change_id and the date of the renewal) or skipped (reason). A later run replaces a skip.
+// A held notice has no notified_at, and carries its fact and the time it is due (notice_send_at, notice_event).
 func (q *Queries) UpsertPriceChangeItem(ctx context.Context, arg UpsertPriceChangeItemParams) error {
 	_, err := q.db.Exec(ctx, upsertPriceChangeItem,
 		arg.PriceChangeID,
@@ -459,6 +545,8 @@ func (q *Queries) UpsertPriceChangeItem(ctx context.Context, arg UpsertPriceChan
 		arg.Reason,
 		arg.EffectiveAt,
 		arg.NotifiedAt,
+		arg.NoticeSendAt,
+		arg.NoticeEvent,
 	)
 	return err
 }

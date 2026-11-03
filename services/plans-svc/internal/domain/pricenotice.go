@@ -3,8 +3,31 @@ package domain
 import (
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
+
+// NoticeSendAt is when the notice mail of a subscription whose new price starts at start goes out (plan 15). sendDays is the price change's notice_send_days_before
+// (0: at once), applicable the notice that holds for the customer (the run's notice or the customer's country floor, whichever is longer). The mail goes out
+// max(sendDays, applicable) days before start, so a customer is never told later than their notice; when that moment is now or past it goes now (held false).
+func NoticeSendAt(now, start time.Time, sendDays, applicable int) (at time.Time, held bool) {
+	if sendDays <= 0 {
+		return now, false
+	}
+	at = start.Add(-time.Duration(max(sendDays, applicable)) * 24 * time.Hour)
+	if !at.After(now) {
+		return now, false
+	}
+	return at, true
+}
+
+// ValidateNoticeSendDays checks notice_send_days_before of a request (0: unset): at least the notice of the run and at most a year.
+func ValidateNoticeSendDays(sendDays, notice int) error {
+	if sendDays != 0 && (sendDays < notice || sendDays > MaxNoticeDays) {
+		return Invalid("notice_send_days_before", "0, or between notice_days and 365 days")
+	}
+	return nil
+}
 
 // The notice a customer is given of a new price (plan 15). All three numbers are defaults (not agreed): the floor of 14 days is a guess, 30 days is the notice a run uses
 // when it names none, and the operator may raise both. The per-country rows are UNVERIFIED and NOT legal advice: no one with the right to say what a country requires

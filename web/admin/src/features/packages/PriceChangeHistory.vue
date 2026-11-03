@@ -61,6 +61,7 @@ async function withdrawAll(id: string, n: number) {
       <p class="text-muted-foreground mt-1 text-xs">
         {{ t("billing.packages.priceChange.takesEffect", { date: fmt.date(pc.effective_time, "day", "—"), n: pc.notice_days }) }}
         <template v-if="pc.effective_from"> · {{ t("billing.packages.priceChange.startsFrom", { date: startDay(pc.effective_from) }) }}</template>
+        <template v-if="pc.notice_send_days_before"> · {{ t("billing.packages.priceChange.noticeSentBefore", { n: pc.notice_send_days_before }) }}</template>
         · {{ t("billing.packages.priceChange.counts", { scheduled: pc.scheduled, applied: pc.applied, withdrawn: pc.withdrawn, skipped: pc.skipped }) }}
       </p>
       <div class="mt-2 flex flex-wrap gap-2">

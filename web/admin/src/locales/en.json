@@ -1025,7 +1025,11 @@
         },
         "fromDate": "Start from (optional)",
         "fromDateHelp": "Leave empty to move each subscription at its next renewal. With a date, each subscription moves on its first renewal on or after it: a monthly plan on the first one, a yearly plan possibly months later. At least the notice away, at most two years.",
-        "startsFrom": "from {date}"
+        "startsFrom": "from {date}",
+        "sendDays": "Send the mail before the price starts (optional, days)",
+        "sendDaysHelp": "Leave empty to mail each customer as soon as you schedule. With a number, the mail is held and goes out that many days before their new price starts (at least the notice; a customer is never told later than their notice, and a mail that is due already goes at once). Withdrawing the price change cancels a mail that is still held; an operator pause holds it.",
+        "sendDaysInvalid": "At least the notice, at most 365 days.",
+        "noticeSentBefore": "mail {n} days before"
       },
       "prorateAfterTrial": "Charge the first period from the end of the trial",
       "prorateAfterTrialHelp": "When a trial ends in the middle of a billing period, the fixed fee of that period is charged only from the end of the trial to the end of the period. Off: the fee of the whole period is charged, as for packages published before this option.",

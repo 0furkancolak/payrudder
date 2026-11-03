@@ -145,11 +145,11 @@ export function useWithdrawPriceChange(tenantId: MaybeRefOrGetter<string>) {
 export function useSchedulePriceChange(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { code: string; fromVersion: number; toVersion?: number; noticeDays: number; effectiveFrom?: string; dryRun: boolean }): Promise<PriceChangeResult> =>
+    mutationFn: (v: { code: string; fromVersion: number; toVersion?: number; noticeDays: number; effectiveFrom?: string; noticeSendDaysBefore?: number; dryRun: boolean }): Promise<PriceChangeResult> =>
       unwrap(
         tenantApi(toValue(tenantId)).POST("/v1/plans/{code}/price-changes", {
           params: { path: { code: v.code } },
-          body: { from_version: v.fromVersion, ...(v.toVersion ? { to_version: v.toVersion } : {}), notice_days: v.noticeDays, ...(v.effectiveFrom ? { effective_from: v.effectiveFrom } : {}), dry_run: v.dryRun },
+          body: { from_version: v.fromVersion, ...(v.toVersion ? { to_version: v.toVersion } : {}), notice_days: v.noticeDays, ...(v.effectiveFrom ? { effective_from: v.effectiveFrom } : {}), ...(v.noticeSendDaysBefore ? { notice_send_days_before: v.noticeSendDaysBefore } : {}), dry_run: v.dryRun },
         }),
       ) as Promise<PriceChangeResult>,
     onSuccess: (_r, v) => (v.dryRun ? undefined : queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId)] })),

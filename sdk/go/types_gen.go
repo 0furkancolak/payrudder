@@ -2447,6 +2447,8 @@ type PriceChange struct {
 	EffectiveTime time.Time `json:"effective_time"`
 	// The date the seller chose the new price to start from; null when each subscription moves on its next renewal
 	EffectiveFrom *time.Time `json:"effective_from"`
+	// Days before the new price that the notice mails go out; 0 when they go out as the run schedules the change
+	NoticeSendDaysBefore int `json:"notice_send_days_before"`
 	// One of: open, withdrawn.
 	State string `json:"state"`
 	// The signed-in person's address, key:<id> for an API key, or the operator
@@ -2835,6 +2837,13 @@ type SchedulePriceChangeRequest struct {
 	// renewal. At least `notice_days` from now and at most two years. A run that continues an open price change
 	// must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`).
 	EffectiveFrom *time.Time `json:"effective_from,omitempty"`
+	// Optional: send each customer's notice mail this many days before their new price starts, instead of when the
+	// run schedules it. Absent or 0 sends at once; otherwise at least `notice_days` and at most 365. A customer is
+	// never told later than their notice (the longer of `notice_days` and the minimum of their country), and a mail
+	// that is due already goes at once. A held mail waits in the price change and is sent by a sweep within minutes
+	// of its time; withdrawing the price change cancels it, and the operator's kill switch holds it. A run that
+	// continues an open price change must name the same value (409 `plans.price_change.date_differs`).
+	NoticeSendDaysBefore *int `json:"notice_send_days_before,omitempty"`
 	// Only count; change nothing and mail nobody
 	DryRun *bool `json:"dry_run,omitempty"`
 }

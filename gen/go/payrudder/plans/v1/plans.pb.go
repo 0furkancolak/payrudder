@@ -6263,8 +6263,12 @@ type SchedulePriceChangeRequest struct {
 	// renewal from it, a yearly one possibly months later) instead of on its next renewal. At least notice_days from now and at most two years. A run that continues an
 	// open price change must name the date that price change has (or none, if it has none).
 	EffectiveFrom *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=effective_from,json=effectiveFrom,proto3" json:"effective_from,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Optional: send each customer's notice mail this many days before the subscription's new price starts, instead of when the run schedules it. 0 = send at once.
+	// At least notice_days and at most 365. A customer is never told later than their notice (the longer of notice_days and the minimum of their country): where this
+	// is shorter the mail goes out that much before, and a mail that is due already goes at once. A run that continues an open price change must name the same value.
+	NoticeSendDaysBefore int32 `protobuf:"varint,8,opt,name=notice_send_days_before,json=noticeSendDaysBefore,proto3" json:"notice_send_days_before,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *SchedulePriceChangeRequest) Reset() {
@@ -6344,6 +6348,13 @@ func (x *SchedulePriceChangeRequest) GetEffectiveFrom() *timestamppb.Timestamp {
 		return x.EffectiveFrom
 	}
 	return nil
+}
+
+func (x *SchedulePriceChangeRequest) GetNoticeSendDaysBefore() int32 {
+	if x != nil {
+		return x.NoticeSendDaysBefore
+	}
+	return 0
 }
 
 type PriceChangeSkipped struct {
@@ -6525,8 +6536,10 @@ type PriceChange struct {
 	Skipped   int32 `protobuf:"varint,15,opt,name=skipped,proto3" json:"skipped,omitempty"`
 	// The date the seller chose the new price to start from; unset when each subscription moves on its next renewal.
 	EffectiveFrom *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=effective_from,json=effectiveFrom,proto3" json:"effective_from,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Days before the new price that the notice mails go out (0: at once, when the run schedules).
+	NoticeSendDaysBefore int32 `protobuf:"varint,17,opt,name=notice_send_days_before,json=noticeSendDaysBefore,proto3" json:"notice_send_days_before,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *PriceChange) Reset() {
@@ -6669,6 +6682,13 @@ func (x *PriceChange) GetEffectiveFrom() *timestamppb.Timestamp {
 		return x.EffectiveFrom
 	}
 	return nil
+}
+
+func (x *PriceChange) GetNoticeSendDaysBefore() int32 {
+	if x != nil {
+		return x.NoticeSendDaysBefore
+	}
+	return 0
 }
 
 type PriceChangeItem struct {
@@ -9964,7 +9984,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\tproration\x18\x06 \x01(\x0e2#.payrudder.plans.v1.ChangeProrationR\tproration\x12;\n" +
 	"\vchange_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"changeTime\x12\x1a\n" +
-	"\bquantity\x18\b \x01(\x05R\bquantity\"\x8e\x02\n" +
+	"\bquantity\x18\b \x01(\x05R\bquantity\"\xc5\x02\n" +
 	"\x1aSchedulePriceChangeRequest\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12!\n" +
 	"\ffrom_version\x18\x02 \x01(\x05R\vfromVersion\x12\x1d\n" +
@@ -9974,7 +9994,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"noticeDays\x12\x17\n" +
 	"\adry_run\x18\x05 \x01(\bR\x06dryRun\x12\x14\n" +
 	"\x05actor\x18\x06 \x01(\tR\x05actor\x12A\n" +
-	"\x0eeffective_from\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveFrom\"\x87\x01\n" +
+	"\x0eeffective_from\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveFrom\x125\n" +
+	"\x17notice_send_days_before\x18\b \x01(\x05R\x14noticeSendDaysBefore\"\x87\x01\n" +
 	"\x12PriceChangeSkipped\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x120\n" +
 	"\x14customer_external_id\x18\x02 \x01(\tR\x12customerExternalId\x12\x16\n" +
@@ -9988,7 +10009,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\vnotice_days\x18\x05 \x01(\x05R\n" +
 	"noticeDays\x12&\n" +
 	"\x0fprice_change_id\x18\x06 \x01(\tR\rpriceChangeId\x12+\n" +
-	"\x11already_scheduled\x18\a \x01(\x05R\x10alreadyScheduled\"\xe9\x04\n" +
+	"\x11already_scheduled\x18\a \x01(\x05R\x10alreadyScheduled\"\xa0\x05\n" +
 	"\vPriceChange\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12!\n" +
@@ -10010,7 +10031,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\aapplied\x18\r \x01(\x05R\aapplied\x12\x1c\n" +
 	"\twithdrawn\x18\x0e \x01(\x05R\twithdrawn\x12\x18\n" +
 	"\askipped\x18\x0f \x01(\x05R\askipped\x12A\n" +
-	"\x0eeffective_from\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveFrom\"\x9a\x02\n" +
+	"\x0eeffective_from\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveFrom\x125\n" +
+	"\x17notice_send_days_before\x18\x11 \x01(\x05R\x14noticeSendDaysBefore\"\x9a\x02\n" +
 	"\x0fPriceChangeItem\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x120\n" +
 	"\x14customer_external_id\x18\x02 \x01(\tR\x12customerExternalId\x12\x14\n" +

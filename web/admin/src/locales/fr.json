@@ -1025,7 +1025,11 @@
         },
         "fromDate": "À partir du (facultatif)",
         "fromDateHelp": "Laissez vide pour déplacer chaque abonnement à son prochain renouvellement. Avec une date, chaque abonnement passe à son premier renouvellement à cette date ou après : un plan mensuel au premier, un plan annuel parfois des mois plus tard. Au moins le délai de préavis, au plus deux ans.",
-        "startsFrom": "à partir du {date}"
+        "startsFrom": "à partir du {date}",
+        "sendDays": "Envoyer l'e-mail avant le début du prix (facultatif, jours)",
+        "sendDaysHelp": "Laissez vide pour prévenir chaque client dès que vous planifiez. Avec un nombre, l'e-mail est retenu et part autant de jours avant le début de son nouveau prix (au moins le préavis ; un client n'est jamais prévenu après son préavis, et un e-mail déjà dû part tout de suite). Retirer la modification de prix annule un e-mail encore retenu ; une pause de l'opérateur le retient.",
+        "sendDaysInvalid": "Au moins le préavis, au plus 365 jours.",
+        "noticeSentBefore": "e-mail {n} jours avant"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",

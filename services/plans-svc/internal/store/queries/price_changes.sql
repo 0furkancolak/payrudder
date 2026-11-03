@@ -5,21 +5,48 @@
 -- effective_from is the date the seller chose (null: each subscription's next renewal); a run that continues an open price change keeps the date it has, and the caller
 -- refuses a run that names another.
 -- name: UpsertOpenPriceChange :one
-INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, created_by)
-VALUES (app_tenant_id(), @id, @plan_code, @from_version, @to_version, @notice_days, @effective_at, sqlc.narg('effective_from')::timestamptz, @created_by)
+INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, effective_from, notice_send_days_before, created_by)
+VALUES (app_tenant_id(), @id, @plan_code, @from_version, @to_version, @notice_days, @effective_at, sqlc.narg('effective_from')::timestamptz, sqlc.narg('notice_send_days_before')::int, @created_by)
 ON CONFLICT (tenant_id, plan_code, from_version, to_version) WHERE state = 'open' DO UPDATE SET notice_days = EXCLUDED.notice_days
-RETURNING id, effective_from;
+RETURNING id, effective_from, notice_send_days_before;
 
 -- name: GetOpenPriceChangeID :one
 SELECT id FROM price_changes
 WHERE tenant_id = app_tenant_id() AND plan_code = @plan_code AND from_version = @from_version AND to_version = @to_version AND state = 'open';
 
 -- What a run did to one subscription: scheduled (change_id and the date of the renewal) or skipped (reason). A later run replaces a skip.
+-- A held notice has no notified_at, and carries its fact and the time it is due (notice_send_at, notice_event).
 -- name: UpsertPriceChangeItem :exec
-INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, change_id, reason, effective_at, notified_at)
-VALUES (app_tenant_id(), @price_change_id, @subscription_id, sqlc.narg('change_id')::uuid, @reason, sqlc.narg('effective_at')::timestamptz, sqlc.narg('notified_at')::timestamptz)
+INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, change_id, reason, effective_at, notified_at, notice_send_at, notice_event)
+VALUES (app_tenant_id(), @price_change_id, @subscription_id, sqlc.narg('change_id')::uuid, @reason, sqlc.narg('effective_at')::timestamptz, sqlc.narg('notified_at')::timestamptz,
+        sqlc.narg('notice_send_at')::timestamptz, sqlc.narg('notice_event')::bytea)
 ON CONFLICT (tenant_id, price_change_id, subscription_id)
-DO UPDATE SET change_id = EXCLUDED.change_id, reason = EXCLUDED.reason, effective_at = EXCLUDED.effective_at, notified_at = EXCLUDED.notified_at, updated_at = now();
+DO UPDATE SET change_id = EXCLUDED.change_id, reason = EXCLUDED.reason, effective_at = EXCLUDED.effective_at, notified_at = EXCLUDED.notified_at,
+              notice_send_at = EXCLUDED.notice_send_at, notice_event = EXCLUDED.notice_event, updated_at = now();
+
+-- system. The held notices that are due at now: still unsent, their change still waiting (a withdrawn or applied change is never mailed), their price change open.
+-- Across tenants; the sweep re-checks each one in its tenant's transaction.
+-- name: SystemListDueNotices :many
+SELECT i.tenant_id, i.price_change_id, i.subscription_id, i.notice_send_at::timestamptz AS notice_send_at
+FROM price_change_items i
+JOIN price_changes pc ON pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
+JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
+WHERE i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= @now::timestamptz
+ORDER BY i.notice_send_at, i.subscription_id
+LIMIT @batch::int;
+
+-- Sends one held notice: marks it and gives back the fact to write to the outbox. No row: it was sent already (another pass or instance), or is not held, or its change
+-- is not waiting any more. The caller holds the subscription's lock.
+-- name: TakeDueNotice :one
+UPDATE price_change_items i SET notified_at = @now::timestamptz, notice_event = NULL, notice_send_at = NULL, updated_at = now()
+FROM price_changes pc, subscription_changes c,
+     -- RETURNING would give the row as it is after the update (notice_event NULL), so the fact is read from the row as it was.
+     (SELECT o.notice_event FROM price_change_items o WHERE o.tenant_id = app_tenant_id() AND o.price_change_id = @price_change_id AND o.subscription_id = @subscription_id) old
+WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id AND i.subscription_id = @subscription_id
+  AND i.notified_at IS NULL AND i.notice_event IS NOT NULL AND i.notice_send_at <= @now::timestamptz
+  AND pc.tenant_id = i.tenant_id AND pc.id = i.price_change_id AND pc.state = 'open'
+  AND c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
+RETURNING old.notice_event;
 
 -- The change an item carries and its state ('' when the item is a skip). No row: the price change has not met this subscription.
 -- name: GetPriceChangeItemChange :one
@@ -35,7 +62,7 @@ WHERE tenant_id = app_tenant_id() AND id = @id;
 
 -- Newest first, with the number of subscriptions in each state; one by id, or the ones of a plan.
 -- name: ListPriceChanges :many
-SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
+SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.effective_from, pc.notice_send_days_before, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
        COALESCE(n.scheduled, 0)::int AS scheduled, COALESCE(n.applied, 0)::int AS applied, COALESCE(n.withdrawn, 0)::int AS withdrawn, COALESCE(n.skipped, 0)::int AS skipped
 FROM price_changes pc
 LEFT JOIN LATERAL (

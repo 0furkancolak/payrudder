@@ -2598,6 +2598,8 @@ export interface PriceChange {
   effective_time: string;
   /** The date the seller chose the new price to start from; null when each subscription moves on its next renewal */
   effective_from: string | null;
+  /** Days before the new price that the notice mails go out; 0 when they go out as the run schedules the change */
+  notice_send_days_before: number;
   state: "open" | "withdrawn";
   /** The signed-in person's address, key:<id> for an API key, or the operator */
   created_by: string;
@@ -3022,6 +3024,8 @@ export interface SchedulePriceChangeRequest {
   notice_days?: number;
   /** The date the new price starts from. Each subscription then moves on its first period start on or after it (a monthly one on the first renewal from that date, a yearly one perhaps months later) instead of on its next renewal. At least `notice_days` from now and at most two years. A run that continues an open price change must name the date that price change has, or none if it has none (409 `plans.price_change.date_differs`). */
   effective_from?: string | null;
+  /** Optional: send each customer's notice mail this many days before their new price starts, instead of when the run schedules it. Absent or 0 sends at once; otherwise at least `notice_days` and at most 365. A customer is never told later than their notice (the longer of `notice_days` and the minimum of their country), and a mail that is due already goes at once. A held mail waits in the price change and is sent by a sweep within minutes of its time; withdrawing the price change cancels it, and the operator's kill switch holds it. A run that continues an open price change must name the same value (409 `plans.price_change.date_differs`). */
+  notice_send_days_before?: number;
   /** Only count; change nothing and mail nobody */
   dry_run?: boolean;
 }
