@@ -32,6 +32,9 @@ func PriceChangeOf(r sqlc.ListPriceChangesRow) *plansv1.PriceChange {
 		out.WithdrawTime = timestamppb.New(*r.WithdrawnAt)
 	}
 	out.EffectiveFrom = optTime(r.EffectiveFrom)
+	if r.NoticeSendDaysBefore != nil {
+		out.NoticeSendDaysBefore = *r.NoticeSendDaysBefore
+	}
 	return out
 }
 

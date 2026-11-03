@@ -136,7 +136,11 @@ func (c *Commands) SchedulePriceChange(ctx context.Context, req *plansv1.Schedul
 	if err != nil {
 		return nil, err
 	}
-	return c.runPriceChange(ctx, priceRun{plan: req.GetPlanCode(), from: req.GetFromVersion(), to: req.GetToVersion(), notice: notice, dry: req.GetDryRun(), actor: actorOf(req.GetActor()), effectiveFrom: from, rules: rules})
+	if err := domain.ValidateNoticeSendDays(int(req.GetNoticeSendDaysBefore()), notice); err != nil {
+		return nil, err
+	}
+	return c.runPriceChange(ctx, priceRun{plan: req.GetPlanCode(), from: req.GetFromVersion(), to: req.GetToVersion(), notice: notice, dry: req.GetDryRun(), actor: actorOf(req.GetActor()), effectiveFrom: from, rules: rules,
+		sendDays: int(req.GetNoticeSendDaysBefore())})
 }
 
 // effectiveFrom checks the date a seller names for the new price (plan 15): at least the notice from now, at most two years. Unset is the old model, each
@@ -182,7 +186,7 @@ func (c *Commands) RetryPriceChange(ctx context.Context, req *plansv1.RetryPrice
 	if err != nil {
 		return nil, err
 	}
-	run := priceRun{plan: pc.GetPlanCode(), from: pc.GetFromVersion(), to: pc.GetToVersion(), notice: int(pc.GetNoticeDays()), rules: rules}
+	run := priceRun{plan: pc.GetPlanCode(), from: pc.GetFromVersion(), to: pc.GetToVersion(), notice: int(pc.GetNoticeDays()), rules: rules, sendDays: int(pc.GetNoticeSendDaysBefore())}
 	if pc.GetEffectiveFrom() != nil {
 		t := pc.GetEffectiveFrom().AsTime()
 		run.effectiveFrom = &t
@@ -258,6 +262,8 @@ type priceRun struct {
 	// effectiveFrom is the date the seller named for the new price (nil: each subscription's next renewal); rules are the operator's notice rules.
 	effectiveFrom *time.Time
 	rules         domain.NoticeRules
+	// sendDays is how many days before its new price each customer's mail goes out (0: when the run schedules the change).
+	sendDays int
 }
 
 type skippable struct {
@@ -309,13 +315,13 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 			}
 		} else {
 			up, err := q.UpsertOpenPriceChange(ctx, sqlc.UpsertOpenPriceChangeParams{ID: idgen.NewUUIDv7(), PlanCode: a.plan, FromVersion: from.Version, ToVersion: to.Version,
-				NoticeDays: int32(a.notice), EffectiveAt: c.now().Add(time.Duration(a.notice) * 24 * time.Hour), EffectiveFrom: a.effectiveFrom, CreatedBy: a.actor}) //nolint:gosec // bounded by the callers
+				NoticeDays: int32(a.notice), EffectiveAt: c.now().Add(time.Duration(a.notice) * 24 * time.Hour), EffectiveFrom: a.effectiveFrom, NoticeSendDaysBefore: sendDaysPtr(a.sendDays), CreatedBy: a.actor}) //nolint:gosec // bounded by the callers
 			if err != nil {
 				return err
 			}
 			// Subscriptions already scheduled keep their dates, so a run cannot move the open price change to another date: withdraw it and make a new one.
-			if !sameInstant(up.EffectiveFrom, a.effectiveFrom) {
-				return errkey.New(codes.FailedPrecondition, "plans.price_change.date_differs", "an open price change for these versions starts on another date; withdraw it to make a new one")
+			if !sameInstant(up.EffectiveFrom, a.effectiveFrom) || int(ptrOr(up.NoticeSendDaysBefore, 0)) != a.sendDays {
+				return errkey.New(codes.FailedPrecondition, "plans.price_change.date_differs", "an open price change for these versions starts on another date or sends its notices on another day; withdraw it to make a new one")
 			}
 			pcID = up.ID
 		}
@@ -371,7 +377,7 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		// One entry per run (a retry is a run): what was asked, and how many subscriptions it moved, found moved already and skipped.
 		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "price_change.scheduled", TargetType: "price_change", TargetID: pcID.String(),
 			Summary: fmt.Sprintf("moved %s from version %d to %d %s, %d days notice", a.plan, a.from, toVersion, whenText(a.effectiveFrom), a.notice),
-			Detail: map[string]any{"plan": a.plan, "from_version": a.from, "to_version": toVersion, "notice_days": a.notice, "effective_from": a.effectiveFrom, "scheduled": resp.Scheduled,
+			Detail: map[string]any{"plan": a.plan, "from_version": a.from, "to_version": toVersion, "notice_days": a.notice, "effective_from": a.effectiveFrom, "notice_send_days_before": a.sendDays, "scheduled": resp.Scheduled,
 				"already_scheduled": resp.AlreadyScheduled, "skipped": len(resp.Skipped)}}); err != nil {
 			return err
 		}
@@ -459,9 +465,8 @@ func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, te
 	if err != nil {
 		return outcome{}, err
 	}
-	if err := q.UpsertPriceChangeItem(ctx, sqlc.UpsertPriceChangeItemParams{PriceChangeID: pcID, SubscriptionID: subID, ChangeID: &changeID, EffectiveAt: &pc.Quote.Effective, NotifiedAt: ptr(c.now())}); err != nil {
-		return outcome{}, err
-	}
+	// The mail goes now, or is held until sendDays before the new price (never later than the customer's notice): then it waits in the item for the sweep.
+	sendAt, held := domain.NoticeSendAt(c.now(), pc.Quote.Effective, a.sendDays, notice)
 	// The customer's mail: one fact per scheduled change, deduplicated by its id.
 	ev := &eventsv1.PriceChangeScheduled{
 		EventId: idgen.Deterministic("price_change", tenantID.String(), subID.String(), pc.Quote.Effective.UTC().Format(time.RFC3339Nano)).String(), TenantId: tenantID.String(),
@@ -472,6 +477,16 @@ func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, te
 	if err != nil {
 		return outcome{}, err
 	}
+	item := sqlc.UpsertPriceChangeItemParams{PriceChangeID: pcID, SubscriptionID: subID, ChangeID: &changeID, EffectiveAt: &pc.Quote.Effective, NotifiedAt: ptr(c.now())}
+	if held {
+		item.NotifiedAt, item.NoticeSendAt, item.NoticeEvent = nil, &sendAt, payload
+	}
+	if err := q.UpsertPriceChangeItem(ctx, item); err != nil {
+		return outcome{}, err
+	}
+	if held {
+		return outcome{scheduled: true}, nil
+	}
 	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: PriceChangeTopic, PartitionKey: tenantID.String() + "/" + row.CustomerID.String(), Payload: payload}); err != nil {
 		return outcome{}, err
 	}
@@ -479,6 +494,14 @@ func (c *Commands) priceOne(ctx context.Context, q *sqlc.Queries, a priceRun, te
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// sendDaysPtr is the column value of notice_send_days_before (null for 0).
+func sendDaysPtr(d int) *int32 {
+	if d == 0 {
+		return nil
+	}
+	return ptr(int32(d)) //nolint:gosec // validated to 14..365
+}
 
 // whenText says in an audit summary when the new price starts.
 func whenText(from *time.Time) string {

@@ -1025,7 +1025,11 @@
         },
         "fromDate": "Başlangıç tarihi (isteğe bağlı)",
         "fromDateHelp": "Boş bırakırsanız her abonelik bir sonraki yenilemesinde geçer. Tarih verirseniz her abonelik, bu tarihte veya sonrasındaki ilk yenilemesinde geçer: aylık plan hemen ilkinde, yıllık plan aylar sonra olabilir. Bildirim süresi kadar ileride, en fazla iki yıl.",
-        "startsFrom": "{date} tarihinden itibaren"
+        "startsFrom": "{date} tarihinden itibaren",
+        "sendDays": "Postayı fiyat başlamadan önce gönder (isteğe bağlı, gün)",
+        "sendDaysHelp": "Boş bırakırsanız her müşteriye planladığınız anda posta gider. Bir sayı verirseniz posta bekletilir ve yeni fiyat başlamadan o kadar gün önce gönderilir (en az bildirim süresi kadar; müşteriye hiçbir zaman bildirim süresinden geç haber verilmez, zamanı gelmiş posta hemen gider). Fiyat değişikliğini geri çekmek bekleyen postayı iptal eder; operatör duraklatması onu bekletir.",
+        "sendDaysInvalid": "En az bildirim süresi, en çok 365 gün.",
+        "noticeSentBefore": "posta {n} gün önce"
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",

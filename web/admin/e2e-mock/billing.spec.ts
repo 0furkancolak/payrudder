@@ -184,6 +184,15 @@ test.describe("packages", () => {
     await sheet.getByTestId("pc-check-button").click();
     await expect(sheet.getByTestId("pc-check")).toBeVisible();
     expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, effective_from: "2027-03-01T00:00:00Z", dry_run: true });
+    // The mail can be held until N days before the new price: not fewer than the notice, not more than a year; empty sends at once.
+    await sheet.getByTestId("pc-send-days").fill("20");
+    await expect(sheet.getByTestId("pc-send-days-error")).toBeVisible();
+    await expect(sheet.getByTestId("pc-check-button")).toBeDisabled();
+    await sheet.getByTestId("pc-send-days").fill("45");
+    await expect(sheet.getByTestId("pc-send-days-error")).toHaveCount(0);
+    await sheet.getByTestId("pc-check-button").click();
+    await expect(sheet.getByTestId("pc-check")).toBeVisible();
+    expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, effective_from: "2027-03-01T00:00:00Z", notice_send_days_before: 45, dry_run: true });
   });
 
   test("the price changes made are listed with what became of each subscription; the skipped are tried again and what is waiting is withdrawn after asking", async ({ page }) => {

@@ -1025,7 +1025,11 @@
         },
         "fromDate": "Desde el (opcional)",
         "fromDateHelp": "Déjelo vacío para mover cada suscripción en su próxima renovación. Con una fecha, cada una pasa en su primera renovación en esa fecha o después: un plan mensual en la primera, un plan anual quizá meses después. Como mínimo el plazo de aviso, como máximo dos años.",
-        "startsFrom": "desde el {date}"
+        "startsFrom": "desde el {date}",
+        "sendDays": "Enviar el correo antes de que empiece el precio (opcional, días)",
+        "sendDaysHelp": "Déjelo vacío para avisar a cada cliente en cuanto programe. Con un número, el correo se retiene y sale esos días antes de que empiece su nuevo precio (como mínimo el preaviso; nunca se avisa a un cliente después de su preaviso, y un correo que ya toca sale de inmediato). Retirar el cambio de precio cancela un correo aún retenido; una pausa del operador lo retiene.",
+        "sendDaysInvalid": "Como mínimo el preaviso, como máximo 365 días.",
+        "noticeSentBefore": "correo {n} días antes"
       },
       "prorateAfterTrial": "Cobrar el primer periodo desde el fin de la prueba",
       "prorateAfterTrialHelp": "Cuando una prueba termina a mitad de un periodo de facturación, la cuota fija de ese periodo se cobra solo desde el fin de la prueba hasta el fin del periodo. Desactivado: se cobra la cuota de todo el periodo, como en los paquetes publicados antes de esta opción.",

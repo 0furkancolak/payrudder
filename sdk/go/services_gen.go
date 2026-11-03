@@ -2564,14 +2564,16 @@ func (s *PlansService) CreatePlan(ctx context.Context, req *CreatePlanRequest, o
 // For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away
 // (default 30, at least 14), a change to `to_version` (default: the latest published) is scheduled for that
 // renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
-// With `effective_from` the subscription moves on its first period start on or after that date instead (the
-// customer is still mailed when the run schedules it, so at least `notice_days` before). The notice is the
-// longer of `notice_days` and the operator's minimum for the customer's country (not legal advice, UNVERIFIED).
-// The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a
-// change is waiting and is never replaced), `run_by_provider`, `not_changeable` (for example a fee invoiced in
-// arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes
-// nothing. Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run
-// sends `price_change.scheduled` once. The run is recorded as a price change (`price_change_id`; see `GET
+// With `effective_from` the subscription moves on its first period start on or after that date instead. The
+// customer is mailed when the run schedules it, so at least `notice_days` before; with
+// `notice_send_days_before` the mail is held and goes out that many days before the new price (never later than
+// the customer's notice; a mail that is due already goes at once). The notice is the longer of `notice_days`
+// and the operator's minimum for the customer's country (not legal advice, UNVERIFIED). The others are listed
+// in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is
+// never replaced), `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and
+// `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
+// Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends
+// `price_change.scheduled` once. The run is recorded as a price change (`price_change_id`; see `GET
 // /v1/price-changes`). Running it again for the same plan and versions continues the open one: the skipped
 // subscriptions are tried again, and the ones it scheduled before are counted in `already_scheduled` and
 // neither scheduled nor mailed a second time.
