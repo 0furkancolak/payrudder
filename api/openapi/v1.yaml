@@ -8868,6 +8868,7 @@ components:
         role: { $ref: "#/components/schemas/ApiKeyRole" }
         permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "Required for the role custom; for a fixed role optional, and then a subset of the role's own." }
         scope: { type: string, enum: [full, ingest, read], description: "Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only." }
+        rate_percent: { type: integer, format: int32, minimum: 1, maximum: 100, nullable: true, description: "The key's own rate limit as a percentage of the tenant's limit for each route class (a key at 20 gets a fifth of the tenant's limit). Absent or null: no limit of its own. A key that has spent its share gets 429 gateway.rate_limit.exceeded with Retry-After although the tenant has room. Outside 1 to 100: 400 gateway.request.invalid." }
     AppCreateApiKeyResponse:
       type: object
       required: [api_key, plaintext]
@@ -9880,6 +9881,7 @@ components:
         role: { $ref: "#/components/schemas/ApiKeyRole" }
         permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" } }
         scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older way to choose a role when role and permissions are absent." }
+        rate_percent: { type: integer, format: int32, description: "The key's own rate limit, 1 to 100 percent of the tenant's limit for each route class; 0 or absent: none." }
     CreateApiKeyResponse:
       type: object
       required: [api_key, plaintext]
@@ -12437,7 +12439,7 @@ components:
         check_problem: { type: string, enum: ["", unreachable, refused] }
     ApiKey:
       type: object
-      required: [id, tenant_id, prefix, environment, status, create_time, revoke_time, scope, role, permissions, last_used_time, expire_time]
+      required: [id, tenant_id, prefix, environment, status, create_time, revoke_time, scope, role, permissions, last_used_time, expire_time, rate_percent]
       properties:
         id: { type: string, format: uuid }
         tenant_id: { type: string, format: uuid }
@@ -12451,3 +12453,4 @@ components:
         permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "What the key may do. A request that needs one the key lacks is 403 gateway.auth.permission_denied." }
         last_used_time: { type: string, format: date-time, description: "Kept to within a few minutes., nullable: true" }
         expire_time: { type: string, format: date-time, description: "The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true" }
+        rate_percent: { type: integer, format: int32, description: "The key's own rate limit as a percentage (1 to 100) of the tenant's limit for each route class; 0 when the key has none." }

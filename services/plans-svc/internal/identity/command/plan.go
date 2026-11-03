@@ -35,10 +35,10 @@ func (c *Commands) room(ctx context.Context, db sqlc.DBTX, account uuid.UUID, r 
 // issueWithinPlan issues an API key for a tenant of the account, after the plan says there is room for one more. The check and the issue are one
 // critical section: the account's lock is held in a transaction of its own for the length of the issue, which commits on its own connection, so a
 // second request waits for the lock and then counts the key the first made.
-func (c *Commands) issueWithinPlan(ctx context.Context, accountID string, tenantID uuid.UUID, role string, perms []string) (*plansv1.ApiKey, string, error) {
+func (c *Commands) issueWithinPlan(ctx context.Context, accountID string, tenantID uuid.UUID, role string, perms []string, ratePercent int32) (*plansv1.ApiKey, string, error) {
 	aid, err := uuid.Parse(accountID)
 	if c.guard == nil || err != nil {
-		return c.keys.Issue(ctx, tenantID, role, perms)
+		return c.keys.Issue(ctx, tenantID, role, perms, ratePercent)
 	}
 	var key *plansv1.ApiKey
 	var plaintext string
@@ -51,7 +51,7 @@ func (c *Commands) issueWithinPlan(ctx context.Context, accountID string, tenant
 			return err
 		}
 		var err error
-		key, plaintext, err = c.keys.Issue(ctx, tenantID, role, perms)
+		key, plaintext, err = c.keys.Issue(ctx, tenantID, role, perms, ratePercent)
 		return err
 	})
 	return key, plaintext, err

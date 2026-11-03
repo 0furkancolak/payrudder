@@ -135,3 +135,23 @@ func TestSandboxOnlyDeploymentRejectsLiveKeys(t *testing.T) {
 		t.Fatalf("live key in sandbox-only deployment: %v", err)
 	}
 }
+
+// The key's own rate limit travels from plans-svc through the cache into the principal; a key without one has 0.
+func TestAuthenticateCarriesTheKeyRatePercent(t *testing.T) {
+	k, cache, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
+	res.keys[k.Prefix].RatePercent = 15
+	for range 2 { // the second read comes from the cache entry
+		p, err := a.Authenticate(context.Background(), k.String())
+		if err != nil || p.RatePercent != 15 {
+			t.Fatalf("principal = %+v, %v; want RatePercent 15", p, err)
+		}
+	}
+	if cache.m[k.Prefix].RatePercent != 15 {
+		t.Fatalf("cache entry lost the percentage: %+v", cache.m[k.Prefix])
+	}
+	res.keys[k.Prefix].RatePercent = 0
+	cache.m = map[string]Entry{}
+	if p, err := a.Authenticate(context.Background(), k.String()); err != nil || p.RatePercent != 0 {
+		t.Fatalf("a key without a percentage: %+v, %v", p, err)
+	}
+}

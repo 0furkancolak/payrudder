@@ -4161,6 +4161,11 @@
         "audit": "Registro de auditoría"
       },
       "permissionCount": "{n} de {total} permisos",
+      "ratePercent": "Límite de peticiones (% del plan)",
+      "ratePercentHelp": "Opcional. Una parte del límite de peticiones de su plan que solo esta clave puede usar, de 1 a 100. Déjelo vacío para no tener un límite propio: la clave usa entonces el límite completo, como las demás.",
+      "ratePercentInvalid": "Introduzca un número entero de 1 a 100, o déjelo vacío.",
+      "ratePercentOwn": "{n} % del plan",
+      "ratePercentNone": "Sin límite propio",
       "customNeedsOne": "Elige al menos un permiso.",
       "create": "Crear clave",
       "createTitleSandbox": "Nueva clave de sandbox",

@@ -110,10 +110,21 @@ func TestKeyRoleAndRotationRoutes(t *testing.T) {
 		`{"environment":"sandbox","role":"custom"}`,
 		`{"environment":"sandbox","role":"custom","permissions":["nope:read"]}`,
 		`{"environment":"sandbox","role":"read_only","permissions":["customers:write"]}`,
+		`{"environment":"sandbox","rate_percent":0}`,
+		`{"environment":"sandbox","rate_percent":101}`,
+		`{"environment":"sandbox","rate_percent":-5}`,
 	} {
 		if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", bad); resp.StatusCode != 400 {
 			t.Errorf("%s: %d, want 400", bad, resp.StatusCode)
 		}
+	}
+
+	// A key's own rate limit (percent of the tenant's) reaches plans-svc as given; absent means none.
+	if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", `{"environment":"sandbox","rate_percent":25}`); resp.StatusCode != 201 || p.ident.lastRate != 25 {
+		t.Errorf("rate_percent 25: %d, plans-svc got %d", resp.StatusCode, p.ident.lastRate)
+	}
+	if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", `{"environment":"sandbox"}`); resp.StatusCode != 201 || p.ident.lastRate != 0 {
+		t.Errorf("no rate_percent: %d, plans-svc got %d", resp.StatusCode, p.ident.lastRate)
 	}
 
 	resp, m := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys/key-ada/rotate", tokAda, "", `{"overlap_hours":2}`)

@@ -64,3 +64,18 @@ func TestBillingProfileMatchesTheChecklist(t *testing.T) {
 		t.Error("TaxIDRequired")
 	}
 }
+
+func TestValidRatePercent(t *testing.T) {
+	for _, p := range []int32{0, 1, 50, 100} {
+		if err := ValidRatePercent(p); err != nil {
+			t.Errorf("%d: %v", p, err)
+		}
+	}
+	for _, p := range []int32{-1, 101, 1000} {
+		if err := ValidRatePercent(p); err == nil {
+			t.Errorf("%d was accepted", p)
+		} else if status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%d: %v, want InvalidArgument", p, err)
+		}
+	}
+}

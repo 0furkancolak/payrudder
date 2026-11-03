@@ -9838,6 +9838,11 @@ export interface components {
              * @enum {string}
              */
             scope?: "full" | "ingest" | "read";
+            /**
+             * Format: int32
+             * @description The key's own rate limit as a percentage of the tenant's limit for each route class (a key at 20 gets a fifth of the tenant's limit). Absent or null: no limit of its own. A key that has spent its share gets 429 gateway.rate_limit.exceeded with Retry-After although the tenant has room. Outside 1 to 100: 400 gateway.request.invalid.
+             */
+            rate_percent?: number | null;
         };
         AppCreateApiKeyResponse: {
             api_key: components["schemas"]["ApiKey"] | null;
@@ -10885,6 +10890,11 @@ export interface components {
              * @enum {string}
              */
             scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+            /**
+             * Format: int32
+             * @description The key's own rate limit, 1 to 100 percent of the tenant's limit for each route class; 0 or absent: none.
+             */
+            rate_percent?: number;
         };
         CreateApiKeyResponse: {
             api_key: components["schemas"]["ApiKey"] | null;
@@ -14508,6 +14518,11 @@ export interface components {
              * @description The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true
              */
             expire_time: string;
+            /**
+             * Format: int32
+             * @description The key's own rate limit as a percentage (1 to 100) of the tenant's limit for each route class; 0 when the key has none.
+             */
+            rate_percent: number;
         };
     };
     responses: {

@@ -183,6 +183,7 @@ type ApiKey struct {
 	ExpiresAt   *time.Time
 	Role        string
 	Permissions []string
+	RatePercent *int32
 }
 
 type App struct {

@@ -70,6 +70,20 @@ export function keyRequest(role: KeyRole, chosen: ReadonlySet<KeyPermission>): {
   return permissions.length === 0 ? null : { role, permissions };
 }
 
+/** The own rate limit of a key, as a share of the plan's limit: 1 to 100 (the gateway's rule). Empty means none. */
+export function parseRatePercent(input: string | number | null | undefined): { ok: true; value: number | undefined } | { ok: false } {
+  const s = String(input ?? "").trim(); // a number input may hand over a number
+  if (s === "") return { ok: true, value: undefined };
+  if (!/^\d{1,3}$/.test(s)) return { ok: false };
+  const n = Number(s);
+  return n >= 1 && n <= 100 ? { ok: true, value: n } : { ok: false };
+}
+
+/** The own limit of a key as the API sends it: 0 or absent is none. */
+export function ratePercentOf(k: { rate_percent?: number | null }): number {
+  return k.rate_percent && k.rate_percent > 0 ? k.rate_percent : 0;
+}
+
 /** The role of a key as the API sends it; a key from before roles (only a scope) reads as the role the scope stood for. */
 export function roleOfKey(k: { role?: string; scope?: string }): KeyRole {
   if (k.role && (KEY_ROLES as readonly string[]).includes(k.role)) return k.role as KeyRole;

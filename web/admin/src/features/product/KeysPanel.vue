@@ -30,7 +30,8 @@ import { sheetName } from "@/shared/lib/sheets";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { useApiKeys, useApp, useCreateApiKey, useMe, useRevokeApiKey, useRotateApiKey, type ApiKey, type Environment } from "./api";
-import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission, type KeyRole } from "./apiKeys";
+import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, parseRatePercent, permissionCount, permissionsOfRole, ratePercentOf, roleOfKey, type KeyPermission, type KeyRole } from "./apiKeys";
+import { Input } from "@/shared/ui/input";
 
 /**
  * The API keys of one environment of an app. Sandbox keys are made in the sandbox view and live keys in the live view, never from the same place: the key's
@@ -81,10 +82,14 @@ const total = ALL_PERMISSIONS.length;
 const making = ref(false);
 const role = ref<KeyRole>(DEFAULT_KEY_ROLE);
 const chosen = ref<Set<KeyPermission>>(new Set());
+/** The key's own rate limit, typed: empty is none, otherwise a whole number from 1 to 100 (percent of the plan's limit). */
+const rateInput = ref("");
+const rate = computed(() => parseRatePercent(rateInput.value));
 watch(making, (open) => {
   if (!open) return;
   role.value = DEFAULT_KEY_ROLE;
   chosen.value = new Set();
+  rateInput.value = "";
   create.reset();
 });
 /** The permissions shown ticked: a fixed role's own, or the ones chosen for a custom key. */
@@ -109,9 +114,10 @@ const reveal = computed({ get: () => secret.value !== null, set: (v) => { if (!v
 
 function make() {
   const body = request.value;
-  if (!body) return;
+  const r = rate.value;
+  if (!body || !r.ok) return;
   copied.value = failed.value = false;
-  create.mutate({ environment: props.env, ...body }, { onSuccess: (r) => { secret.value = { plaintext: r.plaintext ?? "", env: props.env }; making.value = false; } });
+  create.mutate({ environment: props.env, ...body, ...(r.value ? { ratePercent: r.value } : {}) }, { onSuccess: (r) => { secret.value = { plaintext: r.plaintext ?? "", env: props.env }; making.value = false; } });
 }
 
 async function copy() {
@@ -221,6 +227,7 @@ function doRevoke() {
           <TableCell class="max-md:hidden">
             <StatusPill tone="neutral" :data-testid="`role-${k.id}`">{{ roleName(roleOfKey(k)) }}</StatusPill>
             <p class="text-muted-foreground mt-1 text-xs">{{ t("product.keys.permissionCount", { n: permissionCount(k), total }) }}</p>
+            <p class="text-muted-foreground text-xs" :data-testid="`rate-${k.id}`">{{ ratePercentOf(k) ? t("product.keys.ratePercentOwn", { n: ratePercentOf(k) }) : t("product.keys.ratePercentNone") }}</p>
           </TableCell>
           <TableCell class="max-md:hidden"><StatusPill :tone="keyEnv(k) === 'live' ? 'info' : 'neutral'" :data-testid="`env-${k.id}`">{{ t(`product.env.${keyEnv(k)}`) }}</StatusPill></TableCell>
           <TableCell class="max-md:hidden"><StatusPill :tone="toneOf(isRevoked(k) ? 'revoked' : 'active')">{{ t(isRevoked(k) ? "product.keys.revoked" : "product.keys.active") }}</StatusPill></TableCell>
@@ -271,12 +278,17 @@ function doRevoke() {
             </div>
           </fieldset>
           <p v-if="custom && !request" class="text-warning text-xs" role="status" data-testid="key-needs-permission">{{ t("product.keys.customNeedsOne") }}</p>
+          <FormField for="key-rate" :label="t('product.keys.ratePercent')">
+            <Input id="key-rate" v-model="rateInput" type="number" inputmode="numeric" min="1" max="100" step="1" :aria-invalid="!rate.ok" data-testid="key-rate" />
+            <p class="text-muted-foreground text-xs">{{ t("product.keys.ratePercentHelp") }}</p>
+            <p v-if="!rate.ok" class="text-destructive text-xs" role="alert" data-testid="key-rate-invalid">{{ t("product.keys.ratePercentInvalid") }}</p>
+          </FormField>
           <ErrorText :error="create.error.value" box />
         </form>
       </SheetBody>
       <SheetFooter>
         <Button variant="ghost" type="button" @click="making = false">{{ t("common.cancel") }}</Button>
-        <Button type="submit" form="new-key" :disabled="create.isPending.value || !request" data-testid="create-key">{{ t("product.keys.create") }}</Button>
+        <Button type="submit" form="new-key" :disabled="create.isPending.value || !request || !rate.ok" data-testid="create-key">{{ t("product.keys.create") }}</Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>
@@ -304,6 +316,7 @@ function doRevoke() {
       </SheetHeader>
       <SheetBody>
         <p class="mono bg-muted rounded-2xl p-3 text-sm">{{ viewing ? shown(viewing) : "" }}</p>
+        <p v-if="viewing" class="text-muted-foreground text-sm" data-testid="key-view-rate">{{ t("product.keys.ratePercent") }}: {{ ratePercentOf(viewing) ? t("product.keys.ratePercentOwn", { n: ratePercentOf(viewing) }) : t("product.keys.ratePercentNone") }}</p>
         <ul class="flex flex-col gap-1.5 text-sm" data-testid="key-permissions">
           <template v-for="r in KEY_RESOURCES" :key="r.resource">
             <li v-for="p in [r.read, r.write].filter((x) => x !== undefined)" :key="p" class="flex items-center justify-between gap-3" :data-granted="viewed.has(p as string)">

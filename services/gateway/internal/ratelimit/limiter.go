@@ -98,7 +98,26 @@ func (l *Limiter) Allow(ctx context.Context, tenantID, tier string, class Class,
 	if cost < 1 {
 		cost = 1
 	}
-	key := "gw:rl:" + tenantID + ":" + string(class)
+	return l.decide(ctx, "gw:rl:"+tenantID+":"+string(class), lim, class, tenantID, cost), nil
+}
+
+// AllowKey charges cost units against the own bucket gw:rl:{tenant}:{class}:key:{key_id} of an API key whose limit is percent (1 to 100) of the tenant's limit for
+// the class. The caller then charges the tenant's bucket with Allow: key first, so a key that has spent its share is refused without taking from the tenant's budget
+// (the other keys' room), and the cost of a request the tenant then refuses stays with the key, which is the stricter way to be wrong. A percent outside 1 to 100 means
+// no limit of its own and costs nothing (no Redis call). The key's burst is at least 1, and a batch above it costs the whole burst (as the fallback does for a
+// tenant), so a large batch is not refused for ever. Redis failing is handled as for the tenant's bucket: each replica limits the key on its own with its share.
+func (l *Limiter) AllowKey(ctx context.Context, keyID, tenantID, tier string, class Class, cost, percent int) (Decision, error) {
+	if percent < 1 || percent > 100 || keyID == "" {
+		return Decision{Allowed: true}, nil
+	}
+	lim := limitFor(tier, class)
+	kl := Limit{PerSecond: lim.PerSecond * float64(percent) / 100, Burst: max(1, lim.Burst*percent/100)}
+	cost = min(max(cost, 1), kl.Burst)
+	return l.decide(ctx, "gw:rl:"+tenantID+":"+string(class)+":key:"+keyID, kl, class, tenantID, cost), nil
+}
+
+// decide is one bucket: Redis, or this replica's share of it when Redis fails.
+func (l *Limiter) decide(ctx context.Context, key string, lim Limit, class Class, tenantID string, cost int) Decision {
 	d, err := l.redisAllow(ctx, key, lim, cost)
 	if err != nil {
 		l.fallback.Add(ctx, 1, metric.WithAttributes(attribute.String("class", string(class))))
@@ -108,7 +127,7 @@ func (l *Limiter) Allow(ctx context.Context, tenantID, tier string, class Class,
 	if !d.Allowed {
 		l.rejected.Add(ctx, 1, metric.WithAttributes(attribute.String("class", string(class)), attribute.String("tenant", tenantID)))
 	}
-	return d, nil
+	return d
 }
 
 func (l *Limiter) redisAllow(ctx context.Context, key string, lim Limit, cost int) (Decision, error) {

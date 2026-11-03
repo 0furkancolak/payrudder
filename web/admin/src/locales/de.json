@@ -4161,6 +4161,11 @@
         "audit": "Audit-Protokoll"
       },
       "permissionCount": "{n} von {total} Berechtigungen",
+      "ratePercent": "Ratenlimit (% des Tarifs)",
+      "ratePercentHelp": "Optional. Ein Anteil des Anfragelimits Ihres Tarifs, den nur dieser Schlüssel nutzen darf, von 1 bis 100. Leer lassen für kein eigenes Limit: Der Schlüssel nutzt dann wie alle anderen das gesamte Limit.",
+      "ratePercentInvalid": "Geben Sie eine ganze Zahl von 1 bis 100 ein oder lassen Sie das Feld leer.",
+      "ratePercentOwn": "{n} % des Tarifs",
+      "ratePercentNone": "Kein eigenes Limit",
       "customNeedsOne": "Wählen Sie mindestens eine Berechtigung.",
       "create": "Schlüssel erstellen",
       "createTitleSandbox": "Neuer Sandbox-Schlüssel",

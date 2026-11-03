@@ -452,7 +452,7 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_role", "role: admin, billing, read_only, ingest_only or custom, with known permissions")
 	}
 	tid, _ := uuid.Parse(target.GetId())
-	return c.issueWithinPlan(ctx, app.GetAccountId(), tid, role, perms)
+	return c.issueWithinPlan(ctx, app.GetAccountId(), tid, role, perms, req.GetRatePercent())
 }
 
 // Rotation overlap: the old key of a rotation keeps working for 24 hours unless the caller says otherwise, and for at most a week.
@@ -497,7 +497,7 @@ func (c *Commands) RotateAPIKey(ctx context.Context, req *plansv1.RotateMyApiKey
 	}
 	tid, _ := uuid.Parse(old.GetTenantId())
 	oldID, _ := uuid.Parse(old.GetId())
-	fresh, plaintext, err = c.keys.Issue(ctx, tid, old.GetRole(), old.GetPermissions())
+	fresh, plaintext, err = c.keys.Issue(ctx, tid, old.GetRole(), old.GetPermissions(), old.GetRatePercent())
 	if err != nil {
 		return nil, "", nil, err
 	}

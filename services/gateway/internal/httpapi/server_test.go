@@ -73,6 +73,10 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 		return auth.Principal{}, auth.ErrSuspended
 	case "frozen-key":
 		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live"}, Tier: "free", ReadOnly: true}, nil
+	case "pct-key":
+		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live", APIKeyID: "key-pct"}, Tier: "free", RatePercent: 20}, nil
+	case "over-key":
+		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live", APIKeyID: "key-over"}, Tier: "free", RatePercent: 20}, nil
 	case "keyed-key":
 		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live", APIKeyID: "key-123"}, Tier: "free"}, nil
 	default:
@@ -83,6 +87,18 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 type fakeLimiter struct {
 	mu    sync.Mutex
 	costs map[ratelimit.Class][]int
+	// keyPercents is the percent of every AllowKey call; the key "key-over" has spent its share.
+	keyPercents []int
+}
+
+func (f *fakeLimiter) AllowKey(_ context.Context, keyID, _, _ string, _ ratelimit.Class, _, percent int) (ratelimit.Decision, error) {
+	f.mu.Lock()
+	f.keyPercents = append(f.keyPercents, percent)
+	f.mu.Unlock()
+	if keyID == "key-over" {
+		return ratelimit.Decision{Allowed: false, RetryAfter: 3 * time.Second}, nil
+	}
+	return ratelimit.Decision{Allowed: true}, nil
 }
 
 func (f *fakeLimiter) Allow(_ context.Context, _, tier string, class ratelimit.Class, cost int) (ratelimit.Decision, error) {

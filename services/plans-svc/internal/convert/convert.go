@@ -141,12 +141,20 @@ func APIKeyStatus(s string) plansv1.ApiKey_Status {
 	return plansv1.ApiKey_STATUS_REVOKED
 }
 
+// RatePercent is the own limit of a stored key: 0 for NULL, which means none.
+func RatePercent(p *int32) int32 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
 // APIKey maps a key row (never the hash).
 func APIKey(k sqlc.ApiKey) *plansv1.ApiKey {
 	out := &plansv1.ApiKey{
 		Id: k.ID.String(), TenantId: k.TenantID.String(), Prefix: k.Prefix,
 		Environment: APIKeyEnvironment(k.Env), Status: APIKeyStatus(k.Status), CreateTime: ts(k.CreatedAt),
-		Scope: domain.KeyScope(k.Role), Role: k.Role, Permissions: domain.KeyPermissions(k.Role, k.Permissions), LastUsedTime: tsp(k.LastUsedAt), ExpireTime: tsp(k.ExpiresAt),
+		Scope: domain.KeyScope(k.Role), Role: k.Role, Permissions: domain.KeyPermissions(k.Role, k.Permissions), LastUsedTime: tsp(k.LastUsedAt), ExpireTime: tsp(k.ExpiresAt), RatePercent: RatePercent(k.RatePercent),
 	}
 	if k.RevokedAt != nil {
 		out.RevokeTime = ts(*k.RevokedAt)

@@ -379,6 +379,8 @@ message CreateMyApiKeyRequest {
   // admin (default), billing, read_only, ingest_only or custom.
   string role = 5;
   repeated string permissions = 6;
+  // Optional own rate limit of the key, 1 to 100 (percent of the tenant's limit per route class); 0 = none. Anything else is identity.api_key.bad_rate_percent.
+  int32 rate_percent = 7;
 }
 
 message CreateMyApiKeyResponse {

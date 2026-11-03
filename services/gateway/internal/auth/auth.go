@@ -70,6 +70,8 @@ type Principal struct {
 	Actor audit.Actor
 	// MemberRole is the role in the tenant's account (owner, admin, viewer) of a signed-in person acting as the tenant; empty for an API key and an operator.
 	MemberRole string
+	// RatePercent is the key's own rate limit as a share (1 to 100) of the tenant's limit for each route class; 0 = none, the key only draws on the tenant's budget.
+	RatePercent int
 }
 
 // Entry is the cached resolution of a key prefix.
@@ -91,6 +93,8 @@ type Entry struct {
 	Scope       string   `json:"scope,omitempty"`
 	// ExpiresAt is the unix time the key stops working although it is not revoked (the old key of a rotation); 0 for a key without an end.
 	ExpiresAt int64 `json:"expires_at,omitempty"`
+	// RatePercent is the key's own rate limit (percent of the tenant's); 0 for none, and for an entry written by an older release.
+	RatePercent int `json:"rate_percent,omitempty"`
 }
 
 // Cache stores entries by prefix.
@@ -227,7 +231,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	return Principal{
 		Tenant: tenant.Info{ID: id, Environment: e.Environment, Timezone: e.Timezone, APIKeyID: e.APIKeyID},
 		Tier:   e.Tier,
-		Role:   role, Permissions: perms, ReadOnly: e.Status == "frozen",
+		Role:   role, Permissions: perms, ReadOnly: e.Status == "frozen", RatePercent: e.RatePercent,
 	}, nil
 }
 
@@ -301,6 +305,7 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 		Environment: envName(res.GetEnvironment()), Tier: TierName(res.GetTier()),
 		Active: res.GetStatus() == plansv1.ApiKey_STATUS_ACTIVE, KeyHash: res.GetKeyHash(),
 		Status: statusName(res.GetTenantStatus()), Role: res.GetRole(), Permissions: res.GetPermissions(), Scope: scopeName(res.GetScope()),
+		RatePercent: int(res.GetRatePercent()),
 	}
 	if !e.Active {
 		a.neg.Add(prefix)
