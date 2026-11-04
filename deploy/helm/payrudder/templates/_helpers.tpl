@@ -68,6 +68,10 @@ see the schema owner's password while the Job still loads the service's complete
     {{- if $root.Values.auth.trustedProxySecret -}}
       {{- $_ := set $out "PAYRUDDER_TRUSTED_PROXY_SECRET" $root.Values.auth.trustedProxySecret -}}
     {{- end -}}
+  {{- else if eq . "oauthResourceSecret" -}}
+    {{- if $root.Values.auth.oauthResourceSecret -}}
+      {{- $_ := set $out "PAYRUDDER_OAUTH_RESOURCE_SECRET" $root.Values.auth.oauthResourceSecret -}}
+    {{- end -}}
   {{- else if eq . "mailEventsSecret" -}}
     {{- if $root.Values.mail.eventsSecret -}}
       {{- $_ := set $out "NOTIFIER_MAIL_EVENTS_SECRET" $root.Values.mail.eventsSecret -}}

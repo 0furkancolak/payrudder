@@ -949,6 +949,11 @@ services:
       PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}
       # Read-only support operators: the operator console without anything that writes. An address on both lists is a support operator. Empty: none.
       PAYRUDDER_OPERATOR_SUPPORT_EMAILS: ${PAYRUDDER_OPERATOR_SUPPORT_EMAILS:-}
+      # Sign-in with OAuth for assistants (plan 20, off while the resources are empty): the MCP server's public address(es), the secret it shares with the gateway
+      # (32+ characters; `openssl rand -hex 32`) and whether an assistant may act on a live environment. See mcp/README.md.
+      PAYRUDDER_OAUTH_RESOURCES: ${PAYRUDDER_OAUTH_RESOURCES:-}
+      PAYRUDDER_OAUTH_RESOURCE_SECRET: ${PAYRUDDER_OAUTH_RESOURCE_SECRET:-}
+      PAYRUDDER_OAUTH_ALLOW_LIVE: ${PAYRUDDER_OAUTH_ALLOW_LIVE:-}
       # "Continue with Google": shown only when both are set. For a real client see docs/13-admin-ui.md; for the in-repo mock provider start the `oidc`
       # profile and set the three values listed in docs/10-local-dev.md.
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
