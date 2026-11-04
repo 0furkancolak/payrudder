@@ -20,9 +20,9 @@ DELETE FROM sent_notifications WHERE dedup_key = $1 AND status = 'SENDING';
 -- name: GetSentMessageID :one
 SELECT smtp_message_id FROM sent_notifications WHERE dedup_key = $1 AND status = 'SENT';
 
--- name: NotificationByMessageID :one
--- The mail a provider's bounce or complaint is about: the tenant it was sent for and the address it went to.
-SELECT tenant_id, recipient FROM sent_notifications WHERE smtp_message_id = $1 AND status = 'SENT' ORDER BY sent_at LIMIT 1;
+-- name: NotificationByMessageID :many
+-- The mail a provider's bounce or complaint is about: the tenant it was sent for and the address it went to. Two rows are enough to see that the id is not unique.
+SELECT tenant_id, recipient FROM sent_notifications WHERE smtp_message_id = $1 AND status = 'SENT' ORDER BY sent_at LIMIT 2;
 
 -- A tenant's recent mail, newest first, a page at a time (the keyset is the claim time and the dedup key), with what the provider reported of each.
 -- name: ListTenantMessages :many
