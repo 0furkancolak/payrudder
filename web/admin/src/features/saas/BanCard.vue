@@ -47,10 +47,16 @@ const events = computed(() => state.data.value?.events ?? []);
 const category = ref<StatusCategory | "">("");
 const reason = ref("");
 const missingReason = computed(() => reason.value.trim() === "");
+// The field is only called wrong once the person has left it empty, not straight after a success cleared it.
+const touched = ref(false);
 
 async function apply() {
   const s = subject.value;
-  if (!s || missingReason.value) return;
+  if (!s) return;
+  if (missingReason.value) {
+    touched.value = true;
+    return;
+  }
   const target = banned.value ? "lift" : "ban";
   const name = s.kind === "account" ? t("saas.admin.ban.thisAccount") : s.email;
   if (!(await askConfirm({ body: t(`saas.admin.ban.confirm.${s.kind}.${target}`, { name }), destructive: target === "ban" }))) return;
@@ -61,6 +67,7 @@ async function apply() {
         toast.success(t(`saas.admin.ban.done.${target}`));
         reason.value = "";
         category.value = "";
+        touched.value = false;
       },
     },
   );
@@ -90,7 +97,7 @@ async function apply() {
           </NativeSelect>
         </FormField>
         <FormField :for="`ban-${kind}-reason`" :label="t('tenant.status.reason')" :hint="t('saas.admin.ban.reasonRequired')">
-          <Textarea :id="`ban-${kind}-reason`" v-model="reason" maxlength="500" :aria-invalid="missingReason || undefined" />
+          <Textarea :id="`ban-${kind}-reason`" v-model="reason" maxlength="500" :aria-invalid="(touched && missingReason) || undefined" @blur="touched = true" />
         </FormField>
         <ErrorText :error="set.error.value" box />
         <div>
