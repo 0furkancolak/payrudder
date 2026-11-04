@@ -14,6 +14,8 @@ export interface ToolDef {
   description: string;
   input: z.ZodRawShape;
   write?: boolean;
+  /** The API permission the call needs (customers:read); the OAuth mode refuses a token without it with `403 insufficient_scope` before the tool runs. Absent: the API decides. */
+  scope?: string;
   run(args: Record<string, unknown>, api: Api): Promise<unknown>;
 }
 
@@ -26,6 +28,7 @@ export const TOOLS: ToolDef[] = [
     title: "Create a customer",
     description: "WRITES. Creates a customer (external id, name and e-mail are required). Fails if the external id exists.",
     write: true,
+    scope: "customers:write",
     input: {
       external_id: z.string().min(1).max(200),
       name: z.string().min(1).max(200),
@@ -41,6 +44,7 @@ export const TOOLS: ToolDef[] = [
     description:
       "WRITES. Records usage events (1 to 100 per call). In live, each event needs an idempotency_key so a retry never counts twice; event_time is an RFC 3339 instant not older than 35 days. Quantities are exact decimals, sent as strings.",
     write: true,
+    scope: "events:write",
     input: {
       events: z
         .array(

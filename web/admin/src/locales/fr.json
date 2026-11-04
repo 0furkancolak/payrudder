@@ -3612,7 +3612,15 @@
         "conflict": "Deux connexions se sont croisées. Réessayez.",
         "email_unverified": "Google n'a pas vérifié d'adresse e-mail pour ce compte : il ne peut pas servir à se connecter.",
         "invalid": "Cette connexion n'a pas pu être terminée. Réessayez.",
-        "not_configured": "La connexion avec Google n'est pas configurée ici."
+        "not_configured": "La connexion avec Google n'est pas configurée ici.",
+        "bad_request": "Cette demande de connexion est inutilisable. Relancez-la depuis l'assistant.",
+        "disabled": "Cette installation ne permet pas aux assistants de se connecter avec OAuth.",
+        "grant_not_found": "Cette connexion n'existe pas.",
+        "internal": "Une erreur s'est produite. Réessayez.",
+        "invalid_grant": "Le code ou le jeton de rafraîchissement est invalide, expiré ou déjà utilisé.",
+        "invalid_token": "Le jeton est invalide, expiré ou révoqué.",
+        "live_disabled": "Les assistants ne peuvent pas agir sur un environnement live dans cette installation. Choisissez un sandbox.",
+        "live_email_unverified": "Vérifiez votre adresse e-mail avant qu'un assistant puisse agir sur un environnement live."
       },
       "operator": {
         "forbidden": "Cette zone est réservée aux opérateurs de la plateforme.",
@@ -5001,7 +5009,16 @@
     "security": {
       "title": "Sécurité",
       "intro": "Comment vous vous connectez et comment le protéger.",
-      "setupRequired": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la ci-dessous : tant que ce n'est pas fait, rien d'autre n'est disponible dans la console."
+      "setupRequired": "Une organisation dont vous êtes propriétaire exige la connexion en deux étapes. Configurez-la ci-dessous : tant que ce n'est pas fait, rien d'autre n'est disponible dans la console.",
+      "oauth": {
+        "title": "Assistants connectés",
+        "intro": "Assistants que vous avez autorisés via le serveur MCP. Mettre fin à l'accès les arrête immédiatement.",
+        "empty": "Aucun assistant n'est connecté.",
+        "detail": "{app}, {env}. {n} permissions.",
+        "lastUsed": "Dernière utilisation {date}",
+        "neverUsed": "Pas encore utilisé",
+        "revoke": "Mettre fin à l'accès"
+      }
     },
     "twoFactor": {
       "title": "Connexion en deux étapes",
@@ -5069,6 +5086,29 @@
         "useApp": "Utiliser l'application d'authentification",
         "restart": "Recommencer"
       }
+    },
+    "oauth": {
+      "title": "Connecter un assistant",
+      "intro": "{client} demande à agir en votre nom sur vos données Payrudder. Vérifiez qui demande avant d'autoriser.",
+      "clientAddress": "Le client est publié sur {host}.",
+      "redirect": "Une fois votre choix fait, votre navigateur retourne vers {host}.",
+      "loopback": "Cette adresse est sur votre propre ordinateur : tout programme qui y tourne pourrait recevoir la réponse. Continuez seulement si vous venez de lancer cette connexion vous-même.",
+      "where": "Où peut-il agir ?",
+      "environment": "{app}, {env}",
+      "sandbox": "sandbox",
+      "live": "live",
+      "liveOff": "Les environnements live sont désactivés pour les assistants dans cette installation.",
+      "noApps": "Vous n'avez pas encore d'app. Créez-en une, puis relancez la connexion.",
+      "what": "Que peut-il faire ?",
+      "scopesNote": "Votre rôle dans le compte peut les réduire : un lecteur n'obtient que la lecture. Vous pouvez en retirer, jamais en ajouter.",
+      "writes": "modifie des données",
+      "reads": "lit",
+      "noScopes": "Gardez au moins une permission, ou refusez.",
+      "allow": "Autoriser",
+      "deny": "Refuser",
+      "going": "Retour à l'assistant…",
+      "invalid": "Cette demande est inutilisable",
+      "invalidBody": "Rien n'a été autorisé et personne n'a été redirigé. Retournez à l'assistant et relancez la connexion."
     }
   },
   "shell": {

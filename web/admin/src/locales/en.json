@@ -3612,7 +3612,15 @@
         "conflict": "Two sign-ins collided. Try again.",
         "email_unverified": "Google has not verified an e-mail address for this account, so it cannot be used to sign in.",
         "invalid": "This sign-in could not be completed. Try again.",
-        "not_configured": "Sign-in with Google is not set up here."
+        "not_configured": "Sign-in with Google is not set up here.",
+        "bad_request": "This connection request cannot be used. Start it again from the assistant.",
+        "disabled": "This deployment does not let assistants connect with OAuth.",
+        "grant_not_found": "No such connection.",
+        "internal": "Something went wrong. Try again.",
+        "invalid_grant": "The code or refresh token is invalid, expired or was already used.",
+        "invalid_token": "The token is invalid, expired or was revoked.",
+        "live_disabled": "Assistants may not act on a live environment on this deployment. Choose a sandbox.",
+        "live_email_unverified": "Verify your e-mail address before an assistant may act on a live environment."
       },
       "operator": {
         "forbidden": "This area is for platform operators.",
@@ -5001,7 +5009,16 @@
     "security": {
       "title": "Security",
       "intro": "How you sign in, and how to protect it.",
-      "setupRequired": "An organisation you own requires two-factor sign-in. Set it up below: until you do, nothing else in the console is available."
+      "setupRequired": "An organisation you own requires two-factor sign-in. Set it up below: until you do, nothing else in the console is available.",
+      "oauth": {
+        "title": "Connected assistants",
+        "intro": "Assistants you let in through the MCP server. Ending access stops them at once.",
+        "empty": "No assistant is connected.",
+        "detail": "{app}, {env}. {n} permissions.",
+        "lastUsed": "Last used {date}",
+        "neverUsed": "Not used yet",
+        "revoke": "End access"
+      }
     },
     "twoFactor": {
       "title": "Two-factor sign-in",
@@ -5069,6 +5086,29 @@
         "useApp": "Use the authenticator app",
         "restart": "Start again"
       }
+    },
+    "oauth": {
+      "title": "Connect an assistant",
+      "intro": "{client} asks to act for you on your Payrudder data. Check who is asking before you allow it.",
+      "clientAddress": "The client is published at {host}.",
+      "redirect": "When you decide, your browser goes back to {host}.",
+      "loopback": "That address is on your own computer: any program running there could receive the answer. Continue only if you just started this connection yourself.",
+      "where": "Where may it act?",
+      "environment": "{app}, {env}",
+      "sandbox": "sandbox",
+      "live": "live",
+      "liveOff": "Live environments are switched off for assistants on this deployment.",
+      "noApps": "You have no app yet. Create one first, then start the connection again.",
+      "what": "What may it do?",
+      "scopesNote": "Your role in the account can cut these: a viewer only ever gets reading. You can take any away, never add one.",
+      "writes": "changes data",
+      "reads": "reads",
+      "noScopes": "Keep at least one permission, or deny.",
+      "allow": "Allow",
+      "deny": "Deny",
+      "going": "Going back to the assistant…",
+      "invalid": "This request cannot be used",
+      "invalidBody": "Nothing was allowed and nobody was sent anywhere. Go back to the assistant and start the connection again."
     }
   },
   "shell": {

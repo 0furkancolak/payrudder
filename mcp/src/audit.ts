@@ -12,6 +12,8 @@ export interface AuditRecord {
   transport: "stdio" | "http";
   /** The key's non-secret part, qk_test_ab12cd34; empty when the server was given none. */
   key: string;
+  /** OAuth mode: `key` is `oauth:<the person's id>` and this is the client they signed in through (its client_id address). Absent with a key. */
+  client?: string;
   args: Record<string, unknown>;
   ok: boolean;
   /** The API's error key (billing.invoice.not_found) or the error's name; absent when the call worked. */

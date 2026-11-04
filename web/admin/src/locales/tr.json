@@ -3612,7 +3612,15 @@
         "conflict": "İki giriş çakıştı. Yeniden deneyin.",
         "email_unverified": "Google bu hesap için bir e-posta adresi doğrulamadığından giriş için kullanılamaz.",
         "invalid": "Bu giriş tamamlanamadı. Yeniden deneyin.",
-        "not_configured": "Google ile giriş burada kurulu değil."
+        "not_configured": "Google ile giriş burada kurulu değil.",
+        "bad_request": "Bu bağlantı isteği kullanılamıyor. Asistandan yeniden başlatın.",
+        "disabled": "Bu kurulum asistanların OAuth ile bağlanmasına izin vermiyor.",
+        "grant_not_found": "Böyle bir bağlantı yok.",
+        "internal": "Bir şeyler ters gitti. Yeniden deneyin.",
+        "invalid_grant": "Kod veya yenileme belirteci geçersiz, süresi dolmuş ya da zaten kullanılmış.",
+        "invalid_token": "Belirteç geçersiz, süresi dolmuş ya da iptal edilmiş.",
+        "live_disabled": "Bu kurulumda asistanlar canlı ortamda işlem yapamaz. Bir sandbox seçin.",
+        "live_email_unverified": "Bir asistanın canlı ortamda işlem yapabilmesi için önce e-posta adresinizi doğrulayın."
       },
       "operator": {
         "forbidden": "Bu alan platform operatörlerine ayrılmıştır.",
@@ -5001,7 +5009,16 @@
     "security": {
       "title": "Güvenlik",
       "intro": "Nasıl giriş yaptığınız ve bunu nasıl koruyacağınız.",
-      "setupRequired": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Aşağıdan kurun: kurana kadar konsolda başka hiçbir şey kullanılamaz."
+      "setupRequired": "Sahibi olduğunuz bir kuruluş iki adımlı girişi zorunlu kılıyor. Aşağıdan kurun: kurana kadar konsolda başka hiçbir şey kullanılamaz.",
+      "oauth": {
+        "title": "Bağlı asistanlar",
+        "intro": "MCP sunucusu üzerinden içeri aldığınız asistanlar. Erişimi sonlandırmak onları hemen durdurur.",
+        "empty": "Bağlı asistan yok.",
+        "detail": "{app}, {env}. {n} izin.",
+        "lastUsed": "Son kullanım {date}",
+        "neverUsed": "Henüz kullanılmadı",
+        "revoke": "Erişimi sonlandır"
+      }
     },
     "twoFactor": {
       "title": "İki adımlı giriş",
@@ -5069,6 +5086,29 @@
         "useApp": "Kimlik doğrulayıcı uygulamasını kullan",
         "restart": "Baştan başla"
       }
+    },
+    "oauth": {
+      "title": "Bir asistan bağla",
+      "intro": "{client}, Payrudder verileriniz üzerinde sizin adınıza işlem yapmak istiyor. İzin vermeden önce kimin istediğini kontrol edin.",
+      "clientAddress": "İstemci {host} adresinde yayımlanmış.",
+      "redirect": "Karar verdikten sonra tarayıcınız {host} adresine döner.",
+      "loopback": "Bu adres kendi bilgisayarınızda: orada çalışan herhangi bir program yanıtı alabilir. Yalnızca bu bağlantıyı az önce siz başlattıysanız devam edin.",
+      "where": "Nerede işlem yapabilsin?",
+      "environment": "{app}, {env}",
+      "sandbox": "sandbox",
+      "live": "canlı",
+      "liveOff": "Bu kurulumda canlı ortamlar asistanlara kapalı.",
+      "noApps": "Henüz bir uygulamanız yok. Önce bir tane oluşturun, sonra bağlantıyı yeniden başlatın.",
+      "what": "Ne yapabilsin?",
+      "scopesNote": "Hesaptaki rolünüz bunları kısabilir: bir izleyici yalnızca okuma alır. İstediğinizi çıkarabilirsiniz, ekleyemezsiniz.",
+      "writes": "veriyi değiştirir",
+      "reads": "okur",
+      "noScopes": "En az bir izin bırakın ya da reddedin.",
+      "allow": "İzin ver",
+      "deny": "Reddet",
+      "going": "Asistana dönülüyor…",
+      "invalid": "Bu istek kullanılamıyor",
+      "invalidBody": "Hiçbir şeye izin verilmedi ve kimse bir yere yönlendirilmedi. Asistana dönüp bağlantıyı yeniden başlatın."
     }
   },
   "shell": {

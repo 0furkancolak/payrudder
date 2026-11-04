@@ -3612,7 +3612,15 @@
         "conflict": "Dos inicios de sesión coincidieron. Inténtelo de nuevo.",
         "email_unverified": "Google no ha verificado ninguna dirección de correo de esta cuenta, así que no sirve para iniciar sesión.",
         "invalid": "No se pudo completar este inicio de sesión. Inténtelo de nuevo.",
-        "not_configured": "El inicio de sesión con Google no está configurado aquí."
+        "not_configured": "El inicio de sesión con Google no está configurado aquí.",
+        "bad_request": "Esta solicitud de conexión no se puede usar. Vuelva a iniciarla desde el asistente.",
+        "disabled": "Esta instalación no permite que los asistentes se conecten con OAuth.",
+        "grant_not_found": "No existe esa conexión.",
+        "internal": "Algo salió mal. Inténtelo de nuevo.",
+        "invalid_grant": "El código o el token de actualización no es válido, ha caducado o ya se usó.",
+        "invalid_token": "El token no es válido, ha caducado o fue revocado.",
+        "live_disabled": "En esta instalación los asistentes no pueden actuar en un entorno live. Elija un sandbox.",
+        "live_email_unverified": "Verifique su dirección de correo antes de que un asistente pueda actuar en un entorno live."
       },
       "operator": {
         "forbidden": "Esta zona es para los operadores de la plataforma.",
@@ -5001,7 +5009,16 @@
     "security": {
       "title": "Seguridad",
       "intro": "Cómo inicia sesión y cómo protegerlo.",
-      "setupRequired": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo a continuación: hasta entonces no hay nada más disponible en la consola."
+      "setupRequired": "Una organización de la que es propietario exige el inicio de sesión en dos pasos. Configúrelo a continuación: hasta entonces no hay nada más disponible en la consola.",
+      "oauth": {
+        "title": "Asistentes conectados",
+        "intro": "Asistentes que permitió a través del servidor MCP. Terminar el acceso los detiene al instante.",
+        "empty": "No hay ningún asistente conectado.",
+        "detail": "{app}, {env}. {n} permisos.",
+        "lastUsed": "Último uso {date}",
+        "neverUsed": "Aún sin usar",
+        "revoke": "Terminar acceso"
+      }
     },
     "twoFactor": {
       "title": "Inicio de sesión en dos pasos",
@@ -5069,6 +5086,29 @@
         "useApp": "Usar la aplicación de autenticación",
         "restart": "Empezar de nuevo"
       }
+    },
+    "oauth": {
+      "title": "Conectar un asistente",
+      "intro": "{client} pide actuar en su nombre sobre sus datos de Payrudder. Compruebe quién lo pide antes de permitirlo.",
+      "clientAddress": "El cliente está publicado en {host}.",
+      "redirect": "Cuando decida, su navegador volverá a {host}.",
+      "loopback": "Esa dirección está en su propio equipo: cualquier programa que se ejecute allí podría recibir la respuesta. Continúe solo si acaba de iniciar esta conexión usted mismo.",
+      "where": "¿Dónde puede actuar?",
+      "environment": "{app}, {env}",
+      "sandbox": "sandbox",
+      "live": "live",
+      "liveOff": "Los entornos live están desactivados para los asistentes en esta instalación.",
+      "noApps": "Aún no tiene ninguna app. Cree una y vuelva a iniciar la conexión.",
+      "what": "¿Qué puede hacer?",
+      "scopesNote": "Su rol en la cuenta puede recortarlos: un lector solo obtiene lectura. Puede quitar cualquiera, nunca añadir una.",
+      "writes": "modifica datos",
+      "reads": "lee",
+      "noScopes": "Mantenga al menos un permiso, o deniegue.",
+      "allow": "Permitir",
+      "deny": "Denegar",
+      "going": "Volviendo al asistente…",
+      "invalid": "Esta solicitud no se puede usar",
+      "invalidBody": "No se permitió nada y no se redirigió a nadie. Vuelva al asistente e inicie la conexión de nuevo."
     }
   },
   "shell": {

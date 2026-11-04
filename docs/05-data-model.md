@@ -286,7 +286,7 @@ CREATE TABLE outbox (                                  -- shared outbox shape, s
 );
 ```
 
-RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E), the person tables (`users`, `account_members`, `user_sessions`, `user_onboarding`: no `tenant_id`, system role only) and `outbox`.
+RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `oauth_grants` (plan 20: found by the hash of a token before there is a tenant, `plans_system` only; its `oauth_codes` and `oauth_tokens` have no `tenant_id`; migration `00038`, no tenant twin), `sandbox_resets` (system role only, phase 45 E), the person tables (`users`, `account_members`, `user_sessions`, `user_onboarding`: no `tenant_id`, system role only) and `outbox`.
 
 ---
 

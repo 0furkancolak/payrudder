@@ -27,7 +27,7 @@ import (
 
 // Tables with tenant_id that are deliberately not RLS'd (docs/05-data-model.md#plans_db): operator-only api_keys,
 // and outbox, which only the system role reads.
-var rlsAllowlist = []string{"api_keys", "outbox", "sandbox_resets"}
+var rlsAllowlist = []string{"api_keys", "oauth_grants", "outbox", "sandbox_resets"}
 
 // TestPlansSvc runs every scenario against one shared Postgres container.
 func TestPlansSvc(t *testing.T) {
@@ -107,6 +107,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("MembersAndInvitations", testMembersAndInvitations)
 	t.Run("Addresses", testAddresses)
 	t.Run("TaxRates", testTaxRates)
+	t.Run("OAuth", testOAuth)
 	t.Run("MailSettings", testMailSettings)
 	t.Run("MailProvider", testMailProvider)
 	t.Run("MailAccounts", testMailAccounts)

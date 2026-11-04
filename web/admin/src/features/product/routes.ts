@@ -99,6 +99,8 @@ export function personRoutes(parent: AnyRoute) {
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
   // The person's own security (two-factor sign-in): not per app, and the one page a person who must set it up can use.
   const security = createRoute({ getParentRoute: () => signedIn, path: "/app/security", component: lazyPage(() => import("./SecurityPage.vue")) });
+  // An assistant asks to act for the person (OAuth authorization endpoint; the page reads the request from the address itself). Signing in first comes back here (safeNext).
+  const oauthConsent = createRoute({ getParentRoute: () => signedIn, path: "/oauth/authorize", component: lazyPage(() => import("./OAuthConsentPage.vue")) });
   const plan = createRoute({ getParentRoute: () => signedIn, path: "/app/settings/plan", component: lazyPage(() => import("@/features/saas/PlanPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
   // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
@@ -118,6 +120,7 @@ export function personRoutes(parent: AnyRoute) {
     members,
     settings,
     security,
+    oauthConsent,
     plan,
     ...partnerRoutes(signedIn),
     ...supportRoutes(signedIn),

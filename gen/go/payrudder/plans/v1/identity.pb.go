@@ -6697,6 +6697,1105 @@ func (x *ResetUserTwoFactorResponse) GetWasEnabled() bool {
 	return false
 }
 
+type CreateOAuthGrantRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	TenantId    string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ClientId    string                 `protobuf:"bytes,3,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientName  string                 `protobuf:"bytes,4,opt,name=client_name,json=clientName,proto3" json:"client_name,omitempty"`
+	RedirectUri string                 `protobuf:"bytes,5,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	// The S256 challenge.
+	CodeChallenge string `protobuf:"bytes,6,opt,name=code_challenge,json=codeChallenge,proto3" json:"code_challenge,omitempty"`
+	// The canonical URL of the MCP server the token is for.
+	Resource string `protobuf:"bytes,7,opt,name=resource,proto3" json:"resource,omitempty"`
+	// Permissions (pkg/apikey), already expanded from shorthands.
+	Scopes []string `protobuf:"bytes,8,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	// The deployment lets assistants act on live environments (PAYRUDDER_OAUTH_ALLOW_LIVE); plans-svc still needs a verified address for one.
+	AllowLive     bool `protobuf:"varint,9,opt,name=allow_live,json=allowLive,proto3" json:"allow_live,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateOAuthGrantRequest) Reset() {
+	*x = CreateOAuthGrantRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[115]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateOAuthGrantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateOAuthGrantRequest) ProtoMessage() {}
+
+func (x *CreateOAuthGrantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[115]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateOAuthGrantRequest.ProtoReflect.Descriptor instead.
+func (*CreateOAuthGrantRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{115}
+}
+
+func (x *CreateOAuthGrantRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetClientName() string {
+	if x != nil {
+		return x.ClientName
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetRedirectUri() string {
+	if x != nil {
+		return x.RedirectUri
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetCodeChallenge() string {
+	if x != nil {
+		return x.CodeChallenge
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantRequest) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *CreateOAuthGrantRequest) GetAllowLive() bool {
+	if x != nil {
+		return x.AllowLive
+	}
+	return false
+}
+
+type CreateOAuthGrantResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Code       string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	// What was granted: the scopes asked for, cut to the person's role.
+	Scopes        []string `protobuf:"bytes,3,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateOAuthGrantResponse) Reset() {
+	*x = CreateOAuthGrantResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[116]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateOAuthGrantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateOAuthGrantResponse) ProtoMessage() {}
+
+func (x *CreateOAuthGrantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[116]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateOAuthGrantResponse.ProtoReflect.Descriptor instead.
+func (*CreateOAuthGrantResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{116}
+}
+
+func (x *CreateOAuthGrantResponse) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *CreateOAuthGrantResponse) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *CreateOAuthGrantResponse) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+type ExchangeOAuthCodeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	RedirectUri   string                 `protobuf:"bytes,3,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	CodeVerifier  string                 `protobuf:"bytes,4,opt,name=code_verifier,json=codeVerifier,proto3" json:"code_verifier,omitempty"`
+	Resource      string                 `protobuf:"bytes,5,opt,name=resource,proto3" json:"resource,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExchangeOAuthCodeRequest) Reset() {
+	*x = ExchangeOAuthCodeRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[117]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExchangeOAuthCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExchangeOAuthCodeRequest) ProtoMessage() {}
+
+func (x *ExchangeOAuthCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[117]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExchangeOAuthCodeRequest.ProtoReflect.Descriptor instead.
+func (*ExchangeOAuthCodeRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{117}
+}
+
+func (x *ExchangeOAuthCodeRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ExchangeOAuthCodeRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *ExchangeOAuthCodeRequest) GetRedirectUri() string {
+	if x != nil {
+		return x.RedirectUri
+	}
+	return ""
+}
+
+func (x *ExchangeOAuthCodeRequest) GetCodeVerifier() string {
+	if x != nil {
+		return x.CodeVerifier
+	}
+	return ""
+}
+
+func (x *ExchangeOAuthCodeRequest) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+type RefreshOAuthTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	Resource      string                 `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshOAuthTokenRequest) Reset() {
+	*x = RefreshOAuthTokenRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[118]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshOAuthTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshOAuthTokenRequest) ProtoMessage() {}
+
+func (x *RefreshOAuthTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[118]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshOAuthTokenRequest.ProtoReflect.Descriptor instead.
+func (*RefreshOAuthTokenRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *RefreshOAuthTokenRequest) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *RefreshOAuthTokenRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *RefreshOAuthTokenRequest) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+type OAuthTokens struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	ExpiresIn     *durationpb.Duration   `protobuf:"bytes,3,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
+	Scopes        []string               `protobuf:"bytes,4,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthTokens) Reset() {
+	*x = OAuthTokens{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[119]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthTokens) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthTokens) ProtoMessage() {}
+
+func (x *OAuthTokens) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[119]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthTokens.ProtoReflect.Descriptor instead.
+func (*OAuthTokens) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{119}
+}
+
+func (x *OAuthTokens) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *OAuthTokens) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *OAuthTokens) GetExpiresIn() *durationpb.Duration {
+	if x != nil {
+		return x.ExpiresIn
+	}
+	return nil
+}
+
+func (x *OAuthTokens) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+type RevokeOAuthTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeOAuthTokenRequest) Reset() {
+	*x = RevokeOAuthTokenRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[120]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeOAuthTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeOAuthTokenRequest) ProtoMessage() {}
+
+func (x *RevokeOAuthTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[120]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeOAuthTokenRequest.ProtoReflect.Descriptor instead.
+func (*RevokeOAuthTokenRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{120}
+}
+
+func (x *RevokeOAuthTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *RevokeOAuthTokenRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+type RevokeOAuthTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeOAuthTokenResponse) Reset() {
+	*x = RevokeOAuthTokenResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[121]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeOAuthTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeOAuthTokenResponse) ProtoMessage() {}
+
+func (x *RevokeOAuthTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[121]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeOAuthTokenResponse.ProtoReflect.Descriptor instead.
+func (*RevokeOAuthTokenResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{121}
+}
+
+type IntrospectOAuthTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Resource      string                 `protobuf:"bytes,2,opt,name=resource,proto3" json:"resource,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IntrospectOAuthTokenRequest) Reset() {
+	*x = IntrospectOAuthTokenRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[122]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IntrospectOAuthTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IntrospectOAuthTokenRequest) ProtoMessage() {}
+
+func (x *IntrospectOAuthTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[122]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IntrospectOAuthTokenRequest.ProtoReflect.Descriptor instead.
+func (*IntrospectOAuthTokenRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{122}
+}
+
+func (x *IntrospectOAuthTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *IntrospectOAuthTokenRequest) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+// OAuthTokenInfo is the answer of introspection and of resolving the API credential. Inactive carries nothing else.
+type OAuthTokenInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Active        bool                   `protobuf:"varint,1,opt,name=active,proto3" json:"active,omitempty"`
+	GrantId       string                 `protobuf:"bytes,2,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserEmail     string                 `protobuf:"bytes,4,opt,name=user_email,json=userEmail,proto3" json:"user_email,omitempty"`
+	EmailVerified bool                   `protobuf:"varint,5,opt,name=email_verified,json=emailVerified,proto3" json:"email_verified,omitempty"`
+	Tenant        *Tenant                `protobuf:"bytes,6,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// The person's role in the account now (owner, admin, viewer).
+	MemberRole    string                 `protobuf:"bytes,7,opt,name=member_role,json=memberRole,proto3" json:"member_role,omitempty"`
+	Scopes        []string               `protobuf:"bytes,8,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	ClientId      string                 `protobuf:"bytes,9,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientName    string                 `protobuf:"bytes,10,opt,name=client_name,json=clientName,proto3" json:"client_name,omitempty"`
+	Resource      string                 `protobuf:"bytes,11,opt,name=resource,proto3" json:"resource,omitempty"`
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthTokenInfo) Reset() {
+	*x = OAuthTokenInfo{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[123]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthTokenInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthTokenInfo) ProtoMessage() {}
+
+func (x *OAuthTokenInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[123]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthTokenInfo.ProtoReflect.Descriptor instead.
+func (*OAuthTokenInfo) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{123}
+}
+
+func (x *OAuthTokenInfo) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *OAuthTokenInfo) GetGrantId() string {
+	if x != nil {
+		return x.GrantId
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetUserEmail() string {
+	if x != nil {
+		return x.UserEmail
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetEmailVerified() bool {
+	if x != nil {
+		return x.EmailVerified
+	}
+	return false
+}
+
+func (x *OAuthTokenInfo) GetTenant() *Tenant {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *OAuthTokenInfo) GetMemberRole() string {
+	if x != nil {
+		return x.MemberRole
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *OAuthTokenInfo) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetClientName() string {
+	if x != nil {
+		return x.ClientName
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+func (x *OAuthTokenInfo) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+type MintOAuthApiTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	Resource      string                 `protobuf:"bytes,2,opt,name=resource,proto3" json:"resource,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MintOAuthApiTokenRequest) Reset() {
+	*x = MintOAuthApiTokenRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MintOAuthApiTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MintOAuthApiTokenRequest) ProtoMessage() {}
+
+func (x *MintOAuthApiTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MintOAuthApiTokenRequest.ProtoReflect.Descriptor instead.
+func (*MintOAuthApiTokenRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *MintOAuthApiTokenRequest) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *MintOAuthApiTokenRequest) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+type MintOAuthApiTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	Info          *OAuthTokenInfo        `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MintOAuthApiTokenResponse) Reset() {
+	*x = MintOAuthApiTokenResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[125]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MintOAuthApiTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MintOAuthApiTokenResponse) ProtoMessage() {}
+
+func (x *MintOAuthApiTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[125]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MintOAuthApiTokenResponse.ProtoReflect.Descriptor instead.
+func (*MintOAuthApiTokenResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{125}
+}
+
+func (x *MintOAuthApiTokenResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *MintOAuthApiTokenResponse) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *MintOAuthApiTokenResponse) GetInfo() *OAuthTokenInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+type ResolveOAuthApiTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveOAuthApiTokenRequest) Reset() {
+	*x = ResolveOAuthApiTokenRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveOAuthApiTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveOAuthApiTokenRequest) ProtoMessage() {}
+
+func (x *ResolveOAuthApiTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveOAuthApiTokenRequest.ProtoReflect.Descriptor instead.
+func (*ResolveOAuthApiTokenRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *ResolveOAuthApiTokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type OAuthGrant struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientName    string                 `protobuf:"bytes,3,opt,name=client_name,json=clientName,proto3" json:"client_name,omitempty"`
+	TenantId      string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	AppName       string                 `protobuf:"bytes,5,opt,name=app_name,json=appName,proto3" json:"app_name,omitempty"`
+	Environment   Environment            `protobuf:"varint,6,opt,name=environment,proto3,enum=payrudder.plans.v1.Environment" json:"environment,omitempty"`
+	Resource      string                 `protobuf:"bytes,7,opt,name=resource,proto3" json:"resource,omitempty"`
+	Scopes        []string               `protobuf:"bytes,8,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	LastUsedTime  *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_used_time,json=lastUsedTime,proto3" json:"last_used_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthGrant) Reset() {
+	*x = OAuthGrant{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthGrant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthGrant) ProtoMessage() {}
+
+func (x *OAuthGrant) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthGrant.ProtoReflect.Descriptor instead.
+func (*OAuthGrant) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *OAuthGrant) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetClientName() string {
+	if x != nil {
+		return x.ClientName
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetAppName() string {
+	if x != nil {
+		return x.AppName
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetEnvironment() Environment {
+	if x != nil {
+		return x.Environment
+	}
+	return Environment_ENVIRONMENT_UNSPECIFIED
+}
+
+func (x *OAuthGrant) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+func (x *OAuthGrant) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *OAuthGrant) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *OAuthGrant) GetLastUsedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUsedTime
+	}
+	return nil
+}
+
+type ListMyOAuthGrantsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyOAuthGrantsRequest) Reset() {
+	*x = ListMyOAuthGrantsRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyOAuthGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyOAuthGrantsRequest) ProtoMessage() {}
+
+func (x *ListMyOAuthGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyOAuthGrantsRequest.ProtoReflect.Descriptor instead.
+func (*ListMyOAuthGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *ListMyOAuthGrantsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListMyOAuthGrantsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Grants        []*OAuthGrant          `protobuf:"bytes,1,rep,name=grants,proto3" json:"grants,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyOAuthGrantsResponse) Reset() {
+	*x = ListMyOAuthGrantsResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[129]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyOAuthGrantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyOAuthGrantsResponse) ProtoMessage() {}
+
+func (x *ListMyOAuthGrantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[129]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyOAuthGrantsResponse.ProtoReflect.Descriptor instead.
+func (*ListMyOAuthGrantsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{129}
+}
+
+func (x *ListMyOAuthGrantsResponse) GetGrants() []*OAuthGrant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+type RevokeMyOAuthGrantRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	GrantId       string                 `protobuf:"bytes,2,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeMyOAuthGrantRequest) Reset() {
+	*x = RevokeMyOAuthGrantRequest{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[130]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeMyOAuthGrantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeMyOAuthGrantRequest) ProtoMessage() {}
+
+func (x *RevokeMyOAuthGrantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[130]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeMyOAuthGrantRequest.ProtoReflect.Descriptor instead.
+func (*RevokeMyOAuthGrantRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{130}
+}
+
+func (x *RevokeMyOAuthGrantRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RevokeMyOAuthGrantRequest) GetGrantId() string {
+	if x != nil {
+		return x.GrantId
+	}
+	return ""
+}
+
+type RevokeMyOAuthGrantResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeMyOAuthGrantResponse) Reset() {
+	*x = RevokeMyOAuthGrantResponse{}
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[131]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeMyOAuthGrantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeMyOAuthGrantResponse) ProtoMessage() {}
+
+func (x *RevokeMyOAuthGrantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_identity_proto_msgTypes[131]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeMyOAuthGrantResponse.ProtoReflect.Descriptor instead.
+func (*RevokeMyOAuthGrantResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_identity_proto_rawDescGZIP(), []int{131}
+}
+
 var File_payrudder_plans_v1_identity_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
@@ -7186,7 +8285,98 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"=\n" +
 	"\x1aResetUserTwoFactorResponse\x12\x1f\n" +
 	"\vwas_enabled\x18\x01 \x01(\bR\n" +
-	"wasEnabled2\x8a+\n" +
+	"wasEnabled\"\xaa\x02\n" +
+	"\x17CreateOAuthGrantRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1b\n" +
+	"\tclient_id\x18\x03 \x01(\tR\bclientId\x12\x1f\n" +
+	"\vclient_name\x18\x04 \x01(\tR\n" +
+	"clientName\x12!\n" +
+	"\fredirect_uri\x18\x05 \x01(\tR\vredirectUri\x12%\n" +
+	"\x0ecode_challenge\x18\x06 \x01(\tR\rcodeChallenge\x12\x1a\n" +
+	"\bresource\x18\a \x01(\tR\bresource\x12\x16\n" +
+	"\x06scopes\x18\b \x03(\tR\x06scopes\x12\x1d\n" +
+	"\n" +
+	"allow_live\x18\t \x01(\bR\tallowLive\"\x83\x01\n" +
+	"\x18CreateOAuthGrantResponse\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12;\n" +
+	"\vexpire_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\x12\x16\n" +
+	"\x06scopes\x18\x03 \x03(\tR\x06scopes\"\xaf\x01\n" +
+	"\x18ExchangeOAuthCodeRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12!\n" +
+	"\fredirect_uri\x18\x03 \x01(\tR\vredirectUri\x12#\n" +
+	"\rcode_verifier\x18\x04 \x01(\tR\fcodeVerifier\x12\x1a\n" +
+	"\bresource\x18\x05 \x01(\tR\bresource\"x\n" +
+	"\x18RefreshOAuthTokenRequest\x12#\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12\x1a\n" +
+	"\bresource\x18\x03 \x01(\tR\bresource\"\xa7\x01\n" +
+	"\vOAuthTokens\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x128\n" +
+	"\n" +
+	"expires_in\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\texpiresIn\x12\x16\n" +
+	"\x06scopes\x18\x04 \x03(\tR\x06scopes\"L\n" +
+	"\x17RevokeOAuthTokenRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\"\x1a\n" +
+	"\x18RevokeOAuthTokenResponse\"O\n" +
+	"\x1bIntrospectOAuthTokenRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
+	"\bresource\x18\x02 \x01(\tR\bresource\"\xa6\x03\n" +
+	"\x0eOAuthTokenInfo\x12\x16\n" +
+	"\x06active\x18\x01 \x01(\bR\x06active\x12\x19\n" +
+	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"user_email\x18\x04 \x01(\tR\tuserEmail\x12%\n" +
+	"\x0eemail_verified\x18\x05 \x01(\bR\remailVerified\x122\n" +
+	"\x06tenant\x18\x06 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\x12\x1f\n" +
+	"\vmember_role\x18\a \x01(\tR\n" +
+	"memberRole\x12\x16\n" +
+	"\x06scopes\x18\b \x03(\tR\x06scopes\x12\x1b\n" +
+	"\tclient_id\x18\t \x01(\tR\bclientId\x12\x1f\n" +
+	"\vclient_name\x18\n" +
+	" \x01(\tR\n" +
+	"clientName\x12\x1a\n" +
+	"\bresource\x18\v \x01(\tR\bresource\x12;\n" +
+	"\vexpire_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\"Y\n" +
+	"\x18MintOAuthApiTokenRequest\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12\x1a\n" +
+	"\bresource\x18\x02 \x01(\tR\bresource\"\xa6\x01\n" +
+	"\x19MintOAuthApiTokenResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12;\n" +
+	"\vexpire_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTime\x126\n" +
+	"\x04info\x18\x03 \x01(\v2\".payrudder.plans.v1.OAuthTokenInfoR\x04info\"3\n" +
+	"\x1bResolveOAuthApiTokenRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x88\x03\n" +
+	"\n" +
+	"OAuthGrant\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12\x1f\n" +
+	"\vclient_name\x18\x03 \x01(\tR\n" +
+	"clientName\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x19\n" +
+	"\bapp_name\x18\x05 \x01(\tR\aappName\x12A\n" +
+	"\venvironment\x18\x06 \x01(\x0e2\x1f.payrudder.plans.v1.EnvironmentR\venvironment\x12\x1a\n" +
+	"\bresource\x18\a \x01(\tR\bresource\x12\x16\n" +
+	"\x06scopes\x18\b \x03(\tR\x06scopes\x12;\n" +
+	"\vcreate_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\x12@\n" +
+	"\x0elast_used_time\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\flastUsedTime\"3\n" +
+	"\x18ListMyOAuthGrantsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"S\n" +
+	"\x19ListMyOAuthGrantsResponse\x126\n" +
+	"\x06grants\x18\x01 \x03(\v2\x1e.payrudder.plans.v1.OAuthGrantR\x06grants\"O\n" +
+	"\x19RevokeMyOAuthGrantRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
+	"\bgrant_id\x18\x02 \x01(\tR\agrantId\"\x1c\n" +
+	"\x1aRevokeMyOAuthGrantResponse2\xe32\n" +
 	"\x0fIdentityService\x12O\n" +
 	"\x06SignUp\x12!.payrudder.plans.v1.SignUpRequest\x1a\".payrudder.plans.v1.SignUpResponse\x12O\n" +
 	"\x06SignIn\x12!.payrudder.plans.v1.SignInRequest\x1a\".payrudder.plans.v1.SignInResponse\x12R\n" +
@@ -7228,7 +8418,16 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\x11SubmitMyAppAppeal\x12,.payrudder.plans.v1.SubmitMyAppAppealRequest\x1a-.payrudder.plans.v1.SubmitMyAppAppealResponse\x12^\n" +
 	"\vRenameMyApp\x12&.payrudder.plans.v1.RenameMyAppRequest\x1a'.payrudder.plans.v1.RenameMyAppResponse\x12^\n" +
 	"\vDeleteMyApp\x12&.payrudder.plans.v1.DeleteMyAppRequest\x1a'.payrudder.plans.v1.DeleteMyAppResponse\x12j\n" +
-	"\x0fResolveMyTenant\x12*.payrudder.plans.v1.ResolveMyTenantRequest\x1a+.payrudder.plans.v1.ResolveMyTenantResponse\x12g\n" +
+	"\x0fResolveMyTenant\x12*.payrudder.plans.v1.ResolveMyTenantRequest\x1a+.payrudder.plans.v1.ResolveMyTenantResponse\x12m\n" +
+	"\x10CreateOAuthGrant\x12+.payrudder.plans.v1.CreateOAuthGrantRequest\x1a,.payrudder.plans.v1.CreateOAuthGrantResponse\x12b\n" +
+	"\x11ExchangeOAuthCode\x12,.payrudder.plans.v1.ExchangeOAuthCodeRequest\x1a\x1f.payrudder.plans.v1.OAuthTokens\x12b\n" +
+	"\x11RefreshOAuthToken\x12,.payrudder.plans.v1.RefreshOAuthTokenRequest\x1a\x1f.payrudder.plans.v1.OAuthTokens\x12m\n" +
+	"\x10RevokeOAuthToken\x12+.payrudder.plans.v1.RevokeOAuthTokenRequest\x1a,.payrudder.plans.v1.RevokeOAuthTokenResponse\x12k\n" +
+	"\x14IntrospectOAuthToken\x12/.payrudder.plans.v1.IntrospectOAuthTokenRequest\x1a\".payrudder.plans.v1.OAuthTokenInfo\x12p\n" +
+	"\x11MintOAuthApiToken\x12,.payrudder.plans.v1.MintOAuthApiTokenRequest\x1a-.payrudder.plans.v1.MintOAuthApiTokenResponse\x12k\n" +
+	"\x14ResolveOAuthApiToken\x12/.payrudder.plans.v1.ResolveOAuthApiTokenRequest\x1a\".payrudder.plans.v1.OAuthTokenInfo\x12p\n" +
+	"\x11ListMyOAuthGrants\x12,.payrudder.plans.v1.ListMyOAuthGrantsRequest\x1a-.payrudder.plans.v1.ListMyOAuthGrantsResponse\x12s\n" +
+	"\x12RevokeMyOAuthGrant\x12-.payrudder.plans.v1.RevokeMyOAuthGrantRequest\x1a..payrudder.plans.v1.RevokeMyOAuthGrantResponse\x12g\n" +
 	"\x0eCreateMyApiKey\x12).payrudder.plans.v1.CreateMyApiKeyRequest\x1a*.payrudder.plans.v1.CreateMyApiKeyResponse\x12d\n" +
 	"\rListMyApiKeys\x12(.payrudder.plans.v1.ListMyApiKeysRequest\x1a).payrudder.plans.v1.ListMyApiKeysResponse\x12g\n" +
 	"\x0eRevokeMyApiKey\x12).payrudder.plans.v1.RevokeMyApiKeyRequest\x1a*.payrudder.plans.v1.RevokeMyApiKeyResponse\x12g\n" +
@@ -7257,7 +8456,7 @@ func file_payrudder_plans_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_plans_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payrudder_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 116)
+var file_payrudder_plans_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 133)
 var file_payrudder_plans_v1_identity_proto_goTypes = []any{
 	(PromoteChange_Action)(0),               // 0: payrudder.plans.v1.PromoteChange.Action
 	(*User)(nil),                            // 1: payrudder.plans.v1.User
@@ -7375,84 +8574,101 @@ var file_payrudder_plans_v1_identity_proto_goTypes = []any{
 	(*SetAccountSecurityResponse)(nil),      // 113: payrudder.plans.v1.SetAccountSecurityResponse
 	(*ResetUserTwoFactorRequest)(nil),       // 114: payrudder.plans.v1.ResetUserTwoFactorRequest
 	(*ResetUserTwoFactorResponse)(nil),      // 115: payrudder.plans.v1.ResetUserTwoFactorResponse
-	nil,                                     // 116: payrudder.plans.v1.SandboxResetStep.DeletedEntry
-	(*timestamppb.Timestamp)(nil),           // 117: google.protobuf.Timestamp
-	(*App)(nil),                             // 118: payrudder.plans.v1.App
-	(TenantStatus)(0),                       // 119: payrudder.plans.v1.TenantStatus
-	(*TenantAppeal)(nil),                    // 120: payrudder.plans.v1.TenantAppeal
-	(*Tenant)(nil),                          // 121: payrudder.plans.v1.Tenant
-	(Environment)(0),                        // 122: payrudder.plans.v1.Environment
-	(ApiKey_Scope)(0),                       // 123: payrudder.plans.v1.ApiKey.Scope
-	(*ApiKey)(nil),                          // 124: payrudder.plans.v1.ApiKey
-	(*durationpb.Duration)(nil),             // 125: google.protobuf.Duration
-	(*LegalInfo)(nil),                       // 126: payrudder.plans.v1.LegalInfo
-	(*Address)(nil),                         // 127: payrudder.plans.v1.Address
+	(*CreateOAuthGrantRequest)(nil),         // 116: payrudder.plans.v1.CreateOAuthGrantRequest
+	(*CreateOAuthGrantResponse)(nil),        // 117: payrudder.plans.v1.CreateOAuthGrantResponse
+	(*ExchangeOAuthCodeRequest)(nil),        // 118: payrudder.plans.v1.ExchangeOAuthCodeRequest
+	(*RefreshOAuthTokenRequest)(nil),        // 119: payrudder.plans.v1.RefreshOAuthTokenRequest
+	(*OAuthTokens)(nil),                     // 120: payrudder.plans.v1.OAuthTokens
+	(*RevokeOAuthTokenRequest)(nil),         // 121: payrudder.plans.v1.RevokeOAuthTokenRequest
+	(*RevokeOAuthTokenResponse)(nil),        // 122: payrudder.plans.v1.RevokeOAuthTokenResponse
+	(*IntrospectOAuthTokenRequest)(nil),     // 123: payrudder.plans.v1.IntrospectOAuthTokenRequest
+	(*OAuthTokenInfo)(nil),                  // 124: payrudder.plans.v1.OAuthTokenInfo
+	(*MintOAuthApiTokenRequest)(nil),        // 125: payrudder.plans.v1.MintOAuthApiTokenRequest
+	(*MintOAuthApiTokenResponse)(nil),       // 126: payrudder.plans.v1.MintOAuthApiTokenResponse
+	(*ResolveOAuthApiTokenRequest)(nil),     // 127: payrudder.plans.v1.ResolveOAuthApiTokenRequest
+	(*OAuthGrant)(nil),                      // 128: payrudder.plans.v1.OAuthGrant
+	(*ListMyOAuthGrantsRequest)(nil),        // 129: payrudder.plans.v1.ListMyOAuthGrantsRequest
+	(*ListMyOAuthGrantsResponse)(nil),       // 130: payrudder.plans.v1.ListMyOAuthGrantsResponse
+	(*RevokeMyOAuthGrantRequest)(nil),       // 131: payrudder.plans.v1.RevokeMyOAuthGrantRequest
+	(*RevokeMyOAuthGrantResponse)(nil),      // 132: payrudder.plans.v1.RevokeMyOAuthGrantResponse
+	nil,                                     // 133: payrudder.plans.v1.SandboxResetStep.DeletedEntry
+	(*timestamppb.Timestamp)(nil),           // 134: google.protobuf.Timestamp
+	(*App)(nil),                             // 135: payrudder.plans.v1.App
+	(TenantStatus)(0),                       // 136: payrudder.plans.v1.TenantStatus
+	(*TenantAppeal)(nil),                    // 137: payrudder.plans.v1.TenantAppeal
+	(*Tenant)(nil),                          // 138: payrudder.plans.v1.Tenant
+	(Environment)(0),                        // 139: payrudder.plans.v1.Environment
+	(ApiKey_Scope)(0),                       // 140: payrudder.plans.v1.ApiKey.Scope
+	(*ApiKey)(nil),                          // 141: payrudder.plans.v1.ApiKey
+	(*durationpb.Duration)(nil),             // 142: google.protobuf.Duration
+	(*LegalInfo)(nil),                       // 143: payrudder.plans.v1.LegalInfo
+	(*Address)(nil),                         // 144: payrudder.plans.v1.Address
 }
 var file_payrudder_plans_v1_identity_proto_depIdxs = []int32{
-	117, // 0: payrudder.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
+	134, // 0: payrudder.plans.v1.User.create_time:type_name -> google.protobuf.Timestamp
 	1,   // 1: payrudder.plans.v1.SignInResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 2: payrudder.plans.v1.SignInResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 3: payrudder.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
-	117, // 4: payrudder.plans.v1.SignInResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
+	134, // 3: payrudder.plans.v1.SignInResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 4: payrudder.plans.v1.SignInResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
 	1,   // 5: payrudder.plans.v1.VerifyLoginCodeResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 6: payrudder.plans.v1.VerifyLoginCodeResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 7: payrudder.plans.v1.VerifyLoginCodeResponse.expire_time:type_name -> google.protobuf.Timestamp
-	117, // 8: payrudder.plans.v1.VerifyLoginCodeResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
+	134, // 7: payrudder.plans.v1.VerifyLoginCodeResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 8: payrudder.plans.v1.VerifyLoginCodeResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
 	1,   // 9: payrudder.plans.v1.SignInWithIdentityResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 10: payrudder.plans.v1.SignInWithIdentityResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 11: payrudder.plans.v1.SignInWithIdentityResponse.expire_time:type_name -> google.protobuf.Timestamp
-	117, // 12: payrudder.plans.v1.SignInWithIdentityResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
+	134, // 11: payrudder.plans.v1.SignInWithIdentityResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 12: payrudder.plans.v1.SignInWithIdentityResponse.challenge_expire_time:type_name -> google.protobuf.Timestamp
 	1,   // 13: payrudder.plans.v1.GetSessionResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 14: payrudder.plans.v1.GetSessionResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 15: payrudder.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
-	117, // 16: payrudder.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
+	134, // 15: payrudder.plans.v1.GetSessionResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 16: payrudder.plans.v1.AccountMember.create_time:type_name -> google.protobuf.Timestamp
 	17,  // 17: payrudder.plans.v1.GetMyAccountResponse.members:type_name -> payrudder.plans.v1.AccountMember
-	117, // 18: payrudder.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
-	118, // 19: payrudder.plans.v1.CreateMyAppResponse.app:type_name -> payrudder.plans.v1.App
-	118, // 20: payrudder.plans.v1.ListMyAppsResponse.apps:type_name -> payrudder.plans.v1.App
-	118, // 21: payrudder.plans.v1.GetMyAppResponse.app:type_name -> payrudder.plans.v1.App
-	119, // 22: payrudder.plans.v1.GetMyAppHoldResponse.status:type_name -> payrudder.plans.v1.TenantStatus
-	117, // 23: payrudder.plans.v1.GetMyAppHoldResponse.scheduled_time:type_name -> google.protobuf.Timestamp
-	117, // 24: payrudder.plans.v1.GetMyAppHoldResponse.retention_until:type_name -> google.protobuf.Timestamp
-	120, // 25: payrudder.plans.v1.GetMyAppHoldResponse.appeal:type_name -> payrudder.plans.v1.TenantAppeal
-	120, // 26: payrudder.plans.v1.SubmitMyAppAppealResponse.appeal:type_name -> payrudder.plans.v1.TenantAppeal
-	118, // 27: payrudder.plans.v1.RenameMyAppResponse.app:type_name -> payrudder.plans.v1.App
-	117, // 28: payrudder.plans.v1.DeleteMyAppResponse.archive_time:type_name -> google.protobuf.Timestamp
-	121, // 29: payrudder.plans.v1.ResolveMyTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
-	122, // 30: payrudder.plans.v1.CreateMyApiKeyRequest.environment:type_name -> payrudder.plans.v1.Environment
-	123, // 31: payrudder.plans.v1.CreateMyApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	124, // 32: payrudder.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	124, // 33: payrudder.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> payrudder.plans.v1.ApiKey
-	124, // 34: payrudder.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	125, // 35: payrudder.plans.v1.RotateMyApiKeyRequest.overlap:type_name -> google.protobuf.Duration
-	124, // 36: payrudder.plans.v1.RotateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
-	124, // 37: payrudder.plans.v1.RotateMyApiKeyResponse.previous:type_name -> payrudder.plans.v1.ApiKey
-	119, // 38: payrudder.plans.v1.GoLive.status:type_name -> payrudder.plans.v1.TenantStatus
+	134, // 18: payrudder.plans.v1.GetMyAccountResponse.create_time:type_name -> google.protobuf.Timestamp
+	135, // 19: payrudder.plans.v1.CreateMyAppResponse.app:type_name -> payrudder.plans.v1.App
+	135, // 20: payrudder.plans.v1.ListMyAppsResponse.apps:type_name -> payrudder.plans.v1.App
+	135, // 21: payrudder.plans.v1.GetMyAppResponse.app:type_name -> payrudder.plans.v1.App
+	136, // 22: payrudder.plans.v1.GetMyAppHoldResponse.status:type_name -> payrudder.plans.v1.TenantStatus
+	134, // 23: payrudder.plans.v1.GetMyAppHoldResponse.scheduled_time:type_name -> google.protobuf.Timestamp
+	134, // 24: payrudder.plans.v1.GetMyAppHoldResponse.retention_until:type_name -> google.protobuf.Timestamp
+	137, // 25: payrudder.plans.v1.GetMyAppHoldResponse.appeal:type_name -> payrudder.plans.v1.TenantAppeal
+	137, // 26: payrudder.plans.v1.SubmitMyAppAppealResponse.appeal:type_name -> payrudder.plans.v1.TenantAppeal
+	135, // 27: payrudder.plans.v1.RenameMyAppResponse.app:type_name -> payrudder.plans.v1.App
+	134, // 28: payrudder.plans.v1.DeleteMyAppResponse.archive_time:type_name -> google.protobuf.Timestamp
+	138, // 29: payrudder.plans.v1.ResolveMyTenantResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	139, // 30: payrudder.plans.v1.CreateMyApiKeyRequest.environment:type_name -> payrudder.plans.v1.Environment
+	140, // 31: payrudder.plans.v1.CreateMyApiKeyRequest.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
+	141, // 32: payrudder.plans.v1.CreateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	141, // 33: payrudder.plans.v1.ListMyApiKeysResponse.api_keys:type_name -> payrudder.plans.v1.ApiKey
+	141, // 34: payrudder.plans.v1.RevokeMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	142, // 35: payrudder.plans.v1.RotateMyApiKeyRequest.overlap:type_name -> google.protobuf.Duration
+	141, // 36: payrudder.plans.v1.RotateMyApiKeyResponse.api_key:type_name -> payrudder.plans.v1.ApiKey
+	141, // 37: payrudder.plans.v1.RotateMyApiKeyResponse.previous:type_name -> payrudder.plans.v1.ApiKey
+	136, // 38: payrudder.plans.v1.GoLive.status:type_name -> payrudder.plans.v1.TenantStatus
 	44,  // 39: payrudder.plans.v1.GoLive.items:type_name -> payrudder.plans.v1.GoLiveItem
 	45,  // 40: payrudder.plans.v1.GetMyGoLiveResponse.go_live:type_name -> payrudder.plans.v1.GoLive
 	45,  // 41: payrudder.plans.v1.ActivateMyAppResponse.go_live:type_name -> payrudder.plans.v1.GoLive
-	126, // 42: payrudder.plans.v1.UpdateMyBillingProfileRequest.legal:type_name -> payrudder.plans.v1.LegalInfo
-	127, // 43: payrudder.plans.v1.UpdateMyBillingProfileRequest.address:type_name -> payrudder.plans.v1.Address
-	121, // 44: payrudder.plans.v1.UpdateMyBillingProfileResponse.tenant:type_name -> payrudder.plans.v1.Tenant
-	117, // 45: payrudder.plans.v1.AcceptMyTermsResponse.accept_time:type_name -> google.protobuf.Timestamp
+	143, // 42: payrudder.plans.v1.UpdateMyBillingProfileRequest.legal:type_name -> payrudder.plans.v1.LegalInfo
+	144, // 43: payrudder.plans.v1.UpdateMyBillingProfileRequest.address:type_name -> payrudder.plans.v1.Address
+	138, // 44: payrudder.plans.v1.UpdateMyBillingProfileResponse.tenant:type_name -> payrudder.plans.v1.Tenant
+	134, // 45: payrudder.plans.v1.AcceptMyTermsResponse.accept_time:type_name -> google.protobuf.Timestamp
 	1,   // 46: payrudder.plans.v1.VerifyEmailResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 47: payrudder.plans.v1.CreateMyAccountResponse.membership:type_name -> payrudder.plans.v1.Membership
-	117, // 48: payrudder.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
-	117, // 49: payrudder.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
-	117, // 50: payrudder.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 48: payrudder.plans.v1.Invitation.create_time:type_name -> google.protobuf.Timestamp
+	134, // 49: payrudder.plans.v1.Invitation.send_time:type_name -> google.protobuf.Timestamp
+	134, // 50: payrudder.plans.v1.Invitation.expire_time:type_name -> google.protobuf.Timestamp
 	66,  // 51: payrudder.plans.v1.InviteMemberResponse.invitation:type_name -> payrudder.plans.v1.Invitation
 	66,  // 52: payrudder.plans.v1.ListInvitationsResponse.invitations:type_name -> payrudder.plans.v1.Invitation
 	66,  // 53: payrudder.plans.v1.ResendInvitationResponse.invitation:type_name -> payrudder.plans.v1.Invitation
 	1,   // 54: payrudder.plans.v1.AcceptInvitationResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 55: payrudder.plans.v1.AcceptInvitationResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 56: payrudder.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 56: payrudder.plans.v1.AcceptInvitationResponse.expire_time:type_name -> google.protobuf.Timestamp
 	2,   // 57: payrudder.plans.v1.AcceptInvitationAsUserResponse.memberships:type_name -> payrudder.plans.v1.Membership
 	0,   // 58: payrudder.plans.v1.PromoteChange.action:type_name -> payrudder.plans.v1.PromoteChange.Action
 	85,  // 59: payrudder.plans.v1.PromoteMyAppResponse.changes:type_name -> payrudder.plans.v1.PromoteChange
-	116, // 60: payrudder.plans.v1.SandboxResetStep.deleted:type_name -> payrudder.plans.v1.SandboxResetStep.DeletedEntry
+	133, // 60: payrudder.plans.v1.SandboxResetStep.deleted:type_name -> payrudder.plans.v1.SandboxResetStep.DeletedEntry
 	88,  // 61: payrudder.plans.v1.SandboxReset.steps:type_name -> payrudder.plans.v1.SandboxResetStep
-	117, // 62: payrudder.plans.v1.SandboxReset.create_time:type_name -> google.protobuf.Timestamp
-	117, // 63: payrudder.plans.v1.SandboxReset.finish_time:type_name -> google.protobuf.Timestamp
+	134, // 62: payrudder.plans.v1.SandboxReset.create_time:type_name -> google.protobuf.Timestamp
+	134, // 63: payrudder.plans.v1.SandboxReset.finish_time:type_name -> google.protobuf.Timestamp
 	89,  // 64: payrudder.plans.v1.ResetMySandboxResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
 	89,  // 65: payrudder.plans.v1.GetMySandboxResetResponse.sandbox_reset:type_name -> payrudder.plans.v1.SandboxReset
 	94,  // 66: payrudder.plans.v1.Onboarding.wizard:type_name -> payrudder.plans.v1.OnboardingWizard
@@ -7461,117 +8677,145 @@ var file_payrudder_plans_v1_identity_proto_depIdxs = []int32{
 	95,  // 69: payrudder.plans.v1.UpdateMyOnboardingResponse.onboarding:type_name -> payrudder.plans.v1.Onboarding
 	1,   // 70: payrudder.plans.v1.VerifyTwoFactorResponse.user:type_name -> payrudder.plans.v1.User
 	2,   // 71: payrudder.plans.v1.VerifyTwoFactorResponse.memberships:type_name -> payrudder.plans.v1.Membership
-	117, // 72: payrudder.plans.v1.VerifyTwoFactorResponse.expire_time:type_name -> google.protobuf.Timestamp
-	117, // 73: payrudder.plans.v1.GetTwoFactorResponse.enable_time:type_name -> google.protobuf.Timestamp
-	3,   // 74: payrudder.plans.v1.IdentityService.SignUp:input_type -> payrudder.plans.v1.SignUpRequest
-	5,   // 75: payrudder.plans.v1.IdentityService.SignIn:input_type -> payrudder.plans.v1.SignInRequest
-	13,  // 76: payrudder.plans.v1.IdentityService.SignOut:input_type -> payrudder.plans.v1.SignOutRequest
-	15,  // 77: payrudder.plans.v1.IdentityService.GetSession:input_type -> payrudder.plans.v1.GetSessionRequest
-	54,  // 78: payrudder.plans.v1.IdentityService.VerifyEmail:input_type -> payrudder.plans.v1.VerifyEmailRequest
-	56,  // 79: payrudder.plans.v1.IdentityService.ResendVerification:input_type -> payrudder.plans.v1.ResendVerificationRequest
-	58,  // 80: payrudder.plans.v1.IdentityService.RequestPasswordReset:input_type -> payrudder.plans.v1.RequestPasswordResetRequest
-	60,  // 81: payrudder.plans.v1.IdentityService.ResetPassword:input_type -> payrudder.plans.v1.ResetPasswordRequest
-	7,   // 82: payrudder.plans.v1.IdentityService.RequestLoginCode:input_type -> payrudder.plans.v1.RequestLoginCodeRequest
-	9,   // 83: payrudder.plans.v1.IdentityService.VerifyLoginCode:input_type -> payrudder.plans.v1.VerifyLoginCodeRequest
-	11,  // 84: payrudder.plans.v1.IdentityService.SignInWithIdentity:input_type -> payrudder.plans.v1.SignInWithIdentityRequest
-	100, // 85: payrudder.plans.v1.IdentityService.VerifyTwoFactor:input_type -> payrudder.plans.v1.VerifyTwoFactorRequest
-	102, // 86: payrudder.plans.v1.IdentityService.GetTwoFactor:input_type -> payrudder.plans.v1.GetTwoFactorRequest
-	104, // 87: payrudder.plans.v1.IdentityService.SetupTwoFactor:input_type -> payrudder.plans.v1.SetupTwoFactorRequest
-	106, // 88: payrudder.plans.v1.IdentityService.ConfirmTwoFactor:input_type -> payrudder.plans.v1.ConfirmTwoFactorRequest
-	108, // 89: payrudder.plans.v1.IdentityService.DisableTwoFactor:input_type -> payrudder.plans.v1.DisableTwoFactorRequest
-	110, // 90: payrudder.plans.v1.IdentityService.RegenerateRecoveryCodes:input_type -> payrudder.plans.v1.RegenerateRecoveryCodesRequest
-	112, // 91: payrudder.plans.v1.IdentityService.SetAccountSecurity:input_type -> payrudder.plans.v1.SetAccountSecurityRequest
-	114, // 92: payrudder.plans.v1.IdentityService.ResetUserTwoFactor:input_type -> payrudder.plans.v1.ResetUserTwoFactorRequest
-	18,  // 93: payrudder.plans.v1.IdentityService.GetMyAccount:input_type -> payrudder.plans.v1.GetMyAccountRequest
-	62,  // 94: payrudder.plans.v1.IdentityService.CreateMyAccount:input_type -> payrudder.plans.v1.CreateMyAccountRequest
-	64,  // 95: payrudder.plans.v1.IdentityService.RenameMyAccount:input_type -> payrudder.plans.v1.RenameMyAccountRequest
-	67,  // 96: payrudder.plans.v1.IdentityService.InviteMember:input_type -> payrudder.plans.v1.InviteMemberRequest
-	69,  // 97: payrudder.plans.v1.IdentityService.ListInvitations:input_type -> payrudder.plans.v1.ListInvitationsRequest
-	71,  // 98: payrudder.plans.v1.IdentityService.RevokeInvitation:input_type -> payrudder.plans.v1.RevokeInvitationRequest
-	73,  // 99: payrudder.plans.v1.IdentityService.ResendInvitation:input_type -> payrudder.plans.v1.ResendInvitationRequest
-	75,  // 100: payrudder.plans.v1.IdentityService.UpdateMemberRole:input_type -> payrudder.plans.v1.UpdateMemberRoleRequest
-	77,  // 101: payrudder.plans.v1.IdentityService.RemoveMember:input_type -> payrudder.plans.v1.RemoveMemberRequest
-	79,  // 102: payrudder.plans.v1.IdentityService.LookupInvitation:input_type -> payrudder.plans.v1.LookupInvitationRequest
-	81,  // 103: payrudder.plans.v1.IdentityService.AcceptInvitation:input_type -> payrudder.plans.v1.AcceptInvitationRequest
-	83,  // 104: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> payrudder.plans.v1.AcceptInvitationAsUserRequest
-	20,  // 105: payrudder.plans.v1.IdentityService.CreateMyApp:input_type -> payrudder.plans.v1.CreateMyAppRequest
-	22,  // 106: payrudder.plans.v1.IdentityService.ListMyApps:input_type -> payrudder.plans.v1.ListMyAppsRequest
-	24,  // 107: payrudder.plans.v1.IdentityService.GetMyApp:input_type -> payrudder.plans.v1.GetMyAppRequest
-	26,  // 108: payrudder.plans.v1.IdentityService.GetMyAppHold:input_type -> payrudder.plans.v1.GetMyAppHoldRequest
-	28,  // 109: payrudder.plans.v1.IdentityService.SubmitMyAppAppeal:input_type -> payrudder.plans.v1.SubmitMyAppAppealRequest
-	30,  // 110: payrudder.plans.v1.IdentityService.RenameMyApp:input_type -> payrudder.plans.v1.RenameMyAppRequest
-	32,  // 111: payrudder.plans.v1.IdentityService.DeleteMyApp:input_type -> payrudder.plans.v1.DeleteMyAppRequest
-	34,  // 112: payrudder.plans.v1.IdentityService.ResolveMyTenant:input_type -> payrudder.plans.v1.ResolveMyTenantRequest
-	36,  // 113: payrudder.plans.v1.IdentityService.CreateMyApiKey:input_type -> payrudder.plans.v1.CreateMyApiKeyRequest
-	38,  // 114: payrudder.plans.v1.IdentityService.ListMyApiKeys:input_type -> payrudder.plans.v1.ListMyApiKeysRequest
-	40,  // 115: payrudder.plans.v1.IdentityService.RevokeMyApiKey:input_type -> payrudder.plans.v1.RevokeMyApiKeyRequest
-	42,  // 116: payrudder.plans.v1.IdentityService.RotateMyApiKey:input_type -> payrudder.plans.v1.RotateMyApiKeyRequest
-	46,  // 117: payrudder.plans.v1.IdentityService.GetMyGoLive:input_type -> payrudder.plans.v1.GetMyGoLiveRequest
-	48,  // 118: payrudder.plans.v1.IdentityService.ActivateMyApp:input_type -> payrudder.plans.v1.ActivateMyAppRequest
-	50,  // 119: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:input_type -> payrudder.plans.v1.UpdateMyBillingProfileRequest
-	52,  // 120: payrudder.plans.v1.IdentityService.AcceptMyTerms:input_type -> payrudder.plans.v1.AcceptMyTermsRequest
-	86,  // 121: payrudder.plans.v1.IdentityService.PromoteMyApp:input_type -> payrudder.plans.v1.PromoteMyAppRequest
-	90,  // 122: payrudder.plans.v1.IdentityService.ResetMySandbox:input_type -> payrudder.plans.v1.ResetMySandboxRequest
-	92,  // 123: payrudder.plans.v1.IdentityService.GetMySandboxReset:input_type -> payrudder.plans.v1.GetMySandboxResetRequest
-	96,  // 124: payrudder.plans.v1.IdentityService.GetMyOnboarding:input_type -> payrudder.plans.v1.GetMyOnboardingRequest
-	98,  // 125: payrudder.plans.v1.IdentityService.UpdateMyOnboarding:input_type -> payrudder.plans.v1.UpdateMyOnboardingRequest
-	4,   // 126: payrudder.plans.v1.IdentityService.SignUp:output_type -> payrudder.plans.v1.SignUpResponse
-	6,   // 127: payrudder.plans.v1.IdentityService.SignIn:output_type -> payrudder.plans.v1.SignInResponse
-	14,  // 128: payrudder.plans.v1.IdentityService.SignOut:output_type -> payrudder.plans.v1.SignOutResponse
-	16,  // 129: payrudder.plans.v1.IdentityService.GetSession:output_type -> payrudder.plans.v1.GetSessionResponse
-	55,  // 130: payrudder.plans.v1.IdentityService.VerifyEmail:output_type -> payrudder.plans.v1.VerifyEmailResponse
-	57,  // 131: payrudder.plans.v1.IdentityService.ResendVerification:output_type -> payrudder.plans.v1.ResendVerificationResponse
-	59,  // 132: payrudder.plans.v1.IdentityService.RequestPasswordReset:output_type -> payrudder.plans.v1.RequestPasswordResetResponse
-	61,  // 133: payrudder.plans.v1.IdentityService.ResetPassword:output_type -> payrudder.plans.v1.ResetPasswordResponse
-	8,   // 134: payrudder.plans.v1.IdentityService.RequestLoginCode:output_type -> payrudder.plans.v1.RequestLoginCodeResponse
-	10,  // 135: payrudder.plans.v1.IdentityService.VerifyLoginCode:output_type -> payrudder.plans.v1.VerifyLoginCodeResponse
-	12,  // 136: payrudder.plans.v1.IdentityService.SignInWithIdentity:output_type -> payrudder.plans.v1.SignInWithIdentityResponse
-	101, // 137: payrudder.plans.v1.IdentityService.VerifyTwoFactor:output_type -> payrudder.plans.v1.VerifyTwoFactorResponse
-	103, // 138: payrudder.plans.v1.IdentityService.GetTwoFactor:output_type -> payrudder.plans.v1.GetTwoFactorResponse
-	105, // 139: payrudder.plans.v1.IdentityService.SetupTwoFactor:output_type -> payrudder.plans.v1.SetupTwoFactorResponse
-	107, // 140: payrudder.plans.v1.IdentityService.ConfirmTwoFactor:output_type -> payrudder.plans.v1.ConfirmTwoFactorResponse
-	109, // 141: payrudder.plans.v1.IdentityService.DisableTwoFactor:output_type -> payrudder.plans.v1.DisableTwoFactorResponse
-	111, // 142: payrudder.plans.v1.IdentityService.RegenerateRecoveryCodes:output_type -> payrudder.plans.v1.RegenerateRecoveryCodesResponse
-	113, // 143: payrudder.plans.v1.IdentityService.SetAccountSecurity:output_type -> payrudder.plans.v1.SetAccountSecurityResponse
-	115, // 144: payrudder.plans.v1.IdentityService.ResetUserTwoFactor:output_type -> payrudder.plans.v1.ResetUserTwoFactorResponse
-	19,  // 145: payrudder.plans.v1.IdentityService.GetMyAccount:output_type -> payrudder.plans.v1.GetMyAccountResponse
-	63,  // 146: payrudder.plans.v1.IdentityService.CreateMyAccount:output_type -> payrudder.plans.v1.CreateMyAccountResponse
-	65,  // 147: payrudder.plans.v1.IdentityService.RenameMyAccount:output_type -> payrudder.plans.v1.RenameMyAccountResponse
-	68,  // 148: payrudder.plans.v1.IdentityService.InviteMember:output_type -> payrudder.plans.v1.InviteMemberResponse
-	70,  // 149: payrudder.plans.v1.IdentityService.ListInvitations:output_type -> payrudder.plans.v1.ListInvitationsResponse
-	72,  // 150: payrudder.plans.v1.IdentityService.RevokeInvitation:output_type -> payrudder.plans.v1.RevokeInvitationResponse
-	74,  // 151: payrudder.plans.v1.IdentityService.ResendInvitation:output_type -> payrudder.plans.v1.ResendInvitationResponse
-	76,  // 152: payrudder.plans.v1.IdentityService.UpdateMemberRole:output_type -> payrudder.plans.v1.UpdateMemberRoleResponse
-	78,  // 153: payrudder.plans.v1.IdentityService.RemoveMember:output_type -> payrudder.plans.v1.RemoveMemberResponse
-	80,  // 154: payrudder.plans.v1.IdentityService.LookupInvitation:output_type -> payrudder.plans.v1.LookupInvitationResponse
-	82,  // 155: payrudder.plans.v1.IdentityService.AcceptInvitation:output_type -> payrudder.plans.v1.AcceptInvitationResponse
-	84,  // 156: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> payrudder.plans.v1.AcceptInvitationAsUserResponse
-	21,  // 157: payrudder.plans.v1.IdentityService.CreateMyApp:output_type -> payrudder.plans.v1.CreateMyAppResponse
-	23,  // 158: payrudder.plans.v1.IdentityService.ListMyApps:output_type -> payrudder.plans.v1.ListMyAppsResponse
-	25,  // 159: payrudder.plans.v1.IdentityService.GetMyApp:output_type -> payrudder.plans.v1.GetMyAppResponse
-	27,  // 160: payrudder.plans.v1.IdentityService.GetMyAppHold:output_type -> payrudder.plans.v1.GetMyAppHoldResponse
-	29,  // 161: payrudder.plans.v1.IdentityService.SubmitMyAppAppeal:output_type -> payrudder.plans.v1.SubmitMyAppAppealResponse
-	31,  // 162: payrudder.plans.v1.IdentityService.RenameMyApp:output_type -> payrudder.plans.v1.RenameMyAppResponse
-	33,  // 163: payrudder.plans.v1.IdentityService.DeleteMyApp:output_type -> payrudder.plans.v1.DeleteMyAppResponse
-	35,  // 164: payrudder.plans.v1.IdentityService.ResolveMyTenant:output_type -> payrudder.plans.v1.ResolveMyTenantResponse
-	37,  // 165: payrudder.plans.v1.IdentityService.CreateMyApiKey:output_type -> payrudder.plans.v1.CreateMyApiKeyResponse
-	39,  // 166: payrudder.plans.v1.IdentityService.ListMyApiKeys:output_type -> payrudder.plans.v1.ListMyApiKeysResponse
-	41,  // 167: payrudder.plans.v1.IdentityService.RevokeMyApiKey:output_type -> payrudder.plans.v1.RevokeMyApiKeyResponse
-	43,  // 168: payrudder.plans.v1.IdentityService.RotateMyApiKey:output_type -> payrudder.plans.v1.RotateMyApiKeyResponse
-	47,  // 169: payrudder.plans.v1.IdentityService.GetMyGoLive:output_type -> payrudder.plans.v1.GetMyGoLiveResponse
-	49,  // 170: payrudder.plans.v1.IdentityService.ActivateMyApp:output_type -> payrudder.plans.v1.ActivateMyAppResponse
-	51,  // 171: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:output_type -> payrudder.plans.v1.UpdateMyBillingProfileResponse
-	53,  // 172: payrudder.plans.v1.IdentityService.AcceptMyTerms:output_type -> payrudder.plans.v1.AcceptMyTermsResponse
-	87,  // 173: payrudder.plans.v1.IdentityService.PromoteMyApp:output_type -> payrudder.plans.v1.PromoteMyAppResponse
-	91,  // 174: payrudder.plans.v1.IdentityService.ResetMySandbox:output_type -> payrudder.plans.v1.ResetMySandboxResponse
-	93,  // 175: payrudder.plans.v1.IdentityService.GetMySandboxReset:output_type -> payrudder.plans.v1.GetMySandboxResetResponse
-	97,  // 176: payrudder.plans.v1.IdentityService.GetMyOnboarding:output_type -> payrudder.plans.v1.GetMyOnboardingResponse
-	99,  // 177: payrudder.plans.v1.IdentityService.UpdateMyOnboarding:output_type -> payrudder.plans.v1.UpdateMyOnboardingResponse
-	126, // [126:178] is the sub-list for method output_type
-	74,  // [74:126] is the sub-list for method input_type
-	74,  // [74:74] is the sub-list for extension type_name
-	74,  // [74:74] is the sub-list for extension extendee
-	0,   // [0:74] is the sub-list for field type_name
+	134, // 72: payrudder.plans.v1.VerifyTwoFactorResponse.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 73: payrudder.plans.v1.GetTwoFactorResponse.enable_time:type_name -> google.protobuf.Timestamp
+	134, // 74: payrudder.plans.v1.CreateOAuthGrantResponse.expire_time:type_name -> google.protobuf.Timestamp
+	142, // 75: payrudder.plans.v1.OAuthTokens.expires_in:type_name -> google.protobuf.Duration
+	138, // 76: payrudder.plans.v1.OAuthTokenInfo.tenant:type_name -> payrudder.plans.v1.Tenant
+	134, // 77: payrudder.plans.v1.OAuthTokenInfo.expire_time:type_name -> google.protobuf.Timestamp
+	134, // 78: payrudder.plans.v1.MintOAuthApiTokenResponse.expire_time:type_name -> google.protobuf.Timestamp
+	124, // 79: payrudder.plans.v1.MintOAuthApiTokenResponse.info:type_name -> payrudder.plans.v1.OAuthTokenInfo
+	139, // 80: payrudder.plans.v1.OAuthGrant.environment:type_name -> payrudder.plans.v1.Environment
+	134, // 81: payrudder.plans.v1.OAuthGrant.create_time:type_name -> google.protobuf.Timestamp
+	134, // 82: payrudder.plans.v1.OAuthGrant.last_used_time:type_name -> google.protobuf.Timestamp
+	128, // 83: payrudder.plans.v1.ListMyOAuthGrantsResponse.grants:type_name -> payrudder.plans.v1.OAuthGrant
+	3,   // 84: payrudder.plans.v1.IdentityService.SignUp:input_type -> payrudder.plans.v1.SignUpRequest
+	5,   // 85: payrudder.plans.v1.IdentityService.SignIn:input_type -> payrudder.plans.v1.SignInRequest
+	13,  // 86: payrudder.plans.v1.IdentityService.SignOut:input_type -> payrudder.plans.v1.SignOutRequest
+	15,  // 87: payrudder.plans.v1.IdentityService.GetSession:input_type -> payrudder.plans.v1.GetSessionRequest
+	54,  // 88: payrudder.plans.v1.IdentityService.VerifyEmail:input_type -> payrudder.plans.v1.VerifyEmailRequest
+	56,  // 89: payrudder.plans.v1.IdentityService.ResendVerification:input_type -> payrudder.plans.v1.ResendVerificationRequest
+	58,  // 90: payrudder.plans.v1.IdentityService.RequestPasswordReset:input_type -> payrudder.plans.v1.RequestPasswordResetRequest
+	60,  // 91: payrudder.plans.v1.IdentityService.ResetPassword:input_type -> payrudder.plans.v1.ResetPasswordRequest
+	7,   // 92: payrudder.plans.v1.IdentityService.RequestLoginCode:input_type -> payrudder.plans.v1.RequestLoginCodeRequest
+	9,   // 93: payrudder.plans.v1.IdentityService.VerifyLoginCode:input_type -> payrudder.plans.v1.VerifyLoginCodeRequest
+	11,  // 94: payrudder.plans.v1.IdentityService.SignInWithIdentity:input_type -> payrudder.plans.v1.SignInWithIdentityRequest
+	100, // 95: payrudder.plans.v1.IdentityService.VerifyTwoFactor:input_type -> payrudder.plans.v1.VerifyTwoFactorRequest
+	102, // 96: payrudder.plans.v1.IdentityService.GetTwoFactor:input_type -> payrudder.plans.v1.GetTwoFactorRequest
+	104, // 97: payrudder.plans.v1.IdentityService.SetupTwoFactor:input_type -> payrudder.plans.v1.SetupTwoFactorRequest
+	106, // 98: payrudder.plans.v1.IdentityService.ConfirmTwoFactor:input_type -> payrudder.plans.v1.ConfirmTwoFactorRequest
+	108, // 99: payrudder.plans.v1.IdentityService.DisableTwoFactor:input_type -> payrudder.plans.v1.DisableTwoFactorRequest
+	110, // 100: payrudder.plans.v1.IdentityService.RegenerateRecoveryCodes:input_type -> payrudder.plans.v1.RegenerateRecoveryCodesRequest
+	112, // 101: payrudder.plans.v1.IdentityService.SetAccountSecurity:input_type -> payrudder.plans.v1.SetAccountSecurityRequest
+	114, // 102: payrudder.plans.v1.IdentityService.ResetUserTwoFactor:input_type -> payrudder.plans.v1.ResetUserTwoFactorRequest
+	18,  // 103: payrudder.plans.v1.IdentityService.GetMyAccount:input_type -> payrudder.plans.v1.GetMyAccountRequest
+	62,  // 104: payrudder.plans.v1.IdentityService.CreateMyAccount:input_type -> payrudder.plans.v1.CreateMyAccountRequest
+	64,  // 105: payrudder.plans.v1.IdentityService.RenameMyAccount:input_type -> payrudder.plans.v1.RenameMyAccountRequest
+	67,  // 106: payrudder.plans.v1.IdentityService.InviteMember:input_type -> payrudder.plans.v1.InviteMemberRequest
+	69,  // 107: payrudder.plans.v1.IdentityService.ListInvitations:input_type -> payrudder.plans.v1.ListInvitationsRequest
+	71,  // 108: payrudder.plans.v1.IdentityService.RevokeInvitation:input_type -> payrudder.plans.v1.RevokeInvitationRequest
+	73,  // 109: payrudder.plans.v1.IdentityService.ResendInvitation:input_type -> payrudder.plans.v1.ResendInvitationRequest
+	75,  // 110: payrudder.plans.v1.IdentityService.UpdateMemberRole:input_type -> payrudder.plans.v1.UpdateMemberRoleRequest
+	77,  // 111: payrudder.plans.v1.IdentityService.RemoveMember:input_type -> payrudder.plans.v1.RemoveMemberRequest
+	79,  // 112: payrudder.plans.v1.IdentityService.LookupInvitation:input_type -> payrudder.plans.v1.LookupInvitationRequest
+	81,  // 113: payrudder.plans.v1.IdentityService.AcceptInvitation:input_type -> payrudder.plans.v1.AcceptInvitationRequest
+	83,  // 114: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:input_type -> payrudder.plans.v1.AcceptInvitationAsUserRequest
+	20,  // 115: payrudder.plans.v1.IdentityService.CreateMyApp:input_type -> payrudder.plans.v1.CreateMyAppRequest
+	22,  // 116: payrudder.plans.v1.IdentityService.ListMyApps:input_type -> payrudder.plans.v1.ListMyAppsRequest
+	24,  // 117: payrudder.plans.v1.IdentityService.GetMyApp:input_type -> payrudder.plans.v1.GetMyAppRequest
+	26,  // 118: payrudder.plans.v1.IdentityService.GetMyAppHold:input_type -> payrudder.plans.v1.GetMyAppHoldRequest
+	28,  // 119: payrudder.plans.v1.IdentityService.SubmitMyAppAppeal:input_type -> payrudder.plans.v1.SubmitMyAppAppealRequest
+	30,  // 120: payrudder.plans.v1.IdentityService.RenameMyApp:input_type -> payrudder.plans.v1.RenameMyAppRequest
+	32,  // 121: payrudder.plans.v1.IdentityService.DeleteMyApp:input_type -> payrudder.plans.v1.DeleteMyAppRequest
+	34,  // 122: payrudder.plans.v1.IdentityService.ResolveMyTenant:input_type -> payrudder.plans.v1.ResolveMyTenantRequest
+	116, // 123: payrudder.plans.v1.IdentityService.CreateOAuthGrant:input_type -> payrudder.plans.v1.CreateOAuthGrantRequest
+	118, // 124: payrudder.plans.v1.IdentityService.ExchangeOAuthCode:input_type -> payrudder.plans.v1.ExchangeOAuthCodeRequest
+	119, // 125: payrudder.plans.v1.IdentityService.RefreshOAuthToken:input_type -> payrudder.plans.v1.RefreshOAuthTokenRequest
+	121, // 126: payrudder.plans.v1.IdentityService.RevokeOAuthToken:input_type -> payrudder.plans.v1.RevokeOAuthTokenRequest
+	123, // 127: payrudder.plans.v1.IdentityService.IntrospectOAuthToken:input_type -> payrudder.plans.v1.IntrospectOAuthTokenRequest
+	125, // 128: payrudder.plans.v1.IdentityService.MintOAuthApiToken:input_type -> payrudder.plans.v1.MintOAuthApiTokenRequest
+	127, // 129: payrudder.plans.v1.IdentityService.ResolveOAuthApiToken:input_type -> payrudder.plans.v1.ResolveOAuthApiTokenRequest
+	129, // 130: payrudder.plans.v1.IdentityService.ListMyOAuthGrants:input_type -> payrudder.plans.v1.ListMyOAuthGrantsRequest
+	131, // 131: payrudder.plans.v1.IdentityService.RevokeMyOAuthGrant:input_type -> payrudder.plans.v1.RevokeMyOAuthGrantRequest
+	36,  // 132: payrudder.plans.v1.IdentityService.CreateMyApiKey:input_type -> payrudder.plans.v1.CreateMyApiKeyRequest
+	38,  // 133: payrudder.plans.v1.IdentityService.ListMyApiKeys:input_type -> payrudder.plans.v1.ListMyApiKeysRequest
+	40,  // 134: payrudder.plans.v1.IdentityService.RevokeMyApiKey:input_type -> payrudder.plans.v1.RevokeMyApiKeyRequest
+	42,  // 135: payrudder.plans.v1.IdentityService.RotateMyApiKey:input_type -> payrudder.plans.v1.RotateMyApiKeyRequest
+	46,  // 136: payrudder.plans.v1.IdentityService.GetMyGoLive:input_type -> payrudder.plans.v1.GetMyGoLiveRequest
+	48,  // 137: payrudder.plans.v1.IdentityService.ActivateMyApp:input_type -> payrudder.plans.v1.ActivateMyAppRequest
+	50,  // 138: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:input_type -> payrudder.plans.v1.UpdateMyBillingProfileRequest
+	52,  // 139: payrudder.plans.v1.IdentityService.AcceptMyTerms:input_type -> payrudder.plans.v1.AcceptMyTermsRequest
+	86,  // 140: payrudder.plans.v1.IdentityService.PromoteMyApp:input_type -> payrudder.plans.v1.PromoteMyAppRequest
+	90,  // 141: payrudder.plans.v1.IdentityService.ResetMySandbox:input_type -> payrudder.plans.v1.ResetMySandboxRequest
+	92,  // 142: payrudder.plans.v1.IdentityService.GetMySandboxReset:input_type -> payrudder.plans.v1.GetMySandboxResetRequest
+	96,  // 143: payrudder.plans.v1.IdentityService.GetMyOnboarding:input_type -> payrudder.plans.v1.GetMyOnboardingRequest
+	98,  // 144: payrudder.plans.v1.IdentityService.UpdateMyOnboarding:input_type -> payrudder.plans.v1.UpdateMyOnboardingRequest
+	4,   // 145: payrudder.plans.v1.IdentityService.SignUp:output_type -> payrudder.plans.v1.SignUpResponse
+	6,   // 146: payrudder.plans.v1.IdentityService.SignIn:output_type -> payrudder.plans.v1.SignInResponse
+	14,  // 147: payrudder.plans.v1.IdentityService.SignOut:output_type -> payrudder.plans.v1.SignOutResponse
+	16,  // 148: payrudder.plans.v1.IdentityService.GetSession:output_type -> payrudder.plans.v1.GetSessionResponse
+	55,  // 149: payrudder.plans.v1.IdentityService.VerifyEmail:output_type -> payrudder.plans.v1.VerifyEmailResponse
+	57,  // 150: payrudder.plans.v1.IdentityService.ResendVerification:output_type -> payrudder.plans.v1.ResendVerificationResponse
+	59,  // 151: payrudder.plans.v1.IdentityService.RequestPasswordReset:output_type -> payrudder.plans.v1.RequestPasswordResetResponse
+	61,  // 152: payrudder.plans.v1.IdentityService.ResetPassword:output_type -> payrudder.plans.v1.ResetPasswordResponse
+	8,   // 153: payrudder.plans.v1.IdentityService.RequestLoginCode:output_type -> payrudder.plans.v1.RequestLoginCodeResponse
+	10,  // 154: payrudder.plans.v1.IdentityService.VerifyLoginCode:output_type -> payrudder.plans.v1.VerifyLoginCodeResponse
+	12,  // 155: payrudder.plans.v1.IdentityService.SignInWithIdentity:output_type -> payrudder.plans.v1.SignInWithIdentityResponse
+	101, // 156: payrudder.plans.v1.IdentityService.VerifyTwoFactor:output_type -> payrudder.plans.v1.VerifyTwoFactorResponse
+	103, // 157: payrudder.plans.v1.IdentityService.GetTwoFactor:output_type -> payrudder.plans.v1.GetTwoFactorResponse
+	105, // 158: payrudder.plans.v1.IdentityService.SetupTwoFactor:output_type -> payrudder.plans.v1.SetupTwoFactorResponse
+	107, // 159: payrudder.plans.v1.IdentityService.ConfirmTwoFactor:output_type -> payrudder.plans.v1.ConfirmTwoFactorResponse
+	109, // 160: payrudder.plans.v1.IdentityService.DisableTwoFactor:output_type -> payrudder.plans.v1.DisableTwoFactorResponse
+	111, // 161: payrudder.plans.v1.IdentityService.RegenerateRecoveryCodes:output_type -> payrudder.plans.v1.RegenerateRecoveryCodesResponse
+	113, // 162: payrudder.plans.v1.IdentityService.SetAccountSecurity:output_type -> payrudder.plans.v1.SetAccountSecurityResponse
+	115, // 163: payrudder.plans.v1.IdentityService.ResetUserTwoFactor:output_type -> payrudder.plans.v1.ResetUserTwoFactorResponse
+	19,  // 164: payrudder.plans.v1.IdentityService.GetMyAccount:output_type -> payrudder.plans.v1.GetMyAccountResponse
+	63,  // 165: payrudder.plans.v1.IdentityService.CreateMyAccount:output_type -> payrudder.plans.v1.CreateMyAccountResponse
+	65,  // 166: payrudder.plans.v1.IdentityService.RenameMyAccount:output_type -> payrudder.plans.v1.RenameMyAccountResponse
+	68,  // 167: payrudder.plans.v1.IdentityService.InviteMember:output_type -> payrudder.plans.v1.InviteMemberResponse
+	70,  // 168: payrudder.plans.v1.IdentityService.ListInvitations:output_type -> payrudder.plans.v1.ListInvitationsResponse
+	72,  // 169: payrudder.plans.v1.IdentityService.RevokeInvitation:output_type -> payrudder.plans.v1.RevokeInvitationResponse
+	74,  // 170: payrudder.plans.v1.IdentityService.ResendInvitation:output_type -> payrudder.plans.v1.ResendInvitationResponse
+	76,  // 171: payrudder.plans.v1.IdentityService.UpdateMemberRole:output_type -> payrudder.plans.v1.UpdateMemberRoleResponse
+	78,  // 172: payrudder.plans.v1.IdentityService.RemoveMember:output_type -> payrudder.plans.v1.RemoveMemberResponse
+	80,  // 173: payrudder.plans.v1.IdentityService.LookupInvitation:output_type -> payrudder.plans.v1.LookupInvitationResponse
+	82,  // 174: payrudder.plans.v1.IdentityService.AcceptInvitation:output_type -> payrudder.plans.v1.AcceptInvitationResponse
+	84,  // 175: payrudder.plans.v1.IdentityService.AcceptInvitationAsUser:output_type -> payrudder.plans.v1.AcceptInvitationAsUserResponse
+	21,  // 176: payrudder.plans.v1.IdentityService.CreateMyApp:output_type -> payrudder.plans.v1.CreateMyAppResponse
+	23,  // 177: payrudder.plans.v1.IdentityService.ListMyApps:output_type -> payrudder.plans.v1.ListMyAppsResponse
+	25,  // 178: payrudder.plans.v1.IdentityService.GetMyApp:output_type -> payrudder.plans.v1.GetMyAppResponse
+	27,  // 179: payrudder.plans.v1.IdentityService.GetMyAppHold:output_type -> payrudder.plans.v1.GetMyAppHoldResponse
+	29,  // 180: payrudder.plans.v1.IdentityService.SubmitMyAppAppeal:output_type -> payrudder.plans.v1.SubmitMyAppAppealResponse
+	31,  // 181: payrudder.plans.v1.IdentityService.RenameMyApp:output_type -> payrudder.plans.v1.RenameMyAppResponse
+	33,  // 182: payrudder.plans.v1.IdentityService.DeleteMyApp:output_type -> payrudder.plans.v1.DeleteMyAppResponse
+	35,  // 183: payrudder.plans.v1.IdentityService.ResolveMyTenant:output_type -> payrudder.plans.v1.ResolveMyTenantResponse
+	117, // 184: payrudder.plans.v1.IdentityService.CreateOAuthGrant:output_type -> payrudder.plans.v1.CreateOAuthGrantResponse
+	120, // 185: payrudder.plans.v1.IdentityService.ExchangeOAuthCode:output_type -> payrudder.plans.v1.OAuthTokens
+	120, // 186: payrudder.plans.v1.IdentityService.RefreshOAuthToken:output_type -> payrudder.plans.v1.OAuthTokens
+	122, // 187: payrudder.plans.v1.IdentityService.RevokeOAuthToken:output_type -> payrudder.plans.v1.RevokeOAuthTokenResponse
+	124, // 188: payrudder.plans.v1.IdentityService.IntrospectOAuthToken:output_type -> payrudder.plans.v1.OAuthTokenInfo
+	126, // 189: payrudder.plans.v1.IdentityService.MintOAuthApiToken:output_type -> payrudder.plans.v1.MintOAuthApiTokenResponse
+	124, // 190: payrudder.plans.v1.IdentityService.ResolveOAuthApiToken:output_type -> payrudder.plans.v1.OAuthTokenInfo
+	130, // 191: payrudder.plans.v1.IdentityService.ListMyOAuthGrants:output_type -> payrudder.plans.v1.ListMyOAuthGrantsResponse
+	132, // 192: payrudder.plans.v1.IdentityService.RevokeMyOAuthGrant:output_type -> payrudder.plans.v1.RevokeMyOAuthGrantResponse
+	37,  // 193: payrudder.plans.v1.IdentityService.CreateMyApiKey:output_type -> payrudder.plans.v1.CreateMyApiKeyResponse
+	39,  // 194: payrudder.plans.v1.IdentityService.ListMyApiKeys:output_type -> payrudder.plans.v1.ListMyApiKeysResponse
+	41,  // 195: payrudder.plans.v1.IdentityService.RevokeMyApiKey:output_type -> payrudder.plans.v1.RevokeMyApiKeyResponse
+	43,  // 196: payrudder.plans.v1.IdentityService.RotateMyApiKey:output_type -> payrudder.plans.v1.RotateMyApiKeyResponse
+	47,  // 197: payrudder.plans.v1.IdentityService.GetMyGoLive:output_type -> payrudder.plans.v1.GetMyGoLiveResponse
+	49,  // 198: payrudder.plans.v1.IdentityService.ActivateMyApp:output_type -> payrudder.plans.v1.ActivateMyAppResponse
+	51,  // 199: payrudder.plans.v1.IdentityService.UpdateMyBillingProfile:output_type -> payrudder.plans.v1.UpdateMyBillingProfileResponse
+	53,  // 200: payrudder.plans.v1.IdentityService.AcceptMyTerms:output_type -> payrudder.plans.v1.AcceptMyTermsResponse
+	87,  // 201: payrudder.plans.v1.IdentityService.PromoteMyApp:output_type -> payrudder.plans.v1.PromoteMyAppResponse
+	91,  // 202: payrudder.plans.v1.IdentityService.ResetMySandbox:output_type -> payrudder.plans.v1.ResetMySandboxResponse
+	93,  // 203: payrudder.plans.v1.IdentityService.GetMySandboxReset:output_type -> payrudder.plans.v1.GetMySandboxResetResponse
+	97,  // 204: payrudder.plans.v1.IdentityService.GetMyOnboarding:output_type -> payrudder.plans.v1.GetMyOnboardingResponse
+	99,  // 205: payrudder.plans.v1.IdentityService.UpdateMyOnboarding:output_type -> payrudder.plans.v1.UpdateMyOnboardingResponse
+	145, // [145:206] is the sub-list for method output_type
+	84,  // [84:145] is the sub-list for method input_type
+	84,  // [84:84] is the sub-list for extension type_name
+	84,  // [84:84] is the sub-list for extension extendee
+	0,   // [0:84] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_identity_proto_init() }
@@ -7587,7 +8831,7 @@ func file_payrudder_plans_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_identity_proto_rawDesc), len(file_payrudder_plans_v1_identity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   116,
+			NumMessages:   133,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

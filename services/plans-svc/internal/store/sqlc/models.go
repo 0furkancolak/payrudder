@@ -511,6 +511,37 @@ type Meter struct {
 	Category      string
 }
 
+type OauthCode struct {
+	CodeHash      []byte
+	GrantID       uuid.UUID
+	RedirectUri   string
+	CodeChallenge string
+	ExpiresAt     time.Time
+	UsedAt        *time.Time
+}
+
+type OauthGrant struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TenantID   uuid.UUID
+	ClientID   string
+	ClientName string
+	Resource   string
+	Scopes     []string
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+	RevokedAt  *time.Time
+}
+
+type OauthToken struct {
+	TokenHash []byte
+	GrantID   uuid.UUID
+	Kind      string
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}
+
 type Outbox struct {
 	ID           int64
 	TenantID     uuid.UUID

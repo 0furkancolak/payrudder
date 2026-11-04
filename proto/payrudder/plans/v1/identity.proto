@@ -101,6 +101,32 @@ service IdentityService {
   rpc DeleteMyApp(DeleteMyAppRequest) returns (DeleteMyAppResponse);
   // ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
   rpc ResolveMyTenant(ResolveMyTenantRequest) returns (ResolveMyTenantResponse);
+
+  // OAuth 2.1 authorization server (plan 20, default, not agreed): the gateway validates the client and the request, plans-svc keeps grants, codes and tokens (only their hashes).
+  // CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
+  rpc CreateOAuthGrant(CreateOAuthGrantRequest) returns (CreateOAuthGrantResponse);
+  // ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc ExchangeOAuthCode(ExchangeOAuthCodeRequest) returns (OAuthTokens);
+  // RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc RefreshOAuthToken(RefreshOAuthTokenRequest) returns (OAuthTokens);
+  // RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
+  rpc RevokeOAuthToken(RevokeOAuthTokenRequest) returns (RevokeOAuthTokenResponse);
+  // IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc IntrospectOAuthToken(IntrospectOAuthTokenRequest) returns (OAuthTokenInfo);
+  // MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
+  rpc MintOAuthApiToken(MintOAuthApiTokenRequest) returns (MintOAuthApiTokenResponse);
+  // ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc ResolveOAuthApiToken(ResolveOAuthApiTokenRequest) returns (OAuthTokenInfo);
+  rpc ListMyOAuthGrants(ListMyOAuthGrantsRequest) returns (ListMyOAuthGrantsResponse);
+  rpc RevokeMyOAuthGrant(RevokeMyOAuthGrantRequest) returns (RevokeMyOAuthGrantResponse);
   rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
   rpc ListMyApiKeys(ListMyApiKeysRequest) returns (ListMyApiKeysResponse);
   rpc RevokeMyApiKey(RevokeMyApiKeyRequest) returns (RevokeMyApiKeyResponse);
@@ -856,3 +882,119 @@ message ResetUserTwoFactorResponse {
   // The person had two-factor sign-in on. False: nothing was on, and nothing was changed or mailed.
   bool was_enabled = 1;
 }
+
+message CreateOAuthGrantRequest {
+  string user_id = 1;
+  string tenant_id = 2;
+  string client_id = 3;
+  string client_name = 4;
+  string redirect_uri = 5;
+  // The S256 challenge.
+  string code_challenge = 6;
+  // The canonical URL of the MCP server the token is for.
+  string resource = 7;
+  // Permissions (pkg/apikey), already expanded from shorthands.
+  repeated string scopes = 8;
+  // The deployment lets assistants act on live environments (PAYRUDDER_OAUTH_ALLOW_LIVE); plans-svc still needs a verified address for one.
+  bool allow_live = 9;
+}
+
+message CreateOAuthGrantResponse {
+  string code = 1;
+  google.protobuf.Timestamp expire_time = 2;
+  // What was granted: the scopes asked for, cut to the person's role.
+  repeated string scopes = 3;
+}
+
+message ExchangeOAuthCodeRequest {
+  string code = 1;
+  string client_id = 2;
+  string redirect_uri = 3;
+  string code_verifier = 4;
+  string resource = 5;
+}
+
+message RefreshOAuthTokenRequest {
+  string refresh_token = 1;
+  string client_id = 2;
+  string resource = 3;
+}
+
+message OAuthTokens {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Duration expires_in = 3;
+  repeated string scopes = 4;
+}
+
+message RevokeOAuthTokenRequest {
+  string token = 1;
+  string client_id = 2;
+}
+
+message RevokeOAuthTokenResponse {}
+
+message IntrospectOAuthTokenRequest {
+  string token = 1;
+  string resource = 2;
+}
+
+// OAuthTokenInfo is the answer of introspection and of resolving the API credential. Inactive carries nothing else.
+message OAuthTokenInfo {
+  bool active = 1;
+  string grant_id = 2;
+  string user_id = 3;
+  string user_email = 4;
+  bool email_verified = 5;
+  Tenant tenant = 6;
+  // The person's role in the account now (owner, admin, viewer).
+  string member_role = 7;
+  repeated string scopes = 8;
+  string client_id = 9;
+  string client_name = 10;
+  string resource = 11;
+  google.protobuf.Timestamp expire_time = 12;
+}
+
+message MintOAuthApiTokenRequest {
+  string access_token = 1;
+  string resource = 2;
+}
+
+message MintOAuthApiTokenResponse {
+  string token = 1;
+  google.protobuf.Timestamp expire_time = 2;
+  OAuthTokenInfo info = 3;
+}
+
+message ResolveOAuthApiTokenRequest {
+  string token = 1;
+}
+
+message OAuthGrant {
+  string id = 1;
+  string client_id = 2;
+  string client_name = 3;
+  string tenant_id = 4;
+  string app_name = 5;
+  Environment environment = 6;
+  string resource = 7;
+  repeated string scopes = 8;
+  google.protobuf.Timestamp create_time = 9;
+  google.protobuf.Timestamp last_used_time = 10;
+}
+
+message ListMyOAuthGrantsRequest {
+  string user_id = 1;
+}
+
+message ListMyOAuthGrantsResponse {
+  repeated OAuthGrant grants = 1;
+}
+
+message RevokeMyOAuthGrantRequest {
+  string user_id = 1;
+  string grant_id = 2;
+}
+
+message RevokeMyOAuthGrantResponse {}

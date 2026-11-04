@@ -13,6 +13,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/oauth"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
@@ -28,11 +29,52 @@ type Handler struct {
 	promo  *promote.Handler
 	sbx    *sandboxapi.Handler
 	onb    *onboarding.Service
+	oauth  *oauth.Service
 }
 
-// New returns the identity handlers. goLive serves the two go-live calls (phase 45).
-func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler, sbx *sandboxapi.Handler, onb *onboarding.Service) *Handler {
-	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo, sbx: sbx, onb: onb}
+// New returns the identity handlers. goLive serves the two go-live calls (phase 45); authz is the OAuth authorization server (plan 20).
+func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler, sbx *sandboxapi.Handler, onb *onboarding.Service, authz *oauth.Service) *Handler {
+	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo, sbx: sbx, onb: onb, oauth: authz}
+}
+
+func (h *Handler) CreateOAuthGrant(ctx context.Context, req *plansv1.CreateOAuthGrantRequest) (*plansv1.CreateOAuthGrantResponse, error) {
+	return h.oauth.CreateGrant(ctx, req)
+}
+
+func (h *Handler) ExchangeOAuthCode(ctx context.Context, req *plansv1.ExchangeOAuthCodeRequest) (*plansv1.OAuthTokens, error) {
+	return h.oauth.ExchangeCode(ctx, req)
+}
+
+func (h *Handler) RefreshOAuthToken(ctx context.Context, req *plansv1.RefreshOAuthTokenRequest) (*plansv1.OAuthTokens, error) {
+	return h.oauth.Refresh(ctx, req)
+}
+
+func (h *Handler) RevokeOAuthToken(ctx context.Context, req *plansv1.RevokeOAuthTokenRequest) (*plansv1.RevokeOAuthTokenResponse, error) {
+	return &plansv1.RevokeOAuthTokenResponse{}, h.oauth.Revoke(ctx, req)
+}
+
+func (h *Handler) IntrospectOAuthToken(ctx context.Context, req *plansv1.IntrospectOAuthTokenRequest) (*plansv1.OAuthTokenInfo, error) {
+	return h.oauth.Introspect(ctx, req)
+}
+
+func (h *Handler) MintOAuthApiToken(ctx context.Context, req *plansv1.MintOAuthApiTokenRequest) (*plansv1.MintOAuthApiTokenResponse, error) {
+	return h.oauth.MintAPIToken(ctx, req)
+}
+
+func (h *Handler) ResolveOAuthApiToken(ctx context.Context, req *plansv1.ResolveOAuthApiTokenRequest) (*plansv1.OAuthTokenInfo, error) {
+	return h.oauth.ResolveAPIToken(ctx, req)
+}
+
+func (h *Handler) ListMyOAuthGrants(ctx context.Context, req *plansv1.ListMyOAuthGrantsRequest) (*plansv1.ListMyOAuthGrantsResponse, error) {
+	gs, err := h.oauth.Grants(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.ListMyOAuthGrantsResponse{Grants: gs}, nil
+}
+
+func (h *Handler) RevokeMyOAuthGrant(ctx context.Context, req *plansv1.RevokeMyOAuthGrantRequest) (*plansv1.RevokeMyOAuthGrantResponse, error) {
+	return &plansv1.RevokeMyOAuthGrantResponse{}, h.oauth.RevokeGrant(ctx, req.GetUserId(), req.GetGrantId())
 }
 
 func (h *Handler) ResetMySandbox(ctx context.Context, req *plansv1.ResetMySandboxRequest) (*plansv1.ResetMySandboxResponse, error) {

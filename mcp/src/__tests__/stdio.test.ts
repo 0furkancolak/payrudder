@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -135,4 +135,53 @@ describe("the built server over stdio", () => {
     expect(r.stdout).toBe("");
     expect(r.stderr).toContain("PAYRUDDER_API_KEY");
   });
+});
+
+describe("the built server in OAuth mode", () => {
+  const oauthEnv = { PAYRUDDER_MCP_AUTH: "oauth", PAYRUDDER_MCP_HTTP_PORT: "0", PAYRUDDER_MCP_PUBLIC_URL: "https://mcp.example.com/mcp", PAYRUDDER_MCP_OAUTH_SECRET: "s".repeat(40), PAYRUDDER_MCP_ISSUER: "https://api.example.com" };
+  const start = (extra: Record<string, string | undefined>) => {
+    const e = { ...oauthEnv, ...extra };
+    return spawnSync(process.execPath, [main], { env: env(Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined)) as Record<string, string>), encoding: "utf8", timeout: 20_000 });
+  };
+
+  it("refuses to start half set up, and says what is missing on stderr", () => {
+    for (const [why, extra, word] of [
+      ["an unknown mode", { PAYRUDDER_MCP_AUTH: "magic" }, "PAYRUDDER_MCP_AUTH"],
+      ["stdio", { PAYRUDDER_MCP_HTTP_PORT: undefined }, "PAYRUDDER_MCP_HTTP_PORT"],
+      ["no public address", { PAYRUDDER_MCP_PUBLIC_URL: undefined }, "PAYRUDDER_MCP_PUBLIC_URL"],
+      ["an http public address", { PAYRUDDER_MCP_PUBLIC_URL: "http://mcp.example.com/mcp" }, "https"],
+      ["a short secret", { PAYRUDDER_MCP_OAUTH_SECRET: "short" }, "PAYRUDDER_MCP_OAUTH_SECRET"],
+      ["no secret", { PAYRUDDER_MCP_OAUTH_SECRET: undefined }, "PAYRUDDER_MCP_OAUTH_SECRET"],
+    ] as const) {
+      const r = start(extra);
+      expect(r.status, why).toBe(1);
+      expect(r.stdout, why).toBe("");
+      expect(r.stderr, why).toContain(word);
+    }
+  });
+
+  it("serves its metadata and a challenge as a real process", async () => {
+    const child = spawn(process.execPath, [main], { env: env(oauthEnv), stdio: ["ignore", "ignore", "pipe"] });
+    try {
+      const origin = await new Promise<string>((resolve, reject) => {
+        let err = "";
+        const t = setTimeout(() => reject(new Error(`no start line: ${err}`)), 15_000);
+        (child.stderr as Readable).on("data", (c: Buffer) => {
+          err += c.toString();
+          const m = /serving streamable HTTP on (http:\/\/[^/]+)\/mcp/.exec(err);
+          if (m) {
+            clearTimeout(t);
+            resolve(m[1] as string);
+          }
+        });
+      });
+      const prm = await fetch(`${origin}/.well-known/oauth-protected-resource/mcp`);
+      expect(await prm.json()).toMatchObject({ resource: "https://mcp.example.com/mcp", authorization_servers: ["https://api.example.com"] });
+      const denied = await fetch(`${origin}/mcp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      expect(denied.status).toBe(401);
+      expect(denied.headers.get("www-authenticate")).toContain("resource_metadata=");
+    } finally {
+      child.kill();
+    }
+  }, 30_000);
 });

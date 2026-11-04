@@ -29,6 +29,13 @@ PAYRUDDER_INBOUND_DOMAIN: ""
 # The signing secret ("whsec_...", Svix) of the mail provider's webhook of delivery events (bounces, complaints) to /inbound/mail-events: PAYRUDDER_MAIL_WEBHOOK_SECRET (environment only).
 # Without it the route answers 404 and the gateway logs at start that it is off; with it, PAYRUDDER_NOTIFIER_EVENTS_URL is required too (the events are handed to the notifier).
 
+# OAuth sign-in for assistants through the MCP server (docs/plans/20-mcp.md, "OAuth design"; default, not agreed). Empty (the default): off. With the canonical address(es) of the
+# MCP server(s), comma separated, the gateway is an OAuth 2.1 authorization server at /oauth/*; it then needs PAYRUDDER_PUBLIC_URL (the issuer, no path), PAYRUDDER_APP_URL (the consent
+# page) and PAYRUDDER_OAUTH_RESOURCE_SECRET (environment only, at least 32 characters: what the MCP server presents). A person may let an assistant act on a LIVE environment only
+# when PAYRUDDER_OAUTH_ALLOW_LIVE is on.
+PAYRUDDER_OAUTH_RESOURCES: ""
+PAYRUDDER_OAUTH_ALLOW_LIVE: "off"
+
 # Payrudder as a SaaS (phase 55, ADR 0024): "on" shows organisations their plan and refuses their events over the plan's hard events quota, metering the rest into the
 # platform tenant. "off" (the default, and what a self-hoster wants): none of it. Set it the same as plans-svc. make setup and make dev switch it on.
 PAYRUDDER_SAAS: "off"
