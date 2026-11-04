@@ -27,6 +27,8 @@ export interface ServerOptions {
   audit?: Audit;
   /** The public part of the key the calls are made with (qk_test_ab12cd34), for the audit record. */
   keyHint?: string;
+  /** In OAuth mode, the client the person signed in through (its client_id address), for the audit record. */
+  clientHint?: string;
   /** How the server is reached, for the audit record. */
   transport?: "stdio" | "http";
   /** Charges one tool call to the caller's key and returns the seconds to wait when the key is over its limit, else 0 (ratelimit.ts). No limit without it. */
@@ -53,7 +55,7 @@ export function createServer(o: ServerOptions): McpServer {
         const started = performance.now();
         const record = (r: { ok: boolean; chars: number; cut: boolean; error?: string; status?: number }) => {
           try {
-            o.audit?.({ ts: new Date().toISOString(), event: "mcp.tool_call", tool: t.name, write: t.write === true, transport: o.transport ?? "stdio", key: o.keyHint ?? "", args: describeArgs(args as Record<string, unknown>), ms: Math.round(performance.now() - started), ...r });
+            o.audit?.({ ts: new Date().toISOString(), event: "mcp.tool_call", tool: t.name, write: t.write === true, transport: o.transport ?? "stdio", key: o.keyHint ?? "", ...(o.clientHint ? { client: o.clientHint } : {}), args: describeArgs(args as Record<string, unknown>), ms: Math.round(performance.now() - started), ...r });
           } catch {
             /* the log is best effort: a sink that fails must not turn a call into an error or make it run twice */
           }

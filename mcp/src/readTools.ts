@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { seg } from "./api.js";
+import { readPermission } from "./scopes.js";
 import type { ToolDef } from "./tools.js";
 
 /** What scripts/generate.mjs reads from one GET operation of api/openapi/v1.yaml: enough to make a tool, with nothing hand-written about the API. */
@@ -56,6 +57,7 @@ export function toolOf(s: ReadToolSpec): ToolDef {
     name: s.name,
     title: s.title,
     description: `${s.description} ${NOTE}`,
+    ...(readPermission(s.path) ? { scope: readPermission(s.path) } : {}),
     input: Object.fromEntries(s.params.map((p) => [p.arg, argumentOf(p)])),
     run: (args, api) => {
       const path = s.path.replace(/\{([^}]+)\}/g, (_, n: string) => seg(String(args[s.params.find((p) => p.in === "path" && p.name === n)?.arg ?? n])));
