@@ -148,8 +148,8 @@ func (q *Queries) MarkNotificationSent(ctx context.Context, arg MarkNotification
 	return err
 }
 
-const notificationByMessageID = `-- name: NotificationByMessageID :one
-SELECT tenant_id, recipient FROM sent_notifications WHERE smtp_message_id = $1 AND status = 'SENT' ORDER BY sent_at LIMIT 1
+const notificationByMessageID = `-- name: NotificationByMessageID :many
+SELECT tenant_id, recipient FROM sent_notifications WHERE smtp_message_id = $1 AND status = 'SENT' ORDER BY sent_at LIMIT 2
 `
 
 type NotificationByMessageIDRow struct {
@@ -157,12 +157,25 @@ type NotificationByMessageIDRow struct {
 	Recipient string
 }
 
-// The mail a provider's bounce or complaint is about: the tenant it was sent for and the address it went to.
-func (q *Queries) NotificationByMessageID(ctx context.Context, smtpMessageID *string) (NotificationByMessageIDRow, error) {
-	row := q.db.QueryRow(ctx, notificationByMessageID, smtpMessageID)
-	var i NotificationByMessageIDRow
-	err := row.Scan(&i.TenantID, &i.Recipient)
-	return i, err
+// The mail a provider's bounce or complaint is about: the tenant it was sent for and the address it went to. Two rows are enough to see that the id is not unique.
+func (q *Queries) NotificationByMessageID(ctx context.Context, smtpMessageID *string) ([]NotificationByMessageIDRow, error) {
+	rows, err := q.db.Query(ctx, notificationByMessageID, smtpMessageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NotificationByMessageIDRow{}
+	for rows.Next() {
+		var i NotificationByMessageIDRow
+		if err := rows.Scan(&i.TenantID, &i.Recipient); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const recordDelivery = `-- name: RecordDelivery :execrows

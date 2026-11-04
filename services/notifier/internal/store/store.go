@@ -94,18 +94,25 @@ func (n Notifications) Release(ctx context.Context, key string) error {
 }
 
 // ByMessageID finds the sent mail a provider's message id belongs to: the tenant it was sent for (uuid.Nil when it had none) and the address it went to.
+// An id that two different tenants' mail carry (two providers can issue the same one) belongs to nobody: found is false, so one tenant's bounce never suppresses another's address.
 func (n Notifications) ByMessageID(ctx context.Context, messageID string) (tenantID uuid.UUID, recipient string, found bool, err error) {
-	row, err := sqlc.New(n.DB).NotificationByMessageID(ctx, &messageID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, "", false, nil
-	}
-	if err != nil {
+	rows, err := sqlc.New(n.DB).NotificationByMessageID(ctx, &messageID)
+	if err != nil || len(rows) == 0 {
 		return uuid.Nil, "", false, err
 	}
-	if row.TenantID != nil {
-		tenantID = *row.TenantID
+	tenantOf := func(t *uuid.UUID) uuid.UUID {
+		if t == nil {
+			return uuid.Nil
+		}
+		return *t
 	}
-	return tenantID, row.Recipient, true, nil
+	tenantID = tenantOf(rows[0].TenantID)
+	for _, r := range rows[1:] {
+		if tenantOf(r.TenantID) != tenantID {
+			return uuid.Nil, "", false, nil
+		}
+	}
+	return tenantID, rows[0].Recipient, true, nil
 }
 
 // Lookup implements workerx.Inbox: a command whose email was sent gets its NotificationSent again.

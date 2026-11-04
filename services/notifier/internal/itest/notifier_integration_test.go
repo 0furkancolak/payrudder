@@ -284,6 +284,29 @@ func TestNotifier(t *testing.T) {
 		}
 	})
 
+	t.Run("AMessageIdTwoTenantsShareBelongsToNobody", func(t *testing.T) {
+		ctx := context.Background()
+		a, b, other := uuid.New(), uuid.New(), uuid.New()
+		sent := func(tenant uuid.UUID, mid string) {
+			key := uuid.NewString()
+			if _, _, err := notes.Claim(ctx, key, nil, tenant, "command", "payment_failed.v1", "x@example.com"); err != nil {
+				t.Fatal(err)
+			}
+			if err := notes.MarkSent(ctx, key, mid); err != nil {
+				t.Fatal(err)
+			}
+		}
+		sent(a, "shared-id")
+		sent(b, "shared-id")
+		sent(other, "own-id")
+		if _, _, found, err := notes.ByMessageID(ctx, "shared-id"); err != nil || found {
+			t.Fatalf("an id of two tenants must not be attributed to either: found=%v err=%v", found, err)
+		}
+		if tid, _, found, err := notes.ByMessageID(ctx, "own-id"); err != nil || !found || tid != other {
+			t.Fatalf("an id of one tenant is still attributed: %v %v %v", tid, found, err)
+		}
+	})
+
 	t.Run("ProviderRefusalIsPoisonAndFreesTheClaim", func(t *testing.T) {
 		refuse := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
