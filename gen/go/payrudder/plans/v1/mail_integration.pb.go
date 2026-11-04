@@ -41,7 +41,10 @@ type MailIntegration struct {
 	// The part of the key after the tilde; empty for the primary account.
 	Label string `protobuf:"bytes,9,opt,name=label,proto3" json:"label,omitempty"`
 	// The account a mail goes through when no rule names its language.
-	IsDefault     bool `protobuf:"varint,10,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	IsDefault bool `protobuf:"varint,10,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	// True when the account is the organisation's and this app only uses it (docs/plans/10, ADR 0026): it carries no base URL, sender or key hint here, and is changed on
+	// the organisation's screen, not through this service.
+	Inherited     bool `protobuf:"varint,11,opt,name=inherited,proto3" json:"inherited,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -142,6 +145,13 @@ func (x *MailIntegration) GetLabel() string {
 func (x *MailIntegration) GetIsDefault() bool {
 	if x != nil {
 		return x.IsDefault
+	}
+	return false
+}
+
+func (x *MailIntegration) GetInherited() bool {
+	if x != nil {
+		return x.Inherited
 	}
 	return false
 }
@@ -1007,7 +1017,7 @@ var File_payrudder_plans_v1_mail_integration_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_mail_integration_proto_rawDesc = "" +
 	"\n" +
-	")payrudder/plans/v1/mail_integration.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe7\x02\n" +
+	")payrudder/plans/v1/mail_integration.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x03\n" +
 	"\x0fMailIntegration\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x19\n" +
 	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\x12\x12\n" +
@@ -1021,7 +1031,8 @@ const file_payrudder_plans_v1_mail_integration_proto_rawDesc = "" +
 	"\x05label\x18\t \x01(\tR\x05label\x12\x1d\n" +
 	"\n" +
 	"is_default\x18\n" +
-	" \x01(\bR\tisDefault\"\x1b\n" +
+	" \x01(\bR\tisDefault\x12\x1c\n" +
+	"\tinherited\x18\v \x01(\bR\tinherited\"\x1b\n" +
 	"\x19GetMailIntegrationRequest\"\xc2\x01\n" +
 	"\x1aGetMailIntegrationResponse\x12\x1c\n" +
 	"\tconnected\x18\x01 \x01(\bR\tconnected\x12E\n" +

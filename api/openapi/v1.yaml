@@ -3626,6 +3626,120 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/integrations/mail:
+    get:
+      operationId: appListOrganisationMailAccounts
+      tags: [Product]
+      summary: The e-mail accounts the organisation shares among its apps, with the apps that use each (any member)
+      description: |
+        An organisation-level account is set up once and used by several apps (ADR 0026; e-mail only, payment and e-invoice accounts stay per app). It is sealed to the
+        organisation, never to an app, and the key is never in the answer. `can_write` says whether the caller is an owner or an administrator.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppListOrganisationMailAccountsResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appPutOrganisationMailAccount
+      tags: [Product]
+      summary: Connect (or replace) an e-mail account of the organisation (owners and administrators)
+      description: |
+        The provider is asked to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed to the
+        organisation and the account key, shown once and never echoed back. Replacing a key keeps the apps that use the account on it. Recorded in the organisation's audit trail
+        without the key or its hint.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppPutMailIntegrationRequest" }
+      responses:
+        "200": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/OrganisationMailAccount" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: appRemoveOrganisationMailAccount
+      tags: [Product]
+      summary: Disconnect an e-mail account of the organisation (owners and administrators)
+      description: "The account named by `account`. While apps use it nothing is removed (409 plans.mail_integration.shared_in_use, which names them); stop them using it first."
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+        - { name: account, in: query, required: true, schema: { $ref: "#/components/schemas/MailAccountKey" } }
+      responses:
+        "204": { description: Removed }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/account/integrations/mail/test:
+    post:
+      operationId: appTestOrganisationMailAccount
+      tags: [Product]
+      summary: Check the stored key of an organisation account at the provider and send one test mail through it (owners and administrators)
+      description: A provider problem is ok false with its kind, not an HTTP error; what was found is stored on the account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppTestMailIntegrationRequest" }
+      responses:
+        "200": { description: The result, content: { application/json: { schema: { $ref: "#/components/schemas/AppTestMailIntegrationResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/integrations/mail/bind:
+    post:
+      operationId: appBindOrganisationMailAccount
+      tags: [Product]
+      summary: Make an app of the organisation use one of its e-mail accounts (owners and administrators)
+      description: |
+        The account then appears among the app's own accounts as inherited: it can be the app's default and be named by its routing rules like any other, but it is changed and
+        removed here, not on the app (409 plans.mail_integration.inherited). 409 plans.mail_integration.account_exists when the app already has an own account with the same key.
+        The credential never reaches the app. Recorded in the app's trail and the organisation's.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppBindOrganisationMailRequest" }
+      responses:
+        "200": { description: Bound (or already was), content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/account/integrations/mail/unbind:
+    post:
+      operationId: appUnbindOrganisationMailAccount
+      tags: [Product]
+      summary: Stop an app from using an e-mail account of the organisation (owners and administrators)
+      description: "The app's default cannot be unbound while it has other accounts (409 plans.mail_integration.default_in_use). The rules that name the account go with it."
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppUnbindOrganisationMailRequest" }
+      responses:
+        "200": { description: Unbound, content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /app/v1/account/invitations:
     get:
       operationId: appListInvitations
@@ -9494,6 +9608,48 @@ components:
         connected: { type: boolean, description: At least one account is connected. }
         integration: { allOf: [{ $ref: "#/components/schemas/MailIntegration" }], nullable: true, description: The default account. }
         accounts: { type: array, items: { $ref: "#/components/schemas/MailIntegration" }, description: "Every account, the default first." }
+    OrganisationMailApp:
+      type: object
+      required: [app_id, name, is_default]
+      properties:
+        app_id: { type: string, format: uuid }
+        name: { type: string }
+        is_default: { type: boolean, description: The account is that app's default sender. }
+    OrganisationMailAccount:
+      type: object
+      description: An e-mail account of the organisation. The key is never returned.
+      required: [id, account, provider, label, base_url, from, key_hint, update_time, check_problem, used_by]
+      properties:
+        id: { type: string, format: uuid }
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+        provider: { type: string, enum: [nafru] }
+        label: { type: string }
+        base_url: { type: string }
+        from: { type: string }
+        key_hint: { type: string, description: The last four characters of the stored key }
+        update_time: { type: string, format: date-time }
+        checked_time: { type: string, format: date-time, description: When the provider last accepted the key. }
+        check_problem: { type: string, enum: ["", unreachable, refused] }
+        used_by: { type: array, items: { $ref: "#/components/schemas/OrganisationMailApp" } }
+    AppListOrganisationMailAccountsResponse:
+      type: object
+      required: [accounts, can_write]
+      properties:
+        accounts: { type: array, items: { $ref: "#/components/schemas/OrganisationMailAccount" } }
+        can_write: { type: boolean, description: The caller is an owner or an administrator of the organisation. }
+    AppBindOrganisationMailRequest:
+      type: object
+      required: [account, app_id]
+      properties:
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+        app_id: { type: string, format: uuid }
+        make_default: { type: boolean, description: Make it the app's default sender. The app's first account is the default whatever this says. }
+    AppUnbindOrganisationMailRequest:
+      type: object
+      required: [account, app_id]
+      properties:
+        account: { $ref: "#/components/schemas/MailAccountKey" }
+        app_id: { type: string, format: uuid }
     AppPutMailIntegrationRequest:
       type: object
       required: [provider, base_url, api_key, from]
@@ -12798,6 +12954,7 @@ components:
         account: { $ref: "#/components/schemas/MailAccountKey" }
         label: { type: string, description: The part of the key after the tilde; empty for the primary account. }
         is_default: { type: boolean, description: The account a mail goes through when no rule names its language. }
+        inherited: { type: boolean, description: "The account is the organisation's and this app only uses it; base_url, from and key_hint are empty here and it is changed on the organisation's screen." }
         base_url: { type: string }
         from: { type: string }
         key_hint: { type: string, description: The last four characters of the stored key }

@@ -442,6 +442,7 @@ export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { 
       [`${base}/integrations/mail/routing`]: { rules: [] },
       [`${base}/integrations/payment-accounts/health`]: { accounts: [] },
       [`${base}/integrations/audit`]: { events: [], next_page_token: "" },
+      "/app/v1/account/integrations/mail": { accounts: [], can_write: true },
     };
     return c.path in answers ? { body: answers[c.path] } : undefined;
   });

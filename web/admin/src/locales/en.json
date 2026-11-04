@@ -3311,7 +3311,10 @@
         "not_connected": "No e-mail provider is connected.",
         "seal_failed": "The key could not be stored. Try again.",
         "default_in_use": "This is the default e-mail account. Make another account the default first, then remove this one.",
-        "unknown_account": "A rule names an e-mail account that is not connected."
+        "unknown_account": "A rule names an e-mail account that is not connected.",
+        "inherited": "This e-mail account belongs to the organisation. Change or remove it on the organisation's integrations page.",
+        "shared_in_use": "Apps still use this shared account. Stop them using it first.",
+        "account_exists": "This app already has its own e-mail account with that name. Remove it, or give the shared account another label."
       },
       "saas": {
         "disabled": "Plans are not enabled on this installation.",
@@ -4979,7 +4982,33 @@
           "noTargets": "Add a second payment account to choose where charges can fail over to."
         }
       },
-      "unread": "Could not be read"
+      "unread": "Could not be read",
+      "orgMail": {
+        "title": "Shared e-mail accounts",
+        "intro": "Set up an e-mail provider account once for the whole organisation and let several apps send through it. The key stays with the organisation and is never given to an app. Payment and e-invoice accounts are still set up on each app.",
+        "add": "Add shared account",
+        "empty": "No shared e-mail account yet.",
+        "inherited": "Inherited from the organisation",
+        "inheritedNote": "This account is set up for the whole organisation. It can be this app's default and be named by the rules below; to change or remove it, use the organisation's integrations page.",
+        "usedBy": "Used by {apps}",
+        "unused": "No app uses it yet.",
+        "useIn": "Use in an app",
+        "app": "App",
+        "makeDefault": "Make it the app's default",
+        "use": "Use",
+        "stop": "Stop using",
+        "confirmStop": "Stop {app} from using {name}? Its mail goes through its other accounts, or Payrudder's built-in sender if it has none.",
+        "remove": "Remove",
+        "confirmRemove": "Remove the shared account {name}? No app uses it.",
+        "test": "Send test mail",
+        "testTo": "Send the test mail to",
+        "testOk": "Test mail sent to {to}.",
+        "sheetTitle": "Shared e-mail account (Nafru Email)",
+        "sheetIntro": "The key is checked at the provider before it is stored, is typed once and is never shown again. Apps that use this account keep using it when you replace the key.",
+        "saved": "{name} saved for the organisation.",
+        "readOnly": "Only owners and administrators can change shared accounts.",
+        "noApps": "No app has a live environment to use it yet."
+      }
     },
     "envSwitch": {
       "open": "Environment: {env}. Switch environment",
@@ -6558,7 +6587,11 @@
         "saved": "Mail provider connected",
         "removed": "Mail provider disconnected",
         "default_set": "Default mail account changed",
-        "routing_changed": "Mail routing changed"
+        "routing_changed": "Mail routing changed",
+        "org_saved": "Organisation mail account connected",
+        "org_removed": "Organisation mail account disconnected",
+        "org_bound": "App now uses an organisation mail account",
+        "org_unbound": "App stopped using an organisation mail account"
       },
       "go_live": {
         "billing_profile_saved": "Billing profile saved",

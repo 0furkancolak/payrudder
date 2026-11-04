@@ -74,7 +74,9 @@ type Deps struct {
 	Identity        plansv1.IdentityServiceClient
 	Webhooks        plansv1.WebhookServiceClient
 	MailIntegration plansv1.MailIntegrationServiceClient
-	Support         plansv1.SupportServiceClient
+	// OrganisationMail is the organisation-level e-mail accounts (ADR 0026).
+	OrganisationMail plansv1.OrganisationMailServiceClient
+	Support          plansv1.SupportServiceClient
 	// Mail is the notifier's signed HTTP side (the suppression list, the message log, the preview of a notice); nil answers 503 gateway.mail.unavailable.
 	Mail MailAdmin
 	// Contracts serves the agreements and their evidence; the hosted payment pages ask it before a payment starts. Nil (tests only) means no agreements are asked for.

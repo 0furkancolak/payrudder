@@ -3311,7 +3311,10 @@
         "not_connected": "Bağlı bir e-posta sağlayıcısı yok.",
         "seal_failed": "Anahtar saklanamadı. Yeniden deneyin.",
         "default_in_use": "Bu, varsayılan e-posta hesabı. Önce başka bir hesabı varsayılan yapın, sonra bunu kaldırın.",
-        "unknown_account": "Bir kural, bağlı olmayan bir e-posta hesabını gösteriyor."
+        "unknown_account": "Bir kural, bağlı olmayan bir e-posta hesabını gösteriyor.",
+        "inherited": "Bu e-posta hesabı kuruluşa aittir. Kuruluşun entegrasyonlar sayfasından değiştirin veya kaldırın.",
+        "shared_in_use": "Bu ortak hesabı hâlâ uygulamalar kullanıyor. Önce onların kullanmasını bırakın.",
+        "account_exists": "Bu uygulamanın aynı adlı kendi e-posta hesabı zaten var. Onu kaldırın veya ortak hesaba başka bir etiket verin."
       },
       "saas": {
         "disabled": "Bu kurulumda planlar etkin değil.",
@@ -4979,7 +4982,33 @@
           "noTargets": "Tahsilatların nereye geçebileceğini seçmek için ikinci bir ödeme hesabı ekleyin."
         }
       },
-      "unread": "Okunamadı"
+      "unread": "Okunamadı",
+      "orgMail": {
+        "title": "Ortak e-posta hesapları",
+        "intro": "Bir e-posta sağlayıcı hesabını tüm kuruluş için bir kez kurun ve birkaç uygulamanın onun üzerinden göndermesini sağlayın. Anahtar kuruluşta kalır, hiçbir uygulamaya verilmez. Ödeme ve e-fatura hesapları hâlâ her uygulamada ayrı kurulur.",
+        "add": "Ortak hesap ekle",
+        "empty": "Henüz ortak e-posta hesabı yok.",
+        "inherited": "Kuruluştan devralındı",
+        "inheritedNote": "Bu hesap tüm kuruluş için kurulmuştur. Bu uygulamanın varsayılanı olabilir ve aşağıdaki kurallarda adıyla seçilebilir; değiştirmek veya kaldırmak için kuruluşun entegrasyonlar sayfasını kullanın.",
+        "usedBy": "Kullanan: {apps}",
+        "unused": "Henüz hiçbir uygulama kullanmıyor.",
+        "useIn": "Bir uygulamada kullan",
+        "app": "Uygulama",
+        "makeDefault": "Uygulamanın varsayılanı yap",
+        "use": "Kullan",
+        "stop": "Kullanmayı bırak",
+        "confirmStop": "{app} uygulaması {name} hesabını kullanmayı bıraksın mı? E-postaları diğer hesaplarından, hiç hesabı yoksa Payrudder'ın yerleşik göndericisinden gider.",
+        "remove": "Kaldır",
+        "confirmRemove": "{name} ortak hesabı kaldırılsın mı? Hiçbir uygulama kullanmıyor.",
+        "test": "Deneme e-postası gönder",
+        "testTo": "Deneme e-postasının gideceği adres",
+        "testOk": "Deneme e-postası {to} adresine gönderildi.",
+        "sheetTitle": "Ortak e-posta hesabı (Nafru Email)",
+        "sheetIntro": "Anahtar saklanmadan önce sağlayıcıda denetlenir, bir kez yazılır ve bir daha gösterilmez. Anahtarı değiştirdiğinizde bu hesabı kullanan uygulamalar kullanmaya devam eder.",
+        "saved": "{name} kuruluş için kaydedildi.",
+        "readOnly": "Ortak hesapları yalnızca sahipler ve yöneticiler değiştirebilir.",
+        "noApps": "Henüz canlı ortamı olan bir uygulama yok."
+      }
     },
     "envSwitch": {
       "open": "Ortam: {env}. Ortamı değiştir",
@@ -6558,7 +6587,11 @@
         "saved": "E-posta sağlayıcısı bağlandı",
         "removed": "E-posta sağlayıcısının bağlantısı kaldırıldı",
         "default_set": "Varsayılan e-posta hesabı değişti",
-        "routing_changed": "E-posta yönlendirmesi değişti"
+        "routing_changed": "E-posta yönlendirmesi değişti",
+        "org_saved": "Kuruluş e-posta hesabı bağlandı",
+        "org_removed": "Kuruluş e-posta hesabı kaldırıldı",
+        "org_bound": "Uygulama bir kuruluş e-posta hesabını kullanmaya başladı",
+        "org_unbound": "Uygulama bir kuruluş e-posta hesabını kullanmayı bıraktı"
       },
       "go_live": {
         "billing_profile_saved": "Fatura profili kaydedildi",

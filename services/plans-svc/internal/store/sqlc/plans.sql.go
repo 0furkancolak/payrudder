@@ -432,7 +432,7 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 }
 
 const getDefaultMailIntegration = `-- name: GetDefaultMailIntegration :one
-SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND is_default
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default, shared_account_id FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND is_default
 `
 
 func (q *Queries) GetDefaultMailIntegration(ctx context.Context) (TenantMailIntegration, error) {
@@ -450,6 +450,7 @@ func (q *Queries) GetDefaultMailIntegration(ctx context.Context) (TenantMailInte
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsDefault,
+		&i.SharedAccountID,
 	)
 	return i, err
 }
@@ -471,7 +472,7 @@ func (q *Queries) GetMailDisabled(ctx context.Context) (GetMailDisabledRow, erro
 }
 
 const getMailIntegration = `-- name: GetMailIntegration :one
-SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = $1
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default, shared_account_id FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() AND provider = $1
 `
 
 func (q *Queries) GetMailIntegration(ctx context.Context, account string) (TenantMailIntegration, error) {
@@ -489,6 +490,7 @@ func (q *Queries) GetMailIntegration(ctx context.Context, account string) (Tenan
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsDefault,
+		&i.SharedAccountID,
 	)
 	return i, err
 }
@@ -1717,7 +1719,7 @@ func (q *Queries) ListLiveSubscriptionsOnVersion(ctx context.Context, planVersio
 }
 
 const listMailIntegrations = `-- name: ListMailIntegrations :many
-SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() ORDER BY is_default DESC, provider
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default, shared_account_id FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id() ORDER BY is_default DESC, provider
 `
 
 // The tenant's own e-mail provider accounts (phase 53, plan 10). The key is sealed; plans-svc's own commands open it. An account is named by its key in `provider`
@@ -1743,6 +1745,7 @@ func (q *Queries) ListMailIntegrations(ctx context.Context) ([]TenantMailIntegra
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsDefault,
+			&i.SharedAccountID,
 		); err != nil {
 			return nil, err
 		}
@@ -2980,7 +2983,7 @@ VALUES (app_tenant_id(), $1, $2, $3, $4, $5, now(), '', $6)
 ON CONFLICT (tenant_id, provider) DO UPDATE SET base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
   key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now(),
   is_default = tenant_mail_integrations.is_default OR EXCLUDED.is_default
-RETURNING tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default
+RETURNING tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at, is_default, shared_account_id
 `
 
 type UpsertMailIntegrationParams struct {
@@ -3015,6 +3018,7 @@ func (q *Queries) UpsertMailIntegration(ctx context.Context, arg UpsertMailInteg
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsDefault,
+		&i.SharedAccountID,
 	)
 	return i, err
 }

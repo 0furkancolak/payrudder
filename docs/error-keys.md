@@ -523,12 +523,15 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `plans.fee.invalid_period`
 - `plans.fee.not_period_start`
 - `plans.mail.unknown_category`
+- `plans.mail_integration.account_exists`
 - `plans.mail_integration.default_in_use`
+- `plans.mail_integration.inherited`
 - `plans.mail_integration.live_only`
 - `plans.mail_integration.not_configured`
 - `plans.mail_integration.not_connected`
 - `plans.mail_integration.refused`
 - `plans.mail_integration.seal_failed`
+- `plans.mail_integration.shared_in_use`
 - `plans.mail_integration.unknown_account`
 - `plans.mail_integration.unreachable`
 - `plans.meter.changed_concurrently`

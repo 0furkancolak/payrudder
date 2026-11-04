@@ -137,6 +137,41 @@ export function useSetMailRouting(appId: MaybeRefOrGetter<string>) {
 }
 
 /**
+ * The organisation's own e-mail accounts, which several apps use (ADR 0026). They belong to the organisation the session works in (the client names it), are written by
+ * owners and administrators and read by every member, and the credential goes up once and is never in an answer. An app's own list shows what it uses as inherited.
+ */
+export const organisationMailKeys = { list: ["app", "account", "integrations", "mail"] as const };
+
+export function useOrganisationMail(on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: organisationMailKeys.list,
+    queryFn: () => unwrap(api.GET("/app/v1/account/integrations/mail")),
+    enabled: computed(() => toValue(on)),
+  });
+}
+
+export function useOrganisationMailActions() {
+  const queries = useQueryClient();
+  // Binding changes what an app lists and routes to, so the apps' own e-mail reads are stale too.
+  const done = () => Promise.all([queries.invalidateQueries({ queryKey: organisationMailKeys.list }), queries.invalidateQueries({ queryKey: ["app", "apps"] })]);
+  return {
+    save: useMutation({
+      mutationFn: (v: { baseUrl: string; apiKey: string; from: string; label?: string }) =>
+        unwrap(api.PUT("/app/v1/account/integrations/mail", { body: { provider: "nafru", base_url: v.baseUrl, api_key: v.apiKey, from: v.from, ...(v.label ? { label: v.label } : {}) } })),
+      onSuccess: done,
+    }),
+    remove: useMutation({ mutationFn: (account: string) => unwrap(api.DELETE("/app/v1/account/integrations/mail", { params: { query: { account } } })), onSuccess: done }),
+    test: useMutation({ mutationFn: (v: { to: string; account: string }) => unwrap(api.POST("/app/v1/account/integrations/mail/test", { body: v })), onSettled: done }),
+    bind: useMutation({
+      mutationFn: (v: { account: string; appId: string; makeDefault?: boolean }) =>
+        unwrap(api.POST("/app/v1/account/integrations/mail/bind", { body: { account: v.account, app_id: v.appId, ...(v.makeDefault ? { make_default: true } : {}) } })),
+      onSuccess: done,
+    }),
+    unbind: useMutation({ mutationFn: (v: { account: string; appId: string }) => unwrap(api.POST("/app/v1/account/integrations/mail/unbind", { body: { account: v.account, app_id: v.appId } })), onSuccess: done }),
+  };
+}
+
+/**
  * What the worker last saw of each live payment account (the periodic check, the circuit breaker) and the account a charge fails over to (docs/provider-health.md).
  * Not a check now: the go-live check of an account is `useLiveProviders`.
  */

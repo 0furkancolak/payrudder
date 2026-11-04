@@ -44,6 +44,10 @@ func TestSecretsReseal(t *testing.T) {
 	}
 	ada := e.verified(t, "ada@reseal.example", "Reseal Co")
 	e.enableTwoFactor(t, ada)
+	// An organisation's mail account (ADR 0026) is a fifth place; the binding of an app to it holds no box (NULL), so it is no sixth.
+	if _, err := e.orgmail.PutOrganisationMailAccount(t.Context(), &plansv1.PutOrganisationMailAccountRequest{UserId: ada.id, AccountId: ada.account, Provider: "nafru", BaseUrl: nafru.URL, ApiKey: "nk_org_key_5678", From: "Acme <billing@acme.example>"}); err != nil {
+		t.Fatal(err)
+	}
 
 	k1, k2 := make([]byte, 32), bytes.Repeat([]byte{2}, 32)
 	ring, _ := secretbox.NewRing(2, map[byte][]byte{1: k1, 2: k2})
@@ -96,6 +100,13 @@ func TestSecretsReseal(t *testing.T) {
 	}
 	if got, err := only2.Open(mailKey, []byte("mail-integration:"+live)); err != nil || string(got) != "nk_good_key_1234" {
 		t.Errorf("the mail key under key 2 = %q, %v", got, err)
+	}
+	var orgKey []byte
+	if err := e.system.QueryRow(t.Context(), `SELECT api_key_enc FROM organisation_mail_accounts WHERE account_id = $1::uuid`, ada.account).Scan(&orgKey); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := only2.Open(orgKey, []byte("org-mail-account:"+ada.account+":nafru")); err != nil || string(got) != "nk_org_key_5678" {
+		t.Errorf("the organisation's mail key under key 2 = %q, %v", got, err)
 	}
 	if len(totp) == 0 || totp[0] != 2 {
 		t.Errorf("the two-factor secret starts with %v: it was not sealed again", totp[:1])

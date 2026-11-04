@@ -32,6 +32,11 @@ describe("the accounts of an app as one list", () => {
     expect(rows.find((r) => r.id === "mail:nafru")).toMatchObject({ key: "nafru", isDefault: true, state: "working" });
     expect(rows.find((r) => r.id === "mail:builtin")).toMatchObject({ key: "", state: "unused", isDefault: false });
   });
+  it("marks an e-mail account the organisation owns as inherited, and an app's own as not", () => {
+    const rows = accountEntries({ payments: [], eInvoice: [], mail: { connected: true, integration: nafru, accounts: [nafru, { ...nafruEu, inherited: true }] } });
+    expect(rows.filter((r) => r.kind === "mail" && r.key !== "").map((r) => [r.key, r.inherited])).toEqual([["nafru", false], ["nafru~eu", true]]);
+  });
+
   it("reads a gateway that only knows the default e-mail account as one account", () => {
     expect(mailAccounts({ connected: true, integration: { provider: "nafru", from: "a@b.c" } })).toEqual([{ provider: "nafru", from: "a@b.c", account: "nafru", is_default: true }]);
     expect(mailAccounts({ connected: false, integration: null })).toEqual([]);

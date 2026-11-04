@@ -6,7 +6,9 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -25,6 +27,14 @@ var Languages = []string{"en", "tr", "de", "fr", "es", "ar"}
 type Queries struct {
 	db  *store.DB
 	box *secretbox.Box
+	// sys reads the organisation's accounts (a global table the app role cannot see); nil means an app's binding to one cannot be opened.
+	sys *pgxpool.Pool
+}
+
+// WithOrganisations lets ResolveSender open the account an app's binding names, on the system pool.
+func (q *Queries) WithOrganisations(sys *pgxpool.Pool) *Queries {
+	q.sys = sys
+	return q
 }
 
 // New returns the mail integration queries.
@@ -39,10 +49,16 @@ func AAD(tenantID, account string) []byte {
 	return []byte("mail-integration:" + tenantID + ":" + account)
 }
 
+// SharedAAD binds an organisation's key to the organisation and the account key, never to an app: the same box serves every app that uses the account. The reseal job
+// writes it too (pkg/secretbox/reseal/places.go).
+func SharedAAD(organisationID, account string) []byte {
+	return []byte("org-mail-account:" + organisationID + ":" + account)
+}
+
 // Message maps a row (never the key).
 func Message(r sqlc.TenantMailIntegration) *plansv1.MailIntegration {
 	out := &plansv1.MailIntegration{Provider: payments.BaseProvider(r.Provider), BaseUrl: r.BaseUrl, From: r.FromAddress, KeyHint: r.KeyHint, UpdateTime: timestamppb.New(r.UpdatedAt),
-		CheckProblem: r.CheckProblem, Account: r.Provider, Label: payments.AccountLabel(r.Provider), IsDefault: r.IsDefault}
+		CheckProblem: r.CheckProblem, Account: r.Provider, Label: payments.AccountLabel(r.Provider), IsDefault: r.IsDefault, Inherited: r.SharedAccountID != nil}
 	if r.CheckedAt != nil {
 		out.CheckedTime = timestamppb.New(*r.CheckedAt)
 	}
@@ -67,12 +83,40 @@ type Sender struct {
 	Account, Provider, BaseURL, APIKey, From string
 }
 
-func (q *Queries) sender(r sqlc.TenantMailIntegration, tenantID string) (*Sender, error) {
+func (q *Queries) sender(ctx context.Context, r sqlc.TenantMailIntegration, tenantID string) (*Sender, error) {
+	if r.SharedAccountID != nil {
+		return q.sharedSender(ctx, *r.SharedAccountID)
+	}
 	key, err := q.open(r.ApiKeyEnc, tenantID, r.Provider)
 	if err != nil {
 		return nil, err
 	}
 	return &Sender{Account: r.Provider, Provider: payments.BaseProvider(r.Provider), BaseURL: r.BaseUrl, APIKey: key, From: r.FromAddress}, nil
+}
+
+// sharedSender opens an organisation's account for one mail. A binding whose account is gone is an error, not "no account": the mail must not silently leave through
+// another sender.
+func (q *Queries) sharedSender(ctx context.Context, id uuid.UUID) (*Sender, error) {
+	if q.sys == nil {
+		return nil, errors.New("mail integration: the organisation's accounts are not wired")
+	}
+	row, err := sqlc.New(q.sys).GetOrganisationMailAccountByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	key, err := q.openShared(row)
+	if err != nil {
+		return nil, err
+	}
+	return &Sender{Account: row.Provider, Provider: payments.BaseProvider(row.Provider), BaseURL: row.BaseUrl, APIKey: key, From: row.FromAddress}, nil
+}
+
+func (q *Queries) openShared(row sqlc.OrganisationMailAccount) (string, error) {
+	if q.box == nil {
+		return "", errors.New("mail integration: PAYRUDDER_SECRETS_KEY is not set, the stored key cannot be opened")
+	}
+	b, err := q.box.Open(row.ApiKeyEnc, SharedAAD(row.AccountID.String(), row.Provider))
+	return string(b), err
 }
 
 // Account returns the account named by key with its key in plaintext, or the default account when key is empty; nil when the tenant has no such account.
@@ -96,7 +140,7 @@ func (q *Queries) Account(ctx context.Context, account string) (*Sender, error) 
 		if err != nil {
 			return err
 		}
-		out, err = q.sender(r, t.ID.String())
+		out, err = q.sender(ctx, r, t.ID.String())
 		return err
 	})
 	return out, convert.Err(err, "mail integration")
@@ -127,7 +171,7 @@ func (q *Queries) ResolveSender(ctx context.Context, language string) (*Sender, 
 		if err != nil {
 			return err
 		}
-		out, err = q.sender(r, t.ID.String())
+		out, err = q.sender(ctx, r, t.ID.String())
 		return err
 	})
 	return out, convert.Err(err, "mail integration")

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -48,6 +49,14 @@ type Commands struct {
 	qry          *mailqry.Queries
 	client       *http.Client
 	allowPrivate bool
+	// pool is the system pool, where the organisation's accounts live (organisation.go); nil: none can be made.
+	pool *pgxpool.Pool
+}
+
+// WithOrganisations enables the organisation-level accounts on the system pool.
+func (c *Commands) WithOrganisations(pool *pgxpool.Pool) *Commands {
+	c.pool = pool
+	return c
 }
 
 // New returns the commands. box seals the key (nil: no connection can be made).
@@ -138,6 +147,9 @@ func (c *Commands) Put(ctx context.Context, req *plansv1.PutMailIntegrationReque
 		if err != nil {
 			return err
 		}
+		if slices.ContainsFunc(existing, func(e sqlc.TenantMailIntegration) bool { return e.Provider == account && e.SharedAccountID != nil }) {
+			return inheritedError()
+		}
 		makeDefault := req.GetMakeDefault() || len(existing) == 0
 		if makeDefault {
 			if err := q.ClearDefaultMailIntegration(ctx); err != nil {
@@ -184,6 +196,9 @@ func (c *Commands) Delete(ctx context.Context, account string) error {
 		if i < 0 {
 			return errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no such e-mail account is connected")
 		}
+		if all[i].SharedAccountID != nil {
+			return inheritedError()
+		}
 		if all[i].IsDefault && len(all) > 1 {
 			return errkey.New(codes.FailedPrecondition, "plans.mail_integration.default_in_use", "this is the default account: make another one the default first")
 		}
@@ -193,6 +208,11 @@ func (c *Commands) Delete(ctx context.Context, account string) error {
 		return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "mail_integration.removed", TargetType: "mail_integration", TargetID: all[i].Provider,
 			Summary: "disconnected the mail account " + all[i].Provider, Detail: map[string]any{"account": all[i].Provider}})
 	}), "mail integration")
+}
+
+// inheritedError refuses a change to an account the organisation owns, from the app that only uses it.
+func inheritedError() error {
+	return errkey.New(codes.FailedPrecondition, "plans.mail_integration.inherited", "this account belongs to the organisation: change or remove it on the organisation's screen")
 }
 
 // checkAccount refuses a request that names an account that is not a key ("" is the default).
