@@ -163,6 +163,9 @@ CREATE INDEX ON api_keys (tenant_id);
 -- phase 53, plan 10: a live tenant's own e-mail provider accounts (Nafru Email), forced RLS. An account is named by its key in `provider` ("nafru", "nafru~eu"); one per tenant is the
 -- default (partial unique index). The API key is sealed (secretbox, AAD "mail-integration:<tenant>", for a labelled account "...:<tenant>:<key>"). Migration 00027.
 CREATE TABLE tenant_mail_integrations (tenant_id uuid, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text, is_default boolean, PRIMARY KEY (tenant_id, provider));
+-- ADR 0026, migration 00039 (tenant twin 00026): `shared_account_id uuid` on tenant_mail_integrations names an organisation's account; such a row is a binding (api_key_enc NULL, base_url '' and from_address ''), CHECKed.
+-- A global table of the pooled database, system role only (no plans_app grant): an organisation's e-mail account several of its apps use. Key sealed with AAD "org-mail-account:<account id>:<key>".
+CREATE TABLE organisation_mail_accounts (id uuid PRIMARY KEY, account_id uuid REFERENCES accounts, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text, created_at timestamptz, updated_at timestamptz, UNIQUE (account_id, provider));
 -- which account sends the mail of a language (en tr de fr es ar); a rule is deleted with the account it names. A language with no rule goes through the default account.
 CREATE TABLE tenant_mail_routing (tenant_id uuid, language text, account text, updated_at timestamptz, PRIMARY KEY (tenant_id, language), FOREIGN KEY (tenant_id, account) REFERENCES tenant_mail_integrations ON DELETE CASCADE);
 -- the trial-ending reminder's "already reminded" marker, forced RLS. Keyed by the customer and the end of the trial, so a plan change that keeps the end does not remind again

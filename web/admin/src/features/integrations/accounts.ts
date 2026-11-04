@@ -24,6 +24,8 @@ export interface AccountEntry {
   /** The one a charge, a document or a mail goes to when no rule names another; the built-in sender is "in use" while no e-mail account is connected. */
   isDefault: boolean;
   mode: string;
+  /** An e-mail account the organisation owns and this app only uses (ADR 0026): it is changed on the organisation's screen, not here. */
+  inherited?: boolean;
 }
 
 export interface EInvoiceAccountView {
@@ -49,6 +51,7 @@ export interface MailAccountView {
   key_hint?: string;
   check_problem?: string;
   is_default?: boolean;
+  inherited?: boolean;
 }
 
 interface MailView {
@@ -76,7 +79,7 @@ export function accountEntries(input: { payments: readonly AccountView[] | undef
   out.push({ id: "mail:builtin", kind: "mail", key: "", provider: "payrudderMail", label: "", state: own.length > 0 ? "unused" : "always", problem: null, isDefault: own.length === 0, mode: "" });
   for (const a of own) {
     const key = a.account ?? "nafru";
-    out.push({ id: `mail:${key}`, kind: "mail", key, provider: a.provider ?? splitAccountKey(key).provider, label: a.label ?? splitAccountKey(key).label, state: a.check_problem ? "problem" : "working", problem: null, isDefault: a.is_default === true, mode: "" });
+    out.push({ id: `mail:${key}`, kind: "mail", key, provider: a.provider ?? splitAccountKey(key).provider, label: a.label ?? splitAccountKey(key).label, state: a.check_problem ? "problem" : "working", problem: null, isDefault: a.is_default === true, mode: "", inherited: a.inherited === true });
   }
   return out.sort((a, b) => ACCOUNT_KINDS.indexOf(a.kind) - ACCOUNT_KINDS.indexOf(b.kind) || a.provider.localeCompare(b.provider) || a.label.localeCompare(b.label));
 }

@@ -48,6 +48,9 @@ message MailIntegration {
   string label = 9;
   // The account a mail goes through when no rule names its language.
   bool is_default = 10;
+  // True when the account is the organisation's and this app only uses it (docs/plans/10, ADR 0026): it carries no base URL, sender or key hint here, and is changed on
+  // the organisation's screen, not through this service.
+  bool inherited = 11;
 }
 
 message GetMailIntegrationRequest {}

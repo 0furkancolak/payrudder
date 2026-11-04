@@ -167,9 +167,11 @@ func newWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpo
 }
 
 // newMailIntegration returns the service for a tenant's own e-mail provider on the same database as s. box seals the key (nil: none can be connected).
-func newMailIntegration(s *Server, box *secretbox.Box, allowPrivate bool) *mailintegrationapi.Handler {
-	qry := mailintegrationqry.New(s.db, box)
-	return mailintegrationapi.New(mailintegrationcmd.New(s.db, box, qry, allowPrivate), qry)
+// systemPool reads the organisation's shared accounts (ADR 0026), which an app's binding names and no tenant owns.
+func newMailIntegration(s *Server, box *secretbox.Box, allowPrivate bool, systemPool *pgxpool.Pool) (*mailintegrationapi.Handler, *mailintegrationapi.OrganisationHandler) {
+	qry := mailintegrationqry.New(s.db, box).WithOrganisations(systemPool)
+	cmd := mailintegrationcmd.New(s.db, box, qry, allowPrivate).WithOrganisations(systemPool)
+	return mailintegrationapi.New(cmd, qry), mailintegrationapi.NewOrganisation(cmd)
 }
 
 // newAffiliates returns the affiliate program service on the same database as s.

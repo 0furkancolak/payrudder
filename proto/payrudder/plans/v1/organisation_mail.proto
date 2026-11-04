@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// OrganisationMailService holds the e-mail provider accounts that belong to an organisation and that several of its apps use (docs/plans/10, ADR 0026). Every call carries
+// the signed-in person (user_id, resolved by the gateway from the session) and the organisation (account_id); the person's role there decides: an owner or an
+// administrator writes, any other member reads. The credential is sealed to the organisation and the account key, never to an app, and never leaves plans-svc: an app
+// that uses the account holds a binding (a row of its own e-mail accounts that names it) and the notifier's ResolveMailSender opens the key for one mail.
+//
+// Only e-mail is here. Payment and e-invoice accounts are still per app (ADR 0026: they need the migration of the payment path).
+service OrganisationMailService {
+  // ListOrganisationMailAccounts returns the organisation's accounts without their keys, each with the apps that use it.
+  rpc ListOrganisationMailAccounts(ListOrganisationMailAccountsRequest) returns (ListOrganisationMailAccountsResponse);
+  // PutOrganisationMailAccount checks the key at the provider and stores (or replaces) the account.
+  rpc PutOrganisationMailAccount(PutOrganisationMailAccountRequest) returns (PutOrganisationMailAccountResponse);
+  // DeleteOrganisationMailAccount removes an account no app uses. While apps use it the answer is 409 plans.mail_integration.shared_in_use and names them.
+  rpc DeleteOrganisationMailAccount(DeleteOrganisationMailAccountRequest) returns (DeleteOrganisationMailAccountResponse);
+  // TestOrganisationMailAccount checks the key at the provider and sends one test mail to the address.
+  rpc TestOrganisationMailAccount(TestOrganisationMailAccountRequest) returns (TestOrganisationMailAccountResponse);
+  // BindOrganisationMailAccount makes an app of the organisation use the account: it appears among the app's own accounts as inherited, and can be its default and routed
+  // by language like any other.
+  rpc BindOrganisationMailAccount(BindOrganisationMailAccountRequest) returns (BindOrganisationMailAccountResponse);
+  // UnbindOrganisationMailAccount stops an app from using the account. The app's default cannot be unbound while it has other accounts.
+  rpc UnbindOrganisationMailAccount(UnbindOrganisationMailAccountRequest) returns (UnbindOrganisationMailAccountResponse);
+}
+
+// OrganisationMailApp is an app that uses an organisation's account.
+message OrganisationMailApp {
+  string app_id = 1;
+  string name = 2;
+  // The app's live environment is where the binding is; true when the account is that app's default sender.
+  bool is_default = 3;
+}
+
+message OrganisationMailAccount {
+  // The account's key: "nafru" or "nafru~eu".
+  string account = 1;
+  string provider = 2;
+  string label = 3;
+  string base_url = 4;
+  string from = 5;
+  // The last four characters of the key; never the key.
+  string key_hint = 6;
+  google.protobuf.Timestamp update_time = 7;
+  google.protobuf.Timestamp checked_time = 8;
+  // "unreachable", "refused" or empty.
+  string check_problem = 9;
+  // The apps that use the account.
+  repeated OrganisationMailApp used_by = 10;
+  string id = 11;
+}
+
+message ListOrganisationMailAccountsRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message ListOrganisationMailAccountsResponse {
+  repeated OrganisationMailAccount accounts = 1;
+  // Whether the caller may change them (owner or administrator).
+  bool can_write = 2;
+}
+
+message PutOrganisationMailAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string provider = 3;
+  string base_url = 4;
+  string api_key = 5;
+  string from = 6;
+  // Empty is the primary account of the organisation; a label connects a further one.
+  string label = 7;
+}
+
+message PutOrganisationMailAccountResponse {
+  OrganisationMailAccount account = 1;
+}
+
+message DeleteOrganisationMailAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  // The account's key.
+  string account = 3;
+}
+
+message DeleteOrganisationMailAccountResponse {}
+
+message TestOrganisationMailAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string account = 3;
+  string to = 4;
+}
+
+message TestOrganisationMailAccountResponse {
+  bool ok = 1;
+  string problem = 2;
+  string message_id = 3;
+}
+
+message BindOrganisationMailAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string account = 3;
+  string app_id = 4;
+  // Make it the app's default sender. The first account of an app is its default whatever this says.
+  bool make_default = 5;
+}
+
+message BindOrganisationMailAccountResponse {}
+
+message UnbindOrganisationMailAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string account = 3;
+  string app_id = 4;
+}
+
+message UnbindOrganisationMailAccountResponse {}

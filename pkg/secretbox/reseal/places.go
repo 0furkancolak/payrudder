@@ -35,6 +35,9 @@ var Plans = []Column{
 			}
 			return []byte("mail-integration:" + k[0] + ":" + k[1])
 		}},
+	// An organisation's e-mail account (ADR 0026) belongs to no tenant: the pooled database only. The apps' bindings (api_key_enc NULL) are not boxes.
+	{Table: "organisation_mail_accounts", Column: "api_key_enc", Key: []KeyColumn{{"account_id", "uuid"}, provider},
+		AAD: func(k []string) []byte { return []byte("org-mail-account:" + k[0] + ":" + k[1]) }},
 	{Table: "user_totp", Column: "secret_enc", Key: []KeyColumn{{"user_id", "uuid"}}, AAD: func(k []string) []byte { return []byte("totp|" + k[0]) }},
 }
 

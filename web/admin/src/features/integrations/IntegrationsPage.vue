@@ -23,6 +23,7 @@ import RoutingTester from "./RoutingTester.vue";
 import { eInvoiceAccounts, mailAccounts } from "./accounts";
 import EInvoiceSheet from "./EInvoiceSheet.vue";
 import MailSheet from "./MailSheet.vue";
+import OrganisationMailCard from "./OrganisationMailCard.vue";
 import ProviderLogo from "./ProviderLogo.vue";
 import { builtInMailState, eInvoiceState, ownMailState, stateTone, type CardState } from "./status";
 
@@ -289,6 +290,8 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
         <RoutingTester :app-id="appId" />
         <AuditCard :app-id="appId" />
       </template>
+
+      <OrganisationMailCard v-if="!inApp" :apps="rows" />
 
       <div v-if="!inApp && rows.length > 0" class="surface flex flex-col gap-3 p-5" data-testid="integrations-apps">
         <div>

@@ -3311,7 +3311,10 @@
         "not_connected": "Aucun fournisseur d'e-mail n'est connecté.",
         "seal_failed": "La clé n'a pas pu être enregistrée. Réessayez.",
         "default_in_use": "Ce compte e-mail est le compte par défaut. Définissez d'abord un autre compte par défaut, puis supprimez celui-ci.",
-        "unknown_account": "Une règle désigne un compte e-mail qui n'est pas connecté."
+        "unknown_account": "Une règle désigne un compte e-mail qui n'est pas connecté.",
+        "inherited": "Ce compte e-mail appartient à l'organisation. Modifiez-le ou supprimez-le sur la page d'intégrations de l'organisation.",
+        "shared_in_use": "Des apps utilisent encore ce compte partagé. Faites-leur d'abord cesser de l'utiliser.",
+        "account_exists": "Cette app a déjà son propre compte e-mail portant ce nom. Supprimez-le ou donnez une autre étiquette au compte partagé."
       },
       "saas": {
         "disabled": "Les offres ne sont pas activées sur cette installation.",
@@ -4979,7 +4982,33 @@
           "noTargets": "Ajoutez un second compte de paiement pour choisir vers où les débits peuvent basculer."
         }
       },
-      "unread": "Lecture impossible"
+      "unread": "Lecture impossible",
+      "orgMail": {
+        "title": "Comptes e-mail partagés",
+        "intro": "Configurez un compte de fournisseur e-mail une seule fois pour toute l'organisation et laissez plusieurs apps envoyer par son intermédiaire. La clé reste à l'organisation et n'est jamais remise à une app. Les comptes de paiement et de facturation électronique se configurent toujours app par app.",
+        "add": "Ajouter un compte partagé",
+        "empty": "Aucun compte e-mail partagé pour l'instant.",
+        "inherited": "Hérité de l'organisation",
+        "inheritedNote": "Ce compte est configuré pour toute l'organisation. Il peut être le compte par défaut de cette app et être nommé par les règles ci-dessous ; pour le modifier ou le supprimer, utilisez la page d'intégrations de l'organisation.",
+        "usedBy": "Utilisé par {apps}",
+        "unused": "Aucune app ne l'utilise pour l'instant.",
+        "useIn": "Utiliser dans une app",
+        "app": "App",
+        "makeDefault": "En faire le compte par défaut de l'app",
+        "use": "Utiliser",
+        "stop": "Ne plus l'utiliser",
+        "confirmStop": "{app} doit-elle cesser d'utiliser {name} ? Ses e-mails passent par ses autres comptes, ou par l'expéditeur intégré de Payrudder si elle n'en a pas.",
+        "remove": "Supprimer",
+        "confirmRemove": "Supprimer le compte partagé {name} ? Aucune app ne l'utilise.",
+        "test": "Envoyer un e-mail de test",
+        "testTo": "Envoyer l'e-mail de test à",
+        "testOk": "E-mail de test envoyé à {to}.",
+        "sheetTitle": "Compte e-mail partagé (Nafru Email)",
+        "sheetIntro": "La clé est vérifiée chez le fournisseur avant d'être enregistrée, saisie une seule fois et jamais affichée de nouveau. Les apps qui utilisent ce compte continuent de l'utiliser quand vous remplacez la clé.",
+        "saved": "{name} enregistré pour l'organisation.",
+        "readOnly": "Seuls les propriétaires et les administrateurs peuvent modifier les comptes partagés.",
+        "noApps": "Aucune app n'a encore d'environnement live pour l'utiliser."
+      }
     },
     "envSwitch": {
       "open": "Environnement : {env}. Changer d'environnement",
@@ -6558,7 +6587,11 @@
         "saved": "Fournisseur d'e-mails connecté",
         "removed": "Fournisseur d'e-mails déconnecté",
         "default_set": "Compte e-mail par défaut modifié",
-        "routing_changed": "Routage des e-mails modifié"
+        "routing_changed": "Routage des e-mails modifié",
+        "org_saved": "Compte e-mail de l'organisation connecté",
+        "org_removed": "Compte e-mail de l'organisation déconnecté",
+        "org_bound": "L'app utilise maintenant un compte e-mail de l'organisation",
+        "org_unbound": "L'app n'utilise plus un compte e-mail de l'organisation"
       },
       "go_live": {
         "billing_profile_saved": "Profil de facturation enregistré",

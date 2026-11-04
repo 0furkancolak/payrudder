@@ -3311,7 +3311,10 @@
         "not_connected": "Es ist kein E-Mail-Anbieter verbunden.",
         "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut.",
         "default_in_use": "Dies ist das Standard-E-Mail-Konto. Machen Sie zuerst ein anderes Konto zum Standard und entfernen Sie dann dieses.",
-        "unknown_account": "Eine Regel nennt ein E-Mail-Konto, das nicht verbunden ist."
+        "unknown_account": "Eine Regel nennt ein E-Mail-Konto, das nicht verbunden ist.",
+        "inherited": "Dieses E-Mail-Konto gehört der Organisation. Ändern oder entfernen Sie es auf der Integrationsseite der Organisation.",
+        "shared_in_use": "Apps nutzen dieses gemeinsame Konto noch. Beenden Sie zuerst deren Nutzung.",
+        "account_exists": "Diese App hat bereits ein eigenes E-Mail-Konto mit diesem Namen. Entfernen Sie es oder geben Sie dem gemeinsamen Konto eine andere Bezeichnung."
       },
       "saas": {
         "disabled": "Tarife sind in dieser Installation nicht aktiviert.",
@@ -4979,7 +4982,33 @@
           "noTargets": "Fügen Sie ein zweites Zahlungskonto hinzu, um zu wählen, wohin Abbuchungen ausweichen können."
         }
       },
-      "unread": "Konnte nicht gelesen werden"
+      "unread": "Konnte nicht gelesen werden",
+      "orgMail": {
+        "title": "Gemeinsame E-Mail-Konten",
+        "intro": "Richten Sie ein E-Mail-Anbieterkonto einmal für die ganze Organisation ein und lassen Sie mehrere Apps darüber senden. Der Schlüssel bleibt bei der Organisation und wird nie an eine App gegeben. Zahlungs- und E-Rechnungskonten richten Sie weiterhin pro App ein.",
+        "add": "Gemeinsames Konto hinzufügen",
+        "empty": "Noch kein gemeinsames E-Mail-Konto.",
+        "inherited": "Von der Organisation übernommen",
+        "inheritedNote": "Dieses Konto ist für die ganze Organisation eingerichtet. Es kann der Standard dieser App sein und in den Regeln unten genannt werden; zum Ändern oder Entfernen nutzen Sie die Integrationsseite der Organisation.",
+        "usedBy": "Genutzt von {apps}",
+        "unused": "Noch keine App nutzt es.",
+        "useIn": "In einer App nutzen",
+        "app": "App",
+        "makeDefault": "Zum Standard der App machen",
+        "use": "Nutzen",
+        "stop": "Nicht mehr nutzen",
+        "confirmStop": "Soll {app} {name} nicht mehr nutzen? Die E-Mails laufen dann über die anderen Konten oder, falls es keines gibt, über den eingebauten Absender von Payrudder.",
+        "remove": "Entfernen",
+        "confirmRemove": "Das gemeinsame Konto {name} entfernen? Keine App nutzt es.",
+        "test": "Test-E-Mail senden",
+        "testTo": "Test-E-Mail senden an",
+        "testOk": "Test-E-Mail an {to} gesendet.",
+        "sheetTitle": "Gemeinsames E-Mail-Konto (Nafru Email)",
+        "sheetIntro": "Der Schlüssel wird beim Anbieter geprüft, bevor er gespeichert wird, einmal eingegeben und nie wieder angezeigt. Apps, die dieses Konto nutzen, behalten es, wenn Sie den Schlüssel ersetzen.",
+        "saved": "{name} für die Organisation gespeichert.",
+        "readOnly": "Nur Inhaber und Administratoren können gemeinsame Konten ändern.",
+        "noApps": "Noch keine App hat eine Live-Umgebung, die es nutzen könnte."
+      }
     },
     "envSwitch": {
       "open": "Umgebung: {env}. Umgebung wechseln",
@@ -6558,7 +6587,11 @@
         "saved": "E-Mail-Anbieter verbunden",
         "removed": "E-Mail-Anbieter getrennt",
         "default_set": "Standard-E-Mail-Konto geändert",
-        "routing_changed": "E-Mail-Zuordnung geändert"
+        "routing_changed": "E-Mail-Zuordnung geändert",
+        "org_saved": "E-Mail-Konto der Organisation verbunden",
+        "org_removed": "E-Mail-Konto der Organisation getrennt",
+        "org_bound": "App nutzt jetzt ein E-Mail-Konto der Organisation",
+        "org_unbound": "App nutzt kein E-Mail-Konto der Organisation mehr"
       },
       "go_live": {
         "billing_profile_saved": "Rechnungsprofil gespeichert",

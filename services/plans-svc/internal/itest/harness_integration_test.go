@@ -112,6 +112,7 @@ type env struct {
 	ident     plansv1.IdentityServiceClient
 	hooks     plansv1.WebhookServiceClient
 	mailprov  plansv1.MailIntegrationServiceClient
+	orgmail   plansv1.OrganisationMailServiceClient
 	aff       plansv1.AffiliateServiceClient
 	support   plansv1.SupportServiceClient
 	contracts plansv1.ContractServiceClient
@@ -353,7 +354,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{w: w, saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: w.db, app: app, system: system, appDB: appDB, places: places, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), audit: auditv1.NewAuditServiceClient(cc), contracts: plansv1.NewContractServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), orgmail: plansv1.NewOrganisationMailServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), audit: auditv1.NewAuditServiceClient(cc), contracts: plansv1.NewContractServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 // banApproval makes the plans-svc a test starts need a second operator for a ban (PAYRUDDER_TENANT_BAN_APPROVAL); only the test of that sets it.

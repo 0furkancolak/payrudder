@@ -33,6 +33,7 @@ func (s *Server) routes() []Route {
 		s.onboardingRoutes(),
 		s.goLiveRoutes(),
 		s.integrationRoutes(),
+		s.orgMailRoutes(),
 		s.supportRoutes(),
 		s.contractRoutes(),
 		s.auditRoutes(),

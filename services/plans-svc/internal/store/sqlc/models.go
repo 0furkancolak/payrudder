@@ -542,6 +542,20 @@ type OauthToken struct {
 	CreatedAt time.Time
 }
 
+type OrganisationMailAccount struct {
+	ID           uuid.UUID
+	AccountID    uuid.UUID
+	Provider     string
+	BaseUrl      string
+	ApiKeyEnc    []byte
+	KeyHint      string
+	FromAddress  string
+	CheckedAt    *time.Time
+	CheckProblem string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type Outbox struct {
 	ID           int64
 	TenantID     uuid.UUID
@@ -938,17 +952,18 @@ type TenantLifecycle struct {
 }
 
 type TenantMailIntegration struct {
-	TenantID     uuid.UUID
-	Provider     string
-	BaseUrl      string
-	ApiKeyEnc    []byte
-	KeyHint      string
-	FromAddress  string
-	CheckedAt    *time.Time
-	CheckProblem string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	IsDefault    bool
+	TenantID        uuid.UUID
+	Provider        string
+	BaseUrl         string
+	ApiKeyEnc       []byte
+	KeyHint         string
+	FromAddress     string
+	CheckedAt       *time.Time
+	CheckProblem    string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDefault       bool
+	SharedAccountID *uuid.UUID
 }
 
 type TenantMailRouting struct {

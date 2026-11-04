@@ -4342,6 +4342,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/account/integrations/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The e-mail accounts the organisation shares among its apps, with the apps that use each (any member)
+         * @description An organisation-level account is set up once and used by several apps (ADR 0026; e-mail only, payment and e-invoice accounts stay per app). It is sealed to the
+         *     organisation, never to an app, and the key is never in the answer. `can_write` says whether the caller is an owner or an administrator.
+         */
+        get: operations["appListOrganisationMailAccounts"];
+        /**
+         * Connect (or replace) an e-mail account of the organisation (owners and administrators)
+         * @description The provider is asked to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed to the
+         *     organisation and the account key, shown once and never echoed back. Replacing a key keeps the apps that use the account on it. Recorded in the organisation's audit trail
+         *     without the key or its hint.
+         */
+        put: operations["appPutOrganisationMailAccount"];
+        post?: never;
+        /**
+         * Disconnect an e-mail account of the organisation (owners and administrators)
+         * @description The account named by `account`. While apps use it nothing is removed (409 plans.mail_integration.shared_in_use, which names them); stop them using it first.
+         */
+        delete: operations["appRemoveOrganisationMailAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/integrations/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the stored key of an organisation account at the provider and send one test mail through it (owners and administrators)
+         * @description A provider problem is ok false with its kind, not an HTTP error; what was found is stored on the account.
+         */
+        post: operations["appTestOrganisationMailAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/integrations/mail/bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make an app of the organisation use one of its e-mail accounts (owners and administrators)
+         * @description The account then appears among the app's own accounts as inherited: it can be the app's default and be named by its routing rules like any other, but it is changed and
+         *     removed here, not on the app (409 plans.mail_integration.inherited). 409 plans.mail_integration.account_exists when the app already has an own account with the same key.
+         *     The credential never reaches the app. Recorded in the app's trail and the organisation's.
+         */
+        post: operations["appBindOrganisationMailAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/integrations/mail/unbind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop an app from using an e-mail account of the organisation (owners and administrators)
+         * @description The app's default cannot be unbound while it has other accounts (409 plans.mail_integration.default_in_use). The rules that name the account go with it.
+         */
+        post: operations["appUnbindOrganisationMailAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/account/invitations": {
         parameters: {
             query?: never;
@@ -10467,6 +10560,53 @@ export interface components {
             /** @description Every account, the default first. */
             accounts: components["schemas"]["MailIntegration"][];
         };
+        OrganisationMailApp: {
+            /** Format: uuid */
+            app_id: string;
+            name: string;
+            /** @description The account is that app's default sender. */
+            is_default: boolean;
+        };
+        /** @description An e-mail account of the organisation. The key is never returned. */
+        OrganisationMailAccount: {
+            /** Format: uuid */
+            id: string;
+            account: components["schemas"]["MailAccountKey"];
+            /** @enum {string} */
+            provider: "nafru";
+            label: string;
+            base_url: string;
+            from: string;
+            /** @description The last four characters of the stored key */
+            key_hint: string;
+            /** Format: date-time */
+            update_time: string;
+            /**
+             * Format: date-time
+             * @description When the provider last accepted the key.
+             */
+            checked_time?: string;
+            /** @enum {string} */
+            check_problem: "" | "unreachable" | "refused";
+            used_by: components["schemas"]["OrganisationMailApp"][];
+        };
+        AppListOrganisationMailAccountsResponse: {
+            accounts: components["schemas"]["OrganisationMailAccount"][];
+            /** @description The caller is an owner or an administrator of the organisation. */
+            can_write: boolean;
+        };
+        AppBindOrganisationMailRequest: {
+            account: components["schemas"]["MailAccountKey"];
+            /** Format: uuid */
+            app_id: string;
+            /** @description Make it the app's default sender. The app's first account is the default whatever this says. */
+            make_default?: boolean;
+        };
+        AppUnbindOrganisationMailRequest: {
+            account: components["schemas"]["MailAccountKey"];
+            /** Format: uuid */
+            app_id: string;
+        };
         AppPutMailIntegrationRequest: {
             /** @enum {string} */
             provider: "nafru";
@@ -14880,6 +15020,8 @@ export interface components {
             label: string;
             /** @description The account a mail goes through when no rule names its language. */
             is_default: boolean;
+            /** @description The account is the organisation's and this app only uses it; base_url, from and key_hint are empty here and it is changed on the organisation's screen. */
+            inherited?: boolean;
             base_url: string;
             from: string;
             /** @description The last four characters of the stored key */
@@ -22232,6 +22374,179 @@ export interface operations {
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    appListOrganisationMailAccounts: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppListOrganisationMailAccountsResponse"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPutOrganisationMailAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppPutMailIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationMailAccount"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appRemoveOrganisationMailAccount: {
+        parameters: {
+            query: {
+                account_id?: string;
+                account: components["schemas"]["MailAccountKey"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appTestOrganisationMailAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppTestMailIntegrationRequest"];
+            };
+        };
+        responses: {
+            /** @description The result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppTestMailIntegrationResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appBindOrganisationMailAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppBindOrganisationMailRequest"];
+            };
+        };
+        responses: {
+            /** @description Bound (or already was) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appUnbindOrganisationMailAccount: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppUnbindOrganisationMailRequest"];
+            };
+        };
+        responses: {
+            /** @description Unbound */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     appListInvitations: {

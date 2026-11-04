@@ -3311,7 +3311,10 @@
         "not_connected": "No hay ningún proveedor de correo conectado.",
         "seal_failed": "No se pudo guardar la clave. Inténtalo de nuevo.",
         "default_in_use": "Esta es la cuenta de correo predeterminada. Convierta primero otra cuenta en la predeterminada y después elimine esta.",
-        "unknown_account": "Una regla nombra una cuenta de correo que no está conectada."
+        "unknown_account": "Una regla nombra una cuenta de correo que no está conectada.",
+        "inherited": "Esta cuenta de correo pertenece a la organización. Cámbiela o quítela en la página de integraciones de la organización.",
+        "shared_in_use": "Hay apps que aún usan esta cuenta compartida. Haga primero que dejen de usarla.",
+        "account_exists": "Esta app ya tiene su propia cuenta de correo con ese nombre. Quítela o dé otra etiqueta a la cuenta compartida."
       },
       "saas": {
         "disabled": "Los planes no están activados en esta instalación.",
@@ -4979,7 +4982,33 @@
           "noTargets": "Añada una segunda cuenta de pago para elegir a dónde pueden conmutar los cobros."
         }
       },
-      "unread": "No se pudo leer"
+      "unread": "No se pudo leer",
+      "orgMail": {
+        "title": "Cuentas de correo compartidas",
+        "intro": "Configure una cuenta de proveedor de correo una sola vez para toda la organización y deje que varias apps envíen a través de ella. La clave se queda en la organización y nunca se entrega a una app. Las cuentas de pago y de facturación electrónica se siguen configurando en cada app.",
+        "add": "Añadir cuenta compartida",
+        "empty": "Aún no hay cuentas de correo compartidas.",
+        "inherited": "Heredada de la organización",
+        "inheritedNote": "Esta cuenta está configurada para toda la organización. Puede ser la predeterminada de esta app y nombrarse en las reglas de abajo; para cambiarla o quitarla, use la página de integraciones de la organización.",
+        "usedBy": "Usada por {apps}",
+        "unused": "Ninguna app la usa todavía.",
+        "useIn": "Usar en una app",
+        "app": "App",
+        "makeDefault": "Hacerla la predeterminada de la app",
+        "use": "Usar",
+        "stop": "Dejar de usar",
+        "confirmStop": "¿Que {app} deje de usar {name}? Su correo saldrá por sus otras cuentas o, si no tiene ninguna, por el remitente integrado de Payrudder.",
+        "remove": "Quitar",
+        "confirmRemove": "¿Quitar la cuenta compartida {name}? Ninguna app la usa.",
+        "test": "Enviar correo de prueba",
+        "testTo": "Enviar el correo de prueba a",
+        "testOk": "Correo de prueba enviado a {to}.",
+        "sheetTitle": "Cuenta de correo compartida (Nafru Email)",
+        "sheetIntro": "La clave se comprueba en el proveedor antes de guardarse, se escribe una vez y no se vuelve a mostrar. Las apps que usan esta cuenta siguen usándola cuando reemplaza la clave.",
+        "saved": "{name} guardada para la organización.",
+        "readOnly": "Solo los propietarios y administradores pueden cambiar las cuentas compartidas.",
+        "noApps": "Ninguna app tiene aún un entorno live que la use."
+      }
     },
     "envSwitch": {
       "open": "Entorno: {env}. Cambiar de entorno",
@@ -6558,7 +6587,11 @@
         "saved": "Proveedor de correo conectado",
         "removed": "Proveedor de correo desconectado",
         "default_set": "Cuenta de correo predeterminada cambiada",
-        "routing_changed": "Enrutamiento del correo cambiado"
+        "routing_changed": "Enrutamiento del correo cambiado",
+        "org_saved": "Cuenta de correo de la organización conectada",
+        "org_removed": "Cuenta de correo de la organización desconectada",
+        "org_bound": "La app usa ahora una cuenta de correo de la organización",
+        "org_unbound": "La app dejó de usar una cuenta de correo de la organización"
       },
       "go_live": {
         "billing_profile_saved": "Perfil de facturación guardado",

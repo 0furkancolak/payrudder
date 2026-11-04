@@ -113,7 +113,7 @@ const actionsOf = (e: AccountEntry) => {
   const out = [];
   if (props.isOwner && e.kind === "einvoice") out.push({ key: "test", label: t("product.integrations.test"), icon: FlaskConical, onSelect: () => testNow(e) });
   if (props.isOwner && canFailover(e)) out.push({ key: "failover", label: t("product.integrations.health.failover.action"), icon: ArrowRightLeft, onSelect: () => openFailover(e) });
-  if (props.isOwner && (e.kind !== "mail" || e.provider === "nafru")) out.push({ key: "remove", label: t("product.integrations.accounts.remove"), icon: Trash2, destructive: true, onSelect: () => void remove(e) });
+  if (props.isOwner && !e.inherited && (e.kind !== "mail" || e.provider === "nafru")) out.push({ key: "remove", label: t("product.integrations.accounts.remove"), icon: Trash2, destructive: true, onSelect: () => void remove(e) });
   return out;
 };
 const canMakeDefault = (e: AccountEntry) => props.isOwner && !e.isDefault && (e.kind !== "mail" || e.provider === "nafru") && e.state !== "none";
@@ -312,12 +312,13 @@ function saveE() {
           <StatusPill v-if="e.kind === 'payment' && healthOf(e) !== 'unknown'" :tone="healthTone(healthOf(e))" :data-testid="`account-health-${e.id}`">{{ t(`product.integrations.health.states.${healthOf(e)}`) }}</StatusPill>
           <span v-if="failoverOf(e)" class="text-muted-foreground text-xs" :data-testid="`account-failover-${e.id}`">{{ t("product.integrations.health.failsOver", { name: accountName(failoverOf(e)) }) }}</span>
           <StatusPill v-if="e.isDefault" tone="info" :data-testid="`account-default-${e.id}`">{{ e.provider === 'payrudderMail' ? t("product.integrations.accounts.inUse") : t("product.providers.account.default") }}</StatusPill>
+          <StatusPill v-if="e.inherited" tone="neutral" :title="t('product.integrations.orgMail.inheritedNote')" :data-testid="`account-inherited-${e.id}`">{{ t("product.integrations.orgMail.inherited") }}</StatusPill>
         </div>
         <div class="flex items-center gap-2">
           <Button v-if="canMakeDefault(e)" variant="ghost" size="sm" :disabled="makeDefaultPayment.isPending.value || eActions.setDefault.isPending.value || mActions.setDefault.isPending.value" :data-testid="`account-make-default-${e.id}`" @click="makeDefault(e)">
             <Star class="size-4" />{{ t("product.providers.account.makeDefault") }}
           </Button>
-          <Button variant="outline" size="sm" :disabled="!isOwner && e.kind !== 'mail'" :data-testid="`account-manage-${e.id}`" @click="manage(e)">{{ e.kind === 'mail' && e.provider === 'payrudderMail' ? t("product.integrations.settings") : t("product.providers.manage") }}</Button>
+          <Button v-if="!e.inherited" variant="outline" size="sm" :disabled="!isOwner && e.kind !== 'mail'" :data-testid="`account-manage-${e.id}`" @click="manage(e)">{{ e.kind === 'mail' && e.provider === 'payrudderMail' ? t("product.integrations.settings") : t("product.providers.manage") }}</Button>
           <RowActions v-if="actionsOf(e).length > 0" :actions="actionsOf(e)" />
         </div>
       </li>
