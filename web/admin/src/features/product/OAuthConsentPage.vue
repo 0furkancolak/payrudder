@@ -65,7 +65,8 @@ const canAllow = computed(() => chosen.value !== "" && kept.value.size > 0 && !d
 function send(decision: "allow" | "deny"): void {
   decide.mutate(
     { params, decision, ...(decision === "allow" ? { tenantId: chosen.value, scopes: [...kept.value] } : {}) },
-    { onSuccess: (r) => window.location.assign(r.redirect_to) },
+    // The gateway built the address from the client's validated redirect URI; this is a second lock: only a web address is ever opened.
+    { onSuccess: (r) => /^https?:\/\//.test(r.redirect_to) && window.location.assign(r.redirect_to) },
   );
 }
 const envLabel = (o: Option) => t("product.oauth.environment", { app: o.app, env: t(o.env === "live" ? "product.oauth.live" : "product.oauth.sandbox") });

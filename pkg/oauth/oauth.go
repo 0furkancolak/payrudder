@@ -39,7 +39,7 @@ const (
 const GrantTypeExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
 
 // AccessTokenType is the RFC 8693 identifier of an access token.
-const AccessTokenType = "urn:ietf:params:oauth:token-type:access_token"
+const AccessTokenType = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // an identifier from RFC 8693, not a credential
 
 // NewSecret returns a random value of 256 bits as text and its SHA-256, the only form stored. A prefix goes in front of a token; a code has none.
 func NewSecret(prefix string) (plain string, hash []byte, err error) {
@@ -82,7 +82,7 @@ func VerifyPKCE(verifier, challenge string) bool {
 		return false
 	}
 	for _, r := range verifier {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '.' || r == '_' || r == '~') {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '-' && r != '.' && r != '_' && r != '~' {
 			return false
 		}
 	}
@@ -97,7 +97,7 @@ func Resource(s string) (string, bool) {
 	if err != nil || u.Host == "" || u.Fragment != "" || u.RawQuery != "" || u.ForceQuery || u.User != nil || u.Opaque != "" {
 		return "", false
 	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && loopback(u.Hostname())) {
+	if u.Scheme != "https" && (u.Scheme != "http" || !loopback(u.Hostname())) {
 		return "", false
 	}
 	u.Host = strings.ToLower(u.Host)

@@ -26,6 +26,10 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 | `PAYRUDDER_MCP_EDGE_SECRET` | HTTP mode: the gateway's `PAYRUDDER_TRUSTED_PROXY_SECRET`, at least 32 characters; the caller's address goes to the API with it (see “Over HTTP”). Unset by default |
 | `PAYRUDDER_MCP_TRUST_FORWARDED_FOR` | HTTP mode: `1` when a proxy in front writes the caller's address as the last `X-Forwarded-For` entry; otherwise the connection's address is used |
 | `PAYRUDDER_MCP_RATE_PER_MINUTE` | tool calls a minute for each key (see “Rate limits”); default `60`, `0` for no limit |
+| `PAYRUDDER_MCP_AUTH` | HTTP mode: `key` (the default, below) or `oauth`, sign-in through Payrudder's authorization server (see “Sign in with OAuth”) |
+| `PAYRUDDER_MCP_PUBLIC_URL` | `oauth`: the address clients reach this endpoint at, like `https://mcp.example.com/mcp`; it is the audience of the tokens |
+| `PAYRUDDER_MCP_ISSUER` | `oauth`: the authorization server, the gateway's `PAYRUDDER_PUBLIC_URL`; default `PAYRUDDER_BASE_URL` |
+| `PAYRUDDER_MCP_OAUTH_SECRET` | `oauth`: the gateway's `PAYRUDDER_OAUTH_RESOURCE_SECRET`, at least 32 characters |
 
 **Claude Code:** `claude mcp add payrudder -e PAYRUDDER_API_KEY=qk_test_... -e PAYRUDDER_BASE_URL=https://YOUR-API-ADDRESS -- node /path/to/mcp/dist/main.js`
 
@@ -94,9 +98,28 @@ For an assistant that is not on your machine, start the server with `PAYRUDDER_M
 - `PAYRUDDER_MCP_WRITES=1` applies to every caller of the server; each caller's key still decides what succeeds.
 - **Refused keys are counted against the caller, not against the server.** The gateway refuses a request outright once an address has had 30 keys refused in a minute, and every caller of this server reaches the gateway from the server's address: without more, one flood of junk keys would lock out everybody who shares the server. Set `PAYRUDDER_MCP_EDGE_SECRET` to the gateway's `PAYRUDDER_TRUSTED_PROXY_SECRET` (the same value on both) and the server sends the caller's address (`X-Forwarded-For`) with it (`X-Edge-Auth`), which the gateway believes; a caller cannot choose the address (the server never forwards the header it received, except the last entry a proxy of yours wrote, with `PAYRUDDER_MCP_TRUST_FORWARDED_FOR=1`). Without the secret nothing is sent, and the lock-out is possible. **Not run against a real gateway**: the header is checked in the server's tests and the gateway's side (`proxyTrusted`) has its own, not the two together.
 - Every tool call is written to the audit log (below) with the caller's key prefix, so you can tell who did what when several people share one server.
-- Each key has a limit of its own on the calls it makes through this server (below, "Rate limits"). Not built yet: sign-in with OAuth instead of a key (the design is in `docs/plans/20-mcp.md`). Until then, hand out keys of the narrowest role (`read_only`).
+- Each key has a limit of its own on the calls it makes through this server (below, "Rate limits"). Hand out keys of the narrowest role (`read_only`). To let people sign in instead of handing out keys, see the next section.
 
 Claude Code: `claude mcp add --transport http payrudder https://YOUR-MCP-ADDRESS/mcp --header "Authorization: Bearer qk_test_..."`.
+
+## Sign in with OAuth
+
+**Built, never tried with a real assistant, and every choice below is a default the owner has not agreed** (`docs/plans/20-mcp.md`, "OAuth design"). It is for a server that other people's assistants connect to: they sign in to Payrudder in a browser and choose what the assistant may do, and nobody is handed an API key. For your own machine a key is simpler.
+
+Start the server with `PAYRUDDER_MCP_AUTH=oauth`, `PAYRUDDER_MCP_HTTP_PORT`, `PAYRUDDER_MCP_PUBLIC_URL`, `PAYRUDDER_MCP_OAUTH_SECRET` (and `PAYRUDDER_MCP_ISSUER` if the API address you give it is not the gateway's public address). On the gateway set `PAYRUDDER_OAUTH_RESOURCES` to the same `PAYRUDDER_MCP_PUBLIC_URL`, `PAYRUDDER_OAUTH_RESOURCE_SECRET` to the same secret, and `PAYRUDDER_PUBLIC_URL` (the issuer, with no path) and `PAYRUDDER_APP_URL` (the console, which hosts the consent page). Without `PAYRUDDER_OAUTH_RESOURCES` the gateway offers no OAuth at all (`404 identity.oauth.disabled`).
+
+What happens, following the MCP authorization specification (revision 2026-07-28):
+
+1. The assistant calls `/mcp` without a token and gets `401` with `WWW-Authenticate: Bearer resource_metadata="…", scope="read_only"`. It reads the Protected Resource Metadata (RFC 9728) at `/.well-known/oauth-protected-resource/mcp` (also served at the root form), which names the gateway as the authorization server.
+2. It reads the gateway's metadata (`/.well-known/oauth-authorization-server`, RFC 8414), identifies itself by the address of its **Client ID Metadata Document** (`client_id`, an https URL; the gateway fetches it, at most 32 KiB, from public addresses only, and takes the name and the redirect addresses from it), and opens the console's consent page with an authorization-code request: PKCE `S256` is required, `resource` is this server's `PAYRUDDER_MCP_PUBLIC_URL`.
+3. The person signs in the way they always do (password, e-mailed code, Google, two-factor) and sees **who is asking** (the name the client chose, next to the address it is published at and the host the browser returns to; a redirect to their own machine carries a warning), picks **the app and the environment**, and keeps or takes away scopes. The scopes are the permissions of an API key (`customers:read`, `invoices:write`, …) and the shorthands `read_only`, `billing` and `ingest_only`; with none asked for the assistant gets `read_only`. What is granted is the intersection with the person's role in the account (a viewer never gets a write scope), checked again at every request.
+4. The browser goes back to the client's redirect address with `code`, `state` and `iss` (RFC 9207). The client trades the code at the token endpoint and gets an access token (`qo_…`, an hour) and a refresh token (`qr_…`, thirty days, **rotated on every use**; one used twice ends the whole grant).
+5. On every request this server introspects the token (RFC 7662), checks for itself that it is active, **was issued for this server** (`aud` equal to `PAYRUDDER_MCP_PUBLIC_URL`) and has not expired, and trades it (RFC 8693) for a credential of five minutes that only the API accepts. **The assistant's token is never passed to the API**; the API sees the credential, with the person as the actor and the client's name in the audit log. The answers are kept for 30 seconds, so a revoked token can still work here for up to 30 seconds (the expiry is checked on every request).
+6. A call whose scope the token does not carry is `403` with `WWW-Authenticate: Bearer error="insufficient_scope", scope="customers:write", resource_metadata="…"`, before the tool runs; a batch names all the missing scopes at once. The tools that write are still off unless `PAYRUDDER_MCP_WRITES=1`.
+
+Live environments are **off by default**: the gateway refuses to issue or exchange a token for one unless `PAYRUDDER_OAUTH_ALLOW_LIVE=on` (and then the person's address must be verified, and an account that requires two-factor sign-in applies its rule), and this server refuses a live token unless `PAYRUDDER_MCP_ALLOW_LIVE=1`. The limit of tool calls (“Rate limits”) is per **person and tenant** here, not per key. The person sees and ends every connection under **Security → Connected assistants** in the console; ending one stops its tokens at once (here within the 30 seconds above), and a person who leaves the account takes the assistant's access with them.
+
+Not built, on purpose: dynamic client registration (RFC 7591; the specification keeps it only for old clients) and pre-registered clients, so a client that cannot publish a Client ID Metadata Document cannot connect; a per-client trust list (any https client can ask, and the person decides on what the consent page shows); scope hierarchies (the shorthands are expanded when the token is issued, so a token carries plain permissions). Nothing here was run with Claude Desktop, Claude Code or ChatGPT, or with a real browser sign-in: the pieces are tested one by one with fakes.
 
 ## Audit log
 
@@ -106,7 +129,7 @@ Every tool call writes one JSON line to **stderr** (stdout carries the protocol 
 {"ts":"2026-11-02T10:00:00.123Z","event":"mcp.tool_call","tool":"get_customer","write":false,"transport":"stdio","key":"qk_test_ab12cd34","args":{"customer_external_id":"cus_42"},"ms":38,"ok":true,"chars":412,"cut":false}
 ```
 
-- `key` is the public prefix of the API key (`qk_test_ab12cd34`), never the secret part; in HTTP mode it tells the callers apart.
+- `key` is the public prefix of the API key (`qk_test_ab12cd34`), never the secret part; in HTTP mode it tells the callers apart. In OAuth mode it is `oauth:<the person's id>` and the line has `client`, the address of the client's metadata document; no token is ever logged.
 - `args` holds the arguments as given, with long text cut at 80 characters; arguments that are free text about a person (`name`, `email`, `phone`, `address`, `notes`, `reason`, `description`, `properties`) are replaced by `"[not logged]"` and lists are counted (`{"items":3}`). The answer is never logged, only its size (`chars`) and whether it was cut.
 - A failed call has `"ok":false`, the API's error key in `error` (`customer.not_found`) and its HTTP `status`; the error's message is not logged.
 - `PAYRUDDER_MCP_AUDIT=0` turns it off. The server writes to stderr only; keeping, shipping and expiring the lines is the log collector's job (the services' own logs go to a collector the same way).
