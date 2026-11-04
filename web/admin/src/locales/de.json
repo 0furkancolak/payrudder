@@ -3612,7 +3612,15 @@
         "conflict": "Zwei Anmeldungen haben sich überschnitten. Versuchen Sie es erneut.",
         "email_unverified": "Google hat für dieses Konto keine E-Mail-Adresse bestätigt, daher ist die Anmeldung damit nicht möglich.",
         "invalid": "Diese Anmeldung konnte nicht abgeschlossen werden. Versuchen Sie es erneut.",
-        "not_configured": "Die Anmeldung mit Google ist hier nicht eingerichtet."
+        "not_configured": "Die Anmeldung mit Google ist hier nicht eingerichtet.",
+        "bad_request": "Diese Verbindungsanfrage kann nicht verwendet werden. Starten Sie sie im Assistenten erneut.",
+        "disabled": "Diese Installation erlaubt Assistenten keine Verbindung per OAuth.",
+        "grant_not_found": "Diese Verbindung gibt es nicht.",
+        "internal": "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
+        "invalid_grant": "Der Code oder das Refresh-Token ist ungültig, abgelaufen oder wurde bereits verwendet.",
+        "invalid_token": "Das Token ist ungültig, abgelaufen oder wurde widerrufen.",
+        "live_disabled": "Assistenten dürfen in dieser Installation nicht in einer Live-Umgebung handeln. Wählen Sie eine Sandbox.",
+        "live_email_unverified": "Bestätigen Sie Ihre E-Mail-Adresse, bevor ein Assistent in einer Live-Umgebung handeln darf."
       },
       "operator": {
         "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten.",
@@ -5001,7 +5009,16 @@
     "security": {
       "title": "Sicherheit",
       "intro": "Wie Sie sich anmelden und wie Sie das schützen.",
-      "setupRequired": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie unten ein: Bis dahin ist in der Konsole nichts anderes verfügbar."
+      "setupRequired": "Eine Organisation, die Ihnen gehört, verlangt die Zwei-Faktor-Anmeldung. Richten Sie sie unten ein: Bis dahin ist in der Konsole nichts anderes verfügbar.",
+      "oauth": {
+        "title": "Verbundene Assistenten",
+        "intro": "Assistenten, die Sie über den MCP-Server zugelassen haben. Das Beenden des Zugriffs stoppt sie sofort.",
+        "empty": "Kein Assistent ist verbunden.",
+        "detail": "{app}, {env}. {n} Berechtigungen.",
+        "lastUsed": "Zuletzt verwendet {date}",
+        "neverUsed": "Noch nicht verwendet",
+        "revoke": "Zugriff beenden"
+      }
     },
     "twoFactor": {
       "title": "Zwei-Faktor-Anmeldung",
@@ -5069,6 +5086,29 @@
         "useApp": "Authenticator-App verwenden",
         "restart": "Neu beginnen"
       }
+    },
+    "oauth": {
+      "title": "Einen Assistenten verbinden",
+      "intro": "{client} möchte in Ihrem Namen auf Ihre Payrudder-Daten zugreifen. Prüfen Sie, wer fragt, bevor Sie zustimmen.",
+      "clientAddress": "Der Client ist unter {host} veröffentlicht.",
+      "redirect": "Nach Ihrer Entscheidung kehrt Ihr Browser zu {host} zurück.",
+      "loopback": "Diese Adresse liegt auf Ihrem eigenen Rechner: Jedes dort laufende Programm könnte die Antwort erhalten. Fahren Sie nur fort, wenn Sie diese Verbindung gerade selbst gestartet haben.",
+      "where": "Wo darf er handeln?",
+      "environment": "{app}, {env}",
+      "sandbox": "Sandbox",
+      "live": "Live",
+      "liveOff": "Live-Umgebungen sind für Assistenten in dieser Installation abgeschaltet.",
+      "noApps": "Sie haben noch keine App. Legen Sie zuerst eine an und starten Sie die Verbindung dann erneut.",
+      "what": "Was darf er tun?",
+      "scopesNote": "Ihre Rolle im Konto kann diese einschränken: Ein Betrachter erhält nur Lesezugriff. Sie können jede entfernen, nie eine hinzufügen.",
+      "writes": "ändert Daten",
+      "reads": "liest",
+      "noScopes": "Behalten Sie mindestens eine Berechtigung oder lehnen Sie ab.",
+      "allow": "Erlauben",
+      "deny": "Ablehnen",
+      "going": "Zurück zum Assistenten …",
+      "invalid": "Diese Anfrage kann nicht verwendet werden",
+      "invalidBody": "Nichts wurde erlaubt und niemand wurde weitergeleitet. Gehen Sie zum Assistenten zurück und starten Sie die Verbindung erneut."
     }
   },
   "shell": {

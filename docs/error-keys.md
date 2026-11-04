@@ -329,9 +329,17 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `identity.invite.wrong_user`
 - `identity.member.last_owner`
 - `identity.member.not_found`
+- `identity.oauth.bad_request`
 - `identity.oauth.conflict`
+- `identity.oauth.disabled`
 - `identity.oauth.email_unverified`
+- `identity.oauth.grant_not_found`
+- `identity.oauth.internal`
 - `identity.oauth.invalid`
+- `identity.oauth.invalid_grant`
+- `identity.oauth.invalid_token`
+- `identity.oauth.live_disabled`
+- `identity.oauth.live_email_unverified`
 - `identity.oauth.not_configured`
 - `identity.operator.forbidden`
 - `identity.operator.required`

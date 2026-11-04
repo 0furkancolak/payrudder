@@ -45,7 +45,8 @@ export const hasPartnerRole = (ms: readonly MembershipLike[] | undefined): boole
 
 /** A path the sign-in may send the person back to: this console only (one leading slash), never the sign-in pages themselves, and nothing odd. */
 export function safeNext(value: unknown): string {
-  if (typeof value !== "string" || value.length > 500) return "";
+  // An assistant's authorization request (the consent page) carries a client address, a redirect address, a challenge and a state: more than 500 characters is ordinary.
+  if (typeof value !== "string" || value.length > (value.startsWith("/oauth/authorize?") ? 4000 : 500)) return "";
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\") || /[\u0000-\u001f]/.test(value)) return "";
   if (/^\/(signin|signup|forgot|reset)(\/|\?|$)/.test(value)) return "";
   return value;

@@ -42,6 +42,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/oauth"
 	"github.com/0furkancolak/payrudder/pkg/operator"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -143,6 +144,8 @@ type Deps struct {
 	// AuthFailures is the counter gateway_auth_failures (internal/auth registers it for API keys); the gateway adds the session tokens it refuses and the requests it
 	// turns away for their address's earlier failures. Nil: not counted.
 	AuthFailures metric.Int64Counter
+	// OAuth turns the identity service into an OAuth 2.1 authorization server for the MCP server's OAuth mode (oauth.go); nil: off.
+	OAuth *OAuth
 }
 
 // Server is the HTTP handler.
@@ -158,6 +161,8 @@ type Server struct {
 	saasEdge *saasEdge
 	// badSessions remembers session tokens plans-svc did not know, for a short while (internal/negcache).
 	badSessions *negcache.Cache
+	// clients remembers the Client ID Metadata Documents read for the OAuth consent page (oauth.go).
+	clients clientCache
 }
 
 // New builds the router.
@@ -377,6 +382,10 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	// A person's session token, with a tenant named, is that tenant for the call, if the tenant belongs to one of the person's accounts.
 	if strings.HasPrefix(token, sessionPrefix) {
 		return s.sessionActAs(r)
+	}
+	// The credential the MCP server holds for an assistant that a person let in (oauth.go): never the assistant's own access token, which only the MCP server sees.
+	if strings.HasPrefix(token, oauth.APIPrefix) {
+		return s.oauthPrincipal(r, token)
 	}
 	// The operator token, with a tenant named, is that tenant for the call: the console shows a tenant's customers, plans and reports through
 	// the same API the tenant uses. Without the header the operator token is no tenant key and is refused here, as before.

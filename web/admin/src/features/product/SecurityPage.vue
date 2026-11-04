@@ -9,6 +9,7 @@ import { PageHeader } from "@/shared/ui/page-header";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useMe } from "./api";
+import { useOAuthGrants, useRevokeOAuthGrant } from "./oauth";
 import CodePrompt from "./CodePrompt.vue";
 import RecoveryCodes from "./RecoveryCodes.vue";
 import TwoFactorSetup from "./TwoFactorSetup.vue";
@@ -25,6 +26,8 @@ const me = useMe();
 const status = useTwoFactorStatus();
 const disable = useDisableTwoFactor();
 const regenerate = useRegenerateRecoveryCodes();
+const grants = useOAuthGrants();
+const revokeGrant = useRevokeOAuthGrant();
 
 const email = computed(() => me.data.value?.user?.email ?? "");
 const enabled = computed(() => status.data.value?.enabled === true);
@@ -79,6 +82,27 @@ function renew(code: string): void {
         </div>
         <p v-if="enabled && required" id="two-factor-required" class="text-muted-foreground text-xs" data-testid="two-factor-required">{{ t("product.twoFactor.requiredNote") }}</p>
       </template>
+    </section>
+
+    <!-- The assistants the person has let in (OAuth, docs/plans/20-mcp.md). Absent when the deployment does not offer it (the list answers 404). -->
+    <section v-if="grants.isSuccess.value" class="surface flex max-w-2xl flex-col gap-4 p-6" :aria-label="t('product.security.oauth.title')" data-testid="oauth-grants">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.security.oauth.title") }}</h2>
+        <p class="text-muted-foreground mt-1 text-sm">{{ t("product.security.oauth.intro") }}</p>
+      </div>
+      <p v-if="(grants.data.value?.grants ?? []).length === 0" class="text-muted-foreground text-sm" data-testid="oauth-grants-empty">{{ t("product.security.oauth.empty") }}</p>
+      <ul v-else class="divide-border/60 flex flex-col divide-y">
+        <li v-for="g in grants.data.value?.grants ?? []" :key="g.id" class="flex flex-wrap items-center justify-between gap-3 py-3" :data-testid="`oauth-grant-${g.id}`">
+          <div class="min-w-0">
+            <p class="truncate font-medium">{{ g.client_name }}</p>
+            <p class="text-muted-foreground text-xs">
+              {{ t("product.security.oauth.detail", { app: g.app_name ?? "", env: t(g.environment === "ENVIRONMENT_LIVE" ? "product.oauth.live" : "product.oauth.sandbox"), n: g.scopes.length }) }}
+              · {{ g.last_used_time ? t("product.security.oauth.lastUsed", { date: fmt.date(g.last_used_time, "dateTime", "—") }) : t("product.security.oauth.neverUsed") }}
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" :disabled="revokeGrant.isPending.value" :data-testid="`oauth-revoke-${g.id}`" @click="revokeGrant.mutate(g.id)">{{ t("product.security.oauth.revoke") }}</Button>
+        </li>
+      </ul>
     </section>
   </section>
 

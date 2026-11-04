@@ -58,6 +58,15 @@ const (
 	IdentityService_RenameMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/RenameMyApp"
 	IdentityService_DeleteMyApp_FullMethodName             = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
 	IdentityService_ResolveMyTenant_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
+	IdentityService_CreateOAuthGrant_FullMethodName        = "/payrudder.plans.v1.IdentityService/CreateOAuthGrant"
+	IdentityService_ExchangeOAuthCode_FullMethodName       = "/payrudder.plans.v1.IdentityService/ExchangeOAuthCode"
+	IdentityService_RefreshOAuthToken_FullMethodName       = "/payrudder.plans.v1.IdentityService/RefreshOAuthToken"
+	IdentityService_RevokeOAuthToken_FullMethodName        = "/payrudder.plans.v1.IdentityService/RevokeOAuthToken"
+	IdentityService_IntrospectOAuthToken_FullMethodName    = "/payrudder.plans.v1.IdentityService/IntrospectOAuthToken"
+	IdentityService_MintOAuthApiToken_FullMethodName       = "/payrudder.plans.v1.IdentityService/MintOAuthApiToken"
+	IdentityService_ResolveOAuthApiToken_FullMethodName    = "/payrudder.plans.v1.IdentityService/ResolveOAuthApiToken"
+	IdentityService_ListMyOAuthGrants_FullMethodName       = "/payrudder.plans.v1.IdentityService/ListMyOAuthGrants"
+	IdentityService_RevokeMyOAuthGrant_FullMethodName      = "/payrudder.plans.v1.IdentityService/RevokeMyOAuthGrant"
 	IdentityService_CreateMyApiKey_FullMethodName          = "/payrudder.plans.v1.IdentityService/CreateMyApiKey"
 	IdentityService_ListMyApiKeys_FullMethodName           = "/payrudder.plans.v1.IdentityService/ListMyApiKeys"
 	IdentityService_RevokeMyApiKey_FullMethodName          = "/payrudder.plans.v1.IdentityService/RevokeMyApiKey"
@@ -168,6 +177,23 @@ type IdentityServiceClient interface {
 	DeleteMyApp(ctx context.Context, in *DeleteMyAppRequest, opts ...grpc.CallOption) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(ctx context.Context, in *ResolveMyTenantRequest, opts ...grpc.CallOption) (*ResolveMyTenantResponse, error)
+	// OAuth 2.1 authorization server (plan 20, default, not agreed): the gateway validates the client and the request, plans-svc keeps grants, codes and tokens (only their hashes).
+	// CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
+	CreateOAuthGrant(ctx context.Context, in *CreateOAuthGrantRequest, opts ...grpc.CallOption) (*CreateOAuthGrantResponse, error)
+	// ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+	ExchangeOAuthCode(ctx context.Context, in *ExchangeOAuthCodeRequest, opts ...grpc.CallOption) (*OAuthTokens, error)
+	// RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+	RefreshOAuthToken(ctx context.Context, in *RefreshOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokens, error)
+	// RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
+	RevokeOAuthToken(ctx context.Context, in *RevokeOAuthTokenRequest, opts ...grpc.CallOption) (*RevokeOAuthTokenResponse, error)
+	// IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+	IntrospectOAuthToken(ctx context.Context, in *IntrospectOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error)
+	// MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
+	MintOAuthApiToken(ctx context.Context, in *MintOAuthApiTokenRequest, opts ...grpc.CallOption) (*MintOAuthApiTokenResponse, error)
+	// ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+	ResolveOAuthApiToken(ctx context.Context, in *ResolveOAuthApiTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error)
+	ListMyOAuthGrants(ctx context.Context, in *ListMyOAuthGrantsRequest, opts ...grpc.CallOption) (*ListMyOAuthGrantsResponse, error)
+	RevokeMyOAuthGrant(ctx context.Context, in *RevokeMyOAuthGrantRequest, opts ...grpc.CallOption) (*RevokeMyOAuthGrantResponse, error)
 	CreateMyApiKey(ctx context.Context, in *CreateMyApiKeyRequest, opts ...grpc.CallOption) (*CreateMyApiKeyResponse, error)
 	ListMyApiKeys(ctx context.Context, in *ListMyApiKeysRequest, opts ...grpc.CallOption) (*ListMyApiKeysResponse, error)
 	RevokeMyApiKey(ctx context.Context, in *RevokeMyApiKeyRequest, opts ...grpc.CallOption) (*RevokeMyApiKeyResponse, error)
@@ -597,6 +623,96 @@ func (c *identityServiceClient) ResolveMyTenant(ctx context.Context, in *Resolve
 	return out, nil
 }
 
+func (c *identityServiceClient) CreateOAuthGrant(ctx context.Context, in *CreateOAuthGrantRequest, opts ...grpc.CallOption) (*CreateOAuthGrantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateOAuthGrantResponse)
+	err := c.cc.Invoke(ctx, IdentityService_CreateOAuthGrant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ExchangeOAuthCode(ctx context.Context, in *ExchangeOAuthCodeRequest, opts ...grpc.CallOption) (*OAuthTokens, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthTokens)
+	err := c.cc.Invoke(ctx, IdentityService_ExchangeOAuthCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RefreshOAuthToken(ctx context.Context, in *RefreshOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokens, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthTokens)
+	err := c.cc.Invoke(ctx, IdentityService_RefreshOAuthToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RevokeOAuthToken(ctx context.Context, in *RevokeOAuthTokenRequest, opts ...grpc.CallOption) (*RevokeOAuthTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeOAuthTokenResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RevokeOAuthToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) IntrospectOAuthToken(ctx context.Context, in *IntrospectOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthTokenInfo)
+	err := c.cc.Invoke(ctx, IdentityService_IntrospectOAuthToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) MintOAuthApiToken(ctx context.Context, in *MintOAuthApiTokenRequest, opts ...grpc.CallOption) (*MintOAuthApiTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MintOAuthApiTokenResponse)
+	err := c.cc.Invoke(ctx, IdentityService_MintOAuthApiToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResolveOAuthApiToken(ctx context.Context, in *ResolveOAuthApiTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthTokenInfo)
+	err := c.cc.Invoke(ctx, IdentityService_ResolveOAuthApiToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ListMyOAuthGrants(ctx context.Context, in *ListMyOAuthGrantsRequest, opts ...grpc.CallOption) (*ListMyOAuthGrantsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMyOAuthGrantsResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ListMyOAuthGrants_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) RevokeMyOAuthGrant(ctx context.Context, in *RevokeMyOAuthGrantRequest, opts ...grpc.CallOption) (*RevokeMyOAuthGrantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeMyOAuthGrantResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RevokeMyOAuthGrant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) CreateMyApiKey(ctx context.Context, in *CreateMyApiKeyRequest, opts ...grpc.CallOption) (*CreateMyApiKeyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateMyApiKeyResponse)
@@ -822,6 +938,23 @@ type IdentityServiceServer interface {
 	DeleteMyApp(context.Context, *DeleteMyAppRequest) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error)
+	// OAuth 2.1 authorization server (plan 20, default, not agreed): the gateway validates the client and the request, plans-svc keeps grants, codes and tokens (only their hashes).
+	// CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
+	CreateOAuthGrant(context.Context, *CreateOAuthGrantRequest) (*CreateOAuthGrantResponse, error)
+	// ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+	ExchangeOAuthCode(context.Context, *ExchangeOAuthCodeRequest) (*OAuthTokens, error)
+	// RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+	RefreshOAuthToken(context.Context, *RefreshOAuthTokenRequest) (*OAuthTokens, error)
+	// RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
+	RevokeOAuthToken(context.Context, *RevokeOAuthTokenRequest) (*RevokeOAuthTokenResponse, error)
+	// IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+	IntrospectOAuthToken(context.Context, *IntrospectOAuthTokenRequest) (*OAuthTokenInfo, error)
+	// MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
+	MintOAuthApiToken(context.Context, *MintOAuthApiTokenRequest) (*MintOAuthApiTokenResponse, error)
+	// ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+	ResolveOAuthApiToken(context.Context, *ResolveOAuthApiTokenRequest) (*OAuthTokenInfo, error)
+	ListMyOAuthGrants(context.Context, *ListMyOAuthGrantsRequest) (*ListMyOAuthGrantsResponse, error)
+	RevokeMyOAuthGrant(context.Context, *RevokeMyOAuthGrantRequest) (*RevokeMyOAuthGrantResponse, error)
 	CreateMyApiKey(context.Context, *CreateMyApiKeyRequest) (*CreateMyApiKeyResponse, error)
 	ListMyApiKeys(context.Context, *ListMyApiKeysRequest) (*ListMyApiKeysResponse, error)
 	RevokeMyApiKey(context.Context, *RevokeMyApiKeyRequest) (*RevokeMyApiKeyResponse, error)
@@ -977,6 +1110,33 @@ func (UnimplementedIdentityServiceServer) DeleteMyApp(context.Context, *DeleteMy
 }
 func (UnimplementedIdentityServiceServer) ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMyTenant not implemented")
+}
+func (UnimplementedIdentityServiceServer) CreateOAuthGrant(context.Context, *CreateOAuthGrantRequest) (*CreateOAuthGrantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateOAuthGrant not implemented")
+}
+func (UnimplementedIdentityServiceServer) ExchangeOAuthCode(context.Context, *ExchangeOAuthCodeRequest) (*OAuthTokens, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExchangeOAuthCode not implemented")
+}
+func (UnimplementedIdentityServiceServer) RefreshOAuthToken(context.Context, *RefreshOAuthTokenRequest) (*OAuthTokens, error) {
+	return nil, status.Error(codes.Unimplemented, "method RefreshOAuthToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) RevokeOAuthToken(context.Context, *RevokeOAuthTokenRequest) (*RevokeOAuthTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeOAuthToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) IntrospectOAuthToken(context.Context, *IntrospectOAuthTokenRequest) (*OAuthTokenInfo, error) {
+	return nil, status.Error(codes.Unimplemented, "method IntrospectOAuthToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) MintOAuthApiToken(context.Context, *MintOAuthApiTokenRequest) (*MintOAuthApiTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MintOAuthApiToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResolveOAuthApiToken(context.Context, *ResolveOAuthApiTokenRequest) (*OAuthTokenInfo, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveOAuthApiToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) ListMyOAuthGrants(context.Context, *ListMyOAuthGrantsRequest) (*ListMyOAuthGrantsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMyOAuthGrants not implemented")
+}
+func (UnimplementedIdentityServiceServer) RevokeMyOAuthGrant(context.Context, *RevokeMyOAuthGrantRequest) (*RevokeMyOAuthGrantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeMyOAuthGrant not implemented")
 }
 func (UnimplementedIdentityServiceServer) CreateMyApiKey(context.Context, *CreateMyApiKeyRequest) (*CreateMyApiKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateMyApiKey not implemented")
@@ -1740,6 +1900,168 @@ func _IdentityService_ResolveMyTenant_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_CreateOAuthGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateOAuthGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).CreateOAuthGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_CreateOAuthGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).CreateOAuthGrant(ctx, req.(*CreateOAuthGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ExchangeOAuthCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExchangeOAuthCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ExchangeOAuthCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ExchangeOAuthCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ExchangeOAuthCode(ctx, req.(*ExchangeOAuthCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RefreshOAuthToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshOAuthTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RefreshOAuthToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RefreshOAuthToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RefreshOAuthToken(ctx, req.(*RefreshOAuthTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RevokeOAuthToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeOAuthTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RevokeOAuthToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RevokeOAuthToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RevokeOAuthToken(ctx, req.(*RevokeOAuthTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_IntrospectOAuthToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IntrospectOAuthTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).IntrospectOAuthToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_IntrospectOAuthToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).IntrospectOAuthToken(ctx, req.(*IntrospectOAuthTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_MintOAuthApiToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MintOAuthApiTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).MintOAuthApiToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_MintOAuthApiToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).MintOAuthApiToken(ctx, req.(*MintOAuthApiTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResolveOAuthApiToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveOAuthApiTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResolveOAuthApiToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResolveOAuthApiToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResolveOAuthApiToken(ctx, req.(*ResolveOAuthApiTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ListMyOAuthGrants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMyOAuthGrantsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ListMyOAuthGrants(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ListMyOAuthGrants_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ListMyOAuthGrants(ctx, req.(*ListMyOAuthGrantsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_RevokeMyOAuthGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeMyOAuthGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RevokeMyOAuthGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RevokeMyOAuthGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RevokeMyOAuthGrant(ctx, req.(*RevokeMyOAuthGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_CreateMyApiKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateMyApiKeyRequest)
 	if err := dec(in); err != nil {
@@ -2136,6 +2458,42 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMyTenant",
 			Handler:    _IdentityService_ResolveMyTenant_Handler,
+		},
+		{
+			MethodName: "CreateOAuthGrant",
+			Handler:    _IdentityService_CreateOAuthGrant_Handler,
+		},
+		{
+			MethodName: "ExchangeOAuthCode",
+			Handler:    _IdentityService_ExchangeOAuthCode_Handler,
+		},
+		{
+			MethodName: "RefreshOAuthToken",
+			Handler:    _IdentityService_RefreshOAuthToken_Handler,
+		},
+		{
+			MethodName: "RevokeOAuthToken",
+			Handler:    _IdentityService_RevokeOAuthToken_Handler,
+		},
+		{
+			MethodName: "IntrospectOAuthToken",
+			Handler:    _IdentityService_IntrospectOAuthToken_Handler,
+		},
+		{
+			MethodName: "MintOAuthApiToken",
+			Handler:    _IdentityService_MintOAuthApiToken_Handler,
+		},
+		{
+			MethodName: "ResolveOAuthApiToken",
+			Handler:    _IdentityService_ResolveOAuthApiToken_Handler,
+		},
+		{
+			MethodName: "ListMyOAuthGrants",
+			Handler:    _IdentityService_ListMyOAuthGrants_Handler,
+		},
+		{
+			MethodName: "RevokeMyOAuthGrant",
+			Handler:    _IdentityService_RevokeMyOAuthGrant_Handler,
 		},
 		{
 			MethodName: "CreateMyApiKey",

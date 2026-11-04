@@ -4022,6 +4022,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/.well-known/oauth-authorization-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The OAuth authorization server's metadata (RFC 8414)
+         * @description Only when the deployment has switched OAuth sign-in for assistants on (`PAYRUDDER_OAUTH_RESOURCES`; otherwise `404 identity.oauth.disabled`). The MCP server's Protected Resource Metadata names this server as its authorization server and a client reads this document from the issuer. It says S256 is the only PKCE method, that public clients (`token_endpoint_auth_method` none) are served, that a `client_id` may be the address of a Client ID Metadata Document (`client_id_metadata_document_supported`) and that the authorization response carries `iss` (RFC 9207). Dynamic client registration (RFC 7591) is not offered. Public.
+         */
+        get: operations["getOAuthMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The OAuth token endpoint (authorization code with PKCE, refresh token, token exchange)
+         * @description `application/x-www-form-urlencoded`; answers are RFC 6749 errors (`{"error", "error_description"}`), not the API's error body, and are never cached. `grant_type=authorization_code` takes `code`, `client_id`, `redirect_uri`, `code_verifier` (PKCE S256, required) and `resource`; a code works once, for a minute, and a second use ends the grant. `grant_type=refresh_token` takes `refresh_token`, `client_id` and `resource`; every refresh token works once and is replaced (reuse ends the grant); the access token lasts an hour, the refresh token thirty days. `grant_type=urn:ietf:params:oauth:grant-type:token-exchange` is for the MCP server only (the bearer secret `PAYRUDDER_OAUTH_RESOURCE_SECRET`): `subject_token` (an access token), `audience` (this API's address) and `resource` (the MCP server's own address) are traded for a credential of a few minutes that only the tenant API accepts. Public; rate limited per client address (30 a minute).
+         */
+        post: operations["oauthToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke an OAuth token (RFC 7009)
+         * @description Form body `token` and `client_id`. Ends the grant the token belongs to (access and refresh tokens both stop); a token that is unknown, or issued to another client, is answered like any other: `200 {}`. Public; rate limited per client address (30 a minute).
+         */
+        post: operations["oauthRevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/introspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Introspect an access token (RFC 7662), for the MCP server
+         * @description Form body `token` and `resource` (the caller's own canonical address), with the MCP server's bearer secret (`PAYRUDDER_OAUTH_RESOURCE_SECRET`). `{"active": true, ...}` with `scope`, `client_id`, `sub`, `aud`, `exp`, `tenant_id`, `environment` and `member_role` only while the token is unexpired, its grant is not revoked, it was issued for `resource`, and the person is still a member of the tenant's account (the scopes are cut to their role as it is now); otherwise `{"active": false}`. Rate limited per client address (1200 a minute).
+         */
+        post: operations["oauthIntrospect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/oauth/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What an assistant's authorization request asks for, for the consent page
+         * @description Takes the parameters of the authorization request as query parameters (`client_id`, `redirect_uri`, `response_type=code`, `code_challenge`, `code_challenge_method=S256`, `scope`, `resource`, `state`) and validates them the way the consent decision will: the client's metadata document is fetched from its `client_id` address (https, a public address, at most 32 KiB), the `redirect_uri` must be one the document lists (exact; a loopback address may differ in port), `resource` must be one of the deployment's MCP servers. A request that fails is `400 identity.oauth.bad_request` shown on the page; nobody is redirected on an error. The answer names the client, the host of its address and of the redirect, and the scopes asked for.
+         */
+        get: operations["describeOAuthRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allow or deny an assistant
+         * @description The person's decision on a request described by `GET /app/v1/oauth/request`; the request is validated again. `allow` needs the `tenant_id` (an app's environment of one of the person's accounts) and optionally `scopes`, a subset of those asked for; the scopes granted are those cut to the person's role there (a viewer never gets a write scope). A live environment needs the deployment's `PAYRUDDER_OAUTH_ALLOW_LIVE` and a verified e-mail address. The answer is `redirect_to`, the client's own redirect URI with `code`, `state` and `iss` (or `error=access_denied` for `deny`), which the console opens.
+         */
+        post: operations["decideOAuthConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/oauth/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The assistants the person has let in
+         * @description One entry for each live grant, newest first, with the client, the app and environment, the scopes and when it was last used. The token itself is never shown.
+         */
+        get: operations["listOAuthGrants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/oauth/grants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End an assistant's access
+         * @description Every token of the grant stops at once. Recorded in the tenant's audit log (`oauth_grant.revoked`).
+         */
+        delete: operations["revokeOAuthGrant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/me/onboarding": {
         parameters: {
             query?: never;
@@ -9817,6 +9977,66 @@ export interface components {
             challenge: string;
             /** Format: date-time */
             challenge_expire_time: string | null;
+        };
+        /** @description What the consent page shows about an assistant's authorization request. */
+        OAuthRequest: {
+            /** @description From the client's metadata document: text the client chose, shown with its address */
+            client_name: string;
+            client_id: string;
+            /** @description The host of the client_id address */
+            client_host: string;
+            /** @description The host (and port) the browser is sent to afterwards */
+            redirect_host: string;
+            /** @description The redirect is to the person's own machine: any program there may be listening */
+            redirect_loopback: boolean;
+            /** @description The MCP server the token is for */
+            resource: string;
+            scopes: components["schemas"]["ApiKeyPermission"][];
+            /** @description Whether this deployment lets an assistant act on a live environment */
+            allow_live: boolean;
+        };
+        OAuthConsentRequest: {
+            client_id: string;
+            redirect_uri: string;
+            response_type: string;
+            code_challenge: string;
+            code_challenge_method: string;
+            scope?: string;
+            resource: string;
+            state?: string;
+            /** @enum {string} */
+            decision: "allow" | "deny";
+            /**
+             * Format: uuid
+             * @description The environment the assistant may act on; required for allow
+             */
+            tenant_id?: string;
+            /** @description A subset of the scopes asked for; all of them when absent */
+            scopes?: components["schemas"]["ApiKeyPermission"][];
+        };
+        OAuthRedirect: {
+            /** @description The client's redirect URI with the code (or the error), state and iss; the console navigates there */
+            redirect_to: string;
+        };
+        OAuthGrant: {
+            /** Format: uuid */
+            id: string;
+            client_id: string;
+            client_name: string;
+            /** Format: uuid */
+            tenant_id: string;
+            app_name?: string;
+            /** @enum {string} */
+            environment?: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
+            resource?: string;
+            scopes: string[];
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            last_used_time?: string;
+        };
+        OAuthGrantList: {
+            grants?: components["schemas"]["OAuthGrant"][];
         };
         VerifyTwoFactorRequest: {
             challenge: string;
@@ -21509,6 +21729,219 @@ export interface operations {
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             429: components["responses"]["Error"];
+        };
+    };
+    getOAuthMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    oauthToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    oauthRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    oauthIntrospect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    describeOAuthRequest: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+                response_type: string;
+                code_challenge: string;
+                code_challenge_method: string;
+                scope?: string;
+                resource: string;
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRequest"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    decideOAuthConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRedirect"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listOAuthGrants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthGrantList"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    revokeOAuthGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     getMyOnboarding: {

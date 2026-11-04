@@ -30,6 +30,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/oauth"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
@@ -85,6 +87,13 @@ type Config struct {
 	// AppURL is the console's public address: the browser is sent back to it after "Continue with Google", and the Google redirect address defaults to
 	// <AppURL>/gw/auth/google/callback.
 	AppURL string `env:"PAYRUDDER_APP_URL"`
+	// OAuthResources (PAYRUDDER_OAUTH_RESOURCES, comma separated) are the canonical addresses of the MCP servers that may ask for tokens (docs/plans/20-mcp.md, "OAuth design");
+	// setting any turns the gateway into an OAuth authorization server at /oauth/*, and needs PAYRUDDER_PUBLIC_URL (the issuer, without a path), PAYRUDDER_APP_URL (the
+	// consent page) and OAuthResourceSecret (at least 32 characters, environment only), which the MCP server presents to introspect and to exchange a token.
+	// OAuthAllowLive (PAYRUDDER_OAUTH_ALLOW_LIVE, on/off, default off) lets a person consent to an assistant acting on a live environment.
+	OAuthResources      []string `env:"PAYRUDDER_OAUTH_RESOURCES" envSeparator:","`
+	OAuthResourceSecret string   `env:"PAYRUDDER_OAUTH_RESOURCE_SECRET"`
+	OAuthAllowLive      string   `env:"PAYRUDDER_OAUTH_ALLOW_LIVE"`
 	// GoogleClientID and GoogleClientSecret register this deployment at Google. Both set: the Google button is shown. The secret is never in YAML or a log.
 	GoogleClientID     string `env:"PAYRUDDER_GOOGLE_CLIENT_ID"`
 	GoogleClientSecret string `env:"PAYRUDDER_GOOGLE_CLIENT_SECRET"`
@@ -109,6 +118,48 @@ type Config struct {
 	// hint header of that answer: eu=https://eu.api.example.com,us=https://us.api.example.com.
 	Region     string            `env:"PAYRUDDER_REGION"`
 	RegionURLs map[string]string `env:"PAYRUDDER_REGION_URLS" envSeparator:"," envKeyValSeparator:"="`
+}
+
+// validateOAuth checks the OAuth settings: all or none. The issuer is the public address with no path (RFC 8414 puts the metadata at the root of it).
+func (c *Config) validateOAuth() (errs []error) {
+	if _, err := config.ParseSwitch("PAYRUDDER_OAUTH_ALLOW_LIVE", c.OAuthAllowLive); err != nil {
+		errs = append(errs, err)
+	}
+	if len(c.OAuthResources) == 0 {
+		return errs
+	}
+	if len(c.OAuthResourceSecret) < 32 {
+		errs = append(errs, errors.New("PAYRUDDER_OAUTH_RESOURCE_SECRET must be at least 32 characters when PAYRUDDER_OAUTH_RESOURCES is set"))
+	}
+	for name, v := range map[string]string{"PAYRUDDER_PUBLIC_URL": c.PublicURL, "PAYRUDDER_APP_URL": c.AppURL} {
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
+			errs = append(errs, fmt.Errorf("%s must be an http(s) address when PAYRUDDER_OAUTH_RESOURCES is set", name))
+		}
+	}
+	if u, err := url.Parse(c.PublicURL); err == nil && strings.Trim(u.Path, "/") != "" {
+		errs = append(errs, errors.New("PAYRUDDER_PUBLIC_URL must have no path when PAYRUDDER_OAUTH_RESOURCES is set: it is the issuer"))
+	}
+	for _, r := range c.OAuthResources {
+		if _, ok := oauth.Resource(r); !ok {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_OAUTH_RESOURCES: %q is not an https address without a fragment or query", r))
+		}
+	}
+	return errs
+}
+
+// oauth is the authorization server's settings for the HTTP layer; nil with no resources.
+func (c *Config) oauth() *httpapi.OAuth {
+	if len(c.OAuthResources) == 0 {
+		return nil
+	}
+	resources := make([]string, 0, len(c.OAuthResources))
+	for _, r := range c.OAuthResources {
+		canonical, _ := oauth.Resource(strings.TrimSpace(r))
+		resources = append(resources, canonical)
+	}
+	live, _ := config.ParseSwitch("PAYRUDDER_OAUTH_ALLOW_LIVE", c.OAuthAllowLive)
+	return &httpapi.OAuth{Issuer: strings.TrimRight(c.PublicURL, "/"), AppURL: strings.TrimRight(c.AppURL, "/"), Resources: resources, ResourceSecret: c.OAuthResourceSecret, AllowLive: live,
+		Client: safehttp.NewClient(5*time.Second, false)}
 }
 
 // regionName is the shape of a region (and a cell) name in plans-svc's directory.
@@ -152,6 +203,7 @@ func (c *Config) Validate() error {
 	if _, err := config.ParseSwitch("PAYRUDDER_SAAS", c.Saas); err != nil {
 		errs = append(errs, err)
 	}
+	errs = append(errs, c.validateOAuth()...)
 	if _, err := parseProxies(c.TrustedProxies); err != nil {
 		errs = append(errs, err)
 	}
@@ -330,7 +382,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Region:         region,
 		Saas:           saas,
 		Mail:           mail,
-		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), OperatorSupportEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorSupportEmails), OperatorRequireTwoFactor: cfg.operatorRequireTwoFactor(), Google: google, AppURL: appURL, AuthFailures: authn.Failures(),
+		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), OperatorSupportEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorSupportEmails), OperatorRequireTwoFactor: cfg.operatorRequireTwoFactor(), Google: google, AppURL: appURL, AuthFailures: authn.Failures(), OAuth: cfg.oauth(),
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),

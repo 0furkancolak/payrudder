@@ -23,6 +23,8 @@ type publicLimits struct {
 	otpRequests, otpVerifies, oauths hostedLimiter
 	// twoFactor limits the routes that take a second-factor code.
 	twoFactor hostedLimiter
+	// oauthTokens limits the OAuth token and revocation endpoints, oauthResource the introspection endpoint the MCP server calls (docs/plans/20-mcp.md).
+	oauthTokens, oauthResource hostedLimiter
 	// authFailures counts the failed authentications (an unknown API key or session token) of an address; once over authFailuresPerMinute the address is refused before
 	// any key or session is looked up.
 	authFailures hostedLimiter

@@ -23,6 +23,7 @@ import (
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	identityoauth "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/oauth"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
@@ -103,7 +104,8 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 		cmd.WithGuard(saasC) // an interface holding a nil pointer is not nil: the guard is only set when the mode is on
 	}
 	goLive := golive.New(golivecmd.New(d.Places, d.Log), goliveqry.New(d.Places))
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(cmd, identityqry.New(d.SystemPool), goLive,
-		promote.Wire(d.AppDB, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox, onboarding.New(d.SystemPool)))
+	identityQ := identityqry.New(d.SystemPool)
+	plansv1.RegisterIdentityServiceServer(srv, identity.New(cmd, identityQ, goLive,
+		promote.Wire(d.AppDB, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox, onboarding.New(d.SystemPool), identityoauth.New(d.SystemPool, identityQ, d.Log)))
 	return saasC
 }
