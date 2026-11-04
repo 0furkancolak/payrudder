@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
-import { pickLanguage } from "./ui";
+import { APP, productGateway, signInAsAda } from "./product";
+import { pickLanguage, pickTheme } from "./ui";
 
 // The kit's own components use logical utilities (start and end), so Arabic mirrors them without a rule per page: the switch's thumb, the padding of a tick's
 // cell and the alignment of a dialog's header (the list pages are in filters-chips.spec.ts).
@@ -58,4 +59,17 @@ test("in Arabic a dialog's header starts at the start edge and a tick's cell has
   expect(pad.right).not.toBe("0px");
   const head = page.locator("th:has([role=checkbox])").first();
   expect(await head.evaluate((el) => getComputedStyle(el).paddingLeft)).toBe("0px");
+});
+
+// The dark theme is written on <html data-theme>, so a `dark:` utility (which follows the system setting) cannot colour a button: the destructive one used white text on its light red in the dark theme (contrast 2.9, found by the RTL dark sweep).
+test("in the dark theme a destructive button has dark text on its light red, not white", async ({ page }) => {
+  const { gw } = productGateway(new MockGateway());
+  await gw.install(page);
+  await signInAsAda(page);
+  await pickLanguage(page, "ar");
+  await pickTheme(page, "dark");
+  await page.goto(`/app/apps/${APP}/settings`);
+  const button = page.getByTestId("app-delete-open");
+  await expect(button).toBeVisible();
+  expect(await button.evaluate((el) => getComputedStyle(el).color)).not.toBe("rgb(255, 255, 255)");
 });
