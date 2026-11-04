@@ -106,16 +106,24 @@ service IdentityService {
   // CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
   rpc CreateOAuthGrant(CreateOAuthGrantRequest) returns (CreateOAuthGrantResponse);
   // ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc ExchangeOAuthCode(ExchangeOAuthCodeRequest) returns (OAuthTokens);
   // RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc RefreshOAuthToken(RefreshOAuthTokenRequest) returns (OAuthTokens);
   // RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
   rpc RevokeOAuthToken(RevokeOAuthTokenRequest) returns (RevokeOAuthTokenResponse);
   // IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc IntrospectOAuthToken(IntrospectOAuthTokenRequest) returns (OAuthTokenInfo);
   // MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
   rpc MintOAuthApiToken(MintOAuthApiTokenRequest) returns (MintOAuthApiTokenResponse);
   // ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc ResolveOAuthApiToken(ResolveOAuthApiTokenRequest) returns (OAuthTokenInfo);
   rpc ListMyOAuthGrants(ListMyOAuthGrantsRequest) returns (ListMyOAuthGrantsResponse);
   rpc RevokeMyOAuthGrant(RevokeMyOAuthGrantRequest) returns (RevokeMyOAuthGrantResponse);

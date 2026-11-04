@@ -181,16 +181,24 @@ type IdentityServiceClient interface {
 	// CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
 	CreateOAuthGrant(ctx context.Context, in *CreateOAuthGrantRequest, opts ...grpc.CallOption) (*CreateOAuthGrantResponse, error)
 	// ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	ExchangeOAuthCode(ctx context.Context, in *ExchangeOAuthCodeRequest, opts ...grpc.CallOption) (*OAuthTokens, error)
 	// RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	RefreshOAuthToken(ctx context.Context, in *RefreshOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokens, error)
 	// RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
 	RevokeOAuthToken(ctx context.Context, in *RevokeOAuthTokenRequest, opts ...grpc.CallOption) (*RevokeOAuthTokenResponse, error)
 	// IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	IntrospectOAuthToken(ctx context.Context, in *IntrospectOAuthTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error)
 	// MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
 	MintOAuthApiToken(ctx context.Context, in *MintOAuthApiTokenRequest, opts ...grpc.CallOption) (*MintOAuthApiTokenResponse, error)
 	// ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	ResolveOAuthApiToken(ctx context.Context, in *ResolveOAuthApiTokenRequest, opts ...grpc.CallOption) (*OAuthTokenInfo, error)
 	ListMyOAuthGrants(ctx context.Context, in *ListMyOAuthGrantsRequest, opts ...grpc.CallOption) (*ListMyOAuthGrantsResponse, error)
 	RevokeMyOAuthGrant(ctx context.Context, in *RevokeMyOAuthGrantRequest, opts ...grpc.CallOption) (*RevokeMyOAuthGrantResponse, error)
@@ -942,16 +950,24 @@ type IdentityServiceServer interface {
 	// CreateOAuthGrant records one person's consent to one client acting on one tenant and returns the one-time code. Scopes are cut to what the person's role allows.
 	CreateOAuthGrant(context.Context, *CreateOAuthGrantRequest) (*CreateOAuthGrantResponse, error)
 	// ExchangeOAuthCode redeems a code (once; PKCE and redirect URI checked) for an access and a refresh token. A code used twice ends the grant.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	ExchangeOAuthCode(context.Context, *ExchangeOAuthCodeRequest) (*OAuthTokens, error)
 	// RefreshOAuthToken replaces a refresh token with a new pair. A refresh token used twice ends the grant.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	RefreshOAuthToken(context.Context, *RefreshOAuthTokenRequest) (*OAuthTokens, error)
 	// RevokeOAuthToken ends the grant a token belongs to (RFC 7009). An unknown token is not an error.
 	RevokeOAuthToken(context.Context, *RevokeOAuthTokenRequest) (*RevokeOAuthTokenResponse, error)
 	// IntrospectOAuthToken answers RFC 7662 for an access token and a resource: active only while the token, the grant and the person's membership are all valid.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	IntrospectOAuthToken(context.Context, *IntrospectOAuthTokenRequest) (*OAuthTokenInfo, error)
 	// MintOAuthApiToken exchanges a valid access token for a credential for the API audience (minutes), which only the MCP server holds.
 	MintOAuthApiToken(context.Context, *MintOAuthApiTokenRequest) (*MintOAuthApiTokenResponse, error)
 	// ResolveOAuthApiToken is what the gateway asks to accept a qm_ credential on the tenant API.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	ResolveOAuthApiToken(context.Context, *ResolveOAuthApiTokenRequest) (*OAuthTokenInfo, error)
 	ListMyOAuthGrants(context.Context, *ListMyOAuthGrantsRequest) (*ListMyOAuthGrantsResponse, error)
 	RevokeMyOAuthGrant(context.Context, *RevokeMyOAuthGrantRequest) (*RevokeMyOAuthGrantResponse, error)
