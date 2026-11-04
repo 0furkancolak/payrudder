@@ -86,8 +86,8 @@ test.describe("payment links", () => {
 
     // A link that names none sends none (the Contracts page decides), and the detail says which it is.
     await page.getByRole("row", { name: /Setup fee/ }).first().click();
-    await expect(page.getByRole("dialog")).toContainText("Agreements");
-    await expect(page.getByRole("dialog")).toContainText("Terms of service");
+    await expect(page.getByTestId("detail-sheet")).toContainText("Agreements");
+    await expect(page.getByTestId("detail-sheet")).toContainText("Terms of service");
   });
 
   test("the invoice sheet opens the payment link form for that invoice over itself", async ({ page }) => {
