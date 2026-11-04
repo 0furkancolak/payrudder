@@ -18,6 +18,7 @@ import { askConfirm } from "@/shared/lib/confirm";
 import { useClearOverrides, useOrganizations, useResetTwoFactor, useSetOrganizationPlan } from "./api";
 import { RESOURCES, isUnlimited, parseLimit, stateTone, type OrganizationRow } from "./lib";
 import { useCanWrite } from "@/shared/lib/access";
+import BanCard from "./BanCard.vue";
 
 const canWrite = useCanWrite();
 
@@ -169,6 +170,7 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
                 <span class="font-medium">{{ r.plan_name || r.plan_code }}</span>
                 <StatusPill :tone="stateTone(r.state)">{{ t(`saas.state.${r.state || 'none'}`) }}</StatusPill>
                 <StatusPill v-if="r.overridden" tone="warning">{{ t("saas.overridden") }}</StatusPill>
+                <StatusPill v-if="r.banned" tone="danger" :data-testid="`org-banned-${r.account_id}`">{{ t("saas.admin.ban.banned") }}</StatusPill>
               </div>
             </TableCell>
             <TableCell class="text-end">{{ fmt.count(r.apps) }}</TableCell>
@@ -220,6 +222,8 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
               <Button type="button" variant="outline" :disabled="!canWrite || !canReset" data-testid="org-2fa-reset" @click="resetTwoFactor">{{ t("saas.admin.twoFactor.reset") }}</Button>
             </div>
           </section>
+          <BanCard kind="account" :account-id="chosen?.account_id" />
+          <BanCard kind="person" :email="chosen?.owner_email" />
         </SheetBody>
         <SheetFooter>
           <Button variant="ghost" type="button" :disabled="!canWrite || clear.isPending.value || !chosen?.overridden" data-testid="org-clear" @click="clearAll">{{ t("saas.admin.clear") }}</Button>

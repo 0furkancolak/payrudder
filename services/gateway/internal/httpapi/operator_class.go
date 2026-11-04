@@ -43,6 +43,8 @@ var operatorClasses = map[string]opClass{
 	"POST /admin/v1/tenants/{id}/api-keys":                                                                 opWrite,
 	"DELETE /admin/v1/tenants/{id}/scheduled-status":                                                       opWrite,
 	"PUT /admin/v1/tenants/{id}/scheduled-status":                                                          opWrite,
+	"PUT /admin/v1/organizations/{account_id}/ban":                                                         opWrite,
+	"PUT /admin/v1/users/ban":                                                                              opWrite,
 	"PUT /admin/v1/tenants/{id}/status":                                                                    opWrite,
 	"POST /admin/v1/tenants/{tenant_id}/billing-runs/{period}/rerating":                                    opWrite,
 	"POST /admin/v1/tenants/{tenant_id}/checkouts":                                                         opWrite,

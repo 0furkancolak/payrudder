@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,11 +28,16 @@ func New(systemPool *pgxpool.Pool) *Queries { return &Queries{pool: systemPool} 
 
 // Get returns one tenant.
 func (q *Queries) Get(ctx context.Context, id uuid.UUID) (*plansv1.Tenant, error) {
-	t, err := sqlc.New(q.pool).GetTenant(ctx, id)
+	db := sqlc.New(q.pool)
+	t, err := db.GetTenant(ctx, id)
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
 	}
-	return convert.Tenant(t), nil
+	one := []sqlc.Tenant{t}
+	if err := convert.AccountBan(ctx, db, t.AccountID, one); err != nil {
+		return nil, convert.Err(err, "tenant")
+	}
+	return convert.Tenant(one[0]), nil
 }
 
 // List returns a page of tenants in id order. The token is the id of the last tenant of the previous page.
@@ -47,9 +53,19 @@ func (q *Queries) List(ctx context.Context, pageSize int32, pageToken string) ([
 			return nil, "", domain.Invalid("page_token", "invalid")
 		}
 	}
-	rows, err := sqlc.New(q.pool).ListTenants(ctx, sqlc.ListTenantsParams{After: after, PageSize: size + 1})
+	db := sqlc.New(q.pool)
+	rows, err := db.ListTenants(ctx, sqlc.ListTenantsParams{After: after, PageSize: size + 1})
 	if err != nil {
 		return nil, "", convert.Err(err, "tenants")
+	}
+	banned, err := db.ListBannedAccountIDs(ctx)
+	if err != nil {
+		return nil, "", convert.Err(err, "tenants")
+	}
+	for i := range rows {
+		if slices.Contains(banned, rows[i].AccountID) {
+			convert.BanLive(&rows[i])
+		}
 	}
 	var next string
 	var out []*plansv1.Tenant

@@ -6816,6 +6816,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/organizations/{account_id}/ban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether an account is banned, and the history of its bans */
+        get: operations["getAccountBan"];
+        /**
+         * Ban an account (an organisation), or lift its ban
+         * @description Every live tenant of a banned account behaves as banned (its keys stop with 403 `gateway.auth.tenant_not_active`, no payment, charge, customer mail or webhook leaves);
+         *     no tenant row is rewritten, so lifting the ban restores each tenant as it was. The people of the account are not banned and can still sign in. A `reason` is required for a
+         *     ban and for lifting one; each is recorded with its category and who made it. Where `PAYRUDDER_TENANT_BAN_APPROVAL` is on, a ban only records the request
+         *     (409 `plans.tenant.approval_pending`) until a second operator makes the same request within 24 hours.
+         */
+        put: operations["setAccountBan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/users/ban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether a person is banned, and the history of their bans */
+        get: operations["getUserBan"];
+        /**
+         * Ban a person (a user), or lift the ban
+         * @description The person is named by sign-in address (`email`). A banned person cannot sign in (403 `identity.auth.user_banned`, said only after the right password or code), every
+         *     session they have ends at once and none is accepted any more; their accounts and apps are not touched (their tenants stay active). Same reason, record and
+         *     approval rules as `PUT /admin/v1/organizations/{account_id}/ban`.
+         */
+        put: operations["setUserBan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/users/two-factor/reset": {
         parameters: {
             query?: never;
@@ -8656,6 +8703,8 @@ export interface components {
             finalize_time?: string;
         };
         OrganizationRow: {
+            /** @description The operator has banned the account: its live tenants behave as banned */
+            banned: boolean;
             /** Format: uuid */
             account_id: string;
             name: string;
@@ -10958,6 +11007,41 @@ export interface components {
             app_names: {
                 [key: string]: string;
             };
+        };
+        SetBanRequest: {
+            /**
+             * Format: email
+             * @description A person's sign-in address; only for PUT /admin/v1/users/ban
+             */
+            email?: string;
+            /** @description true bans, false lifts the ban */
+            banned: boolean;
+            reason: string;
+            /** @enum {string} */
+            category?: "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other";
+        };
+        SetBanResponse: {
+            banned: boolean;
+        };
+        BanEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description requested: a ban waiting for a second operator
+             * @enum {string}
+             */
+            kind: "banned" | "lifted" | "requested";
+            category: string;
+            reason: string;
+            actor: string;
+            approved_by: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        BanState: {
+            banned: boolean;
+            /** @description The latest 100, newest first */
+            events: components["schemas"]["BanEvent"][];
         };
         TenantStatusEvent: {
             /** Format: uuid */
@@ -26330,6 +26414,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getAccountBan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BanState"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setAccountBan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetBanResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getUserBan: {
+        parameters: {
+            query: {
+                email: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BanState"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setUserBan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetBanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetBanResponse"];
                 };
             };
             400: components["responses"]["Error"];

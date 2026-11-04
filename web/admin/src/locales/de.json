@@ -3568,6 +3568,7 @@
       },
       "auth": {
         "invalid_credentials": "E-Mail oder Passwort falsch oder zu viele Versuche. Nach fünf falschen Passwörtern ist die Anmeldung für diese Adresse 15 Minuten gesperrt, auch mit dem richtigen Passwort.",
+        "user_banned": "Diese Person wurde von einem Operator gesperrt und kann sich nicht anmelden. Für einen Widerspruch schreiben Sie an den Support.",
         "rate_limited": "Zu viele Versuche von dieser Adresse. Versuchen Sie es in einer Minute erneut.",
         "unavailable": "Die Anmeldeprüfung ist gerade nicht verfügbar. Versuchen Sie es gleich erneut."
       },
@@ -5755,6 +5756,43 @@
         "confirm": "Ausschalten",
         "done": "Die Zwei-Faktor-Anmeldung von {email} ist ausgeschaltet. Die Person wurde per E-Mail informiert.",
         "nothing": "{email} hatte keine Zwei-Faktor-Anmeldung; es wurde nichts geändert."
+      },
+      "ban": {
+        "account": {
+          "title": "Diese Organisation sperren",
+          "hint": "Alle Live-Apps der Organisation verhalten sich wie gesperrt: Schlüssel stoppen, keine Zahlungen, Abbuchungen, Kunden-Mails oder Webhooks. Ihre Mitglieder können sich weiter anmelden, nichts wird umgeschrieben; beim Aufheben ist jede App wieder wie zuvor."
+        },
+        "person": {
+          "title": "Person sperren",
+          "hint": "Die Person kann sich nicht anmelden und wird sofort überall abgemeldet. Ihre Organisationen und Apps bleiben unberührt. Suchen Sie die Person zuerst über die Anmeldeadresse."
+        },
+        "thisAccount": "diese Organisation",
+        "banned": "Gesperrt",
+        "notBanned": "Nicht gesperrt",
+        "lookup": "Suchen",
+        "reasonRequired": "Ein Grund ist erforderlich. Er steht im Verlauf und wird der Person nie gezeigt.",
+        "ban": "Sperren",
+        "lift": "Sperre aufheben",
+        "kinds": {
+          "banned": "Gesperrt",
+          "lifted": "Sperre aufgehoben",
+          "requested": "Sperre beantragt (wartet auf einen zweiten Operator)"
+        },
+        "confirm": {
+          "account": {
+            "ban": "{name} sperren? Alle Live-Apps stoppen sofort.",
+            "lift": "Sperre von {name} aufheben? Die Live-Apps laufen wieder wie zuvor."
+          },
+          "person": {
+            "ban": "{name} sperren? Die Person wird überall abgemeldet und kann sich nicht anmelden.",
+            "lift": "Sperre von {name} aufheben? Die Person kann sich wieder anmelden."
+          }
+        },
+        "done": {
+          "ban": "Gesperrt.",
+          "lift": "Sperre aufgehoben."
+        },
+        "email": "Adresse der zu sperrenden Person"
       }
     }
   },

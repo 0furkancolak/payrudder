@@ -6191,6 +6191,58 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/organizations/{account_id}/ban:
+    put:
+      operationId: setAccountBan
+      summary: Ban an account (an organisation), or lift its ban
+      description: |
+        Every live tenant of a banned account behaves as banned (its keys stop with 403 `gateway.auth.tenant_not_active`, no payment, charge, customer mail or webhook leaves);
+        no tenant row is rewritten, so lifting the ban restores each tenant as it was. The people of the account are not banned and can still sign in. A `reason` is required for a
+        ban and for lifting one; each is recorded with its category and who made it. Where `PAYRUDDER_TENANT_BAN_APPROVAL` is on, a ban only records the request
+        (409 `plans.tenant.approval_pending`) until a second operator makes the same request within 24 hours.
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: account_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SetBanRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SetBanResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: getAccountBan
+      summary: Whether an account is banned, and the history of its bans
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: account_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BanState" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/users/ban:
+    put:
+      operationId: setUserBan
+      summary: Ban a person (a user), or lift the ban
+      description: |
+        The person is named by sign-in address (`email`). A banned person cannot sign in (403 `identity.auth.user_banned`, said only after the right password or code), every
+        session they have ends at once and none is accepted any more; their accounts and apps are not touched (their tenants stay active). Same reason, record and
+        approval rules as `PUT /admin/v1/organizations/{account_id}/ban`.
+      security: [{ operatorToken: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SetBanRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SetBanResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: getUserBan
+      summary: Whether a person is banned, and the history of their bans
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: email, in: query, required: true, schema: { type: string, format: email } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BanState" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/users/two-factor/reset:
     post:
       operationId: adminResetUserTwoFactor
@@ -7654,8 +7706,9 @@ components:
         finalize_time: { type: string, format: date-time }
     OrganizationRow:
       type: object
-      required: [account_id, name, owner_email, plan_code, plan_name, state, overridden, apps, members, api_keys, events_used, events_limit]
+      required: [account_id, name, owner_email, plan_code, plan_name, state, overridden, apps, members, api_keys, events_used, events_limit, banned]
       properties:
+        banned: { type: boolean, description: "The operator has banned the account: its live tenants behave as banned" }
         account_id: { type: string, format: uuid }
         name: { type: string }
         owner_email: { type: string }
@@ -9946,6 +9999,36 @@ components:
       properties:
         appeals: { type: array, items: { $ref: "#/components/schemas/TenantAppeal" } }
         app_names: { type: object, additionalProperties: { type: string }, description: "The app's name by tenant id" }
+    SetBanRequest:
+      type: object
+      required: [banned, reason]
+      properties:
+        email: { type: string, format: email, description: "A person's sign-in address; only for PUT /admin/v1/users/ban" }
+        banned: { type: boolean, description: "true bans, false lifts the ban" }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        category: { type: string, enum: [nonpayment, fraud, abuse, legal, request, other] }
+    SetBanResponse:
+      type: object
+      required: [banned]
+      properties:
+        banned: { type: boolean }
+    BanEvent:
+      type: object
+      required: [id, kind, category, reason, actor, approved_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [banned, lifted, requested], description: "requested: a ban waiting for a second operator" }
+        category: { type: string }
+        reason: { type: string }
+        actor: { type: string }
+        approved_by: { type: string }
+        create_time: { type: string, format: date-time }
+    BanState:
+      type: object
+      required: [banned, events]
+      properties:
+        banned: { type: boolean }
+        events: { type: array, items: { $ref: "#/components/schemas/BanEvent" }, description: "The latest 100, newest first" }
     TenantStatusEvent:
       type: object
       required: [id, kind, from_status, to_status, category, reason, actor, approved_by, create_time]

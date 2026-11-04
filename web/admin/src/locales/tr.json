@@ -3568,6 +3568,7 @@
       },
       "auth": {
         "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Beş yanlış paroladan sonra o adres için giriş, doğru parolayla bile 15 dakika durdurulur.",
+        "user_banned": "Bu kişi bir operatör tarafından yasaklandı ve giriş yapamaz. İtiraz için destek ile iletişime geçin.",
         "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin.",
         "unavailable": "Kimlik doğrulama şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       },
@@ -5755,6 +5756,43 @@
         "confirm": "Kapat",
         "done": "{email} için iki adımlı oturum açma kapatıldı. Kişiye e-posta gönderildi.",
         "nothing": "{email} için iki adımlı oturum açma açık değildi; hiçbir şey değişmedi."
+      },
+      "ban": {
+        "account": {
+          "title": "Bu kuruluşu yasakla",
+          "hint": "Kuruluşun tüm canlı uygulamaları yasaklı gibi davranır: anahtarlar durur, ödeme, tahsilat, müşteri postası ve webhook çıkmaz. Kuruluşun kişileri yine giriş yapabilir ve hiçbir kayıt değiştirilmez; yasak kalkınca her uygulama olduğu gibi geri gelir."
+        },
+        "person": {
+          "title": "Kişiyi yasakla",
+          "hint": "Kişi giriş yapamaz ve her yerden hemen çıkış yaptırılır. Kuruluşlarına ve uygulamalarına dokunulmaz. Önce kişiyi giriş adresiyle bulun."
+        },
+        "thisAccount": "bu kuruluş",
+        "banned": "Yasaklı",
+        "notBanned": "Yasaklı değil",
+        "lookup": "Bul",
+        "reasonRequired": "Gerekçe zorunlu. Geçmişte saklanır, kişiye gösterilmez.",
+        "ban": "Yasakla",
+        "lift": "Yasağı kaldır",
+        "kinds": {
+          "banned": "Yasaklandı",
+          "lifted": "Yasak kaldırıldı",
+          "requested": "Yasak istendi (ikinci operatörü bekliyor)"
+        },
+        "confirm": {
+          "account": {
+            "ban": "{name} yasaklansın mı? Canlı uygulamaları hemen durur.",
+            "lift": "{name} yasağı kalksın mı? Canlı uygulamaları olduğu gibi yeniden çalışır."
+          },
+          "person": {
+            "ban": "{name} yasaklansın mı? Her yerden çıkış yapar ve giriş yapamaz.",
+            "lift": "{name} yasağı kalksın mı? Yeniden giriş yapabilir."
+          }
+        },
+        "done": {
+          "ban": "Yasaklandı.",
+          "lift": "Yasak kaldırıldı."
+        },
+        "email": "Yasaklanacak kişinin adresi"
       }
     }
   },

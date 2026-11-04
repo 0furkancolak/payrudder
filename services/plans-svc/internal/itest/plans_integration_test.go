@@ -51,6 +51,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Blocklist", testBlocklist)
 	t.Run("TenantStatus", testTenantStatus)
 	t.Run("TenantStatusApproval", testTenantStatusApproval)
+	t.Run("Bans", testBans)
+	t.Run("BansApproval", testBansApproval)
 	t.Run("TenantLifecycle", testTenantLifecycle)
 	t.Run("TenantStatusMails", testTenantStatusMails)
 	t.Run("PriceChange", testPriceChange)

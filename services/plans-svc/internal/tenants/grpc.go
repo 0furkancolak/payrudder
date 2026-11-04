@@ -76,6 +76,20 @@ func (h *Handler) ListTenantStatusEvents(ctx context.Context, req *plansv1.ListT
 	return h.cmd.StatusEvents(ctx, req)
 }
 
+func (h *Handler) SetBan(ctx context.Context, req *plansv1.SetBanRequest) (*plansv1.SetBanResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	return h.cmd.SetBan(ctx, req)
+}
+
+func (h *Handler) ListBanEvents(ctx context.Context, req *plansv1.ListBanEventsRequest) (*plansv1.ListBanEventsResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	return h.cmd.BanEvents(ctx, req)
+}
+
 func (h *Handler) GetPriceChangePause(ctx context.Context, _ *plansv1.GetPriceChangePauseRequest) (*plansv1.GetPriceChangePauseResponse, error) {
 	if err := tenant.RequireOperator(ctx); err != nil {
 		return nil, err

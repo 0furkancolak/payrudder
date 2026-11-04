@@ -18,6 +18,7 @@ type Account struct {
 	CreatedAt        time.Time
 	Platform         bool
 	RequireTwoFactor bool
+	BannedAt         *time.Time
 }
 
 type AccountInvite struct {
@@ -225,6 +226,18 @@ type AuditEvent struct {
 	Seq        int64
 	PrevHash   string
 	RowHash    string
+}
+
+type BanEvent struct {
+	ID         uuid.UUID
+	Subject    string
+	SubjectID  uuid.UUID
+	Kind       string
+	Category   string
+	Reason     string
+	Actor      string
+	ApprovedBy string
+	CreatedAt  time.Time
 }
 
 type ConfigPromotion struct {
@@ -946,6 +959,7 @@ type User struct {
 	EmailVerifiedAt *time.Time
 	Locale          string
 	TakenNoticeAt   *time.Time
+	BannedAt        *time.Time
 }
 
 type UserIdentity struct {

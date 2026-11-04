@@ -29,5 +29,8 @@ func (q *Queries) Apps(ctx context.Context, accountID uuid.UUID) ([]*plansv1.App
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
 	}
+	if err := convert.AccountBan(ctx, db, accountID, tenants); err != nil {
+		return nil, convert.Err(err, "tenant")
+	}
 	return convert.Apps(apps, tenants), nil
 }

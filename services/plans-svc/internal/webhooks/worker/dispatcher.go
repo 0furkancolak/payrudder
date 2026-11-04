@@ -178,7 +178,11 @@ func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 	if err != nil {
 		return err
 	}
-	if paymentgate.OnHold(domain.StatusFromDB(tn.Status)) {
+	banned, err := sqlc.New(d.Pool).AccountIsBanned(ctx, tn.AccountID)
+	if err != nil {
+		return err
+	}
+	if banned && tn.Environment == "live" || paymentgate.OnHold(domain.StatusFromDB(tn.Status)) {
 		return d.queries(ctx, c, func(q *sqlc.Queries) error {
 			return q.HoldWebhookDelivery(ctx, sqlc.HoldWebhookDeliveryParams{TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(holdWait)})
 		})

@@ -61,10 +61,11 @@ export function saasGateway(gw: MockGateway, state: Partial<SaasState> = {}): { 
     enabled: true, plan: "free", state: "active", role: "owner", used: { events: 9100, apps: 1, members: 2, api_keys: 3 },
     invoices: [{ id: INVOICE, number: "INV-2026-000010", status: "open", currency: "USD", total_minor: "2900", create_time: "2026-10-20T09:00:00Z", finalize_time: "2026-10-20T09:05:00Z" }],
     organisations: [
-      { account_id: ACCOUNT, name: "Ada Labs", owner_email: "ada@example.com", plan_code: "free", plan_name: "Free", state: "active", overridden: false, apps: 1, members: 2, api_keys: 3, events_used: 9100, events_limit: 10000, create_time: "2026-10-01T09:00:00Z" },
+      { account_id: ACCOUNT, name: "Ada Labs", owner_email: "ada@example.com", plan_code: "free", plan_name: "Free", state: "active", overridden: false, apps: 1, members: 2, api_keys: 3, events_used: 9100, events_limit: 10000, banned: false, create_time: "2026-10-01T09:00:00Z" },
     ],
     ...state,
   };
+  const bans: Record<string, Record<string, unknown>[]> = {};
   gw.on((c) => {
     if (c.path === "/app/v1/account/plan" && c.method === "GET") return { body: plan(s) };
     if (c.path === "/app/v1/account/plan" && c.method === "PUT") {
@@ -98,6 +99,22 @@ export function saasGateway(gw: MockGateway, state: Partial<SaasState> = {}): { 
       if (!c.body?.reason) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "reason" } } };
       if (c.body.email === "nobody@example.com") return { status: 404, body: { error: { code: "NOT_FOUND", key: "identity.user.not_found", message: "none" } } };
       return { body: { was_enabled: c.body.email !== "plain@example.com" } };
+    }
+    // Bans (plan 14): one flag per subject, the history is the requests made.
+    const banOf = /^\/admin\/v1\/organizations\/([^/]+)\/ban$/.exec(c.path);
+    if (banOf || c.path === "/admin/v1/users/ban") {
+      const key = banOf ? `account:${banOf[1]}` : `person:${c.method === "GET" ? c.query.get("email") : c.body?.email}`;
+      if (key === "person:nobody@example.com") return { status: 404, body: { error: { code: "NOT_FOUND", key: "plans.common.not_found", message: "none" } } };
+      if (c.method === "PUT") {
+        if (!c.body?.reason) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.tenant.reason_required", message: "reason" } } };
+        const events = bans[key] ?? [];
+        events.unshift({ id: `ev${events.length}`, kind: c.body.banned ? "banned" : "lifted", category: (c.body.category as string) ?? "", reason: c.body.reason as string, actor: "operator@example.com", approved_by: "", create_time: "2026-11-04T09:00:00Z" });
+        bans[key] = events;
+        s.organisations = s.organisations.map((o) => (banOf && o.account_id === banOf[1] ? { ...o, banned: c.body?.banned === true } : o));
+        return { body: { banned: c.body.banned === true } };
+      }
+      const events = bans[key] ?? [];
+      return { body: { banned: events[0]?.kind === "banned", events } };
     }
     const clear = /^\/admin\/v1\/organizations\/([^/]+)\/overrides$/.exec(c.path);
     if (clear && c.method === "DELETE") {

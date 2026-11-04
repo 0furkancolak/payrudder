@@ -3568,6 +3568,7 @@
       },
       "auth": {
         "invalid_credentials": "E-mail ou mot de passe incorrect, ou trop de tentatives. Après cinq mots de passe erronés, la connexion avec cette adresse est suspendue 15 minutes, même avec le bon mot de passe.",
+        "user_banned": "Cette personne a été bannie par un opérateur et ne peut pas se connecter. Écrivez au support pour faire appel.",
         "rate_limited": "Trop de tentatives depuis cette adresse. Réessayez dans une minute.",
         "unavailable": "La vérification d'authentification n'est pas disponible pour le moment. Réessayez dans un instant."
       },
@@ -5755,6 +5756,43 @@
         "confirm": "Désactiver",
         "done": "La connexion en deux étapes de {email} est désactivée. La personne a reçu un e-mail.",
         "nothing": "{email} n'avait pas activé la connexion en deux étapes ; rien n'a été modifié."
+      },
+      "ban": {
+        "account": {
+          "title": "Bannir cette organisation",
+          "hint": "Toutes les apps en production de l'organisation se comportent comme bannies : les clés s'arrêtent, plus de paiements, prélèvements, e-mails clients ni webhooks. Ses membres peuvent toujours se connecter et rien n'est réécrit ; en levant le bannissement, chaque app revient comme avant."
+        },
+        "person": {
+          "title": "Bannir une personne",
+          "hint": "La personne ne peut plus se connecter et est déconnectée partout aussitôt. Ses organisations et apps ne sont pas touchées. Cherchez d'abord la personne par son adresse de connexion."
+        },
+        "thisAccount": "cette organisation",
+        "banned": "Bannie",
+        "notBanned": "Non bannie",
+        "lookup": "Chercher",
+        "reasonRequired": "Un motif est obligatoire. Il est gardé dans l'historique et jamais montré à la personne.",
+        "ban": "Bannir",
+        "lift": "Lever le bannissement",
+        "kinds": {
+          "banned": "Bannie",
+          "lifted": "Bannissement levé",
+          "requested": "Bannissement demandé (attend un second opérateur)"
+        },
+        "confirm": {
+          "account": {
+            "ban": "Bannir {name} ? Toutes ses apps en production s'arrêtent aussitôt.",
+            "lift": "Lever le bannissement de {name} ? Ses apps en production refonctionnent comme avant."
+          },
+          "person": {
+            "ban": "Bannir {name} ? La personne est déconnectée partout et ne peut plus se connecter.",
+            "lift": "Lever le bannissement de {name} ? La personne peut se reconnecter."
+          }
+        },
+        "done": {
+          "ban": "Banni.",
+          "lift": "Bannissement levé."
+        },
+        "email": "Adresse de la personne à bannir"
       }
     }
   },

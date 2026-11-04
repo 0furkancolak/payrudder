@@ -3568,6 +3568,7 @@
       },
       "auth": {
         "invalid_credentials": "Correo o contraseña incorrectos, o demasiados intentos. Tras cinco contraseñas erróneas, el acceso con esa dirección se pausa 15 minutos, incluso con la contraseña correcta.",
+        "user_banned": "Esta persona ha sido bloqueada por un operador y no puede iniciar sesión. Escriba a soporte para apelar.",
         "rate_limited": "Demasiados intentos desde esta dirección. Inténtelo de nuevo en un minuto.",
         "unavailable": "La comprobación de inicio de sesión no está disponible ahora mismo. Inténtalo de nuevo en un momento."
       },
@@ -5755,6 +5756,43 @@
         "confirm": "Desactivar",
         "done": "El inicio de sesión en dos pasos de {email} está desactivado. Se le ha enviado un correo.",
         "nothing": "{email} no tenía el inicio de sesión en dos pasos activado; no se cambió nada."
+      },
+      "ban": {
+        "account": {
+          "title": "Bloquear esta organización",
+          "hint": "Todas las apps en vivo de la organización se comportan como bloqueadas: las claves se detienen y no hay pagos, cobros, correos a clientes ni webhooks. Sus personas pueden seguir entrando y no se reescribe nada; al levantar el bloqueo cada app queda como estaba."
+        },
+        "person": {
+          "title": "Bloquear a una persona",
+          "hint": "La persona no puede iniciar sesión y se cierra su sesión en todas partes al instante. Sus organizaciones y apps no se tocan. Busque primero a la persona por su dirección de acceso."
+        },
+        "thisAccount": "esta organización",
+        "banned": "Bloqueada",
+        "notBanned": "No bloqueada",
+        "lookup": "Buscar",
+        "reasonRequired": "Se requiere un motivo. Queda en el historial y nunca se muestra a la persona.",
+        "ban": "Bloquear",
+        "lift": "Levantar el bloqueo",
+        "kinds": {
+          "banned": "Bloqueada",
+          "lifted": "Bloqueo levantado",
+          "requested": "Bloqueo solicitado (espera a un segundo operador)"
+        },
+        "confirm": {
+          "account": {
+            "ban": "¿Bloquear {name}? Todas sus apps en vivo se detienen al instante.",
+            "lift": "¿Levantar el bloqueo de {name}? Sus apps en vivo vuelven a funcionar como estaban."
+          },
+          "person": {
+            "ban": "¿Bloquear a {name}? Se cierra su sesión en todas partes y no podrá entrar.",
+            "lift": "¿Levantar el bloqueo de {name}? Podrá volver a entrar."
+          }
+        },
+        "done": {
+          "ban": "Bloqueado.",
+          "lift": "Bloqueo levantado."
+        },
+        "email": "Dirección de la persona a bloquear"
       }
     }
   },

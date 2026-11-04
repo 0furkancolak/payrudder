@@ -486,6 +486,7 @@ type Row struct {
 	Name       string
 	OwnerEmail string
 	CreatedAt  time.Time
+	Banned     bool
 	Apps       int64
 	Members    int64
 	Keys       int64
@@ -508,7 +509,7 @@ func (q *Queries) List(ctx context.Context, after uuid.UUID, query string, pageS
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Row{AccountID: r.ID, Name: r.Name, OwnerEmail: r.OwnerEmail, CreatedAt: r.CreatedAt, Apps: r.Apps, Members: r.Members, Keys: r.ApiKeys, Standing: st})
+		out = append(out, Row{AccountID: r.ID, Name: r.Name, OwnerEmail: r.OwnerEmail, CreatedAt: r.CreatedAt, Banned: r.BannedAt != nil, Apps: r.Apps, Members: r.Members, Keys: r.ApiKeys, Standing: st})
 	}
 	return out, nil
 }
@@ -517,7 +518,7 @@ func (q *Queries) List(ctx context.Context, after uuid.UUID, query string, pageS
 func (r Row) Proto(now time.Time) *plansv1.OrganizationRow {
 	out := &plansv1.OrganizationRow{AccountId: r.AccountID.String(), Name: r.Name, OwnerEmail: r.OwnerEmail, PlanCode: r.Standing.Plan.Code, PlanName: r.Standing.Plan.Name,
 		State: r.Standing.State(now), Overridden: len(r.Standing.Own) > 0, Apps: r.Apps, Members: r.Members, ApiKeys: r.Keys, EventsLimit: r.Standing.Limits.Of(model.Events).Units,
-		CreateTime: timestamppb.New(r.CreatedAt)}
+		CreateTime: timestamppb.New(r.CreatedAt), Banned: r.Banned}
 	if r.Standing.Sub != nil {
 		out.CustomerId = r.Standing.Sub.CustomerID.String()
 	}

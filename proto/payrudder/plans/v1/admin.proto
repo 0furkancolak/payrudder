@@ -33,6 +33,11 @@ service AdminService {
   rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
   // ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
   rpc ListTenantStatusEvents(ListTenantStatusEventsRequest) returns (ListTenantStatusEventsResponse);
+  // SetBan bans or lifts the ban of an account (every live tenant of it then behaves as banned) or of a person (no sign-in, no session). Needs a reason; with
+  // the ban approval on, a ban needs a second operator (FAILED_PRECONDITION plans.tenant.approval_pending until then).
+  rpc SetBan(SetBanRequest) returns (SetBanResponse);
+  // ListBanEvents returns whether the account or person is banned and the latest 100 bans, lifts and requests, newest first.
+  rpc ListBanEvents(ListBanEventsRequest) returns (ListBanEventsResponse);
   // ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
   // except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
   rpc ListPlatformBlocklist(ListPlatformBlocklistRequest) returns (ListPlatformBlocklistResponse);
@@ -301,6 +306,46 @@ message DecideTenantAppealRequest {
 
 message DecideTenantAppealResponse {
   TenantAppeal appeal = 1;
+}
+
+// SetBanRequest names exactly one subject: an account (account_id) or a person (email).
+message SetBanRequest {
+  string account_id = 1;
+  string email = 2;
+  // true bans, false lifts.
+  bool banned = 3;
+  // nonpayment, fraud, abuse, legal, request or other. Optional.
+  string category = 4;
+  // Required, at most 500 characters.
+  string reason = 5;
+  // Who asks; set by the gateway from the signed-in operator (or the machine token's header).
+  string actor = 6;
+}
+
+message SetBanResponse {
+  bool banned = 1;
+}
+
+message ListBanEventsRequest {
+  string account_id = 1;
+  string email = 2;
+}
+
+message ListBanEventsResponse {
+  bool banned = 1;
+  repeated BanEvent events = 2;
+}
+
+// One ban, lift or request of a ban that waits for a second operator. Events are never changed or deleted.
+message BanEvent {
+  string id = 1;
+  // "banned", "lifted" or "requested".
+  string kind = 2;
+  string category = 3;
+  string reason = 4;
+  string actor = 5;
+  string approved_by = 6;
+  google.protobuf.Timestamp create_time = 7;
 }
 
 message ListTenantStatusEventsRequest {

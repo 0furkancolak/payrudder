@@ -100,7 +100,7 @@ WHERE c.tenant_id = @tenant_id AND c.external_id = ANY(@external_ids::text[]) AN
 
 -- The operator's list: every organisation but the platform's own, with its owner and its usage.
 -- name: SaasListOrganizations :many
-SELECT a.id, a.name, a.created_at,
+SELECT a.id, a.name, a.created_at, a.banned_at,
        COALESCE((SELECT u.email FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = a.id AND m.role = 'owner' ORDER BY m.created_at, u.id LIMIT 1), '')::text AS owner_email,
        (SELECT count(*) FROM apps ap WHERE ap.account_id = a.id AND ap.archived_at IS NULL)::bigint AS apps,
        (SELECT count(*) FROM account_members m WHERE m.account_id = a.id AND m.role <> 'affiliate')::bigint AS members,

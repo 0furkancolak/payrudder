@@ -47,11 +47,11 @@ WHERE m.account_id = $1 AND m.role <> 'affiliate' ORDER BY m.created_at, u.id;
 -- name: InsertSession :one
 INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES ($1, $2, $3, $4) RETURNING *;
 
--- A session is live while it is neither revoked nor expired; the clock is the database's.
+-- A session is live while it is neither revoked nor expired and its person is not banned (plan 14); the clock is the database's.
 -- name: GetLiveSession :one
 SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at, u.email_verified_at
 FROM user_sessions s JOIN users u ON u.id = s.user_id
-WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now();
+WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.banned_at IS NULL;
 
 -- name: SlideSession :exec
 UPDATE user_sessions SET last_seen_at = now(), expires_at = @expires_at WHERE id = @id AND revoked_at IS NULL;
