@@ -107,6 +107,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("MembersAndInvitations", testMembersAndInvitations)
 	t.Run("Addresses", testAddresses)
 	t.Run("TaxRates", testTaxRates)
+	t.Run("OAuth", testOAuth)
 	t.Run("MailSettings", testMailSettings)
 	t.Run("MailProvider", testMailProvider)
 	t.Run("MailAccounts", testMailAccounts)
