@@ -78,6 +78,8 @@ The plan's "bind one to an app" means **one account used by several apps**, set 
 5. **Cut over, then drop.** Routing and subscriptions reference the account id; the key columns stay one release as the rollback path (a code rollback reads keys again); the old rows are deleted after a clean reconciliation run.
 6. **Only then** `owner_kind = 'organisation'`: the console's organisation screen creates an account once and **binds** it to apps (the "connect on every app" loop goes), a tenant's page shows "inherited from the organisation", and removing a shared account asks which apps use it. Credentials of a shared account are sealed to the account id, so an app never holds them.
 
+The rehearsal, with its checks and stop conditions, is written in [the runbook](../runbooks/account-id-migration-rehearsal.md) (2026-11-04; not run).
+
 Rollback: steps 1 to 3 are additive and reversible by dropping the new tables; step 4's columns are nullable until step 5; step 5 keeps the key columns. A data loss window exists only if the old rows are deleted before reconciliation is clean, which is why that is its own step.
 
 **Defaults (not agreed):** per app-environment stays the scope (today) for payments and e-invoice; organisation-level payment and e-invoice accounts wait for the `account_id` work (plan 22 G7/G8) and are built as its last step. Organisation-level **e-mail** accounts do not wait for it (see the section above): they are plans-svc's alone and touch no payment table.
