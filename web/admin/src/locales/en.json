@@ -3568,6 +3568,7 @@
       },
       "auth": {
         "invalid_credentials": "Wrong e-mail or password, or too many attempts. After five wrong passwords, sign-in for that address is paused for 15 minutes, even with the right password.",
+        "user_banned": "This person has been banned by an operator and cannot sign in. Write to support to appeal.",
         "rate_limited": "Too many attempts from this address. Try again in a minute.",
         "unavailable": "Sign-in checks are not available right now. Try again shortly."
       },
@@ -5755,6 +5756,43 @@
         "confirm": "Turn it off",
         "done": "Two-factor sign-in of {email} is off. They have been mailed.",
         "nothing": "{email} had no two-factor sign-in; nothing was changed."
+      },
+      "ban": {
+        "account": {
+          "title": "Ban this organisation",
+          "hint": "Every live app of the organisation behaves as banned: keys stop, no payments, charges, customer mail or webhooks. Its people can still sign in, and nothing is rewritten, so lifting the ban restores each app as it was."
+        },
+        "person": {
+          "title": "Ban a person",
+          "hint": "The person cannot sign in and is signed out everywhere at once. Their organisations and apps are not touched. Look the person up by sign-in address first."
+        },
+        "thisAccount": "this organisation",
+        "banned": "Banned",
+        "notBanned": "Not banned",
+        "lookup": "Look up",
+        "reasonRequired": "A reason is required. It is kept in the history, never shown to the person.",
+        "ban": "Ban",
+        "lift": "Lift the ban",
+        "kinds": {
+          "banned": "Banned",
+          "lifted": "Ban lifted",
+          "requested": "Ban requested (waits for a second operator)"
+        },
+        "confirm": {
+          "account": {
+            "ban": "Ban {name}? Every live app of it stops at once.",
+            "lift": "Lift the ban of {name}? Its live apps work again as they were."
+          },
+          "person": {
+            "ban": "Ban {name}? They are signed out everywhere and cannot sign in.",
+            "lift": "Lift the ban of {name}? They can sign in again."
+          }
+        },
+        "done": {
+          "ban": "Banned.",
+          "lift": "Ban lifted."
+        },
+        "email": "Address of the person to ban"
       }
     }
   },

@@ -79,6 +79,11 @@ func New(systemPool *pgxpool.Pool, apps *accountscmd.Commands, keys *apikeyscmd.
 }
 
 // invalidCredentials is every sign-in failure: unknown e-mail, wrong password, locked account. One answer, so it reveals nothing.
+// banned is the refusal of a person the operator has banned (plan 14). It is said only after the person has proven who they are.
+func banned() error {
+	return errkey.New(codes.PermissionDenied, "identity.auth.user_banned", "this person has been banned by an operator; write to support to appeal")
+}
+
 func invalidCredentials() error {
 	return errkey.New(codes.Unauthenticated, "identity.auth.invalid_credentials", "wrong e-mail or password, or too many attempts: try again later")
 }
@@ -286,6 +291,9 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 
 // openSession records a successful sign-in of user (whatever the method) and opens a session for it, inside the caller's transaction.
 func (c *Commands) openSession(ctx context.Context, q *sqlc.Queries, user sqlc.User) (Opened, error) {
+	if user.BannedAt != nil {
+		return Opened{}, banned()
+	}
 	token, tokenHash, err := credential.NewToken()
 	if err != nil {
 		return Opened{}, status.Error(codes.Internal, "token generation failed")

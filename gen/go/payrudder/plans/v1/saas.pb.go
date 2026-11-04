@@ -935,10 +935,12 @@ type OrganizationRow struct {
 	Members    int64                  `protobuf:"varint,9,opt,name=members,proto3" json:"members,omitempty"`
 	ApiKeys    int64                  `protobuf:"varint,10,opt,name=api_keys,json=apiKeys,proto3" json:"api_keys,omitempty"`
 	// The events limit of the plan or override; 0 is unlimited. The events used are counted by limits-svc and filled by the gateway.
-	EventsLimit   int64                  `protobuf:"varint,11,opt,name=events_limit,json=eventsLimit,proto3" json:"events_limit,omitempty"`
-	EventsUsed    int64                  `protobuf:"varint,12,opt,name=events_used,json=eventsUsed,proto3" json:"events_used,omitempty"`
-	CustomerId    string                 `protobuf:"bytes,13,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	EventsLimit int64                  `protobuf:"varint,11,opt,name=events_limit,json=eventsLimit,proto3" json:"events_limit,omitempty"`
+	EventsUsed  int64                  `protobuf:"varint,12,opt,name=events_used,json=eventsUsed,proto3" json:"events_used,omitempty"`
+	CustomerId  string                 `protobuf:"bytes,13,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	CreateTime  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// The operator has banned the account (plan 14).
+	Banned        bool `protobuf:"varint,15,opt,name=banned,proto3" json:"banned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1069,6 +1071,13 @@ func (x *OrganizationRow) GetCreateTime() *timestamppb.Timestamp {
 		return x.CreateTime
 	}
 	return nil
+}
+
+func (x *OrganizationRow) GetBanned() bool {
+	if x != nil {
+		return x.Banned
+	}
+	return false
 }
 
 type ListOrganizationsRequest struct {
@@ -1462,7 +1471,7 @@ const file_payrudder_plans_v1_saas_proto_rawDesc = "" +
 	"customerId\x120\n" +
 	"\x14customer_external_id\x18\x05 \x01(\tR\x12customerExternalId\x12\x1d\n" +
 	"\n" +
-	"meter_code\x18\x06 \x01(\tR\tmeterCode\"\xc0\x03\n" +
+	"meter_code\x18\x06 \x01(\tR\tmeterCode\"\xd8\x03\n" +
 	"\x0fOrganizationRow\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x12\n" +
@@ -1485,7 +1494,8 @@ const file_payrudder_plans_v1_saas_proto_rawDesc = "" +
 	"\vcustomer_id\x18\r \x01(\tR\n" +
 	"customerId\x12;\n" +
 	"\vcreate_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"l\n" +
+	"createTime\x12\x16\n" +
+	"\x06banned\x18\x0f \x01(\bR\x06banned\"l\n" +
 	"\x18ListOrganizationsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +

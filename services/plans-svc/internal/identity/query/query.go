@@ -216,6 +216,9 @@ func (q *Queries) Apps(ctx context.Context, userID, accountID string) ([]*plansv
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
 	}
+	if err := convert.AccountBan(ctx, db, aid, tenants); err != nil {
+		return nil, convert.Err(err, "tenant")
+	}
 	return convert.Apps(apps, tenants), nil
 }
 
@@ -242,6 +245,9 @@ func AppOf(ctx context.Context, db *sqlc.Queries, userID, appID string) (*plansv
 	if err != nil {
 		return nil, "", convert.Err(err, "tenant")
 	}
+	if err := convert.AccountBan(ctx, db, row.AccountID, tenants); err != nil {
+		return nil, "", convert.Err(err, "tenant")
+	}
 	return convert.App(sqlc.App{ID: row.ID, AccountID: row.AccountID, Name: row.Name, Slug: row.Slug, CreatedAt: row.CreatedAt}, tenants), row.Role, nil
 }
 
@@ -259,12 +265,16 @@ func (q *Queries) Tenant(ctx context.Context, userID, tenantID string) (*plansv1
 	if err != nil {
 		return nil, "", convert.Err(err, "tenant")
 	}
-	return convert.Tenant(sqlc.Tenant{
+	one := []sqlc.Tenant{{
 		ID: row.ID, AccountID: row.AccountID, Environment: row.Environment, Name: row.Name, Tier: row.Tier, Currency: row.Currency, Timezone: row.Timezone,
 		GracePeriod: row.GracePeriod, CreatedAt: row.CreatedAt, InvoiceLogoAssetID: row.InvoiceLogoAssetID, AppID: row.AppID, Address: row.Address,
 		BankTransfer: row.BankTransfer, Legal: row.Legal, EInvoiceOn: row.EInvoiceOn, Status: row.Status, ActivatedAt: row.ActivatedAt,
 		TermsAcceptedAt: row.TermsAcceptedAt, TermsAcceptedBy: row.TermsAcceptedBy,
-	}), row.Role, nil
+	}}
+	if err := convert.AccountBan(ctx, q.db(), row.AccountID, one); err != nil {
+		return nil, "", convert.Err(err, "tenant")
+	}
+	return convert.Tenant(one[0]), row.Role, nil
 }
 
 // APIKeys lists the keys of both environments of an app, newest first.

@@ -92,3 +92,39 @@ export function useClearOverrides() {
 export function useResetTwoFactor() {
   return useMutation({ mutationFn: (v: { email: string; reason: string }) => unwrap(api.POST("/admin/v1/users/two-factor/reset", { body: v })) });
 }
+
+/** Bans (plan 14): an account (every live tenant of it behaves as banned) or a person (no sign-in, no session). */
+export type BanSubject = { kind: "account"; id: string } | { kind: "person"; email: string };
+const banKey = (s: BanSubject) => ["admin", "bans", s.kind, s.kind === "account" ? s.id : s.email] as const;
+
+export function useBanState(subject: MaybeRefOrGetter<BanSubject | null>) {
+  return useQuery({
+    queryKey: computed(() => banKey(toValue(subject) ?? { kind: "account", id: "" })),
+    queryFn: () => {
+      const s = toValue(subject);
+      if (!s) throw new Error("no subject");
+      return s.kind === "account"
+        ? unwrap(api.GET("/admin/v1/organizations/{account_id}/ban", { params: { path: { account_id: s.id } } }))
+        : unwrap(api.GET("/admin/v1/users/ban", { params: { query: { email: s.email } } }));
+    },
+    enabled: computed(() => toValue(subject) !== null),
+    retry: false,
+  });
+}
+
+/** Bans or lifts. Needs a reason; where a ban needs a second operator the first request answers 409 plans.tenant.approval_pending (it is recorded). */
+export function useSetBan() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { subject: BanSubject; banned: boolean; reason: string; category?: "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other" }) => {
+      const body = { banned: v.banned, reason: v.reason, ...(v.category ? { category: v.category } : {}) };
+      return v.subject.kind === "account"
+        ? unwrap(api.PUT("/admin/v1/organizations/{account_id}/ban", { params: { path: { account_id: v.subject.id } }, body }))
+        : unwrap(api.PUT("/admin/v1/users/ban", { body: { ...body, email: v.subject.email } }));
+    },
+    onSettled: (_d, _e, v) => {
+      void queries.invalidateQueries({ queryKey: banKey(v.subject) });
+      void queries.invalidateQueries({ queryKey: ["admin", "saas", "organizations"] });
+    },
+  });
+}

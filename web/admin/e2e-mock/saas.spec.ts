@@ -157,6 +157,37 @@ test.describe("the operator", () => {
     await expect(sheet).toContainText("No person signs in with that address.");
   });
 
+  test("bans and lifts an account and a person, each with a reason and a confirmation", async ({ page }) => {
+    const { gw } = saasGateway(baseTenant(new MockGateway()));
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/organisations");
+    await page.getByRole("row", { name: /Ada Labs/ }).getByRole("button", { name: "Manage" }).click();
+    const account = page.getByTestId("ban-account");
+    await expect(account.getByTestId("ban-account-apply")).toBeDisabled();
+    await account.getByLabel("Reason").fill("card testing ring");
+    await account.getByTestId("ban-account-apply").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("Every live app of it stops at once");
+    await page.getByTestId("confirm-accept").click();
+    await expect(account.getByTestId("ban-account-state")).toHaveText("Banned");
+    expect(gw.called("PUT", /\/organizations\/.+\/ban$/)[0]?.body).toEqual({ banned: true, reason: "card testing ring" });
+    await expect(account.getByTestId("ban-account-history")).toContainText("card testing ring");
+    await expect(account.getByTestId("ban-account-apply")).toHaveText("Lift the ban");
+    // A person is looked up first; an unknown address is told.
+    const person = page.getByTestId("ban-person");
+    await person.getByLabel("Address of the person to ban").fill("nobody@example.com");
+    await person.getByTestId("ban-person-lookup").click();
+    await expect(person).toContainText("not found");
+    await person.getByLabel("Address of the person to ban").fill("ada@example.com");
+    await person.getByTestId("ban-person-lookup").click();
+    await expect(person.getByTestId("ban-person-state")).toHaveText("Not banned");
+    await person.getByLabel("Reason").fill("abuse of support");
+    await person.getByTestId("ban-person-apply").click();
+    await page.getByTestId("confirm-accept").click();
+    await expect(person.getByTestId("ban-person-state")).toHaveText("Banned");
+    expect(gw.called("PUT", /\/users\/ban$/)[0]?.body).toEqual({ banned: true, reason: "abuse of support", email: "ada@example.com" });
+  });
+
   test("searches by name", async ({ page }) => {
     const { gw } = saasGateway(baseTenant(new MockGateway()));
     await gw.install(page);

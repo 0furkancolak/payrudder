@@ -77,7 +77,7 @@ func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (Api
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform, require_two_factor, banned_at FROM accounts WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -89,6 +89,7 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 		&i.CreatedAt,
 		&i.Platform,
 		&i.RequireTwoFactor,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -174,7 +175,7 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 
 const insertAccount = `-- name: InsertAccount :one
 
-INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform, require_two_factor
+INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform, require_two_factor, banned_at
 `
 
 type InsertAccountParams struct {
@@ -192,6 +193,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.CreatedAt,
 		&i.Platform,
 		&i.RequireTwoFactor,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -707,8 +709,10 @@ func (q *Queries) RenameAppTenants(ctx context.Context, arg RenameAppTenantsPara
 }
 
 const resolveApiKey = `-- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, k.rate_percent, t.environment, t.status AS tenant_status, t.tier, t.timezone
-FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, k.rate_percent, t.environment,
+       -- A live tenant of a banned account behaves as banned (plan 14); the row is not rewritten.
+       CASE WHEN t.environment = 'live' AND a.banned_at IS NOT NULL THEN 'banned' ELSE t.status END::text AS tenant_status, t.tier, t.timezone
+FROM api_keys k JOIN tenants t ON t.id = k.tenant_id JOIN accounts a ON a.id = t.account_id
 WHERE k.prefix = $1
 `
 

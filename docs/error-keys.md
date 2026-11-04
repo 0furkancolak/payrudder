@@ -311,6 +311,7 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `identity.auth.invalid_credentials`
 - `identity.auth.rate_limited`
 - `identity.auth.unavailable`
+- `identity.auth.user_banned`
 - `identity.billing_profile.address_required`
 - `identity.billing_profile.country_required`
 - `identity.billing_profile.legal_name_required`

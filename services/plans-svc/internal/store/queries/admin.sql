@@ -116,8 +116,10 @@ WHERE id = $1
 RETURNING *;
 
 -- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, k.rate_percent, t.environment, t.status AS tenant_status, t.tier, t.timezone
-FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, k.rate_percent, t.environment,
+       -- A live tenant of a banned account behaves as banned (plan 14); the row is not rewritten.
+       CASE WHEN t.environment = 'live' AND a.banned_at IS NOT NULL THEN 'banned' ELSE t.status END::text AS tenant_status, t.tier, t.timezone
+FROM api_keys k JOIN tenants t ON t.id = k.tenant_id JOIN accounts a ON a.id = t.account_id
 WHERE k.prefix = $1;
 
 -- name: ListTenants :many

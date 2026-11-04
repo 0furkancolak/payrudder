@@ -258,7 +258,7 @@ func (q *Queries) SaasEntitlements(ctx context.Context, arg SaasEntitlementsPara
 }
 
 const saasGetAccount = `-- name: SaasGetAccount :one
-SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform, require_two_factor, banned_at FROM accounts WHERE id = $1
 `
 
 func (q *Queries) SaasGetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -270,6 +270,7 @@ func (q *Queries) SaasGetAccount(ctx context.Context, id uuid.UUID) (Account, er
 		&i.CreatedAt,
 		&i.Platform,
 		&i.RequireTwoFactor,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -298,7 +299,7 @@ func (q *Queries) SaasGetCustomer(ctx context.Context, arg SaasGetCustomerParams
 }
 
 const saasGetPlatformAccount = `-- name: SaasGetPlatformAccount :one
-SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE platform
+SELECT id, name, created_at, platform, require_two_factor, banned_at FROM accounts WHERE platform
 `
 
 func (q *Queries) SaasGetPlatformAccount(ctx context.Context) (Account, error) {
@@ -310,6 +311,7 @@ func (q *Queries) SaasGetPlatformAccount(ctx context.Context) (Account, error) {
 		&i.CreatedAt,
 		&i.Platform,
 		&i.RequireTwoFactor,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -369,7 +371,7 @@ func (q *Queries) SaasHadTrial(ctx context.Context, arg SaasHadTrialParams) (boo
 }
 
 const saasInsertPlatformAccount = `-- name: SaasInsertPlatformAccount :one
-INSERT INTO accounts (id, name, platform) VALUES ($1, $2, true) RETURNING id, name, created_at, platform, require_two_factor
+INSERT INTO accounts (id, name, platform) VALUES ($1, $2, true) RETURNING id, name, created_at, platform, require_two_factor, banned_at
 `
 
 type SaasInsertPlatformAccountParams struct {
@@ -386,6 +388,7 @@ func (q *Queries) SaasInsertPlatformAccount(ctx context.Context, arg SaasInsertP
 		&i.CreatedAt,
 		&i.Platform,
 		&i.RequireTwoFactor,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -433,7 +436,7 @@ func (q *Queries) SaasLatestPlanVersions(ctx context.Context, tenantID uuid.UUID
 }
 
 const saasListOrganizations = `-- name: SaasListOrganizations :many
-SELECT a.id, a.name, a.created_at,
+SELECT a.id, a.name, a.created_at, a.banned_at,
        COALESCE((SELECT u.email FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = a.id AND m.role = 'owner' ORDER BY m.created_at, u.id LIMIT 1), '')::text AS owner_email,
        (SELECT count(*) FROM apps ap WHERE ap.account_id = a.id AND ap.archived_at IS NULL)::bigint AS apps,
        (SELECT count(*) FROM account_members m WHERE m.account_id = a.id AND m.role <> 'affiliate')::bigint AS members,
@@ -456,6 +459,7 @@ type SaasListOrganizationsRow struct {
 	ID         uuid.UUID
 	Name       string
 	CreatedAt  time.Time
+	BannedAt   *time.Time
 	OwnerEmail string
 	Apps       int64
 	Members    int64
@@ -476,6 +480,7 @@ func (q *Queries) SaasListOrganizations(ctx context.Context, arg SaasListOrganiz
 			&i.ID,
 			&i.Name,
 			&i.CreatedAt,
+			&i.BannedAt,
 			&i.OwnerEmail,
 			&i.Apps,
 			&i.Members,

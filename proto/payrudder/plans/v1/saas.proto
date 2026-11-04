@@ -142,6 +142,8 @@ message OrganizationRow {
   int64 events_used = 12;
   string customer_id = 13;
   google.protobuf.Timestamp create_time = 14;
+  // The operator has banned the account (plan 14).
+  bool banned = 15;
 }
 
 message ListOrganizationsRequest {

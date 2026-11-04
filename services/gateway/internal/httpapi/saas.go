@@ -365,6 +365,7 @@ type organizationRowJSON struct {
 	APIKeys     int64   `json:"api_keys"`
 	EventsUsed  int64   `json:"events_used"`
 	EventsLimit int64   `json:"events_limit"`
+	Banned      bool    `json:"banned"`
 	CreateTime  *string `json:"create_time,omitempty"`
 }
 
@@ -391,7 +392,7 @@ func (s *Server) adminOrganizations(w http.ResponseWriter, r *http.Request) {
 	g.SetLimit(8)
 	for i, o := range resp.GetOrganizations() {
 		rows[i] = organizationRowJSON{AccountID: o.GetAccountId(), Name: o.GetName(), OwnerEmail: o.GetOwnerEmail(), PlanCode: o.GetPlanCode(), PlanName: o.GetPlanName(), State: o.GetState(),
-			Overridden: o.GetOverridden(), Apps: o.GetApps(), Members: o.GetMembers(), APIKeys: o.GetApiKeys(), EventsLimit: o.GetEventsLimit(), CreateTime: rfc3339(o.GetCreateTime())}
+			Overridden: o.GetOverridden(), Apps: o.GetApps(), Members: o.GetMembers(), APIKeys: o.GetApiKeys(), EventsLimit: o.GetEventsLimit(), Banned: o.GetBanned(), CreateTime: rfc3339(o.GetCreateTime())}
 		if o.GetCustomerId() == "" {
 			continue
 		}

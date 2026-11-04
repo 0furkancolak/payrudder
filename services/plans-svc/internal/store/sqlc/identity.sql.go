@@ -366,7 +366,7 @@ func (q *Queries) GetInviteByToken(ctx context.Context, tokenHash []byte) (GetIn
 const getLiveSession = `-- name: GetLiveSession :one
 SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, u.email, u.display_name, u.created_at AS user_created_at, u.email_verified_at
 FROM user_sessions s JOIN users u ON u.id = s.user_id
-WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
+WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.banned_at IS NULL
 `
 
 type GetLiveSessionRow struct {
@@ -381,7 +381,7 @@ type GetLiveSessionRow struct {
 	EmailVerifiedAt *time.Time
 }
 
-// A session is live while it is neither revoked nor expired; the clock is the database's.
+// A session is live while it is neither revoked nor expired and its person is not banned (plan 14); the clock is the database's.
 func (q *Queries) GetLiveSession(ctx context.Context, tokenHash []byte) (GetLiveSessionRow, error) {
 	row := q.db.QueryRow(ctx, getLiveSession, tokenHash)
 	var i GetLiveSessionRow
@@ -626,7 +626,7 @@ func (q *Queries) GetTwoFactorState(ctx context.Context, userID uuid.UUID) (GetT
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at FROM users WHERE id = $1
+SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -644,12 +644,13 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at FROM users WHERE lower(email) = lower($1::text)
+SELECT id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at FROM users WHERE lower(email) = lower($1::text)
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -667,6 +668,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -885,7 +887,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (U
 
 const insertUser = `-- name: InsertUser :one
 
-INSERT INTO users (id, email, display_name, password_hash, locale) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+INSERT INTO users (id, email, display_name, password_hash, locale) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at
 `
 
 type InsertUserParams struct {
@@ -918,6 +920,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -947,7 +950,7 @@ func (q *Queries) InsertUserToken(ctx context.Context, arg InsertUserTokenParams
 }
 
 const insertVerifiedUser = `-- name: InsertVerifiedUser :one
-INSERT INTO users (id, email, display_name, password_hash, locale, email_verified_at) VALUES ($1, $2, $3, $4, $5, now()) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+INSERT INTO users (id, email, display_name, password_hash, locale, email_verified_at) VALUES ($1, $2, $3, $4, $5, now()) RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at
 `
 
 type InsertVerifiedUserParams struct {
@@ -980,6 +983,7 @@ func (q *Queries) InsertVerifiedUser(ctx context.Context, arg InsertVerifiedUser
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -1625,7 +1629,7 @@ UPDATE users SET
     ELSE NULL
   END
 WHERE id = $3 AND password_hash <> '' AND (locked_until IS NULL OR locked_until <= now())
-RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at
 `
 
 type TryPasswordParams struct {
@@ -1652,6 +1656,7 @@ func (q *Queries) TryPassword(ctx context.Context, arg TryPasswordParams) (User,
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }
@@ -1664,7 +1669,7 @@ UPDATE users SET
     ELSE NULL
   END
 WHERE id = $3 AND (locked_until IS NULL OR locked_until <= now())
-RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at
+RETURNING id, email, display_name, password_hash, failed_logins, locked_until, last_login_at, created_at, email_verified_at, locale, taken_notice_at, banned_at
 `
 
 type TryTwoFactorParams struct {
@@ -1689,6 +1694,7 @@ func (q *Queries) TryTwoFactor(ctx context.Context, arg TryTwoFactorParams) (Use
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+		&i.BannedAt,
 	)
 	return i, err
 }

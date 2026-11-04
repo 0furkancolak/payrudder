@@ -43,6 +43,10 @@ func (s *Server) goLiveRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/appeal", AccessSession, ratelimit.ClassWrite, s.appAppeal},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
 		{"GET", "/admin/v1/tenants/{id}/status-events", AccessOperator, "", s.tenantStatusEvents},
+		{"PUT", "/admin/v1/organizations/{account_id}/ban", AccessOperator, "", s.setAccountBan},
+		{"GET", "/admin/v1/organizations/{account_id}/ban", AccessOperator, "", s.accountBan},
+		{"PUT", "/admin/v1/users/ban", AccessOperator, "", s.setUserBan},
+		{"GET", "/admin/v1/users/ban", AccessOperator, "", s.userBan},
 		{"GET", "/admin/v1/blocklist", AccessOperator, "", s.listPlatformBlocklist},
 		{"POST", "/admin/v1/blocklist", AccessOperator, "", s.addPlatformBlocklistEntry},
 		{"DELETE", "/admin/v1/blocklist/{id}", AccessOperator, "", s.removePlatformBlocklistEntry},
@@ -386,6 +390,45 @@ func (s *Server) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 // tenantStatusEvents is GET /admin/v1/tenants/{id}/status-events: the changes of the tenant's status and the requests waiting for a second operator.
 func (s *Server) tenantStatusEvents(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Admin.ListTenantStatusEvents(r.Context(), &plansv1.ListTenantStatusEventsRequest{TenantId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// Bans of an account and of a person (plan 14): PUT {banned, category, reason} bans or lifts, GET answers whether the subject is banned and the history. The
+// person is named by sign-in address (as for the two-factor reset), in the body of the PUT and in ?email= of the GET.
+type banBody struct {
+	Email    string `json:"email"`
+	Banned   *bool  `json:"banned"`
+	Category string `json:"category"`
+	Reason   string `json:"reason"`
+}
+
+func (s *Server) setBan(w http.ResponseWriter, r *http.Request, accountID string) {
+	var body banBody
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if body.Banned == nil {
+		writeError(w, r, invalid("banned", "required: true bans, false lifts the ban"))
+		return
+	}
+	resp, err := s.d.Admin.SetBan(r.Context(), &plansv1.SetBanRequest{AccountId: accountID, Email: body.Email, Banned: *body.Banned, Category: body.Category, Reason: body.Reason, Actor: actorOf(r)})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) setAccountBan(w http.ResponseWriter, r *http.Request) {
+	s.setBan(w, r, r.PathValue("account_id"))
+}
+
+func (s *Server) setUserBan(w http.ResponseWriter, r *http.Request) { s.setBan(w, r, "") }
+
+func (s *Server) accountBan(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.ListBanEvents(r.Context(), &plansv1.ListBanEventsRequest{AccountId: r.PathValue("account_id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) userBan(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.ListBanEvents(r.Context(), &plansv1.ListBanEventsRequest{Email: r.URL.Query().Get("email")})
 	respond(w, r, http.StatusOK, resp, err)
 }
 

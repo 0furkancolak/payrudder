@@ -31,6 +31,8 @@ const (
 	AdminService_TouchApiKey_FullMethodName                  = "/payrudder.plans.v1.AdminService/TouchApiKey"
 	AdminService_SetTenantStatus_FullMethodName              = "/payrudder.plans.v1.AdminService/SetTenantStatus"
 	AdminService_ListTenantStatusEvents_FullMethodName       = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
+	AdminService_SetBan_FullMethodName                       = "/payrudder.plans.v1.AdminService/SetBan"
+	AdminService_ListBanEvents_FullMethodName                = "/payrudder.plans.v1.AdminService/ListBanEvents"
 	AdminService_ListPlatformBlocklist_FullMethodName        = "/payrudder.plans.v1.AdminService/ListPlatformBlocklist"
 	AdminService_AddPlatformBlocklistEntry_FullMethodName    = "/payrudder.plans.v1.AdminService/AddPlatformBlocklistEntry"
 	AdminService_RemovePlatformBlocklistEntry_FullMethodName = "/payrudder.plans.v1.AdminService/RemovePlatformBlocklistEntry"
@@ -76,6 +78,11 @@ type AdminServiceClient interface {
 	SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(ctx context.Context, in *ListTenantStatusEventsRequest, opts ...grpc.CallOption) (*ListTenantStatusEventsResponse, error)
+	// SetBan bans or lifts the ban of an account (every live tenant of it then behaves as banned) or of a person (no sign-in, no session). Needs a reason; with
+	// the ban approval on, a ban needs a second operator (FAILED_PRECONDITION plans.tenant.approval_pending until then).
+	SetBan(ctx context.Context, in *SetBanRequest, opts ...grpc.CallOption) (*SetBanResponse, error)
+	// ListBanEvents returns whether the account or person is banned and the latest 100 bans, lifts and requests, newest first.
+	ListBanEvents(ctx context.Context, in *ListBanEventsRequest, opts ...grpc.CallOption) (*ListBanEventsResponse, error)
 	// ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
 	// except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
 	ListPlatformBlocklist(ctx context.Context, in *ListPlatformBlocklistRequest, opts ...grpc.CallOption) (*ListPlatformBlocklistResponse, error)
@@ -236,6 +243,26 @@ func (c *adminServiceClient) ListTenantStatusEvents(ctx context.Context, in *Lis
 	return out, nil
 }
 
+func (c *adminServiceClient) SetBan(ctx context.Context, in *SetBanRequest, opts ...grpc.CallOption) (*SetBanResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetBanResponse)
+	err := c.cc.Invoke(ctx, AdminService_SetBan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ListBanEvents(ctx context.Context, in *ListBanEventsRequest, opts ...grpc.CallOption) (*ListBanEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBanEventsResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListBanEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *adminServiceClient) ListPlatformBlocklist(ctx context.Context, in *ListPlatformBlocklistRequest, opts ...grpc.CallOption) (*ListPlatformBlocklistResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListPlatformBlocklistResponse)
@@ -387,6 +414,11 @@ type AdminServiceServer interface {
 	SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error)
+	// SetBan bans or lifts the ban of an account (every live tenant of it then behaves as banned) or of a person (no sign-in, no session). Needs a reason; with
+	// the ban approval on, a ban needs a second operator (FAILED_PRECONDITION plans.tenant.approval_pending until then).
+	SetBan(context.Context, *SetBanRequest) (*SetBanResponse, error)
+	// ListBanEvents returns whether the account or person is banned and the latest 100 bans, lifts and requests, newest first.
+	ListBanEvents(context.Context, *ListBanEventsRequest) (*ListBanEventsResponse, error)
 	// ListPlatformBlocklist returns the operator's platform-wide blocklist, newest first (at most 1000 entries). It holds the same gates as an app's own list for every app
 	// except the platform's own (the SaaS customers), and an app is never told which list refused a customer.
 	ListPlatformBlocklist(context.Context, *ListPlatformBlocklistRequest) (*ListPlatformBlocklistResponse, error)
@@ -462,6 +494,12 @@ func (UnimplementedAdminServiceServer) SetTenantStatus(context.Context, *SetTena
 }
 func (UnimplementedAdminServiceServer) ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTenantStatusEvents not implemented")
+}
+func (UnimplementedAdminServiceServer) SetBan(context.Context, *SetBanRequest) (*SetBanResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBan not implemented")
+}
+func (UnimplementedAdminServiceServer) ListBanEvents(context.Context, *ListBanEventsRequest) (*ListBanEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBanEvents not implemented")
 }
 func (UnimplementedAdminServiceServer) ListPlatformBlocklist(context.Context, *ListPlatformBlocklistRequest) (*ListPlatformBlocklistResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlatformBlocklist not implemented")
@@ -736,6 +774,42 @@ func _AdminService_ListTenantStatusEvents_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_SetBan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBanRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).SetBan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_SetBan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).SetBan(ctx, req.(*SetBanRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ListBanEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBanEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListBanEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListBanEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListBanEvents(ctx, req.(*ListBanEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AdminService_ListPlatformBlocklist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListPlatformBlocklistRequest)
 	if err := dec(in); err != nil {
@@ -1006,6 +1080,14 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTenantStatusEvents",
 			Handler:    _AdminService_ListTenantStatusEvents_Handler,
+		},
+		{
+			MethodName: "SetBan",
+			Handler:    _AdminService_SetBan_Handler,
+		},
+		{
+			MethodName: "ListBanEvents",
+			Handler:    _AdminService_ListBanEvents_Handler,
 		},
 		{
 			MethodName: "ListPlatformBlocklist",

@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -80,6 +81,25 @@ func tsPtr(t *time.Time) *timestamppb.Timestamp {
 		return nil
 	}
 	return timestamppb.New(*t)
+}
+
+// AccountBan makes the live tenants of a banned account read as banned (plan 14). The rows are not rewritten, so lifting the ban restores each tenant as it was.
+func AccountBan(ctx context.Context, db *sqlc.Queries, accountID uuid.UUID, tenants []sqlc.Tenant) error {
+	banned, err := db.AccountIsBanned(ctx, accountID)
+	if err != nil || !banned {
+		return err
+	}
+	for i := range tenants {
+		BanLive(&tenants[i])
+	}
+	return nil
+}
+
+// BanLive makes a live tenant read as banned.
+func BanLive(t *sqlc.Tenant) {
+	if t.Environment == env.Live.String() {
+		t.Status = domain.StatusBanned
+	}
 }
 
 // Tenant maps a tenant row.
