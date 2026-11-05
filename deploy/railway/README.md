@@ -73,9 +73,9 @@ each service its health check, restart policy and watch paths. Until then it sti
 ## Two environments (staging and production)
 
 Payrudder's own deployment ([plan 23](../../docs/plans/23-staging-and-production.md), runbook
-[staging-and-production](../../docs/runbooks/staging-and-production.md)) is one Railway project with two Railway environments. Each is a stack of its
-own: services, volumes, variables and generated secrets are never shared. Create the environment first (*Settings → Environments*, or
-`railway environment new staging`), then run the script once per environment with that environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects them, with where
+[staging-and-production](../../docs/runbooks/staging-and-production.md)) is one Railway project per environment (`payrudder` with the environment
+`staging`, `payrudder-production` with `production`): two environments of one project collide on service names with CLI 5.71 (plan 23). Services,
+volumes, variables and generated secrets are never shared. Create the project first (`railway init --name payrudder-production`), then run the script once per environment with that environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects them, with where
 each one comes from, and prints this command):
 
 ```bash
