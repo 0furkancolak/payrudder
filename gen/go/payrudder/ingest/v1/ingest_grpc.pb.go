@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IngestService_IngestEvents_FullMethodName       = "/payrudder.ingest.v1.IngestService/IngestEvents"
-	IngestService_GetOutboxWatermark_FullMethodName = "/payrudder.ingest.v1.IngestService/GetOutboxWatermark"
+	IngestService_IngestEvents_FullMethodName            = "/payrudder.ingest.v1.IngestService/IngestEvents"
+	IngestService_GetOutboxWatermark_FullMethodName      = "/payrudder.ingest.v1.IngestService/GetOutboxWatermark"
+	IngestService_ListRejectedEvents_FullMethodName      = "/payrudder.ingest.v1.IngestService/ListRejectedEvents"
+	IngestService_GetRejectedEventSummary_FullMethodName = "/payrudder.ingest.v1.IngestService/GetRejectedEventSummary"
 )
 
 // IngestServiceClient is the client API for IngestService service.
@@ -35,6 +37,10 @@ type IngestServiceClient interface {
 	IngestEvents(ctx context.Context, in *IngestEventsRequest, opts ...grpc.CallOption) (*IngestEventsResponse, error)
 	// GetOutboxWatermark is internal: billing-svc uses it for the period-close watermark.
 	GetOutboxWatermark(ctx context.Context, in *GetOutboxWatermarkRequest, opts ...grpc.CallOption) (*GetOutboxWatermarkResponse, error)
+	// ListRejectedEvents lists the tenant's recently rejected events, newest first (plan 18): the last 14 days, at most 10 000 of them.
+	ListRejectedEvents(ctx context.Context, in *ListRejectedEventsRequest, opts ...grpc.CallOption) (*ListRejectedEventsResponse, error)
+	// GetRejectedEventSummary counts the rejected events of the last 24 hours, by error code and by hour.
+	GetRejectedEventSummary(ctx context.Context, in *GetRejectedEventSummaryRequest, opts ...grpc.CallOption) (*GetRejectedEventSummaryResponse, error)
 }
 
 type ingestServiceClient struct {
@@ -65,6 +71,26 @@ func (c *ingestServiceClient) GetOutboxWatermark(ctx context.Context, in *GetOut
 	return out, nil
 }
 
+func (c *ingestServiceClient) ListRejectedEvents(ctx context.Context, in *ListRejectedEventsRequest, opts ...grpc.CallOption) (*ListRejectedEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRejectedEventsResponse)
+	err := c.cc.Invoke(ctx, IngestService_ListRejectedEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ingestServiceClient) GetRejectedEventSummary(ctx context.Context, in *GetRejectedEventSummaryRequest, opts ...grpc.CallOption) (*GetRejectedEventSummaryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRejectedEventSummaryResponse)
+	err := c.cc.Invoke(ctx, IngestService_GetRejectedEventSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IngestServiceServer is the server API for IngestService service.
 // All implementations must embed UnimplementedIngestServiceServer
 // for forward compatibility.
@@ -77,6 +103,10 @@ type IngestServiceServer interface {
 	IngestEvents(context.Context, *IngestEventsRequest) (*IngestEventsResponse, error)
 	// GetOutboxWatermark is internal: billing-svc uses it for the period-close watermark.
 	GetOutboxWatermark(context.Context, *GetOutboxWatermarkRequest) (*GetOutboxWatermarkResponse, error)
+	// ListRejectedEvents lists the tenant's recently rejected events, newest first (plan 18): the last 14 days, at most 10 000 of them.
+	ListRejectedEvents(context.Context, *ListRejectedEventsRequest) (*ListRejectedEventsResponse, error)
+	// GetRejectedEventSummary counts the rejected events of the last 24 hours, by error code and by hour.
+	GetRejectedEventSummary(context.Context, *GetRejectedEventSummaryRequest) (*GetRejectedEventSummaryResponse, error)
 	mustEmbedUnimplementedIngestServiceServer()
 }
 
@@ -92,6 +122,12 @@ func (UnimplementedIngestServiceServer) IngestEvents(context.Context, *IngestEve
 }
 func (UnimplementedIngestServiceServer) GetOutboxWatermark(context.Context, *GetOutboxWatermarkRequest) (*GetOutboxWatermarkResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOutboxWatermark not implemented")
+}
+func (UnimplementedIngestServiceServer) ListRejectedEvents(context.Context, *ListRejectedEventsRequest) (*ListRejectedEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRejectedEvents not implemented")
+}
+func (UnimplementedIngestServiceServer) GetRejectedEventSummary(context.Context, *GetRejectedEventSummaryRequest) (*GetRejectedEventSummaryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRejectedEventSummary not implemented")
 }
 func (UnimplementedIngestServiceServer) mustEmbedUnimplementedIngestServiceServer() {}
 func (UnimplementedIngestServiceServer) testEmbeddedByValue()                       {}
@@ -150,6 +186,42 @@ func _IngestService_GetOutboxWatermark_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IngestService_ListRejectedEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRejectedEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IngestServiceServer).ListRejectedEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IngestService_ListRejectedEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IngestServiceServer).ListRejectedEvents(ctx, req.(*ListRejectedEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IngestService_GetRejectedEventSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRejectedEventSummaryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IngestServiceServer).GetRejectedEventSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IngestService_GetRejectedEventSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IngestServiceServer).GetRejectedEventSummary(ctx, req.(*GetRejectedEventSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IngestService_ServiceDesc is the grpc.ServiceDesc for IngestService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -164,6 +236,14 @@ var IngestService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOutboxWatermark",
 			Handler:    _IngestService_GetOutboxWatermark_Handler,
+		},
+		{
+			MethodName: "ListRejectedEvents",
+			Handler:    _IngestService_ListRejectedEvents_Handler,
+		},
+		{
+			MethodName: "GetRejectedEventSummary",
+			Handler:    _IngestService_GetRejectedEventSummary_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

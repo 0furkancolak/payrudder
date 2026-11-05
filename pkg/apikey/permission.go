@@ -179,6 +179,8 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 	switch segs[0] {
 	case "events":
 		return PermEventsWrite, true
+	case "rejected-events":
+		return PermUsageRead, true // what usage was refused, to read; the events themselves are not here
 	case "customers":
 		if len(segs) >= 3 {
 			switch segs[2] {

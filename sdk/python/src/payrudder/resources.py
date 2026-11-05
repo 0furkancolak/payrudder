@@ -51,6 +51,37 @@ class EventsResource:
         return cast("m.IngestEventsResponse", self._client._request("POST", "/v1/events/corrections", body=body, options=options))
 
 
+class RejectedEventsResource:
+    """``/v1/rejected-events`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_rejected_events(self, *, error_code: str | None = None, meter: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListRejectedEventsResponse:
+        """Events refused by POST /v1/events, newest first.
+
+        ``GET /v1/rejected-events``
+        """
+        return cast("m.ListRejectedEventsResponse", self._client._request("GET", "/v1/rejected-events", query={"error_code": error_code, "meter": meter, "page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_rejected_events(self, *, error_code: str | None = None, meter: str | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.RejectedEvent]:
+        """Every item of ``list_rejected_events``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.list_rejected_events(error_code=error_code, meter=meter, page_size=page_size, options=options, page_token=token)
+            yield from page.get("events", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    def get_rejected_event_summary(self, *, options: RequestOptions | None = None) -> m.RejectedEventSummary:
+        """Rejected events of the last 24 hours, by error code and by hour.
+
+        ``GET /v1/rejected-events/summary``
+        """
+        return cast("m.RejectedEventSummary", self._client._request("GET", "/v1/rejected-events/summary", options=options))
+
+
 class CustomersResource:
     """``/v1/customers`` and related operations."""
 
@@ -1892,6 +1923,7 @@ class Resources:
     """The resource namespaces of a client."""
 
     events: EventsResource
+    rejected_events: RejectedEventsResource
     customers: CustomersResource
     blocklist: BlocklistResource
     contracts: ContractsResource
@@ -1936,6 +1968,7 @@ class Resources:
 
     def _init_resources(self, client: Payrudder) -> None:
         self.events = EventsResource(client)
+        self.rejected_events = RejectedEventsResource(client)
         self.customers = CustomersResource(client)
         self.blocklist = BlocklistResource(client)
         self.contracts = ContractsResource(client)
@@ -2009,6 +2042,38 @@ class AsyncEventsResource:
         ``POST /v1/events/corrections``
         """
         return cast("m.IngestEventsResponse", await self._client._request("POST", "/v1/events/corrections", body=body, options=options))
+
+
+class AsyncRejectedEventsResource:
+    """``/v1/rejected-events`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_rejected_events(self, *, error_code: str | None = None, meter: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListRejectedEventsResponse:
+        """Events refused by POST /v1/events, newest first.
+
+        ``GET /v1/rejected-events``
+        """
+        return cast("m.ListRejectedEventsResponse", await self._client._request("GET", "/v1/rejected-events", query={"error_code": error_code, "meter": meter, "page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_rejected_events(self, *, error_code: str | None = None, meter: str | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.RejectedEvent]:
+        """Every item of ``list_rejected_events``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.list_rejected_events(error_code=error_code, meter=meter, page_size=page_size, options=options, page_token=token)
+            for item in page.get("events", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
+
+    async def get_rejected_event_summary(self, *, options: RequestOptions | None = None) -> m.RejectedEventSummary:
+        """Rejected events of the last 24 hours, by error code and by hour.
+
+        ``GET /v1/rejected-events/summary``
+        """
+        return cast("m.RejectedEventSummary", await self._client._request("GET", "/v1/rejected-events/summary", options=options))
 
 
 class AsyncCustomersResource:
@@ -3874,6 +3939,7 @@ class AsyncResources:
     """The resource namespaces of a client."""
 
     events: AsyncEventsResource
+    rejected_events: AsyncRejectedEventsResource
     customers: AsyncCustomersResource
     blocklist: AsyncBlocklistResource
     contracts: AsyncContractsResource
@@ -3918,6 +3984,7 @@ class AsyncResources:
 
     def _init_resources(self, client: AsyncPayrudder) -> None:
         self.events = AsyncEventsResource(client)
+        self.rejected_events = AsyncRejectedEventsResource(client)
         self.customers = AsyncCustomersResource(client)
         self.blocklist = AsyncBlocklistResource(client)
         self.contracts = AsyncContractsResource(client)

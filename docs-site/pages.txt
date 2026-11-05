@@ -33,6 +33,7 @@ api/plans.html
 api/price-changes.html
 api/promotion-codes.html
 api/promotions.html
+api/rejected-events.html
 api/reports.html
 api/routing-rules.html
 api/sandbox.html

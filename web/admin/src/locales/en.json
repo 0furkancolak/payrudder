@@ -3808,6 +3808,10 @@
       "plans": {
         "unavailable": "The plans service is not available, so events cannot be checked. Try again shortly."
       },
+      "rejected_events": {
+        "bad_page_size": "page_size must be between 1 and 200",
+        "bad_page_token": "page_token is not one this API gave"
+      },
       "tenant": {
         "bad_timezone": "The time zone of this account cannot be used. Check it in the account settings."
       }
@@ -6167,6 +6171,29 @@
       "CORRECTION_MISMATCH": "A correction must name the same customer and the same meter as the event it corrects.",
       "CORRECTION_UNSUPPORTED_METER": "Only events of SUM and COUNT meters without a property filter can be corrected.",
       "CORRECTION_OF_CORRECTION": "The event is itself a correction. Correct the original event again, with the quantity it should have."
+    },
+    "rejected": {
+      "title": "Rejected events",
+      "help": "Events the API refused in the last 14 days (up to 10,000), newest first, with what to do about each. Only what identifies an event is kept: its properties and quantity are not stored. A rejection can show up a moment after the answer.",
+      "refresh": "Refresh",
+      "last24h": "{count} rejected in the last 24 hours",
+      "byCode": "Rejected events by error code",
+      "filters": {
+        "code": "Error code",
+        "anyCode": "Any error code",
+        "meter": "Meter",
+        "anyMeter": "Any meter (type a code, press Enter)"
+      },
+      "columns": {
+        "code": "Error",
+        "meter": "Meter",
+        "customer": "Customer",
+        "eventTime": "Event time",
+        "received": "Received"
+      },
+      "empty": "No event has been rejected in the last 14 days.",
+      "loadMore": "Show more",
+      "clear": "Clear filters"
     }
   },
   "contracts": {

@@ -373,6 +373,8 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `ingest.db.unavailable`
 - `ingest.outbox.unavailable`
 - `ingest.plans.unavailable`
+- `ingest.rejected_events.bad_page_size`
+- `ingest.rejected_events.bad_page_token`
 - `ingest.tenant.bad_timezone`
 - `limits.counter.unavailable`
 - `limits.customer.bad_id`

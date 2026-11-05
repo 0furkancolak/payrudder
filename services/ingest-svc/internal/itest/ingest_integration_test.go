@@ -49,6 +49,7 @@ func TestIngestSvc(t *testing.T) {
 	t.Run("ConcurrentCorrectionsOfOneEventSeeEachOther", testConcurrentCorrections)
 	t.Run("ACorrectionOfACountEventCancelsOrCountsItAgain", testCountCorrections)
 	t.Run("ACorrectionNeedsTheKeyOfTheOriginalToBeRemembered", testCorrectionWindow)
+	t.Run("RejectedEventLog", testRejectedEventLog)
 	t.Run("PartitionMaintenance", testPartitionMaintenance) // drops old partitions
 	t.Run("KeyRetentionOutlivesTheLateWindow", testKeyRetentionOutlivesTheLateWindow)
 }
@@ -444,7 +445,7 @@ func testRoleSeparation(t *testing.T) {
 		t.Fatalf("forced RLS: %v", err)
 	}
 	tables, err := pgxx.TenantTables(ctx, shared.system, []string{"outbox"})
-	if err != nil || len(tables) != 2 || tables[0] != "event_corrections" || tables[1] != "idempotency_keys" {
+	if err != nil || len(tables) != 3 || tables[0] != "event_corrections" || tables[1] != "idempotency_keys" || tables[2] != "rejected_events" {
 		t.Fatalf("tenant tables = %v, %v", tables, err)
 	}
 

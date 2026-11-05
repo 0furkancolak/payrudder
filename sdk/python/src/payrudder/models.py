@@ -56,6 +56,38 @@ class CorrectEventsRequest(TypedDict):
     corrections: list[EventCorrection]
 
 
+class RejectedEvent(TypedDict):
+    id: str
+    error_code: str
+    error_message: str
+    meter_code: str
+    customer_external_id: str
+    event_time: str | None
+    received_time: str
+    idempotency_key: str
+
+
+class ListRejectedEventsResponse(TypedDict):
+    events: list[RejectedEvent]
+    next_page_token: str
+
+
+class RejectedEventSummaryByCodeItem(TypedDict):
+    error_code: str
+    count: int
+
+
+class RejectedEventSummaryHourlyItem(TypedDict):
+    hour: str
+    rejected: int
+
+
+class RejectedEventSummary(TypedDict):
+    total: int
+    by_code: list[RejectedEventSummaryByCodeItem]
+    hourly: list[RejectedEventSummaryHourlyItem]
+
+
 class Address(TypedDict):
     """A postal address as printed on an invoice. Every part is optional."""
     line1: str

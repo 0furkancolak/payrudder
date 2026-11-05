@@ -2174,6 +2174,13 @@ type ListPromotionCodesResponse struct {
 	Total         int             `json:"total"`
 }
 
+// ListRejectedEventsResponse is the response of ListRejectedEvents.
+type ListRejectedEventsResponse struct {
+	Events []RejectedEvent `json:"events"`
+	// Empty on the last page
+	NextPageToken string `json:"next_page_token"`
+}
+
 // ListSubscriptionsResponse is the response of ListSubscriptions.
 type ListSubscriptionsResponse struct {
 	Subscriptions []Subscription `json:"subscriptions"`
@@ -2701,6 +2708,50 @@ type RecordContractAcceptanceRequest struct {
 type RecordContractAcceptanceResponse struct {
 	GroupID     string               `json:"group_id"`
 	Acceptances []ContractAcceptance `json:"acceptances"`
+}
+
+// RejectedEvent is an object of the API; see components.schemas.RejectedEvent in api/openapi/v1.yaml.
+type RejectedEvent struct {
+	ID string `json:"id"`
+	// One of the error codes of POST /v1/events
+	ErrorCode string `json:"error_code"`
+	// The API's own message, in English
+	ErrorMessage string `json:"error_message"`
+	// As sent; may name a meter that does not exist
+	MeterCode string `json:"meter_code"`
+	// As sent; may name a customer that does not exist
+	CustomerExternalID string `json:"customer_external_id"`
+	// Null when the event carried no time
+	EventTime    *time.Time `json:"event_time"`
+	ReceivedTime time.Time  `json:"received_time"`
+	// As sent; empty when the event had none
+	IdempotencyKey string `json:"idempotency_key"`
+}
+
+// RejectedEventSummary is an object of the API; see components.schemas.RejectedEventSummary in
+// api/openapi/v1.yaml.
+type RejectedEventSummary struct {
+	// Rejected events of the last 24 hours
+	Total int `json:"total"`
+	// Most frequent first
+	ByCode []RejectedEventSummaryByCode `json:"by_code"`
+	// 24 buckets, oldest first; the last one is the current hour
+	Hourly []RejectedEventSummaryHourly `json:"hourly"`
+}
+
+// RejectedEventSummaryByCode is an object of the API; see components.schemas.RejectedEventSummaryByCode in
+// api/openapi/v1.yaml.
+type RejectedEventSummaryByCode struct {
+	ErrorCode string `json:"error_code"`
+	Count     int    `json:"count"`
+}
+
+// RejectedEventSummaryHourly is an object of the API; see components.schemas.RejectedEventSummaryHourly in
+// api/openapi/v1.yaml.
+type RejectedEventSummaryHourly struct {
+	// The start of the hour (UTC)
+	Hour     time.Time `json:"hour"`
+	Rejected int       `json:"rejected"`
 }
 
 // RenderedMail is an object of the API; see components.schemas.RenderedMail in api/openapi/v1.yaml.
@@ -4407,6 +4458,36 @@ func (p *ListPromotionCodesParams) values() url.Values {
 	}
 	if p.Search != "" {
 		v.Set("search", p.Search)
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// ListRejectedEventsParams are the query parameters of ListRejectedEvents.
+type ListRejectedEventsParams struct {
+	// One of the error codes of `POST /v1/events`
+	ErrorCode string
+	// A meter code, as sent
+	Meter     string
+	PageSize  *int
+	PageToken string
+}
+
+func (p *ListRejectedEventsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.ErrorCode != "" {
+		v.Set("error_code", p.ErrorCode)
+	}
+	if p.Meter != "" {
+		v.Set("meter", p.Meter)
 	}
 	if p.PageSize != nil {
 		v.Set("page_size", strconv.Itoa(*p.PageSize))

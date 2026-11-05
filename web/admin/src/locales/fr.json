@@ -3808,6 +3808,10 @@
       "plans": {
         "unavailable": "Le service des plans n'est pas disponible : les événements ne peuvent pas être vérifiés. Réessayez dans un instant."
       },
+      "rejected_events": {
+        "bad_page_size": "page_size doit être compris entre 1 et 200",
+        "bad_page_token": "page_token n'a pas été fourni par cette API"
+      },
       "tenant": {
         "bad_timezone": "Le fuseau horaire de ce compte est inutilisable. Vérifiez-le dans les paramètres du compte."
       }
@@ -6167,6 +6171,29 @@
       "CORRECTION_MISMATCH": "Une correction doit désigner le même client et le même compteur que l'événement qu'elle corrige.",
       "CORRECTION_UNSUPPORTED_METER": "Seuls les événements des compteurs SUM et COUNT sans filtre de propriété peuvent être corrigés.",
       "CORRECTION_OF_CORRECTION": "L'événement est lui-même une correction. Corrigez à nouveau l'événement d'origine, avec la quantité qu'il doit avoir."
+    },
+    "rejected": {
+      "title": "Événements rejetés",
+      "help": "Événements que l'API a refusés ces 14 derniers jours (10 000 au plus), du plus récent au plus ancien, chacun avec la marche à suivre. Seul ce qui identifie un événement est conservé : ses propriétés et sa quantité ne sont pas stockées. Un rejet peut apparaître un instant après la réponse.",
+      "refresh": "Actualiser",
+      "last24h": "{count} rejetés ces dernières 24 heures",
+      "byCode": "Événements rejetés par code d'erreur",
+      "filters": {
+        "code": "Code d'erreur",
+        "anyCode": "Tous les codes d'erreur",
+        "meter": "Compteur",
+        "anyMeter": "Tous les compteurs (saisir un code, puis Entrée)"
+      },
+      "columns": {
+        "code": "Erreur",
+        "meter": "Compteur",
+        "customer": "Client",
+        "eventTime": "Heure de l'événement",
+        "received": "Reçu"
+      },
+      "empty": "Aucun événement n'a été rejeté ces 14 derniers jours.",
+      "loadMore": "Afficher plus",
+      "clear": "Effacer les filtres"
     }
   },
   "contracts": {

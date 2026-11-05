@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/outbox"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/outbox/monitor"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/outbox/query"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/rejected"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
@@ -49,6 +50,7 @@ type Server struct {
 	events *events.Handler
 	outbox *outbox.Handler
 	mon    *monitor.Monitor
+	log    *rejected.Handler
 }
 
 // New builds the modules. Call Run to keep the outbox depth estimate fresh.
@@ -67,7 +69,7 @@ func New(o Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{events: events.New(cmd), outbox: outbox.New(query.New(o.System, o.Cells)), mon: mon}, nil
+	return &Server{events: events.New(cmd), outbox: outbox.New(query.New(o.System, o.Cells)), mon: mon, log: rejected.New(o.App)}, nil
 }
 
 // IngestEvents implements ingestv1.IngestServiceServer.
@@ -78,6 +80,16 @@ func (s *Server) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsReq
 // GetOutboxWatermark implements ingestv1.IngestServiceServer.
 func (s *Server) GetOutboxWatermark(ctx context.Context, req *ingestv1.GetOutboxWatermarkRequest) (*ingestv1.GetOutboxWatermarkResponse, error) {
 	return s.outbox.GetOutboxWatermark(ctx, req)
+}
+
+// ListRejectedEvents implements ingestv1.IngestServiceServer.
+func (s *Server) ListRejectedEvents(ctx context.Context, req *ingestv1.ListRejectedEventsRequest) (*ingestv1.ListRejectedEventsResponse, error) {
+	return s.log.ListRejectedEvents(ctx, req)
+}
+
+// GetRejectedEventSummary implements ingestv1.IngestServiceServer.
+func (s *Server) GetRejectedEventSummary(ctx context.Context, req *ingestv1.GetRejectedEventSummaryRequest) (*ingestv1.GetRejectedEventSummaryResponse, error) {
+	return s.log.GetRejectedEventSummary(ctx, req)
 }
 
 // Run refreshes the outbox depth estimate until ctx is done.

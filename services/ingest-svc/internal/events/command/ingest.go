@@ -98,6 +98,7 @@ func (c *Commands) Ingest(ctx context.Context, events []*ingestv1.IncomingEvent,
 		}
 	}
 	c.count(ctx, ti.ID.String(), results)
+	c.recordRejected(ctx, b, events, results)
 	return results, nil
 }
 

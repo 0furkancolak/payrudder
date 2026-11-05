@@ -16,6 +16,9 @@ service IngestService {
   rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse);
   // internal, used by billing-svc for the period-close watermark
   rpc GetOutboxWatermark(GetOutboxWatermarkRequest) returns (GetOutboxWatermarkResponse);
+  // the rejected-event viewer (plan 18): the log of rejections, newest first, and the last 24 hours by code and hour
+  rpc ListRejectedEvents(ListRejectedEventsRequest) returns (ListRejectedEventsResponse);
+  rpc GetRejectedEventSummary(GetRejectedEventSummaryRequest) returns (GetRejectedEventSummaryResponse);
 }
 
 message IngestEventsRequest { repeated IncomingEvent events = 1; }  // tenant from metadata
@@ -134,8 +137,12 @@ With `PAYRUDDER_CELLS` set ([runbook](../runbooks/cells.md)) a tenant that the d
 
 ## Owned data (`ingest_db`)
 
-`idempotency_keys` (partitioned by `created_at`, monthly, a partition kept until 45 days after its month ends: a key is remembered 45 to 76 days), `outbox`.
+`idempotency_keys` (partitioned by `created_at`, monthly, a partition kept until 45 days after its month ends: a key is remembered 45 to 76 days), `outbox`, `event_corrections`, `rejected_events`.
 See [05-data-model.md](../05-data-model.md#ingest_db).
+
+## The log of rejected events (plan 18)
+
+Each event answered `rejected` is written to `rejected_events` (tenant, error code, the API's message, the meter code, the customer id and the idempotency key as sent, the event time, `received_at`), so a developer can look at it later; the properties and the quantity are never kept, and every value is cut to 200 characters. The write is **best effort and off the request**: after the results are known, a goroutine (at most 4 in flight; a rejection storm drops the surplus, the `ingest_events` counter still counts every one) writes one batch in its own tenant transaction with a 3-second timeout. A failure is logged and loses log rows, never an event or the response. The log is bounded **per tenant** (a tenant is one environment): 14 days and 10 000 rows, the oldest dropped. The writer trims its tenant at most once a minute (so a log can pass 10 000 by what one minute brings), and the partition maintenance sweeps the rows past 14 days in every tenant (and every cell schema). A sandbox reset empties it. `ListRejectedEvents` (keyset cursor on `received_at, id`, filters `error_code` and `meter_code`) and `GetRejectedEventSummary` (counts by code and 24 hourly buckets of rejections) read it; only the rejected side is counted, because the accepted side would need a write on the hot path.
 
 ## Produced messages
 

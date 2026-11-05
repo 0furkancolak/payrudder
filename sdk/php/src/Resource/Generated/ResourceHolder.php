@@ -47,6 +47,7 @@ abstract class ResourceHolder
     public readonly PriceChangesResource $priceChanges;
     public readonly PromotionCodesResource $promotionCodes;
     public readonly PromotionsResource $promotions;
+    public readonly RejectedEventsResource $rejectedEvents;
     public readonly ReportsResource $reports;
     public readonly RoutingRulesResource $routingRules;
     public readonly SandboxResource $sandbox;
@@ -92,6 +93,7 @@ abstract class ResourceHolder
         $this->priceChanges = new PriceChangesResource($requester);
         $this->promotionCodes = new PromotionCodesResource($requester);
         $this->promotions = new PromotionsResource($requester);
+        $this->rejectedEvents = new RejectedEventsResource($requester);
         $this->reports = new ReportsResource($requester);
         $this->routingRules = new RoutingRulesResource($requester);
         $this->sandbox = new SandboxResource($requester);

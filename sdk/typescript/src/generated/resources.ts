@@ -185,6 +185,8 @@ import type {
   ListPriceChangesResponse,
   ListPromotionCodesQuery,
   ListPromotionCodesResponse,
+  ListRejectedEventsQuery,
+  ListRejectedEventsResponse,
   ListSubscriptionsQuery,
   ListSubscriptionsResponse,
   ListWebhookDeliveriesQuery,
@@ -213,6 +215,7 @@ import type {
   PublishPlanVersionRequestParams,
   RecordContractAcceptanceRequest,
   RecordContractAcceptanceResponse,
+  RejectedEventSummary,
   RenderedMail,
   RequestContractWithdrawalRefundRequestParams,
   ResolveInboxItemRequest,
@@ -2073,6 +2076,36 @@ export class PromotionsResource {
    */
   quotePromotion(body: PromotionQuoteRequestParams, options?: RequestOptions): Promise<PromotionQuote> {
     return this.t.request<PromotionQuote>({ method: "POST", path: `/v1/promotions/quote`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
+export class RejectedEventsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * Events refused by POST /v1/events, newest first
+   *
+   * Every event `POST /v1/events` (or the corrections route) answered `rejected` is kept here, so a developer can see later what went wrong: the `error_code` and the API's
+   * `error_message`, the meter code and customer id as sent, the event time and the idempotency key. The properties and the quantity are never kept. The log of a tenant (an
+   * environment) holds the last 14 days and at most 10 000 rows, the oldest dropped first. A row is written just after the answer, best effort: it can be a moment late,
+   * and a rejection is missing when the database could not take the write or a burst of rejections outran the writer. Needs the `usage:read` permission.
+   *
+   * `GET /v1/rejected-events`
+   */
+  listRejectedEvents(query?: ListRejectedEventsQuery, options?: RequestOptions): Promise<ListRejectedEventsResponse> {
+    return this.t.request<ListRejectedEventsResponse>({ method: "GET", path: `/v1/rejected-events`, query, response: "json" }, options);
+  }
+
+  /**
+   * Rejected events of the last 24 hours, by error code and by hour
+   *
+   * Counts from the same log as `listRejectedEvents`. Only the rejected side is here: the number of accepted events per hour is not kept anywhere cheap to read, so there is
+   * no accepted-versus-rejected ratio. Needs the `usage:read` permission.
+   *
+   * `GET /v1/rejected-events/summary`
+   */
+  getRejectedEventSummary(options?: RequestOptions): Promise<RejectedEventSummary> {
+    return this.t.request<RejectedEventSummary>({ method: "GET", path: `/v1/rejected-events/summary`, response: "json" }, options);
   }
 }
 

@@ -26,6 +26,12 @@ const (
 	MaxPropertyBytes = 4096
 )
 
+// The log of rejected events (docs/plans/18-quick-integration.md, work item 3): how long a rejection is kept and how many a tenant keeps, the oldest dropped first.
+const (
+	RejectedKeepDays = 14
+	RejectedMaxRows  = 10_000
+)
+
 // Error codes reported per event.
 const (
 	CodeUnknownMeter      = "UNKNOWN_METER"

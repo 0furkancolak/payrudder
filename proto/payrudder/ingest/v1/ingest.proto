@@ -12,6 +12,10 @@ service IngestService {
   rpc IngestEvents(IngestEventsRequest) returns (IngestEventsResponse);
   // GetOutboxWatermark is internal: billing-svc uses it for the period-close watermark.
   rpc GetOutboxWatermark(GetOutboxWatermarkRequest) returns (GetOutboxWatermarkResponse);
+  // ListRejectedEvents lists the tenant's recently rejected events, newest first (plan 18): the last 14 days, at most 10 000 of them.
+  rpc ListRejectedEvents(ListRejectedEventsRequest) returns (ListRejectedEventsResponse);
+  // GetRejectedEventSummary counts the rejected events of the last 24 hours, by error code and by hour.
+  rpc GetRejectedEventSummary(GetRejectedEventSummaryRequest) returns (GetRejectedEventSummaryResponse);
 }
 
 message IngestEventsRequest {
@@ -66,4 +70,55 @@ message GetOutboxWatermarkResponse {
   // Unset when the outbox is empty.
   google.protobuf.Timestamp oldest_unpublished_ingested_at = 1;
   google.protobuf.Timestamp server_now = 2;
+}
+
+// RejectedEvent is the record of one rejection. It holds what the developer sent to identify the event (never its properties) and what the API answered.
+message RejectedEvent {
+  string id = 1;
+  string error_code = 2;
+  string error_message = 3;
+  // As sent; may name a meter that does not exist.
+  string meter_code = 4;
+  // The customer id the developer sent (customer_external_id); may name a customer that does not exist.
+  string customer_external_id = 5;
+  // Unset when the event carried none (or none that could be read).
+  google.protobuf.Timestamp event_time = 6;
+  google.protobuf.Timestamp received_time = 7;
+  // As sent; empty when the event had none.
+  string idempotency_key = 8;
+}
+
+message ListRejectedEventsRequest {
+  // Empty: every code.
+  string error_code = 1;
+  // Empty: every meter.
+  string meter_code = 2;
+  // 1..200, default 50.
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListRejectedEventsResponse {
+  repeated RejectedEvent events = 1;
+  string next_page_token = 2;
+}
+
+message GetRejectedEventSummaryRequest {}
+
+message GetRejectedEventSummaryResponse {
+  message CodeCount {
+    string error_code = 1;
+    int32 count = 2;
+  }
+  message HourCount {
+    // The start of the hour (UTC).
+    google.protobuf.Timestamp hour = 1;
+    int32 rejected = 2;
+  }
+  // Rejected events of the last 24 hours.
+  int32 total = 1;
+  // Most frequent first.
+  repeated CodeCount by_code = 2;
+  // 24 buckets, oldest first, the last one is the current hour.
+  repeated HourCount hourly = 3;
 }

@@ -440,6 +440,438 @@ func (x *GetOutboxWatermarkResponse) GetServerNow() *timestamppb.Timestamp {
 	return nil
 }
 
+// RejectedEvent is the record of one rejection. It holds what the developer sent to identify the event (never its properties) and what the API answered.
+type RejectedEvent struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ErrorCode    string                 `protobuf:"bytes,2,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	ErrorMessage string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	// As sent; may name a meter that does not exist.
+	MeterCode string `protobuf:"bytes,4,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
+	// The customer id the developer sent (customer_external_id); may name a customer that does not exist.
+	CustomerExternalId string `protobuf:"bytes,5,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	// Unset when the event carried none (or none that could be read).
+	EventTime    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=event_time,json=eventTime,proto3" json:"event_time,omitempty"`
+	ReceivedTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=received_time,json=receivedTime,proto3" json:"received_time,omitempty"`
+	// As sent; empty when the event had none.
+	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RejectedEvent) Reset() {
+	*x = RejectedEvent{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectedEvent) ProtoMessage() {}
+
+func (x *RejectedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectedEvent.ProtoReflect.Descriptor instead.
+func (*RejectedEvent) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RejectedEvent) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RejectedEvent) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *RejectedEvent) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *RejectedEvent) GetMeterCode() string {
+	if x != nil {
+		return x.MeterCode
+	}
+	return ""
+}
+
+func (x *RejectedEvent) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
+	}
+	return ""
+}
+
+func (x *RejectedEvent) GetEventTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EventTime
+	}
+	return nil
+}
+
+func (x *RejectedEvent) GetReceivedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReceivedTime
+	}
+	return nil
+}
+
+func (x *RejectedEvent) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type ListRejectedEventsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty: every code.
+	ErrorCode string `protobuf:"bytes,1,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	// Empty: every meter.
+	MeterCode string `protobuf:"bytes,2,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
+	// 1..200, default 50.
+	PageSize      int32  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRejectedEventsRequest) Reset() {
+	*x = ListRejectedEventsRequest{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRejectedEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRejectedEventsRequest) ProtoMessage() {}
+
+func (x *ListRejectedEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRejectedEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListRejectedEventsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListRejectedEventsRequest) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *ListRejectedEventsRequest) GetMeterCode() string {
+	if x != nil {
+		return x.MeterCode
+	}
+	return ""
+}
+
+func (x *ListRejectedEventsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListRejectedEventsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListRejectedEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*RejectedEvent       `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRejectedEventsResponse) Reset() {
+	*x = ListRejectedEventsResponse{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRejectedEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRejectedEventsResponse) ProtoMessage() {}
+
+func (x *ListRejectedEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRejectedEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListRejectedEventsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListRejectedEventsResponse) GetEvents() []*RejectedEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *ListRejectedEventsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type GetRejectedEventSummaryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRejectedEventSummaryRequest) Reset() {
+	*x = GetRejectedEventSummaryRequest{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRejectedEventSummaryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRejectedEventSummaryRequest) ProtoMessage() {}
+
+func (x *GetRejectedEventSummaryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRejectedEventSummaryRequest.ProtoReflect.Descriptor instead.
+func (*GetRejectedEventSummaryRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{9}
+}
+
+type GetRejectedEventSummaryResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Rejected events of the last 24 hours.
+	Total int32 `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	// Most frequent first.
+	ByCode []*GetRejectedEventSummaryResponse_CodeCount `protobuf:"bytes,2,rep,name=by_code,json=byCode,proto3" json:"by_code,omitempty"`
+	// 24 buckets, oldest first, the last one is the current hour.
+	Hourly        []*GetRejectedEventSummaryResponse_HourCount `protobuf:"bytes,3,rep,name=hourly,proto3" json:"hourly,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRejectedEventSummaryResponse) Reset() {
+	*x = GetRejectedEventSummaryResponse{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRejectedEventSummaryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRejectedEventSummaryResponse) ProtoMessage() {}
+
+func (x *GetRejectedEventSummaryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRejectedEventSummaryResponse.ProtoReflect.Descriptor instead.
+func (*GetRejectedEventSummaryResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetRejectedEventSummaryResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *GetRejectedEventSummaryResponse) GetByCode() []*GetRejectedEventSummaryResponse_CodeCount {
+	if x != nil {
+		return x.ByCode
+	}
+	return nil
+}
+
+func (x *GetRejectedEventSummaryResponse) GetHourly() []*GetRejectedEventSummaryResponse_HourCount {
+	if x != nil {
+		return x.Hourly
+	}
+	return nil
+}
+
+type GetRejectedEventSummaryResponse_CodeCount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ErrorCode     string                 `protobuf:"bytes,1,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRejectedEventSummaryResponse_CodeCount) Reset() {
+	*x = GetRejectedEventSummaryResponse_CodeCount{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRejectedEventSummaryResponse_CodeCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRejectedEventSummaryResponse_CodeCount) ProtoMessage() {}
+
+func (x *GetRejectedEventSummaryResponse_CodeCount) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRejectedEventSummaryResponse_CodeCount.ProtoReflect.Descriptor instead.
+func (*GetRejectedEventSummaryResponse_CodeCount) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{10, 0}
+}
+
+func (x *GetRejectedEventSummaryResponse_CodeCount) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *GetRejectedEventSummaryResponse_CodeCount) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type GetRejectedEventSummaryResponse_HourCount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The start of the hour (UTC).
+	Hour          *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=hour,proto3" json:"hour,omitempty"`
+	Rejected      int32                  `protobuf:"varint,2,opt,name=rejected,proto3" json:"rejected,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRejectedEventSummaryResponse_HourCount) Reset() {
+	*x = GetRejectedEventSummaryResponse_HourCount{}
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRejectedEventSummaryResponse_HourCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRejectedEventSummaryResponse_HourCount) ProtoMessage() {}
+
+func (x *GetRejectedEventSummaryResponse_HourCount) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_ingest_v1_ingest_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRejectedEventSummaryResponse_HourCount.ProtoReflect.Descriptor instead.
+func (*GetRejectedEventSummaryResponse_HourCount) Descriptor() ([]byte, []int) {
+	return file_payrudder_ingest_v1_ingest_proto_rawDescGZIP(), []int{10, 1}
+}
+
+func (x *GetRejectedEventSummaryResponse_HourCount) GetHour() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Hour
+	}
+	return nil
+}
+
+func (x *GetRejectedEventSummaryResponse_HourCount) GetRejected() int32 {
+	if x != nil {
+		return x.Rejected
+	}
+	return 0
+}
+
 var File_payrudder_ingest_v1_ingest_proto protoreflect.FileDescriptor
 
 const file_payrudder_ingest_v1_ingest_proto_rawDesc = "" +
@@ -481,10 +913,47 @@ const file_payrudder_ingest_v1_ingest_proto_rawDesc = "" +
 	"\x1aGetOutboxWatermarkResponse\x12_\n" +
 	"\x1eoldest_unpublished_ingested_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x1boldestUnpublishedIngestedAt\x129\n" +
 	"\n" +
-	"server_now\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tserverNow2\xeb\x01\n" +
+	"server_now\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tserverNow\"\xd9\x02\n" +
+	"\rRejectedEvent\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x02 \x01(\tR\terrorCode\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\x12\x1d\n" +
+	"\n" +
+	"meter_code\x18\x04 \x01(\tR\tmeterCode\x120\n" +
+	"\x14customer_external_id\x18\x05 \x01(\tR\x12customerExternalId\x129\n" +
+	"\n" +
+	"event_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\teventTime\x12?\n" +
+	"\rreceived_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\freceivedTime\x12'\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\"\x95\x01\n" +
+	"\x19ListRejectedEventsRequest\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x01 \x01(\tR\terrorCode\x12\x1d\n" +
+	"\n" +
+	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\"\x80\x01\n" +
+	"\x1aListRejectedEventsResponse\x12:\n" +
+	"\x06events\x18\x01 \x03(\v2\".payrudder.ingest.v1.RejectedEventR\x06events\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\" \n" +
+	"\x1eGetRejectedEventSummaryRequest\"\x83\x03\n" +
+	"\x1fGetRejectedEventSummaryResponse\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x05R\x05total\x12W\n" +
+	"\aby_code\x18\x02 \x03(\v2>.payrudder.ingest.v1.GetRejectedEventSummaryResponse.CodeCountR\x06byCode\x12V\n" +
+	"\x06hourly\x18\x03 \x03(\v2>.payrudder.ingest.v1.GetRejectedEventSummaryResponse.HourCountR\x06hourly\x1a@\n" +
+	"\tCodeCount\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\x01 \x01(\tR\terrorCode\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x1aW\n" +
+	"\tHourCount\x12.\n" +
+	"\x04hour\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04hour\x12\x1a\n" +
+	"\brejected\x18\x02 \x01(\x05R\brejected2\xe9\x03\n" +
 	"\rIngestService\x12c\n" +
 	"\fIngestEvents\x12(.payrudder.ingest.v1.IngestEventsRequest\x1a).payrudder.ingest.v1.IngestEventsResponse\x12u\n" +
-	"\x12GetOutboxWatermark\x12..payrudder.ingest.v1.GetOutboxWatermarkRequest\x1a/.payrudder.ingest.v1.GetOutboxWatermarkResponseB\xdb\x01\n" +
+	"\x12GetOutboxWatermark\x12..payrudder.ingest.v1.GetOutboxWatermarkRequest\x1a/.payrudder.ingest.v1.GetOutboxWatermarkResponse\x12u\n" +
+	"\x12ListRejectedEvents\x12..payrudder.ingest.v1.ListRejectedEventsRequest\x1a/.payrudder.ingest.v1.ListRejectedEventsResponse\x12\x84\x01\n" +
+	"\x17GetRejectedEventSummary\x123.payrudder.ingest.v1.GetRejectedEventSummaryRequest\x1a4.payrudder.ingest.v1.GetRejectedEventSummaryResponseB\xdb\x01\n" +
 	"\x17com.payrudder.ingest.v1B\vIngestProtoP\x01ZEgithub.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1;ingestv1\xa2\x02\x03PIX\xaa\x02\x13Payrudder.Ingest.V1\xca\x02\x13Payrudder\\Ingest\\V1\xe2\x02\x1fPayrudder\\Ingest\\V1\\GPBMetadata\xea\x02\x15Payrudder::Ingest::V1b\x06proto3"
 
 var (
@@ -500,35 +969,52 @@ func file_payrudder_ingest_v1_ingest_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_ingest_v1_ingest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payrudder_ingest_v1_ingest_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_payrudder_ingest_v1_ingest_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_payrudder_ingest_v1_ingest_proto_goTypes = []any{
-	(EventResult_Status)(0),            // 0: payrudder.ingest.v1.EventResult.Status
-	(*IngestEventsRequest)(nil),        // 1: payrudder.ingest.v1.IngestEventsRequest
-	(*IncomingEvent)(nil),              // 2: payrudder.ingest.v1.IncomingEvent
-	(*IngestEventsResponse)(nil),       // 3: payrudder.ingest.v1.IngestEventsResponse
-	(*EventResult)(nil),                // 4: payrudder.ingest.v1.EventResult
-	(*GetOutboxWatermarkRequest)(nil),  // 5: payrudder.ingest.v1.GetOutboxWatermarkRequest
-	(*GetOutboxWatermarkResponse)(nil), // 6: payrudder.ingest.v1.GetOutboxWatermarkResponse
-	nil,                                // 7: payrudder.ingest.v1.IncomingEvent.PropertiesEntry
-	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(EventResult_Status)(0),                           // 0: payrudder.ingest.v1.EventResult.Status
+	(*IngestEventsRequest)(nil),                       // 1: payrudder.ingest.v1.IngestEventsRequest
+	(*IncomingEvent)(nil),                             // 2: payrudder.ingest.v1.IncomingEvent
+	(*IngestEventsResponse)(nil),                      // 3: payrudder.ingest.v1.IngestEventsResponse
+	(*EventResult)(nil),                               // 4: payrudder.ingest.v1.EventResult
+	(*GetOutboxWatermarkRequest)(nil),                 // 5: payrudder.ingest.v1.GetOutboxWatermarkRequest
+	(*GetOutboxWatermarkResponse)(nil),                // 6: payrudder.ingest.v1.GetOutboxWatermarkResponse
+	(*RejectedEvent)(nil),                             // 7: payrudder.ingest.v1.RejectedEvent
+	(*ListRejectedEventsRequest)(nil),                 // 8: payrudder.ingest.v1.ListRejectedEventsRequest
+	(*ListRejectedEventsResponse)(nil),                // 9: payrudder.ingest.v1.ListRejectedEventsResponse
+	(*GetRejectedEventSummaryRequest)(nil),            // 10: payrudder.ingest.v1.GetRejectedEventSummaryRequest
+	(*GetRejectedEventSummaryResponse)(nil),           // 11: payrudder.ingest.v1.GetRejectedEventSummaryResponse
+	nil,                                               // 12: payrudder.ingest.v1.IncomingEvent.PropertiesEntry
+	(*GetRejectedEventSummaryResponse_CodeCount)(nil), // 13: payrudder.ingest.v1.GetRejectedEventSummaryResponse.CodeCount
+	(*GetRejectedEventSummaryResponse_HourCount)(nil), // 14: payrudder.ingest.v1.GetRejectedEventSummaryResponse.HourCount
+	(*timestamppb.Timestamp)(nil),                     // 15: google.protobuf.Timestamp
 }
 var file_payrudder_ingest_v1_ingest_proto_depIdxs = []int32{
-	2, // 0: payrudder.ingest.v1.IngestEventsRequest.events:type_name -> payrudder.ingest.v1.IncomingEvent
-	8, // 1: payrudder.ingest.v1.IncomingEvent.event_time:type_name -> google.protobuf.Timestamp
-	7, // 2: payrudder.ingest.v1.IncomingEvent.properties:type_name -> payrudder.ingest.v1.IncomingEvent.PropertiesEntry
-	4, // 3: payrudder.ingest.v1.IngestEventsResponse.results:type_name -> payrudder.ingest.v1.EventResult
-	0, // 4: payrudder.ingest.v1.EventResult.status:type_name -> payrudder.ingest.v1.EventResult.Status
-	8, // 5: payrudder.ingest.v1.GetOutboxWatermarkResponse.oldest_unpublished_ingested_at:type_name -> google.protobuf.Timestamp
-	8, // 6: payrudder.ingest.v1.GetOutboxWatermarkResponse.server_now:type_name -> google.protobuf.Timestamp
-	1, // 7: payrudder.ingest.v1.IngestService.IngestEvents:input_type -> payrudder.ingest.v1.IngestEventsRequest
-	5, // 8: payrudder.ingest.v1.IngestService.GetOutboxWatermark:input_type -> payrudder.ingest.v1.GetOutboxWatermarkRequest
-	3, // 9: payrudder.ingest.v1.IngestService.IngestEvents:output_type -> payrudder.ingest.v1.IngestEventsResponse
-	6, // 10: payrudder.ingest.v1.IngestService.GetOutboxWatermark:output_type -> payrudder.ingest.v1.GetOutboxWatermarkResponse
-	9, // [9:11] is the sub-list for method output_type
-	7, // [7:9] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2,  // 0: payrudder.ingest.v1.IngestEventsRequest.events:type_name -> payrudder.ingest.v1.IncomingEvent
+	15, // 1: payrudder.ingest.v1.IncomingEvent.event_time:type_name -> google.protobuf.Timestamp
+	12, // 2: payrudder.ingest.v1.IncomingEvent.properties:type_name -> payrudder.ingest.v1.IncomingEvent.PropertiesEntry
+	4,  // 3: payrudder.ingest.v1.IngestEventsResponse.results:type_name -> payrudder.ingest.v1.EventResult
+	0,  // 4: payrudder.ingest.v1.EventResult.status:type_name -> payrudder.ingest.v1.EventResult.Status
+	15, // 5: payrudder.ingest.v1.GetOutboxWatermarkResponse.oldest_unpublished_ingested_at:type_name -> google.protobuf.Timestamp
+	15, // 6: payrudder.ingest.v1.GetOutboxWatermarkResponse.server_now:type_name -> google.protobuf.Timestamp
+	15, // 7: payrudder.ingest.v1.RejectedEvent.event_time:type_name -> google.protobuf.Timestamp
+	15, // 8: payrudder.ingest.v1.RejectedEvent.received_time:type_name -> google.protobuf.Timestamp
+	7,  // 9: payrudder.ingest.v1.ListRejectedEventsResponse.events:type_name -> payrudder.ingest.v1.RejectedEvent
+	13, // 10: payrudder.ingest.v1.GetRejectedEventSummaryResponse.by_code:type_name -> payrudder.ingest.v1.GetRejectedEventSummaryResponse.CodeCount
+	14, // 11: payrudder.ingest.v1.GetRejectedEventSummaryResponse.hourly:type_name -> payrudder.ingest.v1.GetRejectedEventSummaryResponse.HourCount
+	15, // 12: payrudder.ingest.v1.GetRejectedEventSummaryResponse.HourCount.hour:type_name -> google.protobuf.Timestamp
+	1,  // 13: payrudder.ingest.v1.IngestService.IngestEvents:input_type -> payrudder.ingest.v1.IngestEventsRequest
+	5,  // 14: payrudder.ingest.v1.IngestService.GetOutboxWatermark:input_type -> payrudder.ingest.v1.GetOutboxWatermarkRequest
+	8,  // 15: payrudder.ingest.v1.IngestService.ListRejectedEvents:input_type -> payrudder.ingest.v1.ListRejectedEventsRequest
+	10, // 16: payrudder.ingest.v1.IngestService.GetRejectedEventSummary:input_type -> payrudder.ingest.v1.GetRejectedEventSummaryRequest
+	3,  // 17: payrudder.ingest.v1.IngestService.IngestEvents:output_type -> payrudder.ingest.v1.IngestEventsResponse
+	6,  // 18: payrudder.ingest.v1.IngestService.GetOutboxWatermark:output_type -> payrudder.ingest.v1.GetOutboxWatermarkResponse
+	9,  // 19: payrudder.ingest.v1.IngestService.ListRejectedEvents:output_type -> payrudder.ingest.v1.ListRejectedEventsResponse
+	11, // 20: payrudder.ingest.v1.IngestService.GetRejectedEventSummary:output_type -> payrudder.ingest.v1.GetRejectedEventSummaryResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_ingest_v1_ingest_proto_init() }
@@ -542,7 +1028,7 @@ func file_payrudder_ingest_v1_ingest_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_ingest_v1_ingest_proto_rawDesc), len(file_payrudder_ingest_v1_ingest_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

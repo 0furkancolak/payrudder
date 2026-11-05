@@ -36,6 +36,7 @@ import {
   PriceChangesResource,
   PromotionCodesResource,
   PromotionsResource,
+  RejectedEventsResource,
   ReportsResource,
   RoutingRulesResource,
   SandboxResource,
@@ -86,6 +87,8 @@ import type {
   ListPaymentLinksResponse,
   ListPromotionCodesQuery,
   ListPromotionCodesResponse,
+  ListRejectedEventsQuery,
+  ListRejectedEventsResponse,
   ListSubscriptionsQuery,
   ListSubscriptionsResponse,
   ListWebhookDeliveriesQuery,
@@ -95,6 +98,14 @@ import type {
 /** Every operation of the tenant API as an async iterator over all pages (items, not pages). */
 export class Paginators {
   constructor(private readonly r: PayrudderResources) {}
+
+  listRejectedEvents(query?: ListRejectedEventsQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListRejectedEventsResponse["events"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.rejectedEvents.listRejectedEvents(q, options),
+      (page) => page.events,
+      query,
+    );
+  }
 
   listCustomers(query?: ListCustomersQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListCustomersResponse["customers"]>[number], void, undefined> {
     return paginate(
@@ -309,6 +320,7 @@ export abstract class PayrudderResources {
   readonly priceChanges: PriceChangesResource;
   readonly promotionCodes: PromotionCodesResource;
   readonly promotions: PromotionsResource;
+  readonly rejectedEvents: RejectedEventsResource;
   readonly reports: ReportsResource;
   readonly routingRules: RoutingRulesResource;
   readonly sandbox: SandboxResource;
@@ -355,6 +367,7 @@ export abstract class PayrudderResources {
     this.priceChanges = new PriceChangesResource(t);
     this.promotionCodes = new PromotionCodesResource(t);
     this.promotions = new PromotionsResource(t);
+    this.rejectedEvents = new RejectedEventsResource(t);
     this.reports = new ReportsResource(t);
     this.routingRules = new RoutingRulesResource(t);
     this.sandbox = new SandboxResource(t);

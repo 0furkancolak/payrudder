@@ -544,7 +544,7 @@ func TestTenantSchemaMatchesPublic(t *testing.T) {
 		}
 		t.Fatal("the tenant migrations and the public migrations of ingest-svc have drifted apart (- public only, + tenant only)")
 	}
-	if latest, err := pgxx.LatestTenantVersion(migrations.Tenant()); err != nil || latest != 2 {
+	if latest, err := pgxx.LatestTenantVersion(migrations.Tenant()); err != nil || latest != 3 {
 		t.Fatalf("latest tenant version = %d %v", latest, err)
 	}
 	// Migrating every schema twice is a no-op.
