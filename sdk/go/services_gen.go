@@ -89,6 +89,8 @@ type services struct {
 	PromotionCodes *PromotionCodesService
 	// Promotions groups the promotions operations.
 	Promotions *PromotionsService
+	// RejectedEvents groups the rejected events operations.
+	RejectedEvents *RejectedEventsService
 	// Reports groups the reports operations.
 	Reports *ReportsService
 	// RoutingRules groups the routing rules operations.
@@ -142,6 +144,7 @@ func (s *services) initServices(c *Client) {
 	s.PriceChanges = (*PriceChangesService)(&service{c: c})
 	s.PromotionCodes = (*PromotionCodesService)(&service{c: c})
 	s.Promotions = (*PromotionsService)(&service{c: c})
+	s.RejectedEvents = (*RejectedEventsService)(&service{c: c})
 	s.Reports = (*ReportsService)(&service{c: c})
 	s.RoutingRules = (*RoutingRulesService)(&service{c: c})
 	s.Sandbox = (*SandboxService)(&service{c: c})
@@ -2738,6 +2741,57 @@ func (s *PromotionsService) QuotePromotion(ctx context.Context, req *PromotionQu
 	var body any = req
 	var out PromotionQuote
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/promotions/quote", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RejectedEventsService is the rejected events namespace of the API.
+type RejectedEventsService service
+
+// ListRejectedEvents: Events refused by POST /v1/events, newest first (GET /v1/rejected-events).
+//
+// Every event `POST /v1/events` (or the corrections route) answered `rejected` is kept here, so a developer can
+// see later what went wrong: the `error_code` and the API's `error_message`, the meter code and customer id as
+// sent, the event time and the idempotency key. The properties and the quantity are never kept. The log of a
+// tenant (an environment) holds the last 14 days and at most 10 000 rows, the oldest dropped first. A row is
+// written just after the answer, best effort: it can be a moment late, and a rejection is missing when the
+// database could not take the write or a burst of rejections outran the writer. Needs the `usage:read`
+// permission.
+func (s *RejectedEventsService) ListRejectedEvents(ctx context.Context, params *ListRejectedEventsParams, opts ...RequestOption) (*ListRejectedEventsResponse, error) {
+	var out ListRejectedEventsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/rejected-events", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListRejectedEventsAll walks every page of ListRejectedEvents and yields the items one by one. It stops at the
+// first error, which is yielded once.
+func (s *RejectedEventsService) ListRejectedEventsAll(ctx context.Context, params *ListRejectedEventsParams, opts ...RequestOption) iter.Seq2[RejectedEvent, error] {
+	return paginate(func(token string) ([]RejectedEvent, string, error) {
+		var p ListRejectedEventsParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListRejectedEvents(ctx, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Events, page.NextPageToken, nil
+	})
+}
+
+// GetRejectedEventSummary: Rejected events of the last 24 hours, by error code and by hour (GET
+// /v1/rejected-events/summary).
+//
+// Counts from the same log as `listRejectedEvents`. Only the rejected side is here: the number of accepted
+// events per hour is not kept anywhere cheap to read, so there is no accepted-versus-rejected ratio. Needs the
+// `usage:read` permission.
+func (s *RejectedEventsService) GetRejectedEventSummary(ctx context.Context, opts ...RequestOption) (*RejectedEventSummary, error) {
+	var out RejectedEventSummary
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/rejected-events/summary", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

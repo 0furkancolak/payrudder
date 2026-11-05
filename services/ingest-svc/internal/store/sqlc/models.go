@@ -46,3 +46,15 @@ type Outbox struct {
 	Headers      json.RawMessage
 	IngestedAt   time.Time
 }
+
+type RejectedEvent struct {
+	ID                 uuid.UUID
+	TenantID           uuid.UUID
+	ErrorCode          string
+	ErrorMessage       string
+	MeterCode          string
+	CustomerExternalID string
+	EventTime          *time.Time
+	IdempotencyKey     string
+	ReceivedAt         time.Time
+}

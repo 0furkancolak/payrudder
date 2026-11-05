@@ -64,6 +64,8 @@ func TestRolePermissions(t *testing.T) {
 func TestRequiredPermission(t *testing.T) {
 	cases := []struct{ method, path, want string }{
 		{http.MethodPost, "/v1/events", PermEventsWrite},
+		{http.MethodGet, "/v1/rejected-events", PermUsageRead},
+		{http.MethodGet, "/v1/rejected-events/summary", PermUsageRead},
 		{http.MethodGet, "/v1/customers", PermCustomersRead},
 		{http.MethodPost, "/v1/customers", PermCustomersWrite},
 		{http.MethodPost, "/v1/customers/{external_id}/credits/grant", PermCreditsWrite},

@@ -90,6 +90,40 @@ paths:
         "413": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /v1/rejected-events:
+    get:
+      operationId: listRejectedEvents
+      summary: Events refused by POST /v1/events, newest first
+      description: |
+        Every event `POST /v1/events` (or the corrections route) answered `rejected` is kept here, so a developer can see later what went wrong: the `error_code` and the API's
+        `error_message`, the meter code and customer id as sent, the event time and the idempotency key. The properties and the quantity are never kept. The log of a tenant (an
+        environment) holds the last 14 days and at most 10 000 rows, the oldest dropped first. A row is written just after the answer, best effort: it can be a moment late,
+        and a rejection is missing when the database could not take the write or a burst of rejections outran the writer. Needs the `usage:read` permission.
+      parameters:
+        - { name: error_code, in: query, description: "One of the error codes of `POST /v1/events`", schema: { type: string } }
+        - { name: meter, in: query, description: "A meter code, as sent", schema: { type: string } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListRejectedEventsResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/rejected-events/summary:
+    get:
+      operationId: getRejectedEventSummary
+      summary: Rejected events of the last 24 hours, by error code and by hour
+      description: |
+        Counts from the same log as `listRejectedEvents`. Only the rejected side is here: the number of accepted events per hour is not kept anywhere cheap to read, so there is
+        no accepted-versus-rejected ratio. Needs the `usage:read` permission.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RejectedEventSummary" }
   /v1/customers:
     post:
       operationId: createCustomer
@@ -12264,6 +12298,47 @@ components:
         active: { type: boolean }
         secret: { type: string, description: "whsec_…; only in the response of create and rotate-secret" }
         create_time: { type: string, format: date-time, nullable: true }
+    RejectedEvent:
+      type: object
+      required: [id, error_code, error_message, meter_code, customer_external_id, event_time, received_time, idempotency_key]
+      properties:
+        id: { type: string, format: uuid }
+        error_code: { type: string, description: "One of the error codes of POST /v1/events" }
+        error_message: { type: string, description: "The API's own message, in English" }
+        meter_code: { type: string, description: "As sent; may name a meter that does not exist" }
+        customer_external_id: { type: string, description: "As sent; may name a customer that does not exist" }
+        event_time: { type: string, format: date-time, nullable: true, description: "Null when the event carried no time" }
+        received_time: { type: string, format: date-time }
+        idempotency_key: { type: string, description: "As sent; empty when the event had none" }
+    ListRejectedEventsResponse:
+      type: object
+      required: [events, next_page_token]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/RejectedEvent" } }
+        next_page_token: { type: string, description: "Empty on the last page" }
+    RejectedEventSummary:
+      type: object
+      required: [total, by_code, hourly]
+      properties:
+        total: { type: integer, description: "Rejected events of the last 24 hours" }
+        by_code:
+          type: array
+          description: "Most frequent first"
+          items:
+            type: object
+            required: [error_code, count]
+            properties:
+              error_code: { type: string }
+              count: { type: integer }
+        hourly:
+          type: array
+          description: "24 buckets, oldest first; the last one is the current hour"
+          items:
+            type: object
+            required: [hour, rejected]
+            properties:
+              hour: { type: string, format: date-time, description: "The start of the hour (UTC)" }
+              rejected: { type: integer }
     WebhookDelivery:
       type: object
       required: [id, event_id, event_type, endpoint_id, state, attempts, next_attempt_time, last_status, last_error, create_time, delivered_time]

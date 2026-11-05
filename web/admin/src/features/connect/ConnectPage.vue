@@ -29,6 +29,7 @@ import { useCreateSamples, useSendTestEvent } from "./api";
 import { SAMPLE_CUSTOMER, SAMPLE_METER, missingSamples } from "./sample";
 import { initialAddress } from "./address";
 import { eventErrorHintKey } from "./eventErrors";
+import RejectedEvents from "./RejectedEvents.vue";
 import { LANGS, keyHintOf, snippets, type Lang } from "./snippets";
 
 /**
@@ -279,4 +280,6 @@ const base = computed(() => tenantBase());
       </div>
     </template>
   </Card>
+
+  <RejectedEvents :tenant-id="tenantId" />
 </template>

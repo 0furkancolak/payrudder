@@ -8,6 +8,8 @@ from __future__ import annotations
 OPERATIONS: dict[str, tuple[str, str, str]] = {
     "ingestEvents": ("events", "ingest_events", "POST /v1/events"),
     "correctEvents": ("events", "correct_events", "POST /v1/events/corrections"),
+    "listRejectedEvents": ("rejected_events", "list_rejected_events", "GET /v1/rejected-events"),
+    "getRejectedEventSummary": ("rejected_events", "get_rejected_event_summary", "GET /v1/rejected-events/summary"),
     "listCustomers": ("customers", "list_customers", "GET /v1/customers"),
     "createCustomer": ("customers", "create_customer", "POST /v1/customers"),
     "getCustomer": ("customers", "get_customer", "GET /v1/customers/{external_id}"),

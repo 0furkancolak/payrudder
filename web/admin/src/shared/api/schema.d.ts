@@ -61,6 +61,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rejected-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Events refused by POST /v1/events, newest first
+         * @description Every event `POST /v1/events` (or the corrections route) answered `rejected` is kept here, so a developer can see later what went wrong: the `error_code` and the API's
+         *     `error_message`, the meter code and customer id as sent, the event time and the idempotency key. The properties and the quantity are never kept. The log of a tenant (an
+         *     environment) holds the last 14 days and at most 10 000 rows, the oldest dropped first. A row is written just after the answer, best effort: it can be a moment late,
+         *     and a rejection is missing when the database could not take the write or a burst of rejections outran the writer. Needs the `usage:read` permission.
+         */
+        get: operations["listRejectedEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rejected-events/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rejected events of the last 24 hours, by error code and by hour
+         * @description Counts from the same log as `listRejectedEvents`. Only the rejected side is here: the number of accepted events per hour is not kept anywhere cheap to read, so there is
+         *     no accepted-versus-rejected ratio. Needs the `usage:read` permission.
+         */
+        get: operations["getRejectedEventSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -14130,6 +14174,50 @@ export interface components {
             /** Format: date-time */
             create_time: string | null;
         };
+        RejectedEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @description One of the error codes of POST /v1/events */
+            error_code: string;
+            /** @description The API's own message, in English */
+            error_message: string;
+            /** @description As sent; may name a meter that does not exist */
+            meter_code: string;
+            /** @description As sent; may name a customer that does not exist */
+            customer_external_id: string;
+            /**
+             * Format: date-time
+             * @description Null when the event carried no time
+             */
+            event_time: string | null;
+            /** Format: date-time */
+            received_time: string;
+            /** @description As sent; empty when the event had none */
+            idempotency_key: string;
+        };
+        ListRejectedEventsResponse: {
+            events: components["schemas"]["RejectedEvent"][];
+            /** @description Empty on the last page */
+            next_page_token: string;
+        };
+        RejectedEventSummary: {
+            /** @description Rejected events of the last 24 hours */
+            total: number;
+            /** @description Most frequent first */
+            by_code: {
+                error_code: string;
+                count: number;
+            }[];
+            /** @description 24 buckets, oldest first; the last one is the current hour */
+            hourly: {
+                /**
+                 * Format: date-time
+                 * @description The start of the hour (UTC)
+                 */
+                hour: string;
+                rejected: number;
+            }[];
+        };
         WebhookDelivery: {
             /** Format: uuid */
             id: string;
@@ -15153,6 +15241,54 @@ export interface operations {
             413: components["responses"]["Error"];
             429: components["responses"]["Error"];
             503: components["responses"]["Error"];
+        };
+    };
+    listRejectedEvents: {
+        parameters: {
+            query?: {
+                /** @description One of the error codes of `POST /v1/events` */
+                error_code?: string;
+                /** @description A meter code, as sent */
+                meter?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRejectedEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getRejectedEventSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectedEventSummary"];
+                };
+            };
         };
     };
     listCustomers: {

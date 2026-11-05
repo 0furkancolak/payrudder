@@ -37,6 +37,8 @@ An `INTERNAL` error never carries its cause in the message, and neither does an 
 
 A usage event is judged on its own inside a `202` answer: an event that cannot be counted is `rejected` with an `error_code` (the [list is below](#event-codes)) and does not fail the others. See [Usage metering](usage-metering.html).
 
+You do not have to catch a rejection in the answer to see it later. Every rejected event is kept for **14 days** (at most **10 000 per environment**, the oldest dropped first) and can be read back: the **Rejected events** section of the Connect page in the console, with the hint for each code, or `GET /v1/rejected-events` (filter by `error_code` and `meter`, page with `page_token`) and `GET /v1/rejected-events/summary` (the last 24 hours by code and by hour), for a key with the `usage:read` permission. A row holds the code and the message, the meter code and the customer id as you sent them, the event time and the idempotency key; the **properties and the quantity are never stored**. A row is written just after the answer, best effort, so it can be a moment late and, under a burst of rejections or a database problem, a rejection can be missing from the list; the answer you got is the record. The sandbox's log is emptied by a sandbox reset.
+
 ## In the SDKs and the command line
 
 The SDKs turn the status into one typed error and keep the fields of the envelope on it (status, `code`, `key`, `message`, `details`, request id, `Retry-After`). Branch on the type or on the `key`, never on the message.

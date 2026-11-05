@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
 
@@ -22,6 +23,10 @@ func Once(ctx context.Context, pool *pgxpool.Pool, now time.Time) (created, drop
 	row, err := sqlc.New(pool).MaintainIdempotencyPartitions(ctx, now)
 	if err != nil {
 		return nil, nil, fmt.Errorf("maintenance: %w", err)
+	}
+	// The log of rejected events keeps 14 days (plan 18); the writer trims only the tenants that still get rejections.
+	if _, err := sqlc.New(pool).SweepRejectedEvents(ctx, domain.RejectedKeepDays); err != nil {
+		return nil, nil, fmt.Errorf("maintenance: rejected events: %w", err)
 	}
 	return row.Created, row.Dropped, nil
 }
@@ -40,6 +45,9 @@ func OnceCells(ctx context.Context, cells *pgxx.Router, now time.Time) (created,
 			}
 			for _, p := range row.Dropped {
 				dropped = append(dropped, t.TenantID.String()+"."+p)
+			}
+			if _, err := sqlc.New(tx).SweepRejectedEvents(ctx, domain.RejectedKeepDays); err != nil {
+				return fmt.Errorf("maintenance: rejected events: %w", err)
 			}
 			return nil
 		})

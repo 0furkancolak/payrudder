@@ -2350,6 +2350,21 @@ export interface ListPromotionCodesResponse {
   total: number;
 }
 
+export interface ListRejectedEventsQuery {
+  /** One of the error codes of `POST /v1/events` */
+  error_code?: string;
+  /** A meter code, as sent */
+  meter?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
+export interface ListRejectedEventsResponse {
+  events: Array<RejectedEvent>;
+  /** Empty on the last page */
+  next_page_token: string;
+}
+
 export interface ListSubscriptionsQuery {
   /** Customer external id */
   customer?: string;
@@ -2893,6 +2908,39 @@ export interface RecordContractAcceptanceRequest {
 export interface RecordContractAcceptanceResponse {
   group_id: string;
   acceptances: Array<ContractAcceptance>;
+}
+
+export interface RejectedEvent {
+  id: string;
+  /** One of the error codes of POST /v1/events */
+  error_code: string;
+  /** The API's own message, in English */
+  error_message: string;
+  /** As sent; may name a meter that does not exist */
+  meter_code: string;
+  /** As sent; may name a customer that does not exist */
+  customer_external_id: string;
+  /** Null when the event carried no time */
+  event_time: string | null;
+  received_time: string;
+  /** As sent; empty when the event had none */
+  idempotency_key: string;
+}
+
+export interface RejectedEventSummary {
+  /** Rejected events of the last 24 hours */
+  total: number;
+  /** Most frequent first */
+  by_code: Array<{
+    error_code: string;
+    count: number;
+  }>;
+  /** 24 buckets, oldest first; the last one is the current hour */
+  hourly: Array<{
+    /** The start of the hour (UTC) */
+    hour: string;
+    rejected: number;
+  }>;
 }
 
 export interface RenderedMail {

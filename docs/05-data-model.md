@@ -319,6 +319,14 @@ CREATE TABLE event_corrections (                      -- 00002 (ADR 0027): one r
   PRIMARY KEY (tenant_id, event_id)                    -- the sum over corrects_event_id is what an original stands moved by
 );
 
+CREATE TABLE rejected_events (                         -- 00003 (plan 18): the bounded log of rejected events, RLS'd (ingest_app: SELECT, INSERT, DELETE)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL,
+  error_code text NOT NULL, error_message text NOT NULL,
+  meter_code text NOT NULL, customer_external_id text NOT NULL, idempotency_key text NOT NULL,  -- as sent, cut to 200 characters; never the properties or the quantity
+  event_time timestamptz,                              -- NULL when the event carried none
+  received_at timestamptz NOT NULL DEFAULT now()       -- 14 days and 10 000 rows per tenant are kept, the oldest dropped
+);
+
 CREATE TABLE outbox (
   id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   tenant_id      uuid NOT NULL,

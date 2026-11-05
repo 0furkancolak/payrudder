@@ -23,6 +23,19 @@ type fakeIngest struct {
 	last   *ingestv1.IngestEventsRequest
 	tenant tenant.Info
 	err    error
+	// listed is the last ListRejectedEvents request.
+	listed *ingestv1.ListRejectedEventsRequest
+}
+
+func (f *fakeIngest) ListRejectedEvents(_ context.Context, req *ingestv1.ListRejectedEventsRequest) (*ingestv1.ListRejectedEventsResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listed = req
+	return &ingestv1.ListRejectedEventsResponse{Events: []*ingestv1.RejectedEvent{{Id: "r1", ErrorCode: "UNKNOWN_METER", MeterCode: "gb", CustomerExternalId: "cus_1"}}, NextPageToken: "next"}, nil
+}
+
+func (f *fakeIngest) GetRejectedEventSummary(context.Context, *ingestv1.GetRejectedEventSummaryRequest) (*ingestv1.GetRejectedEventSummaryResponse, error) {
+	return &ingestv1.GetRejectedEventSummaryResponse{Total: 2, ByCode: []*ingestv1.GetRejectedEventSummaryResponse_CodeCount{{ErrorCode: "UNKNOWN_METER", Count: 2}}}, nil
 }
 
 func (f *fakeIngest) IngestEvents(ctx context.Context, req *ingestv1.IngestEventsRequest) (*ingestv1.IngestEventsResponse, error) {
@@ -190,5 +203,33 @@ func TestCorrectEventsMapsRequestAndResponse(t *testing.T) {
 	}
 	if ing.last != nil {
 		t.Fatal("a malformed request reached ingest-svc")
+	}
+}
+
+func TestRejectedEventsRoutes(t *testing.T) {
+	ts, _, ing, _ := newFullTestServer(t)
+	resp, m := do(t, ts, "GET", "/v1/rejected-events?error_code=UNKNOWN_METER&meter=gb&page_size=5&page_token=abc", "live-key", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d %v", resp.StatusCode, m)
+	}
+	if l := ing.listed; l.ErrorCode != "UNKNOWN_METER" || l.MeterCode != "gb" || l.PageSize != 5 || l.PageToken != "abc" {
+		t.Fatalf("forwarded %v", l)
+	}
+	evs := m["events"].([]any)
+	if len(evs) != 1 || evs[0].(map[string]any)["customer_external_id"] != "cus_1" || m["next_page_token"] != "next" {
+		t.Fatalf("answer = %v", m)
+	}
+	if resp, m = do(t, ts, "GET", "/v1/rejected-events?page_size=x", "live-key", ""); resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("bad page_size: %d %v", resp.StatusCode, m)
+	}
+	if resp, m = do(t, ts, "GET", "/v1/rejected-events/summary", "live-key", ""); resp.StatusCode != http.StatusOK || m["total"] != float64(2) {
+		t.Fatalf("summary: %d %v", resp.StatusCode, m)
+	}
+	// Reading needs usage:read: a read-only key may, an ingest-only key may not.
+	if resp, _ = do(t, ts, "GET", "/v1/rejected-events", "read-key", ""); resp.StatusCode != http.StatusOK {
+		t.Fatalf("read-only key: %d", resp.StatusCode)
+	}
+	if resp, _ = do(t, ts, "GET", "/v1/rejected-events/summary", "ingest-key", ""); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("ingest-only key: %d", resp.StatusCode)
 	}
 }

@@ -3808,6 +3808,10 @@
       "plans": {
         "unavailable": "El servicio de planes no está disponible, así que no se pueden comprobar los eventos. Inténtalo de nuevo en un momento."
       },
+      "rejected_events": {
+        "bad_page_size": "page_size debe estar entre 1 y 200",
+        "bad_page_token": "page_token no es uno que haya dado esta API"
+      },
       "tenant": {
         "bad_timezone": "La zona horaria de esta cuenta no se puede usar. Revísala en los ajustes de la cuenta."
       }
@@ -6167,6 +6171,29 @@
       "CORRECTION_MISMATCH": "Una corrección debe indicar el mismo cliente y el mismo medidor que el evento que corrige.",
       "CORRECTION_UNSUPPORTED_METER": "Solo se pueden corregir los eventos de medidores SUM y COUNT sin filtro de propiedades.",
       "CORRECTION_OF_CORRECTION": "El evento es en sí una corrección. Corrija de nuevo el evento original, con la cantidad que debe tener."
+    },
+    "rejected": {
+      "title": "Eventos rechazados",
+      "help": "Eventos que la API rechazó en los últimos 14 días (hasta 10.000), del más reciente al más antiguo, cada uno con lo que hay que hacer. Solo se guarda lo que identifica al evento: sus propiedades y su cantidad no se almacenan. Un rechazo puede aparecer un momento después de la respuesta.",
+      "refresh": "Actualizar",
+      "last24h": "{count} rechazados en las últimas 24 horas",
+      "byCode": "Eventos rechazados por código de error",
+      "filters": {
+        "code": "Código de error",
+        "anyCode": "Cualquier código de error",
+        "meter": "Medidor",
+        "anyMeter": "Cualquier medidor (escribe un código y pulsa Intro)"
+      },
+      "columns": {
+        "code": "Error",
+        "meter": "Medidor",
+        "customer": "Cliente",
+        "eventTime": "Hora del evento",
+        "received": "Recibido"
+      },
+      "empty": "Ningún evento se ha rechazado en los últimos 14 días.",
+      "loadMore": "Mostrar más",
+      "clear": "Borrar filtros"
     }
   },
   "contracts": {

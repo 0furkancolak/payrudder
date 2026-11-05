@@ -64,6 +64,12 @@ type Commands struct {
 	locs  map[string]*time.Location
 
 	events metric.Int64Counter
+
+	// The log of rejected events (rejected.go).
+	rejectedSem chan struct{}
+	rejectedWG  sync.WaitGroup
+	trimMu      sync.Mutex
+	trimmed     map[string]time.Time
 }
 
 // New validates the options and registers the ingest_events counter.
@@ -91,7 +97,8 @@ func New(o Options) (*Commands, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Commands{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr}, nil
+	return &Commands{o: o, log: o.Log, locs: map[string]*time.Location{}, events: ctr,
+		rejectedSem: make(chan struct{}, rejectedWriters), trimmed: map[string]time.Time{}}, nil
 }
 
 func (c *Commands) location(tz string) (*time.Location, error) {

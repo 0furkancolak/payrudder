@@ -245,7 +245,7 @@ const CASES: Case[] = [
     name: "connect your app (the sandbox)",
     path: "/connect",
     tenant: SANDBOX,
-    mock: (gw) => [get("/v1/meters", { meters: [] }), get("/v1/customers", { customers: [] }), get("/v1/webhook-endpoints", { endpoints: [endpoint] })].reduce((g, m) => m(g), gw),
+    mock: (gw) => [get("/v1/meters", { meters: [] }), get("/v1/customers", { customers: [] }), get("/v1/webhook-endpoints", { endpoints: [endpoint] }), get("/v1/rejected-events", { events: [], next_page_token: "" }), get("/v1/rejected-events/summary", { total: 0, by_code: [], hourly: [] })].reduce((g, m) => m(g), gw),
     ready: (page) => page.getByTestId("connect-step-key"),
     offered: (page) => [page.getByTestId("connect-key-create"), page.getByTestId("connect-sample-create"), page.getByTestId("connect-test-event-send"), page.getByTestId("connect-webhook-send")],
   },

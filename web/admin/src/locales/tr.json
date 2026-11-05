@@ -3808,6 +3808,10 @@
       "plans": {
         "unavailable": "Planlar servisi kullanılamıyor, bu yüzden olaylar doğrulanamıyor. Biraz sonra yeniden deneyin."
       },
+      "rejected_events": {
+        "bad_page_size": "page_size 1 ile 200 arasında olmalı",
+        "bad_page_token": "page_token bu API'nin verdiği bir değer değil"
+      },
       "tenant": {
         "bad_timezone": "Bu hesabın saat dilimi kullanılamıyor. Hesap ayarlarından kontrol edin."
       }
@@ -6167,6 +6171,29 @@
       "CORRECTION_MISMATCH": "Düzeltme, düzelttiği olayla aynı müşteriyi ve aynı sayacı belirtmeli.",
       "CORRECTION_UNSUPPORTED_METER": "Yalnızca özellik filtresi olmayan SUM ve COUNT sayaçlarının olayları düzeltilebilir.",
       "CORRECTION_OF_CORRECTION": "Olayın kendisi bir düzeltme. Asıl olayı olması gereken miktarla yeniden düzelt."
+    },
+    "rejected": {
+      "title": "Reddedilen olaylar",
+      "help": "API'nin son 14 günde reddettiği olaylar (en çok 10.000), en yeni üstte, her birinin ne yapılacağıyla birlikte. Yalnızca olayı tanıtan bilgiler tutulur: özellikleri ve miktarı saklanmaz. Bir ret, yanıttan biraz sonra görünebilir.",
+      "refresh": "Yenile",
+      "last24h": "Son 24 saatte {count} reddedildi",
+      "byCode": "Hata koduna göre reddedilen olaylar",
+      "filters": {
+        "code": "Hata kodu",
+        "anyCode": "Tüm hata kodları",
+        "meter": "Sayaç",
+        "anyMeter": "Tüm sayaçlar (kod yazıp Enter'a basın)"
+      },
+      "columns": {
+        "code": "Hata",
+        "meter": "Sayaç",
+        "customer": "Müşteri",
+        "eventTime": "Olay zamanı",
+        "received": "Alındı"
+      },
+      "empty": "Son 14 günde reddedilen olay yok.",
+      "loadMore": "Daha fazla göster",
+      "clear": "Filtreleri temizle"
     }
   },
   "contracts": {
