@@ -25,8 +25,11 @@
 ## Decisions
 The owner decided: two environments, `payrudder.com`, one subdomain level, geo from `geo.nafru.com`. The rest are **defaults (not agreed)**:
 
-1. **Backend on Railway**, one project with two Railway environments, `staging` and `production`. Why: the bootstrap exists and Railway environments
-   are separate stacks (own services, volumes, variables, private network); Kubernetes needs a cluster to run. Helm stays for later.
+1. **Backend on Railway**, one project per environment: `payrudder` (its environment `staging`) and `payrudder-production` (its environment
+   `production`). Why: the bootstrap exists; Kubernetes needs a cluster to run, Helm stays for later. **Changed on the first run (2026-11-06):** the plan
+   was one project with two environments, but the CLI (5.71) adds a service to one environment only, and a second environment then refuses the same
+   service names (`A service named "rabbitmq" already exists in this project`) and renames the databases (`Postgres-dJvk`), which breaks the
+   `${{Postgres.…}}` references. A project of its own also gives production its own token and members.
 2. **Console on Cloudflare** (the Worker, ADR 0021), not the `admin-ui` container: the Railway `admin-ui` service is not created.
 3. **Production opens sandbox-only**: `PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`, provider sandbox keys. `mockpsp` and `mailpit` stay: sandbox tenants pay through the mock and live never reaches it (ADR 0023); sandbox mail goes to the catcher. Live payments are a separate
    go-live step (below), because neither the iyzico nor the Paddle adapter has been run against a real sandbox.

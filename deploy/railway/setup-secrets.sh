@@ -91,7 +91,7 @@ github CLOUDFLARE_API_TOKEN '^[A-Za-z0-9_-]{30,}$' "deploy-console.yml'ın Worke
   "Account resources: bu hesap; Zone resources: payrudder.com (Worker route'ları için gerekli)."
 if [[ $ENV == production ]]; then
   github RAILWAY_TOKEN_PRODUCTION '^[A-Za-z0-9-]{20,}$' "deploy-production.yml'ın release'i deploy ettiği proje token'ı" \
-    "https://railway.com/dashboard → proje → Settings → Tokens → Create, ortam 'production'." \
+    "https://railway.com/dashboard → payrudder-production projesi → Settings → Tokens → Create, ortam 'production'." \
     "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new production\`."
 fi
 
