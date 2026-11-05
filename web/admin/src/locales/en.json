@@ -3700,7 +3700,8 @@
       },
       "geo": {
         "country_not_found": "There is no such country in the list.",
-        "region_not_found": "There is no such region in the list."
+        "region_not_found": "There is no such region in the list.",
+        "unavailable": "The country lists are not available right now; type the region and city instead."
       },
       "saas": {
         "events_quota": "Your plan's limit of events for this month is reached. Upgrade to send more.",

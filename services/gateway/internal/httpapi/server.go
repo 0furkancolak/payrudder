@@ -47,6 +47,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/geo"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/negcache"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -79,6 +80,8 @@ type Deps struct {
 	Support          plansv1.SupportServiceClient
 	// Mail is the notifier's signed HTTP side (the suppression list, the message log, the preview of a notice); nil answers 503 gateway.mail.unavailable.
 	Mail MailAdmin
+	// Geo reads the country, region and district lists from nafru-geo; nil (no PAYRUDDER_GEO_API_KEY) answers 503 gateway.geo.unavailable.
+	Geo *geo.Client
 	// Contracts serves the agreements and their evidence; the hosted payment pages ask it before a payment starts. Nil (tests only) means no agreements are asked for.
 	Contracts plansv1.ContractServiceClient
 	// AuditPlans and AuditBilling read the audit log of plans-svc and billing-svc (payments-worker answers over PaymentsURL); a nil one is left out of the answer.

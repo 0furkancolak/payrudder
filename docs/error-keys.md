@@ -275,6 +275,7 @@ Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0
 - `gateway.dashboard.range_too_long`
 - `gateway.geo.country_not_found`
 - `gateway.geo.region_not_found`
+- `gateway.geo.unavailable`
 - `gateway.mail.suppression_not_found`
 - `gateway.mail.unavailable`
 - `gateway.payments.ledger_unreachable`

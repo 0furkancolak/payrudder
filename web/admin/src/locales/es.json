@@ -3700,7 +3700,8 @@
       },
       "geo": {
         "country_not_found": "Ese país no está en la lista.",
-        "region_not_found": "Esa región no está en la lista."
+        "region_not_found": "Esa región no está en la lista.",
+        "unavailable": "Las listas de países no están disponibles ahora; escriba la región y la ciudad."
       },
       "saas": {
         "events_quota": "Se alcanzó el límite de eventos de tu plan para este mes. Mejora el plan para enviar más.",

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"strings"
@@ -16,7 +17,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
-// geoRoutes is the table of the country, region and district lists the console's address forms offer (GeoNames, embedded in the gateway). They are the
+// geoRoutes is the table of the country, region and district lists the console's address forms offer (GeoNames, read from nafru-geo). They are the
 // same for everybody: a signed-in person (an operator is one too) reads them, and nothing about the caller is in the answer.
 func (s *Server) geoRoutes() []Route {
 	return []Route{
@@ -26,7 +27,7 @@ func (s *Server) geoRoutes() []Route {
 	}
 }
 
-// geoCacheControl lets the browser keep a list for a day: it changes only when the gateway ships a new export. "private" keeps it out of shared caches,
+// geoCacheControl lets the browser keep a list for a day: nafru-geo changes it only on a new export. "private" keeps it out of shared caches,
 // which see an Authorization header on the request.
 const geoCacheControl = "private, max-age=86400"
 
@@ -55,21 +56,25 @@ type geoDistrictsResponse struct {
 	Districts   []geo.District `json:"districts"`
 }
 
-func geoData() (*geo.Dataset, error) {
-	d, err := geo.Default()
-	if err != nil {
-		return nil, status.Error(codes.Internal, "geo data unavailable")
+// geoUnavailable is the answer while nafru-geo is not configured (no PAYRUDDER_GEO_API_KEY) or cannot be read and no earlier copy is kept.
+func geoUnavailable(err error) error {
+	if err != nil && !errors.Is(err, geo.ErrUnavailable) {
+		return err
 	}
-	return d, nil
+	return errkey.New(codes.Unavailable, "gateway.geo.unavailable", "the country lists are unavailable")
 }
 
 func (s *Server) geoCountries(w http.ResponseWriter, r *http.Request) {
-	d, err := geoData()
-	if err != nil {
-		writeError(w, r, err)
+	if s.d.Geo == nil {
+		writeError(w, r, geoUnavailable(nil))
 		return
 	}
-	writeGeo(w, r, geoCountriesResponse{Version: d.Version, Attribution: geo.Attribution, Countries: d.Countries})
+	countries, err := s.d.Geo.Countries(r.Context())
+	if err != nil {
+		writeError(w, r, geoUnavailable(err))
+		return
+	}
+	writeGeo(w, r, geoCountriesResponse{Version: geo.Version, Attribution: geo.Attribution, Countries: countries})
 }
 
 func (s *Server) geoRegions(w http.ResponseWriter, r *http.Request) {
@@ -78,12 +83,15 @@ func (s *Server) geoRegions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("iso2", "an ISO 3166-1 alpha-2 country code"))
 		return
 	}
-	d, err := geoData()
-	if err != nil {
-		writeError(w, r, err)
+	if s.d.Geo == nil {
+		writeError(w, r, geoUnavailable(nil))
 		return
 	}
-	regions, ok := d.RegionsOf(iso2)
+	regions, ok, err := s.d.Geo.RegionsOf(r.Context(), iso2)
+	if err != nil {
+		writeError(w, r, geoUnavailable(err))
+		return
+	}
 	if !ok {
 		writeError(w, r, errkey.New(codes.NotFound, "gateway.geo.country_not_found", "no such country"))
 		return
@@ -91,7 +99,7 @@ func (s *Server) geoRegions(w http.ResponseWriter, r *http.Request) {
 	if regions == nil {
 		regions = []geo.Region{}
 	}
-	writeGeo(w, r, geoRegionsResponse{Version: d.Version, Attribution: geo.Attribution, Country: strings.ToUpper(iso2), Regions: regions})
+	writeGeo(w, r, geoRegionsResponse{Version: geo.Version, Attribution: geo.Attribution, Country: strings.ToUpper(iso2), Regions: regions})
 }
 
 func (s *Server) geoDistricts(w http.ResponseWriter, r *http.Request) {
@@ -100,12 +108,15 @@ func (s *Server) geoDistricts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("id", "a region id such as TR.34"))
 		return
 	}
-	d, err := geoData()
-	if err != nil {
-		writeError(w, r, err)
+	if s.d.Geo == nil {
+		writeError(w, r, geoUnavailable(nil))
 		return
 	}
-	districts, ok := d.DistrictsOf(id)
+	districts, ok, err := s.d.Geo.DistrictsOf(r.Context(), id)
+	if err != nil {
+		writeError(w, r, geoUnavailable(err))
+		return
+	}
 	if !ok {
 		writeError(w, r, errkey.New(codes.NotFound, "gateway.geo.region_not_found", "no such region"))
 		return
@@ -114,7 +125,7 @@ func (s *Server) geoDistricts(w http.ResponseWriter, r *http.Request) {
 		districts = []geo.District{}
 	}
 	country, code, _ := strings.Cut(id, ".")
-	writeGeo(w, r, geoDistrictsResponse{Version: d.Version, Attribution: geo.Attribution, Region: strings.ToUpper(country) + "." + code, Districts: districts})
+	writeGeo(w, r, geoDistrictsResponse{Version: geo.Version, Attribution: geo.Attribution, Region: strings.ToUpper(country) + "." + code, Districts: districts})
 }
 
 // writeGeo writes a list with a day's cache and an ETag, answering 304 when the browser already has it.

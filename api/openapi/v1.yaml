@@ -4941,7 +4941,7 @@ paths:
       operationId: appGeoCountries
       tags: [Product]
       summary: Every country (GeoNames, CC BY 4.0), for the address forms
-      description: The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames.
+      description: The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames. Read from nafru-geo; 503 gateway.geo.unavailable while the lists cannot be read.
       security: [{ sessionToken: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GeoCountries" } } } }
@@ -4952,7 +4952,7 @@ paths:
       operationId: appGeoRegions
       tags: [Product]
       summary: The first-level divisions of a country (states, provinces, counties), sorted by name
-      description: A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code.
+      description: A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code; 503 gateway.geo.unavailable while the lists cannot be read.
       security: [{ sessionToken: [] }]
       parameters:
         - { name: iso2, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z]{2}$" } }
@@ -4966,8 +4966,8 @@ paths:
     get:
       operationId: appGeoDistricts
       tags: [Product]
-      summary: The districts of a region (second-level divisions and towns of 15000 people or more), sorted by name
-      description: 404 gateway.geo.region_not_found for an unknown region id.
+      summary: The districts of a region (second-level divisions, or the larger towns of a region that has none), sorted by name
+      description: 404 gateway.geo.region_not_found for an unknown region id; 503 gateway.geo.unavailable while the lists cannot be read.
       security: [{ sessionToken: [] }]
       parameters:
         - { name: id, in: path, required: true, description: "The region id (GeoNames admin1 code), e.g. TR.34", schema: { type: string, pattern: "^[A-Za-z]{2}[.][A-Za-z0-9]{1,20}$" } }

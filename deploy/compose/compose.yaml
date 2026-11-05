@@ -944,6 +944,8 @@ services:
       # Optional: believe X-Forwarded-For from a public proxy that sends this value as X-Edge-Auth (the console Worker's EDGE_AUTH_SECRET), or from these CIDRs. Both empty here.
       PAYRUDDER_TRUSTED_PROXY_SECRET: ${PAYRUDDER_TRUSTED_PROXY_SECRET:-}
       PAYRUDDER_TRUSTED_PROXIES: ${PAYRUDDER_TRUSTED_PROXIES:-}
+      # nafru-geo key for the address forms' lists (docs/geo-data.md). Empty here: the lists answer 503 and the fields are plain text.
+      PAYRUDDER_GEO_API_KEY: ${PAYRUDDER_GEO_API_KEY:-}
       # The operator console is for people: whoever signs in with one of these addresses (and has verified it) is a platform operator. The dev seed's
       # first user by default. The operator token above is the machine credential only (scripts, payrudderctl, tests); no page asks for it.
       PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}

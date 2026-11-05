@@ -68,6 +68,10 @@ see the schema owner's password while the Job still loads the service's complete
     {{- if $root.Values.auth.trustedProxySecret -}}
       {{- $_ := set $out "PAYRUDDER_TRUSTED_PROXY_SECRET" $root.Values.auth.trustedProxySecret -}}
     {{- end -}}
+  {{- else if eq . "geoApiKey" -}}
+    {{- if $root.Values.auth.geoApiKey -}}
+      {{- $_ := set $out "PAYRUDDER_GEO_API_KEY" $root.Values.auth.geoApiKey -}}
+    {{- end -}}
   {{- else if eq . "oauthResourceSecret" -}}
     {{- if $root.Values.auth.oauthResourceSecret -}}
       {{- $_ := set $out "PAYRUDDER_OAUTH_RESOURCE_SECRET" $root.Values.auth.oauthResourceSecret -}}
