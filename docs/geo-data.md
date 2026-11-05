@@ -17,7 +17,8 @@ given where the data is used:
 ## Where the lists come from
 
 The gateway reads them from **nafru-geo** (`https://geo.nafru.com`), the GeoNames service the nafru apps share (its own repository,
-`nafrucom/nafru-geo`: a Cloudflare Worker over D1). nafru-geo asks for a key per app (`x-api-key`); the gateway's is `PAYRUDDER_GEO_API_KEY`, a secret, and the
+`nafrucom/nafru-geo`: a Cloudflare Worker over D1). nafru-geo asks for a key per app (`x-api-key`); the gateway's is `PAYRUDDER_GEO_API_KEY`, a secret (one per
+environment: staging and production each have their own, see [plan 23](plans/23-staging-and-production.md#geo-nafru-geo)), and the
 address is `PAYRUDDER_GEO_URL` (default `https://geo.nafru.com`). The gateway keeps each list in memory for a day (`geo.TTL`). When nafru-geo cannot be
 read, the copy it already has is served and the next try waits a minute (`geo.RetryAfter`), so a request never waits on a service that is down; a list
 the gateway has never read answers **503 `gateway.geo.unavailable`**, and so does every geo route while the key is not set. The console's address

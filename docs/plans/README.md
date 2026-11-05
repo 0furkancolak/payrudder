@@ -47,6 +47,7 @@ Before a merge the reviewer runs, on the branch and in the same form CI runs the
 | 20 | [MCP server](20-mcp.md) | after the API settles | M | hosting model |
 | 21 | [Contracts: distance sales and other agreements for the seller's customers](21-contracts.md) | independent of the payment path except one acceptance gate | L | kinds, template text policy, retention |
 | 22 | [Platform audit and roadmap: financial correctness first](22-platform-audit-and-roadmap.md) | phases 0–1 outrank 09–12, 14, 15, 17–21 | XL | RPO/RTO, backup target, alert receiver |
+| 23 | [Staging and production on payrudder.com](23-staging-and-production.md) | the first deploy; production opens sandbox-only | M | Railway, Cloudflare, nafru-geo and Nafru keys, OAuth clients, sandbox keys |
 
 The mapping of the owner's items to plans is in [the last section](#where-each-of-the-owners-items-went).
 

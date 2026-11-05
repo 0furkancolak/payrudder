@@ -70,6 +70,29 @@ The CLI cannot set a service's **config-as-code path**. For each service open *S
 `/deploy/railway/services/<name>.railway.json` for the Payrudder services, `/deploy/railway/infra/<name>.railway.json` for the rest. That is what gives
 each service its health check, restart policy and watch paths. Until then it still builds (`RAILWAY_DOCKERFILE_PATH` is set) but is not health-checked.
 
+## Two environments (staging and production)
+
+Payrudder's own deployment ([plan 23](../../docs/plans/23-staging-and-production.md), runbook
+[staging-and-production](../../docs/runbooks/staging-and-production.md)) is one Railway project with two Railway environments. Each is a stack of its
+own: services, volumes, variables and generated secrets are never shared. Create the environment first (*Settings → Environments*, or
+`railway environment new staging`), then run the script once per environment with that environment's keys:
+
+```bash
+GEO_API_KEY=… NAFRU_BASE_URL=… NAFRU_API_KEY=… OPERATOR_EMAILS=… ERROR_TRACKING_URL=… \
+deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --environment staging --profile small \
+  --console-url https://console-staging.payrudder.com --api-domain api-staging.payrudder.com --files-domain files-staging.payrudder.com \
+  --allowed-environments sandbox
+```
+
+| Flag or variable | Effect |
+|---|---|
+| `--environment` | links the Railway environment first (`railway environment <name>`; UNVERIFIED against a real project) |
+| `--console-url` | the console is the Cloudflare Worker: no `admin-ui` service or domain, `PAYRUDDER_APP_URL` is this address, and `PAYRUDDER_TRUSTED_PROXY_SECRET` is generated on the gateway (put the same value on the Worker as `EDGE_AUTH_SECRET`) |
+| `--api-domain`, `--files-domain` | custom domains on `gateway` and `minio`; `PAYRUDDER_PUBLIC_URL` and `S3_PUBLIC_ENDPOINT` use them instead of the generated domains. Add the DNS record Railway prints |
+| `--allowed-environments sandbox` | a sandbox-only deployment: live accounts are refused (plans-svc, gateway) |
+| `GEO_API_KEY` | this environment's nafru-geo key, as `PAYRUDDER_GEO_API_KEY` on the gateway |
+| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | both or neither: the platform's mail goes through Nafru; `mailpit` stays for sandbox mail |
+
 ## By hand (what the script does)
 
 1. **Project.** Create it; add the **Postgres** and **Redis** plugins from *New → Database*. Keep their default names.
@@ -131,7 +154,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_OPERATOR_SUPPORT_EMAILS` | empty | comma separated; read-only support operators: they see the operator console and change nothing; an address on both lists is a support operator. Set it with `OPERATOR_SUPPORT_EMAILS=... deploy/railway/bootstrap.sh ...` |
 | `PAYRUDDER_OPERATOR_REQUIRE_2FA` | unset (on) | operators need two-factor sign-in: unset it is on here (`PAYRUDDER_ENV=railway`); an operator sets it up on the console's security page first ([how](../../docs/audit-log-and-two-factor.md#two-factor-sign-in)) |
 | `PAYRUDDER_TRUSTED_PROXY_SECRET` | generated, 32+ characters | only with the console on Cloudflare: the same value as the Worker secret `EDGE_AUTH_SECRET`; makes the gateway count sign-in limits per visitor ([runbook](../../docs/runbooks/console-first-deploy.md)) |
-| `PAYRUDDER_GEO_API_KEY` | from nafru-geo | the key the address forms' country/region/district lists are read with ([geo-data](../../docs/geo-data.md)); empty: those lists answer 503 and the fields are plain text |
+| `PAYRUDDER_GEO_API_KEY` | from nafru-geo | the key the address forms' country/region/district lists are read with ([geo-data](../../docs/geo-data.md)); empty: those lists answer 503 and the fields are plain text. `GEO_API_KEY=… deploy/railway/bootstrap.sh ...` sets it |
 | `PAYRUDDER_APP_URL` | `https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}` | where the browser returns after Google; also set on `plans-svc` for the links in mails |
 | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` | from Google | optional: both set shows "Continue with Google" ([how](../../docs/13-admin-ui.md#sign-in-methods)); register `<console domain>/gw/auth/google/callback` as the redirect URI |
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
@@ -309,6 +332,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the mail rate limit's buckets are shared by the replicas; without it each replica keeps its own |
 | `SMTP_ADDR` | `mailpit.railway.internal:1025` | see [Mail](#mail) |
+| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | from Nafru | optional, both or neither: the platform's own mail is sent through Nafru instead of `SMTP_ADDR`. `NAFRU_BASE_URL=… NAFRU_API_KEY=… deploy/railway/bootstrap.sh ...` sets them |
 | `NOTIFIER_EVENTS_ADDR` | `:9111` | the signed listener for mail events and the suppression list ([runbook](../../docs/runbooks/mail-suppression.md)); only the project's private network reaches it, the gateway calls it. Empty switches it off, and the gateway's two variables must then be unset too |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | generated | at least 16 characters; signs every request; the gateway holds the same value by reference |
 
