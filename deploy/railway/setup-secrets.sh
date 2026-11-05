@@ -23,7 +23,7 @@ REPO=${REPO:-0furkancolak/payrudder}
 CONSOLE=console$SUFFIX.payrudder.com
 DIR=${PAYRUDDER_SECRETS_DIR:-$HOME/.config/payrudder}
 FILE=$DIR/$ENV.env
-FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY OPERATOR_EMAILS ERROR_TRACKING_URL PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
+FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS ERROR_TRACKING_URL PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
 
 # Only the file's values count, not whatever the calling shell exports.
 for v in "${FILE_VARS[@]}"; do unset "$v"; done
@@ -100,12 +100,15 @@ echo "== $ENV: bootstrap girdileri, $FILE içinde"
 input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
   "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
   "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
-input NAFRU_BASE_URL optional plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
-  "Yoksa e-postalar mailpit'te kalır, gerçek kutuya gitmez." \
+input NAFRU_BASE_URL required plain '^https://' "Nafru'nun API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
   "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
-if is_set NAFRU_BASE_URL; then
-  input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
-fi
+input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+input S3_ENDPOINT required plain '^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com$' "Cloudflare R2'nin S3 adresi (faturalar ve dosyalar)" \
+  "https://<Cloudflare hesap ID>.r2.cloudflarestorage.com; hesap ID: npx wrangler whoami. Bucket'lar: payrudder-invoices-$ENV, payrudder-assets-$ENV."
+input S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "R2 API token'ının Access Key ID'si" \
+  "https://dash.cloudflare.com → R2 Object Storage → Manage API tokens → Create Account API token: Object Read & Write," \
+  "yalnız payrudder-invoices-$ENV ve payrudder-assets-$ENV bucket'larına. Access Key ID ve Secret Access Key bir kez gösterilir."
+input S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "R2 API token'ının Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
 input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "platformu yönetenler (operatör konsolu), virgülle ayrılmış" \
   "Kendi e-posta adres(ler)in; doğruladıktan sonra operatör konsolunu görürler."
 input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "hataların raporlandığı DSN" \
@@ -119,17 +122,16 @@ fi
 
 if [[ $missing -gt 0 ]]; then echo; echo "$missing zorunlu kalem eksik: betiği tekrar çalıştır"; exit 1; fi
 
-if [[ $ENV == staging ]]; then FLAGS="--repo $REPO --profile small"; else FLAGS="--source local --profile full"; fi
 cat <<EOF
 
 == $ENV için sonraki adımlar
-1. nafru-geo: GEO_API_KEY'i ($FILE içinde) nafrucom/nafru-geo'nun .env.keys listesine ekle, sonra orada:
+1. nafru-geo: GEO_API_KEY nafru-geo'nun API_KEYS listesinde değilse ($FILE içinde) nafrucom/nafru-geo'nun .env.keys listesine ekle, sonra orada:
      printf '%s' "<tüm anahtarlar, virgülle>" | bunx wrangler secret put API_KEYS
-2. Railway: '$ENV' ortamı var (https://railway.com/dashboard → proje → Settings → Environments), \`railway login\`, \`railway link\`.
+2. Railway: payrudder projesinde '$ENV' ortamı var (https://railway.com/dashboard → payrudder → Settings → Environments), \`railway login\`, \`railway link\`.
 3. Backend (önce --dry-run çıktısını oku; production: release'in tag'inden alınmış bir checkout'tan):
-     (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV $FLAGS \\
-       --console-url https://$CONSOLE --api-domain api$SUFFIX.payrudder.com --files-domain files$SUFFIX.payrudder.com --allowed-environments sandbox)
-4. Railway'in yazdırdığı DNS kayıtları → Cloudflare, DNS only (gri bulut).
+     (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV --console-url https://$CONSOLE \\
+       --api-domain api$SUFFIX.payrudder.com --allowed-environments sandbox)
+4. Railway'in yazdırdığı DNS kayıtları → Cloudflare, DNS only (gri bulut). assets$SUFFIX.payrudder.com R2 bucket'ına bağlı, kayıt gerekmez.
 5. Console'un proxy secret'ı, Worker'a aynı değer:
      railway variable list --environment $ENV --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET
      (cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env $ENV)

@@ -1,15 +1,16 @@
 # Runbook: staging and production on payrudder.com
 
-Background and decisions: [plan 23](../plans/23-staging-and-production.md). **Written before any of it was run**: the Railway, Cloudflare and nafru-geo
-steps below are untried; correct this page the first time through.
+Background and decisions: [plan 23](../plans/23-staging-and-production.md). Staging was brought up with an earlier version on 2026-11-06; the layout
+below (IaC, R2, Nafru, PgBouncer, no init jobs) is newer and not yet run end to end. Correct this page the first time through.
 
 | | Production | Staging |
 |---|---|---|
-| Railway project / environment | `payrudder-production` / `production` | `payrudder` / `staging` |
+| Railway project / environment | `payrudder` / `production` | `payrudder` / `staging` |
 | Console (Worker) | `console.payrudder.com` | `console-staging.payrudder.com` |
 | Gateway | `api.payrudder.com` | `api-staging.payrudder.com` |
-| MinIO (presigned links) | `files.payrudder.com` | `files-staging.payrudder.com` |
-| Profile | `full` | `small` |
+| Objects (Cloudflare R2) | `payrudder-invoices-production`, `payrudder-assets-production` | `payrudder-invoices-staging`, `payrudder-assets-staging` |
+| Public assets (the assets bucket's R2 domain) | `assets.payrudder.com` | `assets-staging.payrudder.com` |
+| ClickHouse and analytics-svc | yes | no |
 | Allowed environments | `sandbox` (until go-live) | `sandbox` |
 | Deployed on | a published GitHub release (`deploy-production.yml`) | every push to `main` (Railway itself, and `deploy-console.yml`) |
 
@@ -19,13 +20,16 @@ Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare'
 ## 0. Once
 
 1. `payrudder.com` is a zone in the Cloudflare account.
-2. Railway: one project per environment, the GitHub app installed for the repository (staging only is connected to it).
-   - `railway init --name payrudder` then `railway environment new staging`; `railway init --name payrudder-production` (its default environment is
-     `production`). Not two environments of one project: the CLI then refuses the same service names in the second one (plan 23).
-   - Run each bootstrap from a folder linked to that project (`railway link`); `railway init` links the folder it runs in.
-3. GitHub, *Settings → Secrets and variables → Actions*, repository secrets (no GitHub Environments; who may publish a release decides production):
+2. Railway: one project `payrudder` with the environments `staging` (`railway environment new staging`) and `production` (the default one), the
+   GitHub app installed for the repository. The services, databases, volumes, canvas groups and health checks are code:
+   `deploy/railway/iac/.railway/railway.ts`, applied per environment by the bootstrap (`railway config apply`). Staging is connected to GitHub,
+   production is not. (Adding services one by one with `railway add` does not work for a second environment: the CLI refuses the names.)
+3. Cloudflare R2: the four buckets of the table (`npx wrangler r2 bucket create <name> --location weur`), CORS on the assets buckets for the console's
+   uploads (`wrangler r2 bucket cors set`, origin the console host, methods GET/PUT/HEAD, expose `ETag`), and the assets domains
+   (`wrangler r2 bucket domain add payrudder-assets-<env> --domain assets[-staging].payrudder.com --zone-id <zone>`).
+4. GitHub, *Settings → Secrets and variables → Actions*, repository secrets (no GitHub Environments; who may publish a release decides production):
    - `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`, for both console deploys.
-   - `RAILWAY_TOKEN_PRODUCTION`: a project token of `payrudder-production`, environment `production` (*Project settings → Tokens*), for the release workflow.
+   - `RAILWAY_TOKEN_PRODUCTION`: a project token of `payrudder`, environment `production` (*Project settings → Tokens*), for the release workflow.
      Staging needs none: Railway deploys `main` itself.
 
 ## 1. Keys for one environment
@@ -37,39 +41,38 @@ password manager as well.
 
 | Key | Where it comes from | Where it goes |
 |---|---|---|
-| nafru-geo key | `openssl rand -hex 32` | `GEO_API_KEY` for the bootstrap. Also added to nafru-geo's `API_KEYS`: in `nafrucom/nafru-geo`, `printf '%s' "<all keys>" \| bunx wrangler secret put API_KEYS`; the list is in its git-ignored `.env.keys` |
-| Nafru mail | Nafru, sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare) | `NAFRU_BASE_URL`, `NAFRU_API_KEY` |
+| nafru-geo key | the `PAYRUDDER_GEO_API_KEY` already in nafru-geo's `.env.keys`, or a new one | `GEO_API_KEY` for the bootstrap. Also added to nafru-geo's `API_KEYS`: in `nafrucom/nafru-geo`, `printf '%s' "<all keys>" \| bunx wrangler secret put API_KEYS`; the list is in its git-ignored `.env.keys` |
+| Nafru mail (required: there is no mail catcher; sandbox mail goes through Nafru with a marked subject) | Nafru, sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare) | `NAFRU_BASE_URL`, `NAFRU_API_KEY` |
+| R2 (required) | *R2 Object Storage → Manage API tokens*: an account token, Object Read & Write, this environment's two buckets | `S3_ENDPOINT` (`https://<account id>.r2.cloudflarestorage.com`), `S3_ACCESS_KEY`, `S3_SECRET_KEY` |
 | Google sign-in | one OAuth client per environment, redirect `https://<console host>/gw/auth/google/callback` | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` for the bootstrap, which sets them on the gateway |
 | Error tracking | a GlitchTip or Sentry project | `ERROR_TRACKING_URL` |
 | Operators | the people | `OPERATOR_EMAILS` |
 
-The secrets the services make for themselves (database passwords, `PAYRUDDER_SECRETS_KEY`, OTP pepper, operator token, proxy secret) are generated by
+The secrets the services make for themselves (database role passwords, kept on the `Postgres` service, `PAYRUDDER_SECRETS_KEY`, OTP pepper, operator token, proxy secret) are generated by
 the bootstrap in each environment. **Copy `PAYRUDDER_SECRETS_KEY` of production out of Railway** into the password manager: without it every sealed
 provider credential is lost ([secrets-key-rotation](secrets-key-rotation.md)).
 
 ## 2. Backend (Railway)
 
 ```bash
-GEO_API_KEY=… NAFRU_BASE_URL=… NAFRU_API_KEY=… OPERATOR_EMAILS=… ERROR_TRACKING_URL=… \
-deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --environment staging --profile small \
-  --console-url https://console-staging.payrudder.com --api-domain api-staging.payrudder.com --files-domain files-staging.payrudder.com \
-  --allowed-environments sandbox
+(set -a; . ~/.config/payrudder/staging.env; set +a
+ deploy/railway/bootstrap.sh --environment staging --console-url https://console-staging.payrudder.com --api-domain api-staging.payrudder.com \
+   --allowed-environments sandbox)
 ```
 
-For production run the same command with these changes:
+Production: the same with `production` and the production hosts, from a checkout of the release's tag (its services are uploaded from it).
 
-| Flag | Production value |
-|---|---|
-| `--source local` instead of `--repo` | production services are **not** connected to GitHub, so a push never reaches them; run it from a checkout of the first release's tag |
-| `--environment` | `production` |
-| `--profile` | `full` |
-| `--console-url`, `--api-domain`, `--files-domain` | the production hosts |
+Run it with `--dry-run` first and read it. What it does:
 
-Run it with `--dry-run` first and read it. Then:
+1. Applies `railway.ts` to the environment: creates what is missing, sets build and health-check settings, and stops before deleting anything unless
+   `--allow-destroy` is given (read the plan first: `cd deploy/railway/iac && npm ci && railway config plan --environment <env>`).
+2. Creates the gateway's custom domain the first time and prints its DNS records: add them in Cloudflare, **DNS only** (grey cloud), and wait for the
+   certificate. The next run keeps the domain in the IaC.
+3. Sets every service's variables and generates the secrets that are missing.
+4. Deploys: PgBouncer and the brokers, then plans-svc (it creates the Kafka topics), then the rest. Each service creates its own database and roles at
+   start (`PAYRUDDER_PG_ADMIN_DSN`, `pgxx.Provision`); there are no init jobs. Only the app role goes through PgBouncer.
 
-1. For each service, set *Settings → Config-as-code* to the path the script prints.
-2. Add the DNS records Railway printed for the two custom domains in Cloudflare, **DNS only** (grey cloud). Wait until Railway shows the certificate.
-3. Staging only: in the service settings, turn on Railway's "Wait for CI", so a red `main` is not deployed.
+Staging only: in the service settings, turn on Railway's "Wait for CI", so a red `main` is not deployed.
 
 ## 3. Console (Cloudflare Worker)
 
@@ -91,13 +94,13 @@ Point these at the environment's API host:
 
 Each line says what to look at. Write down any that fail.
 
-1. **Services:** Railway shows every service healthy, and the three `init-*` jobs show *Completed*.
+1. **Services:** Railway shows every service healthy, in the groups Data, Messaging, API, Workers and Sandbox.
 2. **Health:** `https://<api host>/healthz` answers 200, and so does `https://<console host>/healthz` (through the Worker).
 3. **Sign-up:** sign up on the console, and the verification mail arrives in a real mailbox through Nafru. Turn on two-factor sign-in.
 4. **Operator:** an address on `OPERATOR_EMAILS` sees the operator console after verifying it.
 5. **Geo:** the customer address form offers the regions of `TR`. `GET /app/v1/geo/countries` with a session answers 200 and carries `attribution`.
 6. **Usage:** a tenant, an app and an API key, then events sent with an SDK, and the usage shows in the console.
-7. **Invoice:** the month close in sandbox gives an invoice, and its PDF link starts with the files host and opens.
+7. **Invoice:** the month close in sandbox gives an invoice, and its PDF link (R2, `<account>.r2.cloudflarestorage.com`) opens. A brand logo uploaded in the console loads.
 8. **Payment:** a sandbox payment through iyzico and through Paddle is settled by the webhook, and the hosted invoice page shows it paid.
 9. **Sandbox-only:** a live account is refused, because only `sandbox` is allowed.
 10. **Migrations:** for each service database, `deploy/backup/migrations-version.sh <database> services/<service>/migrations` says `equal`.
@@ -114,7 +117,7 @@ Each line says what to look at. Write down any that fail.
    - **console:** `deploy-console.yml` with `production`, after the backend.
 4. Check items 2, 3 and 6 of the list above.
 
-The backing services (Redpanda, RabbitMQ, MinIO, ClickHouse) and the `init-*` jobs are not redeployed by a release. When their image changed, deploy
+The backing services (PgBouncer, Redpanda, RabbitMQ, ClickHouse) are not redeployed by a release. When their image changed, deploy
 them by hand: `railway up --service <name> --environment production`.
 
 ## Rollback

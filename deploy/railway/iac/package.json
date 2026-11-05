@@ -1,0 +1,9 @@
+{
+  "name": "payrudder-railway-iac",
+  "private": true,
+  "description": "The Railway project as code (railway.ts); deploy/railway/bootstrap.sh applies it",
+  "type": "module",
+  "dependencies": {
+    "railway": "3.16.0"
+  }
+}

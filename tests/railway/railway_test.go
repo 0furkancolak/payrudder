@@ -154,8 +154,8 @@ func TestEveryComposeServiceHasARailwayConfig(t *testing.T) {
 func TestInfraConfigs(t *testing.T) {
 	repo := root(t)
 	files, _ := filepath.Glob(filepath.Join(repo, "deploy", "railway", "infra", "*.railway.json"))
-	if len(files) < 8 {
-		t.Fatalf("expected the 5 backing services and 3 init jobs, found %d files", len(files))
+	if len(files) < 4 {
+		t.Fatalf("expected pgbouncer, rabbitmq, redpanda and clickhouse, found %d files", len(files))
 	}
 	for _, f := range files {
 		rel, _ := filepath.Rel(repo, f)
@@ -164,13 +164,10 @@ func TestInfraConfigs(t *testing.T) {
 			if !exists(repo, cfg.Build.DockerfilePath) {
 				t.Fatalf("dockerfilePath %q does not exist", cfg.Build.DockerfilePath)
 			}
-			job := strings.HasPrefix(filepath.Base(f), "init-")
+			// PgBouncer speaks only the Postgres protocol: Railway checks it is running, not an HTTP path.
 			hc, _ := cfg.Deploy["healthcheckPath"].(string)
-			if job == (hc != "") {
-				t.Errorf("healthcheckPath %q: a one-shot job has none, a backing service has one", hc)
-			}
-			if job && cfg.Deploy["restartPolicyType"] != "NEVER" {
-				t.Error("a one-shot job must have restartPolicyType NEVER")
+			if (hc == "") != (filepath.Base(f) == "pgbouncer.railway.json") {
+				t.Errorf("healthcheckPath %q: every backing service but PgBouncer has one", hc)
 			}
 			// Every file COPYed from the repo by the image must exist.
 			for _, m := range regexp.MustCompile(`(?m)^COPY\s+(deploy/\S+)`).FindAllStringSubmatch(read(t, repo, cfg.Build.DockerfilePath), -1) {
@@ -303,7 +300,10 @@ func TestBootstrapServiceDirs(t *testing.T) {
 	}
 }
 
-// dryRun runs bootstrap.sh --dry-run and returns, per service, the variable-setting commands it printed. It needs neither the CLI nor a login.
+// baseArgs are the flags a dry run of one environment needs.
+var baseArgs = []string{"--dry-run", "--environment", "staging", "--console-url", "https://console.example.com"}
+
+// dryRun runs bootstrap.sh --dry-run (profile full: production, small: staging) and returns, per service, the variable-setting commands it printed. It needs neither the CLI nor a login.
 func dryRun(t *testing.T, repo, profile string) map[string]string {
 	t.Helper()
 	out := dryRunOutput(t, repo, profile)
@@ -325,27 +325,45 @@ func dryRunOutput(t *testing.T, repo, profile string) string {
 	if err != nil {
 		t.Skip("bash not found")
 	}
-	out, err := exec.Command(bash, filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--profile", profile).CombinedOutput()
+	env := map[string]string{"full": "production", "small": "staging"}[profile]
+	out, err := exec.Command(bash, filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--environment", env, "--console-url", "https://console.example.com").CombinedOutput()
 	if err != nil {
-		t.Fatalf("--dry-run --profile %s: %v\n%s", profile, err, out)
+		t.Fatalf("--dry-run --environment %s: %v\n%s", env, err, out)
 	}
 	return string(out)
 }
 
-// The dry run adds every service (and leaves out the full profile's extras in the small one).
+// railway.ts declares every service and the dry run deploys every one of them, production with ClickHouse and analytics-svc and staging without.
 func TestBootstrapDryRun(t *testing.T) {
 	repo := root(t)
+	iac := read(t, repo, "deploy", "railway", "iac", ".railway", "railway.ts")
+	for _, name := range append(composeApps(t, repo), "pgbouncer", "rabbitmq", "redpanda", "clickhouse") {
+		if name != "admin-ui" && !strings.Contains(iac, `"`+name+`"`) {
+			t.Errorf("railway.ts does not declare %s", name)
+		}
+	}
 	for _, profile := range []string{"full", "small"} {
 		text := dryRunOutput(t, repo, profile)
+		deploy := " --from-source --yes\n"
+		if profile == "full" {
+			deploy = " --detach\n"
+		}
 		for _, name := range composeApps(t, repo) {
-			want := "railway add --service " + name + "\n"
+			if name == "admin-ui" {
+				continue
+			}
 			small := profile == "small" && name == "analytics-svc"
-			if has := strings.Contains(text, want); has == small {
-				t.Errorf("profile %s: %q present = %v", profile, strings.TrimSpace(want), has)
+			if has := strings.Contains(text, "--service "+name+deploy); has == small {
+				t.Errorf("profile %s: %s deployed = %v", profile, name, has)
 			}
 		}
 		if clickhouse := strings.Contains(text, "--service clickhouse"); clickhouse == (profile == "small") {
 			t.Errorf("profile %s: ClickHouse present = %v", profile, clickhouse)
+		}
+		for _, gone := range []string{"init-postgres", "init-redpanda", "init-minio", "minio", "mailpit", "admin-ui"} {
+			if strings.Contains(text, "--service "+gone+" ") {
+				t.Errorf("profile %s: %s is still set or deployed", profile, gone)
+			}
 		}
 		if strings.Contains(text, "unbound variable") {
 			t.Errorf("profile %s: %s", profile, text)
@@ -390,7 +408,7 @@ func TestErrorTrackingURLIsSetOnEveryGoServiceWhenGiven(t *testing.T) {
 	repo := root(t)
 	const dsn = "https://publickey@errors.example.com/7"
 	run := func(env ...string) map[string]string {
-		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run")
+		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--environment", "production", "--console-url", "https://console.example.com")
 		cmd.Env = append(os.Environ(), env...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -427,7 +445,7 @@ func TestMailWebhookSecretIsSetOnTheGatewayWhenGiven(t *testing.T) {
 	repo := root(t)
 	const secret = "whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
 	run := func(value string) map[string]string {
-		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run")
+		cmd := exec.Command("bash", append([]string{filepath.Join(repo, "deploy", "railway", "bootstrap.sh")}, baseArgs...)...)
 		cmd.Env = append(os.Environ(), "MAIL_WEBHOOK_SECRET="+value)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -473,7 +491,7 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 	}
 	out, err := run([]string{"GEO_API_KEY=geo-key", "NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=nafru-key"},
 		"--environment", "staging", "--console-url", "https://console-staging.example.com", "--api-domain", "api-staging.example.com",
-		"--files-domain", "files-staging.example.com", "--allowed-environments", "sandbox")
+		"--allowed-environments", "sandbox")
 	if err != nil {
 		t.Fatalf("dry run: %v\n%s", err, out)
 	}
@@ -490,7 +508,7 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 	if !strings.Contains(out, "[only if PAYRUDDER_TRUSTED_PROXY_SECRET is unset on gateway]") {
 		t.Error("the gateway's proxy secret for the console's Worker is not generated")
 	}
-	for _, want := range []string{"railway domain api-staging.example.com --service gateway --port 8000", "railway domain files-staging.example.com --service minio --port 9000"} {
+	for _, want := range []string{"railway domain api-staging.example.com --service gateway --port 8000", "railway config apply --environment staging --yes"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -498,10 +516,12 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 	for svc, wants := range map[string][]string{
 		"gateway": {"PAYRUDDER_APP_URL=https://console-staging.example.com", "PAYRUDDER_PUBLIC_URL=https://api-staging.example.com",
 			"PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox ", "PAYRUDDER_GEO_API_KEY=geo-key"},
-		"plans-svc":   {"PAYRUDDER_APP_URL=https://console-staging.example.com", "PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox "},
-		"billing-svc": {"PAYRUDDER_PUBLIC_URL=https://api-staging.example.com", "S3_PUBLIC_ENDPOINT=https://files-staging.example.com"},
-		"assets-svc":  {"S3_PUBLIC_ENDPOINT=https://files-staging.example.com"},
-		"notifier":    {"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=nafru-key"},
+		"plans-svc":   {"PAYRUDDER_APP_URL=https://console-staging.example.com", "PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox ", "PAYRUDDER_KAFKA_CREATE_TOPICS=true"},
+		"billing-svc": {"PAYRUDDER_PUBLIC_URL=https://api-staging.example.com", "S3_BUCKET=payrudder-invoices-staging", "S3_REGION=auto"},
+		"assets-svc": {"S3_BUCKET=payrudder-assets-staging", "'PAYRUDDER_PG_APP_DSN=postgres://assets_app:${{Postgres.PG_APP_PASSWORD}}@pgbouncer.railway.internal:6432/assets_db'",
+			"'PAYRUDDER_PG_SYSTEM_DSN=postgres://assets_system:${{Postgres.PG_SYSTEM_PASSWORD}}@${{Postgres.RAILWAY_PRIVATE_DOMAIN}}:5432/assets_db'",
+			"'PAYRUDDER_PG_ADMIN_DSN=${{Postgres.DATABASE_URL}}'"},
+		"notifier": {"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=nafru-key"},
 	} {
 		for _, want := range wants {
 			if !strings.Contains(per[svc], " "+want) {
@@ -517,13 +537,21 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 			t.Errorf("%s gets the Nafru mail key", svc)
 		}
 	}
-	for _, bad := range [][]string{{"--allowed-environments", "live"}, {"--console-url", "http://console.example.com"}, {"--api-domain", "https://api.example.com"}} {
+	for _, bad := range [][]string{{"--environment", "staging", "--console-url", "https://c.example.com", "--allowed-environments", "live"},
+		{"--environment", "staging", "--console-url", "http://console.example.com"}, {"--console-url", "https://c.example.com"},
+		{"--environment", "staging", "--console-url", "https://c.example.com", "--api-domain", "https://api.example.com"}} {
 		if out, err := run(nil, bad...); err == nil {
 			t.Errorf("%v was accepted:\n%s", bad, out)
 		}
 	}
-	if out, err := run([]string{"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY="}); err == nil {
-		t.Errorf("NAFRU_BASE_URL without NAFRU_API_KEY was accepted:\n%s", out)
+	// A real run without the mail or storage keys stops before it touches Railway (no CLI is called: none is needed for this).
+	for _, missing := range []string{"NAFRU_API_KEY", "S3_SECRET_KEY"} {
+		env := []string{"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=k", "S3_ENDPOINT=https://a.r2.cloudflarestorage.com", "S3_ACCESS_KEY=a", "S3_SECRET_KEY=s", missing + "="}
+		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--environment", "staging", "--console-url", "https://c.example.com")
+		cmd.Env = append(os.Environ(), env...)
+		if out, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(out), missing+" is required") {
+			t.Errorf("a run without %s: %v\n%s", missing, err, out)
+		}
 	}
 }
 
@@ -531,8 +559,7 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 // first and the gateway last, each waiting for its build; nothing is created, set or linked, and the console's container is left out when it runs elsewhere.
 func TestBootstrapDeployOnly(t *testing.T) {
 	repo := root(t)
-	out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only", "--profile", "full",
-		"--console-url", "https://console.example.com").CombinedOutput()
+	out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only").CombinedOutput()
 	if err != nil {
 		t.Fatalf("dry run: %v\n%s", err, out)
 	}
@@ -585,8 +612,8 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	out, err := run("", "--check", "production")
-	if err == nil || !strings.Contains(out, "4 zorunlu kalem eksik") {
-		t.Fatalf("--check with nothing set: want 4 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	if err == nil || !strings.Contains(out, "9 zorunlu kalem eksik") {
+		t.Fatalf("--check with nothing set: want 9 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
 	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- ERROR_TRACKING_URL"} {
 		if !strings.Contains(out, want) {
@@ -597,10 +624,12 @@ func TestSetupSecrets(t *testing.T) {
 		t.Errorf("staging asks for the production token:\n%s", out)
 	}
 
-	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, operators, no DSN, no Google.
+	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, the R2 endpoint and keys,
+	// operators, no DSN, no Google.
 	key := `a key with spaces, 'quotes' and $dollars`
-	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrailway-token-abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key + "\nops@payrudder.com\n\n\n"
-	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "--console-url https://console.payrudder.com --api-domain api.payrudder.com") {
+	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrailway-token-abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
+		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n\n"
+	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "bootstrap.sh --dry-run --environment production --console-url https://console.payrudder.com") {
 		t.Fatalf("a full run: err=%v\n%s", err, out)
 	}
 	if b, _ := os.ReadFile(log); string(b) != "CLOUDFLARE_API_TOKEN=cf_token_abcdefghijklmnopqrstuvwxyz0123\nRAILWAY_TOKEN_PRODUCTION=railway-token-abcdefghijklmnop\n" {
@@ -623,7 +652,7 @@ func TestSetupSecrets(t *testing.T) {
 }
 
 func TestGoogleSignInIsSetOnTheGatewayWhenGiven(t *testing.T) {
-	cmd := exec.Command("bash", filepath.Join(root(t), "deploy", "railway", "bootstrap.sh"), "--dry-run")
+	cmd := exec.Command("bash", append([]string{filepath.Join(root(t), "deploy", "railway", "bootstrap.sh")}, baseArgs...)...)
 	cmd.Env = append(os.Environ(), "PAYRUDDER_GOOGLE_CLIENT_ID=id.apps.googleusercontent.com", "PAYRUDDER_GOOGLE_CLIENT_SECRET=google-secret")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
