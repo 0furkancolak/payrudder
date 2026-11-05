@@ -560,3 +560,76 @@ func TestBootstrapDeployOnly(t *testing.T) {
 		t.Errorf("order %v: plans-svc must be first and the gateway last", got)
 	}
 }
+
+// TestSetupSecrets runs setup-secrets.sh with a fake gh: --check counts what is missing, a run fills it (repository secrets through gh's stdin, the
+// bootstrap inputs into a mode-600 file that a shell reads back unchanged), and a second --check passes.
+func TestSetupSecrets(t *testing.T) {
+	repo, dir := root(t), t.TempDir()
+	bin, secrets, log := filepath.Join(dir, "bin"), filepath.Join(dir, "secrets"), filepath.Join(dir, "gh.log")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The fake gh lists CLOUDFLARE_ACCOUNT_ID and every secret set through it.
+	fake := "#!/bin/bash\n" +
+		"if [[ $1 == secret && $2 == list ]]; then printf 'CLOUDFLARE_ACCOUNT_ID\\t2026-11-05\\n'; [[ -f $GH_LOG ]] && sed 's/=.*/\\t2026-11-05/' \"$GH_LOG\"; exit 0; fi\n" +
+		"if [[ $1 == secret && $2 == set ]]; then printf '%s=%s\\n' \"$3\" \"$(cat)\" >>\"$GH_LOG\"; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(stdin string, args ...string) (string, error) {
+		cmd := exec.Command("bash", append([]string{filepath.Join(repo, "deploy", "railway", "setup-secrets.sh")}, args...)...)
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "PAYRUDDER_SECRETS_DIR="+secrets, "GH_LOG="+log, "GEO_API_KEY=from-the-shell")
+		cmd.Stdin = strings.NewReader(stdin)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	out, err := run("", "--check", "production")
+	if err == nil || !strings.Contains(out, "6 required item(s) missing") {
+		t.Fatalf("--check with nothing set: want 6 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	}
+	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- ERROR_TRACKING_URL"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("--check: no %q in\n%s", want, out)
+		}
+	}
+	if out, _ := run("", "--check", "staging"); strings.Contains(out, "RAILWAY_TOKEN_PRODUCTION") {
+		t.Errorf("staging asks for the production token:\n%s", out)
+	}
+
+	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, operators, no DSN, no Google.
+	key := `a key with spaces, 'quotes' and $dollars`
+	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrailway-token-abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key + "\nops@payrudder.com\n\n\n"
+	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "--console-url https://console.payrudder.com --api-domain api.payrudder.com") {
+		t.Fatalf("a full run: err=%v\n%s", err, out)
+	}
+	if b, _ := os.ReadFile(log); string(b) != "CLOUDFLARE_API_TOKEN=cf_token_abcdefghijklmnopqrstuvwxyz0123\nRAILWAY_TOKEN_PRODUCTION=railway-token-abcdefghijklmnop\n" {
+		t.Errorf("gh secret set got:\n%s", b)
+	}
+	file := filepath.Join(secrets, "production.env")
+	if st, err := os.Stat(file); err != nil || st.Mode().Perm() != 0o600 {
+		t.Fatalf("the file: %v %v", st, err)
+	}
+	back, err := exec.Command("bash", "-c", `set -a; . "$1"; printf '%s|%s|%s' "$NAFRU_API_KEY" "$NAFRU_BASE_URL" "$GEO_API_KEY"`, "-", file).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Split(string(back), "|"); got[0] != key || got[1] != "https://api.nafru.test" || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(got[2]) {
+		t.Errorf("read back: %q", got)
+	}
+	if out, err := run("", "--check", "production"); err != nil {
+		t.Errorf("--check after the run: %v\n%s", err, out)
+	}
+}
+
+func TestGoogleSignInIsSetOnTheGatewayWhenGiven(t *testing.T) {
+	cmd := exec.Command("bash", filepath.Join(root(t), "deploy", "railway", "bootstrap.sh"), "--dry-run")
+	cmd.Env = append(os.Environ(), "PAYRUDDER_GOOGLE_CLIENT_ID=id.apps.googleusercontent.com", "PAYRUDDER_GOOGLE_CLIENT_SECRET=google-secret")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "railway variable set --service gateway --skip-deploys PAYRUDDER_GOOGLE_CLIENT_ID=id.apps.googleusercontent.com PAYRUDDER_GOOGLE_CLIENT_SECRET=google-secret") {
+		t.Errorf("no Google variables on the gateway:\n%s", out)
+	}
+}

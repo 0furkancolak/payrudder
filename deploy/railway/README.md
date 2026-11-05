@@ -75,7 +75,8 @@ each service its health check, restart policy and watch paths. Until then it sti
 Payrudder's own deployment ([plan 23](../../docs/plans/23-staging-and-production.md), runbook
 [staging-and-production](../../docs/runbooks/staging-and-production.md)) is one Railway project with two Railway environments. Each is a stack of its
 own: services, volumes, variables and generated secrets are never shared. Create the environment first (*Settings → Environments*, or
-`railway environment new staging`), then run the script once per environment with that environment's keys:
+`railway environment new staging`), then run the script once per environment with that environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects them, with where
+each one comes from, and prints this command):
 
 ```bash
 GEO_API_KEY=… NAFRU_BASE_URL=… NAFRU_API_KEY=… OPERATOR_EMAILS=… ERROR_TRACKING_URL=… \
@@ -92,6 +93,7 @@ deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --environment staging 
 | `--allowed-environments sandbox` | a sandbox-only deployment: live accounts are refused (plans-svc, gateway) |
 | `GEO_API_KEY` | this environment's nafru-geo key, as `PAYRUDDER_GEO_API_KEY` on the gateway |
 | `NAFRU_BASE_URL`, `NAFRU_API_KEY` | both or neither: the platform's mail goes through Nafru; `mailpit` stays for sandbox mail |
+| `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` | set on the gateway as they are: "Continue with Google" |
 | `--deploy-only` | builds the Payrudder services from this checkout with `railway up --ci`, in order, and nothing else; with `RAILWAY_TOKEN` (a project token of one environment) it needs no login |
 
 Staging is connected to GitHub (`--repo`): Railway deploys every push to `main`. Production is created with `--source local` (not connected), and a

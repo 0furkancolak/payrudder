@@ -57,6 +57,8 @@ REPO=${REPO:-owner/payrudder}
 # public domain, which the first run creates, so the secret comes with a later run or with `railway variable set --service gateway PAYRUDDER_MAIL_WEBHOOK_SECRET=...`.
 # GEO_API_KEY (environment): this environment's nafru-geo key, set as PAYRUDDER_GEO_API_KEY on the gateway (docs/geo-data.md). Empty: not set, the address lists answer 503.
 # NAFRU_BASE_URL, NAFRU_API_KEY (environment, both or neither): the platform's own mail goes through Nafru instead of the SMTP catcher (mailpit); set on the notifier.
+# PAYRUDDER_GOOGLE_CLIENT_ID, PAYRUDDER_GOOGLE_CLIENT_SECRET (environment): set on the gateway as they are, for "Continue with Google". Empty: not set.
+# deploy/railway/setup-secrets.sh collects all of these into a file, with where each one comes from.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
 run() {
@@ -280,6 +282,7 @@ vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGES
   PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111 'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}'
 if [[ -n ${MAIL_WEBHOOK_SECRET:-} ]]; then vars gateway "PAYRUDDER_MAIL_WEBHOOK_SECRET=$MAIL_WEBHOOK_SECRET"; fi
 if [[ -n ${GEO_API_KEY:-} ]]; then vars gateway "PAYRUDDER_GEO_API_KEY=$GEO_API_KEY"; fi
+if [[ -n ${PAYRUDDER_GOOGLE_CLIENT_ID:-} ]]; then vars gateway "PAYRUDDER_GOOGLE_CLIENT_ID=$PAYRUDDER_GOOGLE_CLIENT_ID" "PAYRUDDER_GOOGLE_CLIENT_SECRET=${PAYRUDDER_GOOGLE_CLIENT_SECRET:-}"; fi
 
 if [[ -z $CONSOLE_URL ]]; then
   note "admin-ui"
