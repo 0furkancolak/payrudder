@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
@@ -57,6 +58,7 @@ func (c *Commands) recordRejected(ctx context.Context, b batch, events []*ingest
 	}
 	c.rejectedWG.Add(1)
 	go func() {
+		defer errtrack.Recover(ctx)
 		defer c.rejectedWG.Done()
 		defer func() { <-c.rejectedSem }()
 		wctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), rejectedWriteTimeout)
