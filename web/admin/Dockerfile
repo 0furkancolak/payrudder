@@ -1,5 +1,5 @@
 # The console for the end-to-end tests and the Railway demo: the built app served by `vite preview`, which also forwards /gw to the gateway
-# (GATEWAY_URL) and answers /env.js. Production runs on Cloudflare Workers instead (wrangler.jsonc, docs/adr/0021-console-on-cloudflare-workers.md).
+# (GATEWAY_URL) and answers /env.js. Production runs on Cloudflare Workers instead (wrangler.toml, docs/adr/0021-console-on-cloudflare-workers.md).
 # Build context: web/admin.
 FROM node:24-alpine
 WORKDIR /app
