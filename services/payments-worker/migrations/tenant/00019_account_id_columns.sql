@@ -2,20 +2,15 @@
 
 -- +goose Up
 -- +goose StatementBegin
--- The id of the payment account a (tenant, environment, key) names, or NULL when no account has been made for it yet (step 2 not run, or an account created since).
--- The key is "provider" or "provider~label" (pkg/payments.AccountKey): the label is what follows the first "~".
-CREATE FUNCTION payment_account_id(t uuid, env text, key text) RETURNS uuid
-LANGUAGE sql STABLE AS $$
-  SELECT id FROM integration_accounts
-   WHERE owner_kind = 'tenant' AND owner_id = t AND kind = 'payment' AND environment = env
-     AND provider = split_part(key, '~', 1) AND label = substr(key, length(split_part(key, '~', 1)) + 2)
-$$;
-
--- Every writer of these tables keeps writing the key, as before; a row inserted without an account_id gets the id of the account the key names, so no writer had to change
--- and a code rollback leaves nothing behind. A key with no account yet stays NULL for the batch backfill (payrudderctl account-ids) to fill.
+-- Every writer of these tables keeps writing the key, as before; a row inserted without an account_id gets the id of the account the key names ("provider" or "provider~label",
+-- pkg/payments.AccountKey: the label is what follows the first "~"), so no writer had to change and a code rollback leaves nothing behind. A key with no account yet stays NULL
+-- for the batch backfill (payrudderctl secrets account-ids) to fill. The table is looked up in the schema of the row's own table (TG_TABLE_SCHEMA), not through the search path:
+-- a tenant move copies rows with another search path, and a trigger that depended on it failed the copy.
 CREATE FUNCTION fill_account_id() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  NEW.account_id := payment_account_id(NEW.tenant_id, NEW.environment, NEW.provider);
+  EXECUTE format('SELECT id FROM %I.integration_accounts WHERE owner_kind = ''tenant'' AND owner_id = $1 AND kind = ''payment'' AND environment = $2
+                    AND provider = split_part($3, ''~'', 1) AND label = substr($3, length(split_part($3, ''~'', 1)) + 2)', TG_TABLE_SCHEMA)
+    INTO NEW.account_id USING NEW.tenant_id, NEW.environment, NEW.provider;
   RETURN NEW;
 END $$;
 -- +goose StatementEnd
@@ -51,7 +46,6 @@ DROP TRIGGER settlement_lines_account_id ON settlement_lines;
 DROP TRIGGER fee_rules_account_id ON fee_rules;
 DROP TRIGGER provider_account_health_account_id ON provider_account_health;
 DROP FUNCTION fill_account_id();
-DROP FUNCTION payment_account_id(uuid, text, text);
 ALTER TABLE payment_ledger DROP COLUMN account_id;
 ALTER TABLE provider_objects DROP COLUMN account_id;
 ALTER TABLE payment_attempts DROP COLUMN account_id;

@@ -74,7 +74,7 @@ func accountIDs(ctx context.Context, in Input, o IDOptions, fill bool) ([]IDRepo
 	return total, err
 }
 
-// keyMatch is the account a row's key names (payment_account_id of the migration, written out so a join can use integration_accounts' unique index).
+// keyMatch is the account a row's key names (the trigger of migration 00018 does the same lookup; written as a join here so it can use integration_accounts' unique index).
 const keyMatch = `a.owner_kind = 'tenant' AND a.owner_id = t.tenant_id AND a.kind = 'payment' AND a.environment = t.environment
 	AND a.provider = split_part(t.provider, '~', 1) AND a.label = substr(t.provider, length(split_part(t.provider, '~', 1)) + 2)`
 
