@@ -91,7 +91,7 @@ add_service() { has_service "$1" || run railway add --service "$1"; }
 # add_database <postgres|redis> <service name Railway gives it>
 add_database() { has_service "$2" || run railway add --database "$1"; }
 # volume <service> <mount path>
-volume() { has_volume "$2" || run railway volume add --service "$1" --mount-path "$2"; }
+volume() { has_volume "$2" || run railway volume --service "$1" add --mount-path "$2"; }  # CLI 5.71: --service belongs to `volume`, not `add`
 # vars <service> KEY=VALUE...: set variables without redeploying; the deploy comes later, in order.
 vars() { local svc=$1; shift; run railway variable set --service "$svc" --skip-deploys "$@"; }
 # secret <service> <KEY> <generator command...>: generate and set only when the variable does not exist yet.
