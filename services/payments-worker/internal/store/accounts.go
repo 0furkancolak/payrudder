@@ -23,6 +23,8 @@ var ErrNoAccount = errors.New("store: no such provider account")
 type Accounts struct {
 	DB  DB
 	Box *secretbox.Box
+	// Mirror, when set, writes every change to the new account tables too, in the same transaction (ADR 0026, step 3; PAYMENTS_ACCOUNT_MIRROR).
+	Mirror bool
 }
 
 // AccountInfo is an account without its secrets.
@@ -95,6 +97,14 @@ func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, en
 		}); err != nil {
 			return err
 		}
+		if a.Mirror {
+			if err := mirrorUpsert(ctx, tx, a.Box, tenant, KindPayment, env, provider, nil, settings); err != nil {
+				return err
+			}
+			if err := mirrorDefaults(ctx, tx, tenant, KindPayment, env, "provider_accounts"); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: action,
 			Actor: who.Actor, IsDefault: makeDefault, VerifiedRemote: who.VerifiedRemote}); err != nil {
 			return err
@@ -118,6 +128,11 @@ func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider,
 			return err
 		}
 		deleted = true
+		if a.Mirror {
+			if err := mirrorDelete(ctx, tx, tenant, KindPayment, env, provider); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "removed", Actor: who.Actor}); err != nil {
 			return err
 		}
@@ -181,6 +196,11 @@ func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, en
 			return ErrNoAccount
 		}
 		found = true
+		if a.Mirror {
+			if err := mirrorDefaults(ctx, tx, tenant, KindPayment, env, "provider_accounts"); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindPayment, Provider: provider, Environment: env, Action: "default_set",
 			Actor: who.Actor, IsDefault: true}); err != nil {
 			return err

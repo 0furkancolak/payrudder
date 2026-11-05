@@ -14,13 +14,16 @@
 #   --console-url    the console runs elsewhere (the Cloudflare Worker): no admin-ui service, links and sign-in go to this address
 #   --api-domain     the gateway's custom domain (api.payrudder.com); --files-domain: MinIO's, for presigned links (files.payrudder.com)
 #   --allowed-environments  sandbox,live (default) or sandbox: a sandbox-only deployment refuses live accounts
+#   --deploy-only    only `railway up --ci` of the Payrudder services of this checkout, in order (a release to production: deploy-production.yml).
+#                    Creates and sets nothing; RAILWAY_TOKEN is a project token of one environment, so it needs no login and no --environment
 set -euo pipefail
 
-DRY_RUN=0 PROFILE=full DEMO=false REPO="" BRANCH=main SOURCE=github WAIT=45
+DRY_RUN=0 PROFILE=full DEMO=false REPO="" BRANCH=main SOURCE=github WAIT=45 DEPLOY_ONLY=0
 ENVIRONMENT="" CONSOLE_URL="" API_DOMAIN="" FILES_DOMAIN="" ALLOWED_ENVS=sandbox,live
 while [[ $# -gt 0 ]]; do
   case $1 in
     --dry-run) DRY_RUN=1 ;;
+    --deploy-only) DEPLOY_ONLY=1 ;;
     --profile) PROFILE=$2; shift ;;
     --demo) DEMO=true ;;
     --repo) REPO=$2; shift ;;
@@ -32,14 +35,14 @@ while [[ $# -gt 0 ]]; do
     --api-domain) API_DOMAIN=$2; shift ;;
     --files-domain) FILES_DOMAIN=$2; shift ;;
     --allowed-environments) ALLOWED_ENVS=$2; shift ;;
-    -h | --help) sed -n '2,17p' "$0"; exit 0 ;;
+    -h | --help) sed -n '2,19p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
   shift
 done
 [[ $PROFILE == full || $PROFILE == small ]] || { echo "--profile must be full or small" >&2; exit 2; }
 [[ $SOURCE == github || $SOURCE == local ]] || { echo "--source must be github or local" >&2; exit 2; }
-[[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
+[[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 || $DEPLOY_ONLY == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
 [[ $ALLOWED_ENVS == sandbox,live || $ALLOWED_ENVS == sandbox ]] || { echo "--allowed-environments must be sandbox,live or sandbox" >&2; exit 2; }
 [[ -z $CONSOLE_URL || $CONSOLE_URL == https://* ]] || { echo "--console-url must start with https://" >&2; exit 2; }
 for d in "$API_DOMAIN" "$FILES_DOMAIN"; do [[ $d != *://* && $d != */* ]] || { echo "--api-domain and --files-domain take a host name, not a URL: $d" >&2; exit 2; }; done
@@ -70,10 +73,10 @@ run() {
 note() { printf '\n== %s\n' "$*"; }
 
 EXISTING_SERVICES="" EXISTING_VOLUMES=""
-if ((!DRY_RUN)); then
+if ((!DRY_RUN && !DEPLOY_ONLY)); then
   command -v railway >/dev/null || { echo "install the Railway CLI (https://docs.railway.com/cli) and run: railway login && railway link" >&2; exit 1; }
   railway whoami >/dev/null || { echo "not logged in: railway login" >&2; exit 1; }
-  # UNVERIFIED against a real project: `railway environment <name>` links the environment for every command after it.
+  # `railway environment <name>` links the environment for every command after it (CLI 5.71 help; not tried against a real project).
   if [[ -n $ENVIRONMENT ]]; then railway environment "$ENVIRONMENT"; fi
   EXISTING_SERVICES=$(railway service list --json 2>/dev/null || true)
   EXISTING_VOLUMES=$(railway volume list --json 2>/dev/null || true)
@@ -143,6 +146,13 @@ APPS_THIRD=(billing-svc payments-worker invoice-worker notifier)
 if [[ $PROFILE == full ]]; then INFRA+=(clickhouse); APPS_SECOND+=(analytics-svc); fi
 CONSOLE=(admin-ui)
 [[ -n $CONSOLE_URL ]] && CONSOLE=()
+
+if ((DEPLOY_ONLY)); then
+  # shortcut: the backing services and the init jobs are not redeployed by a release (their images rarely change); deploy one by hand when it did.
+  note "Deploy this checkout: plans-svc first, the gateway last; each waits for its build and stops the script when it fails"
+  for s in "${APPS_FIRST[@]}" "${APPS_SECOND[@]}" "${APPS_THIRD[@]}" gateway ${CONSOLE[@]+"${CONSOLE[@]}"}; do run railway up --service "$s" --ci; done
+  exit 0
+fi
 
 # --- 1. managed databases and services -------------------------------------------------------------------------------------------------------
 note "Postgres and Redis (Railway plugins)"
