@@ -41,6 +41,9 @@ func (a Accounts) BoundSettings(ctx context.Context, tenant uuid.UUID, kind, key
 type Shadow struct {
 	Accounts Accounts
 	Log      *slog.Logger
+	// Prefer makes Read return the bound account's settings when there is one (the dual read of step 3, PAYMENTS_ACCOUNT_READ_BOUND); with none, or on an error, the old row
+	// is still what is used. Compare never changes what is returned.
+	Prefer bool
 }
 
 var shadowReads = func() metric.Int64Counter {
@@ -54,14 +57,28 @@ var shadowReads = func() metric.Int64Counter {
 
 // Compare reads the binding and counts the result; it never fails the caller and never returns what it read. Nothing but ids and the result goes to the log.
 func (s *Shadow) Compare(ctx context.Context, tenant uuid.UUID, kind, key, env string, old []byte) string {
+	result, _ := s.compare(ctx, tenant, kind, key, env, old)
+	return result
+}
+
+// Read is Compare that returns the settings to use: the bound account's when Prefer is set and the binding was read (equal or differing), else old.
+func (s *Shadow) Read(ctx context.Context, tenant uuid.UUID, kind, key, env string, old []byte) []byte {
+	result, got := s.compare(ctx, tenant, kind, key, env, old)
+	if s != nil && s.Prefer && (result == "equal" || result == "differs") {
+		return got
+	}
+	return old
+}
+
+func (s *Shadow) compare(ctx context.Context, tenant uuid.UUID, kind, key, env string, old []byte) (string, []byte) {
 	if s == nil {
-		return ""
+		return "", nil
 	}
 	result := "equal"
 	got, found, err := s.Accounts.BoundSettings(ctx, tenant, kind, key, env)
 	switch {
 	case errors.Is(err, context.Canceled):
-		return ""
+		return "", nil
 	case err != nil:
 		result = "error"
 	case !found:
@@ -73,5 +90,5 @@ func (s *Shadow) Compare(ctx context.Context, tenant uuid.UUID, kind, key, env s
 	if result != "equal" && s.Log != nil {
 		s.Log.WarnContext(ctx, "the account in the new tables is not the account in the old", "tenant", tenant, "kind", kind, "account", key, "environment", env, "result", result, "error", err)
 	}
-	return result
+	return result, got
 }
