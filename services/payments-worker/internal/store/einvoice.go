@@ -25,6 +25,8 @@ type EInvoiceAccounts struct {
 	Box *secretbox.Box
 	// Shadow, when set, compares each account opened with the same account in the new tables (ADR 0026, step 3); what is returned does not change.
 	Shadow *Shadow
+	// Mirror, when set, writes every change to the new account tables too, in the same transaction (ADR 0026, step 3; PAYMENTS_ACCOUNT_MIRROR).
+	Mirror bool
 }
 
 // EInvoiceAccountInfo is an account without its secrets.
@@ -106,6 +108,14 @@ func (a EInvoiceAccounts) Put(ctx context.Context, tenant uuid.UUID, env, key, m
 		if err := q.UpsertEInvoiceAccount(ctx, sqlc.UpsertEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key, Mode: mode, SettingsEnc: sealed, IsDefault: isDefault}); err != nil {
 			return err
 		}
+		if a.Mirror {
+			if err := mirrorUpsert(ctx, tx, a.Box, tenant, KindEInvoice, env, key, &mode, settings); err != nil {
+				return err
+			}
+			if err := mirrorDefaults(ctx, tx, tenant, KindEInvoice, env, "einvoice_accounts"); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: action,
 			Actor: who.Actor, IsDefault: isDefault}); err != nil {
 			return err
@@ -140,6 +150,11 @@ func (a EInvoiceAccounts) Delete(ctx context.Context, tenant uuid.UUID, env, key
 			return err
 		}
 		deleted = true
+		if a.Mirror {
+			if err := mirrorDelete(ctx, tx, tenant, KindEInvoice, env, key); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: "removed", Actor: who.Actor}); err != nil {
 			return err
 		}
@@ -163,6 +178,11 @@ func (a EInvoiceAccounts) SetDefault(ctx context.Context, tenant uuid.UUID, env,
 			return err
 		}
 		found = true
+		if a.Mirror {
+			if err := mirrorDefaults(ctx, tx, tenant, KindEInvoice, env, "einvoice_accounts"); err != nil {
+				return err
+			}
+		}
 		if err := q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: "default_set",
 			Actor: who.Actor, IsDefault: true}); err != nil {
 			return err

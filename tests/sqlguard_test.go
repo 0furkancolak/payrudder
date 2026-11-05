@@ -23,6 +23,7 @@ var sqlAssembled = map[string]string{
 	"pkg/pgxx/tenantschema.go":                               "the migration bookkeeping of a tenant schema: the schema name is an identifier, which cannot be a parameter",
 	"pkg/audit/chain.go":                                     "the chain tools (verify, prune) run over the audit_events of one schema, the pooled one or a tenant's t_<id>: the schema is an identifier (pgx.Identifier.Sanitize), which cannot be a parameter; every value is a parameter",
 	"pkg/testkit/auditchain.go":                              "a test helper that tampers with a row of a throw-away database to prove that the chain verifier finds it: the statements are DDL and an UPDATE built from a generated uuid",
+	"pkg/secretbox/reseal/accountids.go":                     "step 4 of the account_id migration walks the closed list reseal.IDTables (constants in code, never input) page range by page range; table names and ctid bounds are identifiers and cannot be parameters",
 	"pkg/secretbox/reseal/reseal.go":                         "the re-seal job walks a closed registry of table, column and key names (reseal/places.go, checked as plain identifiers before any statement is built); identifiers cannot be parameters",
 }
 
