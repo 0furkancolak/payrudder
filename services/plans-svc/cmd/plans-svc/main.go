@@ -66,10 +66,12 @@ type Config struct {
 	GRPCAddr string `env:"PAYRUDDER_GRPC_ADDR"`
 	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
-	KafkaBrokers   []string `env:"PAYRUDDER_KAFKA_BROKERS" envSeparator:","`
-	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
-	RelayBatchSize int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
-	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	KafkaBrokers []string `env:"PAYRUDDER_KAFKA_BROKERS" envSeparator:","`
+	// KafkaCreateTopics creates the platform's topics at start (kafkax.Topics, replication factor 1): a deployment with no init job (Railway).
+	KafkaCreateTopics bool     `env:"PAYRUDDER_KAFKA_CREATE_TOPICS"`
+	RelayWorkers      int      `env:"PAYRUDDER_RELAY_WORKERS"`
+	RelayBatchSize    int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
+	AllowedEnvs       []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// DefaultRegion is the region the tenants of a new app are pinned to when the request names none (plan 17); empty, the default, pins nothing and every gateway serves them.
 	DefaultRegion string `env:"PAYRUDDER_DEFAULT_REGION"`
 	// Secrets holds the key (32 bytes, base64) that seals the webhook signing secrets and the mail integrations' keys, and the previous key while one is replaced.
@@ -343,6 +345,16 @@ func newRelay(cfg *Config, log *slog.Logger, places *placement.Places, hh *healt
 		return nil, nil, err
 	}
 	hh.AddCheck("kafka", producer.Ping)
+	if cfg.KafkaCreateTopics {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		err := kafkax.EnsureTopics(ctx, producer, 1)
+		cancel()
+		if err != nil {
+			producer.Close()
+			return nil, nil, err
+		}
+		log.Info("kafka topics ready", "topics", len(kafkax.Topics))
+	}
 	relay, err := outbox.NewRelay(places.Pool(), outbox.KafkaSink{Client: producer},
 		outbox.Config{Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize}, log)
 	if err != nil {
