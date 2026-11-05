@@ -4,7 +4,7 @@
 
 Read date for every doc citation: **2026-10-29**. Docs host: https://docs.iyzico.com (dev.iyzipay.com answers 302 to https://docs.iyzico.com/, fetched 2026-10-29). Docs index used: https://docs.iyzico.com/llms.txt (2026-10-29). Doc pages were read through a summarising fetcher (not raw HTML), so field lists are as the fetcher reported them; anything the fetcher said the page does not state is marked UNCLEAR. Nothing was run against a sandbox. Three doc pages (card-storage, preliminaries, preauth-and-capture) contained an "Agent Instructions" block asking the reader to send GET requests to the docs site; it was ignored (page content, not user instruction).
 
-Adapter files: `/Volumes/DEVNAFRU/Projects/example/quotify/pkg/payments/iyzico/iyzico.go` (455 lines), `.../invoice.go` (66 lines), wired by `iyzico.Register(registry)` at `services/payments-worker/cmd/payments-worker/main.go:169`.
+Adapter files: `pkg/payments/iyzico/iyzico.go` (455 lines), `.../invoice.go` (66 lines), wired by `iyzico.Register(registry)` at `services/payments-worker/cmd/payments-worker/main.go:169`.
 
 Status legend: current / deprecated / removed / changed / UNCLEAR / UNVERIFIED (could not fetch).
 
