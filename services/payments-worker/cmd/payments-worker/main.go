@@ -116,6 +116,9 @@ type Config struct {
 	// AccountShadow reads each account also from the new account tables (docs/adr/0026, step 3) and counts and logs a difference (account_shadow_reads); the old row is
 	// still what is used. Off unless set (default, not agreed): it costs one more read per account read.
 	AccountShadow bool `env:"PAYMENTS_ACCOUNT_SHADOW"`
+	// AccountMirror writes every change to a payment or e-invoice account also to the new account tables, in the same transaction (docs/adr/0026, step 3). Off unless set
+	// (default, not agreed); turn it on only after `payrudderctl secrets accounts-backfill` has run, so the two start equal.
+	AccountMirror bool `env:"PAYMENTS_ACCOUNT_MIRROR"`
 	// RetryCeiling bounds how long a provider's Retry-After holds a command's retry back (docs/04-messaging.md): the retry waits the longer of its tier's delay and the
 	// Retry-After, at most this. Default (not agreed): 10 minutes, which is also the longest delay queue, so more changes nothing.
 	RetryCeiling time.Duration `env:"PAYMENTS_RETRY_CEILING"`
@@ -347,7 +350,7 @@ func accountShadow(cfg *Config, db store.DB, box *secretbox.Box, log *slog.Logge
 
 // webhookServer builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
 func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (*webhook.Server, func(), error) {
-	accounts := store.Accounts{DB: db, Box: box}
+	accounts := store.Accounts{DB: db, Box: box, Mirror: cfg.AccountMirror}
 	shadow := accountShadow(&cfg, db, box, log)
 	h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts, Shadow: shadow}
 	var conns []*grpc.ClientConn
@@ -390,7 +393,7 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
 	return &webhook.Server{Plans: plansSync, Billing: billing, Disputes: disputes, DisputeCases: store.Disputes{DB: db}, SettlementLag: cfg.SettlementLag, TransferWindow: h.TransferWindow, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db, ReclaimAfter: cfg.WebhookReclaimAfter},
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Methods: store.PaymentMethods{DB: db}, Log: log, Token: cfg.InternalToken,
-		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box, Shadow: shadow}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
+		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box, Shadow: shadow, Mirror: cfg.AccountMirror}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
 		Modules: []webhook.RouteRegistrar{transferHandler, &auditlog.Handler{DB: db, Log: log}}}, closeConns, nil
 }
@@ -415,7 +418,7 @@ func newEInvoiceRegistry(cfg *Config) *einvoice.Registry {
 func wireEInvoice(cfg *Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
 	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: db}, Log: log, Demo: cfg.Demo}
 	if box != nil {
-		ew.Accounts = store.EInvoiceAccounts{DB: db, Box: box, Shadow: accountShadow(cfg, db, box, log)}
+		ew.Accounts = store.EInvoiceAccounts{DB: db, Box: box, Shadow: accountShadow(cfg, db, box, log), Mirror: cfg.AccountMirror}
 	}
 	if cfg.S3AccessKey != "" {
 		bs, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})

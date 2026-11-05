@@ -5,6 +5,7 @@ package itest
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -356,6 +357,97 @@ func TestAccountIDRehearsal(t *testing.T) {
 				t.Errorf("the ledger changed during step 3")
 			}
 		})
+		// The rest of step 3: with Mirror on, every write goes to both tables in one transaction, so they stay equal without a backfill in between.
+		t.Run("step 3 mirrored writes", func(t *testing.T) {
+			ma := store.Accounts{DB: pool, Box: box, Mirror: true}
+			me := store.EInvoiceAccounts{DB: pool, Box: box, Mirror: true}
+			shadow := &store.Shadow{Accounts: accounts, Log: log}
+			// level asserts that every old account has one binding of the same label and default flag, and the bindings hold nothing else, for the whole database.
+			level := func(when string) {
+				t.Helper()
+				for _, c := range []struct{ what, q string }{
+					{"old accounts with no binding of the same label and default flag", `SELECT count(*) FROM (
+						SELECT tenant_id, environment, provider, is_default, 'payment' AS kind FROM provider_accounts UNION ALL SELECT tenant_id, environment, provider, is_default, 'einvoice' FROM einvoice_accounts) o
+						WHERE NOT EXISTS (SELECT 1 FROM integration_bindings b WHERE b.tenant_id = o.tenant_id AND b.environment = o.environment AND b.kind = o.kind
+						  AND (CASE WHEN b.label = '' THEN b.provider ELSE b.provider || '~' || b.label END) = o.provider AND b.is_default = o.is_default)`},
+					{"bindings with no old account", `SELECT count(*) FROM integration_bindings b WHERE NOT EXISTS (SELECT 1 FROM (
+						SELECT tenant_id, environment, provider, 'payment' AS kind FROM provider_accounts UNION ALL SELECT tenant_id, environment, provider, 'einvoice' FROM einvoice_accounts) o
+						WHERE b.tenant_id = o.tenant_id AND b.environment = o.environment AND b.kind = o.kind AND (CASE WHEN b.label = '' THEN b.provider ELSE b.provider || '~' || b.label END) = o.provider)`},
+					{"accounts with no binding", `SELECT count(*) FROM integration_accounts a WHERE NOT EXISTS (SELECT 1 FROM integration_bindings b WHERE b.account_id = a.id)`},
+				} {
+					if n := count(ctx, t, pool, c.q); n != 0 {
+						t.Errorf("%s: %d %s", when, n, c.what)
+					}
+				}
+			}
+			level("before")
+			put := func(key, secret string, def bool) {
+				must(ma.Put(ctx, ids[2], key, "live", []byte(`{"api_key":"`+secret+`","webhook_secret":"whsec_2","base_url":"http://127.0.0.1:1"}`), def))
+			}
+			// A new account, a replaced one, a new default, the default moved back: each is equal at once, and the shadow says so.
+			put("stripe~uk", "sk_live_uk", false)
+			level("after a new account")
+			put("stripe~eu", "sk_live_eu_replaced", false)
+			level("after a replaced account")
+			put("stripe~uk", "sk_live_uk2", true)
+			level("after a new default")
+			if ok, err := ma.SetDefault(ctx, ids[2], "stripe", "live", store.Audit{}); err != nil || !ok {
+				t.Fatalf("SetDefault = %v, %v", ok, err)
+			}
+			level("after the default moved back")
+			if ok, err := ma.SetDefault(ctx, ids[2], "nope", "live", store.Audit{}); err != nil || ok {
+				t.Fatalf("SetDefault of an unknown account = %v, %v", ok, err)
+			}
+			level("after a refused default")
+			for _, key := range []string{"stripe~uk", "stripe~eu", "stripe"} {
+				old, _, err := accounts.Settings(ctx, ids[2], key, "live")
+				must(err)
+				if got := shadow.Compare(ctx, ids[2], store.KindPayment, key, "live", old); got != "equal" {
+					t.Errorf("%s after a mirrored write: %s", key, got)
+				}
+			}
+			if ok, err := ma.Delete(ctx, ids[2], "stripe~uk", "live"); err != nil || !ok {
+				t.Fatalf("Delete = %v, %v", ok, err)
+			}
+			level("after a delete")
+			if _, found, _ := accounts.BoundSettings(ctx, ids[2], store.KindPayment, "stripe~uk", "live"); found {
+				t.Errorf("the deleted account is still bound (its credentials would outlive it)")
+			}
+			// E-invoice: a new account, a new default, the default moved, a delete.
+			must(me.Put(ctx, ids[2], "live", "nilvera~de", "test", []byte(`{"api_key":"nv_de"}`), false, store.Audit{}))
+			level("after a new e-invoice account")
+			must(me.Put(ctx, ids[2], "live", "nilvera~de", "production", []byte(`{"api_key":"nv_de2"}`), true, store.Audit{}))
+			level("after an e-invoice default")
+			if ok, err := me.SetDefault(ctx, ids[2], "live", "nilvera", store.Audit{}); err != nil || !ok {
+				t.Fatalf("e-invoice SetDefault = %v, %v", ok, err)
+			}
+			level("after the e-invoice default moved")
+			if _, err := me.Delete(ctx, ids[2], "live", "nilvera", store.Audit{}); !errors.Is(err, store.ErrDefaultInUse) {
+				t.Errorf("deleting the e-invoice default = %v, want ErrDefaultInUse", err)
+			}
+			if ok, err := me.Delete(ctx, ids[2], "live", "nilvera~de", store.Audit{}); err != nil || !ok {
+				t.Fatalf("e-invoice Delete = %v, %v", ok, err)
+			}
+			level("after an e-invoice delete")
+			a, _ := store.EInvoiceAccounts{DB: pool, Box: box}.Get(ctx, ids[2], "live", "nilvera~tr")
+			if b, err := (store.EInvoiceAccounts{DB: pool, Box: box, Shadow: shadow}).Get(ctx, ids[2], "live", "nilvera~tr"); err != nil || !bytes.Equal(a.Settings, b.Settings) {
+				t.Errorf("e-invoice read after mirrored writes: %v", err)
+			}
+			// A write that is refused (an invalid mode) leaves both tables as they were.
+			if err := me.Put(ctx, ids[2], "live", "nilvera~zz", "bogus", []byte(`{}`), false, store.Audit{}); err == nil {
+				t.Errorf("an invalid mode was accepted")
+			}
+			level("after a refused write")
+			// Account ids the ledger got from the trigger survive a replace of the account's settings: the account row is updated, not recreated.
+			var idBefore, idAfter string
+			must(pool.QueryRow(ctx, `SELECT id::text FROM integration_accounts WHERE owner_id = $1 AND kind = 'payment' AND provider = 'stripe' AND label = '' AND environment = 'live'`, ids[2]).Scan(&idBefore))
+			put("stripe", "sk_live_2b", false)
+			must(pool.QueryRow(ctx, `SELECT id::text FROM integration_accounts WHERE owner_id = $1 AND kind = 'payment' AND provider = 'stripe' AND label = '' AND environment = 'live'`, ids[2]).Scan(&idAfter))
+			if idBefore != idAfter {
+				t.Errorf("replacing an account's settings changed its id: %s to %s", idBefore, idAfter)
+			}
+		})
+
 		// The ledger's totals per tenant, currency and kind are what they were.
 		if got := ledgerTotals(ctx, t, pool); got != before.totals {
 			t.Errorf("ledger totals changed: %s against %s", got, before.totals)
