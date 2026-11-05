@@ -5,16 +5,16 @@
 (`console-staging.payrudder.com`, never `console.staging.payrudder.com`), and the country/region/district lists read from **nafru-geo**
 (`https://geo.nafru.com`).
 
-**Status: step 1 built (2026-11-05): the repository changes below, with `TestBootstrapForAnEnvironment`; then the console's config as `wrangler.toml` and production on a published release (`deploy-production.yml`, `bootstrap.sh --deploy-only`, `TestBootstrapDeployOnly`). Nothing is deployed; no Railway project, Cloudflare zone or DNS record was created or checked.** The steps to run are in the runbook [staging-and-production](../runbooks/staging-and-production.md).
+**Status: step 1 built (2026-11-05): the repository changes below, with `TestBootstrapForAnEnvironment`. Nothing is deployed; no Railway project, Cloudflare zone or DNS record was created or checked.** The steps to run are in the runbook [staging-and-production](../runbooks/staging-and-production.md).
 
 ## Where we are
 - **Geo is built** (#454): the gateway reads `PAYRUDDER_GEO_URL` (default `https://geo.nafru.com`) with `PAYRUDDER_GEO_API_KEY`; without the key the
   `/app/v1/geo/*` routes answer 503 and the address fields stay plain text ([geo-data](../geo-data.md)). nafru-geo takes one key per app from its Worker
   secret `API_KEYS`; its README already lists payrudder. nafru-geo now lives in its own repository (`nafrucom/nafru-geo`), not nafru-scout as
   `geo-data.md` still says.
-- **Console**: a Cloudflare Worker ([ADR 0021](../adr/0021-console-on-cloudflare-workers.md)). `web/admin/wrangler.toml` already has `staging` and
+- **Console**: a Cloudflare Worker ([ADR 0021](../adr/0021-console-on-cloudflare-workers.md)). `web/admin/wrangler.jsonc` already has `staging` and
   `production` environments with `example.com` placeholders; `deploy-console.yml` deploys staging on every push to `main` and production by hand, as
-  GitHub Environments `staging` / `production` (before this plan; see decision 6). Runbook: [console-first-deploy](../runbooks/console-first-deploy.md).
+  GitHub Environments `staging` / `production`. Runbook: [console-first-deploy](../runbooks/console-first-deploy.md).
 - **Backend**: two targets exist, neither ever deployed: Railway (`deploy/railway`, `bootstrap.sh`, **one environment**) and Helm (`deploy/helm`).
   The Railway bootstrap also creates `admin-ui` (the console as a container), `mockpsp` and `mailpit`, and points `PAYRUDDER_APP_URL` at `admin-ui`.
 - **Mail**: the notifier sends through Nafru when `NAFRU_BASE_URL` and `NAFRU_API_KEY` are set (#245); otherwise plain SMTP (`mailpit` on Railway,
@@ -33,10 +33,9 @@ The owner decided: two environments, `payrudder.com`, one subdomain level, geo f
 4. **Staging profile `small`** (no ClickHouse, no analytics-svc), **production `full`**.
 5. **Every secret and key is per environment**, never copied between them (secrets key, OTP pepper, operator token, the nafru-geo key, the Nafru
    mail key, Google OAuth client, provider keys). A leak in staging then never opens production.
-6. **The owner decided (2026-11-05): staging is every push to `main`, production is a published GitHub release.** Railway deploys `main` to staging
-   itself ("wait for CI"), `deploy-console.yml` the console. A release runs `deploy-production.yml`: the backend with `bootstrap.sh --deploy-only`
-   (a Railway project token of the production environment, `railway up --ci` per service) and then the console. No GitHub Environments: who may
-   publish a release decides production. The console's config is `wrangler.toml` (owner's choice).
+6. **Staging follows `main`** (Railway "wait for CI"; the console workflow already does). **Production follows a `production` branch**, moved by hand
+   to a commit that was checked on staging (`git push origin <sha>:production`), and the console's production run is started for the same commit.
+   No tags or releases (the owner's rule until the application is finished).
 
 ## Hostnames
 `payrudder.com` is a Cloudflare zone. Cloudflare's free certificate covers one level of subdomain only, which is another reason for the owner's rule.
@@ -65,7 +64,7 @@ turn the proxy on only after checking that the certificate is issued and renewed
 ## Work
 
 ### Step 1 — repository changes (one PR)
-- `web/admin/wrangler.toml`: the four hostnames above in `routes`, `API_ORIGIN` and `PUBLIC_API_URL`.
+- `web/admin/wrangler.jsonc`: the four hostnames above in `routes`, `API_ORIGIN` and `PUBLIC_API_URL`.
 - `deploy/railway/bootstrap.sh`:
   - `--environment <name>`: links the Railway environment before doing anything.
   - `--console-url <https://…>`: sets `PAYRUDDER_APP_URL` from it instead of `admin-ui`.
@@ -82,7 +81,8 @@ turn the proxy on only after checking that the certificate is issued and renewed
 
 ### Step 2 — what the owner sets up (accounts and keys, outside the repository)
 - Cloudflare: `payrudder.com` as a zone; an API token "Edit Cloudflare Workers" (+ Workers Routes) as `CLOUDFLARE_API_TOKEN` and
-  `CLOUDFLARE_ACCOUNT_ID`, and `RAILWAY_TOKEN_PRODUCTION`, as repository secrets.
+  `CLOUDFLARE_ACCOUNT_ID`, stored as **environment secrets** of the GitHub Environments `staging` and `production`.
+- GitHub Environment `production`: a required reviewer (the owner) and only the `main` branch, so a production console deploy needs a click.
 - Railway: a project on a plan with enough memory (`deploy/compose/memory-budgets.yaml`), the GitHub app installed for the repository.
 - Google: one OAuth client per environment, redirect `https://<console host>/gw/auth/google/callback`.
 - Nafru mail: one key per environment, the sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare).

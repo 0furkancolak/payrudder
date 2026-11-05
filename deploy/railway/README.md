@@ -92,11 +92,6 @@ deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --environment staging 
 | `--allowed-environments sandbox` | a sandbox-only deployment: live accounts are refused (plans-svc, gateway) |
 | `GEO_API_KEY` | this environment's nafru-geo key, as `PAYRUDDER_GEO_API_KEY` on the gateway |
 | `NAFRU_BASE_URL`, `NAFRU_API_KEY` | both or neither: the platform's mail goes through Nafru; `mailpit` stays for sandbox mail |
-| `--deploy-only` | builds the Payrudder services from this checkout with `railway up --ci`, in order, and nothing else; with `RAILWAY_TOKEN` (a project token of one environment) it needs no login |
-
-Staging is connected to GitHub (`--repo`): Railway deploys every push to `main`. Production is created with `--source local` (not connected), and a
-published GitHub release deploys it: `.github/workflows/deploy-production.yml` runs `bootstrap.sh --deploy-only` with the secret
-`RAILWAY_TOKEN_PRODUCTION`, then the console.
 
 ## By hand (what the script does)
 

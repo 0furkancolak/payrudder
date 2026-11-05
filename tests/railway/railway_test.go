@@ -526,37 +526,3 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 		t.Errorf("NAFRU_BASE_URL without NAFRU_API_KEY was accepted:\n%s", out)
 	}
 }
-
-// A release deploys production with --deploy-only (deploy-production.yml): every Payrudder service of the profile is built from the checkout, plans-svc
-// first and the gateway last, each waiting for its build; nothing is created, set or linked, and the console's container is left out when it runs elsewhere.
-func TestBootstrapDeployOnly(t *testing.T) {
-	repo := root(t)
-	out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only", "--profile", "full",
-		"--console-url", "https://console.example.com").CombinedOutput()
-	if err != nil {
-		t.Fatalf("dry run: %v\n%s", err, out)
-	}
-	var got []string
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "+ ") {
-			svc, ok := strings.CutPrefix(line, "+ railway up --service ")
-			if !ok || !strings.HasSuffix(svc, " --ci") {
-				t.Errorf("--deploy-only runs more than `railway up --ci`: %q", line)
-				continue
-			}
-			got = append(got, strings.TrimSuffix(svc, " --ci"))
-		}
-	}
-	var want []string
-	for _, name := range composeApps(t, repo) {
-		if name != "admin-ui" {
-			want = append(want, name)
-		}
-	}
-	if !slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want))) {
-		t.Errorf("deployed %v, want every service of %v", got, want)
-	}
-	if len(got) == 0 || got[0] != "plans-svc" || got[len(got)-1] != "gateway" {
-		t.Errorf("order %v: plans-svc must be first and the gateway last", got)
-	}
-}

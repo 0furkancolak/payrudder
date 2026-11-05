@@ -11,7 +11,7 @@ steps below are untried; correct this page the first time through.
 | MinIO (presigned links) | `files.payrudder.com` | `files-staging.payrudder.com` |
 | Profile | `full` | `small` |
 | Allowed environments | `sandbox` (until go-live) | `sandbox` |
-| Deployed on | a published GitHub release (`deploy-production.yml`) | every push to `main` (Railway itself, and `deploy-console.yml`) |
+| Code | branch `production` | `main` |
 
 Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare's free certificate covers no more). Every key and secret below is made
 **once per environment** and never copied to the other.
@@ -19,12 +19,12 @@ Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare'
 ## 0. Once
 
 1. `payrudder.com` is a zone in the Cloudflare account.
-2. Railway: one project, the GitHub app installed for the repository.
+2. GitHub, *Settings → Environments*: `staging` and `production`.
+   - Both: the secrets `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`.
+   - `production`: a required reviewer and deployment branches limited to `main`.
+3. Railway: one project, the GitHub app installed for the repository.
    - Two environments: `railway environment new staging` and `railway environment new production`, or *Settings → Environments*.
-3. GitHub, *Settings → Secrets and variables → Actions*, repository secrets (no GitHub Environments; who may publish a release decides production):
-   - `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`, for both console deploys.
-   - `RAILWAY_TOKEN_PRODUCTION`: a project token of the Railway environment `production` (*Project settings → Tokens*), for the release workflow.
-     Staging needs none: Railway deploys `main` itself.
+4. The `production` branch, starting at the commit that was checked on staging: `git push origin <sha>:production`.
 
 ## 1. Keys for one environment
 
@@ -46,7 +46,7 @@ provider credential is lost ([secrets-key-rotation](secrets-key-rotation.md)).
 
 ```bash
 GEO_API_KEY=… NAFRU_BASE_URL=… NAFRU_API_KEY=… OPERATOR_EMAILS=… ERROR_TRACKING_URL=… \
-deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --environment staging --profile small \
+deploy/railway/bootstrap.sh --repo 0furkancolak/payrudder --branch main --environment staging --profile small \
   --console-url https://console-staging.payrudder.com --api-domain api-staging.payrudder.com --files-domain files-staging.payrudder.com \
   --allowed-environments sandbox
 ```
@@ -55,7 +55,7 @@ For production run the same command with these changes:
 
 | Flag | Production value |
 |---|---|
-| `--source local` instead of `--repo` | production services are **not** connected to GitHub, so a push never reaches them; run it from a checkout of the first release's tag |
+| `--branch` | `production` |
 | `--environment` | `production` |
 | `--profile` | `full` |
 | `--console-url`, `--api-domain`, `--files-domain` | the production hosts |
@@ -73,8 +73,8 @@ Run it with `--dry-run` first and read it. Then:
    - Set it: `cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env staging`.
 2. Optional: set the Google client on the gateway, with `railway variable set --service gateway`.
 3. Deploy.
-   - Staging: a push to `main` that touches `web/admin`, or a manual run of `deploy-console`.
-   - Production: a published release (below).
+   - Staging: a push to `main` that touches `web/admin`, or run the `deploy-console` workflow with `staging`.
+   - Production: run the workflow with `production` on the same commit as the `production` branch. It waits for the reviewer.
 
 ## 4. Webhooks
 
@@ -100,22 +100,16 @@ Each line says what to look at. Write down any that fail.
 11. **Production only:** Railway backups are on, and one restore into a scratch environment worked ([backup-restore](backup-restore.md)) **before the
     first tenant**.
 
-## A release to production
+## Moving production forward
 
 1. A commit on `main` is green in CI and was checked on staging.
-2. Publish a GitHub release on it (`gh release create vX.Y.Z --target <sha> --generate-notes`). A pre-release deploys nothing.
-3. `deploy-production.yml` runs:
-   - **backend:** `bootstrap.sh --deploy-only` builds every Payrudder service from the tag with `railway up --ci`, plans-svc first and the gateway
-     last. A failed build stops it, and the services after it keep the previous version.
-   - **console:** `deploy-console.yml` with `production`, after the backend.
+2. Move the branch: `git push origin <sha>:production`. Railway deploys the backend.
+3. Run the console workflow with `production` on the same commit.
 4. Check items 2, 3 and 6 of the list above.
-
-The backing services (Redpanda, RabbitMQ, MinIO, ClickHouse) and the `init-*` jobs are not redeployed by a release. When their image changed, deploy
-them by hand: `railway up --service <name> --environment production`.
 
 ## Rollback
 
 - **Backend:** Railway, the service, *Deployments*, the previous one, *Redeploy*. Migrations run forward only: a rollback past a migration needs the
   [backup-restore](backup-restore.md) runbook, not a redeploy.
 - **Console:** `cd web/admin && npx wrangler rollback --env production`.
-- Or publish a new release of the previous good commit; never delete the release that is live.
+- **The branch:** `git push --force-with-lease origin <previous sha>:production`. Only after the redeploy above, so Railway does not build twice.
