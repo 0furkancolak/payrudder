@@ -448,6 +448,47 @@ func TestAccountIDRehearsal(t *testing.T) {
 			}
 		})
 
+		// The dual read: with Prefer the bound account is used when there is one, the old row when there is not, and a binding that cannot be read never fails the read.
+		t.Run("step 3 read through the binding", func(t *testing.T) {
+			compare := &store.Shadow{Accounts: accounts, Log: log}
+			prefer := &store.Shadow{Accounts: accounts, Log: log, Prefer: true}
+			old, _, err := accounts.Settings(ctx, ids[3], "stripe", "live")
+			must(err)
+			if got := prefer.Read(ctx, ids[3], store.KindPayment, "stripe", "live", old); !bytes.Equal(got, old) {
+				t.Errorf("equal accounts: %q against %q", got, old)
+			}
+			// An account changed on the old side only (a writer that does not mirror): the comparison keeps the old row, the dual read follows the binding.
+			must(accounts.Put(ctx, ids[3], "stripe", "live", []byte(`{"api_key":"sk_live_old_only","webhook_secret":"whsec_3","base_url":"http://127.0.0.1:1"}`), true))
+			changed, _, err := accounts.Settings(ctx, ids[3], "stripe", "live")
+			must(err)
+			if got := compare.Read(ctx, ids[3], store.KindPayment, "stripe", "live", changed); !bytes.Equal(got, changed) {
+				t.Errorf("without Prefer the old row must be returned")
+			}
+			if got := prefer.Read(ctx, ids[3], store.KindPayment, "stripe", "live", changed); bytes.Equal(got, changed) || !bytes.Equal(got, old) {
+				t.Errorf("with Prefer the bound account must be returned: %q", got)
+			}
+			// No binding: the old row is used.
+			must(accounts.Put(ctx, ids[3], "stripe~nb", "live", []byte(`{"api_key":"sk_live_nb","webhook_secret":"whsec_3","base_url":"http://127.0.0.1:1"}`), false))
+			nb, _, err := accounts.Settings(ctx, ids[3], "stripe~nb", "live")
+			must(err)
+			if got := prefer.Read(ctx, ids[3], store.KindPayment, "stripe~nb", "live", nb); !bytes.Equal(got, nb) {
+				t.Errorf("an account with no binding must fall back to the old row")
+			}
+			// One run of the backfill brings the binding level and the two agree again.
+			if _, err := reseal.BackfillAccounts(ctx, in); err != nil {
+				t.Fatal(err)
+			}
+			if got := prefer.Read(ctx, ids[3], store.KindPayment, "stripe", "live", changed); !bytes.Equal(got, changed) {
+				t.Errorf("after the backfill the bound account must be the new settings")
+			}
+			// A resolver built on it still builds the adapter.
+			registry := payments.NewRegistry()
+			stripe.Register(registry)
+			if _, err := (&handler.Resolver{Registry: registry, Accounts: accounts, Shadow: prefer}).Named(ctx, ids[3], "stripe", "live"); err != nil {
+				t.Errorf("resolver with the dual read: %v", err)
+			}
+		})
+
 		// The ledger's totals per tenant, currency and kind are what they were.
 		if got := ledgerTotals(ctx, t, pool); got != before.totals {
 			t.Errorf("ledger totals changed: %s against %s", got, before.totals)

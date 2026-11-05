@@ -52,7 +52,7 @@ func (r *Resolver) Named(ctx context.Context, tenant uuid.UUID, provider, env st
 	if err != nil {
 		return nil, fmt.Errorf("provider account %s/%s: %w", provider, env, err)
 	}
-	r.Shadow.Compare(ctx, tenant, store.KindPayment, provider, env, settings)
+	settings = r.Shadow.Read(ctx, tenant, store.KindPayment, provider, env, settings)
 	key := fmt.Sprintf("%s|%s|%s", tenant, provider, env)
 	r.mu.Lock()
 	defer r.mu.Unlock()
