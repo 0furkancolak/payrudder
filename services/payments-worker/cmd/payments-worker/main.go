@@ -346,7 +346,7 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 
 // accountShadow is the comparison of the old account tables with the new (ADR 0026, step 3); nil, which does nothing, unless PAYMENTS_ACCOUNT_SHADOW is on.
 func accountShadow(cfg *Config, db store.DB, box *secretbox.Box, log *slog.Logger) *store.Shadow {
-	if !(cfg.AccountShadow || cfg.AccountReadBound) || box == nil {
+	if (!cfg.AccountShadow && !cfg.AccountReadBound) || box == nil {
 		return nil
 	}
 	return &store.Shadow{Accounts: store.Accounts{DB: db, Box: box}, Log: log, Prefer: cfg.AccountReadBound}
