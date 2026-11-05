@@ -5,13 +5,19 @@
 # Read deploy/railway/README.md first; this script is its "Quick path". Variable values use Railway's reference syntax, ${{service.NAME}}.
 #
 #   deploy/railway/bootstrap.sh [--dry-run] [--profile full|small] [--demo] [--repo owner/name] [--branch main] [--source github|local] [--wait SECONDS]
+#                               [--environment NAME] [--console-url https://HOST] [--api-domain HOST] [--files-domain HOST] [--allowed-environments LIST]
 #
 #   --profile small  leaves out ClickHouse and analytics-svc (the console's analytics views stay empty); full is the default
 #   --demo           PAYRUDDER_DEMO=true: every tenant is served by the mock provider (never next to real provider accounts)
 #   --source local   deploy this checkout with `railway up` instead of connecting the GitHub repo (--repo is then not needed)
+#   --environment    the Railway environment to work in (staging, production); it must exist. Default: the one `railway link` chose
+#   --console-url    the console runs elsewhere (the Cloudflare Worker): no admin-ui service, links and sign-in go to this address
+#   --api-domain     the gateway's custom domain (api.payrudder.com); --files-domain: MinIO's, for presigned links (files.payrudder.com)
+#   --allowed-environments  sandbox,live (default) or sandbox: a sandbox-only deployment refuses live accounts
 set -euo pipefail
 
 DRY_RUN=0 PROFILE=full DEMO=false REPO="" BRANCH=main SOURCE=github WAIT=45
+ENVIRONMENT="" CONSOLE_URL="" API_DOMAIN="" FILES_DOMAIN="" ALLOWED_ENVS=sandbox,live
 while [[ $# -gt 0 ]]; do
   case $1 in
     --dry-run) DRY_RUN=1 ;;
@@ -21,7 +27,12 @@ while [[ $# -gt 0 ]]; do
     --branch) BRANCH=$2; shift ;;
     --source) SOURCE=$2; shift ;;
     --wait) WAIT=$2; shift ;;
-    -h | --help) sed -n '2,11p' "$0"; exit 0 ;;
+    --environment) ENVIRONMENT=$2; shift ;;
+    --console-url) CONSOLE_URL=$2; shift ;;
+    --api-domain) API_DOMAIN=$2; shift ;;
+    --files-domain) FILES_DOMAIN=$2; shift ;;
+    --allowed-environments) ALLOWED_ENVS=$2; shift ;;
+    -h | --help) sed -n '2,17p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
   shift
@@ -29,6 +40,11 @@ done
 [[ $PROFILE == full || $PROFILE == small ]] || { echo "--profile must be full or small" >&2; exit 2; }
 [[ $SOURCE == github || $SOURCE == local ]] || { echo "--source must be github or local" >&2; exit 2; }
 [[ $SOURCE == local || -n $REPO || $DRY_RUN == 1 ]] || { echo "--repo owner/name is required with --source github" >&2; exit 2; }
+[[ $ALLOWED_ENVS == sandbox,live || $ALLOWED_ENVS == sandbox ]] || { echo "--allowed-environments must be sandbox,live or sandbox" >&2; exit 2; }
+[[ -z $CONSOLE_URL || $CONSOLE_URL == https://* ]] || { echo "--console-url must start with https://" >&2; exit 2; }
+for d in "$API_DOMAIN" "$FILES_DOMAIN"; do [[ $d != *://* && $d != */* ]] || { echo "--api-domain and --files-domain take a host name, not a URL: $d" >&2; exit 2; }; done
+[[ -n ${NAFRU_BASE_URL:-} || -z ${NAFRU_API_KEY:-} ]] && [[ -z ${NAFRU_BASE_URL:-} || -n ${NAFRU_API_KEY:-} ]] ||
+  { echo "NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither" >&2; exit 2; }
 REPO=${REPO:-owner/payrudder}
 # OPERATOR_EMAILS (environment, comma separated): the people who are platform operators once they sign in and verify the address; empty: nobody.
 # OPERATOR_SUPPORT_EMAILS (environment, comma separated): read-only support operators (the console, nothing that writes); on both lists = support; empty: none.
@@ -36,6 +52,8 @@ REPO=${REPO:-owner/payrudder}
 # MAIL_WEBHOOK_SECRET (environment): the "whsec_..." signing secret of the mail provider's webhook of delivery events, which points at https://<gateway domain>/inbound/mail-events; set as
 # PAYRUDDER_MAIL_WEBHOOK_SECRET on the gateway. Empty: not set, the route answers 404 and bounces and complaints never reach the suppression list. The webhook needs the gateway's
 # public domain, which the first run creates, so the secret comes with a later run or with `railway variable set --service gateway PAYRUDDER_MAIL_WEBHOOK_SECRET=...`.
+# GEO_API_KEY (environment): this environment's nafru-geo key, set as PAYRUDDER_GEO_API_KEY on the gateway (docs/geo-data.md). Empty: not set, the address lists answer 503.
+# NAFRU_BASE_URL, NAFRU_API_KEY (environment, both or neither): the platform's own mail goes through Nafru instead of the SMTP catcher (mailpit); set on the notifier.
 
 # --- helpers ---------------------------------------------------------------------------------------------------------------------------------
 run() {
@@ -55,6 +73,8 @@ EXISTING_SERVICES="" EXISTING_VOLUMES=""
 if ((!DRY_RUN)); then
   command -v railway >/dev/null || { echo "install the Railway CLI (https://docs.railway.com/cli) and run: railway login && railway link" >&2; exit 1; }
   railway whoami >/dev/null || { echo "not logged in: railway login" >&2; exit 1; }
+  # UNVERIFIED against a real project: `railway environment <name>` links the environment for every command after it.
+  if [[ -n $ENVIRONMENT ]]; then railway environment "$ENVIRONMENT"; fi
   EXISTING_SERVICES=$(railway service list --json 2>/dev/null || true)
   EXISTING_VOLUMES=$(railway volume list --json 2>/dev/null || true)
 fi
@@ -97,7 +117,12 @@ pg_vars() { # <service name> <db short name> <kinds...>
   for k in "$@"; do out+=("PAYRUDDER_PG_$(tr a-z A-Z <<<"$k")_DSN=$(dsn "$k" "$db")"); done
   vars "$svc" "${out[@]}" PAYRUDDER_MIGRATE_ON_START=true
 }
-S3_VARS=('S3_ENDPOINT=http://minio.railway.internal:9000' 'S3_PUBLIC_ENDPOINT=https://${{minio.RAILWAY_PUBLIC_DOMAIN}}'
+# The public addresses: the custom domains when given, else the domains Railway generates.
+API_URL='https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' FILES_URL='https://${{minio.RAILWAY_PUBLIC_DOMAIN}}' APP_URL='https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}'
+[[ -n $API_DOMAIN ]] && API_URL=https://$API_DOMAIN
+[[ -n $FILES_DOMAIN ]] && FILES_URL=https://$FILES_DOMAIN
+[[ -n $CONSOLE_URL ]] && APP_URL=$CONSOLE_URL
+S3_VARS=('S3_ENDPOINT=http://minio.railway.internal:9000' "S3_PUBLIC_ENDPOINT=$FILES_URL"
   'S3_ACCESS_KEY=${{minio.MINIO_ROOT_USER}}' 'S3_SECRET_KEY=${{minio.MINIO_ROOT_PASSWORD}}' 'S3_FORCE_PATH_STYLE=true')
 common() { # <service name> <port>
   vars "$1" PAYRUDDER_ENV=railway "PAYRUDDER_SERVICE_NAME=$1" "PORT=$2"
@@ -116,6 +141,8 @@ APPS_FIRST=(plans-svc)
 APPS_SECOND=(ingest-svc aggregator limits-svc assets-svc mockpsp)
 APPS_THIRD=(billing-svc payments-worker invoice-worker notifier)
 if [[ $PROFILE == full ]]; then INFRA+=(clickhouse); APPS_SECOND+=(analytics-svc); fi
+CONSOLE=(admin-ui)
+[[ -n $CONSOLE_URL ]] && CONSOLE=()
 
 # --- 1. managed databases and services -------------------------------------------------------------------------------------------------------
 note "Postgres and Redis (Railway plugins)"
@@ -123,7 +150,7 @@ add_database postgres Postgres
 add_database redis Redis
 
 note "Services (empty until deployed)"
-for s in "${INFRA[@]}" init-postgres init-redpanda init-minio "${APPS_FIRST[@]}" "${APPS_SECOND[@]}" "${APPS_THIRD[@]}" gateway admin-ui; do add_service "$s"; done
+for s in "${INFRA[@]}" init-postgres init-redpanda init-minio "${APPS_FIRST[@]}" "${APPS_SECOND[@]}" "${APPS_THIRD[@]}" gateway ${CONSOLE[@]+"${CONSOLE[@]}"}; do add_service "$s"; done
 
 # --- 2. variables and volumes ----------------------------------------------------------------------------------------------------------------
 note "Backing services"
@@ -163,12 +190,14 @@ secret payments-worker PAYRUDDER_SECRETS_KEY b64
 secret plans-svc PAYRUDDER_OTP_PEPPER hex32
 secret payments-worker PAYMENTS_INTERNAL_TOKEN hex32
 secret notifier NOTIFIER_MAIL_EVENTS_SECRET hex32
+# The console's Worker proves itself to the gateway with this; the same value goes on the Worker as EDGE_AUTH_SECRET (docs/runbooks/console-first-deploy.md).
+[[ -n $CONSOLE_URL ]] && secret gateway PAYRUDDER_TRUSTED_PROXY_SECRET hex32
 
 note "plans-svc"
 go_service plans-svc services/plans-svc 9100
 pg_vars plans-svc plans app system migrator
 vars plans-svc 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_KAFKA_BROKERS=$KAFKA" 'PAYRUDDER_SECRETS_KEY=${{payments-worker.PAYRUDDER_SECRETS_KEY}}' \
-  PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
+  "PAYRUDDER_ALLOWED_ENVIRONMENTS=$ALLOWED_ENVS" "PAYRUDDER_APP_URL=$APP_URL" "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
   "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" \
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}'
 # A sandbox reset also empties analytics-svc where there is one (the small profile has none: its step is skipped).
@@ -193,7 +222,7 @@ note "billing-svc"
 go_service billing-svc services/billing-svc 9100
 pg_vars billing-svc billing app system migrator
 vars billing-svc "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
-  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}" 'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}'
+  "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_RABBITMQ_URL=$AMQP" S3_BUCKET=invoices "${S3_VARS[@]}" "PAYRUDDER_PUBLIC_URL=$API_URL"
 
 note "assets-svc"
 go_service assets-svc services/assets-svc 9100
@@ -226,6 +255,7 @@ go_service notifier services/notifier 9100
 pg_vars notifier notifier system migrator
 vars notifier 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" SMTP_ADDR=mailpit.railway.internal:1025 \
   NOTIFIER_EVENTS_ADDR=:9111
+if [[ -n ${NAFRU_BASE_URL:-} ]]; then vars notifier "NAFRU_BASE_URL=$NAFRU_BASE_URL" "NAFRU_API_KEY=$NAFRU_API_KEY"; fi
 
 note "gateway"
 go_service gateway services/gateway 8000
@@ -234,23 +264,29 @@ GW_ANALYTICS=()
 vars gateway "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_INGEST_ADDR=$(grpc_addr ingest-svc 7002)" \
   "PAYRUDDER_AGGREGATOR_ADDR=$(grpc_addr aggregator 7003)" "PAYRUDDER_LIMITS_ADDR=$(grpc_addr limits-svc 7004)" \
   "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)" "PAYRUDDER_ASSETS_ADDR=$(grpc_addr assets-svc 7007)" ${GW_ANALYTICS[@]+"${GW_ANALYTICS[@]}"} \
-  'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox,live \
+  'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_ALLOWED_ENVIRONMENTS=$ALLOWED_ENVS" \
   PAYRUDDER_PAYMENTS_URL=http://payments-worker.railway.internal:8095 'PAYRUDDER_PAYMENTS_INTERNAL_TOKEN=${{payments-worker.PAYMENTS_INTERNAL_TOKEN}}' \
-  'PAYRUDDER_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}' 'PAYRUDDER_APP_URL=https://${{admin-ui.RAILWAY_PUBLIC_DOMAIN}}' "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
+  "PAYRUDDER_PUBLIC_URL=$API_URL" "PAYRUDDER_APP_URL=$APP_URL" "PAYRUDDER_OPERATOR_EMAILS=${OPERATOR_EMAILS:-}" "PAYRUDDER_OPERATOR_SUPPORT_EMAILS=${OPERATOR_SUPPORT_EMAILS:-}" \
   PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier.railway.internal:9111 'PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=${{notifier.NOTIFIER_MAIL_EVENTS_SECRET}}'
 if [[ -n ${MAIL_WEBHOOK_SECRET:-} ]]; then vars gateway "PAYRUDDER_MAIL_WEBHOOK_SECRET=$MAIL_WEBHOOK_SECRET"; fi
+if [[ -n ${GEO_API_KEY:-} ]]; then vars gateway "PAYRUDDER_GEO_API_KEY=$GEO_API_KEY"; fi
 
-note "admin-ui"
-vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "PAYRUDDER_DEMO=$DEMO" BRAND_NAME=Payrudder
+if [[ -z $CONSOLE_URL ]]; then
+  note "admin-ui"
+  vars admin-ui RAILWAY_DOCKERFILE_PATH=deploy/railway/admin.Dockerfile PORT=3001 GATEWAY_URL=http://gateway.railway.internal:8000 "PAYRUDDER_DEMO=$DEMO" BRAND_NAME=Payrudder
+fi
 
 # --- 3. public domains ------------------------------------------------------------------------------------------------------------------------
 note "Public domains (the gateway, the console, and MinIO for presigned links)"
-for pair in gateway:8000 admin-ui:3001 minio:9000; do
-  svc=${pair%%:*}
-  if ((!DRY_RUN)) && railway domain list --service "$svc" --json 2>/dev/null | grep -q '"domain"'; then
-    echo "  $svc has a domain, kept"
+PAIRS=(gateway:8000:$API_DOMAIN minio:9000:$FILES_DOMAIN)
+[[ -z $CONSOLE_URL ]] && PAIRS+=(admin-ui:3001:)
+for pair in "${PAIRS[@]}"; do
+  IFS=: read -r svc port custom <<<"$pair"
+  if ((!DRY_RUN)) && railway domain list --service "$svc" --json 2>/dev/null | grep -q "\"domain\": *\"${custom:-[^\"]*}\""; then
+    echo "  $svc has ${custom:-a domain}, kept"
   else
-    run railway domain --service "$svc" --port "${pair##*:}"
+    # A custom domain prints the DNS record to add (a CNAME in Cloudflare, "DNS only" until the certificate is issued).
+    run railway domain ${custom:+"$custom"} --service "$svc" --port "$port"
   fi
 done
 
@@ -278,13 +314,14 @@ pause "plans-svc migrates and starts"
 deploy "${APPS_SECOND[@]}"
 pause "ingest-svc, aggregator and the rest migrate and start"
 deploy "${APPS_THIRD[@]}"
-deploy gateway admin-ui
+deploy gateway ${CONSOLE[@]+"${CONSOLE[@]}"}
 
 cat <<EOF
 
 Done. Still manual (the CLI cannot set them):
   - each service's Settings > Config-as-code: /deploy/railway/services/<name>.railway.json (apps) or /deploy/railway/infra/<name>.railway.json (the rest)
     gives it the health check, restart policy and watch paths. Without it the build still works (RAILWAY_DOCKERFILE_PATH is set) but nothing is health-checked.
-  - custom domains: railway domain <your.domain> --service gateway --port 8000 (and admin-ui, port 3001), then the DNS records it prints.
+  - custom domains without --api-domain / --files-domain: railway domain <your.domain> --service gateway --port 8000 (and minio, port 9000), then the DNS records it prints.
+  - with --console-url: put the gateway's PAYRUDDER_TRUSTED_PROXY_SECRET on the Worker as EDGE_AUTH_SECRET (docs/runbooks/staging-and-production.md).
   - the first tenant: see "First tenant" in deploy/railway/README.md. The operator token: railway variable list --service gateway --kv
 EOF

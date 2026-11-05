@@ -460,3 +460,69 @@ func TestMailWebhookSecretIsSetOnTheGatewayWhenGiven(t *testing.T) {
 		t.Error("README.md's gateway table lacks PAYRUDDER_MAIL_WEBHOOK_SECRET")
 	}
 }
+
+// One Railway environment of plan 23: the console on Cloudflare (no admin-ui, the proxy secret generated), custom domains in every public address, a
+// sandbox-only deployment, and the nafru-geo and Nafru keys passed to the one service that reads each. Bad values stop the script before it does anything.
+func TestBootstrapForAnEnvironment(t *testing.T) {
+	repo := root(t)
+	run := func(env []string, args ...string) (string, error) {
+		cmd := exec.Command("bash", append([]string{filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run"}, args...)...)
+		cmd.Env = append(os.Environ(), env...)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	out, err := run([]string{"GEO_API_KEY=geo-key", "NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=nafru-key"},
+		"--environment", "staging", "--console-url", "https://console-staging.example.com", "--api-domain", "api-staging.example.com",
+		"--files-domain", "files-staging.example.com", "--allowed-environments", "sandbox")
+	if err != nil {
+		t.Fatalf("dry run: %v\n%s", err, out)
+	}
+	per := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		if _, rest, ok := strings.Cut(line, "railway variable set --service "); ok {
+			svc, _, _ := strings.Cut(rest, " ")
+			per[svc] += " " + rest + "\n"
+		}
+	}
+	if strings.Contains(out, "admin-ui") {
+		t.Error("admin-ui is created although the console runs elsewhere")
+	}
+	if !strings.Contains(out, "[only if PAYRUDDER_TRUSTED_PROXY_SECRET is unset on gateway]") {
+		t.Error("the gateway's proxy secret for the console's Worker is not generated")
+	}
+	for _, want := range []string{"railway domain api-staging.example.com --service gateway --port 8000", "railway domain files-staging.example.com --service minio --port 9000"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	for svc, wants := range map[string][]string{
+		"gateway": {"PAYRUDDER_APP_URL=https://console-staging.example.com", "PAYRUDDER_PUBLIC_URL=https://api-staging.example.com",
+			"PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox ", "PAYRUDDER_GEO_API_KEY=geo-key"},
+		"plans-svc":   {"PAYRUDDER_APP_URL=https://console-staging.example.com", "PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox "},
+		"billing-svc": {"PAYRUDDER_PUBLIC_URL=https://api-staging.example.com", "S3_PUBLIC_ENDPOINT=https://files-staging.example.com"},
+		"assets-svc":  {"S3_PUBLIC_ENDPOINT=https://files-staging.example.com"},
+		"notifier":    {"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=nafru-key"},
+	} {
+		for _, want := range wants {
+			if !strings.Contains(per[svc], " "+want) {
+				t.Errorf("%s lacks %s:\n%s", svc, want, per[svc])
+			}
+		}
+	}
+	for svc, vars := range per {
+		if svc != "gateway" && strings.Contains(vars, "PAYRUDDER_GEO_API_KEY") {
+			t.Errorf("%s gets the nafru-geo key", svc)
+		}
+		if svc != "notifier" && strings.Contains(vars, "NAFRU_API_KEY") {
+			t.Errorf("%s gets the Nafru mail key", svc)
+		}
+	}
+	for _, bad := range [][]string{{"--allowed-environments", "live"}, {"--console-url", "http://console.example.com"}, {"--api-domain", "https://api.example.com"}} {
+		if out, err := run(nil, bad...); err == nil {
+			t.Errorf("%v was accepted:\n%s", bad, out)
+		}
+	}
+	if out, err := run([]string{"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY="}); err == nil {
+		t.Errorf("NAFRU_BASE_URL without NAFRU_API_KEY was accepted:\n%s", out)
+	}
+}

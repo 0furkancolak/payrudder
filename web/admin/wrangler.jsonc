@@ -26,13 +26,13 @@
     "staging": {
       "name": "payrudder-console-staging",
       // Placeholder: replace with your host. Without "routes" the Worker is reachable on its workers.dev address.
-      "routes": [{ "pattern": "console-staging.example.com", "custom_domain": true }],
-      "vars": { "API_ORIGIN": "https://api-staging.example.com", "PUBLIC_API_URL": "https://api-staging.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+      "routes": [{ "pattern": "console-staging.payrudder.com", "custom_domain": true }],
+      "vars": { "API_ORIGIN": "https://api-staging.payrudder.com", "PUBLIC_API_URL": "https://api-staging.payrudder.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
     },
     "production": {
       "name": "payrudder-console",
-      "routes": [{ "pattern": "console.example.com", "custom_domain": true }],
-      "vars": { "API_ORIGIN": "https://api.example.com", "PUBLIC_API_URL": "https://api.example.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
+      "routes": [{ "pattern": "console.payrudder.com", "custom_domain": true }],
+      "vars": { "API_ORIGIN": "https://api.payrudder.com", "PUBLIC_API_URL": "https://api.payrudder.com", "BRAND_NAME": "Payrudder", "CONSOLE_DEMO": "false" }
     }
   }
 }
