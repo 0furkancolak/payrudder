@@ -254,7 +254,7 @@ func (a EInvoiceAccounts) Resolve(ctx context.Context, tenant uuid.UUID, env, co
 func (a EInvoiceAccounts) open(ctx context.Context, tenant uuid.UUID, env, key, mode string, sealed []byte, def bool) (EInvoiceAccount, error) {
 	settings, err := a.Box.Open(sealed, einvoiceAAD(tenant, env, key))
 	if err == nil {
-		a.Shadow.Compare(ctx, tenant, KindEInvoice, key, env, settings)
+		settings = a.Shadow.Read(ctx, tenant, KindEInvoice, key, env, settings)
 	}
 	return EInvoiceAccount{Key: key, Mode: mode, Settings: settings, IsDefault: def}, err
 }

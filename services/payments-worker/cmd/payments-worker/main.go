@@ -119,6 +119,10 @@ type Config struct {
 	// AccountMirror writes every change to a payment or e-invoice account also to the new account tables, in the same transaction (docs/adr/0026, step 3). Off unless set
 	// (default, not agreed); turn it on only after `payrudderctl secrets accounts-backfill` has run, so the two start equal.
 	AccountMirror bool `env:"PAYMENTS_ACCOUNT_MIRROR"`
+	// AccountReadBound makes the account resolver and the e-invoice accounts use the account of the new tables when the tenant has a binding for it, and the old row when not
+	// (docs/adr/0026, the dual read of step 3). Off unless set (default, not agreed); it implies the comparison, and it should be turned on only with PAYMENTS_ACCOUNT_MIRROR,
+	// or a write that reaches only the old row would be shadowed by a stale binding.
+	AccountReadBound bool `env:"PAYMENTS_ACCOUNT_READ_BOUND"`
 	// RetryCeiling bounds how long a provider's Retry-After holds a command's retry back (docs/04-messaging.md): the retry waits the longer of its tier's delay and the
 	// Retry-After, at most this. Default (not agreed): 10 minutes, which is also the longest delay queue, so more changes nothing.
 	RetryCeiling time.Duration `env:"PAYMENTS_RETRY_CEILING"`
@@ -342,10 +346,10 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 
 // accountShadow is the comparison of the old account tables with the new (ADR 0026, step 3); nil, which does nothing, unless PAYMENTS_ACCOUNT_SHADOW is on.
 func accountShadow(cfg *Config, db store.DB, box *secretbox.Box, log *slog.Logger) *store.Shadow {
-	if !cfg.AccountShadow || box == nil {
+	if !(cfg.AccountShadow || cfg.AccountReadBound) || box == nil {
 		return nil
 	}
-	return &store.Shadow{Accounts: store.Accounts{DB: db, Box: box}, Log: log}
+	return &store.Shadow{Accounts: store.Accounts{DB: db, Box: box}, Log: log, Prefer: cfg.AccountReadBound}
 }
 
 // webhookServer builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
