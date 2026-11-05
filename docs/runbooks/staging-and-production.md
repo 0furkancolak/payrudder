@@ -28,13 +28,16 @@ Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare'
 
 ## 1. Keys for one environment
 
-Make these for the environment you are bringing up. Write them into the password manager, never into the repository or a chat.
+Make these for the environment you are bringing up. Never into the repository or a chat. **`deploy/railway/setup-secrets.sh staging`** (or
+`production`) asks for each one with its link and how to get it, sets the GitHub secrets of step 0 with `gh`, keeps the rest in
+`~/.config/payrudder/<environment>.env` (mode 600) and prints the bootstrap command that reads it; `--check` only lists what is missing. Keep a copy in the
+password manager as well.
 
 | Key | Where it comes from | Where it goes |
 |---|---|---|
 | nafru-geo key | `openssl rand -hex 32` | `GEO_API_KEY` for the bootstrap. Also added to nafru-geo's `API_KEYS`: in `nafrucom/nafru-geo`, `printf '%s' "<all keys>" \| bunx wrangler secret put API_KEYS`; the list is in its git-ignored `.env.keys` |
 | Nafru mail | Nafru, sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare) | `NAFRU_BASE_URL`, `NAFRU_API_KEY` |
-| Google sign-in | one OAuth client per environment, redirect `https://<console host>/gw/auth/google/callback` | gateway `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` (step 3) |
+| Google sign-in | one OAuth client per environment, redirect `https://<console host>/gw/auth/google/callback` | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` for the bootstrap, which sets them on the gateway |
 | Error tracking | a GlitchTip or Sentry project | `ERROR_TRACKING_URL` |
 | Operators | the people | `OPERATOR_EMAILS` |
 
@@ -71,8 +74,7 @@ Run it with `--dry-run` first and read it. Then:
 1. Copy the gateway's proxy secret into the Worker.
    - Read it: `railway variable list --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET`.
    - Set it: `cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env staging`.
-2. Optional: set the Google client on the gateway, with `railway variable set --service gateway`.
-3. Deploy.
+2. Deploy.
    - Staging: a push to `main` that touches `web/admin`, or a manual run of `deploy-console`.
    - Production: a published release (below).
 
