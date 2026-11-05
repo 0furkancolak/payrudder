@@ -47,11 +47,11 @@ show() {
   if [[ $CHECK == 0 && $mark != ✓ ]]; then local l; for l in "$@"; do printf '    %s\n' "$l"; done; fi
 }
 
-# ask <secret|plain|generate> <regex>: a value into REPLY, asked again until it matches; Enter skips (generate: makes a 32-byte hex key)
+# ask <secret|plain|generate> <regex>: a value into REPLY, asked again until it matches; Enter skips (generate: a nafru-geo key, ngeo_payrudder_<env>_<48 hex>)
 ask() {
   while :; do
     if [[ $1 == secret ]]; then read -rsp '  değer (gizli; Enter atlar): ' REPLY; echo
-    elif [[ $1 == generate ]]; then read -rp '  değer (Enter yenisini üretir): ' REPLY; if [[ -z $REPLY ]]; then REPLY=$(openssl rand -hex 32); echo "  üretildi"; fi
+    elif [[ $1 == generate ]]; then read -rp '  değer (Enter yenisini üretir): ' REPLY; if [[ -z $REPLY ]]; then REPLY=ngeo_payrudder_${ENV}_$(openssl rand -hex 24); echo "  üretildi"; fi
     else read -rp '  değer (Enter atlar): ' REPLY; fi
     if [[ -z $REPLY || $REPLY =~ $2 ]]; then return; fi
     echo "  bu doğru görünmüyor (beklenen: $2), tekrar" >&2
@@ -97,8 +97,9 @@ fi
 
 echo
 echo "== $ENV: bootstrap girdileri, $FILE içinde"
-input GEO_API_KEY required generate '^[0-9a-f]{64}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
-  "Yeni rastgele bir anahtar; Enter üretir. nafru-geo'ya da eklenmeli (sonraki adımlar anlatıyor)."
+input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
+  "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
+  "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
 input NAFRU_BASE_URL required plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
   "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
 input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" \

@@ -614,7 +614,7 @@ func TestSetupSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Split(string(back), "|"); got[0] != key || got[1] != "https://api.nafru.test" || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(got[2]) {
+	if got := strings.Split(string(back), "|"); got[0] != key || got[1] != "https://api.nafru.test" || !regexp.MustCompile(`^ngeo_payrudder_production_[0-9a-f]{48}$`).MatchString(got[2]) {
 		t.Errorf("read back: %q", got)
 	}
 	if out, err := run("", "--check", "production"); err != nil {
