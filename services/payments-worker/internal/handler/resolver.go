@@ -19,6 +19,8 @@ import (
 type Resolver struct {
 	Registry *payments.Registry
 	Accounts store.Accounts
+	// Shadow, when set, compares each account read with the same account in the new tables (ADR 0026, step 3) and changes nothing about what is returned.
+	Shadow *store.Shadow
 
 	mu    sync.Mutex
 	cache map[string]cached
@@ -50,6 +52,7 @@ func (r *Resolver) Named(ctx context.Context, tenant uuid.UUID, provider, env st
 	if err != nil {
 		return nil, fmt.Errorf("provider account %s/%s: %w", provider, env, err)
 	}
+	r.Shadow.Compare(ctx, tenant, store.KindPayment, provider, env, settings)
 	key := fmt.Sprintf("%s|%s|%s", tenant, provider, env)
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -1,6 +1,7 @@
 # ADR 0026 — Several accounts per integration, named by a key
 
 - Status: Accepted as a default, **not agreed** with the owner (written 2026-11-02 under the owner's instruction of 2026-11-01 to pick the plan's default and say so). Builds on [ADR 0016](0016-provider-capabilities-and-routing.md) (providers, capabilities, routing) and [ADR 0023](0023-live-and-sandbox-guards.md) (live and sandbox).
+- Update 2026-11-05: steps 1 to 3 of the `account_id` migration below are **built for payments and e-invoice** (payments-worker migration `00017_integration_accounts_v2`, tenant twin `00018`; backfill and verify in `pkg/secretbox/reseal`; step 3 as a **shadow comparison**, not a dual read) and rehearsed on synthetic data only, see the runbook. Steps 4 and 5 are not built; the choices of this work are defaults, **not agreed**.
 - Update 2026-11-04: organisation-level **e-mail** accounts are built (the safe slice; payments and e-invoice are not), also as a default and **not agreed**: see "Organisation-level e-mail accounts" below.
 - Plan: [10 — One integrations page](../plans/10-integrations-page.md). Revisit when plan 22 G7/G8 (a stable `account_id`) is built.
 
@@ -60,9 +61,14 @@ The paragraph above ("an organisation-level mail account alone could be built in
 
 Not decided here and left as it was: a shared account is **live-environment only** (as an app's own: the sandbox mail goes to the sandbox sink); only Nafru Email is a provider of an account (plan 11's contract); a shared account cannot be a copy of an app's own account (an app that has one connects the shared account under another label and moves its default and rules); there is no "bind to every app" button (the organisation's screen binds one app at a time); health checks stay "what the last test said". Not verified against anything real: a send through two apps from one shared Nafru account (the tests use a stub provider).
 
-## Organisation-level accounts: why not on the key, and the migration it needs (written 2026-11-02, nothing built)
+## Organisation-level accounts: why not on the key, and the migration it needs (written 2026-11-02; steps 1 to 3 built 2026-11-05)
 
 *Update 2026-11-04: this section describes payments and e-invoice, which are still not built; e-mail alone is built, above.*
+
+*Update 2026-11-05: steps 1 to 3 are built for payments and e-invoice, without changing the payment path; plans-svc (mail) has its own shape and is not in them. Every choice below is **default (not agreed)**:*
+- *Step 1: `integration_accounts` (`id`, `owner_kind` tenant or organisation, `owner_id`, `kind` payment or einvoice, `environment`, `provider`, `label`, `mode`, `settings_enc`, unique on owner, kind, environment, provider, label) and `integration_bindings` (`tenant_id`, `environment`, `kind`, `account_id`, `provider`, `label`, `is_default`, one default per tenant, environment and kind). The environment is a column of the account (a sandbox and a live account are two accounts, as the two old rows were). No row-level security, as every table of payments_db (listed in `RLSExempt`; `integration_accounts` has no `tenant_id`). `einvoice_routing` does **not** get its `account_id` yet (the ADR text above says it would; it is an old table, so it waits for step 4).*
+- *Step 2: `reseal.BackfillAccounts` (`payrudderctl secrets accounts-backfill`) opens each old box with its old associated data and seals it to `integration-account:<new id>`, never copied as bytes; re-running it brings a changed account up to date and leaves an account whose old row is gone (counted). `integration_accounts.settings_enc` is a column of the reseal job (rotation) and `reseal --verify` opens every box.*
+- *Step 3 is a shadow, not a dual read: `PAYMENTS_ACCOUNT_SHADOW` (off) makes the account resolver and the e-invoice accounts also read the binding, count `account_shadow_reads{kind,result}` and log a difference, and still return the old row. A read that preferred the binding would serve stale settings to the payment path until writes go to both tables, and writes to both tables are the part of step 3 that was **not** built; the line that returns the binding is one line once they are. `/webhooks/a/{account_id}` is not built either.*
 
 The plan's "bind one to an app" means **one account used by several apps**, set up once at the organisation. The key convention cannot carry it, and neither can a copy of the e-mail change to the other kinds:
 

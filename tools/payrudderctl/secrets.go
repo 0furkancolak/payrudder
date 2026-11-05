@@ -21,20 +21,29 @@ import (
 // secretsCmd is step 3 of replacing the secrets key (docs/runbooks/secrets-key-rotation.md). Like cells it does not go through the gateway: it opens the databases
 // of one service with that service's own settings, so it runs where the service does (a job, a bastion), with the environment of the service:
 //
-//	payrudderctl secrets reseal --service plans|payments [--dry-run] [--batch 200]
+//	payrudderctl secrets reseal --service plans|payments [--dry-run] [--verify] [--batch 200]
+//	payrudderctl secrets accounts-backfill [--dry-run]
+//
+// --verify opens every box of the service, whatever key sealed it, and changes nothing. accounts-backfill is step 2 of the account_id migration (ADR 0026, payments only):
+// it copies every old account into the new tables, owned by its tenant, sealed again to the new account's id.
 //
 // PAYRUDDER_PG_SYSTEM_DSN and PAYRUDDER_CELLS (cells mode) say where the boxes are, PAYRUDDER_SECRETS_KEY, _ID, _PREVIOUS and _PREVIOUS_ID which keys open them and which
 // seals.
 func secretsCmd(args []string) error {
-	if len(args) == 0 || args[0] != "reseal" {
-		return fmt.Errorf("usage: payrudderctl secrets reseal --service plans|payments [--dry-run] [--batch N]")
+	if len(args) == 0 || (args[0] != "reseal" && args[0] != "accounts-backfill") {
+		return fmt.Errorf("usage: payrudderctl secrets reseal --service plans|payments [--dry-run] [--verify] [--batch N] | payrudderctl secrets accounts-backfill [--dry-run]")
 	}
-	fs := flag.NewFlagSet("secrets reseal", flag.ContinueOnError)
+	backfill := args[0] == "accounts-backfill"
+	fs := flag.NewFlagSet("secrets "+args[0], flag.ContinueOnError)
 	service := fs.String("service", "", "plans | payments: the service whose boxes are sealed again (run it once for each, with that service's environment)")
 	dry := fs.Bool("dry-run", false, "open every box that would be sealed again and change nothing")
 	batch := fs.Int("batch", 200, "boxes read at a time")
+	verify := fs.Bool("verify", false, "open every box of the service, whatever key sealed it, and change nothing")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
+	}
+	if backfill {
+		*service = "payments"
 	}
 	var cols []reseal.Column
 	switch *service {
@@ -80,8 +89,18 @@ func secretsCmd(args []string) error {
 		defer cells[name].Close()
 	}
 
-	reports, err := reseal.Run(ctx, reseal.Input{Box: box, Columns: cols, Pooled: pooled, Cells: cells, Batch: *batch, DryRun: *dry,
-		Log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))})
+	in := reseal.Input{Box: box, Columns: cols, Pooled: pooled, Cells: cells, Batch: *batch, DryRun: *dry, Verify: *verify,
+		Log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))}
+	if backfill {
+		r, err := reseal.BackfillAccounts(ctx, in)
+		fmt.Fprintf(os.Stdout, "old accounts %d: created %d, refreshed %d, unchanged %d; bindings written %d; do not open %d; new accounts with no old row %d (dry run: %v)\n",
+			r.Old, r.Created, r.Refreshed, r.Unchanged, r.Bindings, r.Unreadable, r.Orphans, *dry)
+		if err == nil && r.Unreadable > 0 {
+			err = fmt.Errorf("%d old account(s) do not open with the keys given and were skipped", r.Unreadable)
+		}
+		return err
+	}
+	reports, err := reseal.Run(ctx, in)
 	printReports(reports, *dry)
 	if err != nil {
 		return err
@@ -92,6 +111,11 @@ func secretsCmd(args []string) error {
 		behind += r.Boxes - r.Current
 	}
 	switch {
+	case *verify:
+		if unreadable > 0 {
+			return fmt.Errorf("%d box(es) do not open with the keys given (listed above)", unreadable)
+		}
+		fmt.Fprintln(os.Stdout, "verify: every box opens")
 	case unreadable > 0:
 		return fmt.Errorf("%d box(es) do not open with the keys given (listed above): the previous key must stay until they are dealt with", unreadable)
 	case *dry:

@@ -46,6 +46,38 @@ func (q *Queries) DeleteProviderAccount(ctx context.Context, arg DeleteProviderA
 	return result.RowsAffected(), nil
 }
 
+const getBoundAccountSettings = `-- name: GetBoundAccountSettings :one
+SELECT a.settings_enc, a.id FROM integration_bindings b JOIN integration_accounts a ON a.id = b.account_id
+WHERE b.tenant_id = $1 AND b.environment = $2 AND b.kind = $3 AND b.provider = $4 AND b.label = $5
+`
+
+type GetBoundAccountSettingsParams struct {
+	TenantID    uuid.UUID
+	Environment string
+	Kind        string
+	Provider    string
+	Label       string
+}
+
+type GetBoundAccountSettingsRow struct {
+	SettingsEnc []byte
+	ID          uuid.UUID
+}
+
+// The new shape (ADR 0026 step 3, shadow): the account a tenant's binding of this key (provider, label) names. kind is payment or einvoice.
+func (q *Queries) GetBoundAccountSettings(ctx context.Context, arg GetBoundAccountSettingsParams) (GetBoundAccountSettingsRow, error) {
+	row := q.db.QueryRow(ctx, getBoundAccountSettings,
+		arg.TenantID,
+		arg.Environment,
+		arg.Kind,
+		arg.Provider,
+		arg.Label,
+	)
+	var i GetBoundAccountSettingsRow
+	err := row.Scan(&i.SettingsEnc, &i.ID)
+	return i, err
+}
+
 const getDefaultProvider = `-- name: GetDefaultProvider :one
 SELECT provider FROM provider_accounts WHERE tenant_id = $1 AND environment = $2 AND is_default
 `

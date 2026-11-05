@@ -22,7 +22,13 @@ var Payments = []Column{
 			}
 			return []byte(k[0] + "|einvoice|" + k[1] + "|" + k[2])
 		}},
+	// The new shape of an account (ADR 0026, step 1): sealed to the account's id and to nothing else. Empty until the backfill (accounts.go) has run.
+	{Table: "integration_accounts", Column: "settings_enc", Tenant: true, Key: []KeyColumn{{"id", "uuid"}},
+		AAD: func(k []string) []byte { return []byte(accountAAD + k[0]) }},
 }
+
+// accountAAD is the associated data of an integration_accounts box up to the account's id.
+const accountAAD = "integration-account:"
 
 // Plans are the boxes of plans-svc. user_totp belongs to a person, not to a tenant: the pooled database only.
 var Plans = []Column{
