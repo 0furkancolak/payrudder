@@ -585,8 +585,8 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	out, err := run("", "--check", "production")
-	if err == nil || !strings.Contains(out, "6 zorunlu kalem eksik") {
-		t.Fatalf("--check with nothing set: want 6 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	if err == nil || !strings.Contains(out, "4 zorunlu kalem eksik") {
+		t.Fatalf("--check with nothing set: want 4 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
 	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- ERROR_TRACKING_URL"} {
 		if !strings.Contains(out, want) {

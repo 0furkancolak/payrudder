@@ -100,10 +100,12 @@ echo "== $ENV: bootstrap girdileri, $FILE içinde"
 input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
   "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
   "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
-input NAFRU_BASE_URL required plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
+input NAFRU_BASE_URL optional plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
+  "Yoksa e-postalar mailpit'te kalır, gerçek kutuya gitmez." \
   "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
-input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" \
-  "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+if is_set NAFRU_BASE_URL; then
+  input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+fi
 input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "platformu yönetenler (operatör konsolu), virgülle ayrılmış" \
   "Kendi e-posta adres(ler)in; doğruladıktan sonra operatör konsolunu görürler."
 input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "hataların raporlandığı DSN" \
