@@ -16,9 +16,9 @@ given where the data is used:
 
 ## Where the lists come from
 
-The gateway reads them from **nafru-geo** (`https://geo.nafru.com`), the GeoNames service the nafru apps share (its own repository, `nafrucom/nafru-geo`: a
-Cloudflare Worker over D1). nafru-geo asks for a key per app (`x-api-key`); the gateway's is `PAYRUDDER_GEO_API_KEY`, a secret (one per environment: staging and production each have their own, see
-[plan 23](plans/23-staging-and-production.md#geo-nafru-geo)), and the
+The gateway reads them from **nafru-geo** (`https://geo.nafru.com`), the GeoNames service the nafru apps share (its own repository,
+`nafrucom/nafru-geo`: a Cloudflare Worker over D1). nafru-geo asks for a key per app (`x-api-key`); the gateway's is `PAYRUDDER_GEO_API_KEY`, a secret (one per
+environment: staging and production each have their own, see [plan 23](plans/23-staging-and-production.md#geo-nafru-geo)), and the
 address is `PAYRUDDER_GEO_URL` (default `https://geo.nafru.com`). The gateway keeps each list in memory for a day (`geo.TTL`). When nafru-geo cannot be
 read, the copy it already has is served and the next try waits a minute (`geo.RetryAfter`), so a request never waits on a service that is down; a list
 the gateway has never read answers **503 `gateway.geo.unavailable`**, and so does every geo route while the key is not set. The console's address
@@ -42,7 +42,7 @@ where GeoNames has one), and a region with second-level divisions no longer list
 | Routes | `services/gateway/internal/httpapi/geo.go`, documented in `api/openapi/v1.yaml` |
 | Console | `web/admin/src/shared/ui/location-fields` (`LocationFields`, `CountrySelect`), `web/admin/src/shared/lib/geo.ts` |
 | Mock for the console tests | `web/admin/e2e-mock/geo.ts` |
-| The service and its importer | `nafrucom/nafru-geo` |
+| The service and its importer | `nafrucom/nafru-geo` (`src/index.ts`, `scripts/geo-import.ts`) |
 
 The gateway's tests use a fake nafru-geo (`httptest`), so they need no network and no key.
 
