@@ -2,7 +2,7 @@
 # Collects what one environment of payrudder.com needs (plan 23, docs/runbooks/staging-and-production.md), one item at a time: what it is, where to
 # get it (with the link) and how. GitHub repository secrets are set with `gh secret set` (the value goes through stdin, never argv); the bootstrap's
 # inputs go into a file outside the repository (mode 600), which the printed bootstrap command reads. Items already set are skipped, so run it again
-# to fill what is missing. To change a value: edit the file, or `gh secret set NAME`.
+# to fill what is missing. To change a value: edit the file, or `gh secret set NAME`. Its messages are in Turkish (the owner's language).
 #
 #   deploy/railway/setup-secrets.sh [--check] staging|production
 #
@@ -17,7 +17,7 @@ ENV=${1:-}
 case $ENV in
   staging) SUFFIX=-staging ;;
   production) SUFFIX= ;;
-  *) echo "usage: $0 [--check] staging|production" >&2; exit 2 ;;
+  *) echo "kullanım: $0 [--check] staging|production" >&2; exit 2 ;;
 esac
 REPO=${REPO:-0furkancolak/payrudder}
 CONSOLE=console$SUFFIX.payrudder.com
@@ -35,7 +35,7 @@ is_set() { [[ -n ${!1:-} ]]; }
 
 save() {
   mkdir -p "$DIR"
-  { echo "# $ENV: the inputs of deploy/railway/bootstrap.sh, written by deploy/railway/setup-secrets.sh"
+  { echo "# $ENV: deploy/railway/bootstrap.sh girdileri, deploy/railway/setup-secrets.sh yazdı"
     for v in "${FILE_VARS[@]}"; do if is_set "$v"; then printf '%s=%q\n' "$v" "${!v}"; fi; done; } >"$FILE.tmp"
   mv "$FILE.tmp" "$FILE"
 }
@@ -50,11 +50,11 @@ show() {
 # ask <secret|plain|generate> <regex>: a value into REPLY, asked again until it matches; Enter skips (generate: makes a 32-byte hex key)
 ask() {
   while :; do
-    if [[ $1 == secret ]]; then read -rsp '  value (hidden; Enter skips): ' REPLY; echo
-    elif [[ $1 == generate ]]; then read -rp '  value (Enter generates one): ' REPLY; if [[ -z $REPLY ]]; then REPLY=$(openssl rand -hex 32); echo "  generated"; fi
-    else read -rp '  value (Enter skips): ' REPLY; fi
+    if [[ $1 == secret ]]; then read -rsp '  değer (gizli; Enter atlar): ' REPLY; echo
+    elif [[ $1 == generate ]]; then read -rp '  değer (Enter yenisini üretir): ' REPLY; if [[ -z $REPLY ]]; then REPLY=$(openssl rand -hex 32); echo "  üretildi"; fi
+    else read -rp '  değer (Enter atlar): ' REPLY; fi
     if [[ -z $REPLY || $REPLY =~ $2 ]]; then return; fi
-    echo "  that does not look right (expected $2), again" >&2
+    echo "  bu doğru görünmüyor (beklenen: $2), tekrar" >&2
   done
 }
 
@@ -62,10 +62,10 @@ ask() {
 github() {
   local name=$1 re=$2 title=$3; shift 3
   if grep -qx "$name" <<<"$GH_SECRETS"; then show ✓ "$name" "$title"; return; fi
-  show ✗ "$name" "$title (GitHub secret of $REPO)" "$@"
+  show ✗ "$name" "$title ($REPO deposunun GitHub secret'ı)" "$@"
   if [[ $CHECK == 0 ]]; then
     ask secret "$re"
-    if [[ -n $REPLY ]]; then printf '%s' "$REPLY" | gh secret set "$name" --repo "$REPO" >/dev/null; echo "  set on $REPO"; return; fi
+    if [[ -n $REPLY ]]; then printf '%s' "$REPLY" | gh secret set "$name" --repo "$REPO" >/dev/null; echo "  $REPO üzerine kaydedildi"; return; fi
   fi
   missing=$((missing + 1))
 }
@@ -74,7 +74,7 @@ github() {
 input() {
   local name=$1 need=$2 kind=$3 re=$4 title=$5; shift 5
   if is_set "$name"; then show ✓ "$name" "$title"; return; fi
-  if [[ $need == required ]]; then show ✗ "$name" "$title" "$@"; else show - "$name" "$title (optional)" "$@"; fi
+  if [[ $need == required ]]; then show ✗ "$name" "$title" "$@"; else show - "$name" "$title (isteğe bağlı)" "$@"; fi
   if [[ $CHECK == 0 ]]; then
     ask "$kind" "$re"
     if [[ -n $REPLY ]]; then printf -v "$name" '%s' "$REPLY"; save; return; fi
@@ -82,52 +82,52 @@ input() {
   if [[ $need == required ]]; then missing=$((missing + 1)); fi
 }
 
-echo "== $ENV: GitHub secrets of $REPO"
-github CLOUDFLARE_ACCOUNT_ID '^[0-9a-f]{32}$' "the Cloudflare account the console Worker is deployed to" \
-  "https://dash.cloudflare.com → Workers & Pages: 'Account ID' on the right (32 hex characters)." \
-  "The zone payrudder.com must be in this account (https://dash.cloudflare.com → Add a domain)."
-github CLOUDFLARE_API_TOKEN '^[A-Za-z0-9_-]{30,}$' "the token deploy-console.yml deploys the Worker with" \
-  "https://dash.cloudflare.com/profile/api-tokens → Create Token → template 'Edit Cloudflare Workers'." \
-  "Account resources: this account; Zone resources: payrudder.com (the Worker routes need it)."
+echo "== $ENV: $REPO GitHub secret'ları"
+github CLOUDFLARE_ACCOUNT_ID '^[0-9a-f]{32}$' "console Worker'ının deploy edildiği Cloudflare hesabı" \
+  "https://dash.cloudflare.com → Workers & Pages: sağda 'Account ID' (32 hex karakter). Ya da: npx wrangler whoami" \
+  "payrudder.com zone'u bu hesapta olmalı (https://dash.cloudflare.com → Add a domain)."
+github CLOUDFLARE_API_TOKEN '^[A-Za-z0-9_-]{30,}$' "deploy-console.yml'ın Worker'ı deploy ettiği token" \
+  "https://dash.cloudflare.com/profile/api-tokens → Create Token → 'Edit Cloudflare Workers' şablonu." \
+  "Account resources: bu hesap; Zone resources: payrudder.com (Worker route'ları için gerekli)."
 if [[ $ENV == production ]]; then
-  github RAILWAY_TOKEN_PRODUCTION '^[A-Za-z0-9-]{20,}$' "the project token deploy-production.yml deploys a release with" \
-    "https://railway.com/dashboard → the project → Settings → Tokens → Create, environment 'production'." \
-    "The environment must exist first: Settings → Environments → New, or \`railway environment new production\`."
+  github RAILWAY_TOKEN_PRODUCTION '^[A-Za-z0-9-]{20,}$' "deploy-production.yml'ın release'i deploy ettiği proje token'ı" \
+    "https://railway.com/dashboard → proje → Settings → Tokens → Create, ortam 'production'." \
+    "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new production\`."
 fi
 
 echo
-echo "== $ENV: bootstrap inputs, in $FILE"
-input GEO_API_KEY required generate '^[0-9a-f]{64}$' "this environment's nafru-geo key (address forms: countries, regions, districts)" \
-  "A new random key; Enter makes one. It also has to be added to nafru-geo (the next steps say how)."
-input NAFRU_BASE_URL required plain '^https://' "Nafru's API address, for the platform's own mail (sign-up verification, invoices)" \
-  "From Nafru's panel (https://nafru.com), with payrudder.com verified as the sender domain: its SPF/DKIM records go into Cloudflare DNS."
-input NAFRU_API_KEY required secret '.{16,}' "the Nafru API key of this environment" \
-  "Nafru's panel: a new API key named payrudder-$ENV."
-input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "who runs the platform (operator console), comma separated" \
-  "Your own address(es); they see the operator console after verifying them."
-input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "the DSN errors are reported to" \
-  "https://sentry.io (or https://app.glitchtip.com) → a project payrudder-$ENV → Settings → Client Keys (DSN): https://<key>@host/<id>."
-input PAYRUDDER_GOOGLE_CLIENT_ID optional plain '\.apps\.googleusercontent\.com$' "'Continue with Google' on the console (the secret comes next)" \
-  "https://console.cloud.google.com/apis/credentials → Create credentials → OAuth client ID → Web application, name payrudder-$ENV." \
+echo "== $ENV: bootstrap girdileri, $FILE içinde"
+input GEO_API_KEY required generate '^[0-9a-f]{64}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
+  "Yeni rastgele bir anahtar; Enter üretir. nafru-geo'ya da eklenmeli (sonraki adımlar anlatıyor)."
+input NAFRU_BASE_URL required plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
+  "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
+input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" \
+  "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "platformu yönetenler (operatör konsolu), virgülle ayrılmış" \
+  "Kendi e-posta adres(ler)in; doğruladıktan sonra operatör konsolunu görürler."
+input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "hataların raporlandığı DSN" \
+  "https://sentry.io (ya da https://app.glitchtip.com) → payrudder-$ENV projesi → Settings → Client Keys (DSN): https://<anahtar>@host/<id>."
+input PAYRUDDER_GOOGLE_CLIENT_ID optional plain '\.apps\.googleusercontent\.com$' "console'da 'Google ile devam et' (secret'ı sonra sorulur)" \
+  "https://console.cloud.google.com/apis/credentials → Create credentials → OAuth client ID → Web application, adı payrudder-$ENV." \
   "Authorised redirect URI: https://$CONSOLE/gw/auth/google/callback"
 if is_set PAYRUDDER_GOOGLE_CLIENT_ID; then
-  input PAYRUDDER_GOOGLE_CLIENT_SECRET required secret '.{10,}' "the secret of that OAuth client" "Shown next to the client ID (Download JSON has it too)."
+  input PAYRUDDER_GOOGLE_CLIENT_SECRET required secret '.{10,}' "o OAuth client'ın secret'ı" "Client ID'nin yanında görünür (Download JSON'da da var)."
 fi
 
-if [[ $missing -gt 0 ]]; then echo; echo "$missing required item(s) missing: run it again"; exit 1; fi
+if [[ $missing -gt 0 ]]; then echo; echo "$missing zorunlu kalem eksik: betiği tekrar çalıştır"; exit 1; fi
 
 if [[ $ENV == staging ]]; then FLAGS="--repo $REPO --profile small"; else FLAGS="--source local --profile full"; fi
 cat <<EOF
 
-== next steps for $ENV
-1. nafru-geo: add GEO_API_KEY (in $FILE) to the key list in nafrucom/nafru-geo's .env.keys, then there:
-     printf '%s' "<all keys, comma separated>" | bunx wrangler secret put API_KEYS
-2. Railway: the environment '$ENV' exists (https://railway.com/dashboard → the project → Settings → Environments), \`railway login\`, \`railway link\`.
-3. The backend (read the --dry-run first; production: from a checkout of the release's tag):
+== $ENV için sonraki adımlar
+1. nafru-geo: GEO_API_KEY'i ($FILE içinde) nafrucom/nafru-geo'nun .env.keys listesine ekle, sonra orada:
+     printf '%s' "<tüm anahtarlar, virgülle>" | bunx wrangler secret put API_KEYS
+2. Railway: '$ENV' ortamı var (https://railway.com/dashboard → proje → Settings → Environments), \`railway login\`, \`railway link\`.
+3. Backend (önce --dry-run çıktısını oku; production: release'in tag'inden alınmış bir checkout'tan):
      (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV $FLAGS \\
        --console-url https://$CONSOLE --api-domain api$SUFFIX.payrudder.com --files-domain files$SUFFIX.payrudder.com --allowed-environments sandbox)
-4. The DNS records Railway prints → Cloudflare, DNS only (grey cloud).
-5. The console's proxy secret, the same value on the Worker:
+4. Railway'in yazdırdığı DNS kayıtları → Cloudflare, DNS only (gri bulut).
+5. Console'un proxy secret'ı, Worker'a aynı değer:
      railway variable list --environment $ENV --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET
      (cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env $ENV)
 EOF
