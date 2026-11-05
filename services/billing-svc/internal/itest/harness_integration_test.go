@@ -434,8 +434,11 @@ func newEnv(t *testing.T, o envOpts) *env {
 	if o.sandbox {
 		envName = plansv1.Environment_ENVIRONMENT_SANDBOX
 	}
-	// "Now" is the 5th of the month after the billed period: the period 2026-10 closed on the 1st (grace 0).
-	clk := &clock{t: time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)}
+	// "Now" is an hour AHEAD of the real time. It was once fixed at 2026-11-05 12:00 UTC, days ahead of the day the test was written: the database stamps rows with its own
+	// clock, and the tests put times either side of time.Now() and rely on the service's clock being later than the real one (a retry "due a minute after the reply" is due, a
+	// block "that ended an hour ago" has ended). A clock that stood still was overtaken by real time on the day itself. The period 2026-10 is closed from 2026-11-01 (grace 0).
+	// shortcut: these tests name the period 2026-10, so they need the real month to be November 2026; from December derive the period from the clock.
+	clk := &clock{t: time.Now().UTC().Add(time.Hour)}
 	pv := &plansv1.PlanVersion{Id: uuid.NewString(), PlanCode: "pro", Version: 1, BaseFeeMinor: 1000, Prices: []*plansv1.Price{
 		{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "12.5"}}},
 		{MeterCode: "calls", Model: &plansv1.Price_Tiered{Tiered: &plansv1.TieredGraduatedPrice{Tiers: []*plansv1.PriceTier{
