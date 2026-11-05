@@ -70,6 +70,8 @@ export const NOT_OFFERED = {
   listInboxItems: "attachments and senders of received mail",
   getUploadFile: "an upload session",
   sandboxScenarios: "the sandbox simulator, not the account's data",
+  listRejectedEvents: "the app's own meter codes, customer ids and error text of events it sent wrong, written by whoever calls the API (default, not agreed; the viewer is in the console)",
+  getRejectedEventSummary: "same log, counts only; not offered with the list so the pair stays one decision (default, not agreed)",
 };
 
 /**
