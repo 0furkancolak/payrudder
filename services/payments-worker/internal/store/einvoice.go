@@ -23,6 +23,8 @@ import (
 type EInvoiceAccounts struct {
 	DB  DB
 	Box *secretbox.Box
+	// Shadow, when set, compares each account opened with the same account in the new tables (ADR 0026, step 3); what is returned does not change.
+	Shadow *Shadow
 }
 
 // EInvoiceAccountInfo is an account without its secrets.
@@ -200,7 +202,7 @@ func (a EInvoiceAccounts) Get(ctx context.Context, tenant uuid.UUID, env, key st
 	if !ok {
 		return EInvoiceAccount{}, ErrNoAccount
 	}
-	return a.open(tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
+	return a.open(ctx, tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
 }
 
 // Resolve opens the account that takes the documents of a buyer of country: the one routing names for it, else the default. ErrNoAccount when neither exists
@@ -226,11 +228,14 @@ func (a EInvoiceAccounts) Resolve(ctx context.Context, tenant uuid.UUID, env, co
 	if !ok {
 		return EInvoiceAccount{}, ErrNoAccount
 	}
-	return a.open(tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
+	return a.open(ctx, tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
 }
 
-func (a EInvoiceAccounts) open(tenant uuid.UUID, env, key, mode string, sealed []byte, def bool) (EInvoiceAccount, error) {
+func (a EInvoiceAccounts) open(ctx context.Context, tenant uuid.UUID, env, key, mode string, sealed []byte, def bool) (EInvoiceAccount, error) {
 	settings, err := a.Box.Open(sealed, einvoiceAAD(tenant, env, key))
+	if err == nil {
+		a.Shadow.Compare(ctx, tenant, KindEInvoice, key, env, settings)
+	}
 	return EInvoiceAccount{Key: key, Mode: mode, Settings: settings, IsDefault: def}, err
 }
 

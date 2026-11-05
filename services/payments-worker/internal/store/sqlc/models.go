@@ -78,6 +78,32 @@ type FeeRule struct {
 	UpdatedAt   time.Time
 }
 
+type IntegrationAccount struct {
+	ID          uuid.UUID
+	OwnerKind   string
+	OwnerID     uuid.UUID
+	Kind        string
+	Environment string
+	Provider    string
+	Label       string
+	Mode        *string
+	SettingsEnc []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type IntegrationBinding struct {
+	TenantID    uuid.UUID
+	Environment string
+	Kind        string
+	AccountID   uuid.UUID
+	Provider    string
+	Label       string
+	IsDefault   bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type ManualReceipt struct {
 	ID            int64
 	TenantID      uuid.UUID

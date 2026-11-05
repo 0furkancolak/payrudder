@@ -32,3 +32,8 @@ ORDER BY id DESC LIMIT @row_limit;
 -- name: MarkProviderAccountDefault :execrows
 UPDATE provider_accounts SET is_default = true, updated_at = now()
 WHERE tenant_id = @tenant_id AND provider = @provider AND environment = @environment;
+
+-- name: GetBoundAccountSettings :one
+-- The new shape (ADR 0026 step 3, shadow): the account a tenant's binding of this key (provider, label) names. kind is payment or einvoice.
+SELECT a.settings_enc, a.id FROM integration_bindings b JOIN integration_accounts a ON a.id = b.account_id
+WHERE b.tenant_id = @tenant_id AND b.environment = @environment AND b.kind = @kind AND b.provider = @provider AND b.label = @label;

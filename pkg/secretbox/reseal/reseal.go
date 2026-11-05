@@ -64,6 +64,9 @@ type Input struct {
 	Batch int
 	// DryRun opens every box that would be sealed again and changes nothing.
 	DryRun bool
+	// Verify opens every box of every column, whatever key sealed it, and changes nothing: Unreadable says which do not open. (The step before dropping a key, or
+	// after a migration that sealed boxes to something new.)
+	Verify bool
 	Log    *slog.Logger
 }
 
@@ -123,8 +126,19 @@ func Run(ctx context.Context, in Input) ([]Report, error) {
 			tenant = append(tenant, i)
 		}
 	}
-	if err := visit(in.Pooled, all); err != nil {
-		return reports, fmt.Errorf("the pooled database: %w", err)
+	err := eachPlace(ctx, in, func(q querier, pooled bool) error {
+		if pooled {
+			return visit(q, all)
+		}
+		return visit(q, tenant)
+	})
+	return reports, err
+}
+
+// eachPlace calls fn with the pooled database (pooled true) and then with every tenant schema of every cell, in a transaction of its own (pooled false).
+func eachPlace(ctx context.Context, in Input, fn func(q querier, pooled bool) error) error {
+	if err := fn(in.Pooled, true); err != nil {
+		return fmt.Errorf("the pooled database: %w", err)
 	}
 	cellNames := make([]string, 0, len(in.Cells))
 	for n := range in.Cells {
@@ -134,16 +148,16 @@ func Run(ctx context.Context, in Input) ([]Report, error) {
 	for _, name := range cellNames {
 		ids, err := pgxx.TenantSchemaIDs(ctx, in.Cells[name])
 		if err != nil {
-			return reports, fmt.Errorf("cell %s: %w", name, err)
+			return fmt.Errorf("cell %s: %w", name, err)
 		}
 		in.Log.InfoContext(ctx, "cell", "cell", name, "tenant_schemas", len(ids))
 		for _, id := range ids {
-			if err := pgxx.InTenantSchemaTx(ctx, in.Cells[name], id, func(tx pgx.Tx) error { return visit(tx, tenant) }); err != nil {
-				return reports, fmt.Errorf("cell %s, tenant %s: %w", name, id, err)
+			if err := pgxx.InTenantSchemaTx(ctx, in.Cells[name], id, func(tx pgx.Tx) error { return fn(tx, false) }); err != nil {
+				return fmt.Errorf("cell %s, tenant %s: %w", name, id, err)
 			}
 		}
 	}
-	return reports, nil
+	return nil
 }
 
 // querier is a pool or a transaction.
@@ -167,7 +181,11 @@ func (c Column) run(ctx context.Context, q querier, in Input) (Report, error) {
 		equal[i] = k.Name + " = " + typed[i]
 	}
 	// The statements are built from the tables in places.go, never from input. A box of another key starts with another byte; a NULL box is not a box.
-	sel := fmt.Sprintf("SELECT %s, %s FROM %s WHERE substring(%s, 1, 1) <> $1", strings.Join(texts, ", "), c.Column, c.Table, c.Column)
+	which := "substring(%[4]s, 1, 1) <> $1"
+	if in.Verify {
+		which = "%[4]s IS NOT NULL AND $1::bytea IS NOT NULL"
+	}
+	sel := fmt.Sprintf("SELECT %s, %s FROM %s WHERE "+which, strings.Join(texts, ", "), c.Column, c.Table, c.Column)
 	next := fmt.Sprintf(" AND (%s) > (%s)", strings.Join(names, ", "), strings.Join(typed, ", "))
 	order := fmt.Sprintf(" ORDER BY %s LIMIT %d", strings.Join(names, ", "), in.Batch)
 	// The box is named in the update: a row its service replaced since it was read is not touched.
@@ -196,6 +214,12 @@ func (c Column) run(ctx context.Context, q querier, in Input) (Report, error) {
 		}
 		for _, b := range batch {
 			aad := c.AAD(b.key)
+			if in.Verify {
+				if _, err := in.Box.Open(b.box, aad); err != nil {
+					r.unreadable(ctx, c, b, in.Log)
+				}
+				continue
+			}
 			if in.DryRun {
 				if _, err := in.Box.Open(b.box, aad); err != nil {
 					r.unreadable(ctx, c, b, in.Log)
