@@ -34,9 +34,9 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
-// The rehearsal of steps 1 to 3 of the account_id migration (docs/adr/0026-integration-accounts.md, docs/runbooks/account-id-migration-rehearsal.md) on SYNTHETIC data: it
+// The rehearsal of steps 1 to 4 of the account_id migration (docs/adr/0026-integration-accounts.md, docs/runbooks/account-id-migration-rehearsal.md) on SYNTHETIC data: it
 // builds the database as the previous release left it, fills it, records the truth, applies the new migrations, runs the backfill and the verify mode, reads through
-// the shadow comparison, and asserts every check the runbook table names for those steps. Steps 4 and 5 are not here.
+// the shadow comparison, and asserts every check the runbook table names for those steps; step 4 (account ids on the ledger and its neighbours) follows them. Step 5 is not here.
 //
 // The scale is set by ACCOUNTID_REHEARSAL_TENANTS (default 20) and ACCOUNTID_REHEARSAL_LEDGER (default 100000 rows of payment_ledger):
 //
@@ -60,16 +60,19 @@ func TestAccountIDRehearsal(t *testing.T) {
 			}
 		}
 		// The database as the previous release left it: every migration but the ones of this change.
-		previous := fstest.MapFS{}
+		previous, step1 := fstest.MapFS{}, fstest.MapFS{}
 		entries, err := fs.ReadDir(migrations.FS, ".")
 		must(err)
 		for _, e := range entries {
-			if !strings.HasSuffix(e.Name(), ".sql") || strings.HasPrefix(e.Name(), "00017_") {
+			if !strings.HasSuffix(e.Name(), ".sql") || strings.HasPrefix(e.Name(), "00018_") {
 				continue
 			}
 			b, err := fs.ReadFile(migrations.FS, e.Name())
 			must(err)
-			previous[e.Name()] = &fstest.MapFile{Data: b}
+			step1[e.Name()] = &fstest.MapFile{Data: b}
+			if !strings.HasPrefix(e.Name(), "00017_") {
+				previous[e.Name()] = &fstest.MapFile{Data: b}
+			}
 		}
 		must(pgxx.Migrate(ctx, db.Migrator, previous, nil))
 		pool, err := pgxx.NewPool(ctx, db.System)
@@ -107,6 +110,27 @@ func TestAccountIDRehearsal(t *testing.T) {
 		must(err)
 		t.Logf("REHEARSAL synthetic data: %d tenants, %d old accounts, %d payment_ledger rows (inserted in %s)", tenants, olds, ledgerRows, time.Since(start).Round(time.Millisecond))
 
+		// The neighbours of the ledger: step 4 fills their account_id too. 'ghost' is a key no account exists for, and a discrepancy can name no provider at all.
+		for _, q := range []string{
+			`INSERT INTO provider_objects (tenant_id, provider, environment, kind, key, ref) SELECT t, p, 'live', 'customer', 'cus:' || g, 'cus_' || g
+			   FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', 'stripe~eu', 'ghost']) p, generate_series(1, 20) g`,
+			`INSERT INTO provider_subscriptions (tenant_id, provider, environment, provider_ref, status) SELECT t, p, 'live', 'sub_' || g, 'active'
+			   FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', 'stripe~eu']) p, generate_series(1, 20) g`,
+			`INSERT INTO payment_attempts (command_id, tenant_id, invoice_id, kind, environment, provider, idempotency_key, request, status)
+			   SELECT gen_random_uuid(), t, gen_random_uuid(), 'charge', 'live', p, 'a' || g || p, '{}', 'DONE'
+			   FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', 'banktransfer']) p, generate_series(1, 20) g`,
+			`INSERT INTO fee_rules (tenant_id, environment, provider, currency, rate_bps) SELECT t, 'live', p, 'EUR', 290 FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', 'stripe~eu']) p`,
+			`INSERT INTO provider_account_health (tenant_id, provider, environment) SELECT t, p, 'live' FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', 'stripe~eu', 'banktransfer']) p`,
+			`INSERT INTO settlement_lines (tenant_id, environment, provider, line_ref, kind, currency, gross_minor, net_minor, occurred_at, source)
+			   SELECT t, 'live', 'stripe', 'txn_' || g, 'payment', 'EUR', 1000, 970, now(), 'stripe' FROM unnest($1::uuid[]) t, generate_series(1, 20) g`,
+			`INSERT INTO reconciliation_discrepancies (tenant_id, environment, period, fingerprint, kind, provider, status)
+			   SELECT t, 'live', '2026-10', 'f' || p, 'missing_charge', p, 'open' FROM unnest($1::uuid[]) t, unnest(ARRAY['stripe', '']) p`,
+		} {
+			if _, err := pool.Exec(ctx, q, ids); err != nil {
+				t.Fatalf("%v: %s", err, q)
+			}
+		}
+
 		// Record the truth (runbook, "Before the first step").
 		oldTables := []string{"payment_ledger", "provider_objects", "payment_attempts", "provider_subscriptions", "reconciliation_discrepancies", "settlement_lines", "fee_rules",
 			"provider_account_health", "provider_accounts", "einvoice_accounts"}
@@ -121,7 +145,7 @@ func TestAccountIDRehearsal(t *testing.T) {
 		// Step 1: apply the migrations.
 		t.Run("step 1 new tables beside the old", func(t *testing.T) {
 			start := time.Now()
-			must(pgxx.Migrate(ctx, db.Migrator, migrations.FS, nil))
+			must(pgxx.Migrate(ctx, db.Migrator, step1, nil))
 			t.Logf("REHEARSAL step 1: migration 00017 applied in %s", time.Since(start).Round(time.Millisecond))
 			if after := truthOf(ctx, t, pool, oldTables); !after.equal(before) {
 				t.Errorf("an old table changed in step 1:\n%s", after.diff(before))
@@ -336,6 +360,107 @@ func TestAccountIDRehearsal(t *testing.T) {
 		if got := ledgerTotals(ctx, t, pool); got != before.totals {
 			t.Errorf("ledger totals changed: %s against %s", got, before.totals)
 		}
+
+		t.Run("step 4 account ids on the ledger and its neighbours", func(t *testing.T) {
+			baseline, totals0 := dataOf(ctx, t, pool, oldTables), ledgerTotals(ctx, t, pool)
+			start := time.Now()
+			must(pgxx.Migrate(ctx, db.Migrator, migrations.FS, nil))
+			t.Logf("REHEARSAL step 4: migration 00018 (nullable columns, grant, triggers) applied in %s with %d ledger rows", time.Since(start).Round(time.Millisecond), ledgerRows)
+			if got := dataOf(ctx, t, pool, oldTables); got != baseline {
+				t.Errorf("a column other than account_id changed in step 4")
+			}
+			if n := count(ctx, t, pool, `SELECT count(*) FROM payment_ledger WHERE account_id IS NOT NULL`); n != 0 {
+				t.Errorf("%d ledger rows got an id from the migration itself", n)
+			}
+			// The previous release (it reads and writes keys) still works with the columns present.
+			if got, _, err := accounts.Settings(ctx, ids[0], "stripe", "live"); err != nil || !strings.Contains(string(got), "sk_live_0") {
+				t.Errorf("old read after step 4 = %q, %v", got, err)
+			}
+
+			in4 := reseal.Input{Pooled: pool, Log: log}
+			dry, err := reseal.BackfillAccountIDs(ctx, in4, reseal.IDOptions{Batch: 16, DryRun: true})
+			must(err)
+			if led := tableReport(dry, "payment_ledger"); led.Filled != ledgerRows || count(ctx, t, pool, `SELECT count(*) FROM payment_ledger WHERE account_id IS NOT NULL`) != 0 {
+				t.Errorf("dry run = %+v: it must count the %d rows to fill and write none", led, ledgerRows)
+			}
+			// Small batches, so many statements: this is the shape of a real run.
+			start = time.Now()
+			reports, err := reseal.BackfillAccountIDs(ctx, in4, reseal.IDOptions{Batch: 16})
+			must(err)
+			t.Logf("REHEARSAL step 4: backfill of all eight tables took %s", time.Since(start).Round(time.Millisecond))
+			for _, r := range reports {
+				t.Logf("REHEARSAL step 4: %+v", r)
+				if r.Pending != 0 || r.Conflicts != 0 || r.Mismatched != 0 {
+					t.Errorf("%+v: ids left to fill, or wrong", r)
+				}
+			}
+			if led := tableReport(reports, "payment_ledger"); led.Rows != ledgerRows || led.Filled != ledgerRows || led.NoAccount != 0 {
+				t.Errorf("ledger report = %+v, want all %d rows filled", led, ledgerRows)
+			}
+			if o := tableReport(reports, "provider_objects"); o.NoAccount != tenants*20 || o.Filled != tenants*40 {
+				t.Errorf("provider_objects report = %+v, want %d filled and %d for the key with no account", o, tenants*40, tenants*20)
+			}
+			if d := tableReport(reports, "reconciliation_discrepancies"); d.Keyless != tenants || d.Filled != tenants {
+				t.Errorf("discrepancy report = %+v: the row with no provider stays NULL, the other is filled", d)
+			}
+			// Nothing but account_id changed, and the totals are the totals.
+			if got := dataOf(ctx, t, pool, oldTables); got != baseline {
+				t.Errorf("the backfill changed a column other than account_id")
+			}
+			if got := ledgerTotals(ctx, t, pool); got != totals0 {
+				t.Errorf("ledger totals changed by the backfill")
+			}
+			// A second run has nothing to do.
+			again, err := reseal.BackfillAccountIDs(ctx, in4, reseal.IDOptions{Batch: 16})
+			must(err)
+			for _, r := range again {
+				if r.Filled != 0 {
+					t.Errorf("a finished backfill filled %d rows of %s", r.Filled, r.Table)
+				}
+			}
+			// The ledger stays immutable: the column grant opens account_id and nothing else, and the one-fact-once index still refuses a duplicate.
+			if _, err := pool.Exec(ctx, `UPDATE payment_ledger SET amount_minor = amount_minor + 1 WHERE id = (SELECT min(id) FROM payment_ledger)`); err == nil {
+				t.Errorf("payments_system can update an amount of the ledger")
+			}
+			if _, err := pool.Exec(ctx, `INSERT INTO payment_ledger (tenant_id, provider, environment, kind, status, amount_minor, currency, provider_ref, source)
+				SELECT tenant_id, provider, environment, kind, status, amount_minor, currency, provider_ref, source FROM payment_ledger WHERE provider_ref = 'pi_1'`); err == nil {
+				t.Errorf("the one-fact-once index took a duplicate")
+			}
+			// What verify is for: an id that is not the key's account is found; clearing it and running the backfill puts it right.
+			if _, err := pool.Exec(ctx, `UPDATE payment_ledger SET account_id = (SELECT id FROM integration_accounts WHERE provider = 'banktransfer' LIMIT 1) WHERE provider_ref = 'pi_1'`); err != nil {
+				t.Fatal(err)
+			}
+			bad, err := reseal.VerifyAccountIDs(ctx, in4)
+			must(err)
+			if led := tableReport(bad, "payment_ledger"); led.Mismatched != 1 {
+				t.Errorf("verify missed an id that is not the key's account: %+v", led)
+			}
+			if _, err := pool.Exec(ctx, `UPDATE payment_ledger SET account_id = NULL WHERE provider_ref = 'pi_1'`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := reseal.BackfillAccountIDs(ctx, in4, reseal.IDOptions{Batch: 16}); err != nil {
+				t.Fatal(err)
+			}
+			if good, err := reseal.VerifyAccountIDs(ctx, in4); err != nil || tableReport(good, "payment_ledger").Mismatched != 0 || tableReport(good, "payment_ledger").Pending != 0 {
+				t.Errorf("verify after the mend: %+v, %v", good, err)
+			}
+			// A row written with the key, as the previous release writes it, gets the id from the trigger: the key still decides and no writer changed. A key with no
+			// account stays NULL until an account is made for it.
+			ledger := store.Ledger{DB: pool}
+			for i, key := range []string{"stripe~eu", "ghost"} {
+				if _, err := ledger.Append(ctx, store.LedgerEntry{TenantID: ids[1], Provider: key, Environment: "live", Kind: "charge", Status: "succeeded", AmountMinor: 100, Currency: "EUR",
+					ProviderRef: fmt.Sprintf("pi_new_%d", i), Source: "command"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if n := count(ctx, t, pool, `SELECT count(*) FROM payment_ledger l JOIN integration_accounts a ON a.id = l.account_id
+				WHERE l.provider_ref = 'pi_new_0' AND a.owner_id = l.tenant_id AND a.provider = 'stripe' AND a.label = 'eu'`); n != 1 {
+				t.Errorf("a ledger row written with the key stripe~eu did not get that account's id")
+			}
+			if n := count(ctx, t, pool, `SELECT count(*) FROM payment_ledger WHERE provider_ref = 'pi_new_1' AND account_id IS NULL`); n != 1 {
+				t.Errorf("a ledger row with a key no account names got an id")
+			}
+		})
 	})
 
 	t.Run("tenants in a cell", func(t *testing.T) {
@@ -356,6 +481,13 @@ func TestAccountIDRehearsal(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		// A fact per tenant, written before the account exists in the new tables: the trigger finds none and leaves the id NULL (step 4 fills it).
+		for _, id := range ids {
+			if _, err := (store.Ledger{DB: w.DB}).Append(ctx, store.LedgerEntry{TenantID: id, Provider: "stripe~eu", Environment: "live", Kind: "charge", Status: "succeeded",
+				AmountMinor: 5, Currency: "EUR", ProviderRef: "pi_cell", Source: "command"}); err != nil {
+				t.Fatal(err)
+			}
+		}
 		in := reseal.Input{Box: box, Columns: reseal.Payments, Pooled: w.Pooled, Cells: w.pools, Log: log}
 		r, err := reseal.BackfillAccounts(ctx, in)
 		if err != nil || r.Old != 12 || r.Created != 12 || r.Bindings != 12 {
@@ -369,6 +501,17 @@ func TestAccountIDRehearsal(t *testing.T) {
 		}
 		if rp := columnReport(reports, "integration_accounts.settings_enc"); rp.Boxes != 12 || rp.Unreadable != 0 {
 			t.Errorf("verify over the pooled database and a cell = %+v", rp)
+		}
+		// Step 4 over the pooled database and the tenant schemas of a cell.
+		filled, err := reseal.BackfillAccountIDs(ctx, in, reseal.IDOptions{Batch: 4})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if led := tableReport(filled, "payment_ledger"); led.Rows != 3 || led.Filled != 3 || led.Pending != 0 || led.Mismatched != 0 {
+			t.Errorf("step 4 over the pooled database and a cell = %+v, want the 3 facts filled", led)
+		}
+		if n, err := w.CountAll(ctx, `SELECT count(*) FROM payment_ledger WHERE account_id IS NOT NULL`); err != nil || n != 3 {
+			t.Errorf("%d ledger rows carry an id, %v", n, err)
 		}
 		shadow := &store.Shadow{Accounts: accounts, Log: log}
 		for _, id := range ids {
@@ -479,4 +622,28 @@ func (a truth) diff(b truth) string {
 		}
 	}
 	return strings.Join(out, "\n")
+}
+
+func tableReport(reports []reseal.IDReport, table string) reseal.IDReport {
+	for _, r := range reports {
+		if r.Table == table {
+			return r
+		}
+	}
+	return reseal.IDReport{}
+}
+
+// dataOf is a checksum of every row of the tables without its account_id column, so that step 4 can be shown to have changed that column and nothing else.
+func dataOf(ctx context.Context, t *testing.T, p *pgxpool.Pool, tables []string) string {
+	t.Helper()
+	var out strings.Builder
+	for _, tb := range tables {
+		var s string
+		//nolint:gosec // tb comes from the list above
+		if err := p.QueryRow(ctx, `SELECT coalesce(md5(string_agg(h, '' ORDER BY h)), '') FROM (SELECT md5((to_jsonb(x) - 'account_id')::text) AS h FROM `+tb+` x) s`).Scan(&s); err != nil {
+			t.Fatalf("data of %s: %v", tb, err)
+		}
+		out.WriteString(tb + "=" + s + ";")
+	}
+	return out.String()
 }

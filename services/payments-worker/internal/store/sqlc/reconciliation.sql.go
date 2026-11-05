@@ -138,7 +138,7 @@ func (q *Queries) ExplainDiscrepancy(ctx context.Context, arg ExplainDiscrepancy
 }
 
 const getDiscrepancy = `-- name: GetDiscrepancy :one
-SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at FROM reconciliation_discrepancies WHERE tenant_id = $1 AND id = $2
+SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at, account_id FROM reconciliation_discrepancies WHERE tenant_id = $1 AND id = $2
 `
 
 type GetDiscrepancyParams struct {
@@ -173,12 +173,13 @@ func (q *Queries) GetDiscrepancy(ctx context.Context, arg GetDiscrepancyParams) 
 		&i.LastSeenAt,
 		&i.UpdatedAt,
 		&i.ResolvedAt,
+		&i.AccountID,
 	)
 	return i, err
 }
 
 const getDiscrepancyForUpdate = `-- name: GetDiscrepancyForUpdate :one
-SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at FROM reconciliation_discrepancies WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at, account_id FROM reconciliation_discrepancies WHERE tenant_id = $1 AND id = $2 FOR UPDATE
 `
 
 type GetDiscrepancyForUpdateParams struct {
@@ -213,6 +214,7 @@ func (q *Queries) GetDiscrepancyForUpdate(ctx context.Context, arg GetDiscrepanc
 		&i.LastSeenAt,
 		&i.UpdatedAt,
 		&i.ResolvedAt,
+		&i.AccountID,
 	)
 	return i, err
 }
@@ -336,7 +338,7 @@ func (q *Queries) InsertReconciliationRun(ctx context.Context, arg InsertReconci
 }
 
 const listDiscrepancies = `-- name: ListDiscrepancies :many
-SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at FROM reconciliation_discrepancies
+SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at, account_id FROM reconciliation_discrepancies
 WHERE tenant_id = $1
   AND ($2::text = '' OR period = $2)
   AND (cardinality($3::text[]) = 0 OR status = ANY($3::text[]))
@@ -400,6 +402,7 @@ func (q *Queries) ListDiscrepancies(ctx context.Context, arg ListDiscrepanciesPa
 			&i.LastSeenAt,
 			&i.UpdatedAt,
 			&i.ResolvedAt,
+			&i.AccountID,
 		); err != nil {
 			return nil, err
 		}
@@ -412,7 +415,7 @@ func (q *Queries) ListDiscrepancies(ctx context.Context, arg ListDiscrepanciesPa
 }
 
 const listDiscrepanciesOfPeriod = `-- name: ListDiscrepanciesOfPeriod :many
-SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at FROM reconciliation_discrepancies WHERE tenant_id = $1 AND period = $2
+SELECT id, tenant_id, environment, period, fingerprint, kind, invoice_id, invoice_number, provider, provider_ref, currency, billed_minor, ledger_minor, settled_minor, detail, status, owner, note, resolution, first_seen_at, last_seen_at, updated_at, resolved_at, account_id FROM reconciliation_discrepancies WHERE tenant_id = $1 AND period = $2
 `
 
 type ListDiscrepanciesOfPeriodParams struct {
@@ -453,6 +456,7 @@ func (q *Queries) ListDiscrepanciesOfPeriod(ctx context.Context, arg ListDiscrep
 			&i.LastSeenAt,
 			&i.UpdatedAt,
 			&i.ResolvedAt,
+			&i.AccountID,
 		); err != nil {
 			return nil, err
 		}

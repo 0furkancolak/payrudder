@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -23,26 +24,31 @@ import (
 //
 //	payrudderctl secrets reseal --service plans|payments [--dry-run] [--verify] [--batch 200]
 //	payrudderctl secrets accounts-backfill [--dry-run]
+//	payrudderctl secrets account-ids [--dry-run] [--verify] [--batch 64] [--pause 100ms]
 //
 // --verify opens every box of the service, whatever key sealed it, and changes nothing. accounts-backfill is step 2 of the account_id migration (ADR 0026, payments only):
 // it copies every old account into the new tables, owned by its tenant, sealed again to the new account's id.
 //
+// account-ids is step 4: it fills account_id on the ledger and its neighbours from the key, page range by page range (--batch pages, --pause between statements), and can be
+// stopped and run again; --verify changes nothing and exits non-zero while a key maps to two ids or a row's id is not the account its key names. It needs no secrets key.
+//
 // PAYRUDDER_PG_SYSTEM_DSN and PAYRUDDER_CELLS (cells mode) say where the boxes are, PAYRUDDER_SECRETS_KEY, _ID, _PREVIOUS and _PREVIOUS_ID which keys open them and which
 // seals.
 func secretsCmd(args []string) error {
-	if len(args) == 0 || (args[0] != "reseal" && args[0] != "accounts-backfill") {
-		return fmt.Errorf("usage: payrudderctl secrets reseal --service plans|payments [--dry-run] [--verify] [--batch N] | payrudderctl secrets accounts-backfill [--dry-run]")
+	if len(args) == 0 || (args[0] != "reseal" && args[0] != "accounts-backfill" && args[0] != "account-ids") {
+		return fmt.Errorf("usage: payrudderctl secrets reseal --service plans|payments [--dry-run] [--verify] [--batch N] | payrudderctl secrets accounts-backfill [--dry-run] | payrudderctl secrets account-ids [--dry-run] [--verify] [--batch N] [--pause D]")
 	}
-	backfill := args[0] == "accounts-backfill"
+	backfill, ids := args[0] == "accounts-backfill", args[0] == "account-ids"
 	fs := flag.NewFlagSet("secrets "+args[0], flag.ContinueOnError)
 	service := fs.String("service", "", "plans | payments: the service whose boxes are sealed again (run it once for each, with that service's environment)")
 	dry := fs.Bool("dry-run", false, "open every box that would be sealed again and change nothing")
 	batch := fs.Int("batch", 200, "boxes read at a time")
+	pause := fs.Duration("pause", 100*time.Millisecond, "account-ids: the wait between two statements")
 	verify := fs.Bool("verify", false, "open every box of the service, whatever key sealed it, and change nothing")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-	if backfill {
+	if backfill || ids {
 		*service = "payments"
 	}
 	var cols []reseal.Column
@@ -54,16 +60,18 @@ func secretsCmd(args []string) error {
 	default:
 		return fmt.Errorf("--service must be plans or payments")
 	}
-	settings, err := secretSettings(os.Getenv)
-	if err != nil {
-		return err
-	}
-	box, err := settings.SecretBox()
-	if err != nil {
-		return err
-	}
-	if box == nil {
-		return fmt.Errorf("PAYRUDDER_SECRETS_KEY is required")
+	var box *secretbox.Box
+	if !ids {
+		settings, err := secretSettings(os.Getenv)
+		if err != nil {
+			return err
+		}
+		if box, err = settings.SecretBox(); err != nil {
+			return err
+		}
+		if box == nil {
+			return fmt.Errorf("PAYRUDDER_SECRETS_KEY is required")
+		}
 	}
 	dsn := os.Getenv("PAYRUDDER_PG_SYSTEM_DSN")
 	if dsn == "" {
@@ -91,6 +99,9 @@ func secretsCmd(args []string) error {
 
 	in := reseal.Input{Box: box, Columns: cols, Pooled: pooled, Cells: cells, Batch: *batch, DryRun: *dry, Verify: *verify,
 		Log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))}
+	if ids {
+		return accountIDs(ctx, in, *dry, *verify, *batch, *pause)
+	}
 	if backfill {
 		r, err := reseal.BackfillAccounts(ctx, in)
 		fmt.Fprintf(os.Stdout, "old accounts %d: created %d, refreshed %d, unchanged %d; bindings written %d; do not open %d; new accounts with no old row %d (dry run: %v)\n",
@@ -154,4 +165,39 @@ func printReports(reports []reseal.Report, dry bool) {
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\n", r.Column, r.Boxes, r.Current, r.Resealed, r.Changed, r.Unreadable)
 	}
 	_ = tw.Flush()
+}
+
+// accountIDs runs step 4 (see the command's comment) and prints one line per table.
+func accountIDs(ctx context.Context, in reseal.Input, dry, verify bool, batch int, pause time.Duration) error {
+	var reports []reseal.IDReport
+	var err error
+	switch {
+	case verify:
+		reports, err = reseal.VerifyAccountIDs(ctx, in)
+	default:
+		in.Batch = batch
+		reports, err = reseal.BackfillAccountIDs(ctx, in, reseal.IDOptions{Batch: batch, Pause: pause, DryRun: dry})
+	}
+	var bad, pending int
+	tw := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "table\trows\tfilled\tpending\tno account\tno provider\tkey with two ids\tid not the key's account")
+	for _, r := range reports {
+		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", r.Table, r.Rows, r.Filled, r.Pending, r.NoAccount, r.Keyless, r.Conflicts, r.Mismatched)
+		bad += r.Conflicts + r.Mismatched
+		pending += r.Pending
+	}
+	tw.Flush()
+	switch {
+	case err != nil:
+		return err
+	case bad > 0:
+		return fmt.Errorf("%d key(s) or row(s) carry an id that is not the account the key names: do not go to step 5", bad)
+	case verify && pending > 0:
+		return fmt.Errorf("%d row(s) with an account have no id yet: run account-ids again", pending)
+	case verify:
+		fmt.Fprintln(os.Stdout, "verify: every row whose key has an account carries its id; rows with no account are listed above")
+	case dry:
+		fmt.Fprintln(os.Stdout, "dry run: nothing was changed (filled = rows that would be)")
+	}
+	return nil
 }

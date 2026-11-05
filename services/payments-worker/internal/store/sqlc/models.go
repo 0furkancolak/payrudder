@@ -76,6 +76,7 @@ type FeeRule struct {
 	RateBps     int32
 	FixedMinor  int64
 	UpdatedAt   time.Time
+	AccountID   *uuid.UUID
 }
 
 type IntegrationAccount struct {
@@ -132,6 +133,7 @@ type PaymentAttempt struct {
 	CreatedAt      time.Time
 	FinishedAt     *time.Time
 	ProviderRef    *string
+	AccountID      *uuid.UUID
 }
 
 type PaymentDispute struct {
@@ -184,6 +186,7 @@ type PaymentLedger struct {
 	Source         string
 	Detail         *string
 	OccurredAt     time.Time
+	AccountID      *uuid.UUID
 }
 
 type PaymentMethodApplied struct {
@@ -231,6 +234,7 @@ type ProviderAccountHealth struct {
 	LastFailureAt       *time.Time
 	OpenedAt            *time.Time
 	UpdatedAt           time.Time
+	AccountID           *uuid.UUID
 }
 
 type ProviderEvent struct {
@@ -261,6 +265,7 @@ type ProviderObject struct {
 	Key         string
 	Ref         string
 	CreatedAt   time.Time
+	AccountID   *uuid.UUID
 }
 
 type ProviderSubscription struct {
@@ -276,6 +281,7 @@ type ProviderSubscription struct {
 	ScheduledAction         *string
 	ScheduledEffectiveAt    *time.Time
 	ScheduledResumeAt       *time.Time
+	AccountID               *uuid.UUID
 }
 
 type ReconciliationDiscrepancy struct {
@@ -302,6 +308,7 @@ type ReconciliationDiscrepancy struct {
 	LastSeenAt    time.Time
 	UpdatedAt     time.Time
 	ResolvedAt    *time.Time
+	AccountID     *uuid.UUID
 }
 
 type ReconciliationEvent struct {
@@ -354,4 +361,5 @@ type SettlementLine struct {
 	Batch       string
 	Source      string
 	ImportedAt  time.Time
+	AccountID   *uuid.UUID
 }
