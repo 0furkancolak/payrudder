@@ -186,7 +186,7 @@ func accountIDs(ctx context.Context, in reseal.Input, dry, verify bool, batch in
 		bad += r.Conflicts + r.Mismatched
 		pending += r.Pending
 	}
-	tw.Flush()
+	_ = tw.Flush() // a table on stdout; nothing to do if it fails
 	switch {
 	case err != nil:
 		return err
