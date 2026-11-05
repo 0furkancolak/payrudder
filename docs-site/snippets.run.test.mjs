@@ -1,8 +1,8 @@
-// The quick-start snippets of the Connect page (and of the reference's language tabs) are RUN, not only compiled: curl, TypeScript, Python and Go, with the SDKs of this
+// The quick-start snippets of the Connect page (and of the reference's language tabs) are RUN, not only compiled: curl, TypeScript, Python, Go and PHP, with the SDKs of this
 // checkout, against docs-site/fakeapi.mjs, a stand-in made from api/openapi/v1.yaml. What this proves: the code a developer pastes starts, reaches the address it was
 // given, sends a bearer key and a body that fits the contract (known route, required fields, formats), and reads the answer. What it does not prove: that the real gateway
-// accepts the request (no database, no key check, no business rule) - that is the compose stack's job, which no job here starts. PHP is linted and looked up, not run
-// (web/admin/src/features/connect/__tests__/snippets.sdk.test.ts), because the SDK has no autoloader outside Composer.
+// accepts the request (no database, no key check, no business rule) - that is the compose stack's job, which no job here starts. PHP runs through a small autoloader
+// stand-in, because the SDK has no autoloader outside Composer.
 //
 // A tool that is missing skips its language, unless SNIPPETS_REQUIRE_TOOLS=1 (the snippets-run workflow sets it), where it fails. SNIPPETS_PYTHON names a Python that
 // has httpx. The TypeScript SDK must be built first (cd sdk/typescript && npm ci && npm run build).
@@ -41,13 +41,13 @@ const folded = (s) => s.replace(/\r?\n/g, " "); // a newline in a customer id is
 /** Runs one snippet's `send` code and checks what reached the fake. `sdk` snippets make the customer first, curl only sends the event. */
 async function runAndCheck(lang, set, start, { sdk }) {
   // curl and TypeScript read the key from PAYRUDDER_API_KEY; the Python and Go snippets show the key's shape ("qk_test_...") in the code, for the developer to replace.
-  const key = (inputs) => (lang === "python" || lang === "go" ? `${inputs.keyHint}...` : "qk_test_run");
+  const key = (inputs) => (lang === "python" || lang === "go" || lang === "php" ? `${inputs.keyHint}...` : "qk_test_run");
   const api = await startFakeApi(doc);
   try {
     const dir = await mkdtemp(join(work, `${lang}-${set}-`));
     const inputs = { baseUrl: api.url, ...sets[set] };
     const out = await start(dir, snippets(lang, inputs).send, { ...process.env, PAYRUDDER_API_KEY: "qk_test_run", GOWORK: "off", GOTOOLCHAIN: "local" });
-    assert.ok(/accepted/.test(out), `the snippet did not print the result's status: ${out}`);
+    assert.ok(/accepted/i.test(out), `the snippet did not print the result's status: ${out}`);
     assert.deepEqual(api.seen.map((r) => `${r.method} ${r.path}`), sdk ? ["POST /v1/customers", "POST /v1/events"] : ["POST /v1/events"]);
     for (const r of api.seen) {
       assert.deepEqual(r.problems, [], `${r.method} ${r.path}: ${r.problems.join("; ")}`);
@@ -115,6 +115,14 @@ describe("the snippets run against it", () => {
         await writeFile(join(dir, "go.mod"), `module snippet\n\ngo 1.23\n\nrequire github.com/0furkancolak/payrudder/sdk/go v0.0.0\n\nreplace github.com/0furkancolak/payrudder/sdk/go => ${inRepo("sdk/go")}\n`);
         await writeFile(join(dir, "main.go"), code);
         return (await run("go", ["run", "."], { cwd: dir, env, timeout: 180_000 })).stdout;
+      }, { sdk: true }));
+
+    // The SDK has no autoloader outside Composer, so a four-line one stands in for it; the SDK's transport needs ext-curl.
+    test(`PHP (${set} values) with sdk/php`, { skip: missing("php with ext-curl", works("php", ["-r", "exit(function_exists('curl_init') ? 0 : 1);"])) }, () =>
+      runAndCheck("php", set, async (dir, code, env) => {
+        const autoload = `spl_autoload_register(function ($c) { $f = ${JSON.stringify(inRepo("sdk/php/src"))} . '/' . str_replace('\\\\', '/', substr($c, 9)) . '.php'; if (str_starts_with($c, 'Payrudder\\\\') && is_file($f)) require $f; });`;
+        await writeFile(join(dir, "send.php"), `<?php\n${autoload}\n${code}`);
+        return (await run("php", ["send.php"], { cwd: dir, env, timeout: 60_000 })).stdout;
       }, { sdk: true }));
   }
 });

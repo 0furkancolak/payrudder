@@ -144,3 +144,8 @@ Defaults (**default (not agreed)**, the owner may overturn them):
 Not done: integration health over time beyond rejections (an accepted-event rate per hour, alerts when the rejection share rises, a notification), a customer filter and a time filter, the PHP SDK regeneration (its generator runs in Docker; `sdk-php-check` will say it is stale), an MCP tool for the log (the generator did not pick the routes up; not checked whether that is by design), a "send me a mail when events are rejected" setting.
 
 Not verified: nothing ran on GitHub; the integration subtest ran on this machine against Docker Postgres 17 (pooled and cells mode) but the whole `TestIngestSvc` umbrella and the other services' suites were not run; the mock e2e ran for the new spec, the Connect specs, the viewer and the phone/tablet connect cases only; the gateway and ingest-svc were not run together against a real stack, so the path console to gateway to ingest-svc to Postgres is covered by the pieces, not end to end; no load test of the writer under a rejection storm; the Arabic copy and the other five languages were written by the assistant and not reviewed by a native speaker.
+
+
+## PHP snippet run for real (2026-11-05)
+
+`docs-site/snippets.run.test.mjs` now runs the PHP `send` code too (with ordinary and hostile values, through a four-line autoloader stand-in, since the SDK has none outside Composer) against the same fake; `snippets-run.yml` installs PHP 8.4 with curl. Ran locally on PHP 8.5.8 (62 pass, 0 fail); the workflow has not run on GitHub yet. **Still open:** a job against the compose stack (default, not agreed: the fake stays the gate, see above) and publishing the SDKs (no releases until the owner says so).
