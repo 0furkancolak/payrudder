@@ -3700,7 +3700,8 @@
       },
       "geo": {
         "country_not_found": "Listede böyle bir ülke yok.",
-        "region_not_found": "Listede böyle bir bölge yok."
+        "region_not_found": "Listede böyle bir bölge yok.",
+        "unavailable": "Ülke listeleri şu an kullanılamıyor; bölge ve şehri elle yazın."
       },
       "saas": {
         "events_quota": "Planınızın bu ayki olay limitine ulaşıldı. Daha fazla göndermek için planı yükseltin.",

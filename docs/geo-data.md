@@ -2,7 +2,8 @@
 
 The console's address forms (customer address, seller address, the live billing profile) and its country fields (tax rates, payment provider routing)
 offer the countries of the world, the first-level divisions of each country (states, provinces, counties: "regions") and, under each region, its
-second-level divisions plus the towns of 15000 people or more ("districts"). The lists come from [GeoNames](https://www.geonames.org).
+second-level divisions or, where a region has none, its larger towns ("districts"). The lists come from [GeoNames](https://www.geonames.org), through
+nafru-geo.
 
 ## Licence and attribution
 
@@ -13,56 +14,36 @@ given where the data is used:
 - [NOTICE](../NOTICE) names the source. The console shows no credit line next to the fields (phase 50 took it out: the licence asks for attribution
   where the data is distributed, which the API answer and NOTICE do).
 
-The data was changed: the importer keeps only some columns (codes, names, ASCII names, GeoNames ids), leaves out the dissolved countries GeoNames still
-lists (CS Serbia and Montenegro, AN Netherlands Antilles), and merges towns into the second-level divisions of their region (a town with the name of a
-division is listed once). Country names are shown in the page's language by the browser (`Intl.DisplayNames`); GeoNames' English name is the fallback.
-Names are described in the next section.
+## Where the lists come from
 
-## Names
+The gateway reads them from **nafru-geo** (`https://geo.nafru.com`), the GeoNames service the nafru apps share (it lives in the nafru-scout repository,
+`apps/geo`: a Cloudflare Worker over D1). nafru-geo asks for a key per app (`x-api-key`); the gateway's is `PAYRUDDER_GEO_API_KEY`, a secret, and the
+address is `PAYRUDDER_GEO_URL` (default `https://geo.nafru.com`). The gateway keeps each list in memory for a day (`geo.TTL`). When nafru-geo cannot be
+read, the copy it already has is served and the next try waits a minute (`geo.RetryAfter`), so a request never waits on a service that is down; a list
+the gateway has never read answers **503 `gateway.geo.unavailable`**, and so does every geo route while the key is not set. The console's address
+fields then stay plain text inputs: nothing that stores an address depends on the lists.
 
-GeoNames names a division with what it is: "Adıyaman Province", "Kadıköy İlçesi", "Cook County", "State of Alabama". An address does not carry that word, so
-the importer makes the name an address would use:
+nafru-geo keeps only some columns (codes, names, ASCII names, GeoNames ids), drops GeoNames' type words from division names ("Adıyaman Province" is
+"Adıyaman"), and lists, under a region, its second-level divisions (`kind: admin2`) or, for a region that has none, its larger towns (`kind: city`, 5000
+people or more, at most 300). The gateway maps its answer to the shapes below: a region's `id` is the country and the code (`TR.34`), a division's is
+the region's id and its admin2 code (`TR.34.1234`), a town's is its GeoNames id; regions and districts are sorted by ASCII name. Country names are shown
+in the page's language by the browser (`Intl.DisplayNames`); GeoNames' English name is the fallback.
 
-1. **Local language first.** The importer reads `alternateNamesV2` (205 MB zipped, streamed: only the ids of the regions, districts and towns and only the
-   languages needed are kept) and takes, for a place, the alternate name in the first language of its country's `countryInfo` row ("tr" for TR) when it
-   is not short, colloquial or historic and is written in Latin script. Otherwise GeoNames' own name is kept when it is Latin script ("Kadıköy İlçesi" is
-   already Turkish), and only when that is not (Cyrillic, Arabic, Han) the English alternate name is used. A name never changes script: the ASCII name
-   stays the search key and the sort key.
-2. **Generic words go** (`CleanName` in `internal/geo/names.go`): trailing "Province", "Region", "County", "Department", "District", "Oblast", "State",
-   "Governorate", "Municipality", "Parish", "Prefecture", "İlçesi"/"ilçesi", "Kommun", "pagasts" and the like, any number of them ("Foo District
-   Municipality" is "Foo"); leading "State of", "Région", "Land", "Département de", "Comuna", "Amphoe", "Municipio" and the like; Japanese "-ken", "-shi" and
-   "-gun". A name that is nothing but such a word is kept, and islands, atolls and cities ("Rhode Island", "Quezon City") are left alone because they are the name.
-3. **ASCII fallback.** `ascii_name` is GeoNames' ASCII name cleaned the same way; the console searches the name, the ASCII name and the code, so "istanbul" finds
-   "İstanbul" and "kadikoy" finds "Kadıköy". A stored address (which keeps the name as text) is still matched by name or ASCII name, case and accents ignored.
-
-`TestEmbeddedNamesHaveNoSuffix` fails when a served name (or ASCII name) would be changed by `CleanName` again; a change of the lists in `names.go` needs a
-re-import, which `make geo-data` does. `-no-alternates` skips the big download (names then come from GeoNames' own columns, cleaned).
+Until this change the lists were embedded in the gateway (made by `cmd/geoimport`, with local-language names from `alternateNamesV2` and the towns of
+15000 people or more under every region). That importer is gone; the names nafru-geo serves are GeoNames' own (the seat's local spelling for a region
+where GeoNames has one), and a region with second-level divisions no longer lists its towns as well.
 
 ## Where it lives
 
 | Piece | Path |
 |---|---|
-| Importer | `services/gateway/cmd/geoimport` |
-| Builder, format, lookups | `services/gateway/internal/geo` |
-| The generated file (embedded, about 1.1 MB) | `services/gateway/internal/geo/data/geonames.json.gz` |
+| Client (read, cache, map) | `services/gateway/internal/geo` |
 | Routes | `services/gateway/internal/httpapi/geo.go`, documented in `api/openapi/v1.yaml` |
 | Console | `web/admin/src/shared/ui/location-fields` (`LocationFields`, `CountrySelect`), `web/admin/src/shared/lib/geo.ts` |
 | Mock for the console tests | `web/admin/e2e-mock/geo.ts` |
+| The service and its importer | nafru-scout: `apps/geo`, `tooling/ops/geo-import.ts` |
 
-The generated file is committed and embedded in the gateway binary, so a build and the tests need no network. A test fails if it grows past 5 MiB.
-
-## Regenerating
-
-```sh
-make geo-data                         # downloads the dumps from download.geonames.org and rewrites the file
-# or, offline, from dumps already on disk:
-cd services/gateway && go run ./cmd/geoimport -src /path/to/dumps -version geonames-2026-10-26
-```
-
-The importer reads `countryInfo.txt`, `admin1CodesASCII.txt`, `admin2Codes.txt`, `cities15000.zip` (`-no-cities` leaves the towns out) and `alternateNamesV2.zip`
-(`-no-alternates` leaves the local names out). The same
-dumps and `-version` give the same file byte for byte (sorted lists, no time stamp in the gzip header), so a refresh shows up as a reviewable change of
-one file. Commit it with the version in the message; nothing else needs to change.
+The gateway's tests use a fake nafru-geo (`httptest`), so they need no network and no key.
 
 ## API
 

@@ -1,9 +1,9 @@
 Payrudder is licensed under the Elastic License 2.0 (see LICENSE) from the first release after v0.4.0.
 Releases v0.1.0 to v0.4.0 were published under the Apache License 2.0 and remain available under it to those who received them.
 
-The country, region and district lists embedded in the gateway (services/gateway/internal/geo/data/geonames.json.gz) are made from GeoNames data
+The country, region and district lists the gateway serves (read from nafru-geo, services/gateway/internal/geo) are made from GeoNames data
 (https://www.geonames.org), licensed under the Creative Commons Attribution 4.0 License (https://creativecommons.org/licenses/by/4.0/). The data was
-reduced and merged as docs/geo-data.md describes.
+reduced as docs/geo-data.md describes.
 
 The invoice PDF of the invoice worker embeds Noto Sans (pkg/pdffont/fonts), Copyright 2022 The Noto Project Authors
 (https://github.com/notofonts/latin-greek-cyrillic), licensed under the SIL Open Font License, Version 1.1 (pkg/pdffont/fonts/OFL.txt).

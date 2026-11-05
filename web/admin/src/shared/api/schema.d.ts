@@ -5562,7 +5562,7 @@ export interface paths {
         };
         /**
          * Every country (GeoNames, CC BY 4.0), for the address forms
-         * @description The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames.
+         * @description The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames. Read from nafru-geo; 503 gateway.geo.unavailable while the lists cannot be read.
          */
         get: operations["appGeoCountries"];
         put?: never;
@@ -5582,7 +5582,7 @@ export interface paths {
         };
         /**
          * The first-level divisions of a country (states, provinces, counties), sorted by name
-         * @description A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code.
+         * @description A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code; 503 gateway.geo.unavailable while the lists cannot be read.
          */
         get: operations["appGeoRegions"];
         put?: never;
@@ -5601,8 +5601,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The districts of a region (second-level divisions and towns of 15000 people or more), sorted by name
-         * @description 404 gateway.geo.region_not_found for an unknown region id.
+         * The districts of a region (second-level divisions, or the larger towns of a region that has none), sorted by name
+         * @description 404 gateway.geo.region_not_found for an unknown region id; 503 gateway.geo.unavailable while the lists cannot be read.
          */
         get: operations["appGeoDistricts"];
         put?: never;

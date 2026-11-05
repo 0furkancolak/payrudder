@@ -36,6 +36,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/geo"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/httpapi"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/mailadmin"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
@@ -60,12 +61,15 @@ type Config struct {
 	// PaymentsURL is payments-worker's HTTP address; empty disables provider webhooks and provider accounts.
 	// NotifierURL is the notifier's events listener (NOTIFIER_EVENTS_ADDR, "http://notifier:9111") and NotifierSecret its NOTIFIER_MAIL_EVENTS_SECRET, which signs every request
 	// (environment only). Both or neither: without them the suppression list, the message log and the price-change preview answer 503 gateway.mail.unavailable.
-	NotifierURL    string   `env:"PAYRUDDER_NOTIFIER_EVENTS_URL"`
-	NotifierSecret string   `env:"PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"`
-	PaymentsURL    string   `env:"PAYRUDDER_PAYMENTS_URL"`
-	PaymentsToken  string   `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
-	Replicas       int      `env:"PAYRUDDER_GATEWAY_REPLICAS"`
-	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
+	NotifierURL    string `env:"PAYRUDDER_NOTIFIER_EVENTS_URL"`
+	NotifierSecret string `env:"PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET"`
+	PaymentsURL    string `env:"PAYRUDDER_PAYMENTS_URL"`
+	PaymentsToken  string `env:"PAYRUDDER_PAYMENTS_INTERNAL_TOKEN"`
+	// GeoURL is nafru-geo (config.default.yaml) and GeoAPIKey this gateway's key there (environment only); without the key the geo lists answer 503.
+	GeoURL      string   `env:"PAYRUDDER_GEO_URL"`
+	GeoAPIKey   string   `env:"PAYRUDDER_GEO_API_KEY"`
+	Replicas    int      `env:"PAYRUDDER_GATEWAY_REPLICAS"`
+	AllowedEnvs []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// PublicURL is the address customers reach the gateway at, for the invoice links it hands out (https://api.example.com). Empty: relative links.
 	PublicURL string `env:"PAYRUDDER_PUBLIC_URL"`
 	// TrustForwardedFor counts the public sign-in limits by X-Forwarded-For, for requests that come from a private address (the console's Worker or proxy).
@@ -345,6 +349,10 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		}
 	}
 	logMailWebhook(log, cfg)
+	var places *geo.Client
+	if cfg.GeoAPIKey != "" {
+		places = geo.New(cfg.GeoURL, cfg.GeoAPIKey, nil)
+	}
 	var mail httpapi.MailAdmin
 	if cfg.NotifierURL != "" {
 		c, err := mailadmin.New(cfg.NotifierURL, cfg.NotifierSecret, nil)
@@ -382,6 +390,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Region:         region,
 		Saas:           saas,
 		Mail:           mail,
+		Geo:            places,
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), OperatorSupportEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorSupportEmails), OperatorRequireTwoFactor: cfg.operatorRequireTwoFactor(), Google: google, AppURL: appURL, AuthFailures: authn.Failures(), OAuth: cfg.oauth(),
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), OrganisationMail: plansv1.NewOrganisationMailServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),

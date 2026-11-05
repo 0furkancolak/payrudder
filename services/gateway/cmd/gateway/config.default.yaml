@@ -10,6 +10,9 @@ PAYRUDDER_ASSETS_ADDR: "dns:///localhost:42707"
 PAYRUDDER_REDIS_URL: "redis://localhost:42379/0"
 PAYRUDDER_GATEWAY_REPLICAS: "1"
 PAYRUDDER_ALLOWED_ENVIRONMENTS: "sandbox,live"
+# nafru-geo, the GeoNames service the console's address forms read (countries, regions, districts). Its key, PAYRUDDER_GEO_API_KEY, is a secret
+# (environment only); without it /app/v1/geo/* answers 503 gateway.geo.unavailable and the forms take the region and city as text.
+PAYRUDDER_GEO_URL: "https://geo.nafru.com"
 # The console's public address: where the browser returns after "Continue with Google" and the default base of the Google redirect address (<it>/gw/auth/google/callback: the console forwards /gw/ to the gateway).
 PAYRUDDER_APP_URL: "http://localhost:42301"
 # The OpenID provider behind "Continue with Google". Google's own; development stacks may point it at the in-repo mock (tools/mockoidc). The button shows only when

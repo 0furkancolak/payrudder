@@ -125,8 +125,9 @@ Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route tha
 
 Redis only: `gw:apikey:{prefix}` (cache), `gw:rl:{tenant_id}:{class}` and `gw:rl:{tenant_id}:{class}:key:{key_id}` (GCRA state). Nothing durable.
 
-Reference data in the binary: the GeoNames country, region and district lists (`internal/geo`, embedded gzip, made by `cmd/geoimport`), served read-only
-under `GET /app/v1/geo/*` to any session. See [geo-data.md](../geo-data.md).
+Reference data: the GeoNames country, region and district lists, read from nafru-geo (`internal/geo`, `PAYRUDDER_GEO_URL` and the secret
+`PAYRUDDER_GEO_API_KEY`, kept in memory for a day), served read-only under `GET /app/v1/geo/*` to any session; without the key they answer 503
+`gateway.geo.unavailable`. See [geo-data.md](../geo-data.md).
 
 ## Consumed / produced messages
 
