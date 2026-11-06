@@ -38,8 +38,8 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+[[ -n $ENVIRONMENT ]] || { echo "--environment is required (staging or production)" >&2; exit 2; }
 if ((!DEPLOY_ONLY)); then
-  [[ -n $ENVIRONMENT ]] || { echo "--environment is required (staging or production)" >&2; exit 2; }
   [[ $CONSOLE_URL == https://* ]] || { echo "--console-url https://HOST is required" >&2; exit 2; }
 fi
 [[ $ALLOWED_ENVS == sandbox,live || $ALLOWED_ENVS == sandbox ]] || { echo "--allowed-environments must be sandbox,live or sandbox" >&2; exit 2; }
@@ -156,8 +156,7 @@ if ((FULL)); then INFRA+=(clickhouse); APPS_SECOND+=(analytics-svc); fi
 if ((DEPLOY_ONLY)); then
   # shortcut: the backing services are not redeployed by a release (their images rarely change); deploy one by hand when it did.
   note "Deploy this checkout: plans-svc first, the gateway last; each waits for its build and stops the script when it fails"
-  # analytics-svc is in production only, and a release goes to production.
-  for s in "${APPS_FIRST[@]}" "${APPS_SECOND[@]}" analytics-svc "${APPS_THIRD[@]}" gateway; do run railway up --service "$s" --ci; done
+  for s in "${APPS_FIRST[@]}" "${APPS_SECOND[@]}" "${APPS_THIRD[@]}" gateway; do run railway up --service "$s" --ci; done
   exit 0
 fi
 
@@ -287,11 +286,9 @@ if [[ -n ${GEO_API_KEY:-} ]]; then vars gateway "PAYRUDDER_GEO_API_KEY=$GEO_API_
 if [[ -n ${PAYRUDDER_GOOGLE_CLIENT_ID:-} ]]; then vars gateway "PAYRUDDER_GOOGLE_CLIENT_ID=$PAYRUDDER_GOOGLE_CLIENT_ID" "PAYRUDDER_GOOGLE_CLIENT_SECRET=${PAYRUDDER_GOOGLE_CLIENT_SECRET:-}"; fi
 
 # --- 3. deploy in dependency order ------------------------------------------------------------------------------------------------------------
-# Staging builds main from GitHub: its services are redeployed from the source. Production is not connected: this checkout is uploaded.
+# No environment is connected to GitHub: this checkout is uploaded (later pushes and releases go through deploy-staging.yml / deploy-production.yml).
 deploy() { # <service>...
-  for s in "$@"; do
-    if ((FULL)); then run railway up --service "$s" --detach; else run railway service redeploy --service "$s" --from-source --yes; fi
-  done
+  for s in "$@"; do run railway up --service "$s" --detach; done
 }
 pause() { echo "-- waiting ${WAIT}s: $*"; ((DRY_RUN)) || sleep "$WAIT"; }
 

@@ -39,8 +39,9 @@ The owner decided: two environments, `payrudder.com`, one subdomain level, geo f
 4. **Staging profile `small`** (no ClickHouse, no analytics-svc), **production `full`**.
 5. **Every secret and key is per environment**, never copied between them (secrets key, OTP pepper, operator token, the nafru-geo key, the Nafru
    mail key, Google OAuth client, provider keys). A leak in staging then never opens production.
-6. **The owner decided (2026-11-05): staging is every push to `main`, production is a published GitHub release.** Railway deploys `main` to staging
-   itself ("wait for CI"), `deploy-console.yml` the console. A release runs `deploy-production.yml`: the backend with `bootstrap.sh --deploy-only`
+6. **The owner decided (2026-11-05): staging is every push to `main`, production is a published GitHub release.** `deploy-staging.yml` deploys `main` to
+   staging (a Railway project token of the staging environment; changed on 2026-11-06, owner's decision: no Railway GitHub connection),
+   `deploy-console.yml` the console. A release runs `deploy-production.yml`: the backend with `bootstrap.sh --deploy-only`
    (a Railway project token of the production environment, `railway up --ci` per service) and then the console. No GitHub Environments: who may
    publish a release decides production. The console's config is `wrangler.toml` (owner's choice).
 

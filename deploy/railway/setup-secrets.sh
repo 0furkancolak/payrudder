@@ -89,11 +89,11 @@ github CLOUDFLARE_ACCOUNT_ID '^[0-9a-f]{32}$' "console Worker'ının deploy edil
 github CLOUDFLARE_API_TOKEN '^[A-Za-z0-9_-]{30,}$' "deploy-console.yml'ın Worker'ı deploy ettiği token" \
   "https://dash.cloudflare.com/profile/api-tokens → Create Token → 'Edit Cloudflare Workers' şablonu." \
   "Account resources: bu hesap; Zone resources: payrudder.com (Worker route'ları için gerekli)."
-if [[ $ENV == production ]]; then
-  github RAILWAY_TOKEN_PRODUCTION '^[A-Za-z0-9-]{20,}$' "deploy-production.yml'ın release'i deploy ettiği proje token'ı" \
-    "https://railway.com/dashboard → payrudder-production projesi → Settings → Tokens → Create, ortam 'production'." \
-    "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new production\`."
-fi
+# Railway project tokens look like rlwy_proj_... (older ones are a UUID).
+if [[ $ENV == production ]]; then WHEN="bir release yayınlandığında deploy-production.yml"; else WHEN="main'e her push'ta deploy-staging.yml"; fi
+github "RAILWAY_TOKEN_$(tr a-z A-Z <<<"$ENV")" '^[A-Za-z0-9_-]{20,}$' "$WHEN'ın servisleri deploy ettiği proje token'ı" \
+  "https://railway.com/dashboard → payrudder projesi → Settings → Tokens → Create, ortam '$ENV'." \
+  "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new $ENV\`."
 
 echo
 echo "== $ENV: bootstrap girdileri, $FILE içinde"

@@ -344,10 +344,7 @@ func TestBootstrapDryRun(t *testing.T) {
 	}
 	for _, profile := range []string{"full", "small"} {
 		text := dryRunOutput(t, repo, profile)
-		deploy := " --from-source --yes\n"
-		if profile == "full" {
-			deploy = " --detach\n"
-		}
+		deploy := " --detach\n" // no environment is connected to GitHub: the checkout is uploaded
 		for _, name := range composeApps(t, repo) {
 			if name == "admin-ui" {
 				continue
@@ -555,11 +552,21 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 	}
 }
 
-// A release deploys production with --deploy-only (deploy-production.yml): every Payrudder service of the profile is built from the checkout, plans-svc
-// first and the gateway last, each waiting for its build; nothing is created, set or linked, and the console's container is left out when it runs elsewhere.
+// A release deploys production and a push to main staging with --deploy-only (deploy-production.yml, deploy-staging.yml): every Payrudder service of
+// the environment is built from the checkout, plans-svc first and the gateway last, each waiting for its build; nothing is created, set or linked, and
+// the console's container is left out when it runs elsewhere. Staging has no analytics-svc.
 func TestBootstrapDeployOnly(t *testing.T) {
 	repo := root(t)
-	out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only").CombinedOutput()
+	for _, env := range []string{"production", "staging"} {
+		t.Run(env, func(t *testing.T) { testDeployOnly(t, repo, env) })
+	}
+	if out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only").CombinedOutput(); err == nil {
+		t.Errorf("--deploy-only without --environment was accepted:\n%s", out)
+	}
+}
+
+func testDeployOnly(t *testing.T, repo, env string) {
+	out, err := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--dry-run", "--deploy-only", "--environment", env).CombinedOutput()
 	if err != nil {
 		t.Fatalf("dry run: %v\n%s", err, out)
 	}
@@ -576,7 +583,7 @@ func TestBootstrapDeployOnly(t *testing.T) {
 	}
 	var want []string
 	for _, name := range composeApps(t, repo) {
-		if name != "admin-ui" {
+		if name != "admin-ui" && (env == "production" || name != "analytics-svc") {
 			want = append(want, name)
 		}
 	}
@@ -620,19 +627,19 @@ func TestSetupSecrets(t *testing.T) {
 			t.Errorf("--check: no %q in\n%s", want, out)
 		}
 	}
-	if out, _ := run("", "--check", "staging"); strings.Contains(out, "RAILWAY_TOKEN_PRODUCTION") {
-		t.Errorf("staging asks for the production token:\n%s", out)
+	if out, _ := run("", "--check", "staging"); strings.Contains(out, "RAILWAY_TOKEN_PRODUCTION") || !strings.Contains(out, "✗ RAILWAY_TOKEN_STAGING") {
+		t.Errorf("staging must ask for its own token, not production's:\n%s", out)
 	}
 
 	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, the R2 endpoint and keys,
 	// operators, no DSN, no Google.
 	key := `a key with spaces, 'quotes' and $dollars`
-	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrailway-token-abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
+	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrlwy_proj_abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
 		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n\n"
 	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "bootstrap.sh --dry-run --environment production --console-url https://console.payrudder.com") {
 		t.Fatalf("a full run: err=%v\n%s", err, out)
 	}
-	if b, _ := os.ReadFile(log); string(b) != "CLOUDFLARE_API_TOKEN=cf_token_abcdefghijklmnopqrstuvwxyz0123\nRAILWAY_TOKEN_PRODUCTION=railway-token-abcdefghijklmnop\n" {
+	if b, _ := os.ReadFile(log); string(b) != "CLOUDFLARE_API_TOKEN=cf_token_abcdefghijklmnopqrstuvwxyz0123\nRAILWAY_TOKEN_PRODUCTION=rlwy_proj_abcdefghijklmnop\n" {
 		t.Errorf("gh secret set got:\n%s", b)
 	}
 	file := filepath.Join(secrets, "production.env")

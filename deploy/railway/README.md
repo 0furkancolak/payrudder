@@ -57,8 +57,8 @@ Service names are the compose names, lower-case, because they become DNS names. 
 
 ## Prerequisites
 
-- A Railway project `payrudder` on a plan that allows the memory below, with the environments `staging` and `production`, and Railway's GitHub app
-  installed for the repository (staging builds `main` from it).
+- A Railway project `payrudder` on a plan that allows the memory below, with the environments `staging` and `production`. Neither is connected to
+  GitHub: the workflows upload the checkout.
 - The [CLI](https://docs.railway.com/cli) (`brew install railway`), Node with `npm` (the IaC), `openssl`, `bash`. `railway login`, then `railway link`
   to the project.
 - Cloudflare R2: the buckets `payrudder-invoices-<environment>` and `payrudder-assets-<environment>`, and an R2 API token for them.
@@ -88,7 +88,7 @@ environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects the
 
 | Flag or variable | Effect |
 |---|---|
-| `--environment staging\|production` | required; the Railway environment (it must exist). `production` gets ClickHouse and `analytics-svc` and is not connected to GitHub; any other environment builds `main` from GitHub |
+| `--environment staging\|production` | required; the Railway environment (it must exist). `production` gets ClickHouse and `analytics-svc`, staging does not |
 | `--console-url` | required; the console is the Cloudflare Worker: `PAYRUDDER_APP_URL` is this address, and `PAYRUDDER_TRUSTED_PROXY_SECRET` is generated on the gateway (put the same value on the Worker as `EDGE_AUTH_SECRET`) |
 | `--api-domain` | the gateway's custom domain; created with `railway domain` the first time (add the DNS records it prints, DNS only), then kept in the IaC. `PAYRUDDER_PUBLIC_URL` uses it instead of the generated domain |
 | `--allowed-environments sandbox` | a sandbox-only deployment: live accounts are refused (plans-svc, gateway) |
@@ -99,14 +99,15 @@ environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects the
 | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` | set on the gateway as they are: "Continue with Google" |
 | `--deploy-only` | builds the Payrudder services from this checkout with `railway up --ci`, in order, and nothing else; with `RAILWAY_TOKEN` (a project token of one environment) it needs no login |
 
-Staging is connected to GitHub: Railway deploys every push to `main`. Production is not connected, and a published GitHub release deploys it:
-`.github/workflows/deploy-production.yml` runs `bootstrap.sh --deploy-only` with the secret `RAILWAY_TOKEN_PRODUCTION`, then the console.
+Every push to `main` deploys staging: `.github/workflows/deploy-staging.yml` runs `bootstrap.sh --deploy-only --environment staging` with the
+secret `RAILWAY_TOKEN_STAGING`. A published GitHub release deploys production: `.github/workflows/deploy-production.yml` runs it with
+`--environment production` and `RAILWAY_TOKEN_PRODUCTION`, then the console.
 
 ## By hand (what the script does)
 
 1. **Resources.** `cd deploy/railway/iac && npm ci && railway config plan --environment <env>` shows what `railway.ts` would change;
-   `railway config apply --environment <env>` applies it. The file declares the `Postgres` and `Redis` databases, every service with its source
-   (GitHub for staging, none for production), the volumes (5 GB each, on `rabbitmq`, `redpanda` and in production `clickhouse`), the canvas groups
+   `railway config apply --environment <env>` applies it. The file declares the `Postgres` and `Redis` databases, every service (no source: the
+   checkout is uploaded), the volumes (5 GB each, on `rabbitmq`, `redpanda` and in production `clickhouse`), the canvas groups
    (Data, Messaging, API, Workers, Sandbox), and each service's build (`dockerfilePath`, watch patterns) and deploy settings (health check, restart
    policy), read from its `deploy/railway/{services,infra}/<name>.railway.json`. It does not own variables.
 2. **Domain.** `railway domain api.example.com --service gateway --port 8000`, then the DNS records it prints. Later applies keep it when
@@ -129,8 +130,8 @@ Staging is connected to GitHub: Railway deploys every push to `main`. Production
    Losing `PAYRUDDER_SECRETS_KEY` makes every sealed credential unreadable: back it up outside Railway.
 4. **Deploy in order**, waiting for each stage to be healthy: `pgbouncer`, `rabbitmq`, `redpanda` (and `clickhouse` in production); `plans-svc` (it
    creates the Kafka topics); `ingest-svc`, `aggregator`, `limits-svc`, `assets-svc`, `mockpsp`, `analytics-svc`; `billing-svc`, `payments-worker`,
-   `invoice-worker`, `notifier`; `gateway`. Staging redeploys from its source (`railway service redeploy --from-source`), production uploads the
-   checkout (`railway up`). A service started too early restarts (`ON_FAILURE`, 10 tries) until its dependencies answer, so a wrong order is slow,
+   `invoice-worker`, `notifier`; `gateway`. Both environments upload the checkout
+   (`railway up --detach`). A service started too early restarts (`ON_FAILURE`, 10 tries) until its dependencies answer, so a wrong order is slow,
    not fatal.
 
 ## Memory
@@ -467,7 +468,7 @@ Run locally with Docker (not on Railway):
 - that Nafru's delivery webhook reaches `https://<gateway domain>/inbound/mail-events` and verifies against `MAIL_WEBHOOK_SECRET`;
 - this layout has not been deployed: `railway.ts` and `railway config plan/apply` were never run against the project, and the CLI commands in
   `bootstrap.sh` and the shape of `railway domain list --json` it matches are assumed;
-- the order and waits of the staged deploy (`railway service redeploy --from-source` on staging, `railway up --detach` on production);
+- the order and waits of the staged deploy (`railway up --detach`);
 - that Railway passes service variables to `go.Dockerfile` as the `SERVICE_DIR` build argument;
 - reference variables such as `${{Postgres.RAILWAY_PRIVATE_DOMAIN}}`, `${{Postgres.DATABASE_URL}}` and `${{Postgres.PG_APP_PASSWORD}}`, and that
   Postgres's `postgres` user can create `BYPASSRLS` roles and databases;

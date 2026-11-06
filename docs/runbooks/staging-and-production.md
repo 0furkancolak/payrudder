@@ -12,7 +12,7 @@ below (IaC, R2, Nafru, PgBouncer, no init jobs) is newer and not yet run end to 
 | Public assets (the assets bucket's R2 domain) | `assets.payrudder.com` | `assets-staging.payrudder.com` |
 | ClickHouse and analytics-svc | yes | no |
 | Allowed environments | `sandbox` (until go-live) | `sandbox` |
-| Deployed on | a published GitHub release (`deploy-production.yml`) | every push to `main` (Railway itself, and `deploy-console.yml`) |
+| Deployed on | a published GitHub release (`deploy-production.yml`) | every push to `main` (`deploy-staging.yml`, and `deploy-console.yml`) |
 
 Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare's free certificate covers no more). Every key and secret below is made
 **once per environment** and never copied to the other.
@@ -20,17 +20,16 @@ Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare'
 ## 0. Once
 
 1. `payrudder.com` is a zone in the Cloudflare account.
-2. Railway: one project `payrudder` with the environments `staging` (`railway environment new staging`) and `production` (the default one), the
-   GitHub app installed for the repository. The services, databases, volumes, canvas groups and health checks are code:
-   `deploy/railway/iac/.railway/railway.ts`, applied per environment by the bootstrap (`railway config apply`). Staging is connected to GitHub,
-   production is not. (Adding services one by one with `railway add` does not work for a second environment: the CLI refuses the names.)
+2. Railway: one project `payrudder` with the environments `staging` (`railway environment new staging`) and `production` (the default one). The services, databases, volumes, canvas groups and health checks are code:
+   `deploy/railway/iac/.railway/railway.ts`, applied per environment by the bootstrap (`railway config apply`). Neither environment is
+   connected to GitHub: the workflows upload the checkout. (Adding services one by one with `railway add` does not work for a second environment: the CLI refuses the names.)
 3. Cloudflare R2: the four buckets of the table (`npx wrangler r2 bucket create <name> --location weur`), CORS on the assets buckets for the console's
    uploads (`wrangler r2 bucket cors set`, origin the console host, methods GET/PUT/HEAD, expose `ETag`), and the assets domains
    (`wrangler r2 bucket domain add payrudder-assets-<env> --domain assets[-staging].payrudder.com --zone-id <zone>`).
 4. GitHub, *Settings → Secrets and variables → Actions*, repository secrets (no GitHub Environments; who may publish a release decides production):
    - `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`, for both console deploys.
-   - `RAILWAY_TOKEN_PRODUCTION`: a project token of `payrudder`, environment `production` (*Project settings → Tokens*), for the release workflow.
-     Staging needs none: Railway deploys `main` itself.
+   - `RAILWAY_TOKEN_STAGING` and `RAILWAY_TOKEN_PRODUCTION`: project tokens of `payrudder` (*Project settings → Tokens*, `rlwy_proj_...`), one per
+     environment, for `deploy-staging.yml` (every push to `main`) and `deploy-production.yml` (a published release).
 
 ## 1. Keys for one environment
 

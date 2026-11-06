@@ -1,0 +1,33 @@
+name: deploy-staging
+
+# Every push to main deploys the backend to the Railway environment "staging" (docs/runbooks/staging-and-production.md); the console is
+# deploy-console.yml. Without the secret RAILWAY_TOKEN_STAGING (a project token of the staging environment) the deploy is skipped.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# One deploy at a time, in push order: a half-cancelled run would leave services of two commits.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Deploy the services to Railway
+        if: ${{ env.RAILWAY_TOKEN != '' }}
+        run: |
+          npm install -g @railway/cli@5.71.0
+          deploy/railway/bootstrap.sh --deploy-only --environment staging
+      - name: Deploy skipped
+        if: ${{ env.RAILWAY_TOKEN == '' }}
+        run: echo "::notice::RAILWAY_TOKEN_STAGING is not set; the backend was not deployed (docs/runbooks/staging-and-production.md)."

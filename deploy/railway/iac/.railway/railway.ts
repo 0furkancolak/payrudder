@@ -4,7 +4,7 @@
 // deploy/railway/{services,infra}/<name>.railway.json, so they are written once.
 // Plan / apply with the environment linked: cd deploy/railway/iac && npm ci && railway config plan --environment staging (the bootstrap applies it).
 import { readFileSync } from "node:fs";
-import { defineRailway, empty, github, group, postgres, redis, service, volume } from "railway/iac";
+import { defineRailway, empty, group, postgres, redis, service, volume } from "railway/iac";
 
 const REGION = "europe-west4-drams3a";
 const railwayDir = new URL("../../", import.meta.url);
@@ -21,8 +21,8 @@ const vol = (name: string) =>
 
 export default defineRailway(({ isEnvironment }, project) => {
   const production = isEnvironment("production");
-  // Staging builds every push to main from GitHub; production is not connected: a published release uploads it (deploy-production.yml).
-  const source = production ? empty() : github("0furkancolak/payrudder");
+  // Not connected to GitHub: deploy-staging.yml uploads every push to main, deploy-production.yml a published release.
+  const source = empty();
   // The gateway's custom domain is created by the bootstrap (`railway domain`; IaC cannot register one) and then kept here. The bootstrap
   // passes it once it exists, so an apply never deletes it and the first one does not fail.
   const apiDomain = process.env.PAYRUDDER_API_DOMAIN;
