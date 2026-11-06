@@ -106,6 +106,11 @@ Each line says what to look at. Write down any that fail.
 11. **Production only:** Railway backups are on, and one restore into a scratch environment worked ([backup-restore](backup-restore.md)) **before the
     first tenant**.
 
+## Observability
+
+Grafana: `https://grafana-staging.payrudder.com` and `https://grafana.payrudder.com` (user `admin`, the password is `GF_SECURITY_ADMIN_PASSWORD` on
+the grafana service). Alerts go to the Telegram chat of `TELEGRAM_CHAT_ID`. What runs where: [deploy/railway/README.md](../../deploy/railway/README.md#observability).
+
 ## A release to production
 
 1. A commit on `main` is green in CI and was checked on staging.

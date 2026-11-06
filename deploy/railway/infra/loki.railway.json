@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/railway/images/loki/Dockerfile",
+    "watchPatterns": [
+      "/deploy/railway/images/loki/**",
+      "/deploy/loki/**"
+    ]
+  },
+  "deploy": {
+    "healthcheckPath": "/ready",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "requiredMountPath": "/loki",
+    "numReplicas": 1
+  }
+}

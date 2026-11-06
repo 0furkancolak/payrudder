@@ -155,6 +155,7 @@ func TestEveryComposeServiceHasARailwayConfig(t *testing.T) {
 func TestInfraConfigs(t *testing.T) {
 	repo := root(t)
 	files, _ := filepath.Glob(filepath.Join(repo, "deploy", "railway", "infra", "*.railway.json"))
+	iac := read(t, repo, "deploy", "railway", "iac", ".railway", "railway.ts")
 	if len(files) < 4 {
 		t.Fatalf("expected pgbouncer, rabbitmq, redpanda and clickhouse, found %d files", len(files))
 	}
@@ -162,20 +163,24 @@ func TestInfraConfigs(t *testing.T) {
 		rel, _ := filepath.Rel(repo, f)
 		t.Run(filepath.Base(f), func(t *testing.T) {
 			cfg := load(t, repo, rel)
-			// PgBouncer is Railway's template image (railway.ts), with no build of its own.
-			if filepath.Base(f) == "pgbouncer.railway.json" {
-				if cfg.Build.DockerfilePath != "" || !strings.Contains(fmt.Sprint(cfg.Deploy["startCommand"]), "auth_query") {
-					t.Errorf("pgbouncer: want no Dockerfile and a start command with auth_query, got %+v", cfg)
+			name := strings.TrimSuffix(filepath.Base(f), ".railway.json")
+			// PgBouncer speaks only the Postgres protocol and Locomotive serves nothing: Railway checks they are running, not an HTTP path.
+			hc, _ := cfg.Deploy["healthcheckPath"].(string)
+			if (hc == "") != (name == "pgbouncer" || name == "locomotive") {
+				t.Errorf("healthcheckPath %q: every backing service but PgBouncer and Locomotive has one", hc)
+			}
+			// No build: a published image, which railway.ts names as the service's source.
+			if cfg.Build.DockerfilePath == "" {
+				if !regexp.MustCompile(`svc\("infra", "` + name + `", \{ source: image\(`).MatchString(iac) {
+					t.Errorf("%s has no Dockerfile and railway.ts gives it no image", name)
+				}
+				if name == "pgbouncer" && !strings.Contains(fmt.Sprint(cfg.Deploy["startCommand"]), "auth_query") {
+					t.Errorf("pgbouncer: the start command has no auth_query: %v", cfg.Deploy["startCommand"])
 				}
 				return
 			}
 			if !exists(repo, cfg.Build.DockerfilePath) {
 				t.Fatalf("dockerfilePath %q does not exist", cfg.Build.DockerfilePath)
-			}
-			// PgBouncer speaks only the Postgres protocol: Railway checks it is running, not an HTTP path.
-			hc, _ := cfg.Deploy["healthcheckPath"].(string)
-			if (hc == "") != (filepath.Base(f) == "pgbouncer.railway.json") {
-				t.Errorf("healthcheckPath %q: every backing service but PgBouncer has one", hc)
 			}
 			// Every file COPYed from the repo by the image must exist.
 			for _, m := range regexp.MustCompile(`(?m)^COPY\s+(deploy/\S+)`).FindAllStringSubmatch(read(t, repo, cfg.Build.DockerfilePath), -1) {
@@ -627,8 +632,8 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	out, err := run("", "--check", "production")
-	if err == nil || !strings.Contains(out, "7 zorunlu kalem eksik") {
-		t.Fatalf("--check with nothing set: want 7 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	if err == nil || !strings.Contains(out, "10 zorunlu kalem eksik") {
+		t.Fatalf("--check with nothing set: want 10 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
 	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- NAFRU_API_KEY"} {
 		if !strings.Contains(out, want) {
@@ -640,10 +645,11 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, the R2 endpoint and keys,
-	// operators, no Google.
+	// operators, no Google, the Telegram bot and chat, the Locomotive token, no watchdog.
 	key := `a key with spaces, 'quotes' and $dollars`
 	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrlwy_proj_abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
-		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n"
+		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n" +
+		"123456:" + strings.Repeat("t", 35) + "\n-1001234\n" + strings.Repeat("l", 36) + "\n\n"
 	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "bootstrap.sh --dry-run --environment production --console-url https://console.payrudder.com") {
 		t.Fatalf("a full run: err=%v\n%s", err, out)
 	}
@@ -675,5 +681,24 @@ func TestGoogleSignInIsSetOnTheGatewayWhenGiven(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "railway variable set --service gateway --skip-deploys PAYRUDDER_GOOGLE_CLIENT_ID=id.apps.googleusercontent.com PAYRUDDER_GOOGLE_CLIENT_SECRET=google-secret") {
 		t.Errorf("no Google variables on the gateway:\n%s", out)
+	}
+}
+
+// Observability on Railway: Prometheus scrapes every Payrudder service over the private network, and every Go service sends its traces to the
+// environment's collector.
+func TestObservabilityReachesEveryService(t *testing.T) {
+	repo := root(t)
+	prom := read(t, repo, "deploy", "railway", "images", "prometheus", "prometheus.yml")
+	text := dryRunOutput(t, repo, "full")
+	for _, name := range composeApps(t, repo) {
+		if name == "admin-ui" || name == "mockpsp" {
+			continue
+		}
+		if !strings.Contains(prom, `"`+name+`.railway.internal:9100"`) {
+			t.Errorf("Prometheus does not scrape %s", name)
+		}
+		if !strings.Contains(text, "--service "+name+" --skip-deploys SERVICE_DIR=") || !regexp.MustCompile(`--service `+name+` --skip-deploys SERVICE_DIR=\S+ GOMEMLIMIT=\S+ PAYRUDDER_OTLP_ENDPOINT=otel-collector\.railway\.internal:4317`).MatchString(text) {
+			t.Errorf("%s does not send its traces to the collector", name)
+		}
 	}
 }

@@ -5,23 +5,24 @@
 # when the variable does not exist yet. --dry-run prints every command and runs none (the CLI need not be installed).
 # Read deploy/railway/README.md first. Variable values use Railway's reference syntax, ${{service.NAME}}.
 #
-#   deploy/railway/bootstrap.sh --environment staging|production --console-url https://HOST [--api-domain HOST] [--allowed-environments LIST]
-#                               [--demo] [--wait SECONDS] [--allow-destroy] [--dry-run]
-#   deploy/railway/bootstrap.sh --deploy-only [--dry-run]
+#   deploy/railway/bootstrap.sh --environment staging|production --console-url https://HOST [--api-domain HOST] [--grafana-domain HOST]
+#                               [--allowed-environments LIST] [--demo] [--wait SECONDS] [--allow-destroy] [--dry-run]
+#   deploy/railway/bootstrap.sh --deploy-only --environment staging|production [--dry-run]
 #
-#   --environment    the Railway environment (it must exist). production gets ClickHouse and analytics-svc and is not connected to GitHub
-#                    (a published release deploys it); any other environment builds main from GitHub (railway.ts)
+#   --environment    the Railway environment (it must exist). production gets ClickHouse and analytics-svc. Neither is connected to GitHub:
+#                    deploy-staging.yml (every push to main) and deploy-production.yml (a published release) upload the checkout
 #   --console-url    the console's address (the Cloudflare Worker, ADR 0021): links and sign-in go there
 #   --api-domain     the gateway's custom domain (api.payrudder.com); created with `railway domain` the first time, which prints its DNS records
+#   --grafana-domain Grafana's custom domain (grafana.payrudder.com), the same way
 #   --allowed-environments  sandbox,live (default) or sandbox: a sandbox-only deployment refuses live accounts
 #   --demo           PAYRUDDER_DEMO=true: every tenant is served by the mock provider (never next to real provider accounts)
 #   --allow-destroy  let the IaC apply delete resources that railway.ts no longer has (it stops and says so otherwise)
 #   --deploy-only    only `railway up --ci` of the Payrudder services of this checkout, in order (a release to production: deploy-production.yml).
-#                    Creates and sets nothing; RAILWAY_TOKEN is a project token of one environment, so it needs no login and no --environment
+#                    Creates and sets nothing; RAILWAY_TOKEN is a project token of that environment, so it needs no login
 set -euo pipefail
 
 DRY_RUN=0 DEMO=false WAIT=45 DEPLOY_ONLY=0 ALLOW_DESTROY=0
-ENVIRONMENT="" CONSOLE_URL="" API_DOMAIN="" ALLOWED_ENVS=sandbox,live
+ENVIRONMENT="" CONSOLE_URL="" API_DOMAIN="" GRAFANA_DOMAIN="" ALLOWED_ENVS=sandbox,live
 while [[ $# -gt 0 ]]; do
   case $1 in
     --dry-run) DRY_RUN=1 ;;
@@ -32,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --environment) ENVIRONMENT=$2; shift ;;
     --console-url) CONSOLE_URL=$2; shift ;;
     --api-domain) API_DOMAIN=$2; shift ;;
+    --grafana-domain) GRAFANA_DOMAIN=$2; shift ;;
     --allowed-environments) ALLOWED_ENVS=$2; shift ;;
     -h | --help) sed -n '2,21p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -43,7 +45,9 @@ if ((!DEPLOY_ONLY)); then
   [[ $CONSOLE_URL == https://* ]] || { echo "--console-url https://HOST is required" >&2; exit 2; }
 fi
 [[ $ALLOWED_ENVS == sandbox,live || $ALLOWED_ENVS == sandbox ]] || { echo "--allowed-environments must be sandbox,live or sandbox" >&2; exit 2; }
-[[ $API_DOMAIN != *://* && $API_DOMAIN != */* ]] || { echo "--api-domain takes a host name, not a URL: $API_DOMAIN" >&2; exit 2; }
+for d in "$API_DOMAIN" "$GRAFANA_DOMAIN"; do
+  [[ $d != *://* && $d != */* ]] || { echo "--api-domain and --grafana-domain take a host name, not a URL: $d" >&2; exit 2; }
+done
 # Inputs from the environment (deploy/railway/setup-secrets.sh collects them into a file, with where each one comes from):
 # NAFRU_BASE_URL, NAFRU_API_KEY (both or neither): the platform's mail goes through Nafru Email; set on the notifier. There is no mail catcher:
 #   sandbox tenants' mail goes through Nafru too, with a marked subject. Empty: the notifier sends no mail (signup verification, invoices).
@@ -55,6 +59,10 @@ fi
 # ERROR_TRACKING_URL: a GlitchTip or Sentry DSN, set as PAYRUDDER_ERROR_TRACKING_URL on every Go service. Empty: error tracking stays off.
 # MAIL_WEBHOOK_SECRET: the "whsec_..." secret of Nafru's delivery-events webhook (https://<api domain>/inbound/mail-events), on the gateway.
 # PAYRUDDER_GOOGLE_CLIENT_ID, PAYRUDDER_GOOGLE_CLIENT_SECRET: set on the gateway as they are, for "Continue with Google". Empty: not set.
+# TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (both or neither): Alertmanager sends page and warn alerts to that chat. Empty: alerts stay in Grafana.
+# WATCHDOG_URL: an outside dead man's switch (healthchecks.io) the always-firing Watchdog alert is posted to every minute. Empty: none.
+# LOCOMOTIVE_RAILWAY_API_KEY: a Railway account token (railway.com/account/tokens, no workspace: project and team tokens do not work) with which
+#   Locomotive reads the environment's logs for Loki. Empty: no logs in Grafana.
 if ((!DEPLOY_ONLY && !DRY_RUN)); then
   for v in S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY; do
     [[ -n ${!v:-} ]] || { echo "$v is required (deploy/railway/setup-secrets.sh $ENVIRONMENT)" >&2; exit 2; }
@@ -142,7 +150,7 @@ common() { # <service name> <port>
 # works before the heap grows past it. GOGC is 50 by default (pkg/memlimit). Raise GOMEMLIMIT on a service that logs "memory limit" pressure.
 GO_MEMLIMIT=${GO_MEMLIMIT:-96MiB}
 go_service() { # <service name> <dir> <port>
-  vars "$1" "SERVICE_DIR=$2" "GOMEMLIMIT=$GO_MEMLIMIT"
+  vars "$1" "SERVICE_DIR=$2" "GOMEMLIMIT=$GO_MEMLIMIT" PAYRUDDER_OTLP_ENDPOINT=otel-collector.railway.internal:4317
   common "$1" "$3"
   if [[ -n ${ERROR_TRACKING_URL:-} && $1 != mockpsp ]]; then vars "$1" "PAYRUDDER_ERROR_TRACKING_URL=$ERROR_TRACKING_URL"; fi
 }
@@ -165,18 +173,26 @@ note "Resources: deploy/railway/iac/.railway/railway.ts"
 IAC=$(cd "$(dirname "$0")/iac" && pwd)
 APPLY=(railway config apply --environment "$ENVIRONMENT" --yes)
 ((ALLOW_DESTROY)) && APPLY+=(--confirm-destructive)
-# The gateway's custom domain: IaC keeps one that exists but cannot create it, so it is passed only once it does.
-HAS_DOMAIN=0
-if [[ -n $API_DOMAIN ]] && ((!DRY_RUN)) && grep -q "\"domain\": *\"$API_DOMAIN\"" <<<"$(railway domain list --service gateway --json 2>/dev/null)"; then HAS_DOMAIN=1; fi
+# Custom domains (the gateway's, Grafana's): IaC keeps one that exists but cannot create it, so it is passed only once it does.
+has_domain() { # <service> <domain>
+  [[ -n $2 ]] && ((!DRY_RUN)) && grep -q "\"domain\": *\"$2\"" <<<"$(railway domain list --service "$1" --json 2>/dev/null)"
+}
+DOMAIN_ENV=()
+has_domain gateway "$API_DOMAIN" && DOMAIN_ENV+=("PAYRUDDER_API_DOMAIN=$API_DOMAIN")
+has_domain grafana "$GRAFANA_DOMAIN" && DOMAIN_ENV+=("PAYRUDDER_GRAFANA_DOMAIN=$GRAFANA_DOMAIN")
 if ((DRY_RUN)); then
-  echo "+ (cd $IAC && npm ci && ${API_DOMAIN:+[PAYRUDDER_API_DOMAIN=$API_DOMAIN once it exists] }${APPLY[*]})"
+  echo "+ (cd $IAC && npm ci && [the domains that exist] ${APPLY[*]})"
 else
-  (cd "$IAC" && npm ci --silent --no-audit --no-fund && if ((HAS_DOMAIN)); then PAYRUDDER_API_DOMAIN=$API_DOMAIN "${APPLY[@]}"; else "${APPLY[@]}"; fi)
+  (cd "$IAC" && npm ci --silent --no-audit --no-fund && env ${DOMAIN_ENV[@]+"${DOMAIN_ENV[@]}"} "${APPLY[@]}")
 fi
-if [[ -n $API_DOMAIN ]] && ((!HAS_DOMAIN)); then
-  note "The gateway's domain: add the DNS records it prints in Cloudflare, DNS only (grey cloud)"
-  run railway domain "$API_DOMAIN" --service gateway --port 8000
-fi
+add_domain() { # <service> <domain> <port>
+  if [[ -n $2 ]] && ! has_domain "$1" "$2"; then
+    note "$1's domain: add the DNS records it prints in Cloudflare, DNS only (grey cloud)"
+    run railway domain "$2" --service "$1" --port "$3"
+  fi
+}
+add_domain gateway "$API_DOMAIN" 8000
+add_domain grafana "$GRAFANA_DOMAIN" 3000
 
 # --- 2. variables ----------------------------------------------------------------------------------------------------------------------------
 note "Backing services"
@@ -194,6 +210,39 @@ vars redpanda RAILWAY_RUN_UID=0 PORT=9644
 if ((FULL)); then
   secret clickhouse CLICKHOUSE_PASSWORD hex24
   vars clickhouse CLICKHOUSE_DB=payrudder CLICKHOUSE_USER=payrudder CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 RAILWAY_RUN_UID=0 PORT=8123
+fi
+
+note "Observability"
+vars otel-collector PORT=13133
+vars tempo RAILWAY_RUN_UID=0 PORT=3200
+vars loki RAILWAY_RUN_UID=0 PORT=3100
+vars vector PORT=8686
+vars prometheus RAILWAY_RUN_UID=0 PORT=9090
+vars alertmanager PORT=9093
+if [[ -n ${TELEGRAM_BOT_TOKEN:-} && -n ${TELEGRAM_CHAT_ID:-} ]]; then
+  vars alertmanager "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" "TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID"
+else
+  echo "warning: no TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, alerts are only visible in Grafana and Alertmanager" >&2
+fi
+if [[ -n ${WATCHDOG_URL:-} ]]; then vars alertmanager "WATCHDOG_URL=$WATCHDOG_URL"; fi
+secret grafana GF_SECURITY_ADMIN_PASSWORD hex24
+vars grafana PORT=3000 GF_SECURITY_ADMIN_USER=admin GF_AUTH_ANONYMOUS_ENABLED=false GF_USERS_ALLOW_SIGN_UP=false \
+  GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/services.json GF_ANALYTICS_REPORTING_ENABLED=false \
+  GF_ANALYTICS_CHECK_FOR_UPDATES=false GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false GF_LOG_LEVEL=warn \
+  "GF_SERVER_ROOT_URL=${GRAFANA_DOMAIN:+https://$GRAFANA_DOMAIN}"
+vars postgres-exporter PORT=9187 'DATA_SOURCE_NAME=${{Postgres.DATABASE_URL}}?sslmode=disable'
+vars redis-exporter PORT=9121 'REDIS_ADDR=${{Redis.REDIS_URL}}'
+# Locomotive forwards the logs of every service of this environment (by reference, so no ID is looked up) to Vector, as JSON lines.
+LOGGED=(Postgres Redis pgbouncer rabbitmq redpanda clickhouse gateway plans-svc ingest-svc aggregator limits-svc billing-svc assets-svc analytics-svc payments-worker invoice-worker notifier mockpsp otel-collector tempo loki vector prometheus alertmanager grafana postgres-exporter redis-exporter)
+((FULL)) || LOGGED=("${LOGGED[@]/clickhouse}") LOGGED=("${LOGGED[@]/analytics-svc}")
+IDS=""
+for s in "${LOGGED[@]}"; do [[ -n $s ]] && IDS+="${IDS:+,}\${{$s.RAILWAY_SERVICE_ID}}"; done
+vars locomotive 'LOCOMOTIVE_ENVIRONMENT_ID=${{RAILWAY_ENVIRONMENT_ID}}' "LOCOMOTIVE_SERVICE_IDS=$IDS" \
+  LOCOMOTIVE_WEBHOOK_URL=http://vector.railway.internal:8080 LOCOMOTIVE_WEBHOOK_MODE=jsonl
+if [[ -n ${LOCOMOTIVE_RAILWAY_API_KEY:-} ]]; then
+  vars locomotive "LOCOMOTIVE_RAILWAY_API_KEY=$LOCOMOTIVE_RAILWAY_API_KEY"
+else
+  echo "warning: no LOCOMOTIVE_RAILWAY_API_KEY, Locomotive cannot read the logs (Grafana shows none)" >&2
 fi
 
 note "Secrets shared by services"
@@ -297,6 +346,9 @@ note "Deploy: backing services"
 # PgBouncer runs an image (Railway's template), nothing to upload: a redeploy picks up its variables.
 run railway service redeploy --service pgbouncer --yes
 deploy "${INFRA[@]}"
+# Observability before the services, so their first traces and logs land. The exporters and Locomotive are images: a redeploy.
+deploy tempo loki prometheus alertmanager vector otel-collector grafana
+for s in postgres-exporter redis-exporter locomotive; do run railway service redeploy --service "$s" --yes; done
 pause "the pooler and the brokers come up (Postgres and Redis are already running)"
 note "Deploy: services, plans-svc first (it creates the Kafka topics; every service creates its own database)"
 deploy "${APPS_FIRST[@]}"

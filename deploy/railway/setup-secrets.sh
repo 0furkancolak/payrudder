@@ -23,7 +23,8 @@ REPO=${REPO:-0furkancolak/payrudder}
 CONSOLE=console$SUFFIX.payrudder.com
 DIR=${PAYRUDDER_SECRETS_DIR:-$HOME/.config/payrudder}
 FILE=$DIR/$ENV.env
-FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
+FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET
+  TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID LOCOMOTIVE_RAILWAY_API_KEY WATCHDOG_URL)
 
 # Only the file's values count, not whatever the calling shell exports.
 for v in "${FILE_VARS[@]}"; do unset "$v"; done
@@ -118,6 +119,18 @@ if is_set PAYRUDDER_GOOGLE_CLIENT_ID; then
   input PAYRUDDER_GOOGLE_CLIENT_SECRET required secret '.{10,}' "o OAuth client'ın secret'ı" "Client ID'nin yanında görünür (Download JSON'da da var)."
 fi
 
+input TELEGRAM_BOT_TOKEN required secret '^[0-9]+:[A-Za-z0-9_-]{30,}$' "alert'leri gönderen Telegram botunun token'ı" \
+  "Telegram'da @BotFather → /newbot → payrudder-alerts gibi bir ad. Verdiği token 123456:ABC... biçiminde." \
+  "İki ortam aynı botu kullanabilir; mesajlar [staging] / [production] diye başlar."
+input TELEGRAM_CHAT_ID required plain '^-?[0-9]+$' "alert'lerin düştüğü sohbetin ID'si" \
+  "Botu alert grubuna ekle (ya da bota kendin yaz), bir mesaj at, sonra: https://api.telegram.org/bot<TOKEN>/getUpdates → \"chat\":{\"id\": ...}." \
+  "Grup ID'leri eksiyle başlar (-100...)."
+input LOCOMOTIVE_RAILWAY_API_KEY required secret '^[A-Za-z0-9_-]{20,}$' "logları Grafana'ya taşıyan Locomotive'in Railway token'ı" \
+  "https://railway.com/account/tokens → Create Token, Workspace: 'No workspace' (hesap token'ı). Proje ve takım token'ları çalışmaz." \
+  "İki ortam aynı token'ı kullanabilir."
+input WATCHDOG_URL optional plain '^https://' "Watchdog alert'inin her dakika gittiği dış nöbetçi adres" \
+  "https://healthchecks.io → Add Check (period 1 dk, grace 5 dk) → ping URL'i. Gelmezse healthchecks size haber verir: alert yolunun kendisi bozuk demektir."
+
 if [[ $missing -gt 0 ]]; then echo; echo "$missing zorunlu kalem eksik: betiği tekrar çalıştır"; exit 1; fi
 
 cat <<EOF
@@ -128,9 +141,11 @@ cat <<EOF
 2. Railway: payrudder projesinde '$ENV' ortamı var (https://railway.com/dashboard → payrudder → Settings → Environments), \`railway login\`, \`railway link\`.
 3. Backend (önce --dry-run çıktısını oku; production: release'in tag'inden alınmış bir checkout'tan):
      (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV --console-url https://$CONSOLE \\
-       --api-domain api$SUFFIX.payrudder.com --allowed-environments sandbox)
-4. Railway'in yazdırdığı DNS kayıtları → Cloudflare, DNS only (gri bulut). assets$SUFFIX.payrudder.com R2 bucket'ına bağlı, kayıt gerekmez.
+       --api-domain api$SUFFIX.payrudder.com --grafana-domain grafana$SUFFIX.payrudder.com --allowed-environments sandbox)
+4. Railway'in yazdırdığı DNS kayıtları (api ve grafana) → Cloudflare, DNS only (gri bulut). assets$SUFFIX.payrudder.com R2 bucket'ına bağlı, kayıt gerekmez.
 5. Console'un proxy secret'ı, Worker'a aynı değer:
      railway variable list --environment $ENV --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET
      (cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env $ENV)
+6. Grafana: https://grafana$SUFFIX.payrudder.com, kullanıcı admin, şifre:
+     railway variable list --environment $ENV --service grafana --kv | grep GF_SECURITY_ADMIN_PASSWORD
 EOF

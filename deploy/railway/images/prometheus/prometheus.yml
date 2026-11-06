@@ -1,0 +1,67 @@
+# deploy/prometheus/prometheus.yml for Railway: the same jobs over the private network (<service>.railway.internal). Every Go service serves
+# /metrics on :9100 there (pkg/config: PORT). No pushgateway: Railway backs up Postgres itself, there is no backup job to report.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: ${RAILWAY_ENVIRONMENT_NAME}
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager.railway.internal:9093"]
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector.railway.internal:8888"]
+
+  - job_name: payrudder
+    static_configs:
+      - { targets: ["gateway.railway.internal:9100"], labels: { service: gateway } }
+      - { targets: ["plans-svc.railway.internal:9100"], labels: { service: plans-svc } }
+      - { targets: ["ingest-svc.railway.internal:9100"], labels: { service: ingest-svc } }
+      - { targets: ["aggregator.railway.internal:9100"], labels: { service: aggregator } }
+      - { targets: ["limits-svc.railway.internal:9100"], labels: { service: limits-svc } }
+      - { targets: ["billing-svc.railway.internal:9100"], labels: { service: billing-svc } }
+      - { targets: ["payments-worker.railway.internal:9100"], labels: { service: payments-worker } }
+      - { targets: ["invoice-worker.railway.internal:9100"], labels: { service: invoice-worker } }
+      - { targets: ["notifier.railway.internal:9100"], labels: { service: notifier } }
+      - { targets: ["assets-svc.railway.internal:9100"], labels: { service: assets-svc } }
+      - { targets: ["analytics-svc.railway.internal:9100"], labels: { service: analytics-svc } } # production
+
+  - job_name: redpanda
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: ["redpanda.railway.internal:9644"]
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ["rabbitmq.railway.internal:15692"]
+  - job_name: rabbitmq-queues
+    metrics_path: /metrics/detailed
+    params:
+      family: [queue_coarse_metrics]
+    static_configs:
+      - targets: ["rabbitmq.railway.internal:15692"]
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter.railway.internal:9187"]
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter.railway.internal:9121"]
+  - { job_name: clickhouse, static_configs: [{ targets: ["clickhouse.railway.internal:9363"] }] } # production
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo.railway.internal:3200"]
+  - job_name: loki
+    static_configs:
+      - targets: ["loki.railway.internal:3100"]
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager.railway.internal:9093"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

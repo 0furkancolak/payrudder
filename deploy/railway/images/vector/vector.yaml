@@ -1,0 +1,42 @@
+# deploy/vector/vector.yaml for Railway. There is no Docker socket: Locomotive (Railway's log forwarder template) posts every service's log lines
+# here, one JSON object a line: the line's own fields (Railway parses slog JSON: message, severity, trace_id, ...) and _metadata.service_name.
+# Labels stay service and level, as locally; the rest of the object is the log line, so trace_id still links to the trace.
+data_dir: /tmp/vector
+
+api:
+  enabled: true
+  address: "[::]:8686"
+
+sources:
+  locomotive:
+    type: http_server
+    address: "[::]:8080"
+    framing:
+      method: newline_delimited
+    decoding:
+      codec: json
+
+transforms:
+  label:
+    type: remap
+    inputs: [locomotive]
+    source: |
+      .service = string(._metadata.service_name) ?? "unknown"
+      lvl = string(.level) ?? string(.severity) ?? ""
+      .level = if lvl == "" { "unknown" } else { downcase(lvl) }
+      del(._metadata)
+      del(.source_type)
+      del(.path)
+
+sinks:
+  loki:
+    type: loki
+    inputs: [label]
+    endpoint: http://loki.railway.internal:3100
+    encoding:
+      codec: json
+    labels:
+      service: "{{ service }}"
+      level: "{{ level }}"
+    out_of_order_action: accept
+    remove_label_fields: true

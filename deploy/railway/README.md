@@ -383,6 +383,23 @@ RabbitMQ** (Upstash, CloudAMQP): change `PAYRUDDER_KAFKA_BROKERS` or `PAYRUDDER_
 same as `deploy/compose/redpanda/topics.sh`) must exist (`plans-svc` creates them with replication factor 1, or create them yourself) and, for
 RabbitMQ, the exchanges and queues from `deploy/rabbitmq/definitions.json` (import the file in the provider's management UI).
 
+## Observability
+
+Every environment has its own stack, in the canvas group Observability (`railway.ts`; the images are `deploy/railway/images/<name>`, built from
+the same configs as the compose `obs` profile):
+
+| Signal | Path | Kept |
+| --- | --- | --- |
+| Metrics | Prometheus scrapes every Go service on `<service>.railway.internal:9100`, RabbitMQ, Redpanda, ClickHouse, the Postgres and Redis exporters, Tempo, Loki, Alertmanager and the collector | 15 days / 4 GB |
+| Traces | services → `otel-collector` (`PAYRUDDER_OTLP_ENDPOINT`, tail sampling) → Tempo; Tempo writes span metrics and the service map to Prometheus | 7 days |
+| Logs | Locomotive (Railway's log forwarder template; there is no Docker socket) → Vector (labels `service`, `level`; the JSON line keeps `trace_id`) → Loki | 7 days |
+| Alerts | the rules of `deploy/prometheus/rules` → Alertmanager → Telegram (`[staging]` / `[production]` in each message). The backup rules go nowhere: Railway backs up Postgres, no job reports here | — |
+
+Grafana is at `https://grafana[-staging].payrudder.com` (`--grafana-domain`), user `admin`, password `GF_SECURITY_ADMIN_PASSWORD` on the
+grafana service; no anonymous access, everything provisioned (data sources with Alertmanager, the dashboards of `deploy/grafana/dashboards`).
+Inputs (`setup-secrets.sh`): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `LOCOMOTIVE_RAILWAY_API_KEY` (an account token, railway.com/account/tokens,
+no workspace), optionally `WATCHDOG_URL` (healthchecks.io: it tells you when the always-firing Watchdog stops arriving).
+
 ## Migrations
 
 Each service with a database applies its own migrations when it starts, as the schema owner (`PAYRUDDER_MIGRATE_ON_START=true` and the `*_MIGRATOR_DSN`).

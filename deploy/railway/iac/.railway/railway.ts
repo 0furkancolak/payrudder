@@ -26,6 +26,7 @@ export default defineRailway(({ isEnvironment }, project) => {
   // The gateway's custom domain is created by the bootstrap (`railway domain`; IaC cannot register one) and then kept here. The bootstrap
   // passes it once it exists, so an apply never deletes it and the first one does not fail.
   const apiDomain = process.env.PAYRUDDER_API_DOMAIN;
+  const grafanaDomain = process.env.PAYRUDDER_GRAFANA_DOMAIN;
   const svc = (dir: "services" | "infra", name: string, extra: Record<string, unknown> = {}) =>
     service(name, { source, ...settings(dir, name), replicas: { [REGION]: 1 }, ...extra });
 
@@ -33,7 +34,14 @@ export default defineRailway(({ isEnvironment }, project) => {
   Postgres.networking = { privateNetworkEndpoint: "postgres" };
   const Redis = redis("Redis", { region: REGION });
   Redis.networking = { privateNetworkEndpoint: "redis" };
-  const volumes = { rabbitmq: vol("rabbitmq"), redpanda: vol("redpanda"), clickhouse: vol("clickhouse") };
+  const volumes = {
+    rabbitmq: vol("rabbitmq"),
+    redpanda: vol("redpanda"),
+    clickhouse: vol("clickhouse"),
+    prometheus: vol("prometheus"),
+    loki: vol("loki"),
+    tempo: vol("tempo"),
+  };
 
   // Railway's PgBouncer template (image and variable names), with one change to its start command (pgbouncer.railway.json): every database
   // ("*") and every role, their passwords read from Postgres (auth_query), not the template's single database and user. No public TCP proxy.
@@ -50,6 +58,21 @@ export default defineRailway(({ isEnvironment }, project) => {
   const workers = ["payments-worker", "invoice-worker", "notifier"].map((n) => svc("services", n));
   const mockpsp = svc("services", "mockpsp");
 
+  // Observability (docs/08-observability.md): metrics in Prometheus, traces in Tempo through the collector, logs in Loki through Locomotive
+  // (Railway's log forwarder template) and Vector, alerts from Alertmanager to Telegram, Grafana over all of them.
+  const observability = [
+    svc("infra", "otel-collector"),
+    svc("infra", "tempo", { volumeMounts: { "/var/tempo": volumes.tempo } }),
+    svc("infra", "loki", { volumeMounts: { "/loki": volumes.loki } }),
+    svc("infra", "vector"),
+    svc("infra", "locomotive", { source: image("ghcr.io/brody192/locomotive@sha256:f9550f13f76e64109c75926c223cf2c0fa3c810cc489c59d8a133b83816a957f") }),
+    svc("infra", "prometheus", { volumeMounts: { "/prometheus": volumes.prometheus } }),
+    svc("infra", "alertmanager"),
+    svc("infra", "grafana", grafanaDomain ? { domains: [{ domain: grafanaDomain, port: 3000 }] } : {}),
+    svc("infra", "postgres-exporter", { source: image("quay.io/prometheuscommunity/postgres-exporter:v0.17.1") }),
+    svc("infra", "redis-exporter", { source: image("oliver006/redis_exporter:v1.67.0-alpine") }),
+  ];
+
   return project("payrudder", {
     variables: { managed: false },
     resources: [
@@ -58,8 +81,12 @@ export default defineRailway(({ isEnvironment }, project) => {
       ...group("API", [gateway, ...core]),
       ...group("Workers", workers),
       ...group("Sandbox", [mockpsp]),
+      ...group("Observability", observability),
       volumes.rabbitmq,
       volumes.redpanda,
+      volumes.prometheus,
+      volumes.loki,
+      volumes.tempo,
       ...(production ? [volumes.clickhouse] : []),
     ],
   });
