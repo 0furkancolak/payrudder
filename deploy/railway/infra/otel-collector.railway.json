@@ -2,11 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "deploy/railway/images/otel-collector/Dockerfile",
-    "watchPatterns": [
-      "/deploy/railway/images/otel-collector/**",
-      "/deploy/otel/**"
-    ]
+    "dockerfilePath": "deploy/railway/images/otel-collector/Dockerfile"
   },
   "deploy": {
     "healthcheckPath": "/",

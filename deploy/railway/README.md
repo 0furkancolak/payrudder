@@ -108,7 +108,7 @@ secret `RAILWAY_TOKEN_STAGING`. A published GitHub release deploys production: `
 1. **Resources.** `cd deploy/railway/iac && npm ci && railway config plan --environment <env>` shows what `railway.ts` would change;
    `railway config apply --environment <env>` applies it. The file declares the `Postgres` and `Redis` databases, every service (no source: the
    checkout is uploaded), the volumes (5 GB each, on `rabbitmq`, `redpanda` and in production `clickhouse`), the canvas groups
-   (Data, Messaging, API, Workers, Sandbox), and each service's build (`dockerfilePath`, watch patterns) and deploy settings (health check, restart
+   (Data, Messaging, API, Workers, Sandbox), and each service's build (`dockerfilePath`; no watch patterns: an upload matching none is skipped) and deploy settings (health check, restart
    policy), read from its `deploy/railway/{services,infra}/<name>.railway.json`. It does not own variables.
 2. **Domain.** `railway domain api.example.com --service gateway --port 8000`, then the DNS records it prints. Later applies keep it when
    `PAYRUDDER_API_DOMAIN` is set (IaC cannot create a domain, only keep one). Set `PAYRUDDER_PUBLIC_URL=https://api.example.com` on the gateway and
@@ -481,7 +481,7 @@ automatically; to cap a service use *Settings → Resource limits*.
 
 Verified (static checks, `make railway-check`, run in CI as part of `make test`):
 
-- every built compose service has a config file; each names a Dockerfile that exists, rooted watch patterns, a health path the service serves,
+- every built compose service has a config file; each names a Dockerfile that exists, no watch patterns, a health path the service serves,
   a restart policy; only keys of Railway's published JSON schema are used; `railway.ts` declares every service;
 - every `env:"...,required"` setting of every service is in its table above and set by `bootstrap.sh`; every `go_service` directory has its main package;
 - `bootstrap.sh --dry-run` runs for staging and production and names every service; `MAIL_WEBHOOK_SECRET` reaches the gateway's `PAYRUDDER_MAIL_WEBHOOK_SECRET` and no other service.

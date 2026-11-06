@@ -129,13 +129,9 @@ func TestEveryComposeServiceHasARailwayConfig(t *testing.T) {
 			if !exists(repo, cfg.Build.DockerfilePath) {
 				t.Errorf("dockerfilePath %q does not exist", cfg.Build.DockerfilePath)
 			}
-			if len(cfg.Build.WatchPatterns) == 0 {
-				t.Error("no watchPatterns")
-			}
-			for _, p := range cfg.Build.WatchPatterns {
-				if !strings.HasPrefix(p, "/") {
-					t.Errorf("watch pattern %q is not rooted at the repo root", p)
-				}
+			// Every deploy uploads the checkout (no GitHub source); Railway skips an upload that matches no watch pattern, which left services failed.
+			if len(cfg.Build.WatchPatterns) != 0 {
+				t.Errorf("watchPatterns %v: an upload that matches none of them is skipped", cfg.Build.WatchPatterns)
 			}
 			hc, _ := cfg.Deploy["healthcheckPath"].(string)
 			if name == "admin-ui" {

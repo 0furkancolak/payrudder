@@ -13,7 +13,8 @@ const railwayDir = new URL("../../", import.meta.url);
 function settings(dir: "services" | "infra", name: string) {
   const cfg = JSON.parse(readFileSync(new URL(`${dir}/${name}.railway.json`, railwayDir), "utf8"));
   const { requiredMountPath: _, ...deploy } = cfg.deploy;
-  return cfg.build ? { build: cfg.build, deploy } : { deploy };
+  // No watch patterns: nothing is built from GitHub, every deploy is an upload, and Railway skips an upload whose files match none of them.
+  return cfg.build ? { build: { ...cfg.build, watchPatterns: [] }, deploy } : { deploy };
 }
 
 const vol = (name: string) =>
