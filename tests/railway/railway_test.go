@@ -622,7 +622,7 @@ func TestSetupSecrets(t *testing.T) {
 	if err == nil || !strings.Contains(out, "7 zorunlu kalem eksik") {
 		t.Fatalf("--check with nothing set: want 7 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
-	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- ERROR_TRACKING_URL"} {
+	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- NAFRU_API_KEY"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("--check: no %q in\n%s", want, out)
 		}
@@ -632,10 +632,10 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, the R2 endpoint and keys,
-	// operators, no DSN, no Google.
+	// operators, no Google.
 	key := `a key with spaces, 'quotes' and $dollars`
 	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrlwy_proj_abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
-		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n\n"
+		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n"
 	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "bootstrap.sh --dry-run --environment production --console-url https://console.payrudder.com") {
 		t.Fatalf("a full run: err=%v\n%s", err, out)
 	}

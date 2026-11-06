@@ -23,7 +23,7 @@ REPO=${REPO:-0furkancolak/payrudder}
 CONSOLE=console$SUFFIX.payrudder.com
 DIR=${PAYRUDDER_SECRETS_DIR:-$HOME/.config/payrudder}
 FILE=$DIR/$ENV.env
-FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS ERROR_TRACKING_URL PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
+FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
 
 # Only the file's values count, not whatever the calling shell exports.
 for v in "${FILE_VARS[@]}"; do unset "$v"; done
@@ -100,9 +100,9 @@ echo "== $ENV: bootstrap girdileri, $FILE içinde"
 input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
   "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
   "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
-input NAFRU_BASE_URL optional plain '^https://' "Nafru'nun API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
-  "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
-input NAFRU_API_KEY optional secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+input NAFRU_BASE_URL optional plain '^https://' "Nafru Email'in API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
+  "Nafru Email panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
+input NAFRU_API_KEY optional secret '.{16,}' "bu ortamın Nafru Email API anahtarı" "Nafru Email paneli: payrudder-$ENV adında yeni bir API anahtarı."
 input S3_ENDPOINT required plain '^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com$' "Cloudflare R2'nin S3 adresi (faturalar ve dosyalar)" \
   "https://<Cloudflare hesap ID>.r2.cloudflarestorage.com; hesap ID: npx wrangler whoami. Bucket'lar: payrudder-invoices-$ENV, payrudder-assets-$ENV."
 input S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "R2 API token'ının Access Key ID'si" \
@@ -111,8 +111,6 @@ input S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "R2 API token'ının Access 
 input S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "R2 API token'ının Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
 input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "platformu yönetenler (operatör konsolu), virgülle ayrılmış" \
   "Kendi e-posta adres(ler)in; doğruladıktan sonra operatör konsolunu görürler."
-input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "hataların raporlandığı DSN" \
-  "https://sentry.io (ya da https://app.glitchtip.com) → payrudder-$ENV projesi → Settings → Client Keys (DSN): https://<anahtar>@host/<id>."
 input PAYRUDDER_GOOGLE_CLIENT_ID optional plain '\.apps\.googleusercontent\.com$' "console'da 'Google ile devam et' (secret'ı sonra sorulur)" \
   "https://console.cloud.google.com/apis/credentials → Create credentials → OAuth client ID → Web application, adı payrudder-$ENV." \
   "Authorised redirect URI: https://$CONSOLE/gw/auth/google/callback"
