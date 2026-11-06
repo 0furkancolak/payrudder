@@ -58,6 +58,15 @@ func TestProvision(t *testing.T) {
 		}
 		_ = c.Close(ctx)
 	}
+	// A service that does not connect as one of its database's roles still gets it, NOLOGIN, for the migrations' grants.
+	if err := pgxx.Provision(ctx, pg.DSN, dsn("solo_migrator", "s0lo", "solo_db"), dsn("solo_app", "s0lo-app", "solo_db")); err != nil {
+		t.Fatal(err)
+	}
+	var login, bypass bool
+	if err := admin.QueryRow(ctx, "SELECT rolcanlogin, rolbypassrls FROM pg_roles WHERE rolname = 'solo_system'").Scan(&login, &bypass); err != nil || login || !bypass {
+		t.Errorf("solo_system: login=%v bypassrls=%v (%v), want a NOLOGIN BYPASSRLS role", login, bypass, err)
+	}
+
 	c, err := pgx.Connect(ctx, app)
 	if err != nil {
 		t.Fatal(err)

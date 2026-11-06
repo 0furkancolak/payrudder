@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -12,7 +13,8 @@ import (
 // Provision creates the service's database and login roles when they are missing, with the layout of
 // deploy/compose/postgres/01-databases.sh (docs/06-multi-tenancy.md): the database of migratorDSN, owned by its user, and one role per
 // DSN, with the DSN's password. A role whose name ends in _system gets BYPASSRLS, every other one NOBYPASSRLS. Running it again sets the
-// passwords and attributes to the current ones and changes nothing else. adminDSN is a role that may CREATE ROLE ... BYPASSRLS and
+// passwords and attributes to the current ones and changes nothing else. Every database has the three roles <svc>_migrator, <svc>_app and
+// <svc>_system, whose names the migrations grant to: one this service does not connect as is created NOLOGIN, with no password. adminDSN is a role that may CREATE ROLE ... BYPASSRLS and
 // CREATE DATABASE (Railway's postgres user); it must reach Postgres directly, not through a transaction pooler.
 func Provision(ctx context.Context, adminDSN, migratorDSN string, roleDSNs ...string) error {
 	owner, err := pgx.ParseConfig(migratorDSN)
@@ -60,6 +62,22 @@ func Provision(ctx context.Context, adminDSN, migratorDSN string, roleDSNs ...st
 			return fmt.Errorf("pgxx: provision: alter role %s: %w", r.User, err)
 		}
 		names = append(names, quoteIdent(r.User))
+	}
+	if prefix, ok := strings.CutSuffix(owner.User, "_migrator"); ok {
+		for _, sibling := range []string{prefix + "_app", prefix + "_system"} {
+			if slices.ContainsFunc(roles, func(c *pgx.ConnConfig) bool { return c.User == sibling }) {
+				continue
+			}
+			attrs := "NOLOGIN NOBYPASSRLS"
+			if strings.HasSuffix(sibling, "_system") {
+				attrs = "NOLOGIN BYPASSRLS"
+			}
+			if _, err := admin.Exec(ctx, "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = "+quoteLiteral(sibling)+") THEN CREATE ROLE "+
+				quoteIdent(sibling)+" "+attrs+"; END IF; END $$"); err != nil {
+				return fmt.Errorf("pgxx: provision: create role %s: %w", sibling, err)
+			}
+			names = append(names, quoteIdent(sibling))
+		}
 	}
 
 	db := quoteIdent(owner.Database)
