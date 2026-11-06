@@ -383,6 +383,20 @@ RabbitMQ** (Upstash, CloudAMQP): change `PAYRUDDER_KAFKA_BROKERS` or `PAYRUDDER_
 same as `deploy/compose/redpanda/topics.sh`) must exist (`plans-svc` creates them with replication factor 1, or create them yourself) and, for
 RabbitMQ, the exchanges and queues from `deploy/rabbitmq/definitions.json` (import the file in the provider's management UI).
 
+## A new environment's Postgres
+
+Railway's IaC (CLI 5.71) creates a new environment's Postgres with the unresolved text `secret(32, "...")` as its password (`PGPASSWORD`,
+`POSTGRES_PASSWORD`, and so `DATABASE_URL`), which no URL parser takes, and the bootstrap stops on it. While the database is new and empty:
+
+```bash
+pw=$(openssl rand -hex 24)
+railway variable set --service Postgres --skip-deploys "PGPASSWORD=$pw" "POSTGRES_PASSWORD=$pw" PGDATA=/var/lib/postgresql/data/pgdata-1
+railway service redeploy --service Postgres --yes
+```
+
+The new `PGDATA` makes it initialise again with that password (the old, empty directory stays on the volume). Redis is created without any
+of its variables; the bootstrap sets them. Production was fixed this way on 2026-11-06.
+
 ## Observability
 
 Every environment has its own stack, in the canvas group Observability (`railway.ts`; the images are `deploy/railway/images/<name>`, built from

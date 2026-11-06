@@ -195,6 +195,18 @@ add_domain gateway "$API_DOMAIN" 8000
 add_domain grafana "$GRAFANA_DOMAIN" 3000
 
 # --- 2. variables ----------------------------------------------------------------------------------------------------------------------------
+note "Databases"
+# Railway's IaC (CLI 5.71) creates Redis without the variables of Railway's Redis template, and Postgres with the unresolved text
+# secret(32, "...") as its password, which no URL parser takes. Redis gets the template's variables here. A Postgres with that password stops
+# the script: on a new, empty database give it a clean PGPASSWORD and POSTGRES_PASSWORD and a new PGDATA directory, so it initialises again
+# with that password (deploy/railway/README.md, "A new environment's Postgres").
+secret Redis REDIS_PASSWORD hex24
+vars Redis 'REDISPASSWORD=${{REDIS_PASSWORD}}' 'REDISHOST=${{RAILWAY_PRIVATE_DOMAIN}}' REDISPORT=6379 REDISUSER=default \
+  'REDIS_URL=redis://${{REDISUSER}}:${{REDIS_PASSWORD}}@${{REDISHOST}}:${{REDISPORT}}'
+if ((!DRY_RUN)) && [[ $(railway variable list --service Postgres --kv 2>/dev/null | sed -n 's/^PGPASSWORD=//p') == *'secret('* ]]; then
+  echo "Postgres's password is Railway's unresolved secret(...): see \"A new environment's Postgres\" in deploy/railway/README.md" >&2; exit 1
+fi
+
 note "Backing services"
 # The role passwords of every service's database (pgxx.Provision sets them); kept on the Postgres service, which the DSNs reference.
 secret Postgres PG_MIGRATOR_PASSWORD hex24
