@@ -68,6 +68,14 @@ test-store-backups: ## The backup scripts for MinIO (mc mirror, restore, deletes
 test-einvoice-rules: ## The UBL that pkg/einvoice builds against the EN 16931, Peppol BIS 3 and UBL-TR XSD and schematron (needs java, xmllint; downloads pinned artefacts into ~/.cache)
 	scripts/einvoice-validate.sh
 
+.PHONY: start-staging
+start-staging: ## Wake staging on Railway, wait until it is ready and print its links; Ctrl-C stops it again (deploy/railway/staging.sh)
+	deploy/railway/staging.sh start
+
+.PHONY: stop-staging
+stop-staging: ## Stop every staging service on Railway
+	deploy/railway/staging.sh stop
+
 .PHONY: backup-drill
 backup-drill: ## Point-in-time recovery drill on a throwaway stack: restore to a chosen minute, check the data, measure the RTO (Docker, about 5 minutes)
 	sh deploy/backup/drill.sh

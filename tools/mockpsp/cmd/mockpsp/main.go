@@ -29,6 +29,7 @@ type Config struct {
 	PGAppDSN       string        `env:"PAYRUDDER_PG_APP_DSN,required"`
 	PGMigratorDSN  string        `env:"PAYRUDDER_PG_MIGRATOR_DSN"`
 	MigrateOnStart bool          `env:"PAYRUDDER_MIGRATE_ON_START"`
+	PGAdminDSN     string        `env:"PAYRUDDER_PG_ADMIN_DSN"`
 	DeclineRate    float64       `env:"MOCKPSP_DECLINE_RATE"`
 	ErrorRate      float64       `env:"MOCKPSP_ERROR_RATE"`
 	TimeoutRate    float64       `env:"MOCKPSP_TIMEOUT_RATE"`
@@ -70,6 +71,11 @@ func run() error {
 	defer stop()
 
 	if cfg.MigrateOnStart {
+		if cfg.PGAdminDSN != "" {
+			if err := pgxx.Provision(ctx, cfg.PGAdminDSN, cfg.PGMigratorDSN, cfg.PGAppDSN); err != nil {
+				return err
+			}
+		}
 		if err := pgxx.Migrate(ctx, cfg.PGMigratorDSN, migrations.FS, log); err != nil {
 			return err
 		}

@@ -3,3 +3,4 @@
 FROM clickhouse/clickhouse-server:25.8.33.6-alpine
 COPY deploy/clickhouse/low-memory.xml /etc/clickhouse-server/config.d/low-memory.xml
 COPY deploy/railway/images/clickhouse/listen.xml /etc/clickhouse-server/config.d/listen.xml
+COPY deploy/clickhouse/prometheus.xml /etc/clickhouse-server/config.d/prometheus.xml

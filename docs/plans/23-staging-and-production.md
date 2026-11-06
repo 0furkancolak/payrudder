@@ -25,19 +25,23 @@
 ## Decisions
 The owner decided: two environments, `payrudder.com`, one subdomain level, geo from `geo.nafru.com`. The rest are **defaults (not agreed)**:
 
-1. **Backend on Railway**, one project per environment: `payrudder` (its environment `staging`) and `payrudder-production` (its environment
-   `production`). Why: the bootstrap exists; Kubernetes needs a cluster to run, Helm stays for later. **Changed on the first run (2026-11-06):** the plan
-   was one project with two environments, but the CLI (5.71) adds a service to one environment only, and a second environment then refuses the same
-   service names (`A service named "rabbitmq" already exists in this project`) and renames the databases (`Postgres-dJvk`), which breaks the
-   `${{Postgres.…}}` references. A project of its own also gives production its own token and members.
+1. **Backend on Railway**, one project `payrudder` with two Railway environments, `staging` and `production`. Why: Railway environments are
+   separate stacks (own services, volumes, variables, private network); Kubernetes needs a cluster to run. Helm stays for later.
+   **Changed on the first run (2026-11-06, owner's decisions):** the resources are code (`deploy/railway/iac/.railway/railway.ts`, Railway's IaC),
+   because `railway add` creates a service in one environment only and a second environment then refuses the names; the canvas is grouped (Data,
+   Messaging, API, Workers, Sandbox). MinIO is replaced by Cloudflare R2 (`assets[-staging].payrudder.com` is the assets bucket's public domain;
+   presigned links use R2's own endpoint, the only one they work on), mailpit by Nafru Email, and the init jobs by the services themselves
+   (`pgxx.Provision` with `PAYRUDDER_PG_ADMIN_DSN`; plans-svc creates the Kafka topics with `PAYRUDDER_KAFKA_CREATE_TOPICS`). PgBouncer is in front
+   of Postgres for the app role. `mockpsp`, RabbitMQ and Redpanda stay.
 2. **Console on Cloudflare** (the Worker, ADR 0021), not the `admin-ui` container: the Railway `admin-ui` service is not created.
 3. **Production opens sandbox-only**: `PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`, provider sandbox keys. `mockpsp` and `mailpit` stay: sandbox tenants pay through the mock and live never reaches it (ADR 0023); sandbox mail goes to the catcher. Live payments are a separate
    go-live step (below), because neither the iyzico nor the Paddle adapter has been run against a real sandbox.
 4. **Staging profile `small`** (no ClickHouse, no analytics-svc), **production `full`**.
 5. **Every secret and key is per environment**, never copied between them (secrets key, OTP pepper, operator token, the nafru-geo key, the Nafru
    mail key, Google OAuth client, provider keys). A leak in staging then never opens production.
-6. **The owner decided (2026-11-05): staging is every push to `main`, production is a published GitHub release.** Railway deploys `main` to staging
-   itself ("wait for CI"), `deploy-console.yml` the console. A release runs `deploy-production.yml`: the backend with `bootstrap.sh --deploy-only`
+6. **The owner decided (2026-11-05): staging is every push to `main`, production is a published GitHub release.** `deploy-staging.yml` deploys `main` to
+   staging (a Railway project token of the staging environment; changed on 2026-11-06, owner's decision: no Railway GitHub connection),
+   `deploy-console.yml` the console. A release runs `deploy-production.yml`: the backend with `bootstrap.sh --deploy-only`
    (a Railway project token of the production environment, `railway up --ci` per service) and then the console. No GitHub Environments: who may
    publish a release decides production. The console's config is `wrangler.toml` (owner's choice).
 
