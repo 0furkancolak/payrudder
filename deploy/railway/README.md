@@ -409,10 +409,9 @@ minutes (Railway's serverless) and wake on the next request. Staging has no obse
 
 The `backup` service (`deploy/railway/images/backup`) dumps every database daily into the private R2 bucket `payrudder-backups-production`
 (`postgres/<db>/`, expired after 30 days by the bucket's lifecycle rule), restores the newest dumps into scratch databases every 7th run (the first
-run included) and checks them (`deploy/backup/verify.sh`, `invariants.sh`), and copies the invoice and asset buckets to `objects/<bucket>/` (a
-delete in the source is not copied). It reports to the Pushgateway; the alerts `BackupStale`, `BackupFailed`, `RestoreDrillFailed`,
-`RestoreNotVerified` and `ObjectBackupStale` go to Telegram. Its R2 token (`BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`) is its own: it
-writes the backup bucket and reads the two object buckets. Restoring: `deploy/backup/restore.sh` with a dump downloaded from the bucket
+run included) and checks them (`deploy/backup/verify.sh`, `invariants.sh`). Only the databases: the invoice and asset buckets are not backed up. It reports to the Pushgateway; the alerts `BackupStale`, `BackupFailed`, `RestoreDrillFailed` and
+`RestoreNotVerified` go to Telegram. Its R2 token (`BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`) is its own: it
+writes only the backup bucket. Restoring: `deploy/backup/restore.sh` with a dump downloaded from the bucket
 (docs/runbooks/backup-restore.md). There is no point-in-time recovery on Railway: at most a day of data is lost.
 
 ## Observability

@@ -61,8 +61,8 @@ done
 # PAYRUDDER_GOOGLE_CLIENT_ID, PAYRUDDER_GOOGLE_CLIENT_SECRET: set on the gateway as they are, for "Continue with Google". Empty: not set.
 # TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (both or neither): Alertmanager sends page and warn alerts to that chat. Empty: alerts stay in Grafana.
 # WATCHDOG_URL: an outside dead man's switch (healthchecks.io) the always-firing Watchdog alert is posted to every minute. Empty: none.
-# BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY (production): an R2 token that writes payrudder-backups-production (private, dumps expire after 30 days)
-#   and reads the object buckets; the backup service copies both there daily.
+# BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY (production): an R2 token that writes payrudder-backups-production (private, dumps expire after 30 days);
+#   the backup service dumps every database there daily.
 # LOCOMOTIVE_RAILWAY_API_KEY: a Railway account token (railway.com/account/tokens, no workspace: project and team tokens do not work) with which
 #   Locomotive reads the environment's logs for Loki. Empty: no logs in Grafana.
 if ((!DEPLOY_ONLY && !DRY_RUN)); then
@@ -257,7 +257,7 @@ if ((FULL)); then
   vars redis-exporter PORT=9121 'REDIS_ADDR=${{Redis.REDIS_URL}}'
   vars pushgateway PORT=9091
   vars backup 'PGHOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}' PGPORT=5432 'PGUSER=${{Postgres.PGUSER}}' 'PGPASSWORD=${{Postgres.PGPASSWORD}}' \
-    "BACKUP_BUCKET=${BACKUP_BUCKET:-payrudder-backups-$ENVIRONMENT}" "OBJ_BUCKETS=$S3_INVOICES_BUCKET $S3_ASSETS_BUCKET" \
+    "BACKUP_BUCKET=${BACKUP_BUCKET:-payrudder-backups-$ENVIRONMENT}" \
     "AWS_ENDPOINT_URL=$S3_ENDPOINT" PUSHGATEWAY_URL=http://pushgateway.railway.internal:9091
   if [[ -n ${BACKUP_S3_ACCESS_KEY:-} && -n ${BACKUP_S3_SECRET_KEY:-} ]]; then
     vars backup "AWS_ACCESS_KEY_ID=$BACKUP_S3_ACCESS_KEY" "AWS_SECRET_ACCESS_KEY=$BACKUP_S3_SECRET_KEY"

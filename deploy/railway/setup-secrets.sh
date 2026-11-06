@@ -134,7 +134,7 @@ input WATCHDOG_URL optional plain '^https://' "Watchdog alert'inin her dakika gi
   "https://healthchecks.io → Add Check (period 1 dk, grace 5 dk) → ping URL'i. Gelmezse healthchecks size haber verir: alert yolunun kendisi bozuk demektir."
 input BACKUP_S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "yedekleme servisinin R2 token'ının Access Key ID'si" \
   "https://dash.cloudflare.com → R2 Object Storage → Manage API tokens → Create Account API token, adı payrudder-backups:" \
-  "Object Read & Write, yalnız payrudder-backups-production, payrudder-invoices-production ve payrudder-assets-production bucket'larına."
+  "Object Read & Write, yalnız payrudder-backups-production bucket'ına."
 input BACKUP_S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "aynı token'ın Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
 fi
 
