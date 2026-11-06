@@ -10,6 +10,7 @@ Auth: RAILWAY_TOKEN (a project token, as in CI), else RAILWAY_API_TOKEN (an acco
 """
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 
@@ -23,6 +24,8 @@ def headers():
         return {"Project-Access-Token": os.environ["RAILWAY_TOKEN"]}
     token = os.environ.get("RAILWAY_API_TOKEN")
     if not token:
+        # The login's access token lasts an hour; any CLI call refreshes it in the config file.
+        subprocess.run(["railway", "whoami"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         with open(os.path.expanduser("~/.railway/config.json")) as f:
             token = json.load(f)["user"]["accessToken"]
     return {"Authorization": "Bearer " + token}
