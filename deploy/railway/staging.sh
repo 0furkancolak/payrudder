@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Staging runs only while someone uses it: its services are stopped (`railway down`: the running deployment is removed, the volumes and the
-# variables stay) and woken again by redeploying their last deployment, which needs no build.
+# Staging runs only while someone uses it: its services are stopped (the running deployment is removed; the volumes and the variables stay) and
+# woken again by redeploying their last built deployment, which needs no build. Both go through Railway's API (staging_api.py): the CLI cannot
+# redeploy a removed deployment, nor remove a sleeping one.
 #
 #   deploy/railway/staging.sh start [--detach]   wake every service in dependency order, wait until each runs and the API answers, print the links;
 #                                                 then stay in the foreground and stop it all when you leave (Ctrl-C, closing the terminal).
@@ -8,7 +9,7 @@
 #   deploy/railway/staging.sh stop               stop every service
 #   deploy/railway/staging.sh status             print running, stopped or partial
 #
-# make start-staging and make stop-staging call it. Needs the Railway CLI, logged in (or RAILWAY_TOKEN, a project token of staging). A nightly
+# make start-staging and make stop-staging call it. Needs python3 and the Railway CLI's login (or RAILWAY_TOKEN, a project token of staging). A nightly
 # workflow (staging-stop.yml) stops staging too, for a session that ended without Ctrl-C (a laptop put to sleep).
 set -euo pipefail
 
@@ -20,24 +21,10 @@ CONSOLE=https://console-staging.payrudder.com
 TIERS=("Postgres Redis" "pgbouncer rabbitmq redpanda" "plans-svc"
   "ingest-svc aggregator limits-svc assets-svc mockpsp billing-svc payments-worker invoice-worker notifier" "gateway")
 TIMEOUT=${STAGING_TIMEOUT_SECONDS:-900}
-R=(--project "$PROJECT" --environment "$ENV")
 
 # states: "<name> <up|stopped|starting|failed>" for every service. Sleeping (Railway's serverless) counts as up: the next request wakes it.
-states() {
-  railway service list "${R[@]}" --json | python3 -c '
-import json, sys
-for s in json.load(sys.stdin):
-    latest = (s.get("latestDeployment") or {}).get("status", "")
-    if s.get("deploymentStopped") or latest == "REMOVED":
-        state = "stopped"
-    elif latest in ("SUCCESS", "SLEEPING"):
-        state = "up"
-    elif latest in ("FAILED", "CRASHED"):
-        state = "failed"
-    else:
-        state = "starting"
-    print(s["name"], state)'
-}
+api() { python3 "$(dirname "$0")/staging_api.py" "$PROJECT" "$ENV" "$@"; }
+states() { api states; }
 
 ordered() { # every service of the environment, tier by tier, the unknown ones last
   local all known=" ${TIERS[*]} " rest=()
@@ -64,7 +51,7 @@ stop() {
   st=$(states)
   for s in $(ordered | tail -r 2>/dev/null || ordered | tac); do
     grep -qx "$s stopped" <<<"$st" && continue
-    railway down "${R[@]}" --service "$s" --yes >/dev/null 2>&1 && echo "   $s stopped" || echo "   $s: could not stop" >&2
+    api stop "$s" && echo "   $s stopped" || echo "   $s: could not stop" >&2
   done
 }
 
@@ -98,9 +85,10 @@ start() {
       grep -qx "$s" <<<"$all" || continue
       woken+=("$s")
       grep -qx "$s up" <<<"$st" && continue
-      railway service redeploy "${R[@]}" --service "$s" --yes >/dev/null
+      api wake "$s"
     done
     ((${#woken[@]})) || continue
+    sleep 5 # the new deployment is listed a moment after the redeploy, until then the old (removed, failed) one is the newest
     wait_up "${woken[@]}"
     echo "   up: ${woken[*]}"
   done
