@@ -183,7 +183,8 @@ has_domain grafana "$GRAFANA_DOMAIN" && DOMAIN_ENV+=("PAYRUDDER_GRAFANA_DOMAIN=$
 if ((DRY_RUN)); then
   echo "+ (cd $IAC && npm ci && [the domains that exist] ${APPLY[*]})"
 else
-  (cd "$IAC" && npm ci --silent --no-audit --no-fund && env ${DOMAIN_ENV[@]+"${DOMAIN_ENV[@]}"} "${APPLY[@]}")
+  # Exported, not `env VAR=... railway`: run through env, the CLI does not hand the IaC SDK its version and the SDK refuses to run.
+  (cd "$IAC" && npm ci --silent --no-audit --no-fund && for kv in ${DOMAIN_ENV[@]+"${DOMAIN_ENV[@]}"}; do export "$kv"; done && "${APPLY[@]}")
 fi
 add_domain() { # <service> <domain> <port>
   if [[ -n $2 ]] && ! has_domain "$1" "$2"; then
