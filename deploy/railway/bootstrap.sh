@@ -202,7 +202,8 @@ note "Databases"
 # the script: on a new, empty database give it a clean PGPASSWORD and POSTGRES_PASSWORD and a new PGDATA directory, so it initialises again
 # with that password (deploy/railway/README.md, "A new environment's Postgres").
 secret Redis REDIS_PASSWORD hex24
-vars Redis 'REDISPASSWORD=${{REDIS_PASSWORD}}' 'REDISHOST=${{RAILWAY_PRIVATE_DOMAIN}}' REDISPORT=6379 REDISUSER=default \
+# The image IaC picks (Bitnami's) runs as uid 1001 and cannot write the volume Railway mounts: it crash-loops without RAILWAY_RUN_UID=0.
+vars Redis RAILWAY_RUN_UID=0 'REDISPASSWORD=${{REDIS_PASSWORD}}' 'REDISHOST=${{RAILWAY_PRIVATE_DOMAIN}}' REDISPORT=6379 REDISUSER=default \
   'REDIS_URL=redis://${{REDISUSER}}:${{REDIS_PASSWORD}}@${{REDISHOST}}:${{REDISPORT}}'
 if ((!DRY_RUN)) && [[ $(railway variable list --service Postgres --kv 2>/dev/null | sed -n 's/^PGPASSWORD=//p') == *'secret('* ]]; then
   echo "Postgres's password is Railway's unresolved secret(...): see \"A new environment's Postgres\" in deploy/railway/README.md" >&2; exit 1
