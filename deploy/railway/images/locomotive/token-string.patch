@@ -1,0 +1,104 @@
+diff --git a/internal/config/types.go b/internal/config/types.go
+index 86d77db..8b9011a 100644
+--- a/internal/config/types.go
++++ b/internal/config/types.go
+@@ -28,7 +28,7 @@ type WebhookConfig struct {
+ }
+ 
+ type config struct {
+-	RailwayApiKey uuid.UUID   `env:"RAILWAY_API_KEY,required,notEmpty"`
++	RailwayApiKey string      `env:"RAILWAY_API_KEY,required,notEmpty"`
+ 	EnvironmentId uuid.UUID   `env:"ENVIRONMENT_ID,required,notEmpty"`
+ 	ServiceIds    []uuid.UUID `env:"SERVICE_IDS,required,notEmpty"`
+ 
+diff --git a/internal/railway/auth.go b/internal/railway/auth.go
+index c5ddafc..3a02da8 100644
+--- a/internal/railway/auth.go
++++ b/internal/railway/auth.go
+@@ -4,16 +4,15 @@ import (
+ 	"fmt"
+ 	"net/http"
+ 
+-	"github.com/flexstack/uuid"
+ )
+ 
+ type authedTransport struct {
+-	token   uuid.UUID
++	token   string
+ 	wrapped http.RoundTripper
+ }
+ 
+ func (t *authedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.token.String()))
++	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.token))
+ 	req.Header.Set("Content-Type", "application/json")
+ 
+ 	return t.wrapped.RoundTrip(req)
+diff --git a/internal/railway/client.go b/internal/railway/client.go
+index 36b6358..92f1829 100644
+--- a/internal/railway/client.go
++++ b/internal/railway/client.go
+@@ -4,7 +4,6 @@ import (
+ 	"errors"
+ 	"net/http"
+ 
+-	"github.com/flexstack/uuid"
+ 	"github.com/hasura/go-graphql-client"
+ )
+ 
+@@ -12,13 +11,13 @@ import (
+ // so a NewClient(...) call is self-documenting, every field is required at compile time,
+ // and the arguments can't be passed in the wrong order.
+ type (
+-	authTokenParam           struct{ v uuid.UUID }
++	authTokenParam           struct{ v string }
+ 	baseURLParam             struct{ v string }
+ 	baseSubscriptionURLParam struct{ v string }
+ )
+ 
+ // AuthToken is the Railway API token the client authenticates with.
+-func AuthToken(token uuid.UUID) authTokenParam { return authTokenParam{token} }
++func AuthToken(token string) authTokenParam { return authTokenParam{token} }
+ 
+ // BaseURL is the GraphQL HTTP endpoint.
+ func BaseURL(url string) baseURLParam { return baseURLParam{url} }
+@@ -34,7 +33,7 @@ func NewClient(
+ 	baseURL baseURLParam,
+ 	baseSubscriptionURL baseSubscriptionURLParam,
+ ) (*GraphQLClient, error) {
+-	if authToken.v == uuid.Nil {
++	if authToken.v == "" {
+ 		return nil, errors.New("auth token must not be empty")
+ 	}
+ 
+diff --git a/internal/railway/subscribe.go b/internal/railway/subscribe.go
+index 3774708..c7f40f9 100644
+--- a/internal/railway/subscribe.go
++++ b/internal/railway/subscribe.go
+@@ -21,7 +21,7 @@ func (g *GraphQLClient) CreateWebSocketSubscription(ctx context.Context, payload
+ 
+ 	opts := &websocket.DialOptions{
+ 		HTTPHeader: http.Header{
+-			"Authorization": []string{fmt.Sprintf("Bearer %s", g.AuthToken.String())},
++			"Authorization": []string{fmt.Sprintf("Bearer %s", g.AuthToken)},
+ 			"Content-Type":  []string{"application/json"},
+ 		},
+ 		Subprotocols: []string{"graphql-transport-ws"},
+diff --git a/internal/railway/types.go b/internal/railway/types.go
+index e6276d5..68c1e9d 100644
+--- a/internal/railway/types.go
++++ b/internal/railway/types.go
+@@ -1,12 +1,11 @@
+ package railway
+ 
+ import (
+-	"github.com/flexstack/uuid"
+ 	"github.com/hasura/go-graphql-client"
+ )
+ 
+ type GraphQLClient struct {
+-	AuthToken           uuid.UUID
++	AuthToken           string
+ 	BaseSubscriptionURL string
+ 	BaseURL             string
+ 	Client              *graphql.Client

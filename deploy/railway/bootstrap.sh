@@ -363,9 +363,9 @@ note "Deploy: backing services"
 # PgBouncer runs an image (Railway's template), nothing to upload: a redeploy picks up its variables.
 run railway service redeploy --service pgbouncer --yes
 deploy "${INFRA[@]}"
-# Observability before the services, so their first traces and logs land. The exporters and Locomotive are images: a redeploy.
-deploy tempo loki prometheus alertmanager vector otel-collector grafana
-for s in postgres-exporter redis-exporter locomotive; do run railway service redeploy --service "$s" --yes; done
+# Observability before the services, so their first traces and logs land. The exporters are images: a redeploy.
+deploy tempo loki prometheus alertmanager vector otel-collector grafana locomotive
+for s in postgres-exporter redis-exporter; do run railway service redeploy --service "$s" --yes; done
 pause "the pooler and the brokers come up (Postgres and Redis are already running)"
 note "Deploy: services, plans-svc first (it creates the Kafka topics; every service creates its own database)"
 deploy "${APPS_FIRST[@]}"

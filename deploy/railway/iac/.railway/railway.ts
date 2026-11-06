@@ -66,7 +66,7 @@ export default defineRailway(({ isEnvironment }, project) => {
     svc("infra", "tempo", { volumeMounts: { "/var/tempo": volumes.tempo } }),
     svc("infra", "loki", { volumeMounts: { "/loki": volumes.loki } }),
     svc("infra", "vector"),
-    svc("infra", "locomotive", { source: image("ghcr.io/brody192/locomotive@sha256:f9550f13f76e64109c75926c223cf2c0fa3c810cc489c59d8a133b83816a957f") }),
+    svc("infra", "locomotive"),
     svc("infra", "prometheus", { volumeMounts: { "/prometheus": volumes.prometheus } }),
     svc("infra", "alertmanager"),
     svc("infra", "grafana", grafanaDomain ? { domains: [{ domain: grafanaDomain, port: 3000 }] } : {}),
