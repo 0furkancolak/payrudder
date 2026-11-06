@@ -147,7 +147,7 @@ go_service() { # <service name> <dir> <port>
   if [[ -n ${ERROR_TRACKING_URL:-} && $1 != mockpsp ]]; then vars "$1" "PAYRUDDER_ERROR_TRACKING_URL=$ERROR_TRACKING_URL"; fi
 }
 
-INFRA=(pgbouncer rabbitmq redpanda)
+INFRA=(rabbitmq redpanda)
 APPS_FIRST=(plans-svc)
 APPS_SECOND=(ingest-svc aggregator limits-svc assets-svc mockpsp)
 APPS_THIRD=(billing-svc payments-worker invoice-worker notifier)
@@ -184,7 +184,8 @@ note "Backing services"
 secret Postgres PG_MIGRATOR_PASSWORD hex24
 secret Postgres PG_APP_PASSWORD hex24
 secret Postgres PG_SYSTEM_PASSWORD hex24
-vars pgbouncer 'PGBOUNCER_AUTH_PASSWORD=${{Postgres.PGPASSWORD}}' PORT=6432
+vars pgbouncer 'POSTGRES_HOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}' POSTGRES_PORT=5432 'POSTGRES_USER=${{Postgres.PGUSER}}' \
+  'POSTGRES_PASSWORD=${{Postgres.PGPASSWORD}}' PGBOUNCER_PORT=6432
 
 secret rabbitmq RABBITMQ_PASSWORD hex24
 vars rabbitmq RAILWAY_RUN_UID=0 PORT=15692
@@ -293,6 +294,8 @@ deploy() { # <service>...
 pause() { echo "-- waiting ${WAIT}s: $*"; ((DRY_RUN)) || sleep "$WAIT"; }
 
 note "Deploy: backing services"
+# PgBouncer runs an image (Railway's template), nothing to upload: a redeploy picks up its variables.
+run railway service redeploy --service pgbouncer --yes
 deploy "${INFRA[@]}"
 pause "the pooler and the brokers come up (Postgres and Redis are already running)"
 note "Deploy: services, plans-svc first (it creates the Kafka topics; every service creates its own database)"

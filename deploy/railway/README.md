@@ -17,7 +17,7 @@ is a Railway service.
 | Service | Built from | Public | Volume | Canvas group |
 |---|---|---|---|---|
 | `Postgres`, `Redis` | Railway databases | no | managed | Data |
-| `pgbouncer` | `images/pgbouncer` | no | none | Data |
+| `pgbouncer` | Railway's PgBouncer template image `ghcr.io/cloudnative-pg/pgbouncer:1.25.2` (start command: every database, auth_query) | no | none | Data |
 | `clickhouse` | `images/clickhouse` | no | `/var/lib/clickhouse` | Data, production only |
 | `rabbitmq` | `images/rabbitmq` | no | `/var/lib/rabbitmq` | Messaging |
 | `redpanda` | `images/redpanda` | no | `/var/lib/redpanda/data` | Messaging (Kafka) |
@@ -370,7 +370,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | Service | Variable | Value |
 |---|---|---|
 | `Postgres` | `PG_MIGRATOR_PASSWORD`, `PG_APP_PASSWORD`, `PG_SYSTEM_PASSWORD` | generated; the services' DSNs refer to them |
-| `pgbouncer` | `PGBOUNCER_AUTH_PASSWORD`, `PORT`, optional `PG_HOST` | `${{Postgres.PGPASSWORD}}` (it looks the other roles up as `postgres`), `6432`, `postgres.railway.internal` |
+| `pgbouncer` | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `PGBOUNCER_PORT` (the template's names) | `${{Postgres.RAILWAY_PRIVATE_DOMAIN}}`, `5432`, `${{Postgres.PGUSER}}`, `${{Postgres.PGPASSWORD}}` (it looks the other roles up as that user), `6432` |
 | `redpanda` | `PORT`, `RAILWAY_RUN_UID`, optional `REDPANDA_BIND`, `REDPANDA_MEMORY` | `9644` (health: the admin API), `0`, `0.0.0.0` or `::`, `512M` |
 | `rabbitmq` | `RABBITMQ_PASSWORD`, `PORT`, `RAILWAY_RUN_UID` | generated, `15692` (health: Prometheus endpoint), `0` |
 | `clickhouse` | `CLICKHOUSE_DB`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT`, `PORT`, `RAILWAY_RUN_UID` | `payrudder`, `payrudder`, generated, `1`, `8123`, `0` (production only) |

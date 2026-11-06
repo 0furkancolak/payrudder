@@ -5,6 +5,7 @@ package railway
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,7 +78,7 @@ type railwayConfig struct {
 // The keys of railway.schema.json (https://railway.com/railway.schema.json) that these files may use.
 var (
 	buildKeys  = []string{"builder", "dockerfilePath", "watchPatterns"}
-	deployKeys = []string{"healthcheckPath", "healthcheckTimeout", "restartPolicyType", "restartPolicyMaxRetries", "numReplicas", "drainingSeconds", "requiredMountPath"}
+	deployKeys = []string{"healthcheckPath", "healthcheckTimeout", "restartPolicyType", "restartPolicyMaxRetries", "numReplicas", "drainingSeconds", "requiredMountPath", "startCommand"}
 )
 
 func load(t *testing.T, repo, path string) railwayConfig {
@@ -161,6 +162,13 @@ func TestInfraConfigs(t *testing.T) {
 		rel, _ := filepath.Rel(repo, f)
 		t.Run(filepath.Base(f), func(t *testing.T) {
 			cfg := load(t, repo, rel)
+			// PgBouncer is Railway's template image (railway.ts), with no build of its own.
+			if filepath.Base(f) == "pgbouncer.railway.json" {
+				if cfg.Build.DockerfilePath != "" || !strings.Contains(fmt.Sprint(cfg.Deploy["startCommand"]), "auth_query") {
+					t.Errorf("pgbouncer: want no Dockerfile and a start command with auth_query, got %+v", cfg)
+				}
+				return
+			}
 			if !exists(repo, cfg.Build.DockerfilePath) {
 				t.Fatalf("dockerfilePath %q does not exist", cfg.Build.DockerfilePath)
 			}

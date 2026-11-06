@@ -4,7 +4,7 @@
 // deploy/railway/{services,infra}/<name>.railway.json, so they are written once.
 // Plan / apply with the environment linked: cd deploy/railway/iac && npm ci && railway config plan --environment staging (the bootstrap applies it).
 import { readFileSync } from "node:fs";
-import { defineRailway, empty, group, postgres, redis, service, volume } from "railway/iac";
+import { defineRailway, empty, group, image, postgres, redis, service, volume } from "railway/iac";
 
 const REGION = "europe-west4-drams3a";
 const railwayDir = new URL("../../", import.meta.url);
@@ -13,7 +13,7 @@ const railwayDir = new URL("../../", import.meta.url);
 function settings(dir: "services" | "infra", name: string) {
   const cfg = JSON.parse(readFileSync(new URL(`${dir}/${name}.railway.json`, railwayDir), "utf8"));
   const { requiredMountPath: _, ...deploy } = cfg.deploy;
-  return { build: cfg.build, deploy };
+  return cfg.build ? { build: cfg.build, deploy } : { deploy };
 }
 
 const vol = (name: string) =>
@@ -35,7 +35,9 @@ export default defineRailway(({ isEnvironment }, project) => {
   Redis.networking = { privateNetworkEndpoint: "redis" };
   const volumes = { rabbitmq: vol("rabbitmq"), redpanda: vol("redpanda"), clickhouse: vol("clickhouse") };
 
-  const pgbouncer = svc("infra", "pgbouncer");
+  // Railway's PgBouncer template (image and variable names), with one change to its start command (pgbouncer.railway.json): every database
+  // ("*") and every role, their passwords read from Postgres (auth_query), not the template's single database and user. No public TCP proxy.
+  const pgbouncer = svc("infra", "pgbouncer", { source: image("ghcr.io/cloudnative-pg/pgbouncer:1.25.2") });
   const rabbitmq = svc("infra", "rabbitmq", { volumeMounts: { "/var/lib/rabbitmq": volumes.rabbitmq } });
   const redpanda = svc("infra", "redpanda", { volumeMounts: { "/var/lib/redpanda/data": volumes.redpanda } });
   // ClickHouse and analytics-svc only in production (the bootstrap's profile full; staging is small).

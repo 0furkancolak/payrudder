@@ -1,13 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "deploy/railway/images/pgbouncer/Dockerfile",
-    "watchPatterns": [
-      "/deploy/railway/images/pgbouncer/**"
-    ]
-  },
   "deploy": {
+    "startCommand": "/bin/sh -c 'printf \"%s\\n\" \"[databases]\" \"* = host=${POSTGRES_HOST} port=${POSTGRES_PORT}\" \"\" \"[pgbouncer]\" \"listen_addr = *\" \"listen_port = ${PGBOUNCER_PORT}\" \"auth_type = scram-sha-256\" \"auth_file = /tmp/userlist.txt\" \"auth_user = ${POSTGRES_USER}\" \"auth_query = SELECT usename, passwd FROM pg_shadow WHERE usename = \\$1\" \"pool_mode = transaction\" \"default_pool_size = 16\" \"max_client_conn = 1000\" \"max_prepared_statements = 200\" \"ignore_startup_parameters = extra_float_digits\" > /tmp/pgbouncer.ini && printf \"\\\"%s\\\" \\\"%s\\\"\\n\" \"${POSTGRES_USER}\" \"${POSTGRES_PASSWORD}\" > /tmp/userlist.txt && exec pgbouncer /tmp/pgbouncer.ini'",
     "restartPolicyType": "ALWAYS",
     "numReplicas": 1
   }
