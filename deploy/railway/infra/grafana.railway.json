@@ -12,6 +12,7 @@
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ALWAYS",
-    "numReplicas": 1
+    "numReplicas": 1,
+    "sleepApplication": true
   }
 }

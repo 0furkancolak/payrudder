@@ -78,7 +78,7 @@ type railwayConfig struct {
 // The keys of railway.schema.json (https://railway.com/railway.schema.json) that these files may use.
 var (
 	buildKeys  = []string{"builder", "dockerfilePath", "watchPatterns"}
-	deployKeys = []string{"healthcheckPath", "healthcheckTimeout", "restartPolicyType", "restartPolicyMaxRetries", "numReplicas", "drainingSeconds", "requiredMountPath", "startCommand"}
+	deployKeys = []string{"healthcheckPath", "healthcheckTimeout", "restartPolicyType", "restartPolicyMaxRetries", "numReplicas", "drainingSeconds", "requiredMountPath", "startCommand", "sleepApplication"}
 )
 
 func load(t *testing.T, repo, path string) railwayConfig {

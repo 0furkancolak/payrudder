@@ -218,7 +218,10 @@ vars pgbouncer 'POSTGRES_HOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}' POSTGRES_POR
 
 secret rabbitmq RABBITMQ_PASSWORD hex24
 vars rabbitmq RAILWAY_RUN_UID=0 PORT=15692
-vars redpanda RAILWAY_RUN_UID=0 PORT=9644
+# Redpanda (Seastar) takes a fixed memory pool at start, whatever the load: staging gets a small one.
+REDPANDA_MEMORY=256M
+((FULL)) && REDPANDA_MEMORY=512M
+vars redpanda RAILWAY_RUN_UID=0 PORT=9644 "REDPANDA_MEMORY=$REDPANDA_MEMORY"
 
 if ((FULL)); then
   secret clickhouse CLICKHOUSE_PASSWORD hex24
