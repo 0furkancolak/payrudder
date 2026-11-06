@@ -25,9 +25,13 @@ jobs:
       - uses: actions/checkout@v5
       - name: Deploy the services to Railway
         if: ${{ env.RAILWAY_TOKEN != '' }}
+        # Staging is stopped unless someone uses it: wake it for the deploy, and stop it again afterwards if it was stopped before.
         run: |
           npm install -g @railway/cli@5.71.0
+          before=$(deploy/railway/staging.sh status)
+          [ "$before" = running ] || deploy/railway/staging.sh start --detach
           deploy/railway/bootstrap.sh --deploy-only --environment staging
+          [ "$before" = running ] || deploy/railway/staging.sh stop
       - name: Deploy skipped
         if: ${{ env.RAILWAY_TOKEN == '' }}
         run: echo "::notice::RAILWAY_TOKEN_STAGING is not set; the backend was not deployed (docs/runbooks/staging-and-production.md)."

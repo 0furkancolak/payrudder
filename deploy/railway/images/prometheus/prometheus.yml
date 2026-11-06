@@ -1,5 +1,5 @@
 # deploy/prometheus/prometheus.yml for Railway: the same jobs over the private network (<service>.railway.internal). Every Go service serves
-# /metrics on :9100 there (pkg/config: PORT). No pushgateway: Railway backs up Postgres itself, there is no backup job to report.
+# /metrics on :9100 there (pkg/config: PORT). The backup service reports through the Pushgateway.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -62,6 +62,11 @@ scrape_configs:
   - job_name: alertmanager
     static_configs:
       - targets: ["alertmanager.railway.internal:9093"]
+  # The backup service pushes its results here (images/backup/run.sh); honor_labels keeps the job label it set.
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway.railway.internal:9091"]
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]

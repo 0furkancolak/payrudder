@@ -45,8 +45,8 @@ route:
       group_wait: 0s
       group_interval: 1m
       repeat_interval: 1m
-    # Railway backs up Postgres itself (no backup job reports here): these rules would fire for ever.
-    - matchers: ['alertname=~"Backup.*|RestoreDrillFailed|RestoreNotVerified|WalArchiveStale|WalSpoolBacklog|BaseBackupStale|ObjectBackupStale"']
+    # No point-in-time recovery on Railway (daily dumps only, images/backup): the WAL and base backup rules would fire for ever.
+    - matchers: ['alertname=~"WalArchiveStale|WalSpoolBacklog|BaseBackupStale"']
       receiver: blackhole
     - matchers: [severity="page"]
       receiver: page

@@ -397,9 +397,27 @@ railway service redeploy --service Postgres --yes
 The new `PGDATA` makes it initialise again with that password (the old, empty directory stays on the volume). Redis is created without any
 of its variables; the bootstrap sets them. Production was fixed this way on 2026-11-06.
 
+## Staging on demand
+
+Staging runs only while someone uses it. `make start-staging` wakes every service (redeploys its last deployment: no build) in dependency order,
+waits until each runs and the API answers, prints the console and API links, and stops it all again on Ctrl-C or when the terminal closes;
+`make stop-staging` stops it. A push to `main` (`deploy-staging.yml`) wakes it for the deploy and stops it again if it was stopped before; a nightly
+workflow (`staging-stop.yml`) stops a session that ended without Ctrl-C. While it runs, its application services also sleep after 10 idle
+minutes (Railway's serverless) and wake on the next request. Staging has no observability stack and no backups.
+
+## Backups (production)
+
+The `backup` service (`deploy/railway/images/backup`) dumps every database daily into the private R2 bucket `payrudder-backups-production`
+(`postgres/<db>/`, expired after 30 days by the bucket's lifecycle rule), restores the newest dumps into scratch databases every 7th run (the first
+run included) and checks them (`deploy/backup/verify.sh`, `invariants.sh`), and copies the invoice and asset buckets to `objects/<bucket>/` (a
+delete in the source is not copied). It reports to the Pushgateway; the alerts `BackupStale`, `BackupFailed`, `RestoreDrillFailed`,
+`RestoreNotVerified` and `ObjectBackupStale` go to Telegram. Its R2 token (`BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`) is its own: it
+writes the backup bucket and reads the two object buckets. Restoring: `deploy/backup/restore.sh` with a dump downloaded from the bucket
+(docs/runbooks/backup-restore.md). There is no point-in-time recovery on Railway: at most a day of data is lost.
+
 ## Observability
 
-Every environment has its own stack, in the canvas group Observability (`railway.ts`; the images are `deploy/railway/images/<name>`, built from
+Production has the stack, in the canvas group Observability (`railway.ts`; the images are `deploy/railway/images/<name>`, built from
 the same configs as the compose `obs` profile):
 
 | Signal | Path | Kept |
@@ -407,9 +425,9 @@ the same configs as the compose `obs` profile):
 | Metrics | Prometheus scrapes every Go service on `<service>.railway.internal:9100`, RabbitMQ, Redpanda, ClickHouse, the Postgres and Redis exporters, Tempo, Loki, Alertmanager and the collector | 15 days / 4 GB |
 | Traces | services → `otel-collector` (`PAYRUDDER_OTLP_ENDPOINT`, tail sampling) → Tempo; Tempo writes span metrics and the service map to Prometheus | 7 days |
 | Logs | Locomotive (Railway's log forwarder template; there is no Docker socket) → Vector (labels `service`, `level`; the JSON line keeps `trace_id`) → Loki | 7 days |
-| Alerts | the rules of `deploy/prometheus/rules` → Alertmanager → Telegram (`[staging]` / `[production]` in each message). The backup rules go nowhere: Railway backs up Postgres, no job reports here | — |
+| Alerts | the rules of `deploy/prometheus/rules` → Alertmanager → Telegram (`[production]` in each message). The WAL and base backup rules go nowhere: there is no point-in-time recovery on Railway | — |
 
-Grafana is at `https://grafana[-staging].payrudder.com` (`--grafana-domain`), user `admin`, password `GF_SECURITY_ADMIN_PASSWORD` on the
+Grafana is at `https://grafana.payrudder.com` (`--grafana-domain`; it sleeps when idle), user `admin`, password `GF_SECURITY_ADMIN_PASSWORD` on the
 grafana service; no anonymous access, everything provisioned (data sources with Alertmanager, the dashboards of `deploy/grafana/dashboards`).
 Inputs (`setup-secrets.sh`): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `LOCOMOTIVE_RAILWAY_API_KEY` (an account token, railway.com/account/tokens,
 no workspace), optionally `WATCHDOG_URL` (healthchecks.io: it tells you when the always-firing Watchdog stops arriving).

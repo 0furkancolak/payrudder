@@ -160,10 +160,10 @@ func TestInfraConfigs(t *testing.T) {
 		t.Run(filepath.Base(f), func(t *testing.T) {
 			cfg := load(t, repo, rel)
 			name := strings.TrimSuffix(filepath.Base(f), ".railway.json")
-			// PgBouncer speaks only the Postgres protocol and Locomotive serves nothing: Railway checks they are running, not an HTTP path.
+			// PgBouncer speaks only the Postgres protocol, Locomotive and the backup loop serve nothing: Railway checks they are running.
 			hc, _ := cfg.Deploy["healthcheckPath"].(string)
-			if (hc == "") != (name == "pgbouncer" || name == "locomotive") {
-				t.Errorf("healthcheckPath %q: every backing service but PgBouncer and Locomotive has one", hc)
+			if (hc == "") != (name == "pgbouncer" || name == "locomotive" || name == "backup") {
+				t.Errorf("healthcheckPath %q: every backing service but PgBouncer, Locomotive and the backup has one", hc)
 			}
 			// No build: a published image, which railway.ts names as the service's source.
 			if cfg.Build.DockerfilePath == "" {
@@ -628,8 +628,8 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	out, err := run("", "--check", "production")
-	if err == nil || !strings.Contains(out, "10 zorunlu kalem eksik") {
-		t.Fatalf("--check with nothing set: want 10 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	if err == nil || !strings.Contains(out, "12 zorunlu kalem eksik") {
+		t.Fatalf("--check with nothing set: want 12 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
 	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- NAFRU_API_KEY"} {
 		if !strings.Contains(out, want) {
@@ -641,11 +641,12 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	// Answers in order: Cloudflare token, Railway token, GEO (Enter generates), a wrong then a right Nafru URL, the Nafru key, the R2 endpoint and keys,
-	// operators, no Google, the Telegram bot and chat, the Locomotive token, no watchdog.
+	// operators, no Google, the Telegram bot and chat, the Locomotive token, no watchdog, the backup token's keys.
 	key := `a key with spaces, 'quotes' and $dollars`
 	answers := "cf_token_abcdefghijklmnopqrstuvwxyz0123\nrlwy_proj_abcdefghijklmnop\n\nnot-a-url\nhttps://api.nafru.test\n" + key +
 		"\nhttps://" + strings.Repeat("a", 32) + ".r2.cloudflarestorage.com\n" + strings.Repeat("b", 32) + "\n" + strings.Repeat("c", 64) + "\nops@payrudder.com\n\n" +
-		"123456:" + strings.Repeat("t", 35) + "\n-1001234\n" + strings.Repeat("l", 36) + "\n\n"
+		"123456:" + strings.Repeat("t", 35) + "\n-1001234\n" + strings.Repeat("l", 36) + "\n\n" +
+		strings.Repeat("d", 32) + "\n" + strings.Repeat("e", 64) + "\n"
 	if out, err := run(answers, "production"); err != nil || !strings.Contains(out, "bootstrap.sh --dry-run --environment production --console-url https://console.payrudder.com") {
 		t.Fatalf("a full run: err=%v\n%s", err, out)
 	}
@@ -680,12 +681,24 @@ func TestGoogleSignInIsSetOnTheGatewayWhenGiven(t *testing.T) {
 	}
 }
 
-// Observability on Railway: Prometheus scrapes every Payrudder service over the private network, and every Go service sends its traces to the
-// environment's collector.
+// Observability on Railway (production only): Prometheus scrapes every Payrudder service over the private network, and every Go service sends
+// its traces to the collector. Staging has none of it, and no service gets a fixed GOMEMLIMIT.
 func TestObservabilityReachesEveryService(t *testing.T) {
 	repo := root(t)
 	prom := read(t, repo, "deploy", "railway", "images", "prometheus", "prometheus.yml")
 	text := dryRunOutput(t, repo, "full")
+	small := dryRunOutput(t, repo, "small")
+	for _, unwanted := range []string{"OTLP_ENDPOINT", "--service grafana", "--service prometheus", "--service backup", "GOMEMLIMIT"} {
+		if strings.Contains(small, unwanted) {
+			t.Errorf("staging's dry run has %s", unwanted)
+		}
+	}
+	if strings.Contains(text, "GOMEMLIMIT") {
+		t.Error("production sets GOMEMLIMIT")
+	}
+	if !strings.Contains(text, "--service backup") || !strings.Contains(prom, `"pushgateway.railway.internal:9091"`) {
+		t.Error("production has no backup service, or Prometheus does not scrape the Pushgateway it reports to")
+	}
 	for _, name := range composeApps(t, repo) {
 		if name == "admin-ui" || name == "mockpsp" {
 			continue
@@ -693,7 +706,7 @@ func TestObservabilityReachesEveryService(t *testing.T) {
 		if !strings.Contains(prom, `"`+name+`.railway.internal:9100"`) {
 			t.Errorf("Prometheus does not scrape %s", name)
 		}
-		if !strings.Contains(text, "--service "+name+" --skip-deploys SERVICE_DIR=") || !regexp.MustCompile(`--service `+name+` --skip-deploys SERVICE_DIR=\S+ GOMEMLIMIT=\S+ PAYRUDDER_OTLP_ENDPOINT=otel-collector\.railway\.internal:4317`).MatchString(text) {
+		if !strings.Contains(text, "--service "+name+" --skip-deploys SERVICE_DIR=") || !regexp.MustCompile(`--service `+name+` --skip-deploys SERVICE_DIR=\S+ PAYRUDDER_OTLP_ENDPOINT=otel-collector\.railway\.internal:4317`).MatchString(text) {
 			t.Errorf("%s does not send its traces to the collector", name)
 		}
 	}

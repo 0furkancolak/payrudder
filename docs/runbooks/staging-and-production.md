@@ -108,8 +108,8 @@ Each line says what to look at. Write down any that fail.
 
 ## Observability
 
-Grafana: `https://grafana-staging.payrudder.com` and `https://grafana.payrudder.com` (user `admin`, the password is `GF_SECURITY_ADMIN_PASSWORD` on
-the grafana service). Alerts go to the Telegram chat of `TELEGRAM_CHAT_ID`. What runs where: [deploy/railway/README.md](../../deploy/railway/README.md#observability).
+Grafana (production only): `https://grafana.payrudder.com` (user `admin`, the password is `GF_SECURITY_ADMIN_PASSWORD` on the grafana service).
+Staging runs only while used: `make start-staging` (ready, links, Ctrl-C stops it), `make stop-staging`. Backups: [deploy/railway/README.md](../../deploy/railway/README.md#backups-production). Alerts go to the Telegram chat of `TELEGRAM_CHAT_ID`. What runs where: [deploy/railway/README.md](../../deploy/railway/README.md#observability).
 
 ## A release to production
 

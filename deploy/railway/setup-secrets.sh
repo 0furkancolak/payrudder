@@ -24,7 +24,7 @@ CONSOLE=console$SUFFIX.payrudder.com
 DIR=${PAYRUDDER_SECRETS_DIR:-$HOME/.config/payrudder}
 FILE=$DIR/$ENV.env
 FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET
-  TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID LOCOMOTIVE_RAILWAY_API_KEY WATCHDOG_URL)
+  TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID LOCOMOTIVE_RAILWAY_API_KEY WATCHDOG_URL BACKUP_S3_ACCESS_KEY BACKUP_S3_SECRET_KEY)
 
 # Only the file's values count, not whatever the calling shell exports.
 for v in "${FILE_VARS[@]}"; do unset "$v"; done
@@ -119,6 +119,8 @@ if is_set PAYRUDDER_GOOGLE_CLIENT_ID; then
   input PAYRUDDER_GOOGLE_CLIENT_SECRET required secret '.{10,}' "o OAuth client'ın secret'ı" "Client ID'nin yanında görünür (Download JSON'da da var)."
 fi
 
+# Observability and backups run in production only (staging runs only while used: deploy/railway/staging.sh).
+if [[ $ENV == production ]]; then
 input TELEGRAM_BOT_TOKEN required secret '^[0-9]+:[A-Za-z0-9_-]{30,}$' "alert'leri gönderen Telegram botunun token'ı" \
   "Telegram'da @BotFather → /newbot → payrudder-alerts gibi bir ad. Verdiği token 123456:ABC... biçiminde." \
   "İki ortam aynı botu kullanabilir; mesajlar [staging] / [production] diye başlar."
@@ -130,6 +132,11 @@ input LOCOMOTIVE_RAILWAY_API_KEY required secret '^[A-Za-z0-9_-]{20,}$' "loglar�
   "İki ortam aynı token'ı kullanabilir."
 input WATCHDOG_URL optional plain '^https://' "Watchdog alert'inin her dakika gittiği dış nöbetçi adres" \
   "https://healthchecks.io → Add Check (period 1 dk, grace 5 dk) → ping URL'i. Gelmezse healthchecks size haber verir: alert yolunun kendisi bozuk demektir."
+input BACKUP_S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "yedekleme servisinin R2 token'ının Access Key ID'si" \
+  "https://dash.cloudflare.com → R2 Object Storage → Manage API tokens → Create Account API token, adı payrudder-backups:" \
+  "Object Read & Write, yalnız payrudder-backups-production, payrudder-invoices-production ve payrudder-assets-production bucket'larına."
+input BACKUP_S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "aynı token'ın Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
+fi
 
 if [[ $missing -gt 0 ]]; then echo; echo "$missing zorunlu kalem eksik: betiği tekrar çalıştır"; exit 1; fi
 
@@ -146,6 +153,6 @@ cat <<EOF
 5. Console'un proxy secret'ı, Worker'a aynı değer:
      railway variable list --environment $ENV --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET
      (cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env $ENV)
-6. Grafana: https://grafana$SUFFIX.payrudder.com, kullanıcı admin, şifre:
+6. Grafana (yalnız production): https://grafana$SUFFIX.payrudder.com, kullanıcı admin, şifre:
      railway variable list --environment $ENV --service grafana --kv | grep GF_SECURITY_ADMIN_PASSWORD
 EOF

@@ -61,6 +61,8 @@ done
 # PAYRUDDER_GOOGLE_CLIENT_ID, PAYRUDDER_GOOGLE_CLIENT_SECRET: set on the gateway as they are, for "Continue with Google". Empty: not set.
 # TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (both or neither): Alertmanager sends page and warn alerts to that chat. Empty: alerts stay in Grafana.
 # WATCHDOG_URL: an outside dead man's switch (healthchecks.io) the always-firing Watchdog alert is posted to every minute. Empty: none.
+# BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY (production): an R2 token that writes payrudder-backups-production (private, dumps expire after 30 days)
+#   and reads the object buckets; the backup service copies both there daily.
 # LOCOMOTIVE_RAILWAY_API_KEY: a Railway account token (railway.com/account/tokens, no workspace: project and team tokens do not work) with which
 #   Locomotive reads the environment's logs for Loki. Empty: no logs in Grafana.
 if ((!DEPLOY_ONLY && !DRY_RUN)); then
@@ -146,11 +148,12 @@ S3_VARS=("S3_ENDPOINT=$S3_ENDPOINT" "S3_ACCESS_KEY=$S3_ACCESS_KEY" "S3_SECRET_KE
 common() { # <service name> <port>
   vars "$1" PAYRUDDER_ENV=railway "PAYRUDDER_SERVICE_NAME=$1" "PORT=$2"
 }
-# Railway bills by resident memory and gives a container no cgroup limit for the Go runtime to read, so the soft limit is set here: the collector
-# works before the heap grows past it. GOGC is 50 by default (pkg/memlimit). Raise GOMEMLIMIT on a service that logs "memory limit" pressure.
-GO_MEMLIMIT=${GO_MEMLIMIT:-96MiB}
+# No GOMEMLIMIT: a fixed soft limit under a heap that legitimately grows past it makes the collector run without pause. pkg/memlimit sets
+# GOGC=50 (a smaller heap, no ceiling) and takes the container's own limit when there is one. Traces go to the collector in production only.
+OTLP=()
+((FULL)) && OTLP=(PAYRUDDER_OTLP_ENDPOINT=otel-collector.railway.internal:4317)
 go_service() { # <service name> <dir> <port>
-  vars "$1" "SERVICE_DIR=$2" "GOMEMLIMIT=$GO_MEMLIMIT" PAYRUDDER_OTLP_ENDPOINT=otel-collector.railway.internal:4317
+  vars "$1" "SERVICE_DIR=$2" ${OTLP[@]+"${OTLP[@]}"}
   common "$1" "$3"
   if [[ -n ${ERROR_TRACKING_URL:-} && $1 != mockpsp ]]; then vars "$1" "PAYRUDDER_ERROR_TRACKING_URL=$ERROR_TRACKING_URL"; fi
 }
@@ -179,6 +182,7 @@ has_domain() { # <service> <domain>
 }
 DOMAIN_ENV=()
 has_domain gateway "$API_DOMAIN" && DOMAIN_ENV+=("PAYRUDDER_API_DOMAIN=$API_DOMAIN")
+((FULL)) || GRAFANA_DOMAIN=""   # no Grafana outside production
 has_domain grafana "$GRAFANA_DOMAIN" && DOMAIN_ENV+=("PAYRUDDER_GRAFANA_DOMAIN=$GRAFANA_DOMAIN")
 if ((DRY_RUN)); then
   echo "+ (cd $IAC && npm ci && [the domains that exist] ${APPLY[*]})"
@@ -229,37 +233,49 @@ if ((FULL)); then
   vars clickhouse CLICKHOUSE_DB=payrudder CLICKHOUSE_USER=payrudder CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 RAILWAY_RUN_UID=0 PORT=8123
 fi
 
-note "Observability"
-vars otel-collector PORT=13133
-vars tempo RAILWAY_RUN_UID=0 PORT=3200
-vars loki RAILWAY_RUN_UID=0 PORT=3100
-vars vector PORT=8686
-vars prometheus RAILWAY_RUN_UID=0 PORT=9090
-vars alertmanager PORT=9093
-if [[ -n ${TELEGRAM_BOT_TOKEN:-} && -n ${TELEGRAM_CHAT_ID:-} ]]; then
-  vars alertmanager "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" "TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID"
-else
-  echo "warning: no TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, alerts are only visible in Grafana and Alertmanager" >&2
-fi
-if [[ -n ${WATCHDOG_URL:-} ]]; then vars alertmanager "WATCHDOG_URL=$WATCHDOG_URL"; fi
-secret grafana GF_SECURITY_ADMIN_PASSWORD hex24
-vars grafana PORT=3000 GF_SECURITY_ADMIN_USER=admin GF_AUTH_ANONYMOUS_ENABLED=false GF_USERS_ALLOW_SIGN_UP=false \
-  GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/services.json GF_ANALYTICS_REPORTING_ENABLED=false \
-  GF_ANALYTICS_CHECK_FOR_UPDATES=false GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false GF_LOG_LEVEL=warn \
-  "GF_SERVER_ROOT_URL=${GRAFANA_DOMAIN:+https://$GRAFANA_DOMAIN}"
-vars postgres-exporter PORT=9187 'DATA_SOURCE_NAME=${{Postgres.DATABASE_URL}}?sslmode=disable'
-vars redis-exporter PORT=9121 'REDIS_ADDR=${{Redis.REDIS_URL}}'
-# Locomotive forwards the logs of every service of this environment (by reference, so no ID is looked up) to Vector, as JSON lines.
-LOGGED=(Postgres Redis pgbouncer rabbitmq redpanda clickhouse gateway plans-svc ingest-svc aggregator limits-svc billing-svc assets-svc analytics-svc payments-worker invoice-worker notifier mockpsp otel-collector tempo loki vector prometheus alertmanager grafana postgres-exporter redis-exporter)
-((FULL)) || LOGGED=("${LOGGED[@]/clickhouse}") LOGGED=("${LOGGED[@]/analytics-svc}")
-IDS=""
-for s in "${LOGGED[@]}"; do [[ -n $s ]] && IDS+="${IDS:+,}\${{$s.RAILWAY_SERVICE_ID}}"; done
-vars locomotive 'LOCOMOTIVE_ENVIRONMENT_ID=${{RAILWAY_ENVIRONMENT_ID}}' "LOCOMOTIVE_SERVICE_IDS=$IDS" \
-  LOCOMOTIVE_WEBHOOK_URL=http://vector.railway.internal:8080 LOCOMOTIVE_WEBHOOK_MODE=jsonl
-if [[ -n ${LOCOMOTIVE_RAILWAY_API_KEY:-} ]]; then
-  vars locomotive "LOCOMOTIVE_RAILWAY_API_KEY=$LOCOMOTIVE_RAILWAY_API_KEY"
-else
-  echo "warning: no LOCOMOTIVE_RAILWAY_API_KEY, Locomotive cannot read the logs (Grafana shows none)" >&2
+note "Observability and backups (production only: staging runs only while used, see deploy/railway/staging.sh)"
+if ((FULL)); then
+  vars otel-collector PORT=13133
+  vars tempo RAILWAY_RUN_UID=0 PORT=3200
+  vars loki RAILWAY_RUN_UID=0 PORT=3100
+  vars vector PORT=8686
+  vars prometheus RAILWAY_RUN_UID=0 PORT=9090
+  vars alertmanager PORT=9093
+  if [[ -n ${TELEGRAM_BOT_TOKEN:-} && -n ${TELEGRAM_CHAT_ID:-} ]]; then
+    vars alertmanager "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" "TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID"
+  else
+    echo "warning: no TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID, alerts are only visible in Grafana and Alertmanager" >&2
+  fi
+  if [[ -n ${WATCHDOG_URL:-} ]]; then vars alertmanager "WATCHDOG_URL=$WATCHDOG_URL"; fi
+  secret grafana GF_SECURITY_ADMIN_PASSWORD hex24
+  vars grafana PORT=3000 GF_SECURITY_ADMIN_USER=admin GF_AUTH_ANONYMOUS_ENABLED=false GF_USERS_ALLOW_SIGN_UP=false \
+    GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/services.json GF_ANALYTICS_REPORTING_ENABLED=false \
+    GF_ANALYTICS_CHECK_FOR_UPDATES=false GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false GF_LOG_LEVEL=warn \
+    GF_UNIFIED_ALERTING_ENABLED=false GF_NEWS_NEWS_FEED_ENABLED=false GF_FEATURE_TOGGLES_DISABLE=grafanaAdvisor,dashgpt,provisioning,kubernetesDashboards GOGC=50 \
+    "GF_SERVER_ROOT_URL=${GRAFANA_DOMAIN:+https://$GRAFANA_DOMAIN}"
+  vars postgres-exporter PORT=9187 'DATA_SOURCE_NAME=${{Postgres.DATABASE_URL}}?sslmode=disable'
+  vars redis-exporter PORT=9121 'REDIS_ADDR=${{Redis.REDIS_URL}}'
+  vars pushgateway PORT=9091
+  vars backup 'PGHOST=${{Postgres.RAILWAY_PRIVATE_DOMAIN}}' PGPORT=5432 'PGUSER=${{Postgres.PGUSER}}' 'PGPASSWORD=${{Postgres.PGPASSWORD}}' \
+    "BACKUP_BUCKET=${BACKUP_BUCKET:-payrudder-backups-$ENVIRONMENT}" "OBJ_BUCKETS=$S3_INVOICES_BUCKET $S3_ASSETS_BUCKET" \
+    "AWS_ENDPOINT_URL=$S3_ENDPOINT" PUSHGATEWAY_URL=http://pushgateway.railway.internal:9091
+  if [[ -n ${BACKUP_S3_ACCESS_KEY:-} && -n ${BACKUP_S3_SECRET_KEY:-} ]]; then
+    vars backup "AWS_ACCESS_KEY_ID=$BACKUP_S3_ACCESS_KEY" "AWS_SECRET_ACCESS_KEY=$BACKUP_S3_SECRET_KEY"
+  else
+    echo "warning: no BACKUP_S3_ACCESS_KEY/BACKUP_S3_SECRET_KEY, the backup service cannot write the backup bucket" >&2
+  fi
+  # Locomotive forwards the logs of every service of this environment (by reference, so no ID is looked up) to Vector, as JSON lines.
+  LOGGED=(Postgres Redis pgbouncer rabbitmq redpanda clickhouse gateway plans-svc ingest-svc aggregator limits-svc billing-svc assets-svc analytics-svc payments-worker invoice-worker notifier mockpsp otel-collector tempo loki vector prometheus alertmanager grafana postgres-exporter redis-exporter pushgateway backup)
+  IDS=""
+  for s in "${LOGGED[@]}"; do IDS+="${IDS:+,}\${{$s.RAILWAY_SERVICE_ID}}"; done
+  vars locomotive 'LOCOMOTIVE_ENVIRONMENT_ID=${{RAILWAY_ENVIRONMENT_ID}}' "LOCOMOTIVE_SERVICE_IDS=$IDS" \
+    LOCOMOTIVE_WEBHOOK_URL=http://vector.railway.internal:8080 LOCOMOTIVE_WEBHOOK_MODE=jsonl
+  if [[ -n ${LOCOMOTIVE_RAILWAY_API_KEY:-} ]]; then
+    vars locomotive "LOCOMOTIVE_RAILWAY_API_KEY=$LOCOMOTIVE_RAILWAY_API_KEY"
+  else
+    echo "warning: no LOCOMOTIVE_RAILWAY_API_KEY, Locomotive cannot read the logs (Grafana shows none)" >&2
+  fi
+
 fi
 
 note "Secrets shared by services"
@@ -363,9 +379,11 @@ note "Deploy: backing services"
 # PgBouncer runs an image (Railway's template), nothing to upload: a redeploy picks up its variables.
 run railway service redeploy --service pgbouncer --yes
 deploy "${INFRA[@]}"
-# Observability before the services, so their first traces and logs land. The exporters are images: a redeploy.
-deploy tempo loki prometheus alertmanager vector otel-collector grafana locomotive
-for s in postgres-exporter redis-exporter; do run railway service redeploy --service "$s" --yes; done
+# Observability before the services, so their first traces and logs land. The exporters and the Pushgateway are images: a redeploy.
+if ((FULL)); then
+  deploy tempo loki prometheus alertmanager vector otel-collector grafana locomotive backup
+  for s in postgres-exporter redis-exporter pushgateway; do run railway service redeploy --service "$s" --yes; done
+fi
 pause "the pooler and the brokers come up (Postgres and Redis are already running)"
 note "Deploy: services, plans-svc first (it creates the Kafka topics; every service creates its own database)"
 deploy "${APPS_FIRST[@]}"

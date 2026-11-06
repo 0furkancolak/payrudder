@@ -30,6 +30,13 @@ export default defineRailway(({ isEnvironment }, project) => {
   const grafanaDomain = process.env.PAYRUDDER_GRAFANA_DOMAIN;
   const svc = (dir: "services" | "infra", name: string, extra: Record<string, unknown> = {}) =>
     service(name, { source, ...settings(dir, name), replicas: { [REGION]: 1 }, ...extra });
+  // Staging runs only while someone uses it (deploy/railway/staging.sh: make start-staging), and nothing scrapes it: an application service there
+  // also sleeps after 10 idle minutes (Railway's serverless) and wakes on the next request. A consumer polling its broker never goes idle, so it never sleeps.
+  const app = (name: string, extra: Record<string, unknown> = {}) => {
+    const s = svc("services", name, extra);
+    if (!production) s.deploy = { ...s.deploy, sleepApplication: true };
+    return s;
+  };
 
   const Postgres = postgres("Postgres", { region: REGION });
   Postgres.networking = { privateNetworkEndpoint: "postgres" };
@@ -43,6 +50,8 @@ export default defineRailway(({ isEnvironment }, project) => {
     loki: vol("loki"),
     tempo: vol("tempo"),
   };
+  // Volumes that only production has: ClickHouse and the observability stack.
+  const productionVolumes = [volumes.clickhouse, volumes.prometheus, volumes.loki, volumes.tempo];
 
   // Railway's PgBouncer template (image and variable names), with one change to its start command (pgbouncer.railway.json): every database
   // ("*") and every role, their passwords read from Postgres (auth_query), not the template's single database and user. No public TCP proxy.
@@ -52,16 +61,15 @@ export default defineRailway(({ isEnvironment }, project) => {
   // ClickHouse and analytics-svc only in production (the bootstrap's profile full; staging is small).
   const clickhouse = production ? [svc("infra", "clickhouse", { volumeMounts: { "/var/lib/clickhouse": volumes.clickhouse } })] : [];
 
-  const gateway = svc("services", "gateway", apiDomain ? { domains: [{ domain: apiDomain, port: 8000 }] } : {});
-  const core = ["plans-svc", "ingest-svc", "aggregator", "limits-svc", "billing-svc", "assets-svc", ...(production ? ["analytics-svc"] : [])].map((n) =>
-    svc("services", n),
-  );
-  const workers = ["payments-worker", "invoice-worker", "notifier"].map((n) => svc("services", n));
-  const mockpsp = svc("services", "mockpsp");
+  const gateway = app("gateway", apiDomain ? { domains: [{ domain: apiDomain, port: 8000 }] } : {});
+  const core = ["plans-svc", "ingest-svc", "aggregator", "limits-svc", "billing-svc", "assets-svc", ...(production ? ["analytics-svc"] : [])].map((n) => app(n));
+  const workers = ["payments-worker", "invoice-worker", "notifier"].map((n) => app(n));
+  const mockpsp = app("mockpsp");
 
-  // Observability (docs/08-observability.md): metrics in Prometheus, traces in Tempo through the collector, logs in Loki through Locomotive
+  // Production only. Observability (docs/08-observability.md): metrics in Prometheus, traces in Tempo through the collector, logs in Loki through Locomotive
   // (Railway's log forwarder template) and Vector, alerts from Alertmanager to Telegram, Grafana over all of them.
   const observability = [
+    svc("infra", "pushgateway", { source: image("prom/pushgateway:v1.11.1") }),
     svc("infra", "otel-collector"),
     svc("infra", "tempo", { volumeMounts: { "/var/tempo": volumes.tempo } }),
     svc("infra", "loki", { volumeMounts: { "/loki": volumes.loki } }),
@@ -72,6 +80,8 @@ export default defineRailway(({ isEnvironment }, project) => {
     svc("infra", "grafana", grafanaDomain ? { domains: [{ domain: grafanaDomain, port: 3000 }] } : {}),
     svc("infra", "postgres-exporter", { source: image("quay.io/prometheuscommunity/postgres-exporter:v0.17.1") }),
     svc("infra", "redis-exporter", { source: image("oliver006/redis_exporter:v1.67.0-alpine") }),
+    // Daily dumps, restore drill and object copies into the private R2 bucket payrudder-backups-production (images/backup/run.sh).
+    svc("infra", "backup"),
   ];
 
   return project("payrudder", {
@@ -82,13 +92,10 @@ export default defineRailway(({ isEnvironment }, project) => {
       ...group("API", [gateway, ...core]),
       ...group("Workers", workers),
       ...group("Sandbox", [mockpsp]),
-      ...group("Observability", observability),
+      ...(production ? group("Observability", observability) : []),
       volumes.rabbitmq,
       volumes.redpanda,
-      volumes.prometheus,
-      volumes.loki,
-      volumes.tempo,
-      ...(production ? [volumes.clickhouse] : []),
+      ...(production ? productionVolumes : []),
     ],
   });
 });
