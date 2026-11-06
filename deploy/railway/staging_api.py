@@ -34,7 +34,7 @@ def headers():
 def api(query, variables=None):
     req = urllib.request.Request(URL, json.dumps({"query": query, "variables": variables or {}}).encode(),
                                  {"Content-Type": "application/json", "User-Agent": "payrudder-staging", **headers()})
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with urllib.request.urlopen(req, timeout=180) as r:  # removing Postgres takes over a minute
         body = json.load(r)
     if body.get("errors"):
         sys.exit("railway api: " + "; ".join(e["message"] for e in body["errors"]))
