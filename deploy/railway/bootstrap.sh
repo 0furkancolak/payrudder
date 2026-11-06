@@ -45,8 +45,8 @@ fi
 [[ $ALLOWED_ENVS == sandbox,live || $ALLOWED_ENVS == sandbox ]] || { echo "--allowed-environments must be sandbox,live or sandbox" >&2; exit 2; }
 [[ $API_DOMAIN != *://* && $API_DOMAIN != */* ]] || { echo "--api-domain takes a host name, not a URL: $API_DOMAIN" >&2; exit 2; }
 # Inputs from the environment (deploy/railway/setup-secrets.sh collects them into a file, with where each one comes from):
-# NAFRU_BASE_URL, NAFRU_API_KEY (required): the platform's mail goes through Nafru Email; set on the notifier. There is no mail catcher: sandbox
-#   tenants' mail goes through Nafru too, with a marked subject.
+# NAFRU_BASE_URL, NAFRU_API_KEY (both or neither): the platform's mail goes through Nafru Email; set on the notifier. There is no mail catcher:
+#   sandbox tenants' mail goes through Nafru too, with a marked subject. Empty: the notifier sends no mail (signup verification, invoices).
 # S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY (required): object storage, Cloudflare R2 (https://<account id>.r2.cloudflarestorage.com and an R2 API
 #   token's keys). S3_INVOICES_BUCKET and S3_ASSETS_BUCKET default to payrudder-invoices-<environment> and payrudder-assets-<environment>;
 #   S3_REGION to auto. Presigned links use the same endpoint; the assets bucket also has a public domain (assets.payrudder.com) of its own.
@@ -56,11 +56,18 @@ fi
 # MAIL_WEBHOOK_SECRET: the "whsec_..." secret of Nafru's delivery-events webhook (https://<api domain>/inbound/mail-events), on the gateway.
 # PAYRUDDER_GOOGLE_CLIENT_ID, PAYRUDDER_GOOGLE_CLIENT_SECRET: set on the gateway as they are, for "Continue with Google". Empty: not set.
 if ((!DEPLOY_ONLY && !DRY_RUN)); then
-  for v in NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY; do
+  for v in S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY; do
     [[ -n ${!v:-} ]] || { echo "$v is required (deploy/railway/setup-secrets.sh $ENVIRONMENT)" >&2; exit 2; }
   done
 fi
-NAFRU_BASE_URL=${NAFRU_BASE_URL:-https://nafru.example} NAFRU_API_KEY=${NAFRU_API_KEY:-nafru-key}
+NAFRU_VARS=()
+if [[ -n ${NAFRU_BASE_URL:-} && -n ${NAFRU_API_KEY:-} ]]; then
+  NAFRU_VARS=("NAFRU_BASE_URL=$NAFRU_BASE_URL" "NAFRU_API_KEY=$NAFRU_API_KEY")
+elif [[ -n ${NAFRU_BASE_URL:-}${NAFRU_API_KEY:-} ]]; then
+  echo "NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither" >&2; exit 2
+else
+  echo "warning: no NAFRU_BASE_URL/NAFRU_API_KEY, the notifier sends no mail" >&2
+fi
 S3_ENDPOINT=${S3_ENDPOINT:-https://account.r2.cloudflarestorage.com} S3_ACCESS_KEY=${S3_ACCESS_KEY:-s3-access} S3_SECRET_KEY=${S3_SECRET_KEY:-s3-secret}
 S3_INVOICES_BUCKET=${S3_INVOICES_BUCKET:-payrudder-invoices-$ENVIRONMENT} S3_ASSETS_BUCKET=${S3_ASSETS_BUCKET:-payrudder-assets-$ENVIRONMENT}
 FULL=0
@@ -262,7 +269,7 @@ note "notifier"
 go_service notifier services/notifier 9100
 pg_vars notifier notifier system migrator
 vars notifier 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' "PAYRUDDER_RABBITMQ_URL=$AMQP" "PAYRUDDER_KAFKA_BROKERS=$KAFKA" "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" \
-  "NAFRU_BASE_URL=$NAFRU_BASE_URL" "NAFRU_API_KEY=$NAFRU_API_KEY" NOTIFIER_EVENTS_ADDR=:9111
+  ${NAFRU_VARS[@]+"${NAFRU_VARS[@]}"} NOTIFIER_EVENTS_ADDR=:9111
 
 note "gateway"
 go_service gateway services/gateway 8000

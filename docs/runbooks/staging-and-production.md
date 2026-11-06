@@ -42,7 +42,7 @@ password manager as well.
 | Key | Where it comes from | Where it goes |
 |---|---|---|
 | nafru-geo key | the `PAYRUDDER_GEO_API_KEY` already in nafru-geo's `.env.keys`, or a new one | `GEO_API_KEY` for the bootstrap. Also added to nafru-geo's `API_KEYS`: in `nafrucom/nafru-geo`, `printf '%s' "<all keys>" \| bunx wrangler secret put API_KEYS`; the list is in its git-ignored `.env.keys` |
-| Nafru mail (required: there is no mail catcher; sandbox mail goes through Nafru with a marked subject) | Nafru, sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare) | `NAFRU_BASE_URL`, `NAFRU_API_KEY` |
+| Nafru mail (optional for now, both or neither: without it no mail goes out; there is no mail catcher, sandbox mail goes through Nafru with a marked subject) | Nafru, sender domain `payrudder.com` verified (SPF/DKIM records in Cloudflare) | `NAFRU_BASE_URL`, `NAFRU_API_KEY` |
 | R2 (required) | *R2 Object Storage → Manage API tokens*: an account token, Object Read & Write, this environment's two buckets | `S3_ENDPOINT` (`https://<account id>.r2.cloudflarestorage.com`), `S3_ACCESS_KEY`, `S3_SECRET_KEY` |
 | Google sign-in | one OAuth client per environment, redirect `https://<console host>/gw/auth/google/callback` | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` for the bootstrap, which sets them on the gateway |
 | Error tracking | a GlitchTip or Sentry project | `ERROR_TRACKING_URL` |

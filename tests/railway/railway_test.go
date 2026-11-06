@@ -544,12 +544,12 @@ func TestBootstrapForAnEnvironment(t *testing.T) {
 			t.Errorf("%v was accepted:\n%s", bad, out)
 		}
 	}
-	// A real run without the mail or storage keys stops before it touches Railway (no CLI is called: none is needed for this).
-	for _, missing := range []string{"NAFRU_API_KEY", "S3_SECRET_KEY"} {
+	// A real run without the storage keys, or with half of Nafru's, stops before it touches Railway (no CLI is called: none is needed for this).
+	for missing, want := range map[string]string{"S3_SECRET_KEY": "S3_SECRET_KEY is required", "NAFRU_API_KEY": "go together"} {
 		env := []string{"NAFRU_BASE_URL=https://mail.example.com", "NAFRU_API_KEY=k", "S3_ENDPOINT=https://a.r2.cloudflarestorage.com", "S3_ACCESS_KEY=a", "S3_SECRET_KEY=s", missing + "="}
 		cmd := exec.Command("bash", filepath.Join(repo, "deploy", "railway", "bootstrap.sh"), "--environment", "staging", "--console-url", "https://c.example.com")
 		cmd.Env = append(os.Environ(), env...)
-		if out, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(out), missing+" is required") {
+		if out, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(out), want) {
 			t.Errorf("a run without %s: %v\n%s", missing, err, out)
 		}
 	}
@@ -612,8 +612,8 @@ func TestSetupSecrets(t *testing.T) {
 	}
 
 	out, err := run("", "--check", "production")
-	if err == nil || !strings.Contains(out, "9 zorunlu kalem eksik") {
-		t.Fatalf("--check with nothing set: want 9 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
+	if err == nil || !strings.Contains(out, "7 zorunlu kalem eksik") {
+		t.Fatalf("--check with nothing set: want 7 missing (the shell's GEO_API_KEY does not count), got err=%v\n%s", err, out)
 	}
 	for _, want := range []string{"✓ CLOUDFLARE_ACCOUNT_ID", "✗ CLOUDFLARE_API_TOKEN", "✗ RAILWAY_TOKEN_PRODUCTION", "✗ GEO_API_KEY", "- ERROR_TRACKING_URL"} {
 		if !strings.Contains(out, want) {

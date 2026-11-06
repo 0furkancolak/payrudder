@@ -100,9 +100,9 @@ echo "== $ENV: bootstrap girdileri, $FILE içinde"
 input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
   "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
   "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
-input NAFRU_BASE_URL required plain '^https://' "Nafru'nun API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
+input NAFRU_BASE_URL optional plain '^https://' "Nafru'nun API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
   "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
-input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
+input NAFRU_API_KEY optional secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
 input S3_ENDPOINT required plain '^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com$' "Cloudflare R2'nin S3 adresi (faturalar ve dosyalar)" \
   "https://<Cloudflare hesap ID>.r2.cloudflarestorage.com; hesap ID: npx wrangler whoami. Bucket'lar: payrudder-invoices-$ENV, payrudder-assets-$ENV."
 input S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "R2 API token'ının Access Key ID'si" \

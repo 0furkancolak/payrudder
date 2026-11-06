@@ -93,7 +93,7 @@ environment's keys (`deploy/railway/setup-secrets.sh <environment>` collects the
 | `--api-domain` | the gateway's custom domain; created with `railway domain` the first time (add the DNS records it prints, DNS only), then kept in the IaC. `PAYRUDDER_PUBLIC_URL` uses it instead of the generated domain |
 | `--allowed-environments sandbox` | a sandbox-only deployment: live accounts are refused (plans-svc, gateway) |
 | `--allow-destroy` | lets the IaC apply delete resources that `railway.ts` no longer has |
-| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | required: all of the platform's mail goes through Nafru, sandbox tenants' too (with a marked subject) |
+| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | both or neither; without them no mail goes out. With them, all of the platform's mail goes through Nafru, sandbox tenants' too (with a marked subject) |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | required: Cloudflare R2 (`https://<account id>.r2.cloudflarestorage.com` and an R2 API token's keys). `S3_INVOICES_BUCKET`, `S3_ASSETS_BUCKET` default to `payrudder-invoices-<environment>`, `payrudder-assets-<environment>`; `S3_REGION` to `auto` |
 | `GEO_API_KEY` | this environment's nafru-geo key, as `PAYRUDDER_GEO_API_KEY` on the gateway |
 | `PAYRUDDER_GOOGLE_CLIENT_ID`, `PAYRUDDER_GOOGLE_CLIENT_SECRET` | set on the gateway as they are: "Continue with Google" |
@@ -349,7 +349,7 @@ Leave `PAYMENTS_LIVE_PROVIDER` unset: live tenants then use the provider account
 | `PAYRUDDER_KAFKA_BROKERS` | KAFKA | |
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the mail rate limit's buckets are shared by the replicas; without it each replica keeps its own |
-| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | from Nafru | required by the bootstrap: the platform's mail, sandbox tenants' included, is sent through Nafru. `SMTP_ADDR` is not set; see [Mail](#mail) |
+| `NAFRU_BASE_URL`, `NAFRU_API_KEY` | from Nafru | both or neither (without them the notifier sends no mail): the platform's mail, sandbox tenants' included, is sent through Nafru. `SMTP_ADDR` is not set; see [Mail](#mail) |
 | `NOTIFIER_EVENTS_ADDR` | `:9111` | the signed listener for mail events and the suppression list ([runbook](../../docs/runbooks/mail-suppression.md)); only the project's private network reaches it, the gateway calls it. Empty switches it off, and the gateway's two variables must then be unset too |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | generated | at least 16 characters; signs every request; the gateway holds the same value by reference |
 
@@ -417,7 +417,7 @@ from Mailpit, which this deployment does not have: play it on the compose stack.
 
 ## Mail
 
-The platform's mail goes through Nafru Email (`NAFRU_BASE_URL`, `NAFRU_API_KEY` on the notifier; the bootstrap refuses to run without them). There is
+The platform's mail goes through Nafru Email (`NAFRU_BASE_URL`, `NAFRU_API_KEY` on the notifier; without them it sends no mail: no signup verification, no invoices by mail). There is
 no mail catcher: sandbox tenants' mail goes through Nafru too, with a marked subject. `SMTP_ADDR` (Mailpit in the compose stack) is not set. A tenant
 that connected its own Nafru account still sends through that.
 
