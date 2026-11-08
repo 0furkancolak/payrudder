@@ -72,9 +72,14 @@ func Provision(ctx context.Context, adminDSN, migratorDSN string, roleDSNs ...st
 			if strings.HasSuffix(sibling, "_system") {
 				attrs = "NOLOGIN BYPASSRLS"
 			}
-			if _, err := admin.Exec(ctx, "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = "+quoteLiteral(sibling)+") THEN CREATE ROLE "+
-				quoteIdent(sibling)+" "+attrs+"; END IF; END $$"); err != nil {
-				return fmt.Errorf("pgxx: provision: create role %s: %w", sibling, err)
+			var exists bool
+			if err := admin.QueryRow(ctx, "SELECT EXISTS (SELECT FROM pg_roles WHERE rolname = $1)", sibling).Scan(&exists); err != nil {
+				return fmt.Errorf("pgxx: provision: role %s: %w", sibling, err)
+			}
+			if !exists {
+				if _, err := admin.Exec(ctx, "CREATE ROLE "+quoteIdent(sibling)+" "+attrs); err != nil {
+					return fmt.Errorf("pgxx: provision: create role %s: %w", sibling, err)
+				}
 			}
 			names = append(names, quoteIdent(sibling))
 		}

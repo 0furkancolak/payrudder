@@ -2,6 +2,7 @@ package kafkax
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -69,7 +70,7 @@ func EnsureTopics(ctx context.Context, cl *kgo.Client, rf int16) error {
 		return fmt.Errorf("kafkax: create topics: %w", err)
 	}
 	for _, t := range resp.Topics {
-		if err := kerr.ErrorForCode(t.ErrorCode); err != nil && err != kerr.TopicAlreadyExists {
+		if err := kerr.ErrorForCode(t.ErrorCode); err != nil && !errors.Is(err, kerr.TopicAlreadyExists) {
 			return fmt.Errorf("kafkax: create topic %s: %w", t.Topic, err)
 		}
 	}
