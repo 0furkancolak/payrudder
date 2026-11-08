@@ -5222,6 +5222,16 @@
     "operatorRole": {
       "operator_support": "Operatör (salt okunur destek)",
       "operator_admin": "Operatör (yönetici)"
+    },
+    "search": "Ara",
+    "more": "Daha fazla",
+    "tabsLabel": "Hızlı gezinme",
+    "palette": {
+      "title": "Git",
+      "help": "Bir sayfa ya da işlem bulmak için yazın. Ok tuşlarıyla gezinin, Enter ile açın, Esc ile kapatın.",
+      "placeholder": "Sayfa ve işlem ara…",
+      "empty": "Eşleşen bir şey yok.",
+      "action": "İşlem"
     }
   },
   "privacy": {

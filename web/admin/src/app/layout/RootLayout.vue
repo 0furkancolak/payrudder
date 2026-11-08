@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Link, Outlet, useNavigate } from "@tanstack/vue-router";
-import { Menu } from "@lucide/vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PeekHost from "@/features/related/PeekHost.vue";
@@ -18,10 +17,12 @@ import { ALL_TENANTS } from "./nav";
 import { envOf, isEnvironment, rememberEnv } from "@/shared/lib/environment";
 import { ALL_APPS, appInSearch, rememberApp } from "@/shared/lib/scope";
 import Breadcrumbs from "./Breadcrumbs.vue";
+import CommandPalette from "./CommandPalette.vue";
 import EnvBanner from "./EnvBanner.vue";
 import EnvSwitch from "./EnvSwitch.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
 import MobileDrawer from "./MobileDrawer.vue";
+import MobileTabBar from "./MobileTabBar.vue";
 import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
@@ -48,6 +49,7 @@ useTourScope();
 // The tour icon of the page's header, when the page has a tour (app/tours.ts).
 const pageTour = computed(() => (isPerson.value ? tourFor(shell.current.value?.key) : undefined));
 const drawer = ref(false);
+const palette = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
@@ -168,9 +170,15 @@ watch(
   { immediate: true },
 );
 
-// Alt+P turns privacy mode on and off from anywhere (not while typing in a field).
+// Alt+P turns privacy mode on and off from anywhere (not while typing in a field); ⌘K / Ctrl+K opens the command palette, from anywhere.
 function onKey(e: KeyboardEvent) {
-  if (!signedIn.value || !e.altKey || e.ctrlKey || e.metaKey || e.code !== "KeyP") return;
+  if (!signedIn.value) return;
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && e.code === "KeyK") {
+    e.preventDefault();
+    palette.value = !palette.value;
+    return;
+  }
+  if (!e.altKey || e.ctrlKey || e.metaKey || e.code !== "KeyP") return;
   e.preventDefault();
   setPrivacyMode(!privacyMode.value);
 }
@@ -183,25 +191,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <a href="#main" class="bg-primary text-primary-foreground sr-only z-[60] rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:start-4 focus:top-4">{{ t("shell.skip") }}</a>
 
     <template v-if="signedIn">
-      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="switcherApps" :scope="shell.scope.value" :env="switcherEnv" :path="shell.path.value" />
+      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="switcherApps" :scope="shell.scope.value" :env="switcherEnv" :path="shell.path.value" @search="palette = true" />
       <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="switcherApps" :scope="shell.scope.value" :env="switcherEnv" :path="shell.path.value" />
+      <MobileTabBar :sections="shell.sections.value" :current="shell.current.value" :drawer="drawer" @search="palette = true" @more="drawer = true" />
+      <CommandPalette v-model:open="palette" :sections="shell.sections.value" />
     </template>
 
     <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
-    <div :class="signedIn ? ['transition-[padding] duration-200', sidebarCollapsed ? 'lg:ps-[6.5rem]' : 'lg:ps-[17.5rem]'] : ''">
+    <div :class="signedIn ? ['transition-[padding] duration-200', sidebarCollapsed ? 'lg:ps-[4.5rem]' : 'lg:ps-64'] : ''">
       <header v-if="signedIn" class="bg-background/85 sticky top-0 z-20 backdrop-blur" data-testid="topbar">
         <div class="mx-auto flex max-w-[1320px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-8 md:py-4">
-          <button
-            type="button"
-            data-testid="menu-button"
-            class="bg-card text-foreground border-border/60 shadow-card inline-flex size-10 shrink-0 items-center justify-center rounded-xl border lg:hidden"
-            :aria-label="t('shell.openMenu')"
-            aria-haspopup="dialog"
-            :aria-expanded="drawer"
-            @click="drawer = true"
-          >
-            <Menu class="size-5" aria-hidden="true" />
-          </button>
+          <!-- Below the sidebar's width the navigation is the tab bar at the bottom (MobileTabBar); the top keeps the logo as the way home. -->
+          <Link :to="home" class="shrink-0 lg:hidden" :title="brand"><BrandLogo variant="icon" class="size-8" /></Link>
           <!-- On a phone the breadcrumb takes a row of its own below the buttons, so the page name is not squeezed to two letters. -->
           <Breadcrumbs :crumbs="shell.crumbs.value" :class="['min-w-0 flex-1 max-sm:order-last max-sm:basis-full', !titleGone && 'max-sm:hidden']" />
           <!-- The tour button of the guided tour (phase 52) mounts here, in the header of every page. -->
@@ -227,7 +228,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
       <main
         id="main"
         tabindex="-1"
-        :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-16 md:pt-4' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
+        :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-28 md:pt-4 lg:pb-16' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
       >
         <VerifyBanner v-if="isPerson" />
         <HoldBanner :held="held" :scheduled-for="scheduledFor" />

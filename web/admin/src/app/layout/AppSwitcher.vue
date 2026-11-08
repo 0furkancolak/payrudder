@@ -42,13 +42,13 @@ function create() {
         data-testid="app-switcher"
         :data-scope="scope ?? ''"
         :class="[
-          'bg-rail-accent text-rail-accent-foreground hover:bg-rail-accent/80 flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-2xl text-sm font-medium transition-colors',
+          'text-rail-accent-foreground hover:bg-rail-accent flex min-h-10 w-full min-w-0 items-center gap-2.5 rounded-lg text-sm font-semibold transition-colors',
           collapsed ? 'justify-center px-0' : 'px-3',
         ]"
         :aria-label="t('shell.switchApp')"
         :title="collapsed ? name : undefined"
       >
-        <span class="bg-rail-primary/20 text-rail-primary flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold" aria-hidden="true">
+        <span class="bg-rail-primary text-rail flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold" aria-hidden="true">
           <LayoutGrid v-if="all" class="size-3.5" />
           <template v-else>{{ (current?.name ?? "?").slice(0, 1).toUpperCase() }}</template>
         </span>

@@ -50,22 +50,22 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -12px rgb(16 24 40 / 0.1);
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05);
   --shadow-pop: 0 4px 12px rgb(16 24 40 / 0.08), 0 24px 48px -16px rgb(16 24 40 / 0.2);
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /*
  * The design tokens: the values of payrudder-brand/DESIGN.md section 4 (phase 48), under the console's own variable names (the DESIGN.md "sidebar" is --rail
- * here). Original note (phase 38): Light: a cool light-grey app surface under big, softly shadowed white cards; a dark rounded icon rail; a pastel blue
+ * here). Light (console redesign, direction C): a white page, cards with hairline borders, a light grey sidebar flush with the edge; a pastel blue
  * (--brand, #8bb8ef) for charts and highlights and a deeper blue (--primary) for the actions that must read at a glance. Every foreground/background pair
  * below keeps at least 4.5:1 contrast for text. Dark: the same roles on a deep blue-grey. The dark block is written twice on purpose: once for an
  * explicit choice (data-theme="dark") and once for "system" when the person prefers dark and has not chosen light.
  */
 :root {
   color-scheme: light;
-  --radius: 1rem;
-  --background: oklch(0.965 0.007 258);
+  --radius: 0.75rem;
+  --background: oklch(1 0 0);
   --foreground: oklch(0.192 0.017 269);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.192 0.017 269);
@@ -101,14 +101,14 @@
   --chart-3: oklch(0.437 0.19 265);
   --chart-4: oklch(0.673 0.164 261);
   --chart-5: oklch(0.84 0.081 254);
-  /* The icon rail (DESIGN.md "sidebar") is dark in both themes, like the app icon. */
-  --rail: oklch(0.192 0.017 269);
-  --rail-foreground: oklch(0.82 0.02 262);
-  --rail-muted: oklch(0.7 0.02 262);
-  --rail-primary: oklch(0.762 0.123 256);
-  --rail-accent: oklch(0.26 0.025 268);
-  --rail-accent-foreground: oklch(0.969 0.007 261);
-  --rail-border: oklch(0.27 0.02 268);
+  /* The sidebar (DESIGN.md "sidebar"): a quiet grey a shade off the white page in light, deep ink in dark. */
+  --rail: oklch(0.975 0.004 258);
+  --rail-foreground: oklch(0.38 0.02 266);
+  --rail-muted: oklch(0.5 0.02 264);
+  --rail-primary: oklch(0.519 0.212 266);
+  --rail-accent: oklch(0.935 0.008 258);
+  --rail-accent-foreground: oklch(0.192 0.017 269);
+  --rail-border: oklch(0.915 0.009 258);
 }
 
 :root[data-theme="dark"] {
@@ -255,8 +255,8 @@
   .field[data-active] { background-color: var(--brand-soft); border-color: transparent; color: var(--brand-strong); }
 }
 
-/* A big rounded white card: the unit of the product's pages. */
-.surface { @apply bg-card text-card-foreground rounded-3xl shadow-card min-w-0; }
+/* A card with a hairline border on the white page: the unit of the product's pages. */
+.surface { @apply bg-card text-card-foreground rounded-xl border min-w-0; }
 
 /* The Payrudder logo files come in a light-background and a dark-background version; show the one that matches the theme (DESIGN.md section 2). */
 .logo-on-dark { display: none; }
@@ -278,7 +278,7 @@
 }
 
 /*
- * Scrollbars: thin and rounded, a thumb that is quiet until the pointer is near it, and no track or arrows. The sidebar's dark rail gets a light thumb.
+ * Scrollbars: thin and rounded, a thumb that is quiet until the pointer is near it, and no track or arrows.
  * Firefox takes the first two lines, Chromium and Safari the ::-webkit-scrollbar rules.
  */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent; }

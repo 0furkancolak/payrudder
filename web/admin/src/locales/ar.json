@@ -5222,6 +5222,16 @@
     "operatorRole": {
       "operator_support": "مشغّل (دعم، للقراءة فقط)",
       "operator_admin": "مشغّل (مسؤول)"
+    },
+    "search": "بحث",
+    "more": "المزيد",
+    "tabsLabel": "تنقل سريع",
+    "palette": {
+      "title": "انتقل إلى",
+      "help": "اكتب للعثور على صفحة أو إجراء. تنقّل بالأسهم، وافتح بـ Enter، وأغلق بـ Escape.",
+      "placeholder": "ابحث في الصفحات والإجراءات…",
+      "empty": "لا توجد نتائج.",
+      "action": "إجراء"
     }
   },
   "privacy": {

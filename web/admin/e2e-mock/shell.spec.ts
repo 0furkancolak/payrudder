@@ -116,6 +116,66 @@ test.describe("sidebar on a desktop", () => {
   });
 });
 
+test.describe("command palette and groups", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("Ctrl+K finds a page by typing, the arrows and Enter open it, and Escape closes", async ({ page }) => {
+    await open(page);
+    await page.waitForURL(`**/app/apps/${APP}?*`);
+    await page.keyboard.press("Control+k");
+    const palette = page.getByTestId("command-palette");
+    await expect(palette).toBeVisible();
+    await page.getByTestId("palette-input").fill("webho");
+    await expect(palette.getByRole("option")).toHaveCount(1);
+    await page.keyboard.press("Enter");
+    await expect(palette).toBeHidden();
+    await expect(page.getByTestId("sidebar").getByRole("link", { name: "Webhooks" })).toHaveAttribute("aria-current", "page");
+    // The sidebar's search button opens the same palette; a query with no match says so; Escape closes.
+    await page.getByTestId("sidebar-search").click();
+    await page.getByTestId("palette-input").fill("zzz");
+    await expect(page.getByTestId("palette-empty")).toBeVisible();
+    await shoot(page, "33-palette");
+    await page.keyboard.press("Escape");
+    await expect(palette).toBeHidden();
+  });
+
+  test("a group folds under its heading and stays folded, but never hides the current page", async ({ page }) => {
+    await open(page);
+    await page.waitForURL(`**/app/apps/${APP}?*`);
+    const nav = page.getByTestId("sidebar").getByRole("navigation", { name: "Main navigation" });
+    const fold = page.getByTestId("sidebar").locator('[data-fold="developers"]');
+    await fold.click();
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
+    await expect(nav.getByRole("link", { name: "Webhooks" })).toBeHidden();
+    await page.reload();
+    await expect(nav.getByRole("link", { name: "Webhooks" })).toBeHidden();
+    await page.goto(`/app/t/${LIVE}/webhooks`);
+    await expect(nav.getByRole("link", { name: "Webhooks" })).toHaveAttribute("aria-current", "page");
+    await page.goto(`/app/apps/${APP}`);
+    await page.getByTestId("sidebar").locator('[data-fold="developers"]').click();
+    await expect(nav.getByRole("link", { name: "Webhooks" })).toBeVisible();
+  });
+});
+
+test.describe("tab bar on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("goes to the main pages, opens the search and the drawer", async ({ page }) => {
+    await open(page, `/app/apps/${APP}`);
+    const bar = page.getByTestId("tab-bar");
+    await expect(bar).toBeVisible();
+    await bar.locator('[data-tab="customers"]').click();
+    await page.waitForURL(`**/app/t/${LIVE}/customers*`);
+    await expect(bar.locator('[data-tab="customers"]')).toHaveAttribute("aria-current", "page");
+    await page.getByTestId("tab-search").click();
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByTestId("menu-button").click();
+    await expect(page.getByTestId("drawer")).toBeVisible();
+    await shoot(page, "39-tab-bar");
+  });
+});
+
 test.describe("privacy mode", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
