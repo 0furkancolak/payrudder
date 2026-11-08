@@ -1,7 +1,7 @@
 name: deploy-production
 
 # A published release deploys its tag to production (docs/runbooks/staging-and-production.md): the backend to the Railway environment "production",
-# then the console to the Cloudflare Worker. Staging needs no workflow for the backend: Railway deploys main itself. A pre-release deploys nothing.
+# then the console to the Cloudflare Worker. Staging is deploy-staging.yml. A pre-release deploys nothing.
 # Without the secret RAILWAY_TOKEN_PRODUCTION (a project token of the production environment) the backend step is skipped.
 on:
   release:
@@ -27,7 +27,7 @@ jobs:
         if: ${{ env.RAILWAY_TOKEN != '' }}
         run: |
           npm install -g @railway/cli@5.71.0
-          deploy/railway/bootstrap.sh --deploy-only --profile full --console-url https://console.payrudder.com
+          deploy/railway/bootstrap.sh --deploy-only --environment production
       - name: Deploy skipped
         if: ${{ env.RAILWAY_TOKEN == '' }}
         run: echo "::notice::RAILWAY_TOKEN_PRODUCTION is not set; the backend was not deployed (docs/runbooks/staging-and-production.md)."

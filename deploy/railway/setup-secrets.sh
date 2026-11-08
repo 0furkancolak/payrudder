@@ -23,7 +23,8 @@ REPO=${REPO:-0furkancolak/payrudder}
 CONSOLE=console$SUFFIX.payrudder.com
 DIR=${PAYRUDDER_SECRETS_DIR:-$HOME/.config/payrudder}
 FILE=$DIR/$ENV.env
-FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY OPERATOR_EMAILS ERROR_TRACKING_URL PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET)
+FILE_VARS=(GEO_API_KEY NAFRU_BASE_URL NAFRU_API_KEY S3_ENDPOINT S3_ACCESS_KEY S3_SECRET_KEY OPERATOR_EMAILS PAYRUDDER_GOOGLE_CLIENT_ID PAYRUDDER_GOOGLE_CLIENT_SECRET
+  TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID LOCOMOTIVE_RAILWAY_API_KEY WATCHDOG_URL BACKUP_S3_ACCESS_KEY BACKUP_S3_SECRET_KEY)
 
 # Only the file's values count, not whatever the calling shell exports.
 for v in "${FILE_VARS[@]}"; do unset "$v"; done
@@ -89,27 +90,28 @@ github CLOUDFLARE_ACCOUNT_ID '^[0-9a-f]{32}$' "console Worker'ının deploy edil
 github CLOUDFLARE_API_TOKEN '^[A-Za-z0-9_-]{30,}$' "deploy-console.yml'ın Worker'ı deploy ettiği token" \
   "https://dash.cloudflare.com/profile/api-tokens → Create Token → 'Edit Cloudflare Workers' şablonu." \
   "Account resources: bu hesap; Zone resources: payrudder.com (Worker route'ları için gerekli)."
-if [[ $ENV == production ]]; then
-  github RAILWAY_TOKEN_PRODUCTION '^[A-Za-z0-9-]{20,}$' "deploy-production.yml'ın release'i deploy ettiği proje token'ı" \
-    "https://railway.com/dashboard → payrudder-production projesi → Settings → Tokens → Create, ortam 'production'." \
-    "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new production\`."
-fi
+# Railway project tokens look like rlwy_proj_... (older ones are a UUID).
+if [[ $ENV == production ]]; then WHEN="bir release yayınlandığında deploy-production.yml"; else WHEN="main'e her push'ta deploy-staging.yml"; fi
+github "RAILWAY_TOKEN_$(tr a-z A-Z <<<"$ENV")" '^[A-Za-z0-9_-]{20,}$' "$WHEN'ın servisleri deploy ettiği proje token'ı" \
+  "https://railway.com/dashboard → payrudder projesi → Settings → Tokens → Create, ortam '$ENV'." \
+  "Önce ortam olmalı: Settings → Environments → New, ya da \`railway environment new $ENV\`."
 
 echo
 echo "== $ENV: bootstrap girdileri, $FILE içinde"
 input GEO_API_KEY required generate '^[A-Za-z0-9_-]{16,}$' "bu ortamın nafru-geo anahtarı (adres formları: ülke, il, ilçe)" \
   "Var olan anahtar: nafru-geo'nun .env.keys dosyasında PAYRUDDER_GEO_API_KEY (ngeo_payrudder_...); yapıştır." \
   "Ya da Enter yeni bir tane üretir; o zaman nafru-geo'nun API_KEYS listesine de eklenmeli (sonraki adımlar anlatıyor)."
-input NAFRU_BASE_URL optional plain '^https://' "Nafru'nun API adresi, platformun kendi e-postaları için (kayıt doğrulama, faturalar)" \
-  "Yoksa e-postalar mailpit'te kalır, gerçek kutuya gitmez." \
-  "Nafru panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
-if is_set NAFRU_BASE_URL; then
-  input NAFRU_API_KEY required secret '.{16,}' "bu ortamın Nafru API anahtarı" "Nafru paneli: payrudder-$ENV adında yeni bir API anahtarı."
-fi
+input NAFRU_BASE_URL optional plain '^https://' "Nafru Email'in API adresi, platformun bütün e-postaları için (kayıt doğrulama, faturalar; sandbox da)" \
+  "Nafru Email panelinden (https://nafru.com); gönderen alan adı payrudder.com doğrulanmış olmalı: SPF/DKIM kayıtları Cloudflare DNS'e girer."
+input NAFRU_API_KEY optional secret '.{16,}' "bu ortamın Nafru Email API anahtarı" "Nafru Email paneli: payrudder-$ENV adında yeni bir API anahtarı."
+input S3_ENDPOINT required plain '^https://[0-9a-f]{32}\.r2\.cloudflarestorage\.com$' "Cloudflare R2'nin S3 adresi (faturalar ve dosyalar)" \
+  "https://<Cloudflare hesap ID>.r2.cloudflarestorage.com; hesap ID: npx wrangler whoami. Bucket'lar: payrudder-invoices-$ENV, payrudder-assets-$ENV."
+input S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "R2 API token'ının Access Key ID'si" \
+  "https://dash.cloudflare.com → R2 Object Storage → Manage API tokens → Create Account API token: Object Read & Write," \
+  "yalnız payrudder-invoices-$ENV ve payrudder-assets-$ENV bucket'larına. Access Key ID ve Secret Access Key bir kez gösterilir."
+input S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "R2 API token'ının Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
 input OPERATOR_EMAILS required plain '^[^@ ,]+@[^@ ,]+(,[^@ ,]+@[^@ ,]+)*$' "platformu yönetenler (operatör konsolu), virgülle ayrılmış" \
   "Kendi e-posta adres(ler)in; doğruladıktan sonra operatör konsolunu görürler."
-input ERROR_TRACKING_URL optional plain '^https://[^@]+@' "hataların raporlandığı DSN" \
-  "https://sentry.io (ya da https://app.glitchtip.com) → payrudder-$ENV projesi → Settings → Client Keys (DSN): https://<anahtar>@host/<id>."
 input PAYRUDDER_GOOGLE_CLIENT_ID optional plain '\.apps\.googleusercontent\.com$' "console'da 'Google ile devam et' (secret'ı sonra sorulur)" \
   "https://console.cloud.google.com/apis/credentials → Create credentials → OAuth client ID → Web application, adı payrudder-$ENV." \
   "Authorised redirect URI: https://$CONSOLE/gw/auth/google/callback"
@@ -117,20 +119,40 @@ if is_set PAYRUDDER_GOOGLE_CLIENT_ID; then
   input PAYRUDDER_GOOGLE_CLIENT_SECRET required secret '.{10,}' "o OAuth client'ın secret'ı" "Client ID'nin yanında görünür (Download JSON'da da var)."
 fi
 
+# Observability and backups run in production only (staging runs only while used: deploy/railway/staging.sh).
+if [[ $ENV == production ]]; then
+input TELEGRAM_BOT_TOKEN required secret '^[0-9]+:[A-Za-z0-9_-]{30,}$' "alert'leri gönderen Telegram botunun token'ı" \
+  "Telegram'da @BotFather → /newbot → payrudder-alerts gibi bir ad. Verdiği token 123456:ABC... biçiminde." \
+  "İki ortam aynı botu kullanabilir; mesajlar [staging] / [production] diye başlar."
+input TELEGRAM_CHAT_ID required plain '^-?[0-9]+$' "alert'lerin düştüğü sohbetin ID'si" \
+  "Botu alert grubuna ekle (ya da bota kendin yaz), bir mesaj at, sonra: https://api.telegram.org/bot<TOKEN>/getUpdates → \"chat\":{\"id\": ...}." \
+  "Grup ID'leri eksiyle başlar (-100...)."
+input LOCOMOTIVE_RAILWAY_API_KEY required secret '^[A-Za-z0-9_-]{20,}$' "logları Grafana'ya taşıyan Locomotive'in Railway token'ı" \
+  "https://railway.com/account/tokens → Create Token, Workspace: 'No workspace' (hesap token'ı). Proje ve takım token'ları çalışmaz." \
+  "İki ortam aynı token'ı kullanabilir."
+input WATCHDOG_URL optional plain '^https://' "Watchdog alert'inin her dakika gittiği dış nöbetçi adres" \
+  "https://healthchecks.io → Add Check (period 1 dk, grace 5 dk) → ping URL'i. Gelmezse healthchecks size haber verir: alert yolunun kendisi bozuk demektir."
+input BACKUP_S3_ACCESS_KEY required plain '^[0-9a-f]{32}$' "yedekleme servisinin R2 token'ının Access Key ID'si" \
+  "https://dash.cloudflare.com → R2 Object Storage → Manage API tokens → Create Account API token, adı payrudder-backups:" \
+  "Object Read & Write, yalnız payrudder-backups-production bucket'ına."
+input BACKUP_S3_SECRET_KEY required secret '^[0-9a-f]{64}$' "aynı token'ın Secret Access Key'i" "Aynı sayfada, Access Key ID'nin altında."
+fi
+
 if [[ $missing -gt 0 ]]; then echo; echo "$missing zorunlu kalem eksik: betiği tekrar çalıştır"; exit 1; fi
 
-if [[ $ENV == staging ]]; then FLAGS="--repo $REPO --profile small"; else FLAGS="--source local --profile full"; fi
 cat <<EOF
 
 == $ENV için sonraki adımlar
-1. nafru-geo: GEO_API_KEY'i ($FILE içinde) nafrucom/nafru-geo'nun .env.keys listesine ekle, sonra orada:
+1. nafru-geo: GEO_API_KEY nafru-geo'nun API_KEYS listesinde değilse ($FILE içinde) nafrucom/nafru-geo'nun .env.keys listesine ekle, sonra orada:
      printf '%s' "<tüm anahtarlar, virgülle>" | bunx wrangler secret put API_KEYS
-2. Railway: '$ENV' ortamı var (https://railway.com/dashboard → proje → Settings → Environments), \`railway login\`, \`railway link\`.
+2. Railway: payrudder projesinde '$ENV' ortamı var (https://railway.com/dashboard → payrudder → Settings → Environments), \`railway login\`, \`railway link\`.
 3. Backend (önce --dry-run çıktısını oku; production: release'in tag'inden alınmış bir checkout'tan):
-     (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV $FLAGS \\
-       --console-url https://$CONSOLE --api-domain api$SUFFIX.payrudder.com --files-domain files$SUFFIX.payrudder.com --allowed-environments sandbox)
-4. Railway'in yazdırdığı DNS kayıtları → Cloudflare, DNS only (gri bulut).
+     (set -a; . $FILE; set +a; deploy/railway/bootstrap.sh --dry-run --environment $ENV --console-url https://$CONSOLE \\
+       --api-domain api$SUFFIX.payrudder.com --grafana-domain grafana$SUFFIX.payrudder.com --allowed-environments sandbox)
+4. Railway'in yazdırdığı DNS kayıtları (api ve grafana) → Cloudflare, DNS only (gri bulut). assets$SUFFIX.payrudder.com R2 bucket'ına bağlı, kayıt gerekmez.
 5. Console'un proxy secret'ı, Worker'a aynı değer:
      railway variable list --environment $ENV --service gateway --kv | grep PAYRUDDER_TRUSTED_PROXY_SECRET
      (cd web/admin && npx wrangler secret put EDGE_AUTH_SECRET --env $ENV)
+6. Grafana (yalnız production): https://grafana$SUFFIX.payrudder.com, kullanıcı admin, şifre:
+     railway variable list --environment $ENV --service grafana --kv | grep GF_SECURITY_ADMIN_PASSWORD
 EOF

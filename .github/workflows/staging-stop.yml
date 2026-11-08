@@ -1,0 +1,29 @@
+name: staging-stop
+
+# Staging runs only while someone uses it (deploy/railway/staging.sh, make start-staging). This stops it every night, for a session that ended
+# without Ctrl-C (a laptop put to sleep, a closed lid). Without the secret RAILWAY_TOKEN_STAGING it does nothing.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # 03:00 in Istanbul
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Stop staging
+        if: ${{ env.RAILWAY_TOKEN != '' }}
+        run: |
+          npm install -g @railway/cli@5.71.0
+          deploy/railway/staging.sh stop
