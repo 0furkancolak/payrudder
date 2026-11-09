@@ -5,7 +5,7 @@ steps below are untried; correct this page the first time through.
 
 | | Production | Staging |
 |---|---|---|
-| Railway environment | `production` | `staging` |
+| Railway project / environment | `payrudder-production` / `production` | `payrudder` / `staging` |
 | Console (Worker) | `console.payrudder.com` | `console-staging.payrudder.com` |
 | Gateway | `api.payrudder.com` | `api-staging.payrudder.com` |
 | MinIO (presigned links) | `files.payrudder.com` | `files-staging.payrudder.com` |
@@ -19,11 +19,13 @@ Only one level of subdomain under `payrudder.com` (the owner's rule; Cloudflare'
 ## 0. Once
 
 1. `payrudder.com` is a zone in the Cloudflare account.
-2. Railway: one project, the GitHub app installed for the repository.
-   - Two environments: `railway environment new staging` and `railway environment new production`, or *Settings → Environments*.
+2. Railway: one project per environment, the GitHub app installed for the repository (staging only is connected to it).
+   - `railway init --name payrudder` then `railway environment new staging`; `railway init --name payrudder-production` (its default environment is
+     `production`). Not two environments of one project: the CLI then refuses the same service names in the second one (plan 23).
+   - Run each bootstrap from a folder linked to that project (`railway link`); `railway init` links the folder it runs in.
 3. GitHub, *Settings → Secrets and variables → Actions*, repository secrets (no GitHub Environments; who may publish a release decides production):
    - `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers") and `CLOUDFLARE_ACCOUNT_ID`, for both console deploys.
-   - `RAILWAY_TOKEN_PRODUCTION`: a project token of the Railway environment `production` (*Project settings → Tokens*), for the release workflow.
+   - `RAILWAY_TOKEN_PRODUCTION`: a project token of `payrudder-production`, environment `production` (*Project settings → Tokens*), for the release workflow.
      Staging needs none: Railway deploys `main` itself.
 
 ## 1. Keys for one environment

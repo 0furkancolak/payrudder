@@ -91,15 +91,29 @@ add_service() { has_service "$1" || run railway add --service "$1"; }
 # add_database <postgres|redis> <service name Railway gives it>
 add_database() { has_service "$2" || run railway add --database "$1"; }
 # volume <service> <mount path>
-volume() { has_volume "$2" || run railway volume add --service "$1" --mount-path "$2"; }
+# CLI 5.71: --service belongs to `volume`, not `add`, and takes the service's ID (a name panics); the list is read again, the service may be new.
+volume() {
+  has_volume "$2" && return
+  local id=$1
+  if ((!DRY_RUN)); then
+    local list; list=$(railway service list --json)
+    id=$(awk -v n="\"$1\"," '$1 == "\"id\":" { id = $2 } $1 == "\"name\":" && $2 == n { gsub(/[",]/, "", id); print id; exit }' <<<"$list")
+    [[ -n $id ]] || { echo "no service $1 to put a volume on" >&2; exit 1; }
+  fi
+  run railway volume --service "$id" add --mount-path "$2"
+}
 # vars <service> KEY=VALUE...: set variables without redeploying; the deploy comes later, in order.
 vars() { local svc=$1; shift; run railway variable set --service "$svc" --skip-deploys "$@"; }
 # secret <service> <KEY> <generator command...>: generate and set only when the variable does not exist yet.
 secret() {
-  local svc=$1 key=$2; shift 2
+  local svc=$1 key=$2 existing; shift 2
   if ((DRY_RUN)); then
     printf '+ [only if %s is unset on %s] railway variable set --service %s --skip-deploys %s=$(%s)\n' "$key" "$svc" "$svc" "$key" "$*"
-  elif railway variable list --service "$svc" --kv 2>/dev/null | grep -q "^$key="; then
+  # Read into a variable, not piped into grep -q: the CLI panics on the closed pipe, the check then says "unset" and a kept secret is replaced.
+  # A failed read stops the script for the same reason (a new PAYRUDDER_SECRETS_KEY loses every sealed credential).
+  elif ! existing=$(railway variable list --service "$svc" --kv 2>/dev/null); then
+    echo "cannot read the variables of $svc; stopping before $key is replaced" >&2; exit 1
+  elif grep -q "^$key=" <<<"$existing"; then
     echo "  $key exists on $svc, kept"
   else
     railway variable set --service "$svc" --skip-deploys "$key=$("$@")"
@@ -295,7 +309,7 @@ PAIRS=(gateway:8000:$API_DOMAIN minio:9000:$FILES_DOMAIN)
 [[ -z $CONSOLE_URL ]] && PAIRS+=(admin-ui:3001:)
 for pair in "${PAIRS[@]}"; do
   IFS=: read -r svc port custom <<<"$pair"
-  if ((!DRY_RUN)) && railway domain list --service "$svc" --json 2>/dev/null | grep -q "\"domain\": *\"${custom:-[^\"]*}\""; then
+  if ((!DRY_RUN)) && grep -q "\"domain\": *\"${custom:-[^\"]*}\"" <<<"$(railway domain list --service "$svc" --json 2>/dev/null)"; then
     echo "  $svc has ${custom:-a domain}, kept"
   else
     # A custom domain prints the DNS record to add (a CNAME in Cloudflare, "DNS only" until the certificate is issued).
