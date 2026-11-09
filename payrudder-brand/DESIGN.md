@@ -99,13 +99,13 @@ In the app, render the logo as an `<img>` (or an inline SVG component) and switc
 
 | Role | Light | Dark | Classes |
 |---|---|---|---|
-| Page | near-white blue-grey | `ink-950` | `bg-background text-foreground` |
+| Page | white | `ink-950` | `bg-background text-foreground` |
 | Card / popover | white | `ink-900` | `bg-card text-card-foreground` |
 | Primary action | `rudder-600` | `rudder-300` | `bg-primary text-primary-foreground` |
 | Secondary / muted | soft grey-blue | lifted ink | `bg-secondary`, `bg-muted text-muted-foreground` |
 | Hover / selected | pale blue | deep blue-grey | `bg-accent text-accent-foreground` |
 | Brand highlight | `rudder-300` | `rudder-400` | `bg-brand`, `bg-brand-soft text-brand-strong` |
-| Sidebar (icon rail) | `ink-900` (dark in both themes) | darker ink | `bg-sidebar text-sidebar-foreground` |
+| Sidebar | near-white blue-grey, a shade off the page | darker ink | `bg-sidebar text-sidebar-foreground` |
 | Focus ring | `rudder-400` | `rudder-400` | `ring-ring` (shadcn components set this) |
 
 ### Rules
@@ -222,7 +222,7 @@ This is the whole theme. It defines every token shadcn expects (including `chart
   --radius-xl: calc(var(--radius) + 4px);   /* 16px: cards */
   --radius-2xl: calc(var(--radius) + 8px);  /* 20px: dialogs, sheets */
 
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 10px 28px -12px rgb(16 24 40 / 0.10);
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05);
   --shadow-pop: 0 4px 12px rgb(16 24 40 / 0.08), 0 24px 48px -16px rgb(16 24 40 / 0.20);
 }
 
@@ -264,14 +264,14 @@ This is the whole theme. It defines every token shadcn expects (including `chart
   --chart-4: oklch(0.673 0.164 261);
   --chart-5: oklch(0.840 0.081 254);
 
-  /* The icon rail stays dark in both themes, like the app icon. */
-  --sidebar: oklch(0.192 0.017 269);
-  --sidebar-foreground: oklch(0.82 0.02 262);
-  --sidebar-primary: oklch(0.762 0.123 256);
-  --sidebar-primary-foreground: oklch(0.192 0.017 269);
-  --sidebar-accent: oklch(0.26 0.025 268);
-  --sidebar-accent-foreground: oklch(0.969 0.007 261);
-  --sidebar-border: oklch(0.27 0.02 268);
+  /* The sidebar is a quiet grey a shade off the white page, flush with the edge. */
+  --sidebar: oklch(0.975 0.004 258);
+  --sidebar-foreground: oklch(0.38 0.02 266);
+  --sidebar-primary: oklch(0.519 0.212 266);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.935 0.008 258);
+  --sidebar-accent-foreground: oklch(0.192 0.017 269);
+  --sidebar-border: oklch(0.915 0.009 258);
   --sidebar-ring: oklch(0.673 0.164 261);
 }
 
@@ -381,7 +381,7 @@ This is the whole theme. It defines every token shadcn expects (including `chart
 | Pills | `rounded-full` |
 
 - **Shadows:** only `shadow-card` (cards) and `shadow-pop` (popovers, dialogs). No glow, no colored shadows. In dark mode use the border instead: `shadow-card dark:shadow-none`.
-- **Layout:** dark icon rail on the left (`bg-sidebar`, shadcn `Sidebar` with `collapsible="icon"`), content `max-w-7xl mx-auto px-4 md:px-6`.
+- **Layout:** a light sidebar flush with the start edge (`bg-sidebar border-e`, shadcn `Sidebar` with `collapsible="icon"`), its groups foldable, with a search that opens the command palette (⌘K / Ctrl+K); below 1024 px a bottom tab bar (the main pages, search, More → the drawer). Content `max-w-7xl mx-auto px-4 md:px-6`.
 
 ---
 

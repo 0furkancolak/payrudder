@@ -5222,6 +5222,16 @@
     "operatorRole": {
       "operator_support": "Operator (Support, nur lesen)",
       "operator_admin": "Operator (Admin)"
+    },
+    "search": "Suchen",
+    "more": "Mehr",
+    "tabsLabel": "Schnellnavigation",
+    "palette": {
+      "title": "Gehe zu",
+      "help": "Tippen Sie, um eine Seite oder Aktion zu finden. Pfeiltasten bewegen, Enter öffnet, Escape schließt.",
+      "placeholder": "Seiten und Aktionen suchen…",
+      "empty": "Keine Treffer.",
+      "action": "Aktion"
     }
   },
   "privacy": {

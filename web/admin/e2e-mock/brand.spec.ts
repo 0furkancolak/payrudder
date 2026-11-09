@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { APP, productGateway, signInAsAda } from "./product";
 
-// The Payrudder brand (phase 48, payrudder-brand/DESIGN.md): the name, the logo files that switch with the theme, a rail that is dark in both themes,
+// The Payrudder brand (phase 48, payrudder-brand/DESIGN.md): the name, the logo files that switch with the theme, a sidebar that follows the theme,
 // and no horizontal overflow at phone, tablet and desktop widths. SHOTS=<dir> also writes the screenshots (.playwright-mcp/ in the repository).
 const shots = process.env.SHOTS;
 const widths = [375, 768, 1280] as const;
@@ -25,7 +25,7 @@ test.describe("brand", () => {
   });
 
   for (const scheme of ["light", "dark"] as const) {
-    test(`${scheme}: the wordmark of the theme shows on the sign-in page and the rail is dark`, async ({ page }) => {
+    test(`${scheme}: the wordmark of the theme shows on the sign-in page and in the sidebar, which follows the theme`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await productGateway(new MockGateway()).gw.install(page);
       await page.goto("/signin");
@@ -33,11 +33,12 @@ test.describe("brand", () => {
       await expect(visible.first()).toBeVisible();
       await signInAsAda(page);
       await page.setViewportSize({ width: 1280, height: 800 });
+      await expect(page.getByTestId("sidebar").locator('img[src$="payrudder-wordmark-' + scheme + '.svg"]')).toBeVisible();
       const rail = await page.getByTestId("sidebar").evaluate((el) => getComputedStyle(el).backgroundColor);
-      // Dark in both themes: the red, green and blue channels are all low.
-      const nums = rail.match(/[\d.]+/g)!.map(Number);
       // Chromium reports the token as oklch(L C H): lightness is the first number; an rgb() answer has 0-255 channels.
-      expect(rail.startsWith("oklch") ? (nums[0] ?? 1) < 0.3 : Math.max(...nums.slice(0, 3)) < 60).toBe(true);
+      const nums = rail.match(/[\d.]+/g)!.map(Number);
+      const lightness = rail.startsWith("oklch") ? (nums[0] ?? 0) : Math.max(...nums.slice(0, 3)) / 255;
+      expect(scheme === "light" ? lightness > 0.9 : lightness < 0.3).toBe(true);
     });
   }
 

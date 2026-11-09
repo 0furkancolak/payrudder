@@ -194,7 +194,8 @@ test.describe("the operator", () => {
     await signInAsOperator(page);
     await page.goto("/organisations");
     await page.getByLabel("Search by name or owner address").fill("nobody");
-    await page.getByRole("button", { name: "Search" }).click();
+    // The page's own button: the sidebar has a search too (the command palette).
+    await page.getByTestId("organisations-page").getByRole("button", { name: "Search" }).click();
     await expect(page.getByText("No organisations found.")).toBeVisible();
   });
 });

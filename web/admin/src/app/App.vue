@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterProvider } from "@tanstack/vue-router";
+import { useMediaQuery } from "@vueuse/core";
 import { ConfigProvider } from "reka-ui";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -13,6 +14,9 @@ const { t, locale } = useI18n();
 const dir = computed(() => languages[locale.value as Locale]?.dir ?? "ltr");
 /** Served by /env.js (PAYRUDDER_DEMO): the stack is a demo, no real provider is ever called. */
 const demo = window.__PAYRUDDER__?.demo === true;
+/** Below the sidebar's width the phone's tab bar holds the bottom edge (MobileTabBar): the toasts rise above it. */
+const wide = useMediaQuery("(min-width: 1024px)");
+const toastOffset = computed(() => (wide.value ? undefined : { bottom: "5rem" }));
 </script>
 
 <template>
@@ -20,6 +24,6 @@ const demo = window.__PAYRUDDER__?.demo === true;
   <ConfigProvider :dir="dir">
     <RouterProvider :router="router" />
     <ConfirmDialog />
-    <Toaster position="bottom-right" />
+    <Toaster position="bottom-right" :offset="toastOffset" :mobile-offset="toastOffset" />
   </ConfigProvider>
 </template>
