@@ -1,5 +1,7 @@
 # Contributing
 
+> This repository is archived and does not accept contributions. Development continues privately; see the [README](README.md).
+
 ## Workflow
 
 - Branch from `main`: `feat/<phase>-<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`.

@@ -1,24 +1,47 @@
-# Payrudder
+# Payrudder (archived)
 
-> Multi-tenant usage metering and billing in Go: Kafka, RabbitMQ, gRPC, Postgres Row Level Security, ClickHouse, Kubernetes.
+> **This repository is no longer maintained.** As of November 2026 Payrudder's development continues in a private repository.
+> This is the last public commit: no issues, pull requests, security fixes or releases will follow here.
+> The code stays available, read-only, under its existing license, exactly as it was when we stopped.
 
-Payrudder (see [ADR 0022](docs/adr/0022-payrudder-rename.md) and the brand rules in [payrudder-brand/DESIGN.md](payrudder-brand/DESIGN.md)) lets a SaaS company (a *tenant*) send usage events, "customer X used 1,500 AI tokens", "customer Y made one API call",
-and turns them into correct, auditable invoices. It is in the same family as Orb, Lago and Stripe's usage-based billing.
-It is also a worked example of getting distributed-systems guarantees right and *proving* them: every claim below has a test
-that kills things.
+## Why it ends here
+
+Payrudder started as an open, worked example of usage-based billing done correctly. It has since become a product with a
+production deployment, customer-specific integrations and operational configuration that do not belong in a public repository.
+Rather than keep two diverging codebases, the public history stops at this commit and all further work happens privately.
+
+What that means in practice:
+
+- **No support.** Issues and pull requests are closed; the repository is archived and read-only.
+- **No updates.** Dependencies, security patches, provider adapters (iyzico, Paddle, Stripe) and the SDKs will not be updated here.
+  Treat everything as unmaintained before you depend on it.
+- **No hosted service from this code.** The deployment this repository used to drive is no longer connected to it.
+- **The published SDKs** (TypeScript, Go, Python, PHP) remain where they were published, frozen at their last version.
+- **Forks are fine** within the [license](#license). Nothing here is a promise that a fork will work against any live Payrudder service.
+
+## What Payrudder is
+
+Multi-tenant usage metering and billing in Go: Kafka, RabbitMQ, gRPC, Postgres Row Level Security, ClickHouse, Kubernetes.
+
+A SaaS company (a *tenant*) sends usage events, "customer X used 1,500 AI tokens", "customer Y made one API call", and
+Payrudder turns them into correct, auditable invoices. It is in the same family as Orb, Lago and Stripe's usage-based billing,
+and every distributed-systems guarantee it makes has a test that kills things to prove it.
+
+## Running it locally
 
 ```bash
 make tools up                  # Compose: infra, observability, all services (needs ~3 GiB for Docker)
-make demo                      # the story below, end to end, in about two and a half minutes
+make demo                      # create a sandbox account, send usage, close a period, re-rate it (about 2.5 minutes)
 make e2e                       # the public API against the real stack
 make chaos N=100000            # exact totals while replicas are killed, connections reset, a broker stopped
 ```
 
-For day-to-day work on your machine, `make setup` once and `make dev` every day start the services with reload and the console at
-<http://localhost:42301>. `make dev` also fills the local stack with a **default dev seed**: sign in to the product app
-(<http://localhost:42301/app>) as **`user1@example.com` / `password123`** and every screen has something to show (two apps with customers,
-packages, invoices, payments, expenses, credits). These credentials are public and exist **only on a local dev stack**
+For day-to-day work, `make setup` once and `make dev` every day start the services with reload and the console at
+<http://localhost:42301>. `make dev` fills the local stack with a **default dev seed**: sign in to <http://localhost:42301/app>
+as **`user1@example.com` / `password123`**. These credentials are public and exist **only on a local dev stack**
 ([docs/10-local-dev.md](docs/10-local-dev.md#default-dev-seed)); `SEED=0 make dev` skips the seed.
+
+Requirements: Go (see `go.work`), Docker with about 3 GiB of memory, GNU make, Node.js for the console and the TypeScript SDK.
 
 ## Correctness in 60 seconds
 
@@ -35,115 +58,20 @@ packages, invoices, payments, expenses, credits). These credentials are public a
 Money is never a float: unit prices are decimals, amounts are `int64` minor units rounded half-even once per line,
 quantities are exact scaled integers ([ADR 0010](docs/adr/0010-money-and-quantity-representation.md)).
 
+
 ## Architecture
 
-```mermaid
-flowchart LR
-    client[Tenant backend] -->|HTTPS + API key| gw[gateway]
-    gw --> plans[plans-svc]
-    gw --> ingest[ingest-svc]
-    gw --> limits[limits-svc]
-    gw --> billing[billing-svc]
-    gw --> analytics[analytics-svc]
-    gw --> assets[assets-svc]
-    ingest -->|outbox relay| kafka[(Kafka: usage.events)]
-    kafka --> agg[aggregator<br/>offsets + inbox in one tx]
-    kafka --> limits
-    kafka --> analytics
-    agg --> pg[(Postgres<br/>RLS, db per service)]
-    billing -->|commands| rmq{{RabbitMQ}}
-    rmq --> inv[invoice-worker<br/>PDF to S3]
-    rmq --> pay[payments-worker<br/>mock-psp]
-    rmq --> notif[notifier<br/>Mailpit]
-    inv --> rmq
-    pay --> rmq
-    rmq -->|replies| billing
-    limits --- redis[(Redis)]
-    analytics --- ch[(ClickHouse)]
-```
-
 Facts go on Kafka, commands on RabbitMQ; each service owns its database; every side effect has a natural dedup key.
+
+| Flow | Path |
+|---|---|
+| Requests | Tenant backend → `gateway` (HTTPS + API key) → `plans-svc`, `ingest-svc`, `limits-svc`, `billing-svc`, `analytics-svc`, `assets-svc` |
+| Usage | `ingest-svc` → transactional outbox → Kafka `usage.events` → `aggregator` (offsets and inbox in one transaction), `limits-svc` (Redis), `analytics-svc` (ClickHouse) |
+| Billing | `billing-svc` saga → RabbitMQ commands → `invoice-worker` (PDF to S3), `payments-worker` (PSP), `notifier` (mail) → replies back to `billing-svc` |
+| Storage | PostgreSQL with forced RLS, one database per service; Redis for counters; ClickHouse for analytics; S3 for documents |
+
 The long version is in [docs/02-architecture.md](docs/02-architecture.md); how the hard problems are solved is in
 [docs/07-correctness.md](docs/07-correctness.md).
-
-## The demo
-
-`make demo` creates an account in the **sandbox** (test keys, a mock payment provider, deterministic payment scenarios, on-demand
-period close), sends usage, closes the period with the real workers, raises the price, and re-rates the closed period:
-
-<details><summary>Output of <code>make demo</code> on a laptop</summary>
-
-```text
-==> 1/7 A new account: sandbox and live tenants, a plan, six customers (one per payment scenario)
-sandbox tenant 01a15217-773c-7a50-9756-9ea59d6d57ef
-
-==> 2/7 Usage: 600 events (AI tokens and GB-hours) through POST /v1/events, 5 % of them sent twice
-
-==> 3/7 Close the period now (sandbox ClosePeriodNow): watermark, rating, invoice numbers, the saga with real workers
-closing 2026-10
-  ... waiting for the invoices
-  ... 1 of 6 invoices final
-  ... 3 of 6 invoices final
-  ... 4 of 6 invoices final
-  ... 5 of 6 invoices final
-done: 6 of 6 invoices final
-  ... billing run RUN_STATUS_INVOICING
-done: billing run RUN_STATUS_COMPLETED
-NUMBER             KIND        TOTAL     STATUS         SAGA
-SBX-2026-000001    REGULAR     9949      uncollectible  COMPLETED
-SBX-2026-000002    REGULAR     11617     paid           COMPLETED
-SBX-2026-000003    REGULAR     9955      paid           COMPLETED
-SBX-2026-000004    REGULAR     11895     paid           COMPLETED
-SBX-2026-000005    REGULAR     9954      paid           COMPLETED
-SBX-2026-000006    REGULAR     9950      paid           COMPLETED
-
-==> 4/7 A price change: a new version of the plan, 20 % dearer base fee and GB-hours
-plan version 2 (id 01a15218-d0e1-7a34-9700-88a9e86d3149)
-
-==> 5/7 Re-rating 2026-10 under the new version: the difference becomes one CORRECTION invoice per customer
-job d528b891-02d1-4992-af5f-929f64c5f3b0: 6 customers rated, 6 corrections totalling 12742 minor units
-asking again returns the same job (d528b891-02d1-4992-af5f-929f64c5f3b0) and changes nothing
-
-==> 6/7 The correction invoices go through the same saga: PDF, charge, receipt
-  ... 0 of 6 correction invoices final
-  ... 1 of 6 correction invoices final
-  ... 3 of 6 correction invoices final
-  ... 4 of 6 correction invoices final
-  ... 5 of 6 correction invoices final
-done: 6 of 6 correction invoices final
-NUMBER             KIND        TOTAL     STATUS         SAGA
-SBX-2026-000007    CORRECTION  2399      paid           COMPLETED
-SBX-2026-000008    CORRECTION  2000      paid           COMPLETED
-SBX-2026-000001    REGULAR     9949      uncollectible  COMPLETED
-SBX-2026-000009    CORRECTION  2000      paid           COMPLETED
-SBX-2026-000010    CORRECTION  2343      paid           COMPLETED
-SBX-2026-000011    CORRECTION  2000      paid           COMPLETED
-SBX-2026-000002    REGULAR     11617     paid           COMPLETED
-SBX-2026-000003    REGULAR     9955      paid           COMPLETED
-SBX-2026-000004    REGULAR     11895     paid           COMPLETED
-SBX-2026-000005    REGULAR     9954      paid           COMPLETED
-SBX-2026-000006    REGULAR     9950      paid           COMPLETED
-SBX-2026-000012    CORRECTION  2000      uncollectible  COMPLETED
-
-==> 7/7 Where to look
-Mailpit has 18 messages, for example:
-  - [SANDBOX] Payment failed for invoice SBX-2026-000012
-  - [SANDBOX] Receipt for invoice SBX-2026-000010
-  - [SANDBOX] Receipt for invoice SBX-2026-000011
-  - [SANDBOX] Receipt for invoice SBX-2026-000008
-  - [SANDBOX] Receipt for invoice SBX-2026-000009
-  - [SANDBOX] Receipt for invoice SBX-2026-000007
-
-  Mailpit (receipts)   http://localhost:42825
-  Grafana (dashboards) http://localhost:42300   Payrudder / Billing, Pipeline lag, Correctness
-  Traces (Tempo)       http://localhost:42300/explore   (data source Tempo)
-  MinIO (PDFs)         http://localhost:42902   (user payrudder, password payrudder_local)
-  Redpanda Console     http://localhost:8085
-```
-
-</details>
-
-Nothing in it is mocked except the payment provider and the clock of the period (a sandbox tenant can close "now").
 
 ## Measured, not claimed
 
@@ -151,6 +79,8 @@ The numbers are in [docs/benchmarks.md](docs/benchmarks.md), with hardware, meth
 with a 2.9 GiB Docker VM running everything: 5,000 events/s sustained at p99 32 ms with no errors, 289 s to close a month for 10,000
 customers x 5 meters, exact totals under chaos (container kills, resets, a broker stop, a wiped Redis), and, stated plainly, two targets missed on that machine
 (latency at a 20,000 events/s spike; entitlement reads p99 at 2,000/s). The 1M-event nightly is wired in CI and has not run yet.
+
+The 1M-event nightly was wired in CI and never ran publicly.
 
 ## Subscriptions, providers and reports
 
@@ -160,12 +90,13 @@ subscription from the customer's country and the subscription's currency; **movi
 **reports** (revenue, monthly recurring revenue, unpaid invoices) by provider, country and currency. Neither provider's sandbox has been run: the adapters are written from their documentation and tested against fixtures,
 and the points that only a sandbox can settle are marked in the code and listed in the roadmap. Through Payrudder an operator can also create a plan's **Paddle products and prices**, preview and apply plan changes, pause, resume and hand out payment-method links on Paddle subscriptions ([docs/15-billing-lifecycle.md](docs/15-billing-lifecycle.md)).
 
+
 ## The operator console
 
-`web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) at <http://localhost:42301> shows tenants, invoices with the **saga timeline** of each one,
-a **playground** that walks through the whole sandbox flow in the browser (account, usage, period close, paid or declined invoice), the RabbitMQ dead-letter queues with a redrive action, and per tenant the billing pages: customers, packages, subscriptions (with usage against limits and moves between providers), payments and reconciliation, provider accounts and routing, and the reports. It talks to the gateway only. A Playwright smoke test drives it against the real stack in CI, and the billing pages are tested against a mocked gateway.
-
-![The saga timeline of a paid invoice](docs/img/admin-invoice-saga.png)
+`web/admin` (Vue 3, TanStack Router and Query, six languages, an API client typed from the OpenAPI file) shows tenants, invoices
+with the saga timeline of each one, a playground that walks through the whole sandbox flow in the browser, the RabbitMQ dead-letter
+queues with a redrive action, and per tenant the billing pages: customers, packages, subscriptions, payments and reconciliation,
+provider accounts and routing, and reports. It talks to the gateway only.
 
 ## What is in the repository
 
@@ -194,20 +125,27 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 | Testing | `testcontainers-go`, k6, a chaos and correctness suite |
 | Deploy | Docker Compose, kind + Helm (NetworkPolicies, migration hooks, zero-downtime rollouts), GitHub Actions |
 
-## Status
 
-The platform is built ([what is left](docs/phases/ROADMAP.md)): foundation, plans and gateway, ingest, aggregator, limits, billing
-saga, workers, analytics and assets, observability, correctness and load, Kubernetes, replay and re-rating, the operator console, and the billing platform (subscriptions, iyzico, Paddle, routing, migration, reports, console). What is *not* done is listed where it is relevant: the benchmark report names its misses, the Kubernetes doc its
-gaps, and and the roadmap what needs a real account.
+## State at the last public commit
 
-## Start here
+Built: foundation, plans and gateway, ingest, aggregator, limits, billing saga, workers, analytics and assets, observability,
+correctness and load, Kubernetes, replay and re-rating, the operator console, and the billing platform (subscriptions, iyzico,
+Paddle, routing, migration between providers, reports). Known gaps are documented where they matter: the benchmark report names
+its misses, the Kubernetes doc its gaps, and [the roadmap](docs/phases/ROADMAP.md) what was still open, including everything that
+needed a real provider sandbox. None of those gaps will be closed in this repository.
+
+## Documentation
 
 - [Vision](docs/00-vision.md): the problem, goals and non-goals
 - [Architecture](docs/02-architecture.md) and [Correctness](docs/07-correctness.md)
-- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Railway](deploy/railway/README.md), [Testing strategy](docs/09-testing-strategy.md)
-- [SDKs](docs/18-sdks.md) for other applications, [Webhooks](docs/16-webhooks.md)
+- [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Testing strategy](docs/09-testing-strategy.md)
+- [Billing platform](docs/14-billing-platform.md), [Billing lifecycle](docs/15-billing-lifecycle.md), [Webhooks](docs/16-webhooks.md), [SDKs](docs/18-sdks.md)
 - [Decisions](docs/adr/): why each technology was chosen
 
 ## License
 
-Source-available under the [Elastic License 2.0](LICENSE): use it for your own applications, modify it, redistribute it, but do not offer it to others as a hosted or managed service. Releases up to v0.4.0 were Apache-2.0 ([NOTICE](NOTICE), [ADR 0019](docs/adr/0019-license.md)).
+Source-available under the [Elastic License 2.0](LICENSE): use it for your own applications, modify it, redistribute it, but do not
+offer it to others as a hosted or managed service. Releases up to v0.4.0 were Apache-2.0 ([NOTICE](NOTICE), [ADR 0019](docs/adr/0019-license.md)).
+The license does not change with the archive; neither does the absence of any warranty.
+
+Thank you to everyone who read, ran or forked Payrudder while it was public.
